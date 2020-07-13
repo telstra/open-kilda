@@ -26,10 +26,15 @@ import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.cypher.Filters;
+import org.neo4j.ogm.cypher.query.Pagination;
 import org.neo4j.ogm.cypher.query.SortOrder;
+import org.neo4j.ogm.cypher.query.SortOrder.Direction;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 public class Neo4jFlowEventRepository extends Neo4jGenericRepository<FlowEvent> implements FlowEventRepository {
@@ -59,15 +64,19 @@ public class Neo4jFlowEventRepository extends Neo4jGenericRepository<FlowEvent> 
     }
 
     @Override
-    public Collection<FlowEvent> findByFlowIdAndTimeFrame(String flowId, Instant timeFrom, Instant timeTo) {
+    public Collection<FlowEvent> findByFlowIdAndTimeFrame(
+            String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
         Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowId);
         Filter beforeFilter = new Filter(TIMESTAMP_PROPERTY_NAME, ComparisonOperator.LESS_THAN_EQUAL, timeTo);
         Filter afterFilter = new Filter(TIMESTAMP_PROPERTY_NAME, ComparisonOperator.GREATER_THAN_EQUAL, timeFrom);
         Filters filters = new Filters(flowIdFilter).and(beforeFilter).and(afterFilter);
 
-        return getSession().loadAll(
-                getEntityType(), filters, new SortOrder(TIMESTAMP_PROPERTY_NAME),
-                getDepthLoadEntity(getDefaultFetchStrategy()));
+        List<FlowEvent> events = new ArrayList<>(getSession().loadAll(
+                getEntityType(), filters, new SortOrder(Direction.DESC, TIMESTAMP_PROPERTY_NAME),
+                new Pagination(0, maxCount), getDepthLoadEntity(getDefaultFetchStrategy())));
+
+        Collections.reverse(events);
+        return events;
     }
 
     @Override

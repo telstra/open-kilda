@@ -15,6 +15,8 @@
 
 package org.openkilda.northbound.controller.v1;
 
+import static java.lang.String.format;
+
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
@@ -44,7 +46,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -58,7 +62,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -75,6 +78,7 @@ public class FlowController extends BaseController {
      * The logger.
      */
     private static final Logger logger = LoggerFactory.getLogger(FlowController.class);
+    private static final int DEFAULT_MAX_HISTORY_RECORD_COUNT = 100;
 
     /**
      * The flow service instance.
@@ -328,18 +332,39 @@ public class FlowController extends BaseController {
      */
     @ApiOperation(value = "Gets history for flow", response = FlowEventPayload.class, responseContainer = "List")
     @GetMapping(path = "/{flow_id}/history")
-    @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<List<FlowEventPayload>> getHistory(
+    public ResponseEntity<List<FlowEventPayload>> getHistory(
             @PathVariable("flow_id") String flowId,
-            @ApiParam(value = "default: the day before timeTo.", required = false)
+            @ApiParam(value = "default: 0 (1 January 1970 00:00:00).", required = false)
             @RequestParam(value = "timeFrom", required = false) Optional<Long> optionalTimeFrom,
             @ApiParam(value = "default: now.", required = false)
-            @RequestParam(value = "timeTo", required = false) Optional<Long> optionalTimeTo) {
+            @RequestParam(value = "timeTo", required = false) Optional<Long> optionalTimeTo,
+            @ApiParam(value = "Return at most N latest records. "
+                    + "Default: if `timeFrom` or/and `timeTo` parameters are presented default value of "
+                    + "`maxCount` is infinite (all records in time interval will be returned). "
+                    + "Otherwise default value of `maxCount` will be equal to 100. In This case response will contain "
+                    + "header 'Content-Range'.")
+            @RequestParam(value = "max_count", required = false) Optional<Integer> optionalMaxCount) {
+        int maxCount = optionalMaxCount.orElseGet(() -> {
+            if (optionalTimeFrom.isPresent() || optionalTimeTo.isPresent()) {
+                return Integer.MAX_VALUE;
+            } else {
+                return DEFAULT_MAX_HISTORY_RECORD_COUNT;
+            }
+        });
+
         Long timeTo = optionalTimeTo.orElseGet(() -> Instant.now().getEpochSecond());
-        Long timeFrom = optionalTimeFrom.orElseGet(
-                () -> Instant.ofEpochSecond(timeTo).minus(1, ChronoUnit.DAYS).getEpochSecond()
-        );
-        return flowService.listFlowEvents(flowId, timeFrom, timeTo);
+        Long timeFrom = optionalTimeFrom.orElse(0L);
+        List<FlowEventPayload> events = flowService.listFlowEvents(flowId, timeFrom, timeTo, maxCount).join();
+
+        HttpHeaders headers = new HttpHeaders();
+
+        if (!optionalMaxCount.isPresent() && !optionalTimeFrom.isPresent() && !optionalTimeTo.isPresent()
+                && events.size() == DEFAULT_MAX_HISTORY_RECORD_COUNT) {
+            // if request has no parameters we assume that default value of `maxCount` is 100. To indicate that response
+            // may contain not all of history records "Content-Range" header will be added to response.
+            headers.add(HttpHeaders.CONTENT_RANGE, format("items 0-%d/*", events.size() - 1));
+        }
+        return new ResponseEntity<>(events, headers, HttpStatus.OK);
     }
 
     /**
@@ -362,7 +387,7 @@ public class FlowController extends BaseController {
             try {
                 sinceInstant = Instant.parse(since.get());
             } catch (DateTimeParseException e) {
-                String message = String.format("Invalid 'since' value '%s'. Correct example of 'since' value is "
+                String message = format("Invalid 'since' value '%s'. Correct example of 'since' value is "
                         + "'2019-09-30T16:14:12.538Z'", since.get());
                 throw new MessageException(ErrorType.DATA_INVALID, message, "Invalid 'since' value");
             }
