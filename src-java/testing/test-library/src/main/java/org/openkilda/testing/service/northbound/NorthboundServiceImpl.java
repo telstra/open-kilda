@@ -113,6 +113,16 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public List<FlowEventPayload> getFlowHistory(String flowId, Long timeFrom, Long timeTo) {
+        return getFlowHistory(flowId, timeFrom, timeTo, null);
+    }
+
+    @Override
+    public List<FlowEventPayload> getFlowHistory(String flowId, Integer maxCount) {
+        return getFlowHistory(flowId, null, null, maxCount);
+    }
+
+    @Override
+    public List<FlowEventPayload> getFlowHistory(String flowId, Long timeFrom, Long timeTo, Integer maxCount) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/flows/{flow_id}/history");
         if (timeFrom != null) {
             uriBuilder.queryParam("timeFrom", timeFrom);
@@ -120,7 +130,9 @@ public class NorthboundServiceImpl implements NorthboundService {
         if (timeTo != null) {
             uriBuilder.queryParam("timeTo", timeTo);
         }
-
+        if (maxCount != null) {
+            uriBuilder.queryParam("max_count", maxCount);
+        }
         FlowEventPayload[] flowHistory = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowEventPayload[].class, flowId).getBody();
         return Arrays.asList(flowHistory);

@@ -24,6 +24,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
+import org.openkilda.model.history.FlowEvent;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
 import java.time.Instant;
@@ -83,6 +84,9 @@ public interface Database {
     void updateFlowBandwidth(String flowId, long newBw);
 
     void updateFlowMeterId(String flowId, MeterId newMeterId);
+
+    //history
+    void addFlowEvent(FlowEvent event);
 
     //misc
 
