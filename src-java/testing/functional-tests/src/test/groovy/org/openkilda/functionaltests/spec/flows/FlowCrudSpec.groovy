@@ -596,7 +596,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
             def validation = northbound.validateSwitch(it.dpId)
             validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
             validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
-            assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
+            def amountOfFlowRules = northbound.getSwitchProperties(it.dpId).multiTable ? 3 : 2
+            assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
         }
 
         cleanup: "Remove the flow"

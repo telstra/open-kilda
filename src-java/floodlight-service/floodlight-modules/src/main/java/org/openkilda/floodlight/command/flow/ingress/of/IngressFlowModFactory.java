@@ -111,7 +111,9 @@ public abstract class IngressFlowModFactory {
                         .setMasked(MatchField.METADATA,
                                 OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
                         .build());
-        return makeForwardMessage(builder, effectiveMeterId, FlowEndpoint.makeVlanStack(endpoint.getInnerVlanId()));
+        // Outer VLAN tag already removed, no inner VLAN must be set for this kind or rules, so we can/should pass empty
+        // list as current vlanStack
+        return makeForwardMessage(builder, effectiveMeterId, Collections.emptyList());
     }
 
     /**

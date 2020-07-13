@@ -556,7 +556,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
             def validation = northbound.validateSwitch(it.dpId)
             validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
             validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
-            assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
+            def amountOfFlowRules = northbound.getSwitchProperties(it.dpId).multiTable ? 3 : 2
+            assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
         }
 
         cleanup: "Remove the flow"
@@ -940,6 +941,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         and: "Flow rules are recreated"
         def flowInfoFromDb2 = database.getFlow(flow.flowId)
         Wrappers.wait(RULES_INSTALLATION_TIME) {
+            def isMultiTableEnabled = northbound.getSwitchProperties(srcSwitch.dpId).multiTable
             with(northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
                 !new Cookie(it.cookie).serviceFlag
             }) { rules ->
@@ -951,7 +953,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                 }.size() == 2
                 def ingressRule = rules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }
                 ingressRule.match.inPort == newPortNumber.toString()
-                ingressRule.match.vlanVid == newVlanId.toString()
+                //vlan is matched in shared rule
+                isMultiTableEnabled ? !ingressRule.match.vlanVid : (ingressRule.match.vlanVid == newVlanId.toString())
             }
         }
 

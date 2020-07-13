@@ -753,7 +753,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def createdCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
             !new Cookie(it.cookie).serviceFlag
         }*.cookie
-        assert createdCookies.size() == 2
+        def amountOfFlowRules = northbound.getSwitchProperties(switchPair.src.dpId).multiTable ? 3 : 2
+        assert createdCookies.size() == amountOfFlowRules
 
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
         flowHelper.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = true })
@@ -771,8 +772,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
             def cookiesAfterEnablingProtectedPath = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
                 !new Cookie(it.cookie).serviceFlag
             }*.cookie
-            // two for main path + one for protected path
-            cookiesAfterEnablingProtectedPath.size() == 3
+            // amountOfFlowRules for main path + one for protected path
+            cookiesAfterEnablingProtectedPath.size() == amountOfFlowRules + 1
         }
 
         and: "No rule discrepancies on every switch of the flow on the main path"
@@ -830,7 +831,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                     assert switchValidateInfo.meters.proper.findAll({dto -> !isDefaultMeter(dto)}).size() == 1
                     switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "misconfigured", "excess"])
                 }
-                assert switchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 3
+                assert switchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules + 1
                 switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
             }
         }

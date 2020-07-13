@@ -14,6 +14,8 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.time.TimeCategory
@@ -142,6 +144,8 @@ class FlowSyncV2Spec extends HealthCheckSpecification {
     }
 
     List<FlowEntry> getFlowRules(Switch sw) {
-        northbound.getSwitchRules(sw.dpId).flowEntries.findAll { !(it.cookie in sw.defaultCookies) }.sort()
+        northbound.getSwitchRules(sw.dpId).flowEntries.findAll { !(it.cookie in sw.defaultCookies)  &&
+                new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW
+        }.sort()
     }
 }
