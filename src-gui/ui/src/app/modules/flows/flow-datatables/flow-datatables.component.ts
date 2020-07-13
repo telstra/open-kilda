@@ -189,7 +189,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
     this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
       dtInstance.columns().every(function () {
         const that = this;
-        $('input[type="text"]', this.header()).on('keyup change', function () {
+        $('input[type="search"]', this.header()).on('keyup change', function () {
           if (that.search() !== this['value']) {
               that
               .search(this['value'])

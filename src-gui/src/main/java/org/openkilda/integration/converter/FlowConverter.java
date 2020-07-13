@@ -83,6 +83,13 @@ public class FlowConverter {
         flowInfo.setPathComputationStrategy(flow.getPathComputationStrategy());
         flowInfo.setPinned(flow.isPinned());
         flowInfo.setPeriodicPings(flow.isPeriodicPings());
+        flowInfo.setMaxLatency(flow.getMaxLatency());
+        flowInfo.setPriority(flow.getPriority());
+        flowInfo.setTargetPathComputationStrategy(flow.getTargetPathComputationStrategy());
+        flowInfo.setStatusInfo(flow.getStatusInfo());
+        if (flow.getStatusDetails() != null) {
+            flowInfo.setStatusDetails(flow.getStatusDetails());
+        }
         if (flow.getDiverseWith() != null) {
             flowInfo.setDiverseWith(flow.getDiverseWith());
         }
@@ -94,6 +101,7 @@ public class FlowConverter {
             flowInfo.setSourceSwitch(source.getSwitchId());
             flowInfo.setSrcPort(source.getPortId());
             flowInfo.setSrcVlan(source.getVlanId());
+            flowInfo.setSrcInnerVlan(source.getInnerVlanId());
             flowInfo.setSrcLldp(source.getDetectedDevice().isLldp());
             flowInfo.setSrcArp(source.getDetectedDevice().isArp());
         }
@@ -104,6 +112,7 @@ public class FlowConverter {
             flowInfo.setTargetSwitch(destination.getSwitchId());
             flowInfo.setDstPort(destination.getPortId());
             flowInfo.setDstVlan(destination.getVlanId());
+            flowInfo.setDstVlan(destination.getInnerVlanId());
             flowInfo.setDstLldp(destination.getDetectedDevice().isLldp());
             flowInfo.setDstArp(destination.getDetectedDevice().isArp());
         }

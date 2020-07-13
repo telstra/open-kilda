@@ -15,6 +15,8 @@
 
 package org.openkilda.integration.model;
 
+import org.openkilda.model.StatusDetail;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -23,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.Data;
 
 import java.util.List;
+
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -81,6 +84,21 @@ public class Flow {
     
     @JsonProperty("diverse_with")
     private List<String> diverseWith;
+    
+    @JsonProperty("max-latency")
+    private int maxLatency;
+
+    @JsonProperty("priority")
+    private int priority;
+    
+    @JsonProperty("status_info")
+    private String statusInfo;
+    
+    @JsonProperty("target-path-computation-strategy")
+    private String targetPathComputationStrategy;
+    
+    @JsonProperty("status-details")
+    private StatusDetail statusDetails;
     
     
     public String getId() {

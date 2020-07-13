@@ -1,0 +1,20 @@
+<div class="switchdetails_div">
+  <div class="row">
+    <div class="col-sm-12">
+        <div class="row">
+            <div class="col-sm-4">
+                <div class="form-group input-group-sm">
+                     <input type="text" class="form-control" (keyup)="fulltextSearch($event)" placeholder="Search"/>
+                 </div>
+            </div>
+
+              <div class="col-sm-8 text-right text-filters mb-3" id="buttons">
+                 
+              </div>
+         </div>
+     </div>
+    <div class="clear clearfix"></div>
+  </div>
+  <app-affected-flow-list  [textSearch]="textSearch"  (refresh)="refreshFlowList('')"   [data]="dataSet" *ngIf="!loadingData"></app-affected-flow-list>
+  
+</div>

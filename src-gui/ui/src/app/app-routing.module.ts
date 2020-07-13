@@ -14,6 +14,7 @@ import { SettingsComponent } from './modules/settings/settings.component';
 import { LogoutComponent } from './common/components/logout/logout.component';
 import { SessionComponent } from './modules/settings/session/session.component';
 import { NetworkpathComponent } from './modules/networkpath/networkpath.component';
+import { AffectedFlowsReportComponent } from './modules/reports/affected-flows-report/affected-flows-report.component';
 
 const routes: Routes = [{
 		path: '',
@@ -159,6 +160,13 @@ const routes: Routes = [{
 		  breadcrumb: "Available Path",
 		  title: 'Available Path'
 	  }
+	},
+	{
+		path: 'flowreport',
+		component: AffectedFlowsReportComponent,
+		data:{
+			breadcrumb: "Affected Flows"
+		}
 	},
 	{ 
 		path: '**', 

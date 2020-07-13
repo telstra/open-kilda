@@ -1,0 +1,83 @@
+<div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
+<table id="flowDataTable" datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
+    <thead>
+      <tr class="tableHeading">
+        
+        <th class="">
+          <span title="Flow ID">
+         Flow ID
+        </span>
+          <i class="fa fa-search" (click)="toggleSearch($event,'expandedFlowId')"></i>
+          <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedFlowId" id="expandedFlowId"/>
+        </th>
+        <th class="" >
+          <span title="Source Switch">
+            Src Switch
+          </span>
+            <i class="fa fa-search" (click)="toggleSearch($event,'expandedSrcSwitchName')"></i>
+            <input   class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedSrcSwitchName" id="expandedSrcSwitchName"/>
+          
+        </th>
+        <th> <span title="Source Switch">Src Switch ID</span></th>
+        <th class="">
+          <span title="Destination Switch">
+            Dst Switch
+          </span>
+            <i class="fa fa-search" (click)="toggleSearch($event,'expandedTargetSwitchName')"></i>
+            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedTargetSwitchName" id="expandedTargetSwitchName"/>
+          
+        </th>
+        <th > <span  title="Destination Switch">Dst Switch ID</span></th>
+        
+        <th >
+            <span title="State">
+                Status
+           </span>
+             <i class="fa fa-search" (click)="toggleSearch($event,'expandedStatus')"></i>
+             <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedStatus" id="expandedStatus"/>
+           
+        </th>       
+        <th>
+            <span title="Reason">
+                Reason
+               </span>
+                 <i class="fa fa-search" (click)="toggleSearch($event,'expandedReason')"></i>
+                 <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedReason" id="expandedReason"/>
+        </th>
+    </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let row of data; let i = index"  class="flowDataRow">        
+        <td (click)="showFlow(row)" class="divTableCell" title="{{row.flowid }}" [contextMenu]="copyFLow"> 
+          {{row.flowid || "-"}} 
+          <context-menu #copyFLow>
+              <ng-template contextMenuItem (execute)="copyToClip($event,'flowid',i);">
+                Copy to Clipboard
+              </ng-template>
+            </context-menu>
+         </td>
+        <td (click)="showFlow(row)" title="{{row.source_switch_name}}" [contextMenu]="copySourceSwitch">
+          {{row.source_switch_name || "-"}}
+          <context-menu #copySourceSwitch>
+              <ng-template contextMenuItem (execute)="copyToClip($event,'source_switch_name',i);">
+                Copy to Clipboard
+              </ng-template>
+            </context-menu>
+        </td>
+        <td (click)="showFlow(row)" title="{{row.src_switch}}">{{row.source_switch || "-"}}</td>
+        <td (click)="showFlow(row)" title="{{row.target_switch_name}}" [contextMenu]="copyTargetSwitch">
+          {{row.target_switch_name || "-"}}
+          <context-menu #copyTargetSwitch>
+            <ng-template contextMenuItem (execute)="copyToClip($event,'target_switch_name',i);">
+              Copy to Clipboard
+            </ng-template>
+          </context-menu>
+        </td>
+         <td (click)="showFlow(row)" title="{{row.target_switch}}">{{row.target_switch || "-"}}</td>
+        <td (click)="showFlow(row)" title="{{row.status || row.state ||  '-'}}">{{ row.status || row.state ||  "-"}}</td>
+        <td (click)="showFlow(row)" title="{{row.status_info}}">{{row.status_info || "-"}}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  
