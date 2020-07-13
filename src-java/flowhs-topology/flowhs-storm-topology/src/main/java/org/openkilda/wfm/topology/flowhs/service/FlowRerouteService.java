@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
@@ -29,7 +30,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
@@ -66,17 +66,16 @@ public class FlowRerouteService {
     /**
      * Handles request for flow reroute.
      */
-    public void handleRequest(FlowRerouteFact reroute) {
-        log.debug("Handling flow reroute request with key {} and flow ID: {}", reroute.getKey(), reroute.getFlowId());
-        final CommandContext commandContext = reroute.getCommandContext();
+    public void handleRequest(String key, FlowRerouteRequest reroute, final CommandContext commandContext) {
+        log.debug("Handling flow reroute request with key {} and flow ID: {}", key, reroute.getFlowId());
 
         try {
-            checkRequestsCollision(reroute);
+            checkRequestsCollision(key, reroute.getFlowId(), commandContext);
         } catch (Exception e) {
             log.error(e.getMessage());
-            FlowRerouteFsm fsm = fsms.get(reroute.getKey());
+            FlowRerouteFsm fsm = fsms.get(key);
             if (fsm != null) {
-                removeIfFinished(fsm, reroute.getKey());
+                removeIfFinished(fsm, key);
             }
             return;
         }
@@ -84,21 +83,20 @@ public class FlowRerouteService {
         final String flowId = reroute.getFlowId();
         if (isRerouteAlreadyInProgress(flowId)) {
             carrier.sendRerouteResultStatus(flowId, new RerouteInProgressError(),
-                    reroute.getCommandContext().getCorrelationId());
+                    commandContext.getCorrelationId());
             return;
         }
 
-        final String key = reroute.getKey();
         FlowRerouteFsm fsm = fsmFactory.newInstance(commandContext, flowId);
         fsms.put(key, fsm);
 
         FlowRerouteContext context = FlowRerouteContext.builder()
                 .flowId(flowId)
                 .affectedIsl(reroute.getAffectedIsl())
-                .forceReroute(reroute.isForceReroute())
+                .forceReroute(reroute.isForce())
                 .ignoreBandwidth(reroute.isIgnoreBandwidth())
                 .effectivelyDown(reroute.isEffectivelyDown())
-                .rerouteReason(reroute.getRerouteReason())
+                .rerouteReason(reroute.getReason())
                 .build();
         fsmExecutor.fire(fsm, Event.NEXT, context);
 
@@ -155,18 +153,18 @@ public class FlowRerouteService {
         removeIfFinished(fsm, key);
     }
 
-    private void checkRequestsCollision(FlowRerouteFact reroute) {
-        if (fsms.containsKey(reroute.getKey())) {
+    private void checkRequestsCollision(String key, String flowId, CommandContext commandContext) {
+        if (fsms.containsKey(key)) {
             throw new IllegalStateException(String.format(
                     "Attempt to create a FSM with key %s, while there's another active FSM with the same key "
-                            + "(flowId=\"%s\")", reroute.getKey(), reroute.getFlowId()));
+                            + "(flowId=\"%s\")", key, flowId));
         }
 
-        String eventKey = reroute.getCommandContext().getCorrelationId();
+        String eventKey = commandContext.getCorrelationId();
         if (flowEventRepository.existsByTaskId(eventKey)) {
             throw new IllegalStateException(String.format(
                     "Attempt to reuse history key %s, but there's a history record(s) for it (flowId=\"%s\")",
-                    eventKey, reroute.getFlowId()));
+                    eventKey, flowId));
         }
     }
 
