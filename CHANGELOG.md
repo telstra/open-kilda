@@ -31,7 +31,8 @@ reroute, fl, neo4j, swmanager, flow-hs, nb, nbworker, gui
 ### Upgrade notes:
 Consider using the following migration scripts to update db:
 
-- [1.25 migration-script](https://github.com/telstra/open-kilda/blob/v1.65.0/services/src/neo4j/migrations/1.25-change-type-of-flow-event-timestamp/1-remove-flow-connected-devices-index-and-constraint.xml)
+- [1.25 migration-script](https://github.com/telstra/open-kilda/blob/v1.65.0/services/src/neo4j/migrations/1.25-change-type-of-flow-event-timestamp/1-change-type-of-history-timestamps-form-iso-to-epoch.xml)
+
 
 In case of issues these rollback scripts should be executed:
 
