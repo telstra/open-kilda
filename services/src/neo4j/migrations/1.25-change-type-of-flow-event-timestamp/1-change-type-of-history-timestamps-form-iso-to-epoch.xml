@@ -4,7 +4,7 @@
     <!-- and/or define directly changesets-->
     <changeset id="1.25-change-type-of-flow-event-timestamp" author="Sergey Nikitin">
          <query><![CDATA[
-             MATCH (n:flow_event) WHERE apoc.convert.toInteger(n.timestamp) IS NULL WITH n LIMIT 100 SET n.timestamp=apoc.date.fromISO8601(n.timestamp)
+             MATCH (n:flow_event) WHERE apoc.convert.toInteger(n.timestamp) IS NULL WITH n LIMIT 10000 SET n.timestamp=apoc.date.fromISO8601(n.timestamp)
          ]]></query>
 
         <postcondition>
@@ -14,7 +14,7 @@
 
      <changeset id="1.25-change-type-of-flow-history-timestamp" author="Sergey Nikitin">
          <query><![CDATA[
-             MATCH (n:flow_history) WHERE apoc.convert.toInteger(n.timestamp) IS NULL WITH n LIMIT 100 SET n.timestamp=apoc.date.fromISO8601(n.timestamp)
+             MATCH (n:flow_history) WHERE apoc.convert.toInteger(n.timestamp) IS NULL WITH n LIMIT 10000 SET n.timestamp=apoc.date.fromISO8601(n.timestamp)
          ]]></query>
 
          <postcondition>
@@ -24,7 +24,7 @@
 
      <changeset id="1.25-change-type-of-port-history-timestamp" author="Sergey Nikitin">
          <query><![CDATA[
-             MATCH (n:port_history) WHERE apoc.convert.toInteger(n.time) IS NULL WITH n LIMIT 100 SET n.time=apoc.date.fromISO8601(n.time)
+             MATCH (n:port_history) WHERE apoc.convert.toInteger(n.time) IS NULL WITH n LIMIT 10000 SET n.time=apoc.date.fromISO8601(n.time)
          ]]></query>
 
          <postcondition>

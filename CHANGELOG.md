@@ -22,6 +22,7 @@
 -  [#3608](https://github.com/telstra/open-kilda/pull/3608) Add func tests for history max_count [**tests**]
 -  [#3622](https://github.com/telstra/open-kilda/pull/3622) Feature/down flows report (Issue: [#3585](https://github.com/telstra/open-kilda/issues/3585)) [**gui**]
 -  [#3496](https://github.com/telstra/open-kilda/pull/3496) Revert "QinQ limit capabilities" [**floodlight**][**storm-topologies**]
+-  [#3626](https://github.com/telstra/open-kilda/pull/3626) Added limits to migration 1.25 for performance
 
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.64.2...v1.65.0).
 
