@@ -2,10 +2,12 @@ package org.openkilda.functionaltests.spec.resilience
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.PATH_SWAP_ACTION
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -23,10 +25,14 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 
 import groovy.util.logging.Slf4j
+import spock.lang.Shared
 import spock.lang.Unroll
+
+import java.util.concurrent.TimeUnit
 
 @Slf4j
 class RetriesSpec extends HealthCheckSpecification {
+    @Shared int globalTimeout = 30
 
     @Tidy
     def "System retries the reroute (global retry) if it fails to install rules on one of the current target path's switches"() {
@@ -391,6 +397,48 @@ and at least 1 path must remain safe"
         wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
+        database.resetCosts()
+    }
+
+    @Tidy
+    def "System does not retry after global timeout for reroute operation"() {
+        given: "A flow with ability to reroute"
+        def swPair = topologyHelper.switchPairs.find { it.paths.size() > 1 }
+        def flow = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(flow)
+
+        when: "Break current path to trigger a reroute"
+        def islToBreak = pathHelper.getInvolvedIsls(flow.flowId).first()
+        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+
+        and: "Connection to src switch is slow in order to simulate a global timeout on reroute operation"
+        lockKeeper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(5000))
+        //note that for some reason 5000+ delay will also cause isls on given switch to timeout. Reason unknown
+        //failed isls have no impact on this particular scenario
+
+        then: "After global timeout expect flow reroute to fail and flow to become DOWN"
+        TimeUnit.SECONDS.sleep(globalTimeout)
+        int eventsAmount
+        wait(globalTimeout, 1) { //long wait, may be doing some revert actions after global t/o
+            def history = northbound.getFlowHistory(flow.flowId)
+            def lastEvent = history.last().histories
+            assert lastEvent.find { it.action == sprintf('Global timeout reached for reroute operation on flow "%s"', flow.flowId) }
+            assert lastEvent.last().action == REROUTE_FAIL
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            eventsAmount = history.size()
+        }
+
+        and: "Flow remains down and no new history events appear for the next 3 seconds (no retry happens)"
+        timedLoop(3) {
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert northbound.getFlowHistory(flow.flowId).size() == eventsAmount
+        }
+
+        cleanup:
+        lockKeeper.cleanupTrafficShaperRules(swPair.src.region)
+        flowHelperV2.deleteFlow(flow.flowId)
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        wait(WAIT_OFFSET) { northbound.activeLinks.size() == topology.islsForActiveSwitches.size() * 2 }
         database.resetCosts()
     }
 }
