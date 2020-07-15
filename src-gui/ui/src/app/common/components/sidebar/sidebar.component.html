@@ -43,6 +43,17 @@
 							</li>
 					</ul>
 			</li>
+			<li  id="reports-menu-id" style="cursor:pointer;">
+				<a [class.active]="currentUrl == '/flowreport'" title="Reports" (click)="toggleSubmenu('reports-submenu')"><i class="fa fa-line-chart" aria-hidden="true"></i><span class="home-Topology toggleText">Reports</span><i [ngClass]="{'fa-angle-down':activeSubmenu != 'reports-submenu','fa-angle-up':activeSubmenu == 'reports-submenu'}"  class="fa fa-fw" style="float:right; margin-top:15px;"></i></a>
+				<ul id="reports-submenu" [ngClass] = "{'show':activeSubmenu == 'reports-submenu','hide':activeSubmenu != 'reports-submenu'}" class="submenu">
+						<li  id="flowsReports-menu-id" [class.active]="currentUrl == '/flowreport'">
+							<a title="Flows Report" routerLink='/flowreport'> 
+								<i class="fa fa-file-text" aria-hidden="true"></i><span class="home-flows toggleText">Affected Flows</span>
+							</a>
+						</li>
+						
+				</ul>
+		</li>
 		</ul>
 	</section>
 </aside>

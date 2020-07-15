@@ -11,6 +11,17 @@ WatchListBolt -> WatcherBolt: remove switch_id+port
 WatcherBolt -> WatcherBolt: remove from await list
 WatcherBolt -> WatcherBolt: remove round-trip-status
 
+== Enable/disable slow discovery ==
+note over UniIslHandler
+	We emit enable slow discovery only for ports without links
+end note
+UniIslHandler -> WatchListBolt: enable/disable slow discovery\nfor switch_id+port
+WatchListBolt -> WatchListBolt: set slow-discovery flag in true/false\nfor switch_id+port
+
+== Enable/disable bfd slow discovery ==
+IslHandler -> WatchListBolt: enable/disable bfd slow discovery\nfor switch_id+port
+WatchListBolt -> WatchListBolt: set bfd-slow-discovery flag in true/false\nfor switch_id+port
+
 == Discovery process ==
 TickSpout -> WatchListBolt: tick
 WatchListBolt -> WatcherBolt: emit list of switch_id+port_list\nrouting by switch_id

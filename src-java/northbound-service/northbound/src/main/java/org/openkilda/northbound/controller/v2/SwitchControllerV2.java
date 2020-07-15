@@ -154,6 +154,8 @@ public class SwitchControllerV2 extends BaseController {
     @PatchMapping(value = "/{switch_id}")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<SwitchDtoV2> patchSwitch(@PathVariable("switch_id") SwitchId switchId,
+                                                      @ApiParam(value = "To remove the pop value, "
+                                                              + "need to pass an empty string.")
                                                       @RequestBody SwitchPatchDto dto) {
         return switchService.patchSwitch(switchId, dto);
     }

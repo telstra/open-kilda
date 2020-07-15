@@ -43,7 +43,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     @Tidy
     @Unroll
-    def "Able to partially update flow #data.field without reinstalling its rules"() {
+    def "Able to partially update flow '#data.field' without reinstalling its rules"() {
         given: "A flow"
         def swPair = topologyHelper.switchPairs.first()
         def flow = flowHelperV2.randomFlow(swPair)
@@ -86,6 +86,10 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                 [
                         field   : "targetPathComputationStrategy",
                         newValue: PathComputationStrategy.LATENCY.toString().toLowerCase()
+                ],
+                [
+                        field   : "pinned",
+                        newValue: true
                 ]
         ]
     }
@@ -161,9 +165,12 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         northboundV2.getFlow(flow.flowId)."$data.field" == newValue
 
         and: "Flow rules have been reinstalled"
-        !northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
-            !new Cookie(it.cookie).serviceFlag
-        }.any { it in originalCookies }
+        //system doesn't reinstall shared rule on reroute action
+        def newCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll { !new Cookie(it.cookie).serviceFlag }
+        newCookies.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW } ==
+                originalCookies.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW }
+        !newCookies.findAll { new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW  }
+                .any { it in originalCookies.findAll { new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW } }
 
         cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -298,9 +305,10 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "Flow rules are installed on the new dst switch"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            northbound.getSwitchRules(newDstSwitch.dpId).flowEntries.findAll {
+            def amountOfFlowRules = northbound.getSwitchProperties(newDstSwitch.dpId).multiTable ? 3 : 2
+            assert northbound.getSwitchRules(newDstSwitch.dpId).flowEntries.findAll {
                 !new Cookie(it.cookie).serviceFlag
-            }.size() == 2
+            }.size() == amountOfFlowRules
         }
 
         and: "Flow is valid and pingable"
@@ -359,8 +367,16 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     def "Partial update with empty body does not actually update flow in any way"() {
         given: "A flow"
-        def swPair = topologyHelper.switchPairs.first()
-        def flow = flowHelperV2.randomFlow(swPair)
+        def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            it.paths.collect { pathHelper.getInvolvedIsls(it) }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() > 1
+        } ?: assumeTrue("Need at least 2 non-overlapping paths for diverse flow", false)
+        def helperFlow = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(helperFlow)
+        def flow = flowHelperV2.randomFlow(swPair).tap {
+            pinned = true
+            periodicPings = true
+            diverseFlowId = helperFlow.flowId
+        }
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
             def cookie = new Cookie(it.cookie)
@@ -374,13 +390,12 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         then: "Flow is left intact"
         expect northboundV2.getFlow(flow.flowId), sameBeanAs(flowBeforeUpdate)
                 .ignoring("lastUpdated")
-                .ignoring("diverseWith")
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
 
         cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        [flow, helperFlow].each { flowHelperV2.deleteFlow(it.flowId) }
     }
 
     @Tidy

@@ -65,6 +65,7 @@ state OPERATIONAL {
     MOVED : enter / persist state
     MOVED : enter / emit isl-move
     MOVED : enter / emit bisl-bfd-disable
+    MOVED : enter / emit disable bfd-slow-discovery
     MOVED : enter / emit reroute-affected
 }
 OPERATIONAL --> CLEAN_UP_RESOURCES : isl-remove [effective_status != ACTIVE]
@@ -74,8 +75,11 @@ OPERATIONAL : enter [effective_status == ACTIVE && enable_bfd in DB is set] / em
 OPERATIONAL : isl-(up|down|move) / evaluate-state (can emit sync and|or _become_(up|down|moved))
 OPERATIONAL : bfd-(up|down|kill) / evaluate-state (can emit sync and|or _become_(up|down))
 OPERATIONAL : round-trip-status / evaluate-state (can emit sync and|or _become_(up|down))
+OPERATIONAL : bfd-(up|down) / emit enable bfd-slow-discovery
+OPERATIONAL : bfd-(kill) / emit disable bfd-slow-discovery
 OPERATIONAL : _flush / persist discovery data
 OPERATIONAL : exit / emit bisl-bfd-disable
+OPERATIONAL : exit / emit disable bfd-slow-discovery
 
 CLEAN_UP_RESOURCES : enter / init attempts count from config
 CLEAN_UP_RESOURCES : enter / send remove isl rules for A-end endpoint

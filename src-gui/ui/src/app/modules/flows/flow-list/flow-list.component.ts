@@ -5,12 +5,11 @@ import { ToastrService } from 'ngx-toastr';
 import { Subject } from 'rxjs';
 import { Flow } from '../../../common/data-models/flow';
 import { Router } from '@angular/router';
-import { NgxSpinnerService } from 'ngx-spinner';
 import { LoaderService } from '../../../common/services/loader.service';
-import { local } from 'd3';
-import { CommonService } from '../../../common/services/common.service';
 import { MessageObj } from 'src/app/common/constants/constants';
 declare var jQuery: any;
+import { FlowDatatablesComponent } from 'src/app/modules/flows/flow-datatables/flow-datatables.component';
+import { CommonService } from 'src/app/common/services/common.service';
 
 @Component({
   selector: 'app-flow-list',
@@ -21,6 +20,7 @@ declare var jQuery: any;
 export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterViewInit{
   @Input() srcSwitch : string;
   @Input() dstSwitch : string;
+  @ViewChild(FlowDatatablesComponent) childFlowComponent:FlowDatatablesComponent;
 
   dataSet: any;
 
@@ -31,6 +31,7 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
   textSearch:any;
   loadingData = true;
   storeLinkSetting : boolean = false;
+  enableFlowreRouteFlag:boolean = false;
   statusList : any = [];
   filterFlag:string= localStorage.getItem('filterFlag') || 'controller';
   activeStatus :any = '';
@@ -41,7 +42,7 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
     private toastr: ToastrService,
     private loaderService : LoaderService,
     private renderer: Renderer2,
-    public commonService: CommonService
+    public commonService:CommonService,
   ) { 
     
     this.checkFlowData();
@@ -49,15 +50,14 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
     let storeSetting = localStorage.getItem("haslinkStoreSetting") || false;
     this.storeLinkSetting = storeSetting && storeSetting == "1" ? true : false
     this.statusList = JSON.parse(localStorage.getItem("linkStoreStatusList"));
-	if(!this.storeLinkSetting){
+    if(!this.storeLinkSetting){
       localStorage.removeItem('filterFlag');
       this.filterFlag = 'controller';
     }
    }
 
    checkFlowData(){
-      var flowListData:any = {};
-     
+      var flowListData:any = {};     
       if(this.filterFlag == 'controller'){
         flowListData = JSON.parse(localStorage.getItem("flows"));
       }else{
@@ -115,6 +115,15 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
   fulltextSearch(e){ 
     this.textSearch = e.target.value || ' ';
   }
+
+  enableFlowreRoute(flag){
+    this.enableFlowreRouteFlag = flag.flag;
+  }
+
+  re_route_flows(){
+    this.childFlowComponent.reRouteFlows();
+  }
+  
   getFlowList(statusParam,filter){ 
     this.loadingData = true;
     this.dataSet = [];
@@ -167,7 +176,10 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
   refreshFlowList(statusParam){
     this.srcSwitch = null;
     this.dstSwitch = null;
+    this.textSearch = '';
+    this.enableFlowreRouteFlag = false;
     this.statusParams = [];
+    jQuery('#search-input').val('');
     this.statusParams.push(statusParam);
 
     if(this.filterFlag == 'controller'){

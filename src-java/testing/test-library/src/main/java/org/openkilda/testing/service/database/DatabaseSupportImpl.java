@@ -31,6 +31,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
+import org.openkilda.model.history.FlowEvent;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
@@ -41,6 +42,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
+import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
@@ -72,6 +74,7 @@ public class DatabaseSupportImpl implements Database {
     private final FlowPathRepository flowPathRepository;
     private final TransitVlanRepository transitVlanRepository;
     private final SwitchConnectedDeviceRepository switchDevicesRepository;
+    private final FlowEventRepository flowEventRepository;
 
     public DatabaseSupportImpl(PersistenceManager persistenceManager) {
         this.transactionManager = persistenceManager.getTransactionManager();
@@ -82,6 +85,7 @@ public class DatabaseSupportImpl implements Database {
         flowPathRepository = repositoryFactory.createFlowPathRepository();
         transitVlanRepository = repositoryFactory.createTransitVlanRepository();
         switchDevicesRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
+        flowEventRepository = repositoryFactory.createFlowEventRepository();
     }
 
     /**
@@ -376,6 +380,11 @@ public class DatabaseSupportImpl implements Database {
             p.setMeterId(newMeterId);
             flowPathRepository.createOrUpdate(p);
         });
+    }
+
+    @Override
+    public void addFlowEvent(FlowEvent event) {
+        flowEventRepository.createOrUpdate(event);
     }
 
     @Override

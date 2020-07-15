@@ -132,14 +132,19 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
                 JSONObject jsonObject = (JSONObject) jsonParser.parse(ex.getResponse());
                 String errorMessage = HttpError.PRECONDITION_FAILED.getAuxilaryMessage();
                 String errorType = ex.toString();
+                String errorDescription = ex.toString();
                 if (jsonObject.get("error-message") != null) {
                     errorMessage = jsonObject.get("error-message").toString();
                 }
                 if (jsonObject.get("error-type") != null) {
                     errorType = jsonObject.get("error-type").toString();
                 }
+                if (jsonObject.get("error-description") != null) {
+                    errorDescription = jsonObject.get("error-description").toString();
+                }
+                
                 return response(HttpError.PRECONDITION_FAILED.getHttpStatus(), HttpError.PRECONDITION_FAILED.getCode(),
-                        errorMessage, errorType);
+                        errorMessage, errorType, "", errorDescription);
             } catch (ParseException e) {
                 e.printStackTrace();
             }

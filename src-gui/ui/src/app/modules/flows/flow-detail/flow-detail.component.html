@@ -84,7 +84,6 @@
                 <div class="col-sm-4"></div>
               </div>
             </li>
-
             <li class="list-group-item">
               <div class="row">
                 <div class="col-sm-4">Switch Id:</div>
@@ -234,8 +233,7 @@
                 <button class="btn btn-secondary btn-no-radius pull-right btn-custom-margin" (click)="clearValidatedFlow()">Clear</button>
                 <div class="clear clearfix"></div>
               </div>
-            </div>
-           
+            </div>           
             <pre [contextMenu]="copyValidateFlow" class="code validateFlow" *ngIf="validatedFlow">{{validatedFlow | json}}</pre>
           </div>
           <div *ngIf="flowIs =='resync' && !loading" class="clip-board-wrapper">
@@ -287,8 +285,7 @@
                           </label>
                         </div>
                       </div>
-                    </div> 
-                    
+                    </div>                     
               </div>
               <div class="col-sm-12">
                   <div *ngIf="Rawview">
@@ -326,8 +323,7 @@
               <button class="btn btn-secondary btn-no-radius pull-right btn-custom-margin" (click)="clearFlowHistory()">Clear</button>
               <div class="clear clearfix"></div>
             </div>
-          </div>
-        
+          </div>        
           <pre [contextMenu]="copyflowHistory" class="code validateFlow" *ngIf="flowHistory">{{flowHistory | json}}</pre>
         </div>
       </div>

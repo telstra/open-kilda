@@ -11,6 +11,7 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 
 import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.util.mop.Use
@@ -24,6 +25,7 @@ class Server42RttSpec extends HealthCheckSpecification {
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix
 
+    @Ignore("fix ASAP")
     def "Create two flow with server42 Rtt feature and check datapoints in opentsdb"() {
         given: "Two active neighboring switches one with server42 and one without"
 

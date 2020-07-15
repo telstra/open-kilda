@@ -40,4 +40,14 @@ public interface KafkaMessageCollectorConfig {
     @Default("1000")
     @Min(1)
     long getAutoCommitInterval();
+
+    @Key("kafka-consumer-poll-timeout-millis")
+    @Default("100")
+    @Min(1)
+    long getKafkaConsumerPollTimeoutMillis();
+
+    @Key("discovery-flush-delay-millis")
+    @Default("100")
+    @Min(1)
+    long getDiscoveryFlushDelayMillis();
 }

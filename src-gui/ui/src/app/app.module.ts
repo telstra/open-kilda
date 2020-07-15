@@ -92,6 +92,8 @@ import { NetworkpathComponent } from './modules/networkpath/networkpath.componen
 import { PortFlowsComponent } from './modules/switches/port-flows/port-flows.component';
 import { PortInventoryFlowsComponent } from './modules/switches/port-inventory-flows/port-inventory-flows.component';
 import { ConnectedDevicesComponent } from './modules/flows/connected-devices/connected-devices.component';
+import { AffectedFlowsReportComponent } from './modules/reports/affected-flows-report/affected-flows-report.component';
+import { AffectedFlowListComponent } from './modules/reports/affected-flow-list/affected-flow-list.component';
 
 @NgModule({
   declarations: [
@@ -170,6 +172,8 @@ import { ConnectedDevicesComponent } from './modules/flows/connected-devices/con
     PortFlowsComponent,
     PortInventoryFlowsComponent,
     ConnectedDevicesComponent,
+    AffectedFlowsReportComponent,
+    AffectedFlowListComponent,
   ],
   imports: [
     HttpClientModule,

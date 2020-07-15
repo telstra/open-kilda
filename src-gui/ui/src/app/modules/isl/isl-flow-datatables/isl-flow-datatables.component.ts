@@ -23,6 +23,7 @@ export class IslFlowDatatablesComponent implements OnInit , AfterViewInit , OnDe
   reRouteFlowIndex = {};
   islFlow = [];
   selectAll = false;
+  reRouteList:any=[];
   dtTrigger: Subject<any> = new Subject();
   wrapperHide = true;
   expandedFlowId : boolean = false;
@@ -135,48 +136,67 @@ reRouteFlows() {
   })
   if(selectedFlows && selectedFlows.length){
     this.loadFlowReRouteModal();
-    for(let i=0; i < selectedFlows.length; i++){
-      this.reRouteFlowIndex[selectedFlows[i]] = {type:'info'};
-      this.reRouteFlow(selectedFlows[i]);
-    }
-
+    var flowID = selectedFlows.pop();    
+    this.reRouteFlowIndex[flowID] = {type:'info'};
+    this.reRouteFlow(flowID,selectedFlows);
   }
   
 }
 
-reRouteFlow(flowID) {
+
+reRouteFlow(flowID,flowList) {
+  var self = this;
     if(flowID){
+      this.reRouteList.push(flowID);
       this.reRouteFlowIndex[flowID]['progress'] = 10;
       this.reRouteFlowIndex[flowID]['interval'] = setInterval(() => {
-       this.reRouteFlowIndex[flowID]['progress'] =  this.reRouteFlowIndex[flowID]['progress'] + 10;
+        if(this.reRouteFlowIndex[flowID]['progress'] <= 90){
+          this.reRouteFlowIndex[flowID]['progress'] =  this.reRouteFlowIndex[flowID]['progress'] + 10;
+        }
       },300);
-      this.flowService.getReRoutedPath(flowID).subscribe((data:any) => {
+      this.flowService.getReRoutedPath(flowID).subscribe(function(data:any){
           if(data && typeof(data.rerouted)!=='undefined' && data.rerouted){
-            clearInterval( this.reRouteFlowIndex[flowID]['interval']);
-            this.reRouteFlowIndex[flowID]['type'] = 'success';
-            this.reRouteFlowIndex[flowID]['progress'] = 100;
-            this.reRouteFlowIndex[flowID]['message'] = MessageObj.flow_rerouted;
+            clearInterval( self.reRouteFlowIndex[flowID]['interval']);
+            self.reRouteFlowIndex[flowID]['type'] = 'success';
+            self.reRouteFlowIndex[flowID]['progress'] = 100;
+            self.reRouteFlowIndex[flowID]['message'] = MessageObj.flow_rerouted;
             } else {
-              clearInterval(this.reRouteFlowIndex[flowID]['interval']);
-              this.reRouteFlowIndex[flowID]['type'] = 'info';
-              this.reRouteFlowIndex[flowID]['progress'] = 100;
-              this.reRouteFlowIndex[flowID]['message'] = MessageObj.flow_on_best_route;
+              clearInterval(self.reRouteFlowIndex[flowID]['interval']);
+              self.reRouteFlowIndex[flowID]['type'] = 'info';
+              self.reRouteFlowIndex[flowID]['progress'] = 100;
+              self.reRouteFlowIndex[flowID]['message'] = MessageObj.flow_on_best_route;
             }
-          },
-          (error) => {
-            clearInterval(this.reRouteFlowIndex[flowID]['interval']);
-            this.reRouteFlowIndex[flowID]['type'] = 'danger';
-            this.reRouteFlowIndex[flowID]['progress'] = 100;
-            this.reRouteFlowIndex[flowID]['message'] = error["error-auxiliary-message"];
+            if(flowList && flowList.length){
+              var flow_id = flowList.pop();
+               self.reRouteFlowIndex[flow_id] = {type:'info'};
+               self.reRouteFlow(flow_id,flowList);
+            }else{
+              return;
+            }
+            
+          },function(error){
+            clearInterval(self.reRouteFlowIndex[flowID]['interval']);
+            self.reRouteFlowIndex[flowID]['type'] = 'danger';
+            self.reRouteFlowIndex[flowID]['progress'] = 100;
+            self.reRouteFlowIndex[flowID]['message'] = error.error["error-auxiliary-message"];
+            self.reRouteFlowIndex[flowID]['description'] = error.error["error-description"];
+            if(flowList && flowList.length){
+              var flow_id = flowList.pop();
+               self.reRouteFlowIndex[flow_id] = {type:'info'};
+               self.reRouteFlow(flow_id,flowList);
+            }else{
+              return;
+            }
          });
     }
  
 }
 
 loadFlowReRouteModal() {
-      const modelRef = this.modalService.open(FlowReRouteModalComponent,{ size: 'lg', backdrop: 'static' });
-      modelRef.componentInstance.title = "Re-routing Flows";
+      const modelRef = this.modalService.open(FlowReRouteModalComponent,{ size: 'lg', windowClass:'modal-isl slideInUp', backdrop: 'static',keyboard:false });
+      modelRef.componentInstance.title = MessageObj.re_routing_flows;
       modelRef.componentInstance.reRouteIndex = this.reRouteFlowIndex;
+      modelRef.componentInstance.responseData = this.reRouteList;
       modelRef.result.then(()=>{
         this.refreshList();
       });

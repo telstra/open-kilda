@@ -132,6 +132,7 @@ kilda_logging_port_server42_control: 5003
 kilda_logging_port_server42_stats: 5004
 kilda_logging_port_server42_control_server_stub: 5003
 kilda_logging_port_server42_control_storm_stub: 5003
+kilda_logging_port_tests: 5006
 
 kilda_gui_application_name_prefix: "Dev"
 

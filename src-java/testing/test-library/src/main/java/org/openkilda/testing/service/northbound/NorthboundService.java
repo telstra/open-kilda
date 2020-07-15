@@ -74,6 +74,10 @@ public interface NorthboundService {
 
     List<FlowEventPayload> getFlowHistory(String flowId, Long timeFrom, Long timeTo);
 
+    List<FlowEventPayload> getFlowHistory(String flowId, Integer maxCount);
+
+    List<FlowEventPayload> getFlowHistory(String flowId, Long timeFrom, Long timeTo, Integer maxCount);
+
     FlowPayload addFlow(FlowPayload payload);
 
     FlowPayload updateFlow(String flowId, FlowPayload payload);

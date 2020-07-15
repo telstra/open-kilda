@@ -48,6 +48,9 @@ public class FlowInfo implements Serializable {
 
     @JsonProperty("src_vlan")
     private int srcVlan;
+    
+    @JsonProperty("src_inner_vlan")
+    private int srcInnerVlan;
 
     @JsonProperty("target_switch_name")
     private String targetSwitchName;
@@ -63,6 +66,9 @@ public class FlowInfo implements Serializable {
 
     @JsonProperty("dst_vlan")
     private int dstVlan;
+
+    @JsonProperty("dst_inner_vlan")
+    private int dstInnerVlan;
     
     @JsonProperty("diverse-flowid")
     private String diverseFlowid;
@@ -126,6 +132,21 @@ public class FlowInfo implements Serializable {
     
     @JsonProperty("diverse_with")
     private List<String> diverseWith;
+    
+    @JsonProperty("max-latency")
+    private int maxLatency;
+
+    @JsonProperty("priority")
+    private int priority;
+    
+    @JsonProperty("status_info")
+    private String statusInfo;
+    
+    @JsonProperty("target-path-computation_strategy")
+    private String targetPathComputationStrategy;
+    
+    @JsonProperty("status-details")
+    private StatusDetail statusDetails;
 
     private static final long serialVersionUID = -7015976328478701934L;
 

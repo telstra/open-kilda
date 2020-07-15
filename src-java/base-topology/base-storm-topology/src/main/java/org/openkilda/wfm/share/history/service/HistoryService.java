@@ -135,8 +135,8 @@ public class HistoryService {
         });
     }
 
-    public List<FlowEvent> listFlowEvents(String flowId, Instant timeFrom, Instant timeTo) {
-        return new ArrayList<>(flowEventRepository.findByFlowIdAndTimeFrame(flowId, timeFrom, timeTo));
+    public List<FlowEvent> listFlowEvents(String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
+        return new ArrayList<>(flowEventRepository.findByFlowIdAndTimeFrame(flowId, timeFrom, timeTo, maxCount));
     }
 
     public List<FlowHistory> listFlowHistory(String taskId) {

@@ -15,7 +15,7 @@ export class FlowReRouteModalComponent implements OnInit {
   constructor(public activeModal: NgbActiveModal) { }
   
   ngOnInit() {
-    this.responseData = Object.keys(this.reRouteIndex);
+
   }
 
 

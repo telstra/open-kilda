@@ -39,6 +39,7 @@ public final class Constants {
     public static final Integer TRANSIT_RULE_MULTI_TABLE_ID = 5;
     public static final Integer LLDP_RULE_SINGLE_TABLE_ID = 1;
     public static final Integer LLDP_RULE_MULTI_TABLE_ID = 3;
+    public static final Integer SHARED_RULE_TABLE_ID = 1;
 
     private Constants() {
         throw new UnsupportedOperationException();

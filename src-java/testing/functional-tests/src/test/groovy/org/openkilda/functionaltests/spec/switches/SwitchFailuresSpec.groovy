@@ -134,7 +134,9 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
             assert northbound.getSwitch(srcSwitch.dpId).state == SwitchChangeType.DEACTIVATED
         }
         Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            def flowInfo = northboundV2.getFlow(flow.flowId)
+            assert flowInfo.status == FlowState.DOWN.toString()
+            assert flowInfo.statusInfo == "Failed to create flow $flow.flowId"
         }
 
         and: "Flow has no path associated"

@@ -29,7 +29,7 @@ import org.neo4j.ogm.annotation.Index;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
-import org.neo4j.ogm.typeconversion.InstantStringConverter;
+import org.neo4j.ogm.typeconversion.InstantLongConverter;
 
 import java.time.Instant;
 
@@ -56,7 +56,7 @@ public class FlowEvent {
     @Property(name = "flow_id")
     private String flowId;
 
-    @Convert(InstantStringConverter.class)
+    @Convert(InstantLongConverter.class)
     private Instant timestamp;
 
     private String actor;

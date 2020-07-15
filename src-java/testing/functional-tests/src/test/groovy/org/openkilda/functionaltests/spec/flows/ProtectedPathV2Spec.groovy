@@ -721,9 +721,10 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         then: "Flow state is changed to DEGRADED"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.DEGRADED }
-        verifyAll(northbound.getFlow(flow.flowId).flowStatusDetails) {
-            mainFlowPathStatus == "Up"
-            protectedFlowPathStatus == "Down"
+        verifyAll(northbound.getFlow(flow.flowId)) {
+            flowStatusDetails.mainFlowPathStatus == "Up"
+            flowStatusDetails.protectedFlowPathStatus == "Down"
+            statusInfo == "Couldn't find non overlapping protected path"
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
@@ -761,7 +762,8 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         def createdCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
             !new Cookie(it.cookie).serviceFlag
         }*.cookie
-        assert createdCookies.size() == 2
+        def amountOfFlowRules = northbound.getSwitchProperties(switchPair.src.dpId).multiTable ? 3 : 2
+        assert createdCookies.size() == amountOfFlowRules
 
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
         flowHelperV2.updateFlow(flow.flowId, flow.tap { it.allocateProtectedPath = true })
@@ -779,8 +781,8 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
             def cookiesAfterEnablingProtectedPath = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
                 !new Cookie(it.cookie).serviceFlag
             }*.cookie
-            // two for main path + one for protected path
-            cookiesAfterEnablingProtectedPath.size() == 3
+            // amountOfFlowRules for main path + one for protected path
+            assert cookiesAfterEnablingProtectedPath.size() == amountOfFlowRules + 1
         }
 
         and: "No rule discrepancies on every switch of the flow on the main path"
@@ -838,7 +840,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
                     assert switchValidateInfo.meters.proper.findAll({dto -> !isDefaultMeter(dto)}).size() == 1
                     switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "misconfigured", "excess"])
                 }
-                assert switchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 3
+                assert switchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules + 1
                 switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
             }
         }
@@ -1003,9 +1005,10 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Flow state is still DEGRADED"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
-            verifyAll(northboundV2.getFlow(flow.flowId).statusDetails) {
-                mainPath == "Up"
-                protectedPath == "Down"
+            verifyAll(northboundV2.getFlow(flow.flowId)) {
+                statusDetails.mainPath == "Up"
+                statusDetails.protectedPath == "Down"
+                statusInfo == "Couldn't find non overlapping protected path"
             }
         }
 
@@ -1145,16 +1148,23 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         then: "Flow status is DEGRADED"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
+            verifyAll(northbound.getFlow(flow.flowId)) {
+                status == FlowState.DEGRADED.toString()
+                statusInfo == "Reroute is unsuccessful. Couldn't find new path(s)"
+            }
             assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
         }
-
 
         when: "Update flow: disable protected path(allocateProtectedPath=false)"
         northboundV2.updateFlow(flow.flowId, flow.tap { it.allocateProtectedPath = false })
 
         then: "Flow status is UP"
-        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) {
+            verifyAll(northbound.getFlow(flow.flowId)) {
+                status == FlowState.UP.toString()
+                !statusInfo //statusInfo is cleared after changing flowStatus to UP
+            }
+        }
 
         cleanup: "Restore topology, delete flow and reset costs"
         flowHelperV2.deleteFlow(flow.flowId)
