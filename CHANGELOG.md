@@ -1,5 +1,46 @@
 # Changelog
 
+## v1.65.0 (14/07/2020)
+
+### Features:
+-  [#3594](https://github.com/telstra/open-kilda/pull/3594) Feature to filter down/Degraded flows and re-route them from flow list (Issue: [#3584](https://github.com/telstra/open-kilda/issues/3584)) [**gui**]
+-  [#3548](https://github.com/telstra/open-kilda/pull/3548) Design for Smart discovery feature [**docs**]
+-  [#3583](https://github.com/telstra/open-kilda/pull/3583) check status_info field in func tests [**tests**]
+
+### Improvements:
+-  [#3597](https://github.com/telstra/open-kilda/pull/3597) Add test for partial update of 'pinned' field [**tests**]
+-  [#3599](https://github.com/telstra/open-kilda/pull/3599) Change format of History records in DB from ISO to epoch 
+-  [#3600](https://github.com/telstra/open-kilda/pull/3600) fix FlowDiversitySpec according to #3591 [**tests**]
+-  [#3606](https://github.com/telstra/open-kilda/pull/3606) ignore test related to server42+opentsdb [**tests**]
+-  [#3518](https://github.com/telstra/open-kilda/pull/3518) Suppress stale discovery requests on FL side [**floodlight**]
+
+### Other changes:
+-  [#3586](https://github.com/telstra/open-kilda/pull/3586) Use logstash for test logs [**tests**]
+-  [#3587](https://github.com/telstra/open-kilda/pull/3587) Added max_count parameter into flow history API [**api**][**northbound**][**storm-topologies**]
+-  [#3089](https://github.com/telstra/open-kilda/pull/3089) Do not emit reroute commands for path, where edge switches are inactive [**storm-topologies**]
+-  [#3607](https://github.com/telstra/open-kilda/pull/3607) Add an ability to remove pop [**northbound**][**storm-topologies**]
+-  [#3608](https://github.com/telstra/open-kilda/pull/3608) Add func tests for history max_count [**tests**]
+-  [#3622](https://github.com/telstra/open-kilda/pull/3622) Feature/down flows report (Issue: [#3585](https://github.com/telstra/open-kilda/issues/3585)) [**gui**]
+-  [#3496](https://github.com/telstra/open-kilda/pull/3496) Revert "QinQ limit capabilities" [**floodlight**][**storm-topologies**]
+-  [#3626](https://github.com/telstra/open-kilda/pull/3626) Added limits to migration 1.25 for performance
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.64.2...v1.65.0).
+
+### Affected Components:
+reroute, fl, neo4j, swmanager, flow-hs, nb, nbworker, gui
+
+### Upgrade notes:
+Consider using the following migration scripts to update db:
+
+- [1.25 migration-script](https://github.com/telstra/open-kilda/blob/v1.65.0/services/src/neo4j/migrations/1.25-change-type-of-flow-event-timestamp/1-change-type-of-history-timestamps-form-iso-to-epoch.xml)
+
+
+In case of issues these rollback scripts should be executed:
+
+- [1.25 rollback.cql](https://github.com/telstra/open-kilda/blob/v1.65.0/services/src/neo4j/migrations/1.25-change-type-of-flow-event-timestamp/rollback.cql)
+
+---
+
 ## v1.64.2 (10/07/2020)
 
 ### Bug Fixes:
