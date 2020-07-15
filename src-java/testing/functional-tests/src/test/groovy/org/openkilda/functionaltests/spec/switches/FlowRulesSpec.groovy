@@ -641,7 +641,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Ignore
     @Tidy
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Traffic counters in ingress rule are reset on flow rerouting(singleTable mode)"() {
@@ -752,34 +751,34 @@ class FlowRulesSpec extends HealthCheckSpecification {
          //srcSw
          with(rulesAfterPassingTrafficSrcSw.find { it.cookie == sharedRuleSrcSw}) {
             !it.flags
-            it.packetCount > 0
-            it.byteCount > 0
+            it.packetCount > 1
+            it.byteCount > 1
          }
          with(rulesAfterPassingTrafficSrcSw.find { it.cookie == ingressSrcSw}) {
             it.flags.contains("RESET_COUNTS")
-            it.packetCount > 0
-            it.byteCount > 0
+            it.packetCount > 1
+            it.byteCount > 1
          }
          with(rulesAfterPassingTrafficSrcSw.find { it.cookie == egressSrcSw}) {
             !it.flags.contains("RESET_COUNTS")
-            it.packetCount > 0
-            it.byteCount > 0
+            it.packetCount > 1
+            it.byteCount > 1
          }
          //dstSw
          with(rulesAfterPassingTrafficDstSw.find { it.cookie == sharedRuleDstSw}) {
             !it.flags
-            it.packetCount > 0
-            it.byteCount > 0
+            it.packetCount > 1
+            it.byteCount > 1
          }
          with(rulesAfterPassingTrafficDstSw.find { it.cookie == ingressDstSw}) {
             it.flags.contains("RESET_COUNTS")
-            it.packetCount > 0
-            it.byteCount > 0
+            it.packetCount > 1
+            it.byteCount > 1
          }
          with(rulesAfterPassingTrafficDstSw.find { it.cookie == egressDstSw}) {
             !it.flags.contains("RESET_COUNTS")
-            it.packetCount > 0
-            it.byteCount > 0
+            it.packetCount > 1
+            it.byteCount > 1
          }
 
         when: "Break the flow ISL (bring switch port down) to cause flow rerouting"
@@ -813,36 +812,36 @@ class FlowRulesSpec extends HealthCheckSpecification {
         //srcSw
          with(rulesAfterRerouteSrcSw.find { it.cookie == sharedRuleSrcSw}) {
             !it.flags
-            it.packetCount > 0
-            it.byteCount > 0
+            it.packetCount > 1
+            it.byteCount > 1
          }
          with(rulesAfterRerouteSrcSw.find { it.cookie == flowInfoAfterReroute.forwardPath.cookie.value}) {
             it.flags.contains("RESET_COUNTS")
-            it.packetCount == 0
-            it.byteCount == 0
+            it.packetCount <= 1 // icmp6: autodiscovery from interface on traffgen
+            //it.byteCount == 0
          }
          with(rulesAfterRerouteSrcSw.find { it.cookie == flowInfoAfterReroute.reversePath.cookie.value}) {
             !it.flags.contains("RESET_COUNTS")
-            it.packetCount == 0
-            it.byteCount == 0
+            it.packetCount <= 1 // icmp6: autodiscovery from interface on traffgen
+            //it.byteCount == 0
          }
          //dstSw
          with(rulesAfterRerouteDstSw.find { it.cookie == sharedRuleDstSw}) {
             !it.flags
-            it.packetCount > 0
-            it.byteCount > 0
+            it.packetCount > 1
+            it.byteCount > 1
          }
          //ingress
          with(rulesAfterRerouteDstSw.find { it.cookie == flowInfoAfterReroute.reversePath.cookie.value}) {
             it.flags.contains("RESET_COUNTS")
-            it.packetCount == 0
-            it.byteCount == 0
+            it.packetCount <= 1 // icmp6: autodiscovery from interface on traffgen
+            //it.byteCount == 0
          }
          //egress
          with(rulesAfterRerouteDstSw.find { it.cookie == flowInfoAfterReroute.forwardPath.cookie.value}) {
             !it.flags.contains("RESET_COUNTS")
-            it.packetCount == 0
-            it.byteCount == 0
+            it.packetCount <= 1 // icmp6: autodiscovery from interface on traffgen
+            //it.byteCount == 0
          }
 
         cleanup: "Revive the ISL back (bring switch port up), delete the flow and reset costs"
@@ -976,14 +975,23 @@ class FlowRulesSpec extends HealthCheckSpecification {
             it.instructions.applyActions.setFieldActions*.fieldValue.contains(flowEndpoint.vlanId.toString())
         }
 
-        assert ingressRule.flags.contains("RESET_COUNTS")
-        assert isTrafficThroughRuleExpected == (ingressRule.packetCount > 0)
-        assert isTrafficThroughRuleExpected == (ingressRule.byteCount > 0)
+        if (isTrafficThroughRuleExpected) {
+            assert ingressRule.flags.contains("RESET_COUNTS")
+            assert ingressRule.packetCount > 1
+            assert ingressRule.byteCount > 1
 
-        assert !egressRule.flags.contains("RESET_COUNTS")
-        assert isTrafficThroughRuleExpected == (egressRule.packetCount > 0)
-        assert isTrafficThroughRuleExpected == (egressRule.byteCount > 0)
+            assert !egressRule.flags.contains("RESET_COUNTS")
+            assert egressRule.packetCount > 1
+            assert egressRule.byteCount > 1
+        } else {
+            assert ingressRule.flags.contains("RESET_COUNTS")
+            assert ingressRule.packetCount <= 1 // icmp6: autodiscovery from interface on traffgen
+            //assert ingressRule.byteCount == 0
 
+            assert !egressRule.flags.contains("RESET_COUNTS")
+            assert egressRule.packetCount <= 1 // icmp6: autodiscovery from interface on traffgen
+            //assert egressRule.byteCount == 0
+        }
     }
 
     List<FlowEntry> getFlowRules(Switch sw) {
