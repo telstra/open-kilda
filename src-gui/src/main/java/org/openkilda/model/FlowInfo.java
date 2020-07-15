@@ -91,7 +91,7 @@ public class FlowInfo implements Serializable {
     @JsonProperty("discrepancy")
     private FlowDiscrepancy discrepancy;
 
-    @JsonProperty("ignore-bandwidth")
+    @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth;
 
     @JsonProperty("state")
