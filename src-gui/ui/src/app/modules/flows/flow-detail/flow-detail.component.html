@@ -10,7 +10,7 @@
             <div class="clear clearfix"></div>
         </div>
       <p class="text-center flow-title" >Flow ID : <span [contextMenu]="copyFLow">{{flowDetail.flowid}}</span>
-      <a *ngIf="commonService.hasPermission('fw_flow_update') && flowDetail.status !='DOWN' && (!storeLinkSetting || controllerFilter || (storeLinkSetting && flowDetail.hasOwnProperty('discrepancy') && flowDetail['discrepancy'].hasOwnProperty('controller-discrepancy') && !flowDetail['discrepancy']['controller-discrepancy']))" class="btn btn-dark btn-sm pull-right" role="button" aria-pressed="true" [routerLink]="['/flows/edit',flowDetail.flowid]">Edit</a>
+      <a *ngIf="commonService.hasPermission('fw_flow_update') && (!storeLinkSetting || controllerFilter || (storeLinkSetting && flowDetail.hasOwnProperty('discrepancy') && flowDetail['discrepancy'].hasOwnProperty('controller-discrepancy') && !flowDetail['discrepancy']['controller-discrepancy']))" class="btn btn-dark btn-sm pull-right" role="button" aria-pressed="true" [routerLink]="['/flows/edit',flowDetail.flowid]">Edit</a>
       </p>     
       </div>
     </div>
@@ -135,43 +135,107 @@
       <h6 class="card-title card-custom-title">FLOW DETAILS</h6>
       <div class="card">
         <div class="card-body">
-          <ul class="list-group list-group-no-border">
-            <li class="list-group-item">
-              <div class="row">
-                <div class="col-sm-4">Status:</div>
-                <div class="col-sm-8">{{ flowDetail.status || "-" }}
-                   &nbsp; <i title="Flow doesn't exist in the controller" *ngIf="storeLinkSetting &&  statusDescrepancy && (descrepancyData.status.controller =='-' && descrepancyData.status.inventory == 'Active')" class="fa fa-exclamation-triangle text-orange"></i>
-                   <i title="Flow doesn't exist in the inventory" *ngIf="storeLinkSetting &&  statusDescrepancy && (descrepancyData.status.inventory == '-')" class="fa fa-exclamation-triangle text-orange"></i>
-                </div>
+          <div class="row">
+              <div class="col-sm-6">
+                <ul class="list-group list-group-no-border">
+                  <li class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-4">Status:</div>
+                      <div class="col-sm-8">{{ flowDetail.status || "-" }}
+                         &nbsp; <i title="Flow doesn't exist in the controller" *ngIf="storeLinkSetting &&  statusDescrepancy && (descrepancyData.status.controller =='-' && descrepancyData.status.inventory == 'Active')" class="fa fa-exclamation-triangle text-orange"></i>
+                         <i title="Flow doesn't exist in the inventory" *ngIf="storeLinkSetting &&  statusDescrepancy && (descrepancyData.status.inventory == '-')" class="fa fa-exclamation-triangle text-orange"></i>
+                      </div>
+                    </div>
+                  </li>
+                  <li class="list-group-item" *ngIf="flowDetail.status && (flowDetail.status =='DOWN' || flowDetail.status =='DEGRADED')">
+                    <div class="row">
+                      <div class="col-sm-4">Status Info:</div>
+                      <div class="col-sm-8">{{ flowDetail.status_info || "-" }} </div>
+                    </div>
+                  </li>
+                  <li class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-4">Description:</div>
+                      <div class="col-sm-8">{{ flowDetail.description }}</div>
+                    </div>
+                  </li>
+                  <li class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-4">Bandwidth(Mbps):</div>
+                      <div class="col-sm-8">{{ flowDetail["maximum_bandwidth"] / 1000 }}
+                          &nbsp;<i *ngIf="storeLinkSetting && bandWidthDescrepancy" class="fa fa-exclamation-triangle text-orange"></i>
+                      </div>
+                    </div>
+                  </li>        
+                  <li class="list-group-item ">
+                    <div class="row">
+                      <div class="col-sm-4">Protected Path:</div>
+                      <div class="col-sm-8">{{ flowDetail["allocate_protected_path"]}}</div>
+                    </div>
+                  </li>
+                  <li class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-4">Ignore Bandwidth:</div>
+                      <div class="col-sm-8">{{ flowDetail["ignore_bandwidth"]}}</div>
+                    </div>
+                  </li>
+      
+                  <li class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-4">Created:</div>
+                      <div class="col-sm-8">{{ flowDetail["created"] | date:'yyyy/MM/dd H:mm:s'}}</div>
+                    </div>
+                  </li>
+                  <li class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-4">Last Updated:</div>
+                      <div class="col-sm-8">{{ flowDetail["last-updated"] | date:'yyyy/MM/dd H:mm:s'}}</div>
+                    </div>
+                  </li>                  
+                </ul>
               </div>
-            </li>
-            <li class="list-group-item">
-              <div class="row">
-                <div class="col-sm-4">Description:</div>
-                <div class="col-sm-8">{{ flowDetail.description }}</div>
+              <div class="col-sm-6">
+                <ul class="list-group list-group-no-border">
+                  <li class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-4">Src Inner Vlan:</div>
+                      <div class="col-sm-8">{{ flowDetail["src_inner_vlan"]}}</div>
+                    </div>
+                  </li>
+                  <li class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-4">Dst Inner Vlan:</div>
+                      <div class="col-sm-8">{{ flowDetail["dst_inner_vlan"]}}</div>
+                    </div>
+                  </li>
+                  <li class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-4">Pinned:</div>
+                      <div class="col-sm-8">{{ flowDetail["pinned"]}}</div>
+                    </div>
+                  </li>
+                  <li class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-4">Encapsulation Type:</div>
+                      <div class="col-sm-8">{{ flowDetail["encapsulation-type"]}}</div>
+                    </div>
+                  </li>
+                  <li class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-4">Path Computation Strategy:</div>
+                      <div class="col-sm-8">{{ flowDetail["path-computation-strategy"]}}</div>
+                    </div>
+                  </li>
+                  <li class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-4">Periodic Pings:</div>
+                      <div class="col-sm-8">{{ flowDetail["periodic-pings"]}}</div>
+                    </div>
+                  </li>
+                </ul>
               </div>
-            </li>
-            <li class="list-group-item">
-              <div class="row">
-                <div class="col-sm-4">Bandwidth(Mbps):</div>
-                <div class="col-sm-8">{{ flowDetail["maximum_bandwidth"] / 1000 }}
-                    &nbsp;<i *ngIf="storeLinkSetting && bandWidthDescrepancy" class="fa fa-exclamation-triangle text-orange"></i>
-                </div>
-              </div>
-            </li>
-            <li class="list-group-item">
-              <div class="row">
-                <div class="col-sm-4">Created:</div>
-                <div class="col-sm-8">{{ flowDetail["created"] | date:'yyyy/MM/dd H:mm:s'}}</div>
-              </div>
-            </li>
-            <li class="list-group-item">
-              <div class="row">
-                <div class="col-sm-4">Last Updated:</div>
-                <div class="col-sm-8">{{ flowDetail["last-updated"] | date:'yyyy/MM/dd H:mm:s'}}</div>
-              </div>
-            </li>
-          </ul>
+          </div>
+          
         </div>
       </div>
     </div>

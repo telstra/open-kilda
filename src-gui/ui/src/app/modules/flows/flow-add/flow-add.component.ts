@@ -38,6 +38,9 @@ export class FlowAddComponent implements OnInit {
   diverseFlowList:any=[];
   virtualScrollFlag = true;
   allocate_protected_path:false;
+  ignore_bandwidth:false;
+  pinned:false;
+  periodic_pings:false;
 
   constructor(
     private formBuilder: FormBuilder,
@@ -80,7 +83,10 @@ export class FlowAddComponent implements OnInit {
       target_port: [null, Validators.required],
       target_vlan: ["0"],
       diverse_flowid:[null],
-      allocate_protected_path:[null]
+      allocate_protected_path:[null],
+      ignore_bandwidth:[null],
+      pinned:[null],
+      periodic_pings:[null],
     });
 
     this.vlanPorts = Array.from({ length: 4095 }, (v, k) => {
@@ -213,6 +219,9 @@ export class FlowAddComponent implements OnInit {
       description: this.flowAddForm.controls["description"].value,
       "diverse-flowid": this.flowAddForm.controls["diverse_flowid"].value || null,
       "allocate_protected_path": this.flowAddForm.controls["allocate_protected_path"].value || null,
+      'ignore_bandwidth':this.flowAddForm.controls['ignore_bandwidth'].value || null,
+       pinned:this.flowAddForm.controls['pinned'].value || null,
+      "periodic-pings":this.flowAddForm.controls['periodic_pings'].value || null,
     };
     const modalReff = this.modalService.open(ModalconfirmationComponent);
     modalReff.componentInstance.title = "Confirmation";
@@ -231,8 +240,9 @@ export class FlowAddComponent implements OnInit {
           },
           error => {
             if(error.error) {
-              this.toaster.error(
-                error.error["error-auxiliary-message"],
+             var errorMsg = error && error.error && error.error['error-description'] ? error.error['error-description'] : (error && error.error && error.error['error-description']) ? error.error['error-auxiliary-message']: "Unable to update";
+             this.toaster.error(
+                errorMsg,
                 "Error!"
               );
             }else{

@@ -55,6 +55,51 @@
                   </div>
                 </div>
               </div>
+              <div class='form-group row flow_details'>
+                <label class='col-sm-3 col-form-label'>Ignore Bandwidth:</label>
+                <div class='col-sm-4'>
+                  <div class="pull-left">
+                    <div class="onoffswitch">
+                      <input  formControlName="ignore_bandwidth" [checked]="ignore_bandwidth" type="checkbox"  name="ignore_bandwidth" class="onoffswitch-checkbox"
+                        id="onoffignorebandwidth">
+                      <label class="onoffswitch-label" for="onoffignorebandwidth">
+                        <span class="onoffswitch-inner "></span>
+                        <span class="onoffswitch-switch"></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class='form-group row flow_details'>
+                <label class='col-sm-3 col-form-label'>Pinned:</label>
+                <div class='col-sm-4'>
+                  <div class="pull-left">
+                    <div class="onoffswitch">
+                      <input  formControlName="pinned" [checked]="pinned" type="checkbox"  name="pinned" class="onoffswitch-checkbox"
+                        id="onoffpinned">
+                      <label class="onoffswitch-label" for="onoffpinned">
+                        <span class="onoffswitch-inner "></span>
+                        <span class="onoffswitch-switch"></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class='form-group row flow_details'>
+                <label class='col-sm-3 col-form-label'>Periodic Pings:</label>
+                <div class='col-sm-4'>
+                  <div class="pull-left">
+                    <div class="onoffswitch">
+                      <input  formControlName="periodic_pings" [checked]="periodic_pings" type="checkbox"  name="periodic_pings" class="onoffswitch-checkbox"
+                        id="onoffperiodicpings">
+                      <label class="onoffswitch-label" for="onoffperiodicpings">
+                        <span class="onoffswitch-inner "></span>
+                        <span class="onoffswitch-switch"></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
