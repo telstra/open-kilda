@@ -24,6 +24,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowFilter;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
@@ -605,6 +606,32 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         Flow updatedFlow = flowRepository.findById(TEST_FLOW_ID).get();
         assertEquals(FlowStatus.IN_PROGRESS, updatedFlow.getStatus());
         assertEquals(statusInfo, updatedFlow.getStatusInfo());
+    }
+
+    @Test
+    public void shouldGetAllDownFlows() {
+        Flow flowA = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flowA.setStatus(FlowStatus.DOWN);
+        flowRepository.createOrUpdate(flowA);
+        Flow flowB = buildTestFlow(TEST_FLOW_ID_2, switchA, switchB);
+        flowB.setStatus(FlowStatus.DOWN);
+        flowRepository.createOrUpdate(flowB);
+        Flow flowC = buildTestFlow(TEST_FLOW_ID_3, switchA, switchB);
+        flowRepository.createOrUpdate(flowC);
+
+        Collection<String> foundDownFlows =
+                flowRepository.findByFlowFilter(FlowFilter.builder().flowStatus(FlowStatus.DOWN).build()).stream()
+                        .map(Flow::getFlowId)
+                        .collect(Collectors.toList());
+        assertEquals(2, foundDownFlows.size());
+        assertTrue(foundDownFlows.contains(TEST_FLOW_ID));
+        assertTrue(foundDownFlows.contains(TEST_FLOW_ID_2));
+
+        Collection<String> foundFlows =
+                flowRepository.findByFlowFilter(FlowFilter.builder().build()).stream()
+                        .map(Flow::getFlowId)
+                        .collect(Collectors.toList());
+        assertEquals(3, foundFlows.size());
     }
 
     private Flow buildTestFlow(String flowId, Switch srcSwitch, Switch destSwitch) {

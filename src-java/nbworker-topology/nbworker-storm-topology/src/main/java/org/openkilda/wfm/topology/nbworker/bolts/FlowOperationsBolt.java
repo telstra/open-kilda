@@ -98,7 +98,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         } else if (request instanceof FlowReadRequest) {
             result = processFlowReadRequest((FlowReadRequest) request);
         } else if (request instanceof FlowsDumpRequest) {
-            result = processFlowsDumpRequest();
+            result = processFlowsDumpRequest((FlowsDumpRequest) request);
         } else {
             unhandledInput(tuple);
         }
@@ -242,9 +242,9 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         }
     }
 
-    private List<FlowResponse> processFlowsDumpRequest() {
+    private List<FlowResponse> processFlowsDumpRequest(FlowsDumpRequest request) {
         try {
-            return flowOperationsService.getAllFlows().stream()
+            return flowOperationsService.getAllFlows(request).stream()
                     .map(FlowMapper.INSTANCE::map)
                     .map(FlowResponse::new)
                     .collect(Collectors.toList());

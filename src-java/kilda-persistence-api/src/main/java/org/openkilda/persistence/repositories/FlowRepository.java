@@ -16,6 +16,7 @@
 package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowFilter;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.FetchStrategy;
@@ -86,6 +87,13 @@ public interface FlowRepository extends Repository<Flow> {
     Collection<Flow> findByEndpointSwitchWithEnabledArp(SwitchId switchId);
 
     Collection<Flow> findDownFlows();
+
+    /**
+     * Find flows by flow status.
+     * <p/>
+     * IMPORTANT: the method completes the flow entity only with Switch objects (Flow paths will be null)
+     */
+    Collection<Flow> findByFlowFilter(FlowFilter flowFilter);
 
     Optional<String> getOrCreateFlowGroupId(String flowId);
 

@@ -348,12 +348,19 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<List<FlowResponseV2>> getAllFlowsV2() {
+    public CompletableFuture<List<FlowResponseV2>> getAllFlowsV2(String status) {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Get flows request processing");
-        FlowsDumpRequest data = new FlowsDumpRequest();
-        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+        FlowsDumpRequest data;
+        try {
+            data = new FlowsDumpRequest(status);
+        } catch (IllegalArgumentException e) {
+            logger.error("Can not parse arguments: {}", e.getMessage(), e);
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments of the flow dump request");
+        }
 
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
         return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
                 .thenApply(result -> result.stream()
                         .map(FlowResponse.class::cast)

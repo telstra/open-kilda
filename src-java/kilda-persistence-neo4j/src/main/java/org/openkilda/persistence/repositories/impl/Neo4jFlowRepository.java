@@ -20,6 +20,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singleton;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowFilter;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathSegment;
@@ -328,6 +329,14 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
         Filter flowStatusDegraded = new Filter(STATUS_PROPERTY_NAME, ComparisonOperator.EQUALS, FlowStatus.DEGRADED);
 
         return loadAll(flowStatusDown.or(flowStatusDegraded));
+    }
+
+    @Override
+    public Collection<Flow> findByFlowFilter(FlowFilter flowFilter) {
+        Filters filters = new Filters();
+        Optional.ofNullable(flowFilter.getFlowStatus()).ifPresent(flowStatus ->
+                filters.and(new Filter(STATUS_PROPERTY_NAME, ComparisonOperator.EQUALS, flowStatus)));
+        return loadAll(filters, FetchStrategy.DIRECT_RELATIONS);
     }
 
     @Override

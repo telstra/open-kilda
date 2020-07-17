@@ -13,24 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.nbtopology.request;
+package org.openkilda.model;
 
-import org.openkilda.model.FlowStatus;
-
+import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
 
-/**
- * Dump flow northbound request.
- */
 @Data
-@NoArgsConstructor
-@EqualsAndHashCode(callSuper = false)
-public class FlowsDumpRequest extends FlowsBaseRequest {
-    private FlowStatus status;
-
-    public FlowsDumpRequest(String status) {
-        this.status = status == null ? null : FlowStatus.valueOf(status.toUpperCase());
-    }
+@Builder
+public class FlowFilter {
+    FlowStatus flowStatus;
 }
