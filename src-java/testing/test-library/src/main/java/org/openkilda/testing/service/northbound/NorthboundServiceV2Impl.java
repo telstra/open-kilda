@@ -26,6 +26,8 @@ import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
+import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 
 import com.fasterxml.jackson.databind.util.StdDateFormat;
 import lombok.extern.slf4j.Slf4j;
@@ -165,6 +167,13 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
         return restTemplate.exchange("/api/v2/switches/{switch_id}/ports/{port}/properties", HttpMethod.PUT,
                 new HttpEntity<>(payload, buildHeadersWithCorrelationId()), PortPropertiesResponse.class,
                 switchId, port).getBody();
+    }
+
+    @Override
+    public SwitchDtoV2 partialSwitchUpdate(SwitchId switchId, SwitchPatchDto dto) {
+        return restTemplate.exchange("/api/v2/switches/{switchId}", HttpMethod.PATCH,
+                new HttpEntity<>(dto, buildHeadersWithCorrelationId()), SwitchDtoV2.class, switchId)
+                .getBody();
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {
