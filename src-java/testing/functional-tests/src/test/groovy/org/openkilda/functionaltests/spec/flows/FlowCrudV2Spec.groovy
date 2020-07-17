@@ -1084,54 +1084,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/3077")
-    @Tidy
-    def "Flow is healthy when assigned transit vlan matches the flow endpoint vlan"() {
-        given: "We know what the next transit vlan will be"
-        //Transit vlans are simply picked incrementally, so create a flow to see what is the current transit vlan
-        //and assume that the next will be 'current + 1'
-        def helperFlow = flowHelperV2.randomFlow(topologyHelper.notNeighboringSwitchPair)
-        flowHelperV2.addFlow(helperFlow)
-        def helperFlowInfo = database.getFlow(helperFlow.flowId)
-        def nextTransitVlan = database.getTransitVlan(helperFlowInfo.forwardPath.pathId).get().vlan + 1
-
-        when: "Create flow over traffgen switches with endpoint vlans matching the next transit vlan"
-        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs.find(topologyHelper.traffgenEnabled)).tap {
-            it.source.vlanId = nextTransitVlan
-            it.destination.vlanId = nextTransitVlan
-        }
-        flowHelperV2.addFlow(flow)
-        //verify that our 'nextTransitVlan' assumption was correct
-        assert database.getTransitVlan(database.getFlow(flow.flowId).forwardPath.pathId).get().vlan == nextTransitVlan
-
-        then: "Flow allows traffic"
-        def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow),
-                flow.maximumBandwidth as int, 5)
-        withPool {
-            [exam.forward, exam.reverse].eachParallel { direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                assert traffExam.waitExam(direction).hasTraffic()
-            }
-        }
-
-        and: "Flow passes flow validation"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-
-        and: "Involved switches pass switch validation"
-        pathHelper.getInvolvedSwitches(flow.flowId).each {
-            with(northbound.validateSwitch(it.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
-            }
-        }
-
-        cleanup: "Remove flows"
-        helperFlow && flowHelperV2.deleteFlow(helperFlow.flowId)
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-    }
-
     @Shared
     def errorDescription = { String operation, FlowRequestV2 flow, String endpoint, FlowRequestV2 conflictingFlow,
                              String conflictingEndpoint ->
