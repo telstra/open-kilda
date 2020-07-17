@@ -2,7 +2,7 @@ APP := openkilda-gui
 
 rebuild: clean clean-java build
 
-build: clean-cache target/${APP}.jar
+build: clean target/${APP}.jar
 
 target/${APP}.jar: .deps/node .deps/resources
 	mvn -B clean install
@@ -24,8 +24,6 @@ target/${APP}.jar: .deps/node .deps/resources
 .deps:
 	mkdir -p .deps
 	mkdir -p tmp
-
-clean-cache: clean
 	
 clean:
 	rm -f .deps/node
