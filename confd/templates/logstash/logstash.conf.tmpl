@@ -38,6 +38,18 @@ input {
       tags => ["kilda-server42"]
   }
   tcp {
+      port => {{ getv "/kilda_logging_port_server42_control_server_stub" }}
+      codec => json
+      type => "kilda-server42-control-server-stub"
+      tags => ["kilda-server42"]
+  }
+  tcp {
+      port => {{ getv "/kilda_logging_port_server42_control_storm_stub" }}
+      codec => json
+      type => "kilda-server42-control-storm-stub"
+      tags => ["kilda-server42"]
+  }
+  tcp {
       port => {{ getv "/kilda_logging_port_server42_stats" }}
       codec => json
       type => "kilda-server42-stats"

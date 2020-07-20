@@ -55,8 +55,8 @@ class GrpcBaseSpecification extends HealthCheckSpecification {
         if (!v1Matcher || !v2Matcher || v1Matcher.size() != v2Matcher.size()) {
             throw new RuntimeException("Unable to compare given version strings: $v1 and $v2")
         }
-        def v1Numbers = v1Matcher.collect { it[1] }
-        def v2Numbers = v2Matcher.collect { it[1] }
+        def v1Numbers = v1Matcher.collect { it[1].toInteger() }
+        def v2Numbers = v2Matcher.collect { it[1].toInteger() }
         for (int i = 0; i < v1Numbers.size(); i++) {
             if (v1Numbers[i] > v2Numbers[i]) {
                 return 1
