@@ -36,7 +36,7 @@ class IslMinPortSpeedSpec extends HealthCheckSpecification {
         def newDstPort = northbound.getPort(newDst.srcSwitch.dpId, newDst.srcPort)
 
         when: "Replug one end of the connected link to the destination switch(isl.srcSwitchId -> newDst.srcSwitchId)"
-        def newIsl = islUtils.replug(isl, false, newDst, true, true)
+        def newIsl = islUtils.replug(isl, false, newDst, true, false)
 
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], DISCOVERED)
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
@@ -47,7 +47,7 @@ class IslMinPortSpeedSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Replug the link back and delete the moved ISL"
-        islUtils.replug(newIsl, true, isl, false, true)
+        islUtils.replug(newIsl, true, isl, false, false)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
         northbound.deleteLink(islUtils.toLinkParameters(newIsl))
