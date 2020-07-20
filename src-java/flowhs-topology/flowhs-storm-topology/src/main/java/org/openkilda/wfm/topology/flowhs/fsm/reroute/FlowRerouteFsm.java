@@ -19,6 +19,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.reroute.error.GlobalTimeoutError;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowStatus;
@@ -167,6 +168,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
     @Override
     public void reportError(Event event) {
         if (Event.TIMEOUT == event) {
+            setRerouteError(new GlobalTimeoutError());
             reportGlobalTimeout();
         }
         // other errors reported inside actions and can be ignored here

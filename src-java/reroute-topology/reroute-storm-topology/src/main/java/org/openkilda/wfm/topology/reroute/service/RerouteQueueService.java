@@ -22,6 +22,7 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
+import org.openkilda.messaging.info.reroute.error.GlobalTimeoutError;
 import org.openkilda.messaging.info.reroute.error.NoPathFoundError;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
@@ -185,6 +186,9 @@ public class RerouteQueueService {
             return true;
         } else if (rerouteError instanceof RerouteInProgressError) {
             log.info("Received reroute in progress error for flow {}", flowId);
+            return true;
+        } else if (rerouteError instanceof GlobalTimeoutError) {
+            log.info("Received global timeout flow {}", flowId);
             return true;
         } else if (rerouteError instanceof SpeakerRequestError) {
             log.info("Received speaker request error for flow {}", flowId);

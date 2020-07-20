@@ -37,7 +37,9 @@ import java.io.Serializable;
         @Type(value = SpeakerRequestError.class,
                 name = "org.openkilda.messaging.info.reroute.error.RuleFailedError"),
         @Type(value = NoPathFoundError.class,
-                name = "org.openkilda.messaging.info.reroute.error.NoPathFoundError")
+                name = "org.openkilda.messaging.info.reroute.error.NoPathFoundError"),
+        @Type(value = GlobalTimeoutError.class,
+                name = "org.openkilda.messaging.info.reroute.error.GlobalTimeoutError")
 })
 public class RerouteError implements Serializable {
 
