@@ -78,14 +78,15 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
         def bwIsChanged = false
-
         def isls = topology.islsForActiveSwitches
 
+        and: "Not enough bandwidth on isls to host the flow"
         isls.each {
             database.updateIslAvailableBandwidth(it, flow.maximumBandwidth - 1)
             database.updateIslAvailableBandwidth(it.reversed, flow.maximumBandwidth - 1)
         }
         bwIsChanged = true
+
         when: "Fail a flow ISL (bring switch port down)"
         Set<Isl> altFlowIsls = []
         def flowIsls = pathHelper.getInvolvedIsls(flowPath)
