@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,24 +15,12 @@
 
 package org.openkilda.wfm.topology.stats;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NonNull;
+import org.openkilda.model.SwitchId;
+
 import lombok.Value;
 
-import java.io.Serializable;
-
 @Value
-@AllArgsConstructor
-@Builder(toBuilder = true)
-public class CacheFlowEntry implements Serializable {
-
-    @NonNull
-    private String flowId;
-    private Long cookie;
-    private MeasurePoint measurePoint;
-
-    public CacheFlowEntry replaceCookie(Long cookie) {
-        return toBuilder().cookie(cookie).build();
-    }
+public class CookieCacheKey {
+    private SwitchId switchId;
+    private long cookie;
 }

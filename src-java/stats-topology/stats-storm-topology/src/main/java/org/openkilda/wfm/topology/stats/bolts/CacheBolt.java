@@ -15,6 +15,10 @@
 
 package org.openkilda.wfm.topology.stats.bolts;
 
+import static org.openkilda.wfm.topology.stats.MeasurePoint.EGRESS;
+import static org.openkilda.wfm.topology.stats.MeasurePoint.INGRESS;
+import static org.openkilda.wfm.topology.stats.MeasurePoint.ONE_SWITCH;
+import static org.openkilda.wfm.topology.stats.MeasurePoint.TRANSIT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_FILTER_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_OFS_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.FLOW_STATS;
@@ -28,13 +32,17 @@ import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsEntry;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathSegment;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
+import org.openkilda.wfm.topology.stats.CookieCacheKey;
 import org.openkilda.wfm.topology.stats.MeasurePoint;
 import org.openkilda.wfm.topology.stats.MeterCacheKey;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
@@ -75,8 +83,8 @@ public class CacheBolt extends AbstractBolt {
     /**
      * Cookie to flow and meter to flow maps.
      */
-    private Map<Long, CacheFlowEntry> cookieToFlow = new HashMap<>();
-    private Map<MeterCacheKey, CacheFlowEntry> switchAndMeterToFlow = new HashMap<>();
+    private final Map<CookieCacheKey, CacheFlowEntry> cookieToFlow = new HashMap<>();
+    private final Map<MeterCacheKey, CacheFlowEntry> switchAndMeterToFlow = new HashMap<>();
 
     public CacheBolt(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
@@ -84,22 +92,39 @@ public class CacheBolt extends AbstractBolt {
 
     private void initFlowCache(FlowRepository flowRepository) {
         try {
-            flowRepository.findAll().stream()
+            flowRepository.findAll(FetchStrategy.ALL_RELATIONS).stream()
                     .flatMap(this::extractAllFlowPaths)
                     .forEach(path -> {
-                        CacheFlowEntry entry = new CacheFlowEntry(
-                                path.getFlow().getFlowId(),
-                                path.getSrcSwitch().getSwitchId().toOtsdFormat(),
-                                path.getDestSwitch().getSwitchId().toOtsdFormat(),
-                                path.getCookie().getValue());
+                        long cookie = path.getCookie().getValue();
+                        String flowId = path.getFlow().getFlowId();
+                        SwitchId srcSwitchId = path.getSrcSwitch().getSwitchId();
+                        SwitchId dstSwitchId = path.getDestSwitch().getSwitchId();
 
-                        cookieToFlow.put(path.getCookie().getValue(), entry);
-                        if (path.getMeterId() != null) {
-                            switchAndMeterToFlow.put(
-                                    new MeterCacheKey(
-                                            path.getSrcSwitch().getSwitchId(), path.getMeterId().getValue()), entry);
+                        path.getSegments().stream()
+                                .skip(1) // src switch of first segment is path ingress switch
+                                .map(PathSegment::getSrcSwitch)
+                                .map(Switch::getSwitchId)
+                                .map(switchId -> new CookieCacheKey(switchId, cookie))
+                                .forEach(key -> cookieToFlow.put(key, new CacheFlowEntry(flowId, cookie, TRANSIT)));
+
+                        CookieCacheKey srcKey = new CookieCacheKey(srcSwitchId, cookie);
+
+                        if (path.isOneSwitchFlow()) {
+                            cookieToFlow.put(srcKey, new CacheFlowEntry(flowId, cookie, ONE_SWITCH));
                         } else {
-                            log.warn("Flow {} has no meter ID", path.getFlow().getFlowId());
+                            cookieToFlow.put(srcKey, new CacheFlowEntry(flowId, cookie, INGRESS));
+                            cookieToFlow.put(
+                                    new CookieCacheKey(dstSwitchId, cookie),
+                                    new CacheFlowEntry(flowId, cookie, EGRESS));
+                        }
+
+                        if (path.getMeterId() != null) {
+                            MeasurePoint measurePoint = path.isOneSwitchFlow() ? ONE_SWITCH : INGRESS;
+                            switchAndMeterToFlow.put(
+                                    new MeterCacheKey(srcSwitchId, path.getMeterId().getValue()),
+                                    new CacheFlowEntry(flowId, cookie, measurePoint));
+                        } else {
+                            log.warn("Flow {} has no meter ID", flowId);
                         }
                     });
             logger.debug("cookieToFlow cache: {}, switchAndMeterToFlow cache: {}", cookieToFlow, switchAndMeterToFlow);
@@ -111,14 +136,8 @@ public class CacheBolt extends AbstractBolt {
 
     private Stream<FlowPath> extractAllFlowPaths(Flow flow) {
         return Stream.concat(
-                Stream.of(flow.getForwardPath(), flow.getProtectedForwardPath()).filter(Objects::nonNull).peek(p -> {
-                    p.setSrcSwitch(flow.getSrcSwitch());
-                    p.setDestSwitch(flow.getDestSwitch());
-                }),
-                Stream.of(flow.getReversePath(), flow.getProtectedReversePath()).filter(Objects::nonNull).peek(p -> {
-                    p.setSrcSwitch(flow.getDestSwitch());
-                    p.setDestSwitch(flow.getSrcSwitch());
-                })
+                Stream.of(flow.getForwardPath(), flow.getProtectedForwardPath()).filter(Objects::nonNull),
+                Stream.of(flow.getReversePath(), flow.getProtectedReversePath()).filter(Objects::nonNull)
         );
     }
 
@@ -180,10 +199,10 @@ public class CacheBolt extends AbstractBolt {
         switch (command) {
             case UPDATE:
                 updateCookieFlowCache(cookie, flow, switchId, measurePoint);
-                updateSwitchMeterFlowCache(cookie, meterId, flow, switchId);
+                updateSwitchMeterFlowCache(cookie, meterId, flow, switchId, measurePoint);
                 break;
             case REMOVE:
-                cookieToFlow.remove(cookie);
+                cookieToFlow.remove(new CookieCacheKey(switchId, cookie));
                 switchAndMeterToFlow.remove(new MeterCacheKey(switchId, meterId));
                 break;
             default:
@@ -199,8 +218,9 @@ public class CacheBolt extends AbstractBolt {
         Map<Long, CacheFlowEntry> cache = new HashMap<>();
 
         for (FlowStatsEntry entry : data.getStats()) {
-            if (cookieToFlow.containsKey(entry.getCookie())) {
-                CacheFlowEntry cacheFlowEntry = cookieToFlow.get(entry.getCookie());
+            CookieCacheKey key = new CookieCacheKey(data.getSwitchId(), entry.getCookie());
+            if (cookieToFlow.containsKey(key)) {
+                CacheFlowEntry cacheFlowEntry = cookieToFlow.get(key);
                 cache.put(entry.getCookie(), cacheFlowEntry);
             }
         }
@@ -232,20 +252,12 @@ public class CacheBolt extends AbstractBolt {
 
     private void updateCookieFlowCache(
             Long cookie, String flowId, SwitchId switchId, MeasurePoint measurePoint) {
-        CacheFlowEntry current = cookieToFlow.getOrDefault(cookie, new CacheFlowEntry(flowId, cookie));
-        CacheFlowEntry replacement = current.replaceSwitch(switchId.toOtsdFormat(), measurePoint);
-        cookieToFlow.put(cookie, replacement);
-
+        cookieToFlow.put(new CookieCacheKey(switchId, cookie), new CacheFlowEntry(flowId, cookie, measurePoint));
     }
 
-    private void updateSwitchMeterFlowCache(Long cookie, Long meterId, String flowId, SwitchId switchId) {
+    private void updateSwitchMeterFlowCache(
+            Long cookie, Long meterId, String flowId, SwitchId switchId, MeasurePoint measurePoint) {
         MeterCacheKey key = new MeterCacheKey(switchId, meterId);
-        CacheFlowEntry current = switchAndMeterToFlow.get(key);
-
-        if (current == null) {
-            switchAndMeterToFlow.put(key, new CacheFlowEntry(flowId, cookie));
-        } else {
-            switchAndMeterToFlow.put(key, current.replaceCookie(cookie));
-        }
+        switchAndMeterToFlow.put(key, new CacheFlowEntry(flowId, cookie, measurePoint));
     }
 }
