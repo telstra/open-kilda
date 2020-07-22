@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.model.FlowPatch;
+import org.openkilda.messaging.model.PatchEndpoint;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -92,6 +93,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         Long maxLatency = 555L;
         Integer priority = 777;
         PathComputationStrategy pathComputationStrategy = PathComputationStrategy.LATENCY;
+        String description = "new_description";
 
         Flow flow = new TestFlowBuilder()
                 .flowId(testFlowId)
@@ -103,6 +105,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .destVlan(11)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .pathComputationStrategy(PathComputationStrategy.COST)
+                .description("description")
                 .build();
         flow.setStatus(FlowStatus.UP);
         flowRepository.createOrUpdate(flow);
@@ -113,6 +116,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .priority(priority)
                 .pinned(true)
                 .targetPathComputationStrategy(pathComputationStrategy)
+                .description("new_description")
                 .build();
 
         Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
@@ -120,6 +124,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
         assertEquals(pathComputationStrategy, updatedFlow.getTargetPathComputationStrategy());
+        assertEquals(description, updatedFlow.getDescription());
         assertTrue(updatedFlow.isPinned());
 
         receivedFlow = FlowPatch.builder()
@@ -130,6 +135,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
         assertEquals(pathComputationStrategy, updatedFlow.getTargetPathComputationStrategy());
+        assertEquals(description, updatedFlow.getDescription());
         assertTrue(updatedFlow.isPinned());
     }
 
@@ -261,35 +267,73 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .destVlan(5)
                 .bandwidth(1000)
                 .allocateProtectedPath(true)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(PathComputationStrategy.COST)
                 .build();
 
         // new src switch
-        FlowPatch flowPatch = FlowPatch.builder().sourceSwitch(new SwitchId(3)).build();
+        FlowPatch flowPatch = FlowPatch.builder()
+                .source(PatchEndpoint.builder().switchId(new SwitchId(3)).build())
+                .build();
         UpdateFlowResult result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
         assertTrue(result.isNeedUpdateFlow());
 
         //new src port
-        flowPatch = FlowPatch.builder().sourcePort(9).build();
+        flowPatch = FlowPatch.builder().source(PatchEndpoint.builder().portNumber(9).build()).build();
         result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
         assertTrue(result.isNeedUpdateFlow());
 
         // new src vlan
-        flowPatch = FlowPatch.builder().sourceVlan(9).build();
+        flowPatch = FlowPatch.builder().source(PatchEndpoint.builder().vlanId(9).build()).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new src inner vlan
+        flowPatch = FlowPatch.builder().source(PatchEndpoint.builder().innerVlanId(9).build()).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new src LLDP flag
+        flowPatch = FlowPatch.builder().source(PatchEndpoint.builder().trackLldpConnectedDevices(true).build()).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new src ARP flag
+        flowPatch = FlowPatch.builder().source(PatchEndpoint.builder().trackArpConnectedDevices(true).build()).build();
         result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
         assertTrue(result.isNeedUpdateFlow());
 
         // new dst switch
-        flowPatch = FlowPatch.builder().destinationSwitch(new SwitchId(3)).build();
+        flowPatch = FlowPatch.builder().destination(PatchEndpoint.builder().switchId(new SwitchId(3)).build()).build();
         result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
         assertTrue(result.isNeedUpdateFlow());
 
-        //new src port
-        flowPatch = FlowPatch.builder().destinationPort(9).build();
+        //new dst port
+        flowPatch = FlowPatch.builder().destination(PatchEndpoint.builder().portNumber(9).build()).build();
         result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
         assertTrue(result.isNeedUpdateFlow());
 
         // new dst vlan
-        flowPatch = FlowPatch.builder().destinationVlan(9).build();
+        flowPatch = FlowPatch.builder().destination(PatchEndpoint.builder().vlanId(9).build()).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new dst inner vlan
+        flowPatch = FlowPatch.builder().destination(PatchEndpoint.builder().innerVlanId(9).build()).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new dst LLDP flag
+        flowPatch = FlowPatch.builder()
+                .destination(PatchEndpoint.builder().trackLldpConnectedDevices(true).build())
+                .build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new dst ARP flag
+        flowPatch = FlowPatch.builder()
+                .destination(PatchEndpoint.builder().trackArpConnectedDevices(true).build())
+                .build();
         result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
         assertTrue(result.isNeedUpdateFlow());
 
@@ -305,6 +349,21 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
 
         // add diverse flow id
         flowPatch = FlowPatch.builder().diverseFlowId("diverse_flow_id").build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new ignore bandwidth flag
+        flowPatch = FlowPatch.builder().ignoreBandwidth(true).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new encapsulation type
+        flowPatch = FlowPatch.builder().encapsulationType(FlowEncapsulationType.VXLAN).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new path computation strategy
+        flowPatch = FlowPatch.builder().pathComputationStrategy(PathComputationStrategy.LATENCY).build();
         result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
         assertTrue(result.isNeedUpdateFlow());
     }

@@ -48,6 +48,8 @@ public class FlowMapperTest {
     private static final int DST_PORT = 2;
     private static final int SRC_VLAN = 3;
     private static final int DST_VLAN = 4;
+    private static final int SRC_INNER_VLAN = 5;
+    private static final int DST_INNER_VLAN = 6;
     private static final int BANDWIDTH = 1000;
     private static final boolean IGNORE_BANDWIDTH = true;
     private static final boolean PERIODIC_PINGS = true;
@@ -57,7 +59,7 @@ public class FlowMapperTest {
     private static final Integer PRIORITY = 15;
     private static final String DESCRIPTION = "Description";
     private static final String ENCAPSULATION_TYPE = "transit_vlan";
-    private static final String PATH_COMPUTATION_STRATEGY = "path_computation_strategy";
+    private static final String PATH_COMPUTATION_STRATEGY = "latency";
     private static final String TARGET_PATH_COMPUTATION_STRATEGY = "cost";
     private static final DetectConnectedDevicesV2 SRC_DETECT_CONNECTED_DEVICES = new DetectConnectedDevicesV2(
             true, false);
@@ -210,17 +212,30 @@ public class FlowMapperTest {
 
     @Test
     public void testFlowPatchV2ToFlowDto() {
-        FlowPatchV2 flowPatchDto = new FlowPatchV2(new FlowPatchEndpoint(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN),
-                new FlowPatchEndpoint(DST_SWITCH_ID, DST_PORT, DST_VLAN), LATENCY, PRIORITY, PERIODIC_PINGS,
-                TARGET_PATH_COMPUTATION_STRATEGY, DIVERSE_FLOW_ID, (long) BANDWIDTH, ALLOCATE_PROTECTED_PATH, PINNED);
+        FlowPatchV2 flowPatchDto = new FlowPatchV2(
+                new FlowPatchEndpoint(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, SRC_INNER_VLAN, SRC_DETECT_CONNECTED_DEVICES),
+                new FlowPatchEndpoint(DST_SWITCH_ID, DST_PORT, DST_VLAN, DST_INNER_VLAN, DST_DETECT_CONNECTED_DEVICES),
+                LATENCY, PRIORITY, PERIODIC_PINGS, TARGET_PATH_COMPUTATION_STRATEGY, DIVERSE_FLOW_ID, (long) BANDWIDTH,
+                ALLOCATE_PROTECTED_PATH, PINNED, IGNORE_BANDWIDTH, DESCRIPTION, ENCAPSULATION_TYPE,
+                PATH_COMPUTATION_STRATEGY);
         FlowPatch flowPatch = flowMapper.toFlowPatch(flowPatchDto);
 
-        assertEquals(flowPatchDto.getSource().getSwitchId(), flowPatch.getSourceSwitch());
-        assertEquals(flowPatchDto.getSource().getPortNumber(), flowPatch.getSourcePort());
-        assertEquals(flowPatchDto.getSource().getVlanId(), flowPatch.getSourceVlan());
-        assertEquals(flowPatchDto.getDestination().getSwitchId(), flowPatch.getDestinationSwitch());
-        assertEquals(flowPatchDto.getDestination().getPortNumber(), flowPatch.getDestinationPort());
-        assertEquals(flowPatchDto.getDestination().getVlanId(), flowPatch.getDestinationVlan());
+        assertEquals(flowPatchDto.getSource().getSwitchId(), flowPatch.getSource().getSwitchId());
+        assertEquals(flowPatchDto.getSource().getPortNumber(), flowPatch.getSource().getPortNumber());
+        assertEquals(flowPatchDto.getSource().getVlanId(), flowPatch.getSource().getVlanId());
+        assertEquals(flowPatchDto.getSource().getInnerVlanId(), flowPatch.getSource().getInnerVlanId());
+        assertEquals(flowPatchDto.getSource().getDetectConnectedDevices().isLldp(),
+                flowPatch.getSource().getTrackLldpConnectedDevices());
+        assertEquals(flowPatchDto.getSource().getDetectConnectedDevices().isArp(),
+                flowPatch.getSource().getTrackArpConnectedDevices());
+        assertEquals(flowPatchDto.getDestination().getSwitchId(), flowPatch.getDestination().getSwitchId());
+        assertEquals(flowPatchDto.getDestination().getPortNumber(), flowPatch.getDestination().getPortNumber());
+        assertEquals(flowPatchDto.getDestination().getVlanId(), flowPatch.getDestination().getVlanId());
+        assertEquals(flowPatchDto.getDestination().getInnerVlanId(), flowPatch.getDestination().getInnerVlanId());
+        assertEquals(flowPatchDto.getDestination().getDetectConnectedDevices().isLldp(),
+                flowPatch.getDestination().getTrackLldpConnectedDevices());
+        assertEquals(flowPatchDto.getDestination().getDetectConnectedDevices().isArp(),
+                flowPatch.getDestination().getTrackArpConnectedDevices());
         assertEquals(flowPatchDto.getMaxLatency(), flowPatch.getMaxLatency());
         assertEquals(flowPatchDto.getPriority(), flowPatch.getPriority());
         assertEquals(flowPatchDto.getPeriodicPings(), flowPatch.getPeriodicPings());
@@ -230,5 +245,10 @@ public class FlowMapperTest {
         assertEquals(flowPatchDto.getMaximumBandwidth(), flowPatch.getBandwidth());
         assertEquals(flowPatchDto.getAllocateProtectedPath(), flowPatch.getAllocateProtectedPath());
         assertEquals(flowPatchDto.getPinned(), flowPatch.getPinned());
+        assertEquals(flowPatchDto.getIgnoreBandwidth(), flowPatch.getIgnoreBandwidth());
+        assertEquals(flowPatchDto.getDescription(), flowPatch.getDescription());
+        assertEquals(flowPatchDto.getEncapsulationType(), flowPatch.getEncapsulationType().name().toLowerCase());
+        assertEquals(flowPatchDto.getPathComputationStrategy(),
+                flowPatch.getPathComputationStrategy().name().toLowerCase());
     }
 }
