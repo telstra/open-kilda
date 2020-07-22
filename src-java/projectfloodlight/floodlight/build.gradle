@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'org.projectfloodlight'
-def versionTag = '1.2-kilda-3'
+def versionTag = '1.2-kilda-4'
 
 import org.ajoberstar.grgit.Grgit
 
