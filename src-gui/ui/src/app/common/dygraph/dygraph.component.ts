@@ -175,6 +175,14 @@ export class DygraphComponent implements OnInit, OnDestroy {
       this.objectCount++;
     });
 
+    this.islDataService.IslFlowGraph.subscribe(message => {
+      this.message = message;
+      if (this.count >= 1) {
+        this.plotISLFlowGraph(message);
+      }
+      this.count++;
+    });
+
     this.dygraphService.flowGraph.subscribe(data => {
       this.plotFlowGraph(
         data.data,
@@ -202,6 +210,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
 
 
   drawGraphCall(dataObj) {
+    
    this.timezone = dataObj.timezone;
    this.jsonResponse = undefined;
 
@@ -246,6 +255,40 @@ export class DygraphComponent implements OnInit, OnDestroy {
 
     
    
+  }
+
+  plotISLFlowGraph(dataObj) {
+    this.timezone = dataObj.timezone;
+    this.jsonResponse = undefined;
+    this.labels = dataObj.labels;  
+    this.data = dataObj.data; 
+  if(this.timezone == "UTC") {
+    this.options = Object.assign(this.options, {
+      labels: this.labels,
+      drawPoints: false,
+      animatedZooms: true,
+      labelsUTC: true,
+      series: dataObj.series,
+      legend: "onmouseover",
+      valueRange:[0,null],
+      connectSeparatedPoints:true,
+      legendFormatter:this.dygraphService.legendFormatter,
+        zoomCallback: this.zoomCallbackHandler
+      });
+  }else{
+    this.options = Object.assign(this.options, {
+      labels: this.labels,
+      drawPoints: false,
+      animatedZooms: true,
+      labelsUTC: false,
+      series: dataObj.series,
+      legend: "onmouseover",
+      valueRange:[0,null],
+      connectSeparatedPoints:true,
+      legendFormatter:this.dygraphService.legendFormatter,
+        zoomCallback: this.zoomCallbackHandler
+      });
+     }
   }
 
 

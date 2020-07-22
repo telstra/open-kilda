@@ -23,6 +23,7 @@ import { CommonService } from '../../../common/services/common.service';
 import { ModalComponent } from 'src/app/common/components/modal/modal.component';
 import { OtpComponent } from 'src/app/common/components/otp/otp.component';
 import { MessageObj } from 'src/app/common/constants/constants';
+import { FlowsService } from 'src/app/common/services/flows.service';
   declare var moment: any;
   @Component({
     selector: 'app-isl-detail',
@@ -61,7 +62,10 @@ import { MessageObj } from 'src/app/common/constants/constants';
         data:[],
         startDate:moment(new Date()).format("YYYY/MM/DD HH:mm:ss"),
         endDate: moment(new Date()).format("YYYY/MM/DD HH:mm:ss"),
-        timezone: "LOCAL"
+        timezone: "LOCAL",
+        labels:[],
+        series:{},
+        colors:[],
       };
     graphObj: any;
     message:{};
@@ -69,6 +73,7 @@ import { MessageObj } from 'src/app/common/constants/constants';
 
     filterForm: FormGroup;
     graphMetrics = [];
+    flowGraphMetrics=[];
     autoReloadTimerId = null;
     islForm: FormGroup;
     showCostEditing: boolean = false;
@@ -85,7 +90,7 @@ import { MessageObj } from 'src/app/common/constants/constants';
 
     @Output() hideToValue: EventEmitter<any> = new EventEmitter();
     newMessageDetail(){
-    this.islDataService.changeMessage(this.currentGraphData)
+      this.islDataService.changeMessage(this.currentGraphData)
     }
 
 
@@ -105,6 +110,7 @@ import { MessageObj } from 'src/app/common/constants/constants';
       private modalService: NgbModal,
       private commonService: CommonService,
       private islDetailService : IslDetailService,
+      private flowService:FlowsService,
     ) {
       
       if(!this.commonService.hasPermission('menu_isl')){
@@ -139,9 +145,11 @@ import { MessageObj } from 'src/app/common/constants/constants';
       graph: ["rtt"],
       metric: ["bits"],
       auto_reload: [""],
+      direction:'forward',
       auto_reload_time: ["", Validators.compose([Validators.pattern("[0-9]*")])]
     });
     this.graphMetrics = this.dygraphService.getPortMetricData();
+    this.flowGraphMetrics = this.dygraphService.getFlowMetricData();
    
 
     }
@@ -379,16 +387,13 @@ import { MessageObj } from 'src/app/common/constants/constants';
   changeDate(input, event) {
     this.filterForm.controls[input].setValue(event.target.value);
     setTimeout(() => {
-
          this.loadGraphData();
-      
-    }, 0);
+       }, 0);
   }
 
 
     ngAfterViewInit() {
-     this.loadGraphData();
-
+     //this.loadGraphData();
     this.filterForm.get("auto_reload").valueChanges.subscribe(value => {
       if (value) {
         this.filterForm
@@ -461,6 +466,9 @@ get f() {
     if(this.filterForm.controls.graph.value == "rtt"){
       this.currentGraphName = "Round Trip Latency Graph (In Seconds)";
     } 
+    if(this.filterForm.controls.graph.value == "flow"){
+      this.currentGraphName = "ISL Flow Graph";
+    } 
     this.loadGraphData();
   }
 
@@ -498,7 +506,9 @@ get f() {
   loadGraphData(){
      if(this.filterForm.value.graph === 'latency' || this.filterForm.value.graph === 'rtt'){
               this.callGraphAPI();
-          }  
+        }else if(this.filterForm.value.graph === 'flow'){
+          this.CallFlowGraphAPI();
+        }  
         else{
           this.callSourceGraphAPI();
         }
@@ -607,14 +617,91 @@ get f() {
                               
   }
 
- 
+  CallFlowGraphAPI(){
+    let formdata = this.filterForm.value;
+    let downsampling = formdata.download_sample;
+    let metric = formdata.metric;
+    let timezone = formdata.timezone;
+    let direction  = formdata.direction;
+
+    let convertedStartDate = moment(new Date(formdata.fromDate)).add(-60, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
+    let convertedEndDate = moment(new Date(formdata.toDate)).add(60, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
+  
+    if (
+      moment(new Date(formdata.fromDate)).isAfter(new Date(formdata.toDate))
+    ) {
+      this.toastr.error("Start date can not be after End date", "Error");
+      return;
+    }
+
+
+    if (
+      moment(new Date(formdata.toDate)).isBefore(new Date(formdata.fromDate))
+    ) {
+      this.toastr.error("To date should not be less than from date.", "Error");
+      return;
+    }
+
+
+    if (formdata.timezone == "UTC") {
+      convertedStartDate = moment(new Date(formdata.fromDate)).add(-60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
+      convertedEndDate = moment(new Date(formdata.toDate)).add(60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
+      
+    }
+
+     let requestForwardPayload = {switches: [this.src_switch_kilda], outPort: this.src_port,startdate: convertedStartDate,enddate: convertedEndDate,downsample: downsampling, direction:direction, metric:metric};
+     let requestReversePayload = { switches: [this.dst_switch_kilda], inPort: this.dst_port,startdate: convertedStartDate, enddate: convertedEndDate, downsample: downsampling,direction:direction, metric:metric};
+     this.flowService.getFlowPathStats(requestForwardPayload).subscribe((dataForward : any) =>{
+      this.flowService.getFlowPathStats(requestReversePayload).subscribe((dataReverse : any) =>{
+            var data = dataForward.concat(dataReverse);
+           this.loadIslFlowGraph(data,formdata,timezone,direction);
+        },error =>{
+          var data = dataForward;
+          this.loadIslFlowGraph(data,formdata,timezone,direction);
+          this.toastr.error(MessageObj.reverse_graph_no_data,'Error');
+        });
+       },error=>{
+            this.flowService.getFlowPathStats(requestReversePayload).subscribe((dataReverse : any) =>{
+              var data = dataReverse;
+              this.loadIslFlowGraph(data,formdata,timezone,direction);
+            },error =>{
+              this.loadIslFlowGraph([],formdata,timezone,direction);
+              this.toastr.error(MessageObj.reverse_graph_no_data,'Error');
+            });
+      });
+  }
+
+  loadIslFlowGraph(data,formdata,timezone,direction){
+    var graph_data = this.dygraphService.computeFlowGraphDataForISL(data, formdata.fromDate, formdata.toDate, timezone,direction);
+    var graphData =  graph_data["data"];
+    var labels = graph_data["labels"];
+    var series = {};
+    var colors = graph_data["color"];
+    if (labels && labels.length) {
+      for (var k = 0; k < labels.length; k++) {
+        if (k != 0) {
+          series[labels[k]] = { color: colors[k - 1] };
+        }
+      }
+    }
+    this.responseGraph = [];
+    this.currentGraphData.data = graphData;
+    this.currentGraphData.timezone = timezone;
+    this.currentGraphData.startDate = moment(new Date(formdata.fromDate));
+    this.currentGraphData.endDate = moment(new Date(formdata.toDate));
+    this.currentGraphData.labels = labels;
+    this.currentGraphData.series = series;
+    this.loaderService.hide();
+    this.islDataService.changeIslFlowGraph(this.currentGraphData);
+    this.islDataService.IslFlowGraph.subscribe(message => this.message = message);
+  }
   callSourceGraphAPI(){
-     
     let formdata = this.filterForm.value;
     let downsampling = formdata.download_sample;
     let metric = formdata.metric;
     let timezone = formdata.timezone;
     let graph = formdata.graph;
+    let direction  = formdata.direction;
 
     let convertedStartDate = moment(new Date(formdata.fromDate)).add(-60, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
     let convertedEndDate = moment(new Date(formdata.toDate)).add(60, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
@@ -827,8 +914,7 @@ get f() {
           const modalRef2 = this.modalService.open(ModalComponent);
           modalRef2.componentInstance.title = "Warning";
           modalRef2.componentInstance.content = MessageObj.delete_isl_not_authorised;
-        }
-        
+        }        
       }
     });
   }

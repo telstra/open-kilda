@@ -141,10 +141,8 @@
                     <div class='row isl_sbl_details'>
                       <label class='col-sm-6 col-form-label'>State:</label>
                       <p class='col-sm-6 isl_div_state'>{{state}}</p>
-                    </div>
-    
-              </div>
-    
+                    </div>    
+              </div>    
               <div class="col-sm-4" >
                   <div class='row isl_sbl_details' *ngIf="commonService.hasPermission('isl_update_maintenance')">
                       <label class='col-sm-6 col-form-label'>Maintenance Mode:
@@ -193,8 +191,6 @@
                       </div>
               </div>
           </div>
-          
-          
         </div>
       </div>
     </form>
@@ -224,7 +220,7 @@
                       
                   </div>
                   <div class="col-md-4 col-xs-4 filter">
-                    <div class="stats-graph row" style="margin-top: 30px;">
+                    <div *ngIf="f.graph.value !='flow'" class="stats-graph row" style="margin-top: 30px;">
                       <ul class="line-legend col-lg-12">
                         <li>Forward</li>
                         <li>Reverse</li>
@@ -290,20 +286,32 @@
                           <option value="target">Destination</option>
                           <option value="isllossforward">Loss packet forward</option>
                           <option value="isllossreverse">Loss packet reverse</option>
+                          <option value="flow">Flow</option>
                         </select>
                         </div>
                       </div>
                       <div class="row form-group clearfix" id="islMetric" *ngIf="f.graph.value !='latency'">
                         <label class="col-xs-4 col-md-4 text-label">Metric:</label>
                         <div class="col-xs-8 col-md-8">
-                           <select formControlName="metric" class="form-control" (change)="loadGraphData()">
+                           <select *ngIf="f.graph.value !='flow'" formControlName="metric" class="form-control" (change)="loadGraphData()">
                           <option *ngFor="let option of graphMetrics" value="{{option.value}}">{{option.label}}</option>
+                        </select>
+                        <select *ngIf="f.graph.value =='flow'" formControlName="metric" class="form-control" (change)="loadGraphData()">
+                          <option *ngFor="let option of flowGraphMetrics" value="{{option.value}}">{{option.label}}</option>
+                        </select>
+                        </div>
+                      </div>
+                      <div class="row form-group clearfix" id="Direction" *ngIf="f.graph.value =='flow'">
+                        <label class="col-xs-4 col-md-4 text-label">Direction:</label>
+                        <div class="col-xs-8 col-md-8">
+                           <select formControlName="direction" class="form-control" (change)="loadGraphData()">
+                           <option value="forward">Forward</option>
+                           <option value="reverse">Reverse</option>
                         </select>
                         </div>
                       </div>
                       <div class="col-xs-12 col-md-12 submit-btn">
-                      
-                        <div id="errorMesg" class="error"></div>
+                       <div id="errorMesg" class="error"></div>
                       </div>
                     </div>
                   </div>
