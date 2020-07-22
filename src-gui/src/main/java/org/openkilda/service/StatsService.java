@@ -220,10 +220,11 @@ public class StatsService {
      */
     public String getFlowPathStats(FlowPathStats flowPathStats) {
         return statsIntegrationService.getStats(flowPathStats.getStartDate(), flowPathStats.getEndDate(),
-                flowPathStats.getDownsample(), getSwitches(flowPathStats), null, flowPathStats.getFlowid(), null, null,
-                null, null, StatsType.FLOW_RAW_PACKET, flowPathStats.getMetric(), flowPathStats.getDirection());
+                flowPathStats.getDownsample(), getSwitches(flowPathStats), null, flowPathStats.getFlowid(),
+                null, flowPathStats.getInPort(), null, flowPathStats.getOutPort(), StatsType.FLOW_RAW_PACKET, 
+                flowPathStats.getMetric(), flowPathStats.getDirection());
     }
-
+    
     /**
      * Gets the switch ports stats.
      *
