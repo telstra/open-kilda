@@ -725,10 +725,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
         given: "An inactive isl with moved state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
         assumeTrue("Unable to find required isl", isl as boolean)
-        def notConnectedIsls = topology.notConnectedIsls
         assumeTrue("Unable to find non-connected isl", notConnectedIsls.size() > 0)
         def notConnectedIsl = notConnectedIsls.first()
-        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, true)
+        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, false)
 
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], DISCOVERED)
@@ -746,7 +745,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         errorDetails.errorDescription == getPortViolationError("source", isl.srcPort, isl.srcSwitch.dpId)
 
         and: "Cleanup: Restore status of the ISL and delete new created ISL"
-        islUtils.replug(newIsl, true, isl, false, true)
+        islUtils.replug(newIsl, true, isl, false, false)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
         northbound.deleteLink(islUtils.toLinkParameters(newIsl))
@@ -887,45 +886,32 @@ class FlowCrudSpec extends HealthCheckSpecification {
         flows.each { flowHelper.deleteFlow(it) }
     }
 
-    @Ignore("unstable") //TODO: fix test ASAP
     @Tags(LOW_PRIORITY)
     def "System doesn't create flow when reverse path has different bandwidth than forward path on the second link"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.find { it.unique { it.switchId }.size() >= 4 }
+            it.paths.find { it.unique(false) { it.switchId }.size() >= 4 }
         } ?: assumeTrue("No suiting switches found", false)
 
         and: "Select path for further manipulation with it"
         def selectedPath = switchPair.paths.max { it.size() }
-        def altPaths = switchPair.paths.findAll { it != selectedPath }
 
-        and: "Make all alternative paths unavailable (bring ports down on the src/intermediate switches)"
-        List<PathNode> broughtDownPortsSrcSwitch = []
-        altPaths.findAll { it.first().portNo != selectedPath.first().portNo }.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPortsSrcSwitch.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-
-        List<PathNode> broughtDownPortsIntermSwitch = []
-        altPaths.findAll { it.first().portNo == selectedPath.first().portNo &&
-                it[2].portNo != selectedPath[2].portNo && it[2].switchId == selectedPath[2].switchId
-        }.unique { it[2] }.each { path ->
-            def src = path[2]
-            broughtDownPortsIntermSwitch.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-
-        Wrappers.wait(antiflapMin + WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == FAILED
-            }.size() == (broughtDownPortsSrcSwitch.size() + broughtDownPortsIntermSwitch.size()) * 2
+        and: "Make all alternative paths unavailable (bring links down on the src/intermediate switches)"
+        def involvedIsls = pathHelper.getInvolvedIsls(selectedPath)
+        def untouchableIsls = involvedIsls.collectMany { [it, it.reversed] }
+        def altPaths = switchPair.paths.findAll { [it, it.reverse()].every { it != selectedPath }}
+        def islsToBreak = altPaths.collectMany { pathHelper.getInvolvedIsls(it) }
+                .collectMany { [it, it.reversed] }.unique()
+                .findAll { !untouchableIsls.contains(it) }.unique { [it, it.reversed].sort() }
+       withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort) } }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll { it.state == FAILED }.size() == islsToBreak.size() * 2
         }
 
         and: "Update reverse path to have not enough bandwidth to handle the flow"
         //Forward path is still have enough bandwidth
         def flowBandwidth = 500
-        def islsToModify = pathHelper.getInvolvedIsls(selectedPath)[1]
+        def islsToModify = involvedIsls[1]
         def newIslBandwidth = flowBandwidth - 1
         islsToModify.each {
             database.updateIslAvailableBandwidth(it.reversed, newIslBandwidth)
@@ -943,11 +929,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
         e.responseBodyAsString.to(MessageError).errorMessage.contains("Could not create flow")
 
         and: "Restore topology, delete the flow and reset costs"
-        [broughtDownPortsSrcSwitch, broughtDownPortsIntermSwitch].each { sw ->
-            sw.each { antiflap.portUp(it.switchId, it.portNo) }
-        }
+        withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort) } }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != FAILED }
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
         database.resetCosts()
         islsToModify.each { database.resetIslBandwidth(it) }

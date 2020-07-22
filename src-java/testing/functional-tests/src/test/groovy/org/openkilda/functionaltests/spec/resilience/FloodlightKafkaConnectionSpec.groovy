@@ -7,6 +7,7 @@ import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchFeature
 
@@ -101,9 +102,11 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     def "System can detect switch changes if they happen while Floodlight was disconnected after it reconnects"() {
         when: "Controller loses connection to kafka"
         regions.each { lockKeeper.knockoutFloodlight(it) }
+        def regionsOut = true
         wait(floodlightAliveTimeout + WAIT_OFFSET) { assert northbound.activeSwitches.size() == 0 }
 
         and: "Switch port for certain ISL goes down"
@@ -113,6 +116,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
         and: "Controller restores connection to kafka"
         regions.each { lockKeeper.reviveFloodlight(it) }
+        regionsOut = false
 
         then: "System detects that certain port has been brought down and fails the related link"
         wait(WAIT_OFFSET) {
@@ -121,8 +125,10 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(isls, isl.reversed).get().state == IslChangeType.FAILED
         }
 
-        and: "Cleanup: restore the broken link"
+        cleanup:
+        regionsOut && regions.each { lockKeeper.reviveFloodlight(it) }
         lockKeeper.portsUp([isl.aswitch.inPort])
+        wait(WAIT_OFFSET) { assert northbound.activeSwitches.size() == topology.activeSwitches.size() }
         wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
             def isls = northbound.getAllLinks()
             assert islUtils.getIslInfo(isls, isl).get().state == IslChangeType.DISCOVERED

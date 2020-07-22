@@ -25,6 +25,8 @@ import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
+import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 
 import java.util.Date;
 import java.util.List;
@@ -62,4 +64,6 @@ public interface NorthboundServiceV2 {
     PortPropertiesResponse getPortProperties(SwitchId switchId, Integer port);
 
     PortPropertiesResponse updatePortProperties(SwitchId switchId, Integer port, PortPropertiesDto payload);
+
+    SwitchDtoV2 partialSwitchUpdate(SwitchId switchId, SwitchPatchDto dto);
 }

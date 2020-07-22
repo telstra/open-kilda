@@ -18,6 +18,8 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.northbound.dto.v2.switches.SwitchLocationDtoV2
+import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
@@ -332,5 +334,77 @@ class SwitchesSpec extends HealthCheckSpecification {
                 [descr    : "validating",
                  operation: { getNorthbound().validateSwitch(NON_EXISTENT_SWITCH_ID) }]
         ]
+    }
+
+    @Tidy
+    @Tags(LOW_PRIORITY)
+    @Unroll
+    def "Able to partially update switch a 'location.#data.field' field"() {
+        given: "A switch"
+        def sw = topology.activeSwitches.first()
+        def initConf = northbound.getSwitch(sw.dpId)
+
+        when: "Request a switch partial update for a #data.field field"
+        SwitchPatchDto updateRequest = [location: [(data.field): data.newValue]] as SwitchPatchDto
+        def response = northboundV2.partialSwitchUpdate(sw.dpId, updateRequest)
+
+        then: "Update response reflects the changes"
+        response.location."$data.field" == data.newValue
+
+        and: "Changes actually took place"
+        northbound.getSwitch(sw.dpId).location."$data.field" == data.newValue
+
+        cleanup:
+        northboundV2.partialSwitchUpdate(sw.dpId, [location: [
+                latitude: initConf.location.latitude ?: 0,
+                longitude: initConf.location.longitude ?: 0,
+                city: initConf.location.city ?: "",
+                country: initConf.location.country ?: "",
+                street: initConf.location.street ?: ""
+        ]] as SwitchPatchDto)
+
+        where:
+        data << [
+                [
+                        field   : "latitude",
+                        newValue: 654
+                ],
+                [
+                        field   : "longitude",
+                        newValue: 456
+                ],
+                [
+                        field   : "street",
+                        newValue: "testStreet"
+                ],
+                [
+                        field   : "city",
+                        newValue: "testCity"
+                ],
+                [
+                        field   : "country",
+                        newValue: "testCountry"
+                ]
+        ]
+    }
+
+    @Tidy
+    def "Able to partially update switch a 'pop' field"() {
+        given: "A switch"
+        def sw = topology.activeSwitches.first()
+        def initConf = northbound.getSwitch(sw.dpId)
+
+        when: "Request a switch partial update for a 'pop' field"
+        def newPopValue = "test_POP"
+        def response = northboundV2.partialSwitchUpdate(sw.dpId, new SwitchPatchDto().tap { it.pop = newPopValue })
+
+        then: "Update response reflects the changes"
+        response.pop == newPopValue
+
+        and: "Changes actually took place"
+        northbound.getSwitch(sw.dpId).pop == newPopValue
+
+        cleanup:
+        northboundV2.partialSwitchUpdate(sw.dpId, new SwitchPatchDto().tap { it.pop = initConf.pop ?: "" })
     }
 }

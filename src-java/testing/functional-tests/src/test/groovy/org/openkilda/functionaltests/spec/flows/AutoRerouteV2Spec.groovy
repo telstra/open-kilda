@@ -259,13 +259,12 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         }
 
         then: "The flow goes to 'Up' status"
+        and: "The flow was rerouted"
         Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET * 2) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northbound.getFlowHistory(flow.flowId).last().histories.last().action == REROUTE_SUCCESS
         }
-
-        and: "The flow was rerouted"
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
-        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Bring port involved in the original path up and delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)

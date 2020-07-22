@@ -36,6 +36,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
+import spock.lang.Ignore
 import spock.lang.Unroll
 
 import javax.inject.Provider
@@ -845,6 +846,7 @@ switches"() {
     }
 
     @Tidy
+    @Ignore("https://github.com/telstra/open-kilda/issues/3627")
     @Tags(LOW_PRIORITY)
     def "Able to swap endpoints for two flows when not enough bandwidth on ISL and ignore_bandwidth=true"() {
         setup: "Create two flows with different source and the same destination switches"

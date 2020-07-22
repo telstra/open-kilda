@@ -63,7 +63,7 @@ clean-docker-files:
 
 .PHONY: clean-sources
 clean-sources:
-{{if not (exists "/no_gui")}}	$(MAKE) -C src-gui clean-java
+{{if not (exists "/no_gui")}}	$(MAKE) -C src-gui clean clean-java
 {{end}}	$(MAKE) -C src-python/lab-service/lab clean
 	cd src-java && ./gradlew clean
 

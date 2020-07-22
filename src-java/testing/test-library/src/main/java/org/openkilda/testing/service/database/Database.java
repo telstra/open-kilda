@@ -69,8 +69,6 @@ public interface Database {
 
     boolean removeInactiveSwitches();
 
-    void setSwitchPop(SwitchId switchId, String swPop);
-
     // Flows
 
     int countFlows();

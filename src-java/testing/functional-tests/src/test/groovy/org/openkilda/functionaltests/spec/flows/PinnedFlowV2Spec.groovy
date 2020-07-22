@@ -14,6 +14,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
@@ -166,26 +167,25 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "System is not able to reroute(intentionally) pinned flow"() {
+    def "System is not rerouting pinned flow when 'reroute link flows' is called"() {
         given: "A pinned flow with alt path available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.pinned = true
+        def flow = flowHelperV2.randomFlow(switchPair).tap { it.pinned = true }
         flowHelperV2.addFlow(flow)
-
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
 
         when: "Make another path more preferable"
         def newPath = switchPair.paths.find { it != currentPath }
         switchPair.paths.findAll { it != newPath }.each { pathHelper.makePathMorePreferable(newPath, it) }
 
-        and: "Init reroute(manually)"
+        and: "Init reroute of all flows that go through pinned flow's isl"
         def isl = pathHelper.getInvolvedIsls(currentPath).first()
-        northbound.rerouteLinkFlows(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort)
+        def affectedFlows = northbound.rerouteLinkFlows(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort)
 
-        then: "Flow is not rerouted"
-        Wrappers.wait(WAIT_OFFSET) {
+        then: "Flow is not rerouted (but still present in reroute response)"
+        affectedFlows == [flow.flowId]
+        Wrappers.timedLoop(2) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
         }
@@ -194,6 +194,35 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
+    }
+
+    @Tidy
+    def "System returns error if trying to intentionally reroute a pinned flow"() {
+        given: "A pinned flow with alt path available"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+                assumeTrue("No suiting switches found", false)
+        def flow = flowHelperV2.randomFlow(switchPair).tap { it.pinned = true }
+        flowHelperV2.addFlow(flow)
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+
+        when: "Make another path more preferable"
+        def newPath = switchPair.paths.find { it != currentPath }
+        switchPair.paths.findAll { it != newPath }.each { pathHelper.makePathMorePreferable(newPath, it) }
+
+        and: "Init manual reroute"
+        northboundV2.rerouteFlow(flow.flowId)
+
+        then: "Error is returned"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.UNPROCESSABLE_ENTITY
+        with(e.responseBodyAsString.to(MessageError)) {
+            errorMessage == "Could not reroute flow"
+            errorDescription == "Can't reroute pinned flow"
+        }
+
+        cleanup: "Revert system to original state"
+        flowHelperV2.deleteFlow(flow.flowId)
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
     @Tidy

@@ -37,6 +37,7 @@ import static org.mockito.hamcrest.MockitoHamcrest.argThat;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
+import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
@@ -55,8 +56,8 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
-import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
 
 import org.hamcrest.Matchers;
 import org.junit.Assert;
@@ -98,10 +99,10 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     public void shouldFailRerouteFlowIfNoPathAvailable() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), new UnroutableFlowException(injectedErrorMessage));
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
+                false, Collections.emptySet(), null);
+        testExpectedFailure(dummyRequestKey, request, commandContext, origin, FlowStatus.DOWN, ErrorType.NOT_FOUND);
 
-        FlowRerouteFact request = new FlowRerouteFact(
-                dummyRequestKey, commandContext, origin.getFlowId(), null, false, false, false, null);
-        testExpectedFailure(request, origin, FlowStatus.DOWN, ErrorType.NOT_FOUND);
         verify(pathComputer, times(11))
                 .getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
     }
@@ -111,9 +112,10 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), new RecoverableException(injectedErrorMessage));
 
-        FlowRerouteFact request = new FlowRerouteFact(
-                dummyRequestKey, commandContext, origin.getFlowId(), null, false, false, false, null);
-        testExpectedFailure(request, origin, FlowStatus.UP, ErrorType.INTERNAL_ERROR);
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
+                false, Collections.emptySet(), null);
+        testExpectedFailure(dummyRequestKey, request, commandContext, origin, FlowStatus.UP, ErrorType.INTERNAL_ERROR);
+
         verify(pathComputer, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
                 .getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
     }
@@ -127,10 +129,9 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         IslRepository repository = setupIslRepositorySpy();
         doThrow(ResourceAllocationException.class)
                 .when(repository).updateAvailableBandwidth(any(), anyInt(), any(), anyInt(), anyLong());
-
-        FlowRerouteFact request = new FlowRerouteFact(
-                dummyRequestKey, commandContext, origin.getFlowId(), null, false, false, false, null);
-        testExpectedFailure(request, origin, FlowStatus.UP, ErrorType.INTERNAL_ERROR);
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
+                false, Collections.emptySet(), null);
+        testExpectedFailure(dummyRequestKey, request, commandContext, origin, FlowStatus.UP, ErrorType.INTERNAL_ERROR);
 
         verify(repository, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
                 .updateAvailableBandwidth(any(), anyInt(), any(), anyInt(), anyLong());
@@ -145,9 +146,9 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         doThrow(new ResourceAllocationException(injectedErrorMessage))
                 .when(flowResourcesManager).allocateFlowResources(makeFlowArgumentMatch(origin.getFlowId()));
 
-        FlowRerouteFact request = new FlowRerouteFact(
-                dummyRequestKey, commandContext, origin.getFlowId(), null, false, false, false, null);
-        testExpectedFailure(request, origin, FlowStatus.UP, ErrorType.INTERNAL_ERROR);
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
+                false, Collections.emptySet(), null);
+        testExpectedFailure(dummyRequestKey, request, commandContext, origin, FlowStatus.UP, ErrorType.INTERNAL_ERROR);
 
         verify(flowResourcesManager, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
                 .allocateFlowResources(makeFlowArgumentMatch(origin.getFlowId()));
@@ -164,14 +165,15 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 .when(repository)
                 .createOrUpdate(any(FlowPath.class));
 
-        FlowRerouteFact request = new FlowRerouteFact(
-                dummyRequestKey, commandContext, origin.getFlowId(), null, false, false, false, null);
-        testExpectedFailure(request, origin, FlowStatus.UP, ErrorType.INTERNAL_ERROR);
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
+                false, Collections.emptySet(), null);
+        testExpectedFailure(dummyRequestKey, request, commandContext, origin, FlowStatus.UP, ErrorType.INTERNAL_ERROR);
     }
 
-    private void testExpectedFailure(
-            FlowRerouteFact request, Flow origin, FlowStatus expectedFlowStatus, ErrorType expectedError) {
-        makeService().handleRequest(request);
+    private void testExpectedFailure(String key,
+                                     FlowRerouteRequest request, CommandContext context,
+                                     Flow origin, FlowStatus expectedFlowStatus, ErrorType expectedError) {
+        makeService().handleRequest(key, request, context);
 
         verifyNoSpeakerInteraction(carrier);
         verifyNorthboundErrorResponse(carrier, expectedError);
@@ -184,9 +186,10 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     public void shouldSkipRerouteIfNoNewPathFound() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make2SwitchesPathPair());
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
+                false, Collections.emptySet(), null);
 
-        makeService().handleRequest(new FlowRerouteFact(
-                dummyRequestKey, commandContext, origin.getFlowId(), null, false, false, false, null));
+        makeService().handleRequest(dummyRequestKey, request, commandContext);
 
         verifyNoSpeakerInteraction(carrier);
         verifyNorthboundSuccessResponse(carrier);
@@ -202,8 +205,9 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         preparePathComputation(origin.getFlowId(), newPathPair);
 
         FlowRerouteService service = makeService();
-        service.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, false, null));
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
+                false, Collections.emptySet(), null);
+        service.handleRequest(currentRequestKey, request, commandContext);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -238,8 +242,9 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         preparePathComputation(origin.getFlowId(), newPathPair);
 
         FlowRerouteService service = makeService();
-        service.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, false, null));
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
+                false, Collections.emptySet(), null);
+        service.handleRequest(currentRequestKey, request, commandContext);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -265,8 +270,9 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         preparePathComputation(origin.getFlowId(), newPathPair);
 
         FlowRerouteService service = makeService();
-        service.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, false, null));
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
+                false, Collections.emptySet(), null);
+        service.handleRequest(currentRequestKey, request, commandContext);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -301,8 +307,10 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         preparePathComputation(origin.getFlowId(), newPathPair);
 
         FlowRerouteService service = makeService();
-        service.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, false, null));
+
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
+                false, Collections.emptySet(), null);
+        service.handleRequest(currentRequestKey, request, commandContext);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -334,8 +342,9 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 argThat(hasProperty("forwardPathId", Matchers.not(equalTo(origin.getForwardPathId())))));
 
         FlowRerouteService service = makeService();
-        service.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, false, null));
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
+                false, Collections.emptySet(), null);
+        service.handleRequest(currentRequestKey, request, commandContext);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -370,8 +379,9 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                         eq(FlowPathStatus.ACTIVE));
 
         FlowRerouteService service = makeService();
-        service.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, false, null));
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
+                false, Collections.emptySet(), null);
+        service.handleRequest(currentRequestKey, request, commandContext);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -401,8 +411,9 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 .delete(argThat(hasProperty("pathId", equalTo(origin.getForwardPathId()))));
 
         FlowRerouteService service = makeService();
-        service.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, false, null));
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
+                false, Collections.emptySet(), null);
+        service.handleRequest(currentRequestKey, request, commandContext);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -423,8 +434,10 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
         FlowRerouteService service = makeService();
-        service.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, false, null));
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
+                false, Collections.emptySet(), null);
+        service.handleRequest(currentRequestKey, request, commandContext);
+
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -456,8 +469,9 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
         FlowRerouteService service = makeService();
-        service.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, false, null));
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
+                false, Collections.emptySet(), null);
+        service.handleRequest(currentRequestKey, request, commandContext);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -488,14 +502,15 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         FlowRerouteService service = makeService();
 
-        service.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, false, null));
+        FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(origin.getFlowId(), false, false,
+                false, Collections.emptySet(), null);
+        service.handleRequest(currentRequestKey, rerouteRequest, commandContext);
+
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
 
         String overlappingKey = dummyRequestKey + "2";
-        service.handleRequest(new FlowRerouteFact(
-                overlappingKey, commandContext, origin.getFlowId(), null, false, false, false, null));
+        service.handleRequest(overlappingKey, rerouteRequest, commandContext);
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
 
         FlowSegmentRequest request;
@@ -521,8 +536,9 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
         FlowRerouteService service = makeService();
-        service.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, true, null));
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, true,
+                false, Collections.emptySet(), null);
+        service.handleRequest(currentRequestKey, request, commandContext);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -544,8 +560,10 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         preparePathComputation(origin.getFlowId(), make2SwitchesPathPair());
 
         FlowRerouteService service = makeService();
-        service.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, true, null));
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, true,
+                false, Collections.emptySet(), null);
+        service.handleRequest(currentRequestKey, request, commandContext);
+
 
         FlowSegmentRequest speakerRequest;
         while ((speakerRequest = requests.poll()) != null) {
@@ -566,9 +584,10 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         FlowRerouteService service = makeService();
         IslEndpoint affectedEndpoint = extractIslEndpoint(origin);
-        service.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, origin.getFlowId(), Collections.singleton(affectedEndpoint),
-                false, false, true, null));
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, true,
+                false, Collections.singleton(affectedEndpoint), null);
+        service.handleRequest(currentRequestKey, request, commandContext);
+
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
 
         FlowSegmentRequest speakerRequest;
@@ -590,9 +609,10 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         IslEndpoint affectedEndpoint = extractIslEndpoint(origin);
         IslEndpoint notAffectedEndpoint = new IslEndpoint(
                 affectedEndpoint.getSwitchId(), affectedEndpoint.getPortNumber() + 1);
-        service.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, origin.getFlowId(), Collections.singleton(notAffectedEndpoint),
-                false, false, true, null));
+
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, true,
+                false, Collections.singleton(affectedEndpoint), null);
+        service.handleRequest(currentRequestKey, request, commandContext);
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
         verifyNoPathReplace(origin, result);

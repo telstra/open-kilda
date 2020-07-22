@@ -24,6 +24,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
+import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
@@ -1344,10 +1345,12 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         and: "Src, dst and transit switches belongs to different POPs(src:1, dst:4, tr1/tr2:2, tr3:3)"
         // tr1/tr2 for the main path and tr3 for the protected path
-        database.setSwitchPop(swPair.src.dpId, "1")
-        [involvedSwP1[1], involvedSwP2[1]].each { swId -> database.setSwitchPop(swId, "2") }
-        database.setSwitchPop(swPair.dst.dpId, "4")
-        database.setSwitchPop(involvedSwProtected[1], "3")
+        northboundV2.partialSwitchUpdate(swPair.src.dpId, new SwitchPatchDto().tap { it.pop = "1" })
+        [involvedSwP1[1], involvedSwP2[1]].each { swId ->
+            northboundV2.partialSwitchUpdate(swId, new SwitchPatchDto().tap { it.pop = "2" })
+        }
+        northboundV2.partialSwitchUpdate(swPair.dst.dpId, new SwitchPatchDto().tap { it.pop = "4" })
+        northboundV2.partialSwitchUpdate(involvedSwProtected[1], new SwitchPatchDto().tap { it.pop = "3" })
 
         and: "Path which contains tr3 is non preferable"
         /** There is not possibility to use the 'makePathNotPreferable' method,
@@ -1438,7 +1441,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         }
         withPool {
             (involvedSwP1 + involvedSwP2 + involvedSwProtected).unique().eachParallel { swId ->
-                database.setSwitchPop(swId, null)
+                northboundV2.partialSwitchUpdate(swId, new SwitchPatchDto().tap { it.pop = "" })
             }
         }
     }

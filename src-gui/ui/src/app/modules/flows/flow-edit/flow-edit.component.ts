@@ -38,7 +38,9 @@ export class FlowEditComponent implements OnInit {
   diverseFlowList:any=[];
   storeLinkSetting = false;
   allocate_protected_path = false;
-
+  ignore_bandwidth:false;
+  pinned:false;
+  periodic_pings:false;
   constructor(
     private formBuilder: FormBuilder,
     private flowService: FlowsService,
@@ -79,6 +81,9 @@ export class FlowEditComponent implements OnInit {
       target_vlan: ["0"],
       diverse_flowid:[null],
       allocate_protected_path:[null],
+      ignore_bandwidth:[null],
+       pinned:[null],
+       periodic_pings:[null]
     });
 
     this.vlanPorts = Array.from({ length: 4095 }, (v, k) => {
@@ -114,6 +119,9 @@ export class FlowEditComponent implements OnInit {
           target_vlan: flow.dst_vlan.toString(),
           diverse_flowid:( typeof(flow['diverse_with'])!='undefined' && flow['diverse_with'].length > 0 )? flow['diverse_with'][0] : null,
           allocate_protected_path:flow['allocate_protected_path'] || null,
+          ignore_bandwidth:flow['ignore_bandwidth'] || null,
+          pinned:flow['pinned'] || null,
+          periodic_pings:flow['periodic-pings'] || null,
         };
         this.flowId = flow.flowid;
         this.flowEditForm.setValue(this.flowDetail);
@@ -254,6 +262,9 @@ export class FlowEditComponent implements OnInit {
        description: this.flowEditForm.controls["description"].value,
       "diverse-flowid":this.flowEditForm.controls["diverse_flowid"].value,
       "allocate_protected_path":this.flowEditForm.controls["allocate_protected_path"].value,
+      "ignore_bandwidth":this.flowEditForm.controls['ignore_bandwidth'].value || null,
+       pinned:this.flowEditForm.controls['pinned'].value || null,
+      "periodic-pings":this.flowEditForm.controls['periodic_pings'].value || null,
     };
 
     const modalRef = this.modalService.open(ModalconfirmationComponent);
@@ -274,7 +285,11 @@ export class FlowEditComponent implements OnInit {
           },
           error => {
             this.loaderService.hide();
-            var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: "Unable to update";
+            var errorMsg = error && error.error && error.error['error-description'] ? error.error['error-description'] : (error && error.error && error.error['error-description']) ? error.error['error-auxiliary-message']: "Unable to update";
+           this.toaster.error(
+                errorMsg,
+                "Error!"
+              );
             this.toaster.error(errorMsg, "Error!");
           }
         );

@@ -43,7 +43,6 @@ import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
-import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -91,10 +90,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     protected void onRequest(Tuple input) throws PipelineException {
         currentKey = pullKey(input);
         FlowRerouteRequest request = pullValue(input, FIELD_ID_PAYLOAD, FlowRerouteRequest.class);
-        FlowRerouteFact reroute = new FlowRerouteFact(
-                currentKey, getCommandContext(), request.getFlowId(), request.getAffectedIsl(), request.isForce(),
-                request.isIgnoreBandwidth(), request.isEffectivelyDown(), request.getReason());
-        service.handleRequest(reroute);
+        service.handleRequest(currentKey, request, getCommandContext());
     }
 
     @Override

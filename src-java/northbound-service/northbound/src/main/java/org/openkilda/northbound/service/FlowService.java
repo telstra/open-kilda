@@ -137,7 +137,7 @@ public interface FlowService {
      *
      * @return the list of all flows with specified status
      */
-    CompletableFuture<List<FlowResponseV2>> getAllFlowsV2();
+    CompletableFuture<List<FlowResponseV2>> getAllFlowsV2(String status);
 
     /**
      * Deletes all flows. Primarily this is a combination of getAllFlows and deleteFlow.
