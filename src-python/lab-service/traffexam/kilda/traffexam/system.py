@@ -17,6 +17,7 @@ import collections
 import errno
 import pathlib
 import os
+import subprocess
 
 import pyroute2
 
@@ -138,6 +139,8 @@ class NetworkNamespace(_IPDBAllocator):
                 raise exc.SystemResourceExistsError(klass, name)
             raise exc.SystemResourceError(klass, name) from e
 
+        self._sysctl(name, 'net.ipv6.conf.default.disable_ipv6', 1)
+
     def release(self):
         super().release()
 
@@ -151,6 +154,18 @@ class NetworkNamespace(_IPDBAllocator):
         name = self.context.make_network_namespace_name()
         nsip = pyroute2.IPDB(nl=pyroute2.NetNS(name))
         self.context.shared_registry.add(type(self), nsip)
+
+    def _sysctl(self, ns_name, option, value):
+        cmd = [
+            'ip', 'netns', 'exec', ns_name,
+            'sysctl', '-w', '--', '{}={}'.format(option, value)]
+        proc = subprocess.Popen(
+            cmd, shell=False,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        output = proc.communicate()[0]
+
+        if proc.returncode:
+            raise exc.SubprocessError(cmd, proc.returncode, output)
 
 
 GWDescriptor = collections.namedtuple('GWDescription', ('root', 'ns'))
