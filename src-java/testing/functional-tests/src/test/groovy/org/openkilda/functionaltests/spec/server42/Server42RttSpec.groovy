@@ -11,12 +11,14 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 
 import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.util.mop.Use
 
 import java.util.concurrent.TimeUnit
 
+@Ignore("unstable on jenkins, fix ASAP")
 @Use(TimeCategory)
 @Narrative("Verify that statistic is collected from server42 Rtt")
 class Server42RttSpec extends HealthCheckSpecification {
