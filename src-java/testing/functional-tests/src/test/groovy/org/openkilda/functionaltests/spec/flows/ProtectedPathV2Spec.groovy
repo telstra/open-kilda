@@ -284,6 +284,49 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute"() {
+        given: "Two switches with 2 diverse paths at least"
+        def switchPair = topologyHelper.switchPairs.find {
+            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() > 1
+        } ?: assumeTrue("No switches with at least 2 diverse paths", false)
+
+        when: "Create flow with protected path"
+        def flow = flowHelperV2.randomFlow(switchPair).tap { allocateProtectedPath = true }
+        flowHelperV2.addFlow(flow)
+        def path = northbound.getFlowPath(flow.flowId)
+
+        and: "Other paths have not enough bandwidth to host the flow in case of reroute"
+        def otherIsls = switchPair.paths.findAll { it != pathHelper.convert(path.protectedPath) &&
+                it != pathHelper.convert(path) }.collectMany { pathHelper.getInvolvedIsls(it) }
+                .unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
+        otherIsls.collectMany{[it, it.reversed]}.each {
+            database.updateIslAvailableBandwidth(it, flow.maximumBandwidth - 1)
+        }
+
+        and: "Main flow path breaks"
+        def mainIsl = pathHelper.getInvolvedIsls(path).first()
+        antiflap.portDown(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
+
+        then: "Main path swaps to protected, flow becomes degraded, main path UP, protected DOWN"
+        Wrappers.wait(WAIT_OFFSET) {
+            def newPath = northbound.getFlowPath(flow.flowId)
+            assert pathHelper.convert(newPath) == pathHelper.convert(path.protectedPath)
+            verifyAll(northbound.getFlow(flow.flowId)) {
+                status == FlowState.DEGRADED.toString()
+                flowStatusDetails.mainFlowPathStatus == "Up"
+                flowStatusDetails.protectedFlowPathStatus == "Down"
+                statusInfo.startsWith("Not enough bandwidth or no path found. Failed to find path with requested bandwidth=$flow.maximumBandwidth")
+            }
+        }
+
+        cleanup:
+        flowHelperV2.deleteFlow(flow.flowId)
+        mainIsl && antiflap.portUp(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
+        otherIsls && otherIsls.collectMany{[it, it.reversed]}.each { database.resetIslBandwidth(it) }
+        database.resetCosts()
+    }
+
+    @Tidy
     @Unroll
     def "System reroutes #flowDescription flow to more preferable path and ignores protected path when reroute\
  is intentional"() {
