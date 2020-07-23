@@ -68,12 +68,15 @@ class SwapEndpointSpec extends HealthCheckSpecification {
         }
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        validateSwitches(flows.collectMany { 
+        List<Switch> involvedSwitches = flows.collectMany {
             [it.source.datapath, it.destination.datapath].collect { findSw(it) }
-        }.unique())
+        }.unique()
+        validateSwitches(involvedSwitches)
+        def isSwitchValid = true
 
         cleanup: "Delete flows"
         flows.each { flowHelper.deleteFlow(it.id) }
+        !isSwitchValid && involvedSwitches.each { northbound.synchronizeSwitch(it.dpId, true) }
 
         where:
         data << [
@@ -241,9 +244,14 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(switchPairs[0])
         validateSwitches(switchPairs[1])
+        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        if (!isSwitchValid) {
+            [switchPairs[0].src.dpId, switchPairs[0].dst.dpId, switchPairs[1].src.dpId, switchPairs[1].dst.dpId]
+                    .unique().each { northbound.synchronizeSwitch(it, true)}
+        }
 
         where:
         endpointsPart << ["vlans", "ports", "switches"]
@@ -300,9 +308,14 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(switchPairs[0])
         validateSwitches(switchPairs[1])
+        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        if (!isSwitchValid) {
+            [switchPairs[0].src.dpId, switchPairs[0].dst.dpId, switchPairs[1].src.dpId, switchPairs[1].dst.dpId]
+                    .unique().each { northbound.synchronizeSwitch(it, true)}
+        }
 
         where:
         description << ["src1 <-> src2", "dst1 <-> dst2", "src1 <-> dst2", "dst1 <-> src2"]
@@ -348,9 +361,14 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(switchPairs[0])
         validateSwitches(switchPairs[1])
+        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        if (!isSwitchValid) {
+            [switchPairs[0].src.dpId, switchPairs[0].dst.dpId, switchPairs[1].src.dpId, switchPairs[1].dst.dpId]
+                    .unique().each { northbound.synchronizeSwitch(it, true)}
+        }
 
         where:
         endpointsPart << ["vlans", "ports", "switches"]
@@ -406,9 +424,14 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
+        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        if (!isSwitchValid) {
+            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
+                    .unique().each { northbound.synchronizeSwitch(it, true)}
+        }
 
         where:
         endpointsPart << ["vlans", "ports", "switches"]
@@ -460,9 +483,14 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
+        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        if (!isSwitchValid) {
+            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
+                    .unique().each { northbound.synchronizeSwitch(it, true)}
+        }
 
         where:
         description << ["src1 <-> src2", "dst1 <-> dst2", "src1 <-> dst2", "dst1 <-> src2"]
@@ -513,9 +541,11 @@ switches"() {
         def error = exc.responseBodyAsString.to(MessageError)
         error.errorMessage == "Could not swap endpoints"
         error.errorDescription == "Flow ${flow2.id} not found"
+        def isTestComplete = true
 
         cleanup: "Delete the flow"
         flowHelper.deleteFlow(flow1.id)
+        !isTestComplete && [switchPair.src.dpId, switchPair.dst.dpId].each { northbound.synchronizeSwitch(it, true)}
     }
 
     @Tidy
@@ -540,9 +570,14 @@ switches"() {
         def error = exc.responseBodyAsString.to(MessageError)
         error.errorMessage == "Could not swap endpoints"
         error.errorDescription.contains("Requested flow '$flow1.id' conflicts with existing flow '$flow3.id'.")
+        Boolean isTestCompleted = true
 
         cleanup: "Delete flows"
         [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.id) }
+        if (!isTestCompleted) {
+            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
+                    .unique().each { northbound.synchronizeSwitch(it, true)}
+        }
 
         where:
         endpointsPart << ["ports and vlans", "ports and vlans", "vlans", "vlans", "ports", "ports"]
@@ -620,9 +655,14 @@ switches"() {
         def error = exc.responseBodyAsString.to(MessageError)
         error.errorMessage == "Could not swap endpoints"
         error.errorDescription == "New requested endpoint for '$flow2.id' conflicts with existing endpoint for '$flow1.id'"
+        Boolean isTestCompleted = true
 
         cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        if (!isTestCompleted) {
+            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
+                    .unique().each { northbound.synchronizeSwitch(it, true)}
+        }
 
         where:
         description << ["the same src endpoint for flows", "the same dst endpoint for flows"]
@@ -668,9 +708,11 @@ switches"() {
         def error = exc.responseBodyAsString.to(MessageError)
         error.errorMessage == "Could not swap endpoints"
         error.errorDescription == "The port $islPort on the switch '${swPair.src.dpId}' is occupied by an ISL (source endpoint collision)."
+        Boolean isTestCompleted = true
 
         cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        !isTestCompleted && [swPair.src.dpId, swPair.dst.dpId].each { northbound.synchronizeSwitch(it, true)}
     }
 
     @Tidy
@@ -750,6 +792,7 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
+        def isSwitchValid = true
 
         cleanup: "Restore topology and delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
@@ -757,6 +800,10 @@ switches"() {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+        }
+        if (!isSwitchValid) {
+            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
+                    .unique().each { northbound.synchronizeSwitch(it, true)}
         }
         database.resetCosts()
     }
@@ -834,6 +881,7 @@ switches"() {
         def error = exc.responseBodyAsString.to(MessageError)
         error.errorMessage == "Could not swap endpoints"
         error.errorDescription.contains("Not enough bandwidth or no path found")
+        Boolean isTestCompleted = true
 
         cleanup: "Restore topology and delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
@@ -841,6 +889,10 @@ switches"() {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+        }
+        if (!isTestCompleted) {
+            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
+                    .unique().each { northbound.synchronizeSwitch(it, true)}
         }
         database.resetCosts()
     }
@@ -924,6 +976,7 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
+        def isSwitchValid = true
 
         cleanup: "Restore topology and delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
@@ -931,6 +984,10 @@ switches"() {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+        }
+        if (!isSwitchValid) {
+            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
+                    .unique().each { northbound.synchronizeSwitch(it, true)}
         }
         database.resetCosts()
     }
@@ -980,12 +1037,17 @@ switches"() {
         def error = exc.responseBodyAsString.to(MessageError)
         error.errorMessage == "Could not swap endpoints"
         error.errorDescription.contains("Not enough bandwidth or no path found")
+        Boolean isTestCompleted = true
 
         cleanup: "Restore topology and delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+        }
+        if (!isTestCompleted) {
+            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
+                    .unique().each { northbound.synchronizeSwitch(it, true)}
         }
         database.resetCosts()
     }
@@ -1015,9 +1077,14 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
+        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        if (!isSwitchValid) {
+            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
+                    .unique().each { northbound.synchronizeSwitch(it, true)}
+        }
 
         where:
         description << ["src1 <-> src2", "dst1 <-> dst2", "src1 <-> dst2", "dst1 <-> src2"]
@@ -1075,6 +1142,7 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
+        def isSwitchValid = true
 
         and: "The first flow allows traffic on the main path"
         def traffExam = traffExamProvider.get()
@@ -1100,6 +1168,10 @@ switches"() {
 
         cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        if (!isSwitchValid) {
+            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
+                    .unique().each { northbound.synchronizeSwitch(it, true)}
+        }
     }
 
     @Tidy
@@ -1128,9 +1200,12 @@ switches"() {
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(switchPair)
+        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        !isSwitchValid && [switchPair.src.dpId, switchPair.dst.dpId].each { northbound.synchronizeSwitch(it, true)}
+
 
         where:
         description << ["src1 <-> src2", "dst1 <-> dst2"]
@@ -1172,9 +1247,11 @@ switches"() {
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(switchPair)
+        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        !isSwitchValid && [switchPair.src.dpId, switchPair.dst.dpId].each { northbound.synchronizeSwitch(it, true)}
 
         where:
         description << ["src1 <-> src2", "dst1 <-> dst2"]
@@ -1258,6 +1335,7 @@ switches"() {
             validation.verifyRuleSectionsAreEmpty()
             validation.verifyMeterSectionsAreEmpty()
         }
+        def isSwitchValid = true
 
         cleanup:
         deleteResponses?.size() != 2 && [flow1, flow2].each { flowHelperV2.deleteFlow(it.flowId) }
@@ -1265,6 +1343,7 @@ switches"() {
             database.setSwitchStatus(swPair1.src.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(swPair1.src, blockData, true)
         }
+        !isSwitchValid && switches.each { northbound.synchronizeSwitch(it, true)}
     }
 
     void verifyEndpoints(response, FlowEndpointPayload flow1SrcExpected, FlowEndpointPayload flow1DstExpected,
