@@ -112,7 +112,7 @@ public class FlowConverter {
             flowInfo.setTargetSwitch(destination.getSwitchId());
             flowInfo.setDstPort(destination.getPortId());
             flowInfo.setDstVlan(destination.getVlanId());
-            flowInfo.setDstVlan(destination.getInnerVlanId());
+            flowInfo.setDstInnerVlan(destination.getInnerVlanId());
             flowInfo.setDstLldp(destination.getDetectedDevice().isLldp());
             flowInfo.setDstArp(destination.getDetectedDevice().isArp());
         }
