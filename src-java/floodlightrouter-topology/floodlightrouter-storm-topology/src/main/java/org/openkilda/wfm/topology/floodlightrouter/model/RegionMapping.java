@@ -17,33 +17,26 @@ package org.openkilda.wfm.topology.floodlightrouter.model;
 
 import org.openkilda.model.SwitchId;
 
-import lombok.Value;
-
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-@Value
-public class RegionMapping {
-    private OneToOneMapping readWrite;
-    private OneToOneMapping readOnly;
+public class RegionMapping implements RegionMappingStorage {
+    private final OneToOneMapping readWrite;
+    private final OneToManyMapping readOnly;
 
     public RegionMapping(Clock clock, Duration staleWipeDelay) {
         readWrite = new OneToOneMapping(clock, staleWipeDelay);
-        readOnly = new OneToOneMapping(clock, Duration.ZERO);
+        readOnly = new OneToManyMapping();
     }
 
     /**
      * Looks for a region for switchId.
      */
     public Optional<String> lookupReadWriteRegion(SwitchId switchId) {
-        return readWrite.lookup(switchId, true);
-    }
-
-    public Optional<String> lookupReadOnlyRegion(SwitchId switchId) {
-        return readOnly.lookup(switchId, false);
+        return readWrite.lookup(switchId);
     }
 
     public Map<String, Set<SwitchId>> organizeReadWritePopulationPerRegion() {
@@ -57,13 +50,26 @@ public class RegionMapping {
     /**
      * Updates region mapping for switch.
      */
-    public void update(RegionMappingUpdate update) {
-        OneToOneMapping target = update.isReadWriteMode() ? readWrite : readOnly;
+    public void apply(RegionMappingUpdate update) {
+        update.apply(this);
+    }
 
-        if (update.getRegion() != null) {
-            target.add(update.getSwitchId(), update.getRegion());
-        } else {
-            target.remove(update.getSwitchId());
-        }
+    @Override
+    public void update(RegionMappingAdd action) {
+        selectUpdateTarget(action).add(action.getSwitchId(), action.getRegion());
+    }
+
+    @Override
+    public void update(RegionMappingRemove action) {
+        selectUpdateTarget(action).remove(action.getSwitchId(), action.getRegion());
+    }
+
+    @Override
+    public void update(RegionMappingSet action) {
+        selectUpdateTarget(action).set(action.getSwitchId(), action.getRegion());
+    }
+
+    private MappingApproach selectUpdateTarget(RegionMappingUpdate update) {
+        return update.isReadWriteMode() ? readWrite : readOnly;
     }
 }

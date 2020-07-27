@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,14 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.statistics;
+package org.openkilda.wfm.topology.floodlightrouter.model;
 
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.IFloodlightService;
-import org.projectfloodlight.openflow.types.DatapathId;
+import org.openkilda.model.SwitchId;
 
-import java.util.Set;
+public class RegionMappingRemove extends RegionMappingUpdate {
+    public RegionMappingRemove(SwitchId switchId, String region, boolean readWriteMode) {
+        super(switchId, region, readWriteMode);
+    }
 
-public interface IStatisticsService extends IFloodlightService {
-    void processStatistics(FloodlightModuleContext context, Set<DatapathId> excludeSwitches);
+    @Override
+    public void apply(RegionMappingStorage storage) {
+        storage.update(this);
+    }
 }

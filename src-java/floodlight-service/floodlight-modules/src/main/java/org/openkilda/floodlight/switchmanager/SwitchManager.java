@@ -2745,11 +2745,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
-    public boolean isTrackingEnabled() {
-        return config.isTrackingEnabled();
-    }
-
-    @Override
     public SwitchManagerConfig getSwitchManagerConfig() {
         return config;
     }

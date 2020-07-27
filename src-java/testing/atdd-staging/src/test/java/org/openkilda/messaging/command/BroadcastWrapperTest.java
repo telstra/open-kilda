@@ -19,7 +19,6 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.stats.StatsRequest;
 import org.openkilda.model.SwitchId;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.junit.Assert;
 import org.junit.Test;
@@ -27,8 +26,7 @@ import org.junit.Test;
 public class BroadcastWrapperTest {
     @Test
     public void serializeLoop() throws Exception {
-        StatsRequest payload = new StatsRequest(
-                ImmutableList.of(new SwitchId(1), new SwitchId(2)));
+        StatsRequest payload = new StatsRequest();
         BroadcastWrapper wrapper = new BroadcastWrapper(ImmutableSet.of(new SwitchId(2), new SwitchId(3)), payload);
         CommandMessage envelope = new CommandMessage(wrapper, System.currentTimeMillis(), getClass().getSimpleName());
 

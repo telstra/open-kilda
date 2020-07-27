@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,9 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.switches;
+package org.openkilda.wfm.topology.floodlightrouter.service;
 
-import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.AbstractMessage;
+import org.openkilda.messaging.Message;
+import org.openkilda.model.SwitchId;
 
-public class ListSwitchRequest extends CommandData {
+public interface ControllerToSpeakerProxyCarrier {
+    void sendToSpeaker(Message message, String region);
+
+    void sendToSpeaker(AbstractMessage message, String region);
+
+    void regionNotFoundError(Message message, SwitchId switchId);
+
+    void regionNotFoundError(AbstractMessage message, SwitchId switchId);
 }
