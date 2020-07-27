@@ -419,7 +419,7 @@ and at least 1 path must remain safe"
         then: "After global timeout expect flow reroute to fail and flow to become DOWN"
         TimeUnit.SECONDS.sleep(globalTimeout)
         int eventsAmount
-        wait(globalTimeout, 1) { //long wait, may be doing some revert actions after global t/o
+        wait(globalTimeout + WAIT_OFFSET, 1) { //long wait, may be doing some revert actions after global t/o
             def history = northbound.getFlowHistory(flow.flowId)
             def lastEvent = history.last().histories
             assert lastEvent.find { it.action == sprintf('Global timeout reached for reroute operation on flow "%s"', flow.flowId) }

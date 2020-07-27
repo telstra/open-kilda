@@ -49,7 +49,9 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
                         def validation = northbound.validateSwitch(it.switchId)
                         validation.verifyRuleSectionsAreEmpty()
                         validation.verifyMeterSectionsAreEmpty()
-                        assert northbound.getSwitchRules(it.switchId).flowEntries.find { it.cookie == Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE }
+                        if (it.ofVersion == "OF_13") {
+                            assert northbound.getSwitchRules(it.switchId).flowEntries.find { it.cookie == Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE }
+                        }
                     }
                     northbound.getAllLinks().each {
                         assert it.state == IslChangeType.DISCOVERED
