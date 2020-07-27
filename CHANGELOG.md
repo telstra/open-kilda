@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.66.1 (27/07/2020)
+
+### Bug Fixes:
+-  [#3662](https://github.com/telstra/open-kilda/pull/3662) Fix for issue in updating vlan for Flow (Issue: [#3661](https://github.com/telstra/open-kilda/issues/3661)) [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.66.0...v1.66.1).
+
+### Affected Components:
+gui
+
+---
+
 ## v1.66.0 (22/07/2020)
 
 ### Features:
