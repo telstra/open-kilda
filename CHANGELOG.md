@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.67.0 (29/07/2020)
+
+### Features:
+-  [#3641](https://github.com/telstra/open-kilda/pull/3641) Disable IPv6 on interfaces(VLAN) created by traffexam [**tests**]
+
+### Improvements:
+-  [#3569](https://github.com/telstra/open-kilda/pull/3569) Bump storm and kafka client libs (Issue: [#2977](https://github.com/telstra/open-kilda/issues/2977)) [**configuration**][**storm-topologies**]
+-  [#3642](https://github.com/telstra/open-kilda/pull/3642) remove ignore annotation for "Traffic counters in ingress rule are reset on flow rerouting" (Issues: [#3641](https://github.com/telstra/open-kilda/issues/3641) [#3641](https://github.com/telstra/open-kilda/issues/3641)) [**tests**]
+-  [#3644](https://github.com/telstra/open-kilda/pull/3644) minor fixes according to v1.66 [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.66.1...v1.67.0).
+
+### Affected Components:
+isllatency, swmanager, ping, reroute, nbworker, stats, grpc, stats-router, network, flow-hs, router, otsdb, connected, portstate
+
+---
+
 ## v1.66.1 (27/07/2020)
 
 ### Bug Fixes:
