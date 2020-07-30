@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.floodlightrouter;
 
 public final class ComponentType {
-
     public static final String KILDA_FLOW_HS_REPLY_BOLT = "KILDA_FLOW_HS_REPLY_BOLT";
     public static final String KILDA_PING_REPLY_BOLT = "KILDA_PING_REPLY_BOLT";
     public static final String NORTHBOUND_REPLY_BOLT = "NORTHBOUND_REPLY_BOLT";
@@ -28,47 +27,30 @@ public final class ComponentType {
     public static final String KILDA_TOPO_DISCO_REPLY_BOLT = "KILDA_TOPO_DISCO_REPLY_BOLT";
     public static final String KILDA_TOPO_DISCO_BOLT = "KILDA_TOPO_DISCO_BOLT";
 
-
     public static final String SPEAKER_FLOW_REQUEST_BOLT = "KILDA_FLOW_REQUEST_BOLT";
-    public static final String SPEAKER_PING_REQUEST_BOLT = "SPEAKER_PING_REQUEST_BOLT";
     public static final String SPEAKER_REQUEST_BOLT = "SPEAKER_REQUEST_BOLT";
     public static final String SPEAKER_DISCO_REQUEST_BOLT = "SPEAKER_DISCO_REQUEST_BOLT";
 
-
     public static final String SPEAKER_KAFKA_SPOUT = "ROUTER_SPEAKER_KAFKA_SPOUT";
-    public static final String SPEAKER_KAFKA_BOLT = "SPEAKER_KAFKA_BOLT";
-    public static final String KILDA_FLOW_HS_KAFKA_BOLT = "KILDA_FLOW_HS_KAFKA_BOLT";
     public static final String KILDA_FLOW_HS_KAFKA_SPOUT = "KILDA_FLOW_HS_KAFKA_SPOUT";
-    public static final String SPEAKER_FLOW_HS_KAFKA_BOLT = "SPEAKER_FLOW_HS_KAFKA_BOLT";
     public static final String SPEAKER_FLOW_HS_KAFKA_SPOUT = "ROUTER_SPEAKER_FLOW_HS_KAFKA_SPOUT";
     public static final String SPEAKER_PING_KAFKA_SPOUT = "SPEAKER_PING_KAFKA_SPOUT";
-    public static final String SPEAKER_PING_KAFKA_BOLT = "SPEAKER_PING_KAFKA_BOLT";
     public static final String KILDA_PING_KAFKA_SPOUT = "KILDA_PING_KAFKA_SPOUT";
-    public static final String KILDA_PING_KAFKA_BOLT = "KILDA_PING_KAFKA_BOLT";
     public static final String KILDA_STATS_KAFKA_SPOUT = "KILDA_STATS_KAFKA_SPOUT";
-    public static final String KILDA_STATS_KAFKA_BOLT = "KILDA_STATS_KAFKA_BOLT";
     public static final String KILDA_ISL_LATENCY_KAFKA_SPOUT = "KILDA_ISL_LATENCY_KAFKA_SPOUT";
-    public static final String KILDA_ISL_LATENCY_KAFKA_BOLT = "KILDA_ISL_LATENCY_KAFKA_BOLT";
     public static final String KILDA_CONNECTED_DEVICES_KAFKA_SPOUT = "KILDA_CONNECTED_DEVICES_KAFKA_SPOUT";
-    public static final String KILDA_CONNECTED_DEVICES_KAFKA_BOLT = "KILDA_CONNECTED_DEVICES_KAFKA_BOLT";
-    public static final String KILDA_SWITCH_MANAGER_KAFKA_BOLT = "KILDA_SWITCH_MANAGER_KAFKA_BOLT";
     public static final String KILDA_SWITCH_MANAGER_KAFKA_SPOUT = "KILDA_SWITCH_MANAGER_KAFKA_SPOUT";
     public static final String SPEAKER_DISCO_KAFKA_SPOUT = "SPEAKER_DISCO_KAFKA_SPOUT";
-    public static final String SPEAKER_DISCO_KAFKA_BOLT = "SPEAKER_DISCO_KAFKA_BOLT";
     public static final String KILDA_TOPO_DISCO_KAFKA_SPOUT = "KILDA_TOPO_DISCO_KAFKA_SPOUT";
-    public static final String KILDA_TOPO_DISCO_KAFKA_BOLT = "KILDA_TOPO_DISCO_KAFKA_BOLT";
-    public static final String NORTHBOUND_REPLY_KAFKA_BOLT = "NORTHBOUND_REPLY_KAFKA_BOLT";
     public static final String NORTHBOUND_REPLY_KAFKA_SPOUT = "NORTHBOUND_REPLY_KAFKA_SPOUT";
     public static final String KILDA_NB_WORKER_KAFKA_SPOUT = "KILDA_NB_WORKER_KAFKA_SPOUT";
-    public static final String KILDA_NB_WORKER_KAFKA_BOLT = "KILDA_NB_WORKER_KAFKA_BOLT";
     public static final String STATS_STATS_REQUEST_KAFKA_SPOUT = "STATS_STATS_REQUEST_KAFKA_SPOUT";
-    public static final String STATS_STATS_REQUEST_KAFKA_BOLT = "STATS_STATS_REQUEST_KAFKA_BOLT";
     public static final String STATS_STATS_REQUEST_BOLT = "STATS_STATS_REQUEST_BOLT";
     public static final String FL_STATS_SWITCHES_SPOUT = "FL_STATS_SWITCHES_SPOUT";
     public static final String FL_STATS_SWITCHES_REPLY_BOLT = "FL_STATS_SWITCHES_REPLY_BOLT";
-    public static final String FL_STATS_SWITCHES_KAFKA_BOLT = "FL_STATS_SWITCHES_KAFKA_BOLT";
 
-    public static final String MONOTONIC_TICK = "monotonic.tick";
+    public static final String KAFKA_GENERIC_OUTPUT = "kafka-generic.output";
+    public static final String KAFKA_HS_OUTPUT = "kafka-hs.output";
 
     private ComponentType() {}
 }

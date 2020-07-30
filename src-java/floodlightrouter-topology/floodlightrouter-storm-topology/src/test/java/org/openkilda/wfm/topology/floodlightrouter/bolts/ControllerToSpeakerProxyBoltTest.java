@@ -21,21 +21,29 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.topology.floodlightrouter.ComponentType;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMapping;
+import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
+import com.google.common.collect.ImmutableMap;
+import org.apache.storm.generated.StormTopology;
+import org.apache.storm.task.GeneralTopologyContext;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.TupleImpl;
 import org.apache.storm.tuple.Values;
+import org.apache.storm.utils.Utils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -49,9 +57,12 @@ import java.util.Map;
 import java.util.Set;
 
 @RunWith(MockitoJUnitRunner.class)
-public class RequestBoltTest {
+public class ControllerToSpeakerProxyBoltTest {
+    private static final int TASK_ID_SPOUT = 0;
+    private static final int TASK_ID_REGION_TRACKER = 1;
+    private static final String STREAM_SPOUT_DEFAULT = Utils.DEFAULT_STREAM_ID;
 
-    private RequestBolt subject;
+    private ControllerToSpeakerProxyBolt subject;
 
     private static final SwitchId switchAlpha = new SwitchId(1);
     private static final SwitchId switchBeta = new SwitchId(2);
@@ -59,15 +70,13 @@ public class RequestBoltTest {
     private static final String REGION_ONE = "1";
     private static final String REGION_TWO = "2";
 
-    public static final String FIELD_ID_KEY = "key";
-    public static final String FIELD_ID_MESSAGE = "message";
-    private static final Fields STREAM_SPEAKER_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_MESSAGE);
-
     @Mock
     private TopologyContext topologyContext;
 
     @Mock
     private OutputCollector outputCollector;
+
+    private GeneralTopologyContext generalTopologyContext;
 
     private final Map<String, String> topologyConfig = Collections.emptyMap();
 
@@ -76,42 +85,48 @@ public class RequestBoltTest {
         Set<String> regions = new HashSet<>();
         regions.add(REGION_ONE);
         regions.add(REGION_TWO);
-        subject = new RequestBolt(Stream.SPEAKER_DISCO, regions);
+        subject = new ControllerToSpeakerProxyBolt(Stream.SPEAKER_DISCO, regions);
+
         when(topologyContext.getThisTaskId()).thenReturn(1);
         subject.prepare(topologyConfig, topologyContext, outputCollector);
 
+        StormTopology topology = mock(StormTopology.class);
+
+        Map<Integer, String> taskToComponent = ImmutableMap.of(
+                TASK_ID_SPOUT, ComponentType.SPEAKER_KAFKA_SPOUT,
+                TASK_ID_REGION_TRACKER, RegionTrackerBolt.BOLT_ID);
+        Map<String, Map<String, Fields>> componentToFields = ImmutableMap.of(
+                ComponentType.SPEAKER_KAFKA_SPOUT, ImmutableMap.of(
+                        Utils.DEFAULT_STREAM_ID, new Fields(
+                                KafkaRecordTranslator.FIELD_ID_KEY, KafkaRecordTranslator.FIELD_ID_PAYLOAD,
+                                AbstractBolt.FIELD_ID_CONTEXT)),
+                RegionTrackerBolt.BOLT_ID, ImmutableMap.of(
+                        RegionTrackerBolt.STREAM_REGION_UPDATE_ID, RegionTrackerBolt.STREAM_REGION_UPDATE_FIELDS));
+        generalTopologyContext = new GeneralTopologyContext(
+                topology, topologyConfig, taskToComponent, Collections.emptyMap(), componentToFields, "dummy");
     }
 
     @Test
-    public void verifyStreamDefinition() {
-        OutputFieldsDeclarer streamManager = mock(OutputFieldsDeclarer.class);
-        subject.declareOutputFields(streamManager);
-
-        verify(streamManager).declareStream(Stream.formatWithRegion(Stream.SPEAKER_DISCO, REGION_ONE),
-                STREAM_SPEAKER_FIELDS);
-        verify(streamManager).declareStream(Stream.formatWithRegion(Stream.SPEAKER_DISCO, REGION_TWO),
-                STREAM_SPEAKER_FIELDS);
-    }
-
-    @Test
-    public void verifyConsumerToSpeakerTupleConsistency() throws Exception {
+    public void verifyConsumerToSpeakerTupleConsistency() {
+        // region update
         SwitchMapping switchMapping = new SwitchMapping(switchAlpha, REGION_ONE);
-        Tuple notificationTuple = mock(Tuple.class);
-        when(notificationTuple.getValueByField(FIELD_ID_MESSAGE)).thenReturn(switchMapping);
-        when(notificationTuple.getSourceStreamId()).thenReturn(Stream.REGION_NOTIFICATION);
-        subject.handleInput(notificationTuple);
+        Tuple notificationTuple = new TupleImpl(
+                generalTopologyContext, new Values(switchMapping, new CommandContext()),
+                TASK_ID_REGION_TRACKER, RegionTrackerBolt.STREAM_REGION_UPDATE_ID);
+        subject.execute(notificationTuple);
         assertTrue(subject.switchTracker.getMapping().containsKey(switchAlpha));
+
+        // generic message
         CommandMessage discoCommand = new CommandMessage(
                 new DiscoverIslCommandData(switchAlpha, 1, 1L),
                 3L, "discovery-confirmation");
-        Tuple tuple = mock(Tuple.class);
-        when(tuple.getStringByField(FIELD_ID_KEY)).thenReturn(switchAlpha.toString());
-        when(tuple.getValueByField(FIELD_ID_MESSAGE)).thenReturn(discoCommand);
-        subject.handleInput(tuple);
+        Tuple tuple = new TupleImpl(
+                generalTopologyContext,
+                new Values(switchAlpha.toString(), discoCommand, new CommandContext(discoCommand)),
+                TASK_ID_SPOUT, STREAM_SPOUT_DEFAULT);
+        subject.execute(tuple);
         ArgumentCaptor<Values> discoCommandValuesCaptor = ArgumentCaptor.forClass(Values.class);
-        verify(outputCollector).emit(eq(Stream.formatWithRegion(Stream.SPEAKER_DISCO, REGION_ONE)),
-                eq(tuple),
-                discoCommandValuesCaptor.capture());
+        verify(outputCollector).emit(eq(tuple), discoCommandValuesCaptor.capture());
 
         assertEquals(switchAlpha.toString(), discoCommandValuesCaptor.getValue().get(0));
         assertEquals(discoCommand, discoCommandValuesCaptor.getValue().get(1));
@@ -120,19 +135,24 @@ public class RequestBoltTest {
     @Test
     public void verifyConsumerToSpeakerTupleFails() throws Exception {
         SwitchMapping switchMapping = new SwitchMapping(switchBeta, REGION_ONE);
-        Tuple notificationTuple = mock(Tuple.class);
-        when(notificationTuple.getValueByField(FIELD_ID_MESSAGE)).thenReturn(switchMapping);
-        when(notificationTuple.getSourceStreamId()).thenReturn(Stream.REGION_NOTIFICATION);
-        subject.handleInput(notificationTuple);
+        Tuple notificationTuple = new TupleImpl(
+                generalTopologyContext, new Values(switchMapping, new CommandContext()),
+                TASK_ID_REGION_TRACKER, RegionTrackerBolt.STREAM_REGION_UPDATE_ID);
+        subject.execute(notificationTuple);
         assertTrue(subject.switchTracker.getMapping().containsKey(switchBeta));
         assertFalse(subject.switchTracker.getMapping().containsKey(switchAlpha));
+        verify(outputCollector).ack(eq(notificationTuple));
+
         CommandMessage discoCommand = new CommandMessage(
                 new DiscoverIslCommandData(switchAlpha, 1, 1L),
                 3L, "discovery-confirmation");
-        Tuple tuple = mock(Tuple.class);
-        when(tuple.getValueByField(FIELD_ID_MESSAGE)).thenReturn(discoCommand);
-        subject.handleInput(tuple);
+        Tuple tuple = new TupleImpl(
+                generalTopologyContext,
+                new Values(switchAlpha.toString(), discoCommand, new CommandContext(discoCommand)),
+                TASK_ID_SPOUT, STREAM_SPOUT_DEFAULT);
+        subject.execute(tuple);
 
-        verifyZeroInteractions(outputCollector);
+        verify(outputCollector).ack(eq(tuple));
+        verifyNoMoreInteractions(outputCollector);
     }
 }

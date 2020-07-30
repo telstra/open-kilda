@@ -27,7 +27,6 @@ import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.kafka.AbstractMessageDeserializer;
-import org.openkilda.wfm.kafka.AbstractMessageSerializer;
 import org.openkilda.wfm.kafka.CustomNamedSubscription;
 import org.openkilda.wfm.kafka.MessageDeserializer;
 import org.openkilda.wfm.kafka.MessageSerializer;
@@ -39,6 +38,7 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Deserializer;
+import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.storm.Config;
@@ -243,7 +243,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      * @return {@link KafkaSpout}
      */
     protected KafkaSpout<String, AbstractMessage> buildKafkaSpoutForAbstractMessage(String topic, String spoutId) {
-        return new KafkaSpout<>(getKafkaSpoutAbstractMessageSupport(Collections.singletonList(topic), spoutId).build());
+        return buildKafkaSpoutForAbstractMessage(Collections.singletonList(topic), spoutId);
     }
 
     /**
@@ -252,9 +252,11 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      * @param topics Kafka topics
      * @return {@link KafkaSpout}
      */
-    protected KafkaSpout<String, AbstractMessage> buildKafkaSpoutForAbstractMessage(List<String> topics,
-                                                                                    String spoutId) {
-        return new KafkaSpout<>(getKafkaSpoutAbstractMessageSupport(topics, spoutId).build());
+    protected KafkaSpout<String, AbstractMessage> buildKafkaSpoutForAbstractMessage(
+            List<String> topics, String spoutId) {
+        return new KafkaSpout<>(makeKafkaSpoutConfig(topics, spoutId, AbstractMessageDeserializer.class)
+                .setRecordTranslator(new AbstractMessageTranslator())
+                .build());
     }
 
     /**
@@ -277,31 +279,11 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      *
      * @param topic Kafka topic
      * @return {@link KafkaBolt}
+     * @deprecated replaced by {@link AbstractTopology#makeKafkaBolt}
      */
+    @Deprecated
     protected KafkaBolt<String, Message> buildKafkaBolt(final String topic) {
-        Properties properties = getKafkaProducerProperties();
-        properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, MessageSerializer.class.getName());
-
-        return new KafkaBolt<String, Message>()
-                .withProducerProperties(properties)
-                .withTopicSelector(new DefaultTopicSelector(topic))
-                .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
-    }
-
-    /**
-     * Creates Kafka bolt, that uses {@link AbstractMessageSerializer} in order to serialize an object.
-     *
-     * @param topic Kafka topic
-     * @return {@link KafkaBolt}
-     */
-    protected KafkaBolt<String, T> buildKafkaBoltWithAbstractMessageSupport(final String topic) {
-        Properties properties = getKafkaProducerProperties();
-        properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, AbstractMessageSerializer.class.getName());
-
-        return new KafkaBolt<String, T>()
-                .withProducerProperties(properties)
-                .withTopicSelector(new DefaultTopicSelector(topic))
-                .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
+        return makeKafkaBolt(topic, MessageSerializer.class);
     }
 
     /**
@@ -344,20 +326,18 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         return config;
     }
 
-    protected KafkaSpoutConfig.Builder<String, AbstractMessage> getKafkaSpoutAbstractMessageSupport(List<String> topics,
-                                                                                                    String spoutId) {
-        KafkaSpoutConfig.Builder<String, AbstractMessage> config = new KafkaSpoutConfig.Builder<>(
-                kafkaConfig.getHosts(), new CustomNamedSubscription(topics));
+    protected <V> KafkaBolt<String, V> makeKafkaBolt(String topic, Class<? extends Serializer<V>> valueEncoder) {
+        return makeKafkaBolt(valueEncoder)
+                .withTopicSelector(topic);
+    }
 
-        config.setProp(ConsumerConfig.GROUP_ID_CONFIG, makeKafkaGroupName(spoutId))
-                .setRecordTranslator(new AbstractMessageTranslator())
-                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST)
-                .setProp(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
-                .setProp(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
-                .setProp(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, AbstractMessageDeserializer.class)
-                .setTupleTrackingEnforced(true);
+    protected <V> KafkaBolt<String, V> makeKafkaBolt(Class<? extends Serializer<V>> valueEncoder) {
+        Properties properties = getKafkaProducerProperties();
+        properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, valueEncoder.getName());
 
-        return config;
+        return new KafkaBolt<String, V>()
+                .withProducerProperties(properties)
+                .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
     }
 
     private String makeKafkaGroupName(String spoutId) {

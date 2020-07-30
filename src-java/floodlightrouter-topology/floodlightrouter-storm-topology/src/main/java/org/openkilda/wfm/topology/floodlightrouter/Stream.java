@@ -17,36 +17,14 @@ package org.openkilda.wfm.topology.floodlightrouter;
 
 public final class Stream {
 
-    /**
-     * Returns formatted param with respect to region.
-     * @param param - stream or topic
-     * @param region target region
-     * @return formatted string or initial param if region is empty
-     */
-    public static String formatWithRegion(String param, String region) {
-        if (region == null || region.isEmpty()) {
-            return param;
-        }
-        return String.format("%s_%s", param, region);
-    }
-
     public static final String KILDA_TOPO_DISCO = "KILDA_TOPO_DISCO";
     public static final String DISCO_REPLY = "DISCO_REPLY";
-    public static final String SPEAKER = "SPEAKER";
-    public static final String SPEAKER_FLOW_HS = "SPEAKER_FLOW_HS";
-    public static final String KILDA_HS_FLOW = "KILDA_HS_FLOW";
     public static final String SPEAKER_PING = "SPEAKER_PING";
-    public static final String KILDA_PING = "KILDA_PING";
-    public static final String KILDA_STATS = "KILDA_STATS";
-    public static final String KILDA_ISL_LATENCY = "KILDA_ISL_LATENCY";
-    public static final String KILDA_CONNECTED_DEVICES = "KILDA_CONNECTED_DEVICES";
     public static final String KILDA_SWITCH_MANAGER = "KILDA_SWITCH_MANAGER";
     public static final String SPEAKER_DISCO = "SPEAKER_DISCO";
     public static final String NORTHBOUND_REPLY = "NORTHBOUND_REPLY";
     public static final String REGION_NOTIFICATION = "REGION_NOTIFICATION";
     public static final String NB_WORKER = "NB_WORKER";
-    public static final String STATS_STATS_REQUEST_PRIV = "STATS_STATS-REQUEST_PRIV";
-    public static final String FL_STATS_SWITCHES = "FL_STATS_SWITCHES";
 
     private Stream() {}
 }

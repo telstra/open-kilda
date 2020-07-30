@@ -36,6 +36,7 @@ import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.kafka.AbstractMessageSerializer;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.history.bolt.HistoryBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
@@ -347,7 +348,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     }
 
     private void speakerOutput(TopologyBuilder topologyBuilder) {
-        KafkaBolt flKafkaBolt = buildKafkaBoltWithAbstractMessageSupport(getConfig().getKafkaSpeakerFlowTopic());
+        KafkaBolt<String, AbstractMessage> flKafkaBolt = makeKafkaBolt(
+                getConfig().getKafkaSpeakerFlowTopic(), AbstractMessageSerializer.class);
         topologyBuilder.setBolt(ComponentId.SPEAKER_REQUEST_SENDER.name(), flKafkaBolt, parallelism)
                 .shuffleGrouping(ComponentId.FLOW_CREATE_SPEAKER_WORKER.name(),
                         Stream.SPEAKER_WORKER_REQUEST_SENDER.name())
