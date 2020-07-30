@@ -4,6 +4,7 @@ plugins {
 }
 
 group = 'org.projectfloodlight'
+def versionTag = '1.2-kilda-3'
 
 import org.ajoberstar.grgit.Grgit
 
@@ -22,15 +23,15 @@ task cloneFloodlightRepo {
 
     if (repo.exists()) {
         def grgit = Grgit.open(currentDir: repo.absolutePath)
-        grgit.checkout(branch: 'STABLE')
-        grgit.pull(rebase: false)
+        grgit.fetch()
+        grgit.checkout(branch: versionTag)
         grgit.close()
     } else {
         def repoUri = 'https://github.com/kilda/floodlight.git'
         if (project.hasProperty("floodlightGitRepo")) {
             repoUri = project.property("floodlightGitRepo")
         }
-        def grgit = Grgit.clone(dir: repo.absolutePath, uri: repoUri, refToCheckout: 'STABLE')
+        def grgit = Grgit.clone(dir: repo.absolutePath, uri: repoUri, refToCheckout: versionTag)
         grgit.close()
     }
 }
@@ -45,7 +46,7 @@ task compileMavenProject(type: Exec, dependsOn: [configurations.openflowj, clone
     inputs.file('floodlight/pom.xml')
     inputs.dir('floodlight/src')
     inputs.dir('floodlight/lib')
-    outputs.file('floodlight/target/floodlight-1.2-kilda-3.jar')
+    outputs.file("floodlight/target/floodlight-${versionTag}.jar")
     outputs.file('floodlight/target/floodlight.jar')
 
     workingDir 'floodlight'
@@ -53,7 +54,7 @@ task compileMavenProject(type: Exec, dependsOn: [configurations.openflowj, clone
 }
 
 task copyJar(type: Copy, dependsOn: compileMavenProject) {
-    ext.destFile = file("$buildDir/libs/floodlight-1.2-kilda-3.jar")
+    ext.destFile = file("$buildDir/libs/floodlight-${versionTag}.jar")
 
     from(compileMavenProject)
     into "$buildDir/libs"
