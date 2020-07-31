@@ -39,6 +39,8 @@ import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslUpCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.PortHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListExhaustedPollModeUpdateCommand;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -51,8 +53,14 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
     public static final String FIELD_ID_ISL_SOURCE = SpeakerRouter.FIELD_ID_ISL_SOURCE;
     public static final String FIELD_ID_ISL_DEST = SpeakerRouter.FIELD_ID_ISL_DEST;
     public static final String FIELD_ID_COMMAND = SpeakerRouter.FIELD_ID_COMMAND;
+    public static final String FIELD_ID_DATAPATH = PortHandler.FIELD_ID_DATAPATH;
+    public static final String FIELD_ID_PORT_NUMBER = PortHandler.FIELD_ID_PORT_NUMBER;
 
     public static final Fields STREAM_FIELDS = SpeakerRouter.STREAM_ISL_FIELDS;
+
+    public static final String STREAM_POLL_ID = "poll";
+    public static final Fields STREAM_POLL_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER,
+            FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
     private transient NetworkUniIslService service;
 
@@ -89,7 +97,7 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer streamManager) {
         streamManager.declare(STREAM_FIELDS);
-        // TODO
+        streamManager.declareStream(STREAM_POLL_ID, STREAM_POLL_FIELDS);
     }
 
     @Override
@@ -122,9 +130,23 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
         emit(getCurrentTuple(), makeDefaultTuple(new IslBfdStatusUpdateCommand(endpoint, reference, status)));
     }
 
+    @Override
+    public void exhaustedPollModeUpdateRequest(Endpoint endpoint, boolean enableExhaustedPollMode) {
+        WatchListCommand command = new WatchListExhaustedPollModeUpdateCommand(endpoint, enableExhaustedPollMode);
+        // We emit without the anchor tuple because here we are generating a new event to change the mode.
+        // Also, if a cycle appears in the future by the anchor tuple, it will be quite difficult to find it,
+        // and we remove the possibility of this cycle appearing initially.
+        emit(STREAM_POLL_ID, makePollTuple(command));
+    }
+
     private Values makeDefaultTuple(IslCommand command) {
         IslReference reference = command.getReference();
         return new Values(reference.getSource(), reference.getDest(), command, getCommandContext());
+    }
+
+    private Values makePollTuple(WatchListCommand command) {
+        Endpoint endpoint = command.getEndpoint();
+        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, getCommandContext());
     }
 
     // UniIslCommand

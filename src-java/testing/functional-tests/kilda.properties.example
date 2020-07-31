@@ -38,8 +38,9 @@ spring.profiles.active=virtual
 reroute.delay=2
 reroute.hardtimeout=8
 
-discovery.interval=3
+discovery.generic.interval=3
 discovery.timeout=15
+discovery.exhausted.interval=60
 
 antiflap.min=1
 antiflap.warmup=3

@@ -57,6 +57,6 @@ public interface IslLatencyTopologyConfig extends AbstractTopologyConfig {
     @Min(1)
     double getDiscoveryIntervalMultiplier();
 
-    @Key("discovery.interval")
+    @Key("discovery.auxiliary.interval")
     int getDiscoveryInterval();
 }
