@@ -13,24 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.flows;
+package org.openkilda.messaging.model;
 
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class FlowPatchEndpoint {
+public class PatchEndpoint {
     private SwitchId switchId;
     private Integer portNumber;
     private Integer vlanId;
     private Integer innerVlanId;
-    private DetectConnectedDevicesV2 detectConnectedDevices;
+    private Boolean trackLldpConnectedDevices;
+    private Boolean trackArpConnectedDevices;
 }

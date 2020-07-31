@@ -15,8 +15,8 @@
 
 package org.openkilda.messaging.model;
 
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.PathComputationStrategy;
-import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
@@ -28,12 +28,8 @@ import lombok.Data;
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class FlowPatch {
     private String flowId;
-    private SwitchId sourceSwitch;
-    private SwitchId destinationSwitch;
-    private Integer sourcePort;
-    private Integer destinationPort;
-    private Integer sourceVlan;
-    private Integer destinationVlan;
+    private PatchEndpoint source;
+    private PatchEndpoint destination;
     private Long bandwidth;
     private Boolean allocateProtectedPath;
     private Long maxLatency;
@@ -43,4 +39,7 @@ public class FlowPatch {
     private PathComputationStrategy targetPathComputationStrategy;
     private String diverseFlowId;
     private Boolean pinned;
+    private Boolean ignoreBandwidth;
+    private String description;
+    private FlowEncapsulationType encapsulationType;
 }
