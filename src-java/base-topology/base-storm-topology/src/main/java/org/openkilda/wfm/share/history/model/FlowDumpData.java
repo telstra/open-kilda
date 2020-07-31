@@ -15,8 +15,10 @@
 
 package org.openkilda.wfm.share.history.model;
 
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 
@@ -49,6 +51,12 @@ public class FlowDumpData {
     private FlowPathStatus forwardStatus;
     private FlowPathStatus reverseStatus;
     private String groupId;
+    private boolean allocateProtectedPath;
+    private boolean pinned;
+    private boolean periodicPings;
+    private FlowEncapsulationType encapsulationType;
+    private PathComputationStrategy pathComputationStrategy;
+    private long maxLatency;
 
     @AllArgsConstructor
     @Getter
