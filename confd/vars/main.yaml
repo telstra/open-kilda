@@ -175,3 +175,6 @@ kilda_server42_stats_kafka_group_id: "server42-stats"
 
 kilda_server42_control_storm_stub_http_port: 9001
 kilda_server42_control_storm_stub_kafka_group_id: "server42-control-storm-stub"
+
+kilda_server42_control_kafka_topic_to_storm: "kilda.server42-control.commands-reply.priv"
+kilda_server42_control_kafka_topic_from_storm: "kilda.server42-storm.commands.priv"
