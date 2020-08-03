@@ -30,6 +30,7 @@ import org.openkilda.wfm.share.bolt.KafkaEncoder;
 import org.openkilda.wfm.share.hubandspoke.TaskIdBasedKeyFactory;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
+import org.openkilda.wfm.topology.network.error.ControllerNotFoundException;
 import org.openkilda.wfm.topology.network.model.BfdStatus;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
@@ -105,6 +106,15 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
             handleSpeakerRulesWorkerInput(input);
         } else {
             unhandledInput(input);
+        }
+    }
+
+    @Override
+    protected void handleException(Exception error) throws Exception {
+        try {
+            super.handleException(error);
+        } catch (ControllerNotFoundException e) {
+            log.error(e.getMessage());
         }
     }
 
