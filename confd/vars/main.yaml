@@ -56,8 +56,8 @@ kilda_lab_api_port: "8288"
 kilda_northbound_username: "kilda"
 kilda_northbound_password: "kilda"
 
-kilda_kafka_topic_server42_control_storm: "kilda.server42-storm.commands.priv"
-kilda_kafka_topic_server42_control: "kilda.server42-control.commands-reply.priv"
+kilda_kafka_topic_server42_storm_to_control: "kilda.server42-storm.commands.priv"
+kilda_kafka_topic_server42_control_to_storm: "kilda.server42-control.commands-reply.priv"
 kilda_kafka_topic_server42_stats: "kilda.server42-stats.flowrtt.priv"
 
 # interval in ticks (seconds) between sending disco packets
@@ -175,6 +175,3 @@ kilda_server42_stats_kafka_group_id: "server42-stats"
 
 kilda_server42_control_storm_stub_http_port: 9001
 kilda_server42_control_storm_stub_kafka_group_id: "server42-control-storm-stub"
-
-kilda_server42_control_kafka_topic_to_storm: "kilda.server42-control.commands-reply.priv"
-kilda_server42_control_kafka_topic_from_storm: "kilda.server42-storm.commands.priv"

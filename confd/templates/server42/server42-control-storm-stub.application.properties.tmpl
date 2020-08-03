@@ -8,8 +8,8 @@ org.openkilda.server42.control.stormstub=info
 logging.file.name=logs/monitoring.log
 logging.config=classpath:log4j2.xml
 # Kilda related
-openkilda.server42.control.kafka.topic.to_storm={{ getv "/kilda_kafka_topic_server42_control" }}
-openkilda.server42.control.kafka.topic.from_storm={{ getv "/kilda_kafka_topic_server42_control_storm" }}
+openkilda.server42.control.kafka.topic.to_storm={{ getv "/kilda_kafka_topic_server42_control_to_storm" }}
+openkilda.server42.control.kafka.topic.from_storm={{ getv "/kilda_kafka_topic_server42_storm_to_control" }}
 
 spring.devtools.add-properties=false
 
