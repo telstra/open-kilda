@@ -1,83 +1,58 @@
 @startuml
+
 title FL communication channel
 
-collections FL
-
-box "FL IO Kafka topics" #LightGreen
-control "FLn-write" as fl_write
-control "FLn-read" as fl_read
-end box
-
-box "FL router" #LightBlue
-participant "FL-router" as fl_router
-control "speaker"
-end box
-
-box "Speaker consumers" #LightGreen
+box "Region-less topics" #LightGreen
 control "topicA"
 control "topicB"
 end box
 
-== FL is message recipient ==
+box "FL router" #LightBlue
+control "c_spout" as rc_spout
+participant "controller2speaker" as cs_proxy
+participant "speaker2controller" as sc_proxy
+control "s_spout" as rs_spout
+end box
 
-topicA -> speaker: json
-speaker -> fl_router: json
+box "Region topics" #LightGreen
+control "topicA-regionA" as region_topicA
+control "topicB-regionA" as region_topicB
+end box
 
-activate fl_router
-note right of fl_router: extract switch id
-alt message with reply-to topic
-    note right of fl_router: extract reply-to topic
-    fl_router -> fl_router: store mapping\ncorrelationId->reply-to
-end
+collections FL
 
-note right of fl_router: determine target FL\nby switchId
-alt positive case
-    fl_router -> fl_read: json
-    fl_read -> FL: json
-    activate FL
-    FL -> fl_write: FlReceiveAck
-    deactivate FL
-    fl_write -> fl_router: FlReceiveAck
-    note right of FL: handle command
-else no ack from FL
-    fl_router -> fl_read: json
-    fl_read ->X FL
-    ...
-    fl_router -> fl_router: FL ack timeout
-    fl_router -> fl_router: blacklist possible\noutdated response
-    fl_router -> topicB: NoSwitchError
-    topicB -> : json
-else no switch to FL mapping
-    fl_router -> topicB: NoSwitchError
-    topicB -> : json
-end
-deactivate fl_router
+== Controller to speaker stream ==
+-> topicA : json
 
-== FL is message origin ==
+topicA -> rc_spout : json
+note right of rc_spout : decode json
+rc_spout -> cs_proxy : message
+activate cs_proxy
 
-opt response is blacklisted
-    FL -> fl_write: json
-    fl_write -> fl_router: json
-    activate fl_router
-    note right of fl_router: check blacklist
-    fl_router ->X fl_router: drop message
-    deactivate fl_router
-end
+note right of cs_proxy : extract switchId
+note right of cs_proxy : lookup switchId-to-region map
 
-FL -> fl_write: json
-fl_write -> fl_router: json
-activate fl_router
-note right of fl_router: extract SwitchId
-fl_router -> fl_router: update SwitchId\nto FL map
-alt we have stored output topic
-    note right of fl_router: lookup stored\noutput topic
-    fl_router -> topicA: json
-    topicA -> :json
-else
-    fl_router -> fl_router: determine output\ntopic by message kind
-    fl_router -> topicB: json
-    topicB -> :json
-end
-deactivate fl_router
+cs_proxy -> region_topicA
+deactivate cs_proxy
+
+region_topicA -> FL : json
+
+== Speaker to controller stream ==
+
+FL -> region_topicB : json
+region_topicB -> rs_spout : json
+note right of rs_spout : decode json
+
+rs_spout -> sc_proxy : message
+activate sc_proxy
+note right of sc_proxy : extract switchId
+
+sc_proxy -> cs_proxy : region update
+note right of cs_proxy : update switchId-to-region map
+
+sc_proxy -> topicB : json
+deactivate sc_proxy
+
+<- topicB : json
 
 @enduml
