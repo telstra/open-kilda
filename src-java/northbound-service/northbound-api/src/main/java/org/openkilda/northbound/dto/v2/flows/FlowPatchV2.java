@@ -54,6 +54,18 @@ public class FlowPatchV2 {
     @JsonProperty("pinned")
     private Boolean pinned;
 
+    @JsonProperty("ignore_bandwidth")
+    private Boolean ignoreBandwidth;
+
+    @JsonProperty("description")
+    private String description;
+
+    @JsonProperty("encapsulation_type")
+    private String encapsulationType;
+
+    @JsonProperty("path_computation_strategy")
+    private String pathComputationStrategy;
+
     @JsonCreator
     public FlowPatchV2(@JsonProperty("source") FlowPatchEndpoint source,
                        @JsonProperty("destination") FlowPatchEndpoint destination,
@@ -64,7 +76,11 @@ public class FlowPatchV2 {
                        @JsonProperty("diverse_flow_id") String diverseFlowId,
                        @JsonProperty("maximum_bandwidth") Long maximumBandwidth,
                        @JsonProperty("allocate_protected_path") Boolean allocateProtectedPath,
-                       @JsonProperty("pinned") Boolean pinned) {
+                       @JsonProperty("pinned") Boolean pinned,
+                       @JsonProperty("ignore_bandwidth") Boolean ignoreBandwidth,
+                       @JsonProperty("description") String description,
+                       @JsonProperty("encapsulation_type") String encapsulationType,
+                       @JsonProperty("path_computation_strategy") String pathComputationStrategy) {
         this.maxLatency = maxLatency;
         this.priority = priority;
         this.periodicPings = periodicPings;
@@ -75,5 +91,9 @@ public class FlowPatchV2 {
         this.maximumBandwidth = maximumBandwidth;
         this.allocateProtectedPath = allocateProtectedPath;
         this.pinned = pinned;
+        this.ignoreBandwidth = ignoreBandwidth;
+        this.description = description;
+        this.encapsulationType = encapsulationType;
+        this.pathComputationStrategy = pathComputationStrategy;
     }
 }

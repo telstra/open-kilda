@@ -28,7 +28,11 @@ import java.util.concurrent.TimeUnit;
 @Builder
 @AllArgsConstructor
 public class NetworkOptions implements Serializable {
-    private Long discoveryInterval;
+    private Long discoveryGenericInterval;
+
+    private Long discoveryExhaustedInterval;
+
+    private Long discoveryAuxiliaryInterval;
 
     private Long discoveryRoundTripStatusInterval;
 
@@ -57,7 +61,9 @@ public class NetworkOptions implements Serializable {
     private long antiFlapStatsDumpingInterval;
 
     public NetworkOptions(NetworkTopologyConfig topologyConfig) {
-        discoveryInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryInterval());
+        discoveryGenericInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryGenericInterval());
+        discoveryExhaustedInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryExhaustedInterval());
+        discoveryAuxiliaryInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryAuxiliaryInterval());
         discoveryRoundTripStatusInterval = TimeUnit.SECONDS.toNanos(
                 topologyConfig.getDiscoveryRoundTripStatusInterval());
         discoveryPacketTtl = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryPacketTtl());

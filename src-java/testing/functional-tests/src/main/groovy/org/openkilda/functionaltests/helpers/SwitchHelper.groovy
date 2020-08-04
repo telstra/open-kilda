@@ -81,7 +81,7 @@ class SwitchHelper {
     @Value('${burst.coefficient}')
     double burstCoefficient
 
-    @Value('${discovery.interval}')
+    @Value('${discovery.generic.interval}')
     int discoveryInterval
 
     @Value('${discovery.timeout}')

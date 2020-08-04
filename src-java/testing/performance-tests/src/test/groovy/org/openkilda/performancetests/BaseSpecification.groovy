@@ -60,7 +60,7 @@ class BaseSpecification extends Specification implements SetupOnce {
     @Value("#{'\${floodlight.controllers.stat.openflow}'.split(',')}")
     List<String> statControllers
 
-    @Value('${discovery.interval}')
+    @Value('${discovery.generic.interval}')
     int discoveryInterval
 
     @Value('${discovery.timeout}')

@@ -85,6 +85,11 @@ public abstract class AbstractBolt extends BaseRichBolt {
         output.emit(stream, anchor, payload);
     }
 
+    protected void emit(String stream, List<Object> payload) {
+        log.debug("emit tuple into \"{}\" stream: {}", stream, payload);
+        output.emit(stream, payload);
+    }
+
     protected void emitWithContext(String stream, Tuple input, Values payload) {
         payload.add(getCommandContext());
         log.debug("emit tuple into {} stream: {}", stream, payload);

@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,9 +18,16 @@ package org.openkilda.wfm.topology.network.service;
 import org.openkilda.wfm.share.model.Endpoint;
 
 import com.google.common.annotations.VisibleForTesting;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -28,20 +35,25 @@ import java.util.TreeMap;
 @Slf4j
 public class NetworkWatchListService {
     private final IWatchListCarrier carrier;
-    private final long tickPeriod;
+    private final long genericTickPeriod;
+    private final long exhaustedTickPeriod;
+    private final long auxiliaryTickPeriod;
 
-    private Set<Endpoint> endpoints = new HashSet<>();
-    private SortedMap<Long, Set<Endpoint>> timeouts = new TreeMap<>();
+    private final Map<Endpoint, WatchListEntry> endpoints = new HashMap<>();
+    private final SortedMap<Long, Set<Endpoint>> timeouts = new TreeMap<>();
 
 
-    public NetworkWatchListService(IWatchListCarrier carrier, long tickPeriod) {
+    public NetworkWatchListService(IWatchListCarrier carrier, long genericTickPeriod,
+                                   long exhaustedTickPeriod, long auxiliaryTickPeriod) {
         this.carrier = carrier;
-        this.tickPeriod = tickPeriod;
+        this.genericTickPeriod = genericTickPeriod;
+        this.exhaustedTickPeriod = exhaustedTickPeriod;
+        this.auxiliaryTickPeriod = auxiliaryTickPeriod;
     }
 
     @VisibleForTesting
     Set<Endpoint> getEndpoints() {
-        return endpoints;
+        return endpoints.keySet();
     }
 
     @VisibleForTesting
@@ -51,11 +63,9 @@ public class NetworkWatchListService {
 
     @VisibleForTesting
     void addWatch(Endpoint endpoint, long currentTime) {
-        if (endpoints.add(endpoint)) {
+        if (endpoints.put(endpoint, new WatchListEntry()) == null) {
             carrier.discoveryRequest(endpoint, currentTime);
-            long key = currentTime + tickPeriod;
-            timeouts.computeIfAbsent(key, mappingFunction -> new HashSet<>())
-                    .add(endpoint);
+            addTimeout(endpoint, currentTime + genericTickPeriod);
         }
     }
 
@@ -73,27 +83,58 @@ public class NetworkWatchListService {
         endpoints.remove(endpoint);
     }
 
+    @VisibleForTesting
+    void updateExhaustedPollMode(Endpoint endpoint, boolean enable, long currentTime) {
+        log.info("Discovery poll mode for endpoint {} update - exhausted mode requested (enable: '{}')",
+                endpoint, enable);
+        WatchListEntry watchListEntry = endpoints.computeIfPresent(endpoint,
+                (e, listEntry) -> listEntry.toBuilder().exhaustedPollEnabled(enable).build());
+
+        if (watchListEntry != null && !enable) { // when ISL belonging to this endpoint was found
+            reloadEndpointTimeout(endpoint, currentTime);
+        }
+    }
+
+    public void updateExhaustedPollMode(Endpoint endpoint, boolean enable) {
+        updateExhaustedPollMode(endpoint, enable, now());
+    }
+
+    @VisibleForTesting
+    void updateAuxiliaryPollMode(Endpoint endpoint, boolean enable, long currentTime) {
+        log.info("Discovery poll mode for endpoint {} update - auxiliary mode requested (enable: '{}')",
+                endpoint, enable);
+        WatchListEntry watchListEntry = endpoints.computeIfPresent(endpoint,
+                (e, listEntry) -> listEntry.toBuilder().auxiliaryPollEnabled(enable).build());
+
+        if (watchListEntry != null && !enable) { // when another mechanism used to determine ISL status is disabled
+            reloadEndpointTimeout(endpoint, currentTime);
+        }
+    }
+
+    public void updateAuxiliaryPollMode(Endpoint endpoint, boolean enable) {
+        updateAuxiliaryPollMode(endpoint, enable, now());
+    }
+
     /**
      * Consume timer tick.
      */
-    public void tick(long tickTime) {
+    @VisibleForTesting
+    void tick(long tickTime) {
         SortedMap<Long, Set<Endpoint>> range = timeouts.subMap(0L, tickTime + 1);
         if (!range.isEmpty()) {
-            HashSet<Endpoint> renew = new HashSet<>();
-            for (Set<Endpoint> e : range.values()) {
-                for (Endpoint ee : e) {
-                    if (endpoints.contains(ee)) {
-                        carrier.discoveryRequest(ee, tickTime);
-                        renew.add(ee);
+            Map<Endpoint, WatchListEntry> renew = new HashMap<>();
+
+            for (Set<Endpoint> endpointSet : range.values()) {
+                for (Endpoint endpoint : endpointSet) {
+                    WatchListEntry watchListEntry = endpoints.get(endpoint);
+                    if (watchListEntry != null && renew.put(endpoint, watchListEntry) == null) {
+                        carrier.discoveryRequest(endpoint, tickTime);
                     }
                 }
             }
             range.clear();
-            if (!renew.isEmpty()) {
-                long key = tickTime + tickPeriod;
-                timeouts.computeIfAbsent(key, mappingFunction -> new HashSet<>())
-                        .addAll(renew);
-            }
+
+            renew.forEach((endpoint, watchListEntry) -> addTimeout(endpoint, tickTime + calculateTimeout(endpoint)));
         }
     }
 
@@ -103,5 +144,41 @@ public class NetworkWatchListService {
 
     private long now() {
         return System.nanoTime();
+    }
+
+    private void addTimeout(Endpoint endpoint, long timeoutAt) {
+        timeouts.computeIfAbsent(timeoutAt, mappingFunction -> new HashSet<>())
+                .add(endpoint);
+    }
+
+    @VisibleForTesting
+    long calculateTimeout(Endpoint endpoint) {
+        return Optional.ofNullable(endpoints.get(endpoint)).map(watchListEntry -> {
+            if (watchListEntry.isAuxiliaryPollEnabled()) {
+                return auxiliaryTickPeriod;
+            }
+            if (watchListEntry.isExhaustedPollEnabled()) {
+                return exhaustedTickPeriod;
+            }
+            return genericTickPeriod;
+        }).orElse(genericTickPeriod);
+    }
+
+    private void reloadEndpointTimeout(Endpoint endpoint, long currentTime) {
+        for (Set<Endpoint> e : timeouts.values()) {
+            e.remove(endpoint);
+        }
+
+        carrier.discoveryRequest(endpoint, currentTime);
+        addTimeout(endpoint, currentTime + calculateTimeout(endpoint));
+    }
+
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder(toBuilder = true)
+    private static class WatchListEntry {
+        boolean exhaustedPollEnabled;
+        boolean auxiliaryPollEnabled;
     }
 }

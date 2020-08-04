@@ -12,6 +12,8 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.history.FlowEventPayload
+import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.history.FlowEvent
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
@@ -65,6 +67,9 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
+        flow.pathComputationStrategy = PathComputationStrategy.LATENCY
+        flow.maxLatency = 12345678
         flowHelperV2.addFlow(flow)
 
         then: "History record is created"
@@ -90,11 +95,12 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
             dump.forwardStatus == "IN_PROGRESS" // issue 3038
             dump.reverseStatus == "IN_PROGRESS"
             dump.reverseMeterId > 0
-            //dump.allocateProtectedPath == flow.allocateProtectedPath // issue 3031
-            //dump.encapsulationType == flow.encapsulationType
-            //dump.pinned == flow.pinned
-            //dump.pathComputationStrategy == flow.pathComputationStrategy
-            //dump.periodicPings == flow.periodicPings
+            dump.allocateProtectedPath == flow.allocateProtectedPath
+            dump.encapsulationType.toString() == flow.encapsulationType
+            dump.pinned == flow.pinned
+            dump.pathComputationStrategy.toString() == flow.pathComputationStrategy
+            dump.periodicPings == flow.periodicPings
+            dump.maxLatency == flow.maxLatency
         }
 
         when: "Update the created flow"

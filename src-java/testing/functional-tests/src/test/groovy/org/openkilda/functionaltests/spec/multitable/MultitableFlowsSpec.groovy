@@ -866,7 +866,6 @@ mode with existing flows and hold flows of different table-mode types"() {
         revertSwitchToInitState(sw, initSwProps)
     }
 
-    @Ignore
     def "Flow rules are not recreated when pinned flow changes state to up/down"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null
@@ -947,23 +946,24 @@ mode with existing flows and hold flows of different table-mode types"() {
             it.reverse.pingSuccess
         }
 
-        when: "Synchronize the flow"
-        with(northbound.synchronizeFlow(flow.flowId)) { it.rerouted }
-        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
-
-        then: "Flow rules are reinstalled according to switch props"
-        Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
-            with(database.getFlow(flow.flowId)) { flowInfo ->
-                verifyAll(northbound.getSwitchRules(involvedSwitches[0].dpId).flowEntries) { rules ->
-                    rules.find { it.cookie == flowInfo.forwardPath.cookie.value }.tableId == SINGLE_TABLE_ID
-                    rules.find { it.cookie == flowInfo.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
-                }
-                verifyAll(northbound.getSwitchRules(involvedSwitches[2].dpId).flowEntries) { rules ->
-                    rules.find { it.cookie == flowInfo.forwardPath.cookie.value }.tableId == EGRESS_RULE_MULTI_TABLE_ID
-                    rules.find { it.cookie == flowInfo.reversePath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
-                }
-            }
-        }
+        //https://github.com/telstra/open-kilda/issues/3639
+//        when: "Synchronize the flow"
+//        with(northbound.synchronizeFlow(flow.flowId)) { it.rerouted }
+//        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+//
+//        then: "Flow rules are reinstalled according to switch props"
+//        Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
+//            with(database.getFlow(flow.flowId)) { flowInfo ->
+//                verifyAll(northbound.getSwitchRules(involvedSwitches[0].dpId).flowEntries) { rules ->
+//                    rules.find { it.cookie == flowInfo.forwardPath.cookie.value }.tableId == SINGLE_TABLE_ID
+//                    rules.find { it.cookie == flowInfo.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
+//                }
+//                verifyAll(northbound.getSwitchRules(involvedSwitches[2].dpId).flowEntries) { rules ->
+//                    rules.find { it.cookie == flowInfo.forwardPath.cookie.value }.tableId == EGRESS_RULE_MULTI_TABLE_ID
+//                    rules.find { it.cookie == flowInfo.reversePath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
+//                }
+//            }
+//        }
 
         when: "Delete the flow"
         northboundV2.deleteFlow(flow.flowId)
