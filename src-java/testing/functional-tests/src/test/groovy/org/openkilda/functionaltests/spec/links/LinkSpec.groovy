@@ -338,7 +338,7 @@ class LinkSpec extends HealthCheckSpecification {
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
 
         then: "The link is rediscovered in both directions"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
@@ -734,7 +734,7 @@ class LinkSpec extends HealthCheckSpecification {
         linkIsDeleted = false
 
         then: "The link is rediscovered in both directions"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED

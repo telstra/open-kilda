@@ -49,6 +49,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRule
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.UniIslHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListAuxiliaryPollModeUpdateCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListExhaustedPollModeUpdateCommand;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -175,6 +176,15 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     @Override
     public void auxiliaryPollModeUpdateRequest(Endpoint endpoint, boolean enableAuxiliaryPollMode) {
         WatchListCommand command = new WatchListAuxiliaryPollModeUpdateCommand(endpoint, enableAuxiliaryPollMode);
+        // We emit without the anchor tuple because here we are generating a new event to change the mode.
+        // Also, if a cycle appears in the future by the anchor tuple, it will be quite difficult to find it,
+        // and we remove the possibility of this cycle appearing initially.
+        emit(STREAM_POLL_ID, makePollTuple(command));
+    }
+
+    @Override
+    public void exhaustedPollModeUpdateRequest(Endpoint endpoint, boolean enableExhaustedPollMode) {
+        WatchListCommand command = new WatchListExhaustedPollModeUpdateCommand(endpoint, enableExhaustedPollMode);
         // We emit without the anchor tuple because here we are generating a new event to change the mode.
         // Also, if a cycle appears in the future by the anchor tuple, it will be quite difficult to find it,
         // and we remove the possibility of this cycle appearing initially.
