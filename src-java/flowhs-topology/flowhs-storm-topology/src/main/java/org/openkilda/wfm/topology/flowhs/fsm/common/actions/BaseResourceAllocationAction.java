@@ -23,6 +23,9 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.Isl;
+import org.openkilda.model.IslStatus;
+import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
@@ -54,6 +57,8 @@ import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeException;
 import net.jodah.failsafe.RetryPolicy;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -196,6 +201,13 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
         } catch (FailsafeException ex) {
             throw ex.getCause();
         }
+
+        try {
+            checkAllocatedPaths(stateMachine);
+        } catch (ResourceAllocationException ex) {
+            saveRejectedResources(stateMachine);
+            throw ex;
+        }
     }
 
     protected boolean isNotSamePath(PathPair pathPair, FlowPathPair flowPathPair) {
@@ -285,5 +297,45 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                 format("The flow paths %s / %s were created (with allocated resources)",
                         newFlowPaths.getForward().getPathId(), newFlowPaths.getReverse().getPathId()),
                 dumpData);
+    }
+
+    private void checkAllocatedPaths(T stateMachine) throws ResourceAllocationException {
+        List<PathId> pathIds = makeAllocatedPathIdsList(stateMachine);
+
+        if (!pathIds.isEmpty()) {
+            Collection<Isl> pathIsls = islRepository.findByPathIds(pathIds);
+            for (Isl isl : pathIsls) {
+                if (!IslStatus.ACTIVE.equals(isl.getStatus())) {
+                    throw new ResourceAllocationException(
+                            format("ISL %s_%d-%s_%d is not active on the allocated path",
+                                    isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(),
+                                    isl.getDestSwitch().getSwitchId(), isl.getDestPort()));
+                }
+            }
+        }
+    }
+
+    private void saveRejectedResources(T stateMachine) {
+        stateMachine.getRejectedPaths().addAll(makeAllocatedPathIdsList(stateMachine));
+        Optional.ofNullable(stateMachine.getNewPrimaryResources())
+                .ifPresent(stateMachine.getRejectedResources()::add);
+        Optional.ofNullable(stateMachine.getNewProtectedResources())
+                .ifPresent(stateMachine.getRejectedResources()::add);
+
+        stateMachine.setNewPrimaryResources(null);
+        stateMachine.setNewPrimaryForwardPath(null);
+        stateMachine.setNewPrimaryReversePath(null);
+        stateMachine.setNewProtectedResources(null);
+        stateMachine.setNewProtectedForwardPath(null);
+        stateMachine.setNewProtectedReversePath(null);
+    }
+
+    private List<PathId> makeAllocatedPathIdsList(T stateMachine) {
+        List<PathId> pathIds = new ArrayList<>();
+        Optional.ofNullable(stateMachine.getNewPrimaryForwardPath()).ifPresent(pathIds::add);
+        Optional.ofNullable(stateMachine.getNewPrimaryReversePath()).ifPresent(pathIds::add);
+        Optional.ofNullable(stateMachine.getNewProtectedForwardPath()).ifPresent(pathIds::add);
+        Optional.ofNullable(stateMachine.getNewProtectedReversePath()).ifPresent(pathIds::add);
+        return pathIds;
     }
 }

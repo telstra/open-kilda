@@ -26,12 +26,14 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 
+import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.RetryPolicy;
 import org.neo4j.driver.v1.exceptions.ClientException;
 
+import java.util.List;
 import java.util.Objects;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class CompleteFlowPathRemovalAction extends
@@ -61,8 +63,14 @@ public class CompleteFlowPathRemovalAction extends
         FlowPath oldProtectedForward = flow.getPath(stateMachine.getOldProtectedForwardPath()).orElse(null);
         FlowPath oldProtectedReverse = flow.getPath(stateMachine.getOldProtectedReversePath()).orElse(null);
 
-        flowPathRepository.lockInvolvedSwitches(Stream.of(oldPrimaryForward, oldPrimaryReverse,
-                oldProtectedForward, oldProtectedReverse).filter(Objects::nonNull).toArray(FlowPath[]::new));
+        List<FlowPath> flowPaths = Lists.newArrayList(oldPrimaryForward, oldPrimaryReverse,
+                oldProtectedForward, oldProtectedReverse);
+        List<FlowPath> rejectedFlowPaths = stateMachine.getRejectedPaths().stream()
+                .map(this::getFlowPath)
+                .collect(Collectors.toList());
+        flowPaths.addAll(rejectedFlowPaths);
+
+        flowPathRepository.lockInvolvedSwitches(flowPaths.stream().filter(Objects::nonNull).toArray(FlowPath[]::new));
 
         if (oldPrimaryForward != null) {
             if (oldPrimaryReverse != null) {
@@ -99,5 +107,12 @@ public class CompleteFlowPathRemovalAction extends
             deleteFlowPath(oldProtectedReverse);
             saveRemovalActionWithDumpToHistory(stateMachine, flow, oldProtectedReverse);
         }
+
+        rejectedFlowPaths.forEach(flowPath -> {
+            log.debug("Removing the rejected path {}", flowPath);
+            deleteFlowPath(flowPath);
+
+            saveRemovalActionWithDumpToHistory(stateMachine, flow, flowPath);
+        });
     }
 }

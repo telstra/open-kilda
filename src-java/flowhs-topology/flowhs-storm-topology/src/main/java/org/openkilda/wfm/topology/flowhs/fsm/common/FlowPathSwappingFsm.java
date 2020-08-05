@@ -59,6 +59,9 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, 
     protected PathId oldProtectedReversePath;
     protected FlowPathStatus oldProtectedReversePathStatus;
 
+    protected final Collection<PathId> rejectedPaths = new ArrayList<>();
+    protected final Collection<FlowResources> rejectedResources = new ArrayList<>();
+
     protected final Map<UUID, SwitchId> pendingCommands = new HashMap<>();
     protected final Map<UUID, Integer> retriedCommands = new HashMap<>();
     protected final Map<UUID, FlowErrorResponse> failedCommands = new HashMap<>();
