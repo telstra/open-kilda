@@ -1,0 +1,29 @@
+@startuml
+title Update exclusions for Telescope
+participant App
+
+control kilda.apps
+participant AppsTopology
+participant Neo4j
+control kilda.speaker.flow
+participant Speaker
+participant Switch
+control kilda.flow
+control apps.notifications.pub
+
+App -> kilda.apps: add/remove exclusions
+kilda.apps -> AppsTopology
+
+activate AppsTopology
+AppsTopology -> kilda.speaker.flow: install/remove exclusion drop request
+kilda.speaker.flow -> Speaker
+activate Speaker
+Speaker -> Switch: install/remove rule
+Speaker -> kilda.flow: send result
+deactivate Speaker
+kilda.flow -> AppsTopology
+AppsTopology -> apps.notifications.pub: send notification
+deactivate AppsTopology
+apps.notifications.pub -> App
+
+@enduml
