@@ -937,7 +937,10 @@ class FlowCrudSpec extends HealthCheckSpecification {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
         database.resetCosts()
-        islsToModify.each { database.resetIslBandwidth(it) }
+        islsToModify.each {
+            database.resetIslBandwidth(it)
+            database.resetIslBandwidth(it.reversed)
+        }
     }
 
     //this is for v1 mapped to h&s
