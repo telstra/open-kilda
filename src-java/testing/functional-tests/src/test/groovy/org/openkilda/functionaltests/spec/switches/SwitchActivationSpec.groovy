@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.spec.switches
 
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.messaging.info.event.SwitchChangeType.ACTIVATED
 import static org.openkilda.messaging.info.event.SwitchChangeType.DEACTIVATED
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
@@ -154,7 +153,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         }
 
         and: "Related ISLs are discovered"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET / 2 + antiflapCooldown) {
+        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET / 2 + antiflapCooldown) {
             def allIsls = northbound.getAllLinks()
             isls.each {
                 assert islUtils.getIslInfo(allIsls, it).get().actualState == IslChangeType.DISCOVERED
