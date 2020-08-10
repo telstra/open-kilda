@@ -40,7 +40,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -122,15 +121,24 @@ public class StatsIntegrationService {
                 } else if (param.getValue() != null) {
                     Filter filter = new Filter();
                     filter.setGroupBy(Boolean.valueOf(OpenTsDb.GROUP_BY));
+                    
                     if ((statsType.equals(StatsType.SWITCH_PORT) && param.getKey().equals("port"))
                             || ((statsType.equals(StatsType.FLOW_RAW_PACKET) || statsType.equals(StatsType.METER))
                             && param.getKey().equals("cookie"))
-                            || ((statsType.equals(StatsType.FLOW_RAW_PACKET) || statsType.equals(StatsType.METER)) 
-                            && param.getKey().equals("switchid"))
+                            || (statsType.equals(StatsType.METER) && param.getKey().equals("switchid"))
                             || (statsType.equals(StatsType.METER) && param.getKey().equals("direction")
                             && index == -1)
-                            || (statsType.equals(StatsType.METER) && param.getKey().equals("meterid"))) {
+                            || (statsType.equals(StatsType.METER) && param.getKey().equals("meterid"))
+                    ) {
                         filter.setType(OpenTsDb.TYPE_WILDCARD);
+                    } else if (((statsType.equals(StatsType.FLOW_RAW_PACKET) && param.getKey().equals("switchid"))
+                            || param.getKey().equals("flowid"))) {
+                        String [] paramValue = param.getValue();
+                        if (paramValue[0].equals("*")) {
+                            filter.setType(OpenTsDb.TYPE_WILDCARD);
+                        } else {
+                            filter.setType(OpenTsDb.TYPE);
+                        }
                     } else {
                         filter.setType(OpenTsDb.TYPE);
                     }
@@ -291,8 +299,8 @@ public class StatsIntegrationService {
             queries = getIslLossPacketsQueries(queries, downsample, flowId, srcSwitch, srcPort, dstSwitch, dstPort,
                     statsType, metricList);
         } else if (statsType.equals(StatsType.FLOW_RAW_PACKET)) {
-            queries = getFlowRawPacketsQueries(queries, downsample, switchIds, flowId, statsType, metricList,
-                    direction);
+            queries = getFlowRawPacketsQueries(queries, downsample, switchIds, flowId, 
+                    srcPort, dstPort, statsType, metricList, direction);
         } else if (statsType.equals(StatsType.SWITCH_PORT)) {
             queries = getSwitchPortQueries(queries, switchIds, metricList, statsType, downsample);
         } else if (statsType.equals(StatsType.METER)) {
@@ -391,21 +399,24 @@ public class StatsIntegrationService {
      * @return the flow raw packets queries
      */
     private List<Query> getFlowRawPacketsQueries(List<Query> queries, final String downsample,
-            final List<String> switchIds, final String flowId, final StatsType statsType, final List<String> metricList,
+            final List<String> switchIds, final String flowId, final String srcPort, final String dstPort, 
+            final StatsType statsType, final List<String> metricList,
             final String direction) {
-        Map<String, String[]> params = getParam(StatsType.FLOW_RAW_PACKET, null, null, flowId, null, null, null, null);
+        Map<String, String[]> params = getParam(StatsType.FLOW_RAW_PACKET, null, null, flowId, null, 
+                srcPort, null, dstPort);
         if (metricList != null && !metricList.isEmpty()) {
             int index = (direction.isEmpty() || "forward".equalsIgnoreCase(direction)) ? 0 : 1;
+            
             Query query = getQuery(downsample, metricList.get(0), params, index, statsType);
             for (String switchId : switchIds) {
-                params = getParam(StatsType.SWITCH, switchId, null, null, null, null, null, null);
+                params = getParam(StatsType.SWITCH, switchId, null, null, null, srcPort, null, dstPort);
                 populateFiltersAndReturnDownsample(query.getFilters(), params, 0, statsType);
             }
             queries.add(query);
         }
         return queries;
     }
-
+    
     /**
      * Gets the switch port queries.
      *
@@ -435,7 +446,7 @@ public class StatsIntegrationService {
         Map<String, String[]> params = new HashMap<String, String[]>();
 
         if (statsType.equals(StatsType.SWITCH)) {
-            params.put("switchid", new String[] { switchId });
+            params.put("switchid", new String[] {switchId});
         } else if (statsType.equals(StatsType.PORT)) {
             params.put("switchid", new String[] { switchId });
             params.put("port", new String[] { port });
@@ -456,9 +467,19 @@ public class StatsIntegrationService {
                 params.put("port", new String[] { srcPort });
             }
         } else if (statsType.equals(StatsType.FLOW_RAW_PACKET)) {
-            params.put("flowid", new String[] { flowId });
+            if (flowId == null) {
+                params.put("flowid", new String[] { "*" });
+            } else {
+                params.put("flowid", new String[] { flowId });
+            }
             params.put("cookie", new String[] { "*" });
             params.put("direction", new String[] {});
+            if (srcPort != null) { 
+                params.put("inPort", new String[] {srcPort});
+            } 
+            if (dstPort != null) {
+                params.put("outPort", new String[] {dstPort});
+            } 
         } else if (statsType.equals(StatsType.METER)) {
             params.put("flowid", new String[] { flowId });
             params.put("cookie", new String[] { "*" });
