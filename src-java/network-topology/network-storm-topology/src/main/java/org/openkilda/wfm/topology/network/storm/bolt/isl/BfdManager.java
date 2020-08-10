@@ -34,4 +34,20 @@ public class BfdManager {
         carrier.bfdDisableRequest(reference.getSource());
         carrier.bfdDisableRequest(reference.getDest());
     }
+
+    /**
+     * Send enable auxiliary poll mode request in case when BFD becomes active.
+     */
+    public void enableAuxiliaryPollMode(IIslCarrier carrier) {
+        carrier.auxiliaryPollModeUpdateRequest(reference.getSource(), true);
+        carrier.auxiliaryPollModeUpdateRequest(reference.getDest(), true);
+    }
+
+    /**
+     * Send disable auxiliary poll mode request in case when BFD becomes inactive.
+     */
+    public void disableAuxiliaryPollMode(IIslCarrier carrier) {
+        carrier.auxiliaryPollModeUpdateRequest(reference.getSource(), false);
+        carrier.auxiliaryPollModeUpdateRequest(reference.getDest(), false);
+    }
 }

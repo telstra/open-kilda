@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.service;
 
-import org.openkilda.messaging.Message;
 import org.openkilda.model.SwitchId;
 
 public interface MessageSender {
@@ -24,14 +23,6 @@ public interface MessageSender {
     void emitSwitchUnmanagedNotification(SwitchId sw);
 
     void emitNetworkDumpRequest(String region);
-
-    void emitSpeakerMessage(Message message, String region);
-
-    void emitSpeakerMessage(String key, Message message, String region);
-
-    void emitControllerMessage(Message message);
-
-    void emitControllerMessage(String key, Message message);
 
     void emitRegionNotification(SwitchMapping mapping);
 }

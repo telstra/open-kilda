@@ -15,8 +15,10 @@
 
 package org.openkilda.model.history;
 
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 
@@ -126,4 +128,24 @@ public class FlowDump {
     @Property(name = "reverse_status")
     @Convert(graphPropertyType = String.class)
     private FlowPathStatus reverseStatus;
+
+    @Property(name = "allocate_protected_path")
+    private boolean allocateProtectedPath;
+
+    @Property(name = "pinned")
+    private boolean pinned;
+
+    @Property(name = "periodic_pings")
+    private boolean periodicPings;
+
+    @Property(name = "encapsulation_type")
+    @Convert(graphPropertyType = String.class)
+    private FlowEncapsulationType encapsulationType;
+
+    @Property(name = "path_computation_strategy")
+    @Convert(graphPropertyType = String.class)
+    private PathComputationStrategy pathComputationStrategy;
+
+    @Property(name = "max_latency")
+    private long maxLatency;
 }

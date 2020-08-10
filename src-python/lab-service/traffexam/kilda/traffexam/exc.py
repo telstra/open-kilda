@@ -173,3 +173,12 @@ class SystemCompatibilityError(SystemResourceError):
     def __str__(self):
         return ('Unable to configure system resource kind={0} name={1!r}'
                 ' - {2}').format(*self.args)
+
+
+class SubprocessError(AbstractError):
+    def __init__(self, cmd, exit_code, output):
+        super().__init__(cmd, exit_code, output)
+
+    def __str__(self):
+        return ('Child process have failed - cmd={0!r} exit_code={1} '
+                'output={2!r}').format(*self.args)

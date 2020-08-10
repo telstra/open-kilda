@@ -128,7 +128,7 @@ public class NetworkDecisionMakerServiceTest {
     public void ensureDiscoveryResetFailTime() {
         NetworkDecisionMakerService w = new NetworkDecisionMakerService(carrier, 10, 5);
 
-        // we have discovered port (discovery discovery.interval is 3, and discovery.packet.ttl is 5)
+        // we have discovered port (discovery discovery.generic.interval is 3, and discovery.packet.ttl is 5)
         w.discovered(endpointAlpha, 1L, islBetaAlpha, 0);
         // send packet at 3
         // send packet at 6

@@ -688,7 +688,9 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, false)
 
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
-        islUtils.waitForIslStatus([newIsl, newIsl.reversed], DISCOVERED)
+        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
+            [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }
+        }
 
         when: "Try to create a flow using ISL src port"
         def flow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch)

@@ -31,4 +31,6 @@ public class FlowPatchEndpoint {
     private SwitchId switchId;
     private Integer portNumber;
     private Integer vlanId;
+    private Integer innerVlanId;
+    private DetectConnectedDevicesV2 detectConnectedDevices;
 }

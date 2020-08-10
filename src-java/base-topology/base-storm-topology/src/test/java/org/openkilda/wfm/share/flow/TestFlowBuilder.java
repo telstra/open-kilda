@@ -62,6 +62,7 @@ public class TestFlowBuilder {
     private DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices();
     private FlowEncapsulationType encapsulationType;
     private PathComputationStrategy pathComputationStrategy;
+    private String description;
 
     public TestFlowBuilder() {
     }
@@ -89,6 +90,7 @@ public class TestFlowBuilder {
                 .priority(priority)
                 .detectConnectedDevices(detectConnectedDevices)
                 .pathComputationStrategy(pathComputationStrategy)
+                .description(description)
                 .build();
         flow.setStatus(status);
 

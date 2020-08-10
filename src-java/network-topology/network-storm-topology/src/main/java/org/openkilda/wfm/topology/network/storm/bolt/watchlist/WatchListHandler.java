@@ -24,7 +24,9 @@ import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.service.IWatchListCarrier;
 import org.openkilda.wfm.topology.network.service.NetworkWatchListService;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
+import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.port.PortHandler;
+import org.openkilda.wfm.topology.network.storm.bolt.uniisl.UniIslHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherAddCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherRemoveCommand;
@@ -57,26 +59,43 @@ public class WatchListHandler extends AbstractBolt implements IWatchListCarrier 
     protected void handleInput(Tuple input) throws Exception {
         String source = input.getSourceComponent();
         if (CoordinatorSpout.ID.equals(source)) {
-            handleTimer(input);
+            handleTimer();
         } else if (PortHandler.BOLT_ID.equals(source)) {
             handlePortCommand(input);
+        } else if (UniIslHandler.BOLT_ID.equals(source)) {
+            handleUniIslCommand(input);
+        } else if (IslHandler.BOLT_ID.equals(source)) {
+            handleIslCommand(input);
         } else {
             unhandledInput(input);
         }
     }
 
-    private void handleTimer(Tuple input) {
+    private void handleTimer() {
         service.tick();
     }
 
     private void handlePortCommand(Tuple input) throws PipelineException {
-        WatchListCommand command = pullValue(input, PortHandler.FIELD_ID_COMMAND, WatchListCommand.class);
+        handleCommand(input, PortHandler.FIELD_ID_COMMAND);
+    }
+
+    private void handleUniIslCommand(Tuple input) throws PipelineException {
+        handleCommand(input, UniIslHandler.FIELD_ID_COMMAND);
+    }
+
+    private void handleIslCommand(Tuple input) throws PipelineException {
+        handleCommand(input, IslHandler.FIELD_ID_COMMAND);
+    }
+
+    private void handleCommand(Tuple input, String fieldId) throws PipelineException {
+        WatchListCommand command = pullValue(input, fieldId, WatchListCommand.class);
         command.apply(this);
     }
 
     @Override
     protected void init() {
-        service = new NetworkWatchListService(this, options.getDiscoveryInterval());
+        service = new NetworkWatchListService(this, options.getDiscoveryGenericInterval(),
+                options.getDiscoveryExhaustedInterval(), options.getDiscoveryAuxiliaryInterval());
     }
 
     @Override
@@ -110,5 +129,13 @@ public class WatchListHandler extends AbstractBolt implements IWatchListCarrier 
 
     public void processRemoveWatch(Endpoint endpoint) {
         service.removeWatch(endpoint);
+    }
+
+    public void processUpdateExhaustedPollMode(Endpoint endpoint, boolean enable) {
+        service.updateExhaustedPollMode(endpoint, enable);
+    }
+
+    public void processUpdateAuxiliaryPollMode(Endpoint endpoint, boolean enable) {
+        service.updateAuxiliaryPollMode(endpoint, enable);
     }
 }

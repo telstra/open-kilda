@@ -83,6 +83,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private IslDownReason downReason;
     private long islRulesAttempts;
 
+    private DiscoveryBfdMonitor discoveryBfdMonitor;
     private List<DiscoveryMonitor<?>> monitorsByPriority = Collections.emptyList();
 
     private final BiIslDataHolder<Boolean> endpointMultiTableManagementCompleteStatus;
@@ -132,10 +133,11 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     // -- FSM actions --
 
     public void operationalEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+        discoveryBfdMonitor = new DiscoveryBfdMonitor(reference);
         monitorsByPriority = ImmutableList.of(
                 new DiscoveryMovedMonitor(reference),
                 new DiscoveryPortStatusMonitor(reference),
-                new DiscoveryBfdMonitor(reference),
+                discoveryBfdMonitor,
                 new DiscoveryRoundTripMonitor(reference, clock, options),
                 new DiscoveryPollMonitor(reference));
 
@@ -153,9 +155,11 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void operationalExit(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         bfdManager.disable(context.getOutput());
+        bfdManager.disableAuxiliaryPollMode(context.getOutput());
     }
 
     public void updateMonitorsAction(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+        boolean isBfdOperationalNow = discoveryBfdMonitor.isOperational();
         boolean isSyncRequired = false;
         for (DiscoveryMonitor<?> entry : monitorsByPriority) {
             isSyncRequired |= entry.update(event, context);
@@ -165,6 +169,12 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
             fireBecomeStateEvent(context);
         } else if (isSyncRequired) {
             fire(IslFsmEvent._FLUSH);
+        }
+
+        if (!isBfdOperationalNow && discoveryBfdMonitor.isOperational()) {
+            bfdManager.enableAuxiliaryPollMode(context.getOutput());
+        } else if (isBfdOperationalNow && !discoveryBfdMonitor.isOperational()) {
+            bfdManager.disableAuxiliaryPollMode(context.getOutput());
         }
     }
 
@@ -241,6 +251,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         flushTransaction();
 
         bfdManager.disable(context.getOutput());
+        bfdManager.disableAuxiliaryPollMode(context.getOutput());
         sendIslStatusUpdateNotification(context, IslStatus.MOVED);
         triggerAffectedFlowReroute(context);
     }
@@ -288,6 +299,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void deletedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("Isl FSM for {} have reached termination state (ready for being removed)", reference);
+        sendEnableExhaustedPollMode(context.getOutput());
     }
 
     public void resurrectNotification(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -329,6 +341,11 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         } else {
             endpointMultiTableManagementCompleteStatus.put(ingress, true);
         }
+    }
+
+    private void sendEnableExhaustedPollMode(IIslCarrier carrier) {
+        carrier.exhaustedPollModeUpdateRequest(reference.getSource(), true);
+        carrier.exhaustedPollModeUpdateRequest(reference.getDest(), true);
     }
 
     private void sendRemoveMultiTable(IIslCarrier carrier) {

@@ -426,6 +426,12 @@ public class NetworkIslServiceTest {
         verify(carrier).bfdDisableRequest(endpointAlpha1);
         verify(carrier).bfdDisableRequest(endpointBeta2);
 
+        verify(carrier).auxiliaryPollModeUpdateRequest(endpointAlpha1, false);
+        verify(carrier).auxiliaryPollModeUpdateRequest(endpointBeta2, false);
+
+        verify(carrier).exhaustedPollModeUpdateRequest(endpointAlpha1, true);
+        verify(carrier).exhaustedPollModeUpdateRequest(endpointBeta2, true);
+
         verifyNoMoreInteractions(carrier);
     }
 
@@ -675,6 +681,8 @@ public class NetworkIslServiceTest {
 
         // second BFD session is reinstalled
         service.bfdStatusUpdate(endpointBeta2, reference, BfdStatus.UP);
+        verify(carrier).auxiliaryPollModeUpdateRequest(eq(reference.getSource()), eq(true));
+        verify(carrier).auxiliaryPollModeUpdateRequest(eq(reference.getDest()), eq(true));
         service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatus.UP);
 
         verify(dashboardLogger, never()).onIslDown(eq(reference));

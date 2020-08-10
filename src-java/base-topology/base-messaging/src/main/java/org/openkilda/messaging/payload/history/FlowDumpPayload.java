@@ -15,6 +15,9 @@
 
 package org.openkilda.messaging.payload.history;
 
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.PathComputationStrategy;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -60,4 +63,16 @@ public class FlowDumpPayload {
     private String reverseStatus;
 
     private String groupId;
+
+    private boolean allocateProtectedPath;
+
+    private boolean pinned;
+
+    private boolean periodicPings;
+
+    private FlowEncapsulationType encapsulationType;
+
+    private PathComputationStrategy pathComputationStrategy;
+
+    private long maxLatency;
 }

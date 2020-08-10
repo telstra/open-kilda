@@ -57,7 +57,9 @@ class IslReplugSpec extends HealthCheckSpecification {
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
 
         and: "New ISL becomes DISCOVERED"
-        islUtils.waitForIslStatus([newIsl, newIsl.reversed], DISCOVERED)
+        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
+            [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }
+        }
 
         when: "Replug the link back where it was"
         islUtils.replug(newIsl, true, isl, false, true)
@@ -106,7 +108,9 @@ class IslReplugSpec extends HealthCheckSpecification {
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
 
         and: "New ISL becomes DISCOVERED"
-        islUtils.waitForIslStatus([newIsl, newIsl.reversed], DISCOVERED)
+        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
+            [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }
+        }
 
         when: "Replug the link back where it was"
         islUtils.replug(newIsl, true, isl, false, false)

@@ -1,0 +1,35 @@
+@startuml
+title Enable TeleScope for the flow
+
+participant NB
+
+control kilda.apps
+participant AppsTopology
+participant Neo4j
+control kilda.speaker.flow
+participant Speaker
+participant Switch
+control kilda.flow
+control apps.notifications.pub
+
+control kilda.northbound
+
+NB -> kilda.apps: Enable telescope for the flow request
+kilda.apps -> AppsTopology
+
+
+activate AppsTopology
+AppsTopology -> Neo4j: Store info in db
+AppsTopology -> kilda.speaker.flow: create pass through rule for the flow
+kilda.speaker.flow -> Speaker
+activate Speaker
+Speaker -> Switch: install rule
+Speaker -> kilda.flow: send result
+deactivate Speaker
+kilda.flow -> AppsTopology
+AppsTopology -> apps.notifications.pub: Send Notification on App creation
+AppsTopology -> kilda.northbound: send response
+deactivate AppsTopology
+
+kilda.northbound -> NB: response
+@enduml

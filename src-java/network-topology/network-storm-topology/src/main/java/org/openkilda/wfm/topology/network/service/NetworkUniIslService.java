@@ -77,6 +77,7 @@ public class NetworkUniIslService {
 
         if (!effectiveReference.isSelfLoop()) {
             carrier.notifyIslUp(endpoint, effectiveReference, islData);
+            carrier.exhaustedPollModeUpdateRequest(endpoint, false);
         } else {
             log.error("Self looped ISL discovery received: {}", effectiveReference);
         }
@@ -139,6 +140,8 @@ public class NetworkUniIslService {
         IslReference reference = lookupEndpointData(endpoint);
         if (isIslReferenceUsable(reference)) {
             carrier.notifyIslDown(endpoint, reference, downReason);
+        } else if (reference.isIncomplete()) {
+            carrier.exhaustedPollModeUpdateRequest(endpoint, true);
         }
     }
 

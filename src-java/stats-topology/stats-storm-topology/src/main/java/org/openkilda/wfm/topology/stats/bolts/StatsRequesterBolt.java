@@ -27,7 +27,6 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.kafka.MessageDeserializer;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 
@@ -51,8 +50,6 @@ public class StatsRequesterBolt extends AbstractBolt {
     public StatsRequesterBolt(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
     }
-
-    private MessageDeserializer deserializer = new MessageDeserializer();
 
     @Override
     protected void init() {

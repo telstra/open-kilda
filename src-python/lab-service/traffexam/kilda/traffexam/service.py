@@ -117,13 +117,7 @@ class VLANService(Abstract):
         else:
             link = self.get_gw_iface()
 
-        ip = self.get_ipdb()
-        with ip.create(
-                kind='vlan', ifname=ifname, vlan_id=tag,
-                link=link) as iface:
-            iface.up()
-
-        iface = ip.interfaces[ifname].ro
+        iface = self.make_vlan_iface(ifname, link, tag)
         subject.set_iface(model.NetworkIface(
                 ifname, index=iface.index, vlan=subject, vlan_tag=tag))
 
@@ -142,6 +136,14 @@ class VLANService(Abstract):
         else:
             vlan_stack = (raw,)
         return vlan_stack
+
+    def make_vlan_iface(self, name, link, vlan_id):
+        ip = self.get_ipdb()
+        with ip.create(
+                kind='vlan', ifname=name, vlan_id=vlan_id,
+                link=link) as iface:
+            iface.up()
+        return ip.interfaces[name].ro
 
     def make_iface_name(self, tag_raw):
         tag = self._unify_tag_definition(tag_raw)

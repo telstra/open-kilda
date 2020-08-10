@@ -38,7 +38,9 @@ class IslMinPortSpeedSpec extends HealthCheckSpecification {
         when: "Replug one end of the connected link to the destination switch(isl.srcSwitchId -> newDst.srcSwitchId)"
         def newIsl = islUtils.replug(isl, false, newDst, true, false)
 
-        islUtils.waitForIslStatus([newIsl, newIsl.reversed], DISCOVERED)
+        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
+            [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }
+        }
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
 
         then: "Max bandwidth of new ISL is equal to the minimal port speed"

@@ -23,15 +23,16 @@ import org.apache.storm.tuple.Tuple;
 import java.util.Set;
 
 @Slf4j
-public class BroadcastRequestBolt extends RequestBolt {
-    public BroadcastRequestBolt(String outputStream, Set<String> regions) {
-        super(outputStream, regions);
+public class ControllerToSpeakerBroadcastBolt extends ControllerToSpeakerProxyBolt {
+    public ControllerToSpeakerBroadcastBolt(String targetTopic, Set<String> regions) {
+        super(targetTopic, regions);
     }
 
     @Override
     public void handleInput(Tuple input) throws PipelineException {
-        for (String region : regions) {
-            proxyRequestToSpeaker(input, region);
+        Object payload = pullControllerPayload(input);
+        for (String region : allRegions) {
+            proxyRequestToSpeaker(payload, region);
         }
     }
 }

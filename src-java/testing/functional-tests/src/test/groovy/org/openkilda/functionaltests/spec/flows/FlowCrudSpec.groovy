@@ -725,12 +725,15 @@ class FlowCrudSpec extends HealthCheckSpecification {
         given: "An inactive isl with moved state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
         assumeTrue("Unable to find required isl", isl as boolean)
+        def notConnectedIsls = topology.notConnectedIsls
         assumeTrue("Unable to find non-connected isl", notConnectedIsls.size() > 0)
         def notConnectedIsl = notConnectedIsls.first()
         def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, false)
 
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
-        islUtils.waitForIslStatus([newIsl, newIsl.reversed], DISCOVERED)
+        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
+            [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }
+        }
 
         when: "Try to create a flow using ISL src port"
         def flow = flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)

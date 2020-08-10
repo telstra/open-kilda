@@ -1,5 +1,65 @@
 # Changelog
 
+## v1.67.0 (29/07/2020)
+
+### Features:
+-  [#3641](https://github.com/telstra/open-kilda/pull/3641) Disable IPv6 on interfaces(VLAN) created by traffexam [**tests**]
+
+### Improvements:
+-  [#3569](https://github.com/telstra/open-kilda/pull/3569) Bump storm and kafka client libs (Issue: [#2977](https://github.com/telstra/open-kilda/issues/2977)) [**configuration**][**storm-topologies**]
+-  [#3642](https://github.com/telstra/open-kilda/pull/3642) remove ignore annotation for "Traffic counters in ingress rule are reset on flow rerouting" (Issues: [#3641](https://github.com/telstra/open-kilda/issues/3641) [#3641](https://github.com/telstra/open-kilda/issues/3641)) [**tests**]
+-  [#3644](https://github.com/telstra/open-kilda/pull/3644) minor fixes according to v1.66 [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.66.1...v1.67.0).
+
+### Affected Components:
+isllatency, swmanager, ping, reroute, nbworker, stats, grpc, stats-router, network, flow-hs, router, otsdb, connected, portstate
+
+---
+
+## v1.66.1 (27/07/2020)
+
+### Bug Fixes:
+-  [#3662](https://github.com/telstra/open-kilda/pull/3662) Fix for issue in updating vlan for Flow (Issue: [#3661](https://github.com/telstra/open-kilda/issues/3661)) [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.66.0...v1.66.1).
+
+### Affected Components:
+gui
+
+---
+
+## v1.66.0 (22/07/2020)
+
+### Features:
+-  [#3617](https://github.com/telstra/open-kilda/pull/3617) Add a filter by the flow status for the flow get operation (Issue: [#3615](https://github.com/telstra/open-kilda/issues/3615)) [**northbound**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#3549](https://github.com/telstra/open-kilda/pull/3549) Correct calculataion of expected set vlan actions in flow validation (Issue: [#3077](https://github.com/telstra/open-kilda/issues/3077)) [**storm-topologies**]
+-  [#3638](https://github.com/telstra/open-kilda/pull/3638) Fix kilda GUI cleanup issue on build (Issue: [#3637](https://github.com/telstra/open-kilda/issues/3637)) [**gui**]
+
+### Improvements:
+-  [#3602](https://github.com/telstra/open-kilda/pull/3602) add test for partialSwitchUpdate [**tests**]
+-  [#3614](https://github.com/telstra/open-kilda/pull/3614) enable server42FlowRtt in feature toogle by default for func test [**tests**]
+-  [#3620](https://github.com/telstra/open-kilda/pull/3620) fix "System does not create flow when reverse path has different bandwidth than forward path on the second link" [**tests**]
+-  [#3632](https://github.com/telstra/open-kilda/pull/3632) ignore test according to #3627 [**tests**]
+-  [#3592](https://github.com/telstra/open-kilda/pull/3592) Add more tests for rerouting pinned flows [**tests**]
+-  [#3554](https://github.com/telstra/open-kilda/pull/3554) Add replug tests for round-trip case and no portDown case [**tests**]
+-  [#3619](https://github.com/telstra/open-kilda/pull/3619) Add more verifications to MultiRerouteSpec [**tests**]
+-  [#3624](https://github.com/telstra/open-kilda/pull/3624) Remove FlowReroteFact 
+-  [#3629](https://github.com/telstra/open-kilda/pull/3629) Add test that shows no-retry behavior after global timeout on operation [**tests**]
+-  [#3630](https://github.com/telstra/open-kilda/pull/3630) Minor test adjustments [**tests**]
+-  [#3631](https://github.com/telstra/open-kilda/pull/3631) Minor fixes in perf tests [**tests**]
+-  [#3634](https://github.com/telstra/open-kilda/pull/3634) Improvement/flows fields update (Issue: [#3601](https://github.com/telstra/open-kilda/issues/3601)) [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.65.0...v1.66.0).
+
+### Affected Components:
+nb, gui, swmanager, nbworker
+
+---
+
 ## v1.65.0 (14/07/2020)
 
 ### Features:

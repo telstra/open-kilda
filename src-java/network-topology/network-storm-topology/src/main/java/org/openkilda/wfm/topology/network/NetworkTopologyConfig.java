@@ -30,8 +30,16 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
         return getDiscoveryConfig().getScaleFactor();
     }
 
-    default int getDiscoveryInterval() {
-        return getDiscoveryConfig().getDiscoveryInterval();
+    default int getDiscoveryGenericInterval() {
+        return getDiscoveryConfig().getDiscoveryGenericInterval();
+    }
+
+    default int getDiscoveryExhaustedInterval() {
+        return getDiscoveryConfig().getDiscoveryExhaustedInterval();
+    }
+
+    default int getDiscoveryAuxiliaryInterval() {
+        return getDiscoveryConfig().getDiscoveryAuxiliaryInterval();
     }
 
     default int getDiscoveryRoundTripStatusInterval() {
@@ -135,8 +143,14 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
         @Default("2")
         int getScaleFactor();
 
-        @Key("interval")
-        int getDiscoveryInterval();
+        @Key("generic.interval")
+        int getDiscoveryGenericInterval();
+
+        @Key("exhausted.interval")
+        int getDiscoveryExhaustedInterval();
+
+        @Key("auxiliary.interval")
+        int getDiscoveryAuxiliaryInterval();
 
         @Key("round.trip.status.interval")
         int getDiscoveryRoundTripStatusInterval();
