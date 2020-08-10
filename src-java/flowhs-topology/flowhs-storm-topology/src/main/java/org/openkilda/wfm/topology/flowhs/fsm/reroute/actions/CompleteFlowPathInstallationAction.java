@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 import static java.lang.String.format;
 
 import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
@@ -38,13 +39,15 @@ public class CompleteFlowPathInstallationAction extends
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         persistenceManager.getTransactionManager().doInTransaction(() -> {
+            PathComputationStrategy targetStrategy = stateMachine.getTargetPathComputationStrategy();
             if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
                 PathId newForward = stateMachine.getNewPrimaryForwardPath();
                 PathId newReverse = stateMachine.getNewPrimaryReversePath();
 
                 log.debug("Completing installation of the flow primary path {} / {}", newForward, newReverse);
                 FlowPathStatus targetPathStatus;
-                if (stateMachine.isIgnoreBandwidth()) {
+                if (stateMachine.isIgnoreBandwidth()
+                        || !targetStrategy.equals(stateMachine.getNewPrimaryPathComputationStrategy())) {
                     targetPathStatus = FlowPathStatus.DEGRADED;
                 } else {
                     targetPathStatus = FlowPathStatus.ACTIVE;
@@ -61,9 +64,17 @@ public class CompleteFlowPathInstallationAction extends
                 PathId newForward = stateMachine.getNewProtectedForwardPath();
                 PathId newReverse = stateMachine.getNewProtectedReversePath();
 
+                FlowPathStatus targetPathStatus;
+                if (stateMachine.isIgnoreBandwidth()
+                        || !targetStrategy.equals(stateMachine.getNewProtectedPathComputationStrategy())) {
+                    targetPathStatus = FlowPathStatus.DEGRADED;
+                } else {
+                    targetPathStatus = FlowPathStatus.ACTIVE;
+                }
+
                 log.debug("Completing installation of the flow protected path {} / {}", newForward, newReverse);
-                flowPathRepository.updateStatus(newForward, FlowPathStatus.ACTIVE);
-                flowPathRepository.updateStatus(newReverse, FlowPathStatus.ACTIVE);
+                flowPathRepository.updateStatus(newForward, targetPathStatus);
+                flowPathRepository.updateStatus(newReverse, targetPathStatus);
 
                 stateMachine.saveActionToHistory("Flow paths were installed",
                         format("The flow paths %s / %s were installed", newForward, newReverse));

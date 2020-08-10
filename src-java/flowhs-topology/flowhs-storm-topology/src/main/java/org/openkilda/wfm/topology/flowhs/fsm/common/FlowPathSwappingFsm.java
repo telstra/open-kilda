@@ -19,6 +19,7 @@ import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
@@ -48,6 +49,8 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, 
     protected PathId newPrimaryReversePath;
     protected PathId newProtectedForwardPath;
     protected PathId newProtectedReversePath;
+    protected PathComputationStrategy newPrimaryPathComputationStrategy;
+    protected PathComputationStrategy newProtectedPathComputationStrategy;
 
     protected final Collection<FlowResources> oldResources = new ArrayList<>();
     protected PathId oldPrimaryForwardPath;

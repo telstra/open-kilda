@@ -18,8 +18,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.PathComputer;
-import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
@@ -75,7 +75,7 @@ public class AllocateProtectedResourcesAction extends
         Flow flow = getFlow(flowId);
         log.debug("Finding a new protected path for flow {}", flowId);
         List<PathId> pathIdsToReuse = pathsToReuse.stream().map(FlowPath::getPathId).collect(Collectors.toList());
-        PathPair potentialPath = pathComputer.getPath(flow, pathIdsToReuse);
+        GetPathsResult potentialPath = pathComputer.getPath(flow, pathIdsToReuse);
 
         PathId newPrimaryForwardPathId = stateMachine.getNewPrimaryForwardPath();
         FlowPath primaryForwardPath = getFlowPath(flow, newPrimaryForwardPathId);

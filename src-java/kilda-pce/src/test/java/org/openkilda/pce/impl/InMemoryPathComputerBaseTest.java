@@ -36,11 +36,11 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.pce.AvailableNetworkFactory;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
-import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.finder.BestWeightAndShortestPathFinder;
@@ -205,7 +205,7 @@ public class InMemoryPathComputerBaseTest {
 
         PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
                 new BestWeightAndShortestPathFinder(200), config);
-        PathPair path = pathComputer.getPath(f1);
+        GetPathsResult path = pathComputer.getPath(f1);
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(278));
 
@@ -244,7 +244,7 @@ public class InMemoryPathComputerBaseTest {
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair result = pathComputer.getPath(flow);
+        GetPathsResult result = pathComputer.getPath(flow);
         assertNotNull(result);
         // ensure start/end switches match
         List<Path.Segment> left = result.getForward().getSegments();
@@ -280,7 +280,7 @@ public class InMemoryPathComputerBaseTest {
         Flow oldFlow = flowRepository.findById(flowId).orElseThrow(() -> new AssertionError("Flow not found"));
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair result = pathComputer.getPath(flow, oldFlow.getFlowPathIds());
+        GetPathsResult result = pathComputer.getPath(flow, oldFlow.getFlowPathIds());
 
         assertThat(result.getForward().getSegments(), Matchers.hasSize(2));
         assertThat(result.getReverse().getSegments(), Matchers.hasSize(2));
@@ -340,7 +340,7 @@ public class InMemoryPathComputerBaseTest {
                 .build();
         PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
                 new BestWeightAndShortestPathFinder(5), config);
-        PathPair paths = pathComputer.getPath(flow);
+        GetPathsResult paths = pathComputer.getPath(flow);
 
         //then: system returns a path with least weight
         assertThat(paths.getForward().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:02")));
@@ -368,11 +368,34 @@ public class InMemoryPathComputerBaseTest {
                 .build();
         PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
                 new BestWeightAndShortestPathFinder(5), config);
-        PathPair paths = pathComputer.getPath(flow);
+        GetPathsResult paths = pathComputer.getPath(flow);
 
         //then: system returns a path with least weight
         assertThat(paths.getForward().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:02")));
         assertThat(paths.getReverse().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:02")));
+    }
+
+    @Test
+    public void shouldUseBackupStrategiesWhenNoPathFound() throws RecoverableException, UnroutableFlowException {
+        createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "00:", 1, 150, 200);
+
+        Switch srcSwitch = getSwitchById("00:01");
+        Switch destSwitch = getSwitchById("00:04");
+
+        Flow flow = new TestFlowBuilder()
+                .srcSwitch(srcSwitch)
+                .destSwitch(destSwitch)
+                .maxLatency(100)
+                .pathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
+                .build();
+
+        PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
+                new BestWeightAndShortestPathFinder(5), config);
+        GetPathsResult path = pathComputer.getPath(flow, PathComputationStrategy.COST);
+
+        assertEquals(PathComputationStrategy.COST, path.getUsedStrategy());
+        assertNotNull(path.getForward());
+        assertNotNull(path.getReverse());
     }
 
     void addPathSegments(FlowPath flowPath, Path path) {
