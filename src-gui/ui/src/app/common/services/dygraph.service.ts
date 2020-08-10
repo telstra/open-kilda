@@ -426,8 +426,6 @@ export class DygraphService {
     }
 
 
-
-
     if (typeof endDate !== "undefined" && endDate != null) {
       var dat = new Date(endDate);
       var lastTime = dat.getTime();
@@ -575,7 +573,7 @@ export class DygraphService {
           var dataValues = typeof data[j] !== "undefined" ? data[j].dps : null;
           
           var metric = typeof data[j] !== "undefined" ? data[j].metric : "";
-            metric = metric + "(switchid=" + data[j].tags.switchid + ", direction="+ direction +", flowid="+data[j].tags['flowid']+")";
+            metric = metric + "(flowid="+data[j].tags['flowid']+")";
             labels.push(metric);
             var colorCode = this.getColorCode(j, color);
             if(cookiesChecked && typeof(cookiesChecked[data[j].tags['flowid']])!='undefined' && typeof(cookiesChecked[data[j].tags['flowid']][data[j].tags.switchid])!='undefined'){

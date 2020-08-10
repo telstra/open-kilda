@@ -216,6 +216,9 @@
                         padding-right: 0;">
                       
                         <h2 class="isl-header text-center" id="graphLabel">{{currentGraphName}}</h2>
+                        <ngx-spinner [fullScreen]="false" name="graphSpinner" bdColor = "rgba(51, 51, 51, 0.8)" size="medium" color = "#4ec0ec" type = "ball-clip-rotate">
+                          <p >Loading data..<span class="loader__dot">.</span><span class="loader__dot">.</span><span class="loader__dot">.</span></p>
+                          </ngx-spinner>
                        <app-dygraph (zoomChange)='zoomHandler($event)' style="width: 780px !important;  height: 400px;"></app-dygraph>
                       
                   </div>
@@ -290,17 +293,27 @@
                         </select>
                         </div>
                       </div>
+                      <div class="row form-group clearfix" id="GraphType" *ngIf="f.graph.value =='flow'">
+                        <label class="col-xs-4 col-md-4 text-label">Graph Type:</label>
+                        <div class="col-xs-8 col-md-8">
+                           <select formControlName="graph_type" class="form-control" (change)="loadGraphData()">
+                           <option value="linegraph">Line Graph</option>
+                           <option value="stackedgraph">Stacked Graph</option>
+                        </select>
+                        </div>
+                      </div>
                       <div class="row form-group clearfix" id="islMetric" *ngIf="f.graph.value !='latency'">
                         <label class="col-xs-4 col-md-4 text-label">Metric:</label>
                         <div class="col-xs-8 col-md-8">
                            <select *ngIf="f.graph.value !='flow'" formControlName="metric" class="form-control" (change)="loadGraphData()">
                           <option *ngFor="let option of graphMetrics" value="{{option.value}}">{{option.label}}</option>
                         </select>
-                        <select *ngIf="f.graph.value =='flow'" formControlName="metric" class="form-control" (change)="loadGraphData()">
+                        <select *ngIf="f.graph.value =='flow' || f.graph.value =='flowstacked'" formControlName="metric" class="form-control" (change)="loadGraphData()">
                           <option *ngFor="let option of flowGraphMetrics" value="{{option.value}}">{{option.label}}</option>
                         </select>
                         </div>
                       </div>
+                     
                       <div class="row form-group clearfix" id="Direction" *ngIf="f.graph.value =='flow'">
                         <label class="col-xs-4 col-md-4 text-label">Direction:</label>
                         <div class="col-xs-8 col-md-8">
@@ -310,6 +323,29 @@
                         </select>
                         </div>
                       </div>
+                      <div class="row form-group clearfix" id="flow_number" *ngIf="f.graph.value =='flow'">
+                        <label class="col-xs-4 col-md-4 text-label">No Of Flows:</label>
+                        <div class="col-xs-8 col-md-8">
+                          <div class="row">
+                            <div class="col-xs-8 col-md-8">
+                              <select formControlName="flow_number" class="form-control" (change)="loadIslAllFlowOrTopTen()">
+                                <option value="top">High Throughput</option>
+                                <option value="least">Low Throughput</option>
+                                <option value="all">All</option>
+                             </select>
+                            </div>
+                            <div class="col-xs-4 col-md-4" *ngIf="f.flow_number.value !='all'">
+                              <input name="no_flows" type="number" min = 1 (change)="loadIslAllFlowOrTopTen()" formControlName="no_flows" class="form-control" />
+                            </div>
+                          </div>
+                          
+                          
+                        </div>
+                      </div>
+                      <!-- <div class="row form-group clearfix" *ngIf="f.graph.value =='flow'">
+                        <label class="col-xs-4 col-md-4 text-label"></label>
+                        <button class="btn btn-dark ml-3" (click)="copySelectedStatsFlows()">Copy Flows</button>
+                      </div> -->
                       <div class="col-xs-12 col-md-12 submit-btn">
                        <div id="errorMesg" class="error"></div>
                       </div>
