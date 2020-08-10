@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.68.1 (10/08/2020)
+
+### Features:
+-  [#2746](https://github.com/telstra/open-kilda/pull/2746) Design for kilda apps 
+
+### Bug Fixes:
+-  [#3660](https://github.com/telstra/open-kilda/pull/3660) Fix link deleting in the Network topology (Issue: [#3656](https://github.com/telstra/open-kilda/issues/3656)) [**storm-topologies**]
+-  [#3664](https://github.com/telstra/open-kilda/pull/3664) Fix possible race condition in get flow by switch operation (Issue: [#3603](https://github.com/telstra/open-kilda/issues/3603)) [**storm-topologies**]
+
+### Improvements:
+-  [#3672](https://github.com/telstra/open-kilda/pull/3672) Add catch of an exception when the ISL controller is not found [**storm-topologies**]
+-  [#3676](https://github.com/telstra/open-kilda/pull/3676) Build outside of git repo 
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.68.0...v1.68.1).
+
+### Affected Components:
+network, nbworker
+
+---
+
 ## v1.68.0 (03/08/2020)
 
 ### Features:

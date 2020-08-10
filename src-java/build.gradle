@@ -184,14 +184,19 @@ subprojects {
 
     task generateVersionTxt() {
         doLast {
-            def grgit = Grgit.open(currentDir: rootDir)
             File file = new File("$buildDir/version.txt")
             file.write('')
             file.append('Version: ' + project.version)
-            //TODO: fails in Jenkins: file.append('\nBranch: ' + grgit.branch.current.trackingBranch.name)
-            file.append("\nRevision: " + grgit.head().abbreviatedId)
             file.append("\nBuild-Date: " + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(new Date()))
-            grgit.close()
+            def gitRevision = ''
+            try {
+                def grgit = Grgit.open(currentDir: rootDir)
+                gitRevision = grgit.describe(tags: true)
+                grgit.close()
+            } catch (IllegalStateException e) {
+                // repo is missing/unavailable
+            }
+            file.append("\nRevision: " + gitRevision)
         }
     }
 

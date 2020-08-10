@@ -34,4 +34,6 @@ public interface IIslCarrier {
     void islDefaultRulesDelete(Endpoint source, Endpoint destination);
 
     void auxiliaryPollModeUpdateRequest(Endpoint endpoint, boolean enableAuxiliaryPollMode);
+
+    void exhaustedPollModeUpdateRequest(Endpoint endpoint, boolean enableExhaustedPollMode);
 }

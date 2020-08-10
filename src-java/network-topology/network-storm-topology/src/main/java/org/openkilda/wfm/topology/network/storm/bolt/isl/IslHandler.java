@@ -30,6 +30,7 @@ import org.openkilda.wfm.share.bolt.KafkaEncoder;
 import org.openkilda.wfm.share.hubandspoke.TaskIdBasedKeyFactory;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
+import org.openkilda.wfm.topology.network.error.ControllerNotFoundException;
 import org.openkilda.wfm.topology.network.model.BfdStatus;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
@@ -49,6 +50,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRule
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.UniIslHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListAuxiliaryPollModeUpdateCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListExhaustedPollModeUpdateCommand;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -105,6 +107,15 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
             handleSpeakerRulesWorkerInput(input);
         } else {
             unhandledInput(input);
+        }
+    }
+
+    @Override
+    protected void handleException(Exception error) throws Exception {
+        try {
+            super.handleException(error);
+        } catch (ControllerNotFoundException e) {
+            log.error(e.getMessage());
         }
     }
 
@@ -175,6 +186,15 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     @Override
     public void auxiliaryPollModeUpdateRequest(Endpoint endpoint, boolean enableAuxiliaryPollMode) {
         WatchListCommand command = new WatchListAuxiliaryPollModeUpdateCommand(endpoint, enableAuxiliaryPollMode);
+        // We emit without the anchor tuple because here we are generating a new event to change the mode.
+        // Also, if a cycle appears in the future by the anchor tuple, it will be quite difficult to find it,
+        // and we remove the possibility of this cycle appearing initially.
+        emit(STREAM_POLL_ID, makePollTuple(command));
+    }
+
+    @Override
+    public void exhaustedPollModeUpdateRequest(Endpoint endpoint, boolean enableExhaustedPollMode) {
+        WatchListCommand command = new WatchListExhaustedPollModeUpdateCommand(endpoint, enableExhaustedPollMode);
         // We emit without the anchor tuple because here we are generating a new event to change the mode.
         // Also, if a cycle appears in the future by the anchor tuple, it will be quite difficult to find it,
         // and we remove the possibility of this cycle appearing initially.
