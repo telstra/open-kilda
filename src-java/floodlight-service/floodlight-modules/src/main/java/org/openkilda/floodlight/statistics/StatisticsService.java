@@ -38,7 +38,6 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.internal.DefaultSwitchRoleService;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -64,6 +63,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -79,6 +79,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
     private IKafkaProducerService producerService;
     private String statisticsTopic;
     private String region;
+    private boolean isManagementRole = true;
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -107,8 +108,9 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
     }
 
     @Override
-    public void startUp(FloodlightModuleContext floodlightModuleContext) {
-
+    public void startUp(FloodlightModuleContext moduleContext) {
+        Map<String, String> configParams = moduleContext.getConfigParams(this);
+        isManagementRole = Objects.equals("management", configParams.get("role"));
     }
 
     /**
@@ -116,9 +118,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
      * @param context module context
      */
     public void processStatistics(FloodlightModuleContext context, Set<DatapathId> excludeSwitches) {
-        Map<String, String> configParams = context.getConfigParams(DefaultSwitchRoleService.class);
-        String defaultRole = configParams.get("defaultRole");
-        if ("ROLE_SLAVE".equals(defaultRole)) {
+        if (! isManagementRole) {
             logger.debug("Received stats request for statistics floodlight with excludeSwitches: {}", excludeSwitches);
         } else {
             logger.debug("Received stats request for management floodlight with excludeSwitches: {}", excludeSwitches);
@@ -142,7 +142,6 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                     } catch (Exception e) {
                         logger.error(format("Failed to gather stats for flows on switch %s.", iofSwitch.getId()), e);
                     }
-
 
                     try {
                         gatherMeterStats(iofSwitch);
