@@ -1307,8 +1307,11 @@ switches"() {
         error.errorDescription == sprintf("Reverted flows: [%s, %s]", flow2.flowId, flow1.flowId)
 
         and: "First flow is reverted to Down"
-        Wrappers.wait(PATH_INSTALLATION_TIME) {
+        Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow1.flowId).status == FlowState.DOWN
+            assert northbound.getFlowHistory(flow1.flowId).find {
+                it.action == "Flow rerouting" && it.taskId =~ (/.+ : retry #1/)
+            }
         }
         with(northboundV2.getFlow(flow1.flowId)) {
             source == flow1.source

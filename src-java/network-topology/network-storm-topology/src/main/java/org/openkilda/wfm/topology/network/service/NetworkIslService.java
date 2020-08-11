@@ -31,6 +31,7 @@ import org.openkilda.wfm.topology.network.controller.isl.IslFsm;
 import org.openkilda.wfm.topology.network.controller.isl.IslFsm.IslFsmContext;
 import org.openkilda.wfm.topology.network.controller.isl.IslFsm.IslFsmEvent;
 import org.openkilda.wfm.topology.network.controller.isl.IslFsm.IslFsmState;
+import org.openkilda.wfm.topology.network.error.IslControllerNotFoundException;
 import org.openkilda.wfm.topology.network.model.BfdStatus;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
@@ -271,7 +272,7 @@ public class NetworkIslService {
     private IslController locateController(IslReference reference) {
         IslController islController = controller.get(reference);
         if (islController == null) {
-            throw new IllegalStateException(String.format("There is no ISL FSM for %s", reference));
+            throw new IslControllerNotFoundException(reference);
         }
         return islController;
     }

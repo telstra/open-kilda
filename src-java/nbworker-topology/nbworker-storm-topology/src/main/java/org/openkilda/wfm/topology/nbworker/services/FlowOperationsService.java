@@ -72,6 +72,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class FlowOperationsService {
@@ -182,26 +183,27 @@ public class FlowOperationsService {
         if (!switchRepository.findById(switchId).isPresent()) {
             throw new SwitchNotFoundException(switchId);
         }
-        Set<Flow> flows = new HashSet<>();
 
         if (port != null) {
-            flowPathRepository.findBySegmentEndpoint(switchId, port).stream()
-                    // NOTE(tdurakov): filter out paths here that are orphaned for the flow
-                    .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
-                    .map(FlowPath::getFlow)
-                    .forEach(flows::add);
-            flows.addAll(flowRepository.findByEndpoint(switchId, port));
+            return getFlowsForEndpoint(flowPathRepository.findBySegmentEndpoint(switchId, port),
+                    flowRepository.findByEndpoint(switchId, port));
         } else {
-            flowPathRepository.findBySegmentSwitch(switchId).stream()
-                    // NOTE(tdurakov): filter out paths here that are orphaned for the flow
-                    .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
-                    .map(FlowPath::getFlow)
-                    .forEach(flows::add);
-            flows.addAll(flowRepository.findByEndpointSwitch(switchId));
+            return getFlowsForEndpoint(flowPathRepository.findBySegmentSwitch(switchId),
+                    flowRepository.findByEndpointSwitch(switchId));
         }
+    }
+
+    private Collection<Flow> getFlowsForEndpoint(Collection<FlowPath> flowPaths,
+                                                 Collection<Flow> flows) {
+        Stream<Flow> flowBySegment = flowPaths.stream()
+                // NOTE(tdurakov): filter out paths here that are orphaned for the flow
+                .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
+                .map(FlowPath::getFlow);
         // need to return Flows unique by id
-        return flows.stream()
-                .collect(Collectors.toMap(Flow::getFlowId, Function.identity()))
+        // Due to possible race condition we can have one flow with different flow paths
+        // In this case we should get the last one
+        return Stream.concat(flowBySegment, flows.stream())
+                .collect(Collectors.toMap(Flow::getFlowId, Function.identity(), (flow1, flow2) -> flow2))
                 .values();
     }
 

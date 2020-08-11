@@ -429,6 +429,9 @@ public class NetworkIslServiceTest {
         verify(carrier).auxiliaryPollModeUpdateRequest(endpointAlpha1, false);
         verify(carrier).auxiliaryPollModeUpdateRequest(endpointBeta2, false);
 
+        verify(carrier).exhaustedPollModeUpdateRequest(endpointAlpha1, true);
+        verify(carrier).exhaustedPollModeUpdateRequest(endpointBeta2, true);
+
         verifyNoMoreInteractions(carrier);
     }
 

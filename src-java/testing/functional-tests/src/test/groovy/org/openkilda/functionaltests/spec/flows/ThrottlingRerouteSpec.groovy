@@ -73,15 +73,18 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(waitTime) {
             //Flow should go DOWN or change path on reroute. In our case it doesn't matter which of these happen.
             assert (northboundV2.getFlowStatus(flows.first().flowId).status == FlowState.DOWN &&
-                    northbound.getFlowHistory(flows.first().flowId).last().histories.find { it.action == REROUTE_FAIL }) ||
+                    northbound.getFlowHistory(flows.first().flowId).find {
+                        it.action == "Flow rerouting" && it.taskId =~ (/.+ : retry #1/) })||
                     northbound.getFlowPath(flows.first().flowId) != flowPaths.first()
         }
 
         and: "The rest of the flows are rerouted too"
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             flowPaths[1..-1].each { flowPath ->
-                assert (northboundV2.getFlowStatus(flowPath.id).status == FlowState.DOWN && northbound
-                        .getFlowHistory(flowPath.id).last().histories.find { it.action == REROUTE_FAIL })  ||
+                assert (northboundV2.getFlowStatus(flowPath.id).status == FlowState.DOWN &&
+                        northbound.getFlowHistory(flowPath.id).find {
+                    it.action == "Flow rerouting" && it.taskId =~ (/.+ : retry #1/)
+                })  ||
                         (northbound.getFlowPath(flowPath.id) != flowPath &&
                                 northboundV2.getFlowStatus(flowPath.id).status == FlowState.UP)
             }
