@@ -179,6 +179,21 @@ class QinQFlowSpec extends HealthCheckSpecification {
             it.destination.innerVlanId == vlanFlow.source.vlanId
         }
 
+        and: "Flow history shows actual info into stateBefore and stateAfter sections"
+        def flowHistory = northbound.getFlowHistory(qinqFlow.flowId)
+        with(flowHistory.last().dumps.find { it.type == "stateBefore" }){
+            it.sourceVlan == (srcVlanId ? srcVlanId : srcInnerVlanId)
+            it.sourceInnerVlan == (srcVlanId ? srcInnerVlanId : 0)
+            it.destinationVlan == (dstVlanId ? dstVlanId : dstInnerVlanId)
+            it.destinationInnerVlan ==  (dstVlanId ? dstInnerVlanId : 0)
+        }
+        with(flowHistory.last().dumps.find { it.type == "stateAfter" }){
+            it.sourceVlan == vlanFlow.source.vlanId
+            it.sourceInnerVlan == vlanFlow.destination.vlanId
+            it.destinationVlan == vlanFlow.destination.vlanId
+            it.destinationInnerVlan == vlanFlow.source.vlanId
+        }
+
         then: "Both existing flows are still valid and pingable"
         [qinqFlow.flowId, vlanFlow.id].each {
             northbound.validateFlow(it).each { assert it.asExpected }
