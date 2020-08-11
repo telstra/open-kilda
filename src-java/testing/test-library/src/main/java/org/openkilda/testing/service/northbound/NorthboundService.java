@@ -31,7 +31,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
-import org.openkilda.messaging.payload.history.FlowEventPayload;
+import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
@@ -70,13 +70,13 @@ public interface NorthboundService {
 
     FlowResponsePayload getFlow(String flowId);
 
-    List<FlowEventPayload> getFlowHistory(String flowId);
+    List<FlowHistoryEntry> getFlowHistory(String flowId);
 
-    List<FlowEventPayload> getFlowHistory(String flowId, Long timeFrom, Long timeTo);
+    List<FlowHistoryEntry> getFlowHistory(String flowId, Long timeFrom, Long timeTo);
 
-    List<FlowEventPayload> getFlowHistory(String flowId, Integer maxCount);
+    List<FlowHistoryEntry> getFlowHistory(String flowId, Integer maxCount);
 
-    List<FlowEventPayload> getFlowHistory(String flowId, Long timeFrom, Long timeTo, Integer maxCount);
+    List<FlowHistoryEntry> getFlowHistory(String flowId, Long timeFrom, Long timeTo, Integer maxCount);
 
     FlowPayload addFlow(FlowPayload payload);
 

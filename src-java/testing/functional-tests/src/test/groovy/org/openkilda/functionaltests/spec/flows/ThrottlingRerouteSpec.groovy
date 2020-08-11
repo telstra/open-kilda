@@ -160,7 +160,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(untilHardTimeoutEnds() + WAIT_OFFSET) {
             flowPathsClone.removeAll { flowPath ->
                 (northboundV2.getFlowStatus(flowPath.id).status == FlowState.DOWN && northbound
-                        .getFlowHistory(flowPath.id).last().histories.find { it.action == REROUTE_FAIL }) ||
+                        .getFlowHistory(flowPath.id).last().payload.find { it.action == REROUTE_FAIL }) ||
                         northbound.getFlowPath(flowPath.id) != flowPath
             }
             assert flowPathsClone.empty

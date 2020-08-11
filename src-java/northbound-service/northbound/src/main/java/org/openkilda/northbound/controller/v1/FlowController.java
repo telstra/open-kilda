@@ -26,7 +26,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
-import org.openkilda.messaging.payload.history.FlowEventPayload;
+import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
@@ -330,13 +330,14 @@ public class FlowController extends BaseController {
     /**
      * Gets flow history.
      */
-    @ApiOperation(value = "Gets history for flow", response = FlowEventPayload.class, responseContainer = "List")
+    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+    @ApiOperation(value = "Gets history for flow", response = FlowHistoryEntry.class, responseContainer = "List")
     @GetMapping(path = "/{flow_id}/history")
-    public ResponseEntity<List<FlowEventPayload>> getHistory(
+    public CompletableFuture<ResponseEntity<List<FlowHistoryEntry>>> getHistory(
             @PathVariable("flow_id") String flowId,
-            @ApiParam(value = "default: 0 (1 January 1970 00:00:00).", required = false)
+            @ApiParam(value = "default: 0 (1 January 1970 00:00:00).")
             @RequestParam(value = "timeFrom", required = false) Optional<Long> optionalTimeFrom,
-            @ApiParam(value = "default: now.", required = false)
+            @ApiParam(value = "default: now.")
             @RequestParam(value = "timeTo", required = false) Optional<Long> optionalTimeTo,
             @ApiParam(value = "Return at most N latest records. "
                     + "Default: if `timeFrom` or/and `timeTo` parameters are presented default value of "
@@ -354,17 +355,19 @@ public class FlowController extends BaseController {
 
         Long timeTo = optionalTimeTo.orElseGet(() -> Instant.now().getEpochSecond());
         Long timeFrom = optionalTimeFrom.orElse(0L);
-        List<FlowEventPayload> events = flowService.listFlowEvents(flowId, timeFrom, timeTo, maxCount).join();
+        return flowService.listFlowEvents(flowId, timeFrom, timeTo, maxCount)
+                .thenApply(events -> {
+                    HttpHeaders headers = new HttpHeaders();
 
-        HttpHeaders headers = new HttpHeaders();
-
-        if (!optionalMaxCount.isPresent() && !optionalTimeFrom.isPresent() && !optionalTimeTo.isPresent()
-                && events.size() == DEFAULT_MAX_HISTORY_RECORD_COUNT) {
-            // if request has no parameters we assume that default value of `maxCount` is 100. To indicate that response
-            // may contain not all of history records "Content-Range" header will be added to response.
-            headers.add(HttpHeaders.CONTENT_RANGE, format("items 0-%d/*", events.size() - 1));
-        }
-        return new ResponseEntity<>(events, headers, HttpStatus.OK);
+                    if (!optionalMaxCount.isPresent() && !optionalTimeFrom.isPresent() && !optionalTimeTo.isPresent()
+                            && events.size() == DEFAULT_MAX_HISTORY_RECORD_COUNT) {
+                        // if request has no parameters we assume that default value of `maxCount` is 100. To indicate
+                        // that response may contain not all of history records "Content-Range" header will be added to
+                        // response.
+                        headers.add(HttpHeaders.CONTENT_RANGE, format("items 0-%d/*", events.size() - 1));
+                    }
+                    return new ResponseEntity<>(events, headers, HttpStatus.OK);
+                });
     }
 
     /**
@@ -373,7 +376,7 @@ public class FlowController extends BaseController {
     @ApiOperation(value = "Gets flow connected devices", response = FlowConnectedDevicesResponse.class)
     @GetMapping(path = "/{flow_id}/devices")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<FlowConnectedDevicesResponse> getHistory(
+    public CompletableFuture<FlowConnectedDevicesResponse> getConnectedDevices(
             @PathVariable("flow_id") String flowId,
             @ApiParam(value = "Device will be included in response if it's `time_last_seen` >= `since`. "
                     + "Example of `since` value: `2019-09-30T16:14:12.538Z`",

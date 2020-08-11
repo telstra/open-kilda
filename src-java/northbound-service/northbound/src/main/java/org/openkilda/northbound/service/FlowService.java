@@ -22,7 +22,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
-import org.openkilda.messaging.payload.history.FlowEventPayload;
+import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
@@ -232,7 +232,7 @@ public interface FlowService {
      */
     CompletableFuture<FlowMeterEntries> modifyMeter(String flowId);
 
-    CompletableFuture<List<FlowEventPayload>> listFlowEvents(String flowId,
+    CompletableFuture<List<FlowHistoryEntry>> listFlowEvents(String flowId,
                                                              long timestampFrom,
                                                              long timestampTo, int maxCount);
 

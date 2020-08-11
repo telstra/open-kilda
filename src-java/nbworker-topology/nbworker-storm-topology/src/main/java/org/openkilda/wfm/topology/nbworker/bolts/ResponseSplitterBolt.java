@@ -38,6 +38,7 @@ public class ResponseSplitterBolt extends AbstractBolt {
 
     @Override
     protected void handleInput(Tuple input) throws PipelineException {
+        @SuppressWarnings("unchecked")
         List<InfoData> responses = pullValue(input, FIELD_ID_RESPONSE, List.class);
         log.debug("Received response correlationId {}", getCommandContext().getCorrelationId());
 

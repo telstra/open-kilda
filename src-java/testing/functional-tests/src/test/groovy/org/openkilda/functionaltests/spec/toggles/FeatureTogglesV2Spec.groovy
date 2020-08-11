@@ -322,7 +322,7 @@ feature toogle"() {
         then: "The flow becomes 'Down'"
         Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
         }
         wait(WAIT_OFFSET) {
             def prevHistorySize = northbound.getFlowHistory(flow.flowId).size()
