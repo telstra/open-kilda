@@ -66,6 +66,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -326,6 +327,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
             expect(sw.getId()).andReturn(swId).anyTimes();
             expect(sw.getSwitchDescription()).andReturn(ofSwitchDescription);
             expect(sw.getInetAddress()).andReturn(switchAddresses.get(swId));
+            expect(sw.getControllerRole()).andStubReturn(OFControllerRole.ROLE_EQUAL);
 
             OFConnection connect = createMock(OFConnection.class);
             expect(connect.getRemoteInetAddress()).andReturn(speakerSocketAddress);
@@ -382,7 +384,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
                                 ImmutableSet.of(SwitchFeature.METERS),
                                 ImmutableList.of(
                                         new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP),
-                                        new SpeakerSwitchPortView(2, SpeakerSwitchPortView.State.UP)))),
+                                        new SpeakerSwitchPortView(2, SpeakerSwitchPortView.State.UP))), true),
                 0, correlationId));
         expectedMessages.add(new InfoMessage(
                 new NetworkDumpSwitchData(new SpeakerSwitchView(
@@ -395,7 +397,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
                         ImmutableList.of(
                                 new SpeakerSwitchPortView(3, SpeakerSwitchPortView.State.UP),
                                 new SpeakerSwitchPortView(4, SpeakerSwitchPortView.State.UP),
-                                new SpeakerSwitchPortView(5, SpeakerSwitchPortView.State.DOWN)))),
+                                new SpeakerSwitchPortView(5, SpeakerSwitchPortView.State.DOWN))), true),
                 0, correlationId));
         assertEquals(expectedMessages, producedMessages);
     }

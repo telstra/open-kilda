@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,14 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.floodlightrouter.service;
+package org.openkilda.wfm.topology.floodlightrouter;
 
-import org.openkilda.model.SwitchId;
-
-import lombok.Value;
-
-@Value
-public class SwitchMapping {
-    private SwitchId switchId;
-    private String region;
+public enum TickId {
 }

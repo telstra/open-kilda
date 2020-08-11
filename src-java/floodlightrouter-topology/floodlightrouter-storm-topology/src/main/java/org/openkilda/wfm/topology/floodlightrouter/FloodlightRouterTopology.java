@@ -28,9 +28,11 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.ControllerToSpeakerBroadcastBolt;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.ControllerToSpeakerProxyBolt;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.ControllerToSpeakerSharedProxyBolt;
+import org.openkilda.wfm.topology.floodlightrouter.bolts.MonotonicTick;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.RegionTrackerBolt;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.SpeakerToControllerProxyBolt;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.SpeakerToNetworkProxyBolt;
+import org.openkilda.wfm.topology.floodlightrouter.bolts.SwitchMonitorBolt;
 
 import joptsimple.internal.Strings;
 import lombok.Value;
@@ -38,14 +40,16 @@ import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
+import org.apache.storm.tuple.Fields;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Floodlight topology.
+ * Floodlight router topology.
  */
 public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterTopologyConfig> {
     private final Set<String> regions;
@@ -99,6 +103,9 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
         controllerToSpeaker(builder, parallelism, newParallelism, output);
 
         regionTracker(builder, output);
+        switchMonitor(builder, output, newParallelism);
+
+        clock(builder);
 
         return builder.createTopology();
     }
@@ -109,12 +116,14 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                 makeRegionTopics(kafkaTopics.getTopoDiscoRegionTopic()), ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT);
         topology.setSpout(ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT, spout, spoutParallelism);
 
-        SpeakerToNetworkProxyBolt proxy = new SpeakerToNetworkProxyBolt(kafkaTopics.getTopoDiscoTopic());
-        topology.setBolt(ComponentType.KILDA_TOPO_DISCO_REPLY_BOLT, proxy, parallelism)
+        SpeakerToNetworkProxyBolt proxy = new SpeakerToNetworkProxyBolt(
+                kafkaTopics.getTopoDiscoTopic(), Duration.ofSeconds(topologyConfig.getSwitchMappingRemoveDelay()));
+        topology.setBolt(SpeakerToNetworkProxyBolt.BOLT_ID, proxy, parallelism)
+                .allGrouping(SwitchMonitorBolt.BOLT_ID, SwitchMonitorBolt.STREAM_REGION_MAPPING_ID)
                 .shuffleGrouping(ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT);
 
         output.getKafkaGenericOutput()
-                .shuffleGrouping(ComponentType.KILDA_TOPO_DISCO_REPLY_BOLT);
+                .shuffleGrouping(SpeakerToNetworkProxyBolt.BOLT_ID);
     }
 
     private void networkToSpeaker(
@@ -159,8 +168,8 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     private void pingToSpeaker(TopologyBuilder topology, int spoutParallelism, int parallelism, TopologyOutput output) {
         declareControllerToSpeakerProxy(
                 topology, kafkaTopics.getSpeakerFlowPingRegionTopic(), kafkaTopics.getSpeakerFlowPingTopic(),
-                ComponentType.SPEAKER_PING_KAFKA_SPOUT, Stream.SPEAKER_PING, output.getKafkaGenericOutput(),
-                spoutParallelism, parallelism);
+                ComponentType.SPEAKER_PING_KAFKA_SPOUT, Stream.SPEAKER_PING,
+                output.getKafkaGenericOutput(), spoutParallelism, parallelism);
     }
 
     private void speakerToStats(
@@ -243,10 +252,11 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
         topology.setSpout(ComponentType.SPEAKER_KAFKA_SPOUT, spout, spoutParallelism);
 
         ControllerToSpeakerProxyBolt proxy = new ControllerToSpeakerSharedProxyBolt(
-                kafkaTopics.getSpeakerRegionTopic(), regions, kafkaTopics);
+                kafkaTopics.getSpeakerRegionTopic(), regions, kafkaTopics,
+                Duration.ofSeconds(topologyConfig.getSwitchMappingRemoveDelay()));
         topology.setBolt(ComponentType.SPEAKER_REQUEST_BOLT, proxy, parallelism)
                 .shuffleGrouping(ComponentType.SPEAKER_KAFKA_SPOUT)
-                .allGrouping(RegionTrackerBolt.BOLT_ID, RegionTrackerBolt.STREAM_REGION_UPDATE_ID);
+                .allGrouping(SwitchMonitorBolt.BOLT_ID, SwitchMonitorBolt.STREAM_REGION_MAPPING_ID);
 
         kafkaProducer
                 .shuffleGrouping(ComponentType.SPEAKER_REQUEST_BOLT)
@@ -256,15 +266,33 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
 
     private void regionTracker(TopologyBuilder topology, TopologyOutput output) {
         RegionTrackerBolt bolt = new RegionTrackerBolt(
-                kafkaTopics, persistenceManager, regions,
+                kafkaTopics.getSpeakerDiscoRegionTopic(), persistenceManager, regions,
                 topologyConfig.getFloodlightAliveTimeout(), topologyConfig.getFloodlightAliveInterval(),
                 topologyConfig.getFloodlightDumpInterval());
         topology.setBolt(RegionTrackerBolt.BOLT_ID, bolt, 1)  // must be 1 for now
-                .shuffleGrouping(ComponentType.KILDA_TOPO_DISCO_REPLY_BOLT, Stream.DISCO_REPLY);
+                .allGrouping(MonotonicTick.BOLT_ID)
+                .shuffleGrouping(SpeakerToNetworkProxyBolt.BOLT_ID, SpeakerToNetworkProxyBolt.STREAM_ALIVE_EVIDENCE_ID);
 
         output.getKafkaGenericOutput()
-                .shuffleGrouping(RegionTrackerBolt.BOLT_ID, RegionTrackerBolt.STREAM_SPEAKER_ID)
-                .shuffleGrouping(RegionTrackerBolt.BOLT_ID, RegionTrackerBolt.STREAM_NETWORK_ID);
+                .shuffleGrouping(RegionTrackerBolt.BOLT_ID, RegionTrackerBolt.STREAM_SPEAKER_ID);
+    }
+
+    private void switchMonitor(TopologyBuilder topology, TopologyOutput output, int parallelism) {
+        Fields switchIdGrouping = new Fields(SpeakerToNetworkProxyBolt.FIELD_ID_SWITCH_ID);
+
+        SwitchMonitorBolt bolt = new SwitchMonitorBolt(kafkaTopics.getTopoDiscoTopic());
+        topology.setBolt(SwitchMonitorBolt.BOLT_ID, bolt, parallelism)
+                .allGrouping(MonotonicTick.BOLT_ID)
+                .allGrouping(RegionTrackerBolt.BOLT_ID, RegionTrackerBolt.STREAM_REGION_NOTIFICATION_ID)
+                .fieldsGrouping(
+                        SpeakerToNetworkProxyBolt.BOLT_ID, SpeakerToNetworkProxyBolt.STREAM_CONNECT_NOTIFICATION_ID,
+                        switchIdGrouping);
+
+        output.getKafkaGenericOutput().shuffleGrouping(SwitchMonitorBolt.BOLT_ID, SwitchMonitorBolt.STREAM_NETWORK_ID);
+    }
+
+    private void clock(TopologyBuilder topology) {
+        topology.setBolt(MonotonicTick.BOLT_ID, new MonotonicTick(), 1);
     }
 
     private TopologyOutput kafkaOutput(TopologyBuilder topology, int scaleFactor) {
@@ -293,8 +321,10 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     private void declareSpeakerToControllerProxy(
             TopologyBuilder topology, String controllerTopic, String spoutId, String proxyBoltId, BoltDeclarer output,
             int parallelism) {
-        SpeakerToControllerProxyBolt proxy = new SpeakerToControllerProxyBolt(controllerTopic);
+        SpeakerToControllerProxyBolt proxy = new SpeakerToControllerProxyBolt(
+                controllerTopic, Duration.ofSeconds(topologyConfig.getSwitchMappingRemoveDelay()));
         topology.setBolt(proxyBoltId, proxy, parallelism)
+                .allGrouping(SwitchMonitorBolt.BOLT_ID, SwitchMonitorBolt.STREAM_REGION_MAPPING_ID)
                 .shuffleGrouping(spoutId);
 
         output.shuffleGrouping(proxyBoltId);
@@ -306,16 +336,18 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
         KafkaSpout<String, Message> spout = buildKafkaSpout(controllerTopic, spoutId);
         topology.setSpout(spoutId, spout, spoutParallelism);
 
-        declareControllerToSpeakerProxy(topology, speakerTopicsSeed, spoutId, proxyBoltId, output, proxyParallelism);
+        declareControllerToSpeakerProxy(
+                topology, speakerTopicsSeed, spoutId, proxyBoltId, output, proxyParallelism);
     }
 
     private void declareControllerToSpeakerProxy(
-            TopologyBuilder topology, String speakerTopicsSeed, String spoutId, String proxyBoltId, BoltDeclarer output,
-            int parallelism) {
-        ControllerToSpeakerProxyBolt proxy = new ControllerToSpeakerProxyBolt(speakerTopicsSeed, regions);
+            TopologyBuilder topology, String speakerTopicsSeed, String spoutId, String proxyBoltId,
+            BoltDeclarer output, int parallelism) {
+        ControllerToSpeakerProxyBolt proxy = new ControllerToSpeakerProxyBolt(
+                speakerTopicsSeed, regions, Duration.ofSeconds(topologyConfig.getSwitchMappingRemoveDelay()));
         topology.setBolt(proxyBoltId, proxy, parallelism)
                 .shuffleGrouping(spoutId)
-                .allGrouping(RegionTrackerBolt.BOLT_ID, RegionTrackerBolt.STREAM_REGION_UPDATE_ID);
+                .allGrouping(SwitchMonitorBolt.BOLT_ID, SwitchMonitorBolt.STREAM_REGION_MAPPING_ID);
 
         output.shuffleGrouping(proxyBoltId);
     }

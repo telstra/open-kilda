@@ -60,20 +60,11 @@ public final class RouterUtils {
 
     /**
      * Checks if the message should be broadcasted among regions or not.
-     *
-     * @param message target
-     * @return flag
      */
-    public static boolean isBroadcast(Message message) {
-        if (message instanceof CommandMessage) {
-            CommandData commandData = ((CommandMessage) message).getData();
-            if (commandData instanceof PortsCommandData
-                    || commandData instanceof ConnectModeRequest
-                    || commandData instanceof StatsRequest) {
-                return true;
-            }
-        }
-        return false;
+    public static boolean isBroadcast(CommandData payload) {
+        return payload instanceof PortsCommandData
+                || payload instanceof ConnectModeRequest
+                || payload instanceof StatsRequest;
     }
 
     /**

@@ -15,16 +15,16 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.service;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import org.openkilda.model.SwitchId;
 import org.openkilda.stubs.ManualClock;
 
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -53,62 +53,37 @@ public class FloodlightTrackerTest {
     private final ManualClock testClock = new ManualClock(Instant.EPOCH, ZoneOffset.UTC);
     private final AliveSetup aliveSetup = new AliveSetup(testClock, DEFAULT_ALIVE_TIMEOUT, DEFAULT_RESPONSE_TIMEOUT);
     private Set<String> regions = Collections.asSet(REGION_ONE, REGION_TWO);
-    private final FloodlightTracker service = new FloodlightTracker(
-            regions, aliveSetup);
-
+    private FloodlightTracker service;
 
     @Mock
-    MessageSender carrier;
+    RegionMonitorCarrier carrier;
 
     @Before
     public void setUp() {
         testClock.set(Instant.EPOCH);
-    }
-
-    @Test
-    public void testUpdateSwitchRegion() {
-        FloodlightTracker floodlightTracker = new FloodlightTracker(regions, DEFAULT_ALIVE_TIMEOUT,
-                                                                    DEFAULT_RESPONSE_TIMEOUT);
-        floodlightTracker.updateSwitchRegion(SWITCH_R1_ONE, REGION_ONE);
-        assertTrue(floodlightTracker.switchRegionMap.containsKey(SWITCH_R1_ONE));
-
-    }
-
-    @Test
-    public void testLookupRegion() {
-        FloodlightTracker floodlightTracker = new FloodlightTracker(regions, DEFAULT_ALIVE_TIMEOUT,
-                                                                    DEFAULT_RESPONSE_TIMEOUT);
-        floodlightTracker.switchRegionMap.putIfAbsent(SWITCH_R1_ONE, REGION_ONE);
-        String actualRegion = floodlightTracker.lookupRegion(SWITCH_R1_ONE);
-        assertEquals(REGION_ONE, actualRegion);
+        service = new FloodlightTracker(carrier, regions, aliveSetup);
     }
 
     @Test
     public void testAliveExpiration() {
-        FloodlightTracker floodlightTracker = new FloodlightTracker(regions, aliveSetup);
-
-        floodlightTracker.updateSwitchRegion(SWITCH_R1_ONE, REGION_ONE);
-        floodlightTracker.updateSwitchRegion(SWITCH_R2_ONE, REGION_TWO);
-
         // all regions are alive on start
-        floodlightTracker.handleAliveExpiration(carrier);
-
+        service.handleAliveExpiration();
         verifyNoMoreInteractions(carrier);
 
         // region 1 received an alive response, while region 2 does not
         testClock.adjust(Duration.ofSeconds(DEFAULT_ALIVE_TIMEOUT - 1));
-        floodlightTracker.handleAliveResponse(REGION_ONE, testClock.instant().toEpochMilli());
+        service.handleAliveEvidence(REGION_ONE, testClock.instant().toEpochMilli());
 
         testClock.set(Instant.EPOCH.plusSeconds(DEFAULT_ALIVE_TIMEOUT + 1));
-        floodlightTracker.handleAliveExpiration(carrier);
-        verify(carrier).emitSwitchUnmanagedNotification(SWITCH_R2_ONE);
+        service.handleAliveExpiration();
+        verify(carrier).emitRegionBecameUnavailableNotification(REGION_TWO);
         verifyNoMoreInteractions(carrier);
         reset(carrier);
 
         // region 1 become unavailable too
         testClock.set(Instant.EPOCH.plusSeconds(DEFAULT_ALIVE_TIMEOUT * 2));
-        floodlightTracker.handleAliveExpiration(carrier);
-        verify(carrier).emitSwitchUnmanagedNotification(SWITCH_R1_ONE);
+        service.handleAliveExpiration();
+        verify(carrier).emitRegionBecameUnavailableNotification(REGION_ONE);
         verifyNoMoreInteractions(carrier);
     }
 
@@ -116,18 +91,24 @@ public class FloodlightTrackerTest {
     public void testAliveResponseHandling() {
         // force all regions to become "expired/unmanaged"
         testClock.adjust(Duration.ofSeconds(DEFAULT_ALIVE_TIMEOUT + 1));
-        service.handleAliveExpiration(carrier);
+        service.handleAliveExpiration();
+        verify(carrier).emitRegionBecameUnavailableNotification(REGION_ONE);
+        verify(carrier).emitRegionBecameUnavailableNotification(REGION_TWO);
         verifyNoMoreInteractions(carrier); // there is no switches, so there is no unmanaged notifications
 
         // 1 second later
         testClock.adjust(Duration.ofSeconds(1));
-        Assert.assertTrue(service.handleAliveResponse(REGION_ONE, testClock.instant().toEpochMilli()));
-        Assert.assertTrue(service.handleAliveResponse(REGION_TWO, testClock.instant().toEpochMilli()));
+        service.handleAliveEvidence(REGION_ONE, testClock.instant().toEpochMilli());
+        verify(carrier).emitNetworkDumpRequest(REGION_ONE);
+        service.handleAliveEvidence(REGION_TWO, testClock.instant().toEpochMilli());
+        verify(carrier).emitNetworkDumpRequest(REGION_TWO);
+        reset(carrier);
 
         // 1 second later (do not require sync on consecutive responses)
         testClock.adjust(Duration.ofSeconds(1));
-        Assert.assertFalse(service.handleAliveResponse(REGION_ONE, testClock.instant().toEpochMilli()));
-        Assert.assertFalse(service.handleAliveResponse(REGION_TWO, testClock.instant().toEpochMilli()));
+        service.handleAliveEvidence(REGION_ONE, testClock.instant().toEpochMilli());
+        service.handleAliveEvidence(REGION_TWO, testClock.instant().toEpochMilli());
+        verify(carrier, never()).emitNetworkDumpRequest(any(String.class));
     }
 
     @Test
@@ -135,20 +116,31 @@ public class FloodlightTrackerTest {
         // need to move clock on any not zero value, because all interval overcome check use strict comparison '<'
         testClock.adjust(Duration.ofMillis(1));
 
-        Assert.assertEquals(service.getRegionsForAliveRequest(), regions);
+        service.emitAliveRequests();
+        verify(carrier, times(1)).emitSpeakerAliveRequest(REGION_ONE);
+        verify(carrier, times(1)).emitSpeakerAliveRequest(REGION_TWO);
+
         // this call is clock independent, so it will be same in consecutive call
-        Assert.assertEquals(service.getRegionsForAliveRequest(), regions);
+        service.emitAliveRequests();
+        verify(carrier, times(2)).emitSpeakerAliveRequest(REGION_ONE);
+        verify(carrier, times(2)).emitSpeakerAliveRequest(REGION_TWO);
 
         // register response from region 1
-        service.handleAliveResponse(REGION_ONE, testClock.instant().toEpochMilli());
-        Assert.assertEquals(service.getRegionsForAliveRequest(), Collections.asSet(REGION_TWO));
+        service.handleAliveEvidence(REGION_ONE, testClock.instant().toEpochMilli());
+        service.emitAliveRequests();
+        verify(carrier, times(2)).emitSpeakerAliveRequest(REGION_ONE);
+        verify(carrier, times(3)).emitSpeakerAliveRequest(REGION_TWO);
 
-        // DEFAULT_RESPONSE_TIMEOUT s later
+        // after DEFAULT_RESPONSE_TIMEOUT seconds later
         testClock.adjust(Duration.ofSeconds(DEFAULT_RESPONSE_TIMEOUT));
-        Assert.assertEquals(service.getRegionsForAliveRequest(), Collections.asSet(REGION_TWO));
+        service.emitAliveRequests();
+        verify(carrier, times(2)).emitSpeakerAliveRequest(REGION_ONE);
+        verify(carrier, times(4)).emitSpeakerAliveRequest(REGION_TWO);
 
         // 1 ms later
         testClock.adjust(Duration.ofMillis(1));
-        Assert.assertEquals(service.getRegionsForAliveRequest(), regions);
+        service.emitAliveRequests();
+        verify(carrier, times(3)).emitSpeakerAliveRequest(REGION_ONE);
+        verify(carrier, times(5)).emitSpeakerAliveRequest(REGION_TWO);
     }
 }

@@ -102,6 +102,7 @@ floodlight.alive.timeout = 10
 floodlight.alive.interval = 2
 message.blacklist.timeout = 180
 floodlight.regions = 1
+# floodlight.switch.mapping.remove.delay.seconds = 900
 
 local = no
 local.execution.time = 3000
