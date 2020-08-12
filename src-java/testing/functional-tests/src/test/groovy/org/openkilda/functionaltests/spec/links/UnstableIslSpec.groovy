@@ -4,6 +4,7 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -72,7 +73,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
         def swIsls = topology.getRelatedIsls(sw)
 
         when: "Deactivate the switch"
-        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager, true)
+        def blockData = switchHelper.knockoutSwitch(sw, RW, true)
 
         then: "Switch ISL is not 'unstable'"
         [swIsls[0], swIsls[0].reversed].each { assert database.getIslTimeUnstable(it) == null }

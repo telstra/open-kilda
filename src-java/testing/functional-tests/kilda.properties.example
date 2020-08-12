@@ -4,13 +4,11 @@ northbound.password=kilda
 
 floodlight.username=kilda
 floodlight.password=kilda
-floodlight.controllers.management.openflow=tcp:floodlight_1.pendev:6653,tcp:floodlight_1.pendev:6653,tcp:floodlight_2.pendev:6653
-floodlight.controllers.management.endpoints=http://localhost:8081,http://localhost:8081,http://localhost:8281
-floodlight.controllers.management.containers=floodlight_1,floodlight_1,floodlight_2
-floodlight.controllers.stat.openflow=tcp:floodlight_stats.pendev:6653,tcp:floodlight_stats.pendev:6653,tcp:floodlight_stats.pendev:6653
-floodlight.controllers.stat.endpoints=http://localhost:8082,http://localhost:8082,http://localhost:8082
-floodlight.controllers.stat.containers=floodlight_1.stats,floodlight_1.stats,floodlight_1.stats
-floodlight.regions=1,1.stats,2
+floodlight.openflows=tcp:floodlight_1.pendev:6653,tcp:floodlight_2.pendev:6653,tcp:floodlight_stats.pendev:6653
+floodlight.endpoints=http://localhost:8081,http://localhost:8281,http://localhost:8082
+floodlight.containers=floodlight_1,floodlight_2,floodlight_stats
+floodlight.regions=1,2,1.stats
+floodlight.modes=rw,rw,ro
 floodlight.alive.timeout=10
 floodlight.alive.interval=2
 

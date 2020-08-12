@@ -8,6 +8,7 @@ import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -69,7 +70,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             }
         }
 
-        def blockData = switchHelper.knockoutSwitch(switchPair.src, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(switchPair.src, RW)
 
         when: "Connect the switch to the controller"
         switchHelper.reviveSwitch(switchPair.src, blockData)
@@ -119,7 +120,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             }
         }
 
-        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(sw, RW)
 
         when: "Connect the switch to the controller"
         switchHelper.reviveSwitch(sw, blockData)
@@ -135,7 +136,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         setup: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
         def sw = topology.activeSwitches.first()
         def isls = topology.getRelatedIsls(sw)
-        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(sw, RW)
         Wrappers.wait(WAIT_OFFSET + discoveryTimeout) {
             assert northbound.getSwitch(sw.dpId).state == DEACTIVATED
             def allIsls = northbound.getAllLinks()

@@ -10,6 +10,7 @@ import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.PORT_
 import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.PORT_UP
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -189,7 +190,7 @@ class PortHistorySpec extends HealthCheckSpecification {
 
         and: "Deactivate the src switch"
         def switchToDisconnect = isl.srcSwitch
-        def blockData = switchHelper.knockoutSwitch(switchToDisconnect, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(switchToDisconnect, RW)
 
         then: "Port history on the src switch is still available"
         northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter).size() == 4

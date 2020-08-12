@@ -10,7 +10,7 @@ import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.performancetests.helpers.TopologyHelper
 import org.openkilda.testing.service.database.Database
-import org.openkilda.testing.service.floodlight.ManagementFloodlightManager
+import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -30,7 +30,7 @@ class BaseSpecification extends Specification implements SetupOnce {
     @Autowired
     NorthboundServiceV2 northboundV2
     @Autowired
-    ManagementFloodlightManager mgmtFlManager
+    FloodlightsHelper flHelper
     @Autowired
     FlowHelperV2 flowHelperV2
     @Autowired
@@ -50,15 +50,6 @@ class BaseSpecification extends Specification implements SetupOnce {
     PortAntiflapHelper antiflap
     @Autowired
     PathHelper pathHelper
-
-    @Value("#{'\${floodlight.regions}'.split(',')}")
-    List<String> regions
-
-    @Value("#{'\${floodlight.controllers.management.openflow}'.split(',')}")
-    List<String> managementControllers
-
-    @Value("#{'\${floodlight.controllers.stat.openflow}'.split(',')}")
-    List<String> statControllers
 
     @Value('${discovery.generic.interval}')
     int discoveryInterval

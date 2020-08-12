@@ -15,12 +15,14 @@
 
 package org.openkilda.testing.config;
 
-import org.openkilda.testing.service.floodlight.FloodlightService;
 import org.openkilda.testing.service.floodlight.FloodlightServiceImpl;
+import org.openkilda.testing.service.floodlight.model.Floodlight;
+import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode;
 import org.openkilda.testing.tools.ExtendedErrorHandler;
 import org.openkilda.testing.tools.LoggingRequestInterceptor;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.EnumUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -62,7 +64,7 @@ public class DefaultServiceConfig {
 
     @Bean(name = "floodlightRestTemplate")
     public RestTemplate floodlightRestTemplate(
-            @Value("#{'${floodlight.controllers.management.endpoints}'.split(',')[0]}") String endpoint,
+            @Value("#{'${floodlight.endpoints}'.split(',')[0]}") String endpoint,
             @Value("${floodlight.username}") String username,
             @Value("${floodlight.password}") String password) {
         return buildRestTemplateWithAuth(endpoint, username, password);
@@ -85,30 +87,35 @@ public class DefaultServiceConfig {
     public Map<String, RestTemplate> lockKeeperRestTemplates(
             @Value("${lockkeeper.port}") Integer lockKeeperPort,
             @Value("#{'${floodlight.regions}'.split(',')}") List<String> regions,
-            @Value("#{'${floodlight.controllers.management.endpoints}'.split(',')}") List<String> mgmtFloodlights) {
+            @Value("#{'${floodlight.endpoints}'.split(',')}") List<String> flEndpoints) {
         Map<String, RestTemplate> result = new HashMap<>();
-        for (int i = 0; i < mgmtFloodlights.size(); i++) {
-            String lockKeeperEndpoint = mgmtFloodlights.get(i)
+        for (int i = 0; i < flEndpoints.size(); i++) {
+            String lockKeeperEndpoint = flEndpoints.get(i)
                     .replaceFirst("(.*):\\d+", "$1:" + lockKeeperPort);
             result.put(regions.get(i), buildLoggingRestTemplate(lockKeeperEndpoint));
         }
         return result;
     }
 
-    @Bean(name = "managementFloodlights")
-    public List<FloodlightService> managementFloodlights(
-            @Value("#{'${floodlight.controllers.management.endpoints}'.split(',')}") List<String> mgmtFloodlights) {
-        List<FloodlightService> services = new ArrayList<>();
-        mgmtFloodlights.forEach(f -> services.add(new FloodlightServiceImpl(f)));
-        return services;
-    }
-
-    @Bean(name = "statsFloodlights")
-    public List<FloodlightService> statsFloodlights(
-            @Value("#{'${floodlight.controllers.stat.endpoints}'.split(',')}") List<String> mgmtFloodlights) {
-        List<FloodlightService> services = new ArrayList<>();
-        mgmtFloodlights.forEach(f -> services.add(new FloodlightServiceImpl(f)));
-        return services;
+    @Bean
+    public List<Floodlight> floodlights(@Value("#{'${floodlight.openflows}'.split(',')}") List<String> openflows,
+                                        @Value("#{'${floodlight.endpoints}'.split(',')}") List<String> endpoints,
+                                        @Value("#{'${floodlight.containers}'.split(',')}") List<String> containers,
+                                        @Value("#{'${floodlight.regions}'.split(',')}") List<String> regions,
+                                        @Value("#{'${floodlight.modes}'.split(',')}") List<String> modes) {
+        if (openflows.size() != endpoints.size() || openflows.size() != containers.size()
+                || openflows.size() != regions.size() || openflows.size() != modes.size()) {
+            throw new IllegalArgumentException("Floodlight test properties are illegal. Sizes of floodlight.openflows,"
+                    + " floodlight.endpoints, floodlight.containers, floodlight.regions, floodlight.modes should be "
+                    + "equal");
+        }
+        List<Floodlight> floodlights = new ArrayList<>();
+        for (int i = 0; i < regions.size(); i++) {
+            floodlights.add(new Floodlight(openflows.get(i), containers.get(i), regions.get(i),
+                    new FloodlightServiceImpl(endpoints.get(i)),
+                    EnumUtils.getEnumIgnoreCase(FloodlightConnectMode.class, modes.get(i))));
+        }
+        return floodlights;
     }
 
     @Bean(name = "otsdbRestTemplate")

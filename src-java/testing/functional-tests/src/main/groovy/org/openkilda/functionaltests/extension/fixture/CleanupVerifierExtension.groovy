@@ -4,8 +4,11 @@ import org.openkilda.functionaltests.extension.spring.ContextAwareGlobalExtensio
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.testing.Constants
+import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
+import org.openkilda.testing.tools.SoftAssertions
 
 import groovy.util.logging.Slf4j
 import org.spockframework.runtime.extension.IMethodInterceptor
@@ -29,9 +32,12 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
 
     @Autowired
     NorthboundService northbound
-
     @Autowired
     NorthboundServiceV2 northboundV2
+    @Autowired
+    TopologyDefinition topology
+    @Autowired
+    FloodlightsHelper flHelper
 
     @Override
     void delayedVisitSpec(SpecInfo spec) {
@@ -53,11 +59,22 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
                             assert northbound.getSwitchRules(it.switchId).flowEntries.find { it.cookie == Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE }
                         }
                     }
+                    def regionVerifications = new SoftAssertions()
+                    flHelper.fls.forEach { fl ->
+                        def expectedSwitchIds = topology.activeSwitches.findAll { fl.region in it.regions }*.dpId
+                        if (!expectedSwitchIds.empty) {
+                            regionVerifications.checkSucceeds {
+                                assert fl.floodlightService.switches*.switchId.sort() == expectedSwitchIds.sort()
+                            }
+                        }
+                    }
+                    regionVerifications.verify()
                     northbound.getAllLinks().each {
                         assert it.state == IslChangeType.DISCOVERED
                         assert it.cost == Constants.DEFAULT_COST || it.cost == 0
                         assert it.availableBandwidth == it.maxBandwidth
                     }
+
                 }
             })
         }

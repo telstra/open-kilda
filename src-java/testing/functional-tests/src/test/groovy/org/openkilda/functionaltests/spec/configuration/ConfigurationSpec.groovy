@@ -7,6 +7,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -112,7 +113,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         }
 
         when: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
-        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager, true)
+        def blockData = switchHelper.knockoutSwitch(sw, RW, true)
         isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
         Wrappers.wait(WAIT_OFFSET) {
             def links = northbound.getAllLinks()

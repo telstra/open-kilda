@@ -7,6 +7,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -113,7 +114,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
         when: "An intermediate switch is disconnected"
         def sw = findSw(flowPath[1].switchId)
-        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
+        def blockData = lockKeeper.knockoutSwitch(sw, RW)
 
         then: "All ISLs going through the intermediate switch are 'FAILED'"
         Wrappers.wait(discoveryTimeout * 1.5 + WAIT_OFFSET) {
@@ -242,7 +243,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         when: "Disconnect one of the switches not used by flow"
         def involvedSwitches = pathHelper.getInvolvedSwitches(flowPath)
         def switchToDisconnect = topology.getActiveSwitches().find { !involvedSwitches.contains(it) }
-        def blockData = lockKeeper.knockoutSwitch(switchToDisconnect, mgmtFlManager)
+        def blockData = lockKeeper.knockoutSwitch(switchToDisconnect, RW)
 
         then: "The switch is really disconnected from the controller"
         Wrappers.wait(WAIT_OFFSET) { assert !(switchToDisconnect.dpId in northbound.getActiveSwitches()*.switchId) }

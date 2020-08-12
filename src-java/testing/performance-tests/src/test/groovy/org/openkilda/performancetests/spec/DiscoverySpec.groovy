@@ -1,6 +1,7 @@
 package org.openkilda.performancetests.spec
 
 import static org.hamcrest.CoreMatchers.equalTo
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 import static org.openkilda.testing.service.lockkeeper.LockKeeperVirtualImpl.DUMMY_CONTROLLER
 
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -12,10 +13,14 @@ import org.openkilda.performancetests.model.CustomTopology
 
 import groovy.util.logging.Slf4j
 import org.junit.Assume
+import org.springframework.beans.factory.annotation.Value
 import spock.lang.Unroll
 
 @Slf4j
 class DiscoverySpec extends BaseSpecification {
+
+    @Value("#{'\${floodlight.regions}'.split(',')}")
+    List<String> regions
 
     @Unroll
     def "System is able to discover a huge topology at once#debugText"() {
@@ -24,13 +29,16 @@ class DiscoverySpec extends BaseSpecification {
 
         setup: "Prepare potential topology"
         def topo = new CustomTopology()
-        preset.switchesAmount.times { topo.addCasualSwitch("${managementControllers[0]} ${statControllers[0]}") }
+        preset.switchesAmount.times {
+            def fls = flHelper.fls.findAll { it.mode == RW }
+            def fl = fls[it % fls.size()]
+            topo.addCasualSwitch(fl.openflow, [fl.region])
+        }
         islsAmount.times {
             def src = topo.pickRandomSwitch()
             def dst = topo.pickRandomSwitch([src])
             topo.addIsl(src, dst)
         }
-        topo.setControllers(managementControllers)
 
         when: "Create the topology"
         def lab = labService.createLab(topo)
@@ -72,13 +80,12 @@ class DiscoverySpec extends BaseSpecification {
 
         setup: "Create topology not connected to controller"
         def topo = new CustomTopology()
-        switchesAmount.times { topo.addCasualSwitch(DUMMY_CONTROLLER) }
+        switchesAmount.times { topo.addCasualSwitch(DUMMY_CONTROLLER, [regions[it % regions.size()]]) }
         islsAmount.times {
             def src = topo.pickRandomSwitch()
             def dst = topo.pickRandomSwitch([src])
             topo.addIsl(src, dst)
         }
-        topo.setControllers(managementControllers)
         def lab = labService.createLab(topo)
         sleep(5000) //TODO(rtretiak): make createLab request to be synchronous
 
@@ -86,8 +93,8 @@ class DiscoverySpec extends BaseSpecification {
         def switchesCreated = 0
         topo.switches.eachWithIndex { sw, i ->
             log.debug("Adding sw #${switchesCreated + 1} with id $sw.dpId")
-            def controller = managementControllers[i % regions.size()] //split load between all regions
-            lockKeeper.setController(sw, controller)
+            def fls = flHelper.fls.findAll { it.mode == RW }
+            lockKeeper.setController(sw, fls[i % fls.size()].openflow)
             Wrappers.wait(allowedDiscoveryTime) {
                 assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
                 Wrappers.timedLoop(3) { //verify that system remains stable for some time

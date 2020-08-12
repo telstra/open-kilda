@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static groovyx.gpars.dataflow.Dataflow.task
 import static org.hamcrest.CoreMatchers.equalTo
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.helpers.Dice
 import org.openkilda.functionaltests.helpers.Dice.Face
@@ -18,6 +19,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.performancetests.BaseSpecification
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.SoftAssertions
 
@@ -400,7 +402,7 @@ idle, mass manual reroute, isl break. Step repeats for pre-defined amount of tim
     def blinkSwitch() {
         def sw = topology.activeSwitches[r.nextInt(topology.activeSwitches.size())]
         log.info "blink sw $sw.dpId"
-        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
+        def blockData = lockKeeper.knockoutSwitch(sw, RW)
         def sleepBeforeSwUp = r.nextInt(5) + 1
         task {
             TimeUnit.SECONDS.sleep(sleepBeforeSwUp)

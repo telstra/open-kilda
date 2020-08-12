@@ -5,9 +5,9 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_SUCCESS
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.UPDATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_SUCCESS
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.SHARED_RULE_TABLE_ID
@@ -17,6 +17,7 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.SINGLE_TABLE_ID
 import static org.openkilda.testing.Constants.TRANSIT_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -1301,7 +1302,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         assert !northbound.getSwitchProperties(sw.dpId).multiTable
 
         when: "Disconnect the switch and remove it from DB. Pretend this switch never existed"
-        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager, true)
+        def blockData = switchHelper.knockoutSwitch(sw, RW, true)
         isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
         northbound.deleteSwitch(sw.dpId, false)
 

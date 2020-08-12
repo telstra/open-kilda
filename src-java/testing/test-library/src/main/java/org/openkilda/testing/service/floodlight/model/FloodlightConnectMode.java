@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,22 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.floodlight;
+package org.openkilda.testing.service.floodlight.model;
 
-import java.util.List;
-
-public interface MultiFloodlightManager {
-    FloodlightService getFloodlightService(String region);
-
-    String getContainerName(String region);
-
-    List<String> getRegions();
-
-    List<String> getContainerNames();
-
-    List<String> getControllerAddresses();
-
-    static boolean isBackupRegion(String region) {
-        return region.toLowerCase().endsWith("_backup");
-    }
+public enum FloodlightConnectMode {
+    RW,
+    RO
 }
