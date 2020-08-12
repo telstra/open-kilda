@@ -41,15 +41,12 @@ public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, St
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
-        log.debug("Setting the flow status of {} to down", flowId);
+        log.debug("Updating the flow status of {} after 'no path found' event", flowId);
 
-        persistenceManager.getTransactionManager().doInTransaction(() -> {
-            dashboardLogger.onFlowStatusUpdate(flowId, FlowStatus.DOWN);
-            flowRepository.updateStatus(flowId, FlowStatus.DOWN);
+        FlowStatus flowStatus = persistenceManager.getTransactionManager().doInTransaction(() -> {
             stateMachine.setOriginalFlowStatus(null);
-            stateMachine.setNewFlowStatus(FlowStatus.DOWN);
 
-            Flow flow = getFlow(flowId, FetchStrategy.NO_RELATIONS);
+            Flow flow = getFlow(flowId, FetchStrategy.DIRECT_RELATIONS);
             if (stateMachine.isReroutePrimary() && stateMachine.getNewPrimaryForwardPath() == null
                     && stateMachine.getNewPrimaryReversePath() == null) {
                 if (flow.getForwardPathId() == null && flow.getReversePathId() == null) {
@@ -59,9 +56,15 @@ public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, St
                             flow.getForwardPathId(), flow.getReversePathId());
                     if (flow.getForwardPathId() != null) {
                         flowPathRepository.updateStatus(flow.getForwardPathId(), FlowPathStatus.INACTIVE);
+                        if (flow.getForwardPath() != null) {
+                            flow.getForwardPath().setStatus(FlowPathStatus.INACTIVE);
+                        }
                     }
                     if (flow.getReversePathId() != null) {
                         flowPathRepository.updateStatus(flow.getReversePathId(), FlowPathStatus.INACTIVE);
+                        if (flow.getReversePath() != null) {
+                            flow.getReversePath().setStatus(FlowPathStatus.INACTIVE);
+                        }
                     }
                 }
             }
@@ -76,14 +79,33 @@ public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, St
                             flow.getProtectedForwardPathId(), flow.getProtectedReversePathId());
                     if (flow.getProtectedForwardPathId() != null) {
                         flowPathRepository.updateStatus(flow.getProtectedForwardPathId(), FlowPathStatus.INACTIVE);
+                        if (flow.getProtectedForwardPath() != null) {
+                            flow.getProtectedForwardPath().setStatus(FlowPathStatus.INACTIVE);
+                        }
                     }
                     if (flow.getProtectedReversePathId() != null) {
                         flowPathRepository.updateStatus(flow.getProtectedReversePathId(), FlowPathStatus.INACTIVE);
+                        if (flow.getProtectedReversePath() != null) {
+                            flow.getProtectedReversePath().setStatus(FlowPathStatus.INACTIVE);
+                        }
                     }
                 }
             }
+
+            FlowStatus newFlowStatus = flow.computeFlowStatus();
+
+            if (newFlowStatus != FlowStatus.DOWN && newFlowStatus != FlowStatus.DEGRADED) {
+                log.error("Computed unexpected status {} of flow {} after 'no path found' event", newFlowStatus, flow);
+                newFlowStatus = FlowStatus.DOWN;
+            }
+
+            log.debug("Setting the flow status of {} to {}", flowId, newFlowStatus);
+            dashboardLogger.onFlowStatusUpdate(flowId, newFlowStatus);
+            flowRepository.updateStatus(flowId, newFlowStatus);
+            stateMachine.setNewFlowStatus(newFlowStatus);
+            return newFlowStatus;
         });
 
-        stateMachine.saveActionToHistory("The flow status was set to down");
+        stateMachine.saveActionToHistory(String.format("The flow status was set to %s", flowStatus));
     }
 }
