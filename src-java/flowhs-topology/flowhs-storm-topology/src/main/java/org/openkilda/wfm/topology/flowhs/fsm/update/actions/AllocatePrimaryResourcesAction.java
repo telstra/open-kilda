@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class AllocatePrimaryResourcesAction extends
@@ -84,6 +85,10 @@ public class AllocatePrimaryResourcesAction extends
 
         pathsToReuse.add(flow.getForwardPath());
         pathsToReuse.add(flow.getReversePath());
+        pathsToReuse.addAll(stateMachine.getRejectedPaths().stream()
+                .map(flow::getPath)
+                .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty))
+                .collect(Collectors.toList()));
         FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources, false);
         log.debug("New primary path has been created: {}", newPaths);
         stateMachine.setNewPrimaryForwardPath(newPaths.getForward().getPathId());

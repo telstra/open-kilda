@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class AllocateProtectedResourcesAction extends
@@ -95,6 +96,10 @@ public class AllocateProtectedResourcesAction extends
 
             pathsToReuse.add(flow.getProtectedForwardPath());
             pathsToReuse.add(flow.getProtectedReversePath());
+            pathsToReuse.addAll(stateMachine.getRejectedPaths().stream()
+                    .map(flow::getPath)
+                    .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty))
+                    .collect(Collectors.toList()));
             FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources, false);
             log.debug("New protected path has been created: {}", newPaths);
             stateMachine.setNewProtectedForwardPath(newPaths.getForward().getPathId());

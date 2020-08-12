@@ -17,6 +17,7 @@ package org.openkilda.persistence.repositories.impl;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -49,6 +50,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -433,6 +435,22 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
                 FlowEncapsulationType.TRANSIT_VLAN).size());
     }
 
+    @Test
+    public void shouldFindIslsByForwardAndReversePathIds() {
+        final Isl isl1 = createIsl(switchA, 1, switchB, 2);
+        final Isl isl2 = createIsl(switchB, 2, switchA, 1);
+        createIsl(switchA, 3, switchB, 4);
+        createIsl(switchB, 4, switchA, 3);
+
+        Flow flow = buildFlowWithPath(0, 0);
+
+        Collection<Isl> foundIsls =
+                islRepository.findByPathIds(Lists.newArrayList(flow.getForwardPathId(), flow.getReversePathId()));
+
+        assertEquals(2, foundIsls.size());
+        assertTrue(foundIsls.contains(isl1) && foundIsls.contains(isl2));
+    }
+
     private Flow buildFlowWithPath(int forwardBandwidth, int reverseBandwidth) {
         Flow flow = Flow.builder()
                 .flowId(TEST_FLOW_ID)
@@ -489,5 +507,16 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
 
         flowRepository.createOrUpdate(flow);
         return flow;
+    }
+
+    private Isl createIsl(Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort) {
+        Isl isl = new Isl();
+        isl.setSrcSwitch(srcSwitch);
+        isl.setSrcPort(srcPort);
+        isl.setDestSwitch(dstSwitch);
+        isl.setDestPort(dstPort);
+
+        islRepository.createOrUpdate(isl);
+        return isl;
     }
 }

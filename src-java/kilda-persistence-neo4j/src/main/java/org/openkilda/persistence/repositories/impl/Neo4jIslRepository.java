@@ -125,6 +125,20 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     }
 
     @Override
+    public Collection<Isl> findByPathIds(List<PathId> pathIds) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "path_ids", pathIds.stream().map(PathId::getId).collect(Collectors.toList()));
+
+        String query = "MATCH (fp:flow_path)-[:owns]->(ps:path_segment) "
+                + "WHERE fp.path_id IN $path_ids "
+                + "MATCH (s:switch)<-[:source]-(ps)-[:destination]->(d:switch) "
+                + "MATCH (s)-[i:isl {src_port: ps.src_port, dst_port: ps.dst_port}]->(d) "
+                + "RETURN s, i, d";
+
+        return addIslConfigToIsl(Lists.newArrayList(getSession().query(getEntityType(), query, parameters)));
+    }
+
+    @Override
     public Collection<Isl> findByPartialEndpoints(SwitchId srcSwitchId, Integer srcPort,
                                                   SwitchId dstSwitchId, Integer dstPort) {
         Filters filters = new Filters();
