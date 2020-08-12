@@ -92,5 +92,5 @@ CLEAN_UP_RESOURCES --> DELETED : _resources_done
 CLEAN_UP_RESOURCES --> OPERATIONAL : isl-(up|down|move)|bfd-(up|down|kill)|round-trip-status
 
 DELETED -> [*]
-DELETED : enter / emit enable exhausted-poll-mode
+DELETED : enter / emit isl-removed-notification
 @enduml

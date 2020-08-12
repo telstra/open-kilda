@@ -265,4 +265,9 @@ public class NetworkIntegrationCarrier
     public void auxiliaryPollModeUpdateRequest(Endpoint endpoint, boolean enableAuxiliaryPollMode) {
         // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
     }
+
+    @Override
+    public void islRemovedNotification(Endpoint srcEndpoint, IslReference reference) {
+        // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
+    }
 }

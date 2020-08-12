@@ -48,9 +48,10 @@ import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRule
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRulesIslRemoveCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRulesWorkerCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.UniIslHandler;
+import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslNotifyIslRemovedCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListAuxiliaryPollModeUpdateCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListExhaustedPollModeUpdateCommand;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -82,6 +83,10 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
 
     public static final String STREAM_POLL_ID = "poll";
     public static final Fields STREAM_POLL_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER,
+            FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
+
+    public static final String STREAM_UNIISL_ID = "uni-isl";
+    public static final Fields STREAM_UNIISL_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER,
             FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
     private final PersistenceManager persistenceManager;
@@ -147,6 +152,7 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
         streamManager.declareStream(STREAM_STATUS_ID, STREAM_STATUS_FIELDS);
         streamManager.declareStream(STREAM_SPEAKER_RULES_ID, STREAM_SPEAKER_RULES_FIELDS);
         streamManager.declareStream(STREAM_POLL_ID, STREAM_POLL_FIELDS);
+        streamManager.declareStream(STREAM_UNIISL_ID, STREAM_UNIISL_FIELDS);
     }
 
     @Override
@@ -193,12 +199,9 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     }
 
     @Override
-    public void exhaustedPollModeUpdateRequest(Endpoint endpoint, boolean enableExhaustedPollMode) {
-        WatchListCommand command = new WatchListExhaustedPollModeUpdateCommand(endpoint, enableExhaustedPollMode);
-        // We emit without the anchor tuple because here we are generating a new event to change the mode.
-        // Also, if a cycle appears in the future by the anchor tuple, it will be quite difficult to find it,
-        // and we remove the possibility of this cycle appearing initially.
-        emit(STREAM_POLL_ID, makePollTuple(command));
+    public void islRemovedNotification(Endpoint srcEndpoint, IslReference reference) {
+        // We emit without the anchor tuple to break the loop.
+        emit(STREAM_UNIISL_ID, makeUniIslTuple(new UniIslNotifyIslRemovedCommand(srcEndpoint, reference)));
     }
 
     private Values makeSpeakerRulesTuple(SpeakerRulesWorkerCommand command) {
@@ -220,6 +223,11 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     }
 
     private Values makePollTuple(WatchListCommand command) {
+        Endpoint endpoint = command.getEndpoint();
+        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, getCommandContext());
+    }
+
+    private Values makeUniIslTuple(UniIslCommand command) {
         Endpoint endpoint = command.getEndpoint();
         return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, getCommandContext());
     }
