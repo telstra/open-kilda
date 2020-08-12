@@ -35,6 +35,8 @@ public interface FlowRepository extends Repository<Flow> {
      */
     Collection<Flow> findAll();
 
+    Collection<Flow> findAll(FetchStrategy fetchStrategy);
+
     boolean exists(String flowId);
 
     Optional<Flow> findById(String flowId);
