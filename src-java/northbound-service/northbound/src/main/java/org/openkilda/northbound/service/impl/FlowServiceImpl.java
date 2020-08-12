@@ -30,7 +30,6 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
-import org.openkilda.messaging.info.flow.FlowHistoryData;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
@@ -59,7 +58,7 @@ import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
-import org.openkilda.messaging.payload.history.FlowEventPayload;
+import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.PathMapper;
@@ -652,7 +651,7 @@ public class FlowServiceImpl implements FlowService {
     }
 
     @Override
-    public CompletableFuture<List<FlowEventPayload>> listFlowEvents(String flowId,
+    public CompletableFuture<List<FlowHistoryEntry>> listFlowEvents(String flowId,
                                                                     long timestampFrom,
                                                                     long timestampTo, int maxCount) {
         if (maxCount < 1) {
@@ -668,9 +667,10 @@ public class FlowServiceImpl implements FlowService {
                 .maxCount(maxCount)
                 .build();
         CommandMessage command = new CommandMessage(request, System.currentTimeMillis(), correlationId);
-        return messagingChannel.sendAndGet(nbworkerTopic, command)
-                .thenApply(FlowHistoryData.class::cast)
-                .thenApply(FlowHistoryData::getPayload);
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, command)
+                .thenApply(result -> result.stream()
+                        .map(FlowHistoryEntry.class::cast)
+                        .collect(Collectors.toList()));
     }
 
     /**

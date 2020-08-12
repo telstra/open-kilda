@@ -1021,7 +1021,7 @@ switches"() {
                 it.state == IslChangeType.FAILED
             }.size() == broughtDownPorts.size() * 2
             assert northbound.getFlowStatus(flow1.id).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow1.id).last().histories.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow1.id).last().payload.find { it.action == REROUTE_FAIL }
         }
 
         when: "Try to swap endpoints for two flows"

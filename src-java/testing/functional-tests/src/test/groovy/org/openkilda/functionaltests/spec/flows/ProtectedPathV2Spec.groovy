@@ -1026,7 +1026,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
         }
         verifyAll(northboundV2.getFlow(flow.flowId).statusDetails) {
             mainPath == "Down"
@@ -1196,7 +1196,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
                 status == FlowState.DEGRADED.toString()
                 statusInfo == "Reroute is unsuccessful. Couldn't find new path(s)"
             }
-            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
         }
 
         when: "Update flow: disable protected path(allocateProtectedPath=false)"

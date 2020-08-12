@@ -196,7 +196,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         then: "The flow becomes 'Down'"
         wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
         }
 
         when: "ISL goes back up"
@@ -208,7 +208,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         then: "The flow becomes 'Up'"
         wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert northbound.getFlowHistory(flow.flowId).last().histories
+            assert northbound.getFlowHistory(flow.flowId).last().payload
                 .find { it.action == "The flow status was reverted to UP" }
         }
 
@@ -240,7 +240,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         then: "The flow goes to 'Down' status"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
         }
         wait(WAIT_OFFSET) {
             def prevHistorySize = northbound.getFlowHistory(flow.flowId).size()
@@ -263,7 +263,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         and: "The flow was rerouted"
         Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET * 2) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert northbound.getFlowHistory(flow.flowId).last().histories.last().action == REROUTE_SUCCESS
+            assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == REROUTE_SUCCESS
         }
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
 
@@ -425,7 +425,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
             assert flowInfo.status == FlowState.DOWN.toString()
             assert flowInfo.statusInfo == "Not enough bandwidth or no path found. Failed to\
  find path with requested bandwidth=$flow.maximumBandwidth: Switch $flow.source.switchId doesn't have links with enough bandwidth"
-            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
         }
 
         and: "Flow is not rerouted"
@@ -525,7 +525,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         def flowPathMap = [(firstFlow.flowId): firstFlowMainPath, (secondFlow.flowId): secondFlowPath]
         wait(WAIT_OFFSET * 2) {
             def firstFlowHistory = northbound.getFlowHistory(firstFlow.flowId).findAll { it.action == REROUTE_ACTION }
-            assert firstFlowHistory.last().histories.find { it.action == REROUTE_FAIL }
+            assert firstFlowHistory.last().payload.find { it.action == REROUTE_FAIL }
             //check that system doesn't retry to reroute the firstFlow (its src is down, no need to retry)
             assert !firstFlowHistory.find { it.taskId =~ /.+ : retry #1/ }
             def secondFlowHistory = northbound.getFlowHistory(secondFlow.flowId).findAll { it.action == REROUTE_ACTION }
@@ -785,14 +785,14 @@ triggering one more reroute of the current path"
         TimeUnit.SECONDS.sleep(rerouteDelay)
         //first reroute should not be finished at this point, otherwise increase the latency to switches
         assert ![REROUTE_SUCCESS, REROUTE_FAIL].contains(
-            northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }.histories.last().action)
+            northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }.payload.last().action)
 
         then: "System reroutes the flow twice and flow ends up in UP state"
         Wrappers.wait(PATH_INSTALLATION_TIME * 2) {
             def history = northbound.getFlowHistory(flow.flowId)
             def reroutes = history.findAll { it.action == REROUTE_ACTION }
             assert reroutes.size() == 2 //reroute queue, second reroute starts right after first is finished
-            reroutes.each { assert it.histories.last().action == REROUTE_SUCCESS }
+            reroutes.each { assert it.payload.last().action == REROUTE_SUCCESS }
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 

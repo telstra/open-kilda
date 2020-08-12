@@ -192,7 +192,7 @@ and at least 1 path must remain safe"
         wait(WAIT_OFFSET) {
             assert northbound.getFlowHistory(flow.flowId).findAll {
                 it.action == data.historyAction
-            }.last().histories*.details.findAll{ it =~ /.+ Retrying/}.size() == data.retriesAmount
+            }.last().payload*.details.findAll{ it =~ /.+ Retrying/}.size() == data.retriesAmount
         }
 
         then: "Flow is DOWN"
@@ -285,7 +285,7 @@ and at least 1 path must remain safe"
 
         then: "Flow history shows failed delete rule retry attempts but flow deletion is successful at the end"
         wait(WAIT_OFFSET) {
-            def history = northbound.getFlowHistory(flow.flowId).last().histories
+            def history = northbound.getFlowHistory(flow.flowId).last().payload
             //egress and ingress rule on a broken switch, 3 retries each = total 6
             assert history.count { it.details ==~ /Failed to remove the rule.*Retrying \(attempt \d+\)/ } == 6
             assert history.last().action == DELETE_SUCCESS
@@ -351,7 +351,7 @@ and at least 1 path must remain safe"
         wait(WAIT_OFFSET) {
             assert northbound.getFlowHistory(flow.flowId).findAll {
                 it.action == REROUTE_ACTION
-            }.last().histories*.details.findAll{ it =~ /.+ Retrying/}.size() == 9
+            }.last().payload*.details.findAll{ it =~ /.+ Retrying/}.size() == 9
             //install: 3 attempts, revert: delete 3 attempts + install 3 attempts
         }
 
@@ -421,7 +421,7 @@ and at least 1 path must remain safe"
         int eventsAmount
         wait(globalTimeout + WAIT_OFFSET, 1) { //long wait, may be doing some revert actions after global t/o
             def history = northbound.getFlowHistory(flow.flowId)
-            def lastEvent = history.last().histories
+            def lastEvent = history.last().payload
             assert lastEvent.find { it.action == sprintf('Global timeout reached for reroute operation on flow "%s"', flow.flowId) }
             assert lastEvent.last().action == REROUTE_FAIL
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN

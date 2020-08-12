@@ -11,7 +11,7 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.payload.history.FlowEventPayload
+import org.openkilda.messaging.payload.history.FlowHistoryEntry
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.history.FlowEvent
@@ -39,7 +39,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
     @Shared
     String flowWithHistory
     @Shared
-    List<FlowEventPayload> bigHistory
+    List<FlowHistoryEntry> bigHistory
 
     def setupOnce() {
         specStartTime = System.currentTimeSeconds()
@@ -265,26 +265,26 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         ]
     }
 
-    void checkHistoryCreateV2Action(FlowEventPayload flowHistory, String flowId) {
+    void checkHistoryCreateV2Action(FlowHistoryEntry flowHistory, String flowId) {
         assert flowHistory.action == CREATE_ACTION
-        assert flowHistory.histories.action[-1] == CREATE_SUCCESS
+        assert flowHistory.payload.action[-1] == CREATE_SUCCESS
         checkHistoryCommonStuff(flowHistory, flowId)
     }
 
-    void checkHistoryUpdateAction(FlowEventPayload flowHistory, String flowId) {
+    void checkHistoryUpdateAction(FlowHistoryEntry flowHistory, String flowId) {
         assert flowHistory.action == UPDATE_ACTION
-        assert flowHistory.histories.action[-1] == UPDATE_SUCCESS
+        assert flowHistory.payload.action[-1] == UPDATE_SUCCESS
         checkHistoryCommonStuff(flowHistory, flowId)
     }
 
-    void checkHistoryCommonStuff(FlowEventPayload flowHistory, String flowId) {
+    void checkHistoryCommonStuff(FlowHistoryEntry flowHistory, String flowId) {
         assert flowHistory.flowId == flowId
         assert flowHistory.taskId
     }
 
     /** We pass latest timestamp when changes were done.
      * Just for getting all records from history */
-    void checkHistoryDeleteAction(List<FlowEventPayload> flowHistory, String flowId) {
+    void checkHistoryDeleteAction(List<FlowHistoryEntry> flowHistory, String flowId) {
         checkHistoryCreateV2Action(flowHistory[0], flowId)
         checkHistoryUpdateAction(flowHistory[1], flowId)
     }
