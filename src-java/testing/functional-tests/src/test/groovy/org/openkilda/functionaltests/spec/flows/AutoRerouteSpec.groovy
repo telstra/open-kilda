@@ -4,8 +4,10 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -80,7 +82,12 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         def portDown = antiflap.portDown(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "The flow becomes 'Down'"
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+            assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN
+            assert northbound.getFlowHistory(flow.id).find {
+                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+            }?.payload?.last()?.action == REROUTE_FAIL
+        }
 
         when: "ISL goes back up"
         def portUp = antiflap.portUp(isl.dstSwitch.dpId, isl.dstPort)
@@ -334,6 +341,9 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN
+            assert northbound.getFlowHistory(flow.id).find {
+                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+            }?.payload?.last()?.action == REROUTE_FAIL
         }
 
         and: "Flow is not rerouted"

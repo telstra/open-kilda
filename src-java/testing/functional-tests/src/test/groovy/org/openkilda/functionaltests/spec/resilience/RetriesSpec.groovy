@@ -88,7 +88,7 @@ and at least 1 path must remain safe"
         then: "System fails to install rules on desired path and tries to retry reroute and find new path"
         wait(rerouteDelay + WAIT_OFFSET, 0.1) {
             assert northbound.getFlowHistory(flow.flowId).find {
-                it.action == "Flow rerouting" && it.taskId =~ (/.+ : retry #1/)
+                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1/)
             }
         }
 

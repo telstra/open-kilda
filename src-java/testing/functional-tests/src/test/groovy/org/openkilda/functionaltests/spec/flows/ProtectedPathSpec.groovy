@@ -5,6 +5,7 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
@@ -970,7 +971,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.id).last().payload.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow.id).find {
+                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+            }?.payload?.last()?.action == REROUTE_FAIL
         }
         verifyAll(northbound.getFlow(flow.id).flowStatusDetails) {
             mainFlowPathStatus == "Down"
