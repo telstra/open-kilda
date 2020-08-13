@@ -54,23 +54,23 @@ public class RevertResourceAllocationAction extends
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         persistenceManager.getTransactionManager().doInTransaction(() -> {
-            Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
+            Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.ALL_RELATIONS);
 
             FlowResources newPrimaryResources = stateMachine.getNewPrimaryResources();
             if (newPrimaryResources != null) {
-                resourcesManager.deallocatePathResources(newPrimaryResources);
                 saveHistory(stateMachine, flow, newPrimaryResources);
+                resourcesManager.deallocatePathResources(newPrimaryResources);
             }
 
             FlowResources newProtectedResources = stateMachine.getNewProtectedResources();
             if (newProtectedResources != null) {
-                resourcesManager.deallocatePathResources(newProtectedResources);
                 saveHistory(stateMachine, flow, newProtectedResources);
+                resourcesManager.deallocatePathResources(newProtectedResources);
             }
 
             stateMachine.getRejectedResources().forEach(flowResources -> {
-                resourcesManager.deallocatePathResources(flowResources);
                 saveHistory(stateMachine, flow, flowResources);
+                resourcesManager.deallocatePathResources(flowResources);
             });
 
             FlowPath newPrimaryForward = null;
