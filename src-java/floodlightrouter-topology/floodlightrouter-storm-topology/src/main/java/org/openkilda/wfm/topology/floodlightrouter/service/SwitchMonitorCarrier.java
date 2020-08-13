@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,16 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.statistics;
+package org.openkilda.wfm.topology.floodlightrouter.service;
 
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.IFloodlightService;
-import org.projectfloodlight.openflow.types.DatapathId;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingUpdate;
 
-import java.util.Set;
+public interface SwitchMonitorCarrier {
+    void regionUpdateNotification(RegionMappingUpdate mappingUpdate);
 
-public interface IStatisticsService extends IFloodlightService {
-    void processStatistics(FloodlightModuleContext context, Set<DatapathId> excludeSwitches);
-
-    void processStatistics(FloodlightModuleContext context, Set<DatapathId> excludeSwitches, Set<DatapathId> scope);
+    void switchStatusUpdateNotification(SwitchId switchId, InfoData notification);
 }

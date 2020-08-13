@@ -7,83 +7,101 @@
 - Do high load testing
 
 ## Overall workflow
-Create new service responsible to manage all particularity of multiple FL
-communication. Lets call this service "FL-router".
+Each speaker-region is represented by speaker instance and the set of
+"incoming" and the set of "outgoing" kafka-topics. Region's name is used as the
+suffix for all these kafka-topic names.
 
-FL-router is going to be placed between FL(one or multiple) and all other
-services. I.e. FL-router service will have incoming kafka-topic, used to 
-receive messages/commands designed for FL. On the other end it will have
-N*2 kafka topics used to communicate with FL instances. Where N is the
-number of FL. x2 appears because FL use 2 kafka-topics one for input(read)
-and one for output(write).
+FL-router can be treated as the set of parallel streams responsible for proxying
+messages from the controller (all other storm topologies) to the speaker (one
+specific speaker instance in a specific region that serve connection with
+target switch). And the set of streams in opposite direction i.e. from the
+speaker into the controller.
 
-Actual response topic will be determined on FL-router side in same way as
-it is done now into FL.
-
-One significant change will be made for message processing - each message
-will have a response9at least one). In other word FL must send response
-for each message(command) it receive. It can be a "normal" response or
-error response. If FL do not produce response, FL-router will produce
-error response by himself.
+In other words, we have the set of 1-to-N kafka-topic streams and the set of
+N-to-1 kafka-topics streams. The main responsibility of the FL-router is to
+route the message into the region that serves the connection to the switch that
+is the target of this message. Also, hide knowledge about this switch-to-region
+mapping from all other services/topologies.  
 
 ![FL communication](./fl-communication.png)
 
 ## FL message/command kinds
-1. Single switch command - operate with 1 switch
-   * do not require pre-processing and post-processing on FL-router side
-1. Multi-switch commands - operate with several switched
-   * need post-processing in FL-router - keep intermediate results and
-     assemble final result
+1. Single switch command - operate with 1 switch, must be delivered into one
+   region
+1. Multi-switch commands - operate with several switches, must be delivered in
+   all regions
 
-## Make FL status sync (multi-switch command)
-Event topology need to sync it's state with FL on topology start. To do
-this it send SyncRequest(`NetworkCommandData` now) into FL(into FL-router).
+## Make FL status sync
+To keep network-discovery service in "up-to-date" state despite possible gaps
+in the data passed from the speaker (due to connectivity issues between the
+speaker and fl-router) to network-discovery, fl-router performs so-called
+network sync. It emits "dump-all-switches" request into all regions with some
+constant interval (1 minute by default). As a result, all speaker instances
+on a regular basis send data about all connected switches including status
+of all their ports. This data is used to update possible outdated switch(and
+all ports) state inside the network-discovery service.
 
-In multi FloodLight environment this request must be send to each FL. Each
-FL will send N-kafka messages in response (message chain - same was as it
-done for NB responses).
+The open-kilda system has feature-toggle responsible for enabling/disabling the
+mentioned above periodic network sync. It is used mainly by functional
+tests.
 
-So as result event topology will receive N chains in response on sync
-request. Each chain represent state of one FL. Event topology must be ready
-to receive N sync chains complementing each other.
+**WARN:**
 
-Because FL-router do not modify sync response chain and because event topology
-must ignore incomplete chains it is safe to proxy individual sync responses
-without storing them on FL-router side.
+There is a strict requirement on the start order of open-kilda services
+**if the network sync disabled**. The services must be started in the
+following order:
 
-In case of errors during sync command(some FL do not send response or send 
-incomplete chain), FL-router must repeat SyncRequest to failed FL(s). 
+* network topology
+* fl-router topology
+* FL (all regions)
+* rest of the services.
 
-![FL status dump](./fl-sync.png)
+This start order guarantees that network-topology will receive all switch
+connect notification and will have the correct network view after the start.
 
 ## FL alive tracking
-To be able to handle events not posted in kafka due to lost network connection
-between FL and kafka, we need to track lost messages or FL alive(from
-FL-router point of view) status.
+To be able to handle events not posted in kafka due to lost network
+connection between FL and kafka, we need to track lost messages or FL
+aliveness status (from FL-router point of view).
 
 ![FL alive tracking](./fl-alive-tracking.png)
 
-When outage is detected we must wait to connection recovery. After this we must
-request FL "status" by emitting `SyncRequest`.
-
-![FL outage handling](./fl-outage-handling.png)
-
 ## FL data model
-* id (used as part of read/write kafka-topic names).
+* region-id.
 
 ## FL-router data model
 * list of "known" FL instances
-* map connected switchId to FL instance
-* map correlationId to blacklist
+* map connected switchId to the FL instance
 
-## implemntation
-* remove extra kafka-producers (there is at least 3 of them, for correct work
-  of FL-router all FL-modules must use same kafka-producer)
-* implement FL-router (single switch commands)
-* implement kafka-connection trace feature (FL side)
-* implement FL-dump assembling feature (FL-router side)
-* remove current FL-connection tracing feature (`event`-topology)
-* refactor `event`-topology (in it's current state it is overcomplicated and
-  extremely hard to add/modify any feature there)
-* implement FL-dump processing on `event`-topology side
-* implement multy-switch commands in FL-router
+# Master-master or simultaneous multi-region switch connection tracking
+
+FL-router must track switch connection status by itself and produce "virtual"
+connection status into all other open-kilda services. In this case, all
+knowledge about multiple connections will be encapsulated inside FL-router and
+all other services will continue to work with switches as if it has only 1
+connection (i.e. in the same way as before).
+
+There are 2 possible events that can/should be treated as availability
+(unavailability) of switch in specific region. This is "connect" and "activate"
+for availability and "deactivate" and "disconnect" for unavailability.
+Depending from our expectation of speaker role for a specific switch in a
+specific region, we should either use one pair or another. If we are tracking
+the "equal" (master) role of the speaker, we should use the "activate" /
+"deactivate" pair. If we are tracking the "slave" role we must use "connect"
+/ "disconnect" pair.
+
+For simplicity, we will use "connect" / "disconnect" events pair during
+following explanation of the switch tracking process.
+
+Data required to track switch connection:
+
+* switch-id
+* set-of-presence - regions that can be used to communicate with this switch
+* active-region - region used to communicate with the switch
+
+Connection tracking overall state diagram.
+
+![connection-tracking-diagram](./connection-tracking.png)
+
+Real connection tracking code will not use FSM, because the state diagram is too
+simple and full-featured FSM will bring useless complexity in implementation.

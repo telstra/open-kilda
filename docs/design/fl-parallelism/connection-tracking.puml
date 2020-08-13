@@ -1,0 +1,39 @@
+Internal data:
+* switch-id
+* set-of-presence - regions that can be used to communicate with this switch
+* active-region - region used to communicate with switch
+
+Input signals:
+* connect|activate
+* deactivate|disconnect
+* kill-timer
+
+Output signals:
+* region update notification
+* switch (de)activate notification
+
+@startuml
+title per-switch multi-region connection tracking
+
+[*] --> INIT
+
+INIT --> AVAILABLE : connect
+
+AVAILABLE : enter / reset kill-timer\
+
+AVAILABLE : enter / add affected-region into list-of-presence
+AVAILABLE : enter / emit region update notification
+AVAILABLE : enter / emit switch activate notification
+AVAILABLE : connect / add affected-region into list-of-presence
+AVAILABLE : disconnect [affected-region == active-region] / emit region update notification
+AVAILABLE : disconnect [affected-region == active-region] / set active-region to next available region
+AVAILABLE : disconnect / remove affected-region into list-of-presence
+AVAILABLE --> UNAVAILABLE : disconnect [list-of-presence.isEmpty()]
+
+UNAVAILABLE : enter / emit switch deactivate notification
+UNAVAILABLE : enter / activate kill-timer
+UNAVAILABLE --> AVAILABLE : connect
+
+UNAVAILABLE --> [*] : kill-timer
+
+@enduml

@@ -15,58 +15,51 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
-import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.messaging.AliveRequest;
+import org.openkilda.messaging.AliveResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.model.FeatureToggles;
-import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.bolt.MonotonicClock;
 import org.openkilda.wfm.topology.floodlightrouter.ComponentType;
 import org.openkilda.wfm.topology.floodlightrouter.RegionAwareKafkaTopicSelector;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.floodlightrouter.service.FloodlightTracker;
-import org.openkilda.wfm.topology.floodlightrouter.service.MessageSender;
-import org.openkilda.wfm.topology.floodlightrouter.service.RouterService;
-import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMapping;
-import org.openkilda.wfm.topology.utils.AbstractTickRichBolt;
+import org.openkilda.wfm.topology.floodlightrouter.service.RegionMonitorCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-// FIXME(surabujin) must use AbstractBolt as base
 @Slf4j
-public class RegionTrackerBolt extends AbstractTickRichBolt implements MessageSender {
+public class RegionTrackerBolt extends AbstractBolt implements RegionMonitorCarrier {
     public static final String BOLT_ID = ComponentType.KILDA_TOPO_DISCO_BOLT;
 
-    public static final String STREAM_SPEAKER_ID = Stream.SPEAKER_DISCO;
-    public static final String STREAM_NETWORK_ID = Stream.KILDA_TOPO_DISCO;
+    public static final String FIELD_ID_REGION = SpeakerToNetworkProxyBolt.FIELD_ID_REGION;
 
-    public static final String STREAM_REGION_UPDATE_ID = Stream.REGION_NOTIFICATION;
-    public static final Fields STREAM_REGION_UPDATE_FIELDS = new Fields(
-            AbstractTopology.MESSAGE_FIELD, AbstractBolt.FIELD_ID_CONTEXT);
+    public static final String STREAM_SPEAKER_ID = Stream.SPEAKER_DISCO;
+
+    public static final String STREAM_REGION_NOTIFICATION_ID = "region";
+    public static final Fields STREAM_REGION_NOTIFICATION_FIELDS = new Fields(
+            FIELD_ID_REGION, AbstractBolt.FIELD_ID_CONTEXT);
 
     private final String kafkaSpeakerTopic;
-    private final String kafkaNetworkTopic;
 
     private final PersistenceManager persistenceManager;
+    private final MonotonicClock.Match<TickId> monotonicTickMatch = new MonotonicClock.Match<>(
+            MonotonicTick.BOLT_ID, null);
 
     private final Set<String> floodlights;
     private final long floodlightAliveTimeout;
@@ -75,18 +68,14 @@ public class RegionTrackerBolt extends AbstractTickRichBolt implements MessageSe
     private long lastNetworkDumpTimestamp;
 
     private transient FeatureTogglesRepository featureTogglesRepository;
-    private transient RouterService routerService;
-    private transient CommandContext commandContext;
-
-    private Tuple currentTuple;
+    private transient FloodlightTracker floodlightTracker;
 
     public RegionTrackerBolt(
-            KafkaTopicsConfig kafkaTopics, PersistenceManager persistenceManager, Set<String> floodlights,
+            String kafkaSpeakerTopic, PersistenceManager persistenceManager, Set<String> floodlights,
             long floodlightAliveTimeout, long floodlightAliveInterval, long floodlightDumpInterval) {
         super();
 
-        kafkaSpeakerTopic = kafkaTopics.getSpeakerDiscoRegionTopic();
-        kafkaNetworkTopic = kafkaTopics.getTopoDiscoTopic();
+        this.kafkaSpeakerTopic = kafkaSpeakerTopic;
 
         this.persistenceManager = persistenceManager;
         this.floodlights = floodlights;
@@ -96,28 +85,20 @@ public class RegionTrackerBolt extends AbstractTickRichBolt implements MessageSe
     }
 
     @Override
-    protected void doTick(Tuple tuple) {
-        setupTuple(tuple);
-
-        try {
+    protected void dispatch(Tuple input) throws Exception {
+        String source = input.getSourceComponent();
+        if (monotonicTickMatch.isTick(input)) {
             handleTick();
-        } finally {
-            cleanupTuple();
+        } else if (SpeakerToNetworkProxyBolt.BOLT_ID.equals(source)) {
+            handleNetworkNotification(input);
+        } else {
+            super.dispatch(input);
         }
     }
 
     @Override
-    protected void doWork(Tuple input) {
-        setupTuple(input);
-
-        try {
-            handleInput(input);
-        } catch (Exception e) {
-            log.error("Failed to process tuple {}", input, e);
-        } finally {
-            outputCollector.ack(input);
-            cleanupTuple();
-        }
+    protected void handleInput(Tuple input) {
+        unhandledInput(input);
     }
 
     @Override
@@ -126,22 +107,21 @@ public class RegionTrackerBolt extends AbstractTickRichBolt implements MessageSe
                 FieldNameBasedTupleToKafkaMapper.BOLT_KEY, FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE,
                 RegionAwareKafkaTopicSelector.FIELD_ID_TOPIC, RegionAwareKafkaTopicSelector.FIELD_ID_REGION);
         outputManager.declareStream(STREAM_SPEAKER_ID, fields);
-        outputManager.declareStream(STREAM_NETWORK_ID, fields);
 
-        outputManager.declareStream(STREAM_REGION_UPDATE_ID, STREAM_REGION_UPDATE_FIELDS);
+        outputManager.declareStream(STREAM_REGION_NOTIFICATION_ID, STREAM_REGION_NOTIFICATION_FIELDS);
     }
 
     @Override
-    public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
+    public void init() {
+        super.init();
+
         featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
-        FloodlightTracker floodlightTracker = new FloodlightTracker(floodlights, floodlightAliveTimeout,
-                floodlightAliveInterval);
-        routerService = new RouterService(floodlightTracker);
-        super.prepare(map, topologyContext, outputCollector);
+        floodlightTracker = new FloodlightTracker(this, floodlights, floodlightAliveTimeout, floodlightAliveInterval);
     }
 
     private void handleTick() {
-        routerService.doPeriodicProcessing(this);
+        floodlightTracker.emitAliveRequests();
+        floodlightTracker.handleAliveExpiration();
 
         long now = System.currentTimeMillis();
         if (now >= lastNetworkDumpTimestamp + floodlightDumpInterval) {
@@ -150,53 +130,51 @@ public class RegionTrackerBolt extends AbstractTickRichBolt implements MessageSe
         }
     }
 
-    private void handleInput(Tuple input) {
-        String sourceComponent = input.getSourceComponent();
-        Message message = (Message) input.getValueByField(AbstractTopology.MESSAGE_FIELD);
-
-        // setup correct command context
-        commandContext = new CommandContext(message);
-
-        switch (sourceComponent) {
-            case ComponentType.KILDA_TOPO_DISCO_REPLY_BOLT:
-                routerService.processSpeakerDiscoResponse(this, message);
-                break;
-            default:
-                log.error("Unknown input stream handled: {}", sourceComponent);
-                break;
+    private void handleNetworkNotification(Tuple input) throws PipelineException {
+        String stream = input.getSourceStreamId();
+        if (SpeakerToNetworkProxyBolt.STREAM_ALIVE_EVIDENCE_ID.equals(stream)) {
+            handleAliveEvidenceNotification(input);
+        } else if (SpeakerToNetworkProxyBolt.STREAM_REGION_NOTIFICATION_ID.equals(stream)) {
+            handleRegionNotification(input);
+        } else {
+            unhandledInput(input);
         }
     }
 
-    private void setupTuple(Tuple input) {
-        currentTuple = input;
-        commandContext = new CommandContext();
+    private void handleAliveEvidenceNotification(Tuple input) throws PipelineException {
+        String region = pullSpeakerRegion(input);
+        long timestamp = pullValue(input, SpeakerToNetworkProxyBolt.FIELD_ID_TIMESTAMP, Long.class);
+
+        floodlightTracker.handleAliveEvidence(region, timestamp);
     }
 
-    private void cleanupTuple() {
-        currentTuple = null;
-        commandContext = null;
+    private void handleRegionNotification(Tuple input) throws PipelineException {
+        String region = pullSpeakerRegion(input);
+        InfoData payload = pullValue(input, SpeakerToNetworkProxyBolt.FIELD_ID_PAYLOAD, InfoData.class);
+        if (! handleRegionNotification(region, payload)) {
+            unhandledInput(input);
+        }
     }
 
-    // MessageSender implementation
+    private boolean handleRegionNotification(String region, InfoData payload) {
+        if (payload instanceof AliveResponse) {
+            floodlightTracker.handleAliveResponse(region, (AliveResponse) payload);
+        } else {
+            return false;
+        }
+        return true;
+    }
+
+    // SwitchStatusCarrier implementation
 
     @Override
     public void emitSpeakerAliveRequest(String region) {
         AliveRequest request = new AliveRequest();
-        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(),
-                                                    commandContext.fork(String.format("alive-request(%s)", region))
-                                                            .getCorrelationId());
-        outputCollector.emit(
-                STREAM_SPEAKER_ID, currentTuple, makeSpeakerTuple(pullKeyFromCurrentTuple(), message, region));
-    }
-
-    @Override
-    public void emitSwitchUnmanagedNotification(SwitchId sw) {
-        UnmanagedSwitchNotification notification = new UnmanagedSwitchNotification(sw);
-        InfoMessage message = new InfoMessage(notification, System.currentTimeMillis(),
-                                              commandContext.fork(String.format("unmanaged(%s)", sw.toOtsdFormat()))
-                                                      .getCorrelationId());
-        outputCollector.emit(
-                STREAM_NETWORK_ID, currentTuple, makeNetworkTuple(sw.toString(), message));
+        CommandMessage message = new CommandMessage(
+                request, System.currentTimeMillis(),
+                getCommandContext().fork(String.format("alive-request(%s)", region)).getCorrelationId());
+        getOutput().emit(
+                STREAM_SPEAKER_ID, getCurrentTuple(), makeSpeakerTuple(null, message, region));
     }
 
     /**
@@ -204,25 +182,17 @@ public class RegionTrackerBolt extends AbstractTickRichBolt implements MessageSe
      */
     @Override
     public void emitNetworkDumpRequest(String region) {
-        String correlationId = commandContext.fork(String.format("network-dump(%s)", region)).getCorrelationId();
-        CommandMessage command = new CommandMessage(new NetworkCommandData(),
-                                                    System.currentTimeMillis(), correlationId);
+        String correlationId = getCommandContext().fork(String.format("network-dump(%s)", region)).getCorrelationId();
+        CommandMessage command = new CommandMessage(
+                new NetworkCommandData(), System.currentTimeMillis(), correlationId);
 
         log.info("Send network dump request (correlation-id: {})", correlationId);
-        outputCollector.emit(
-                STREAM_SPEAKER_ID, currentTuple, makeSpeakerTuple(correlationId, command, region));
+        getOutput().emit(STREAM_SPEAKER_ID, getCurrentTuple(), makeSpeakerTuple(correlationId, command, region));
     }
 
     @Override
-    public void emitRegionNotification(SwitchMapping mapping) {
-        outputCollector.emit(STREAM_REGION_UPDATE_ID, currentTuple, makeRegionUpdateTuple(mapping));
-    }
-
-    private String pullKeyFromCurrentTuple() {
-        if (currentTuple.getFields().contains(AbstractTopology.KEY_FIELD)) {
-            return currentTuple.getStringByField(AbstractTopology.KEY_FIELD);
-        }
-        return null;
+    public void emitRegionBecameUnavailableNotification(String region) {
+        getOutput().emit(STREAM_REGION_NOTIFICATION_ID, getCurrentTuple(), makeRegionNotificationTuple(region));
     }
 
     private void doNetworkDump() {
@@ -243,23 +213,15 @@ public class RegionTrackerBolt extends AbstractTickRichBolt implements MessageSe
                 .orElse(FeatureToggles.DEFAULTS.getFloodlightRoutePeriodicSync());
     }
 
+    private String pullSpeakerRegion(Tuple tuple) throws PipelineException {
+        return pullValue(tuple, SpeakerToNetworkProxyBolt.FIELD_ID_REGION, String.class);
+    }
+
     private Values makeSpeakerTuple(String key, Message payload, String region) {
-        return makeGenericKafkaTuple(key, payload, kafkaSpeakerTopic, region);
+        return new Values(key, payload, kafkaSpeakerTopic, region);
     }
 
-    private Values makeNetworkTuple(String key, Message payload) {
-        return makeGenericKafkaTuple(key, payload, kafkaNetworkTopic);
-    }
-
-    private Values makeRegionUpdateTuple(SwitchMapping payload) {
-        return new Values(payload, commandContext);
-    }
-
-    private Values makeGenericKafkaTuple(String key, Message payload, String topic) {
-        return makeGenericKafkaTuple(key, payload, topic, null);
-    }
-
-    private Values makeGenericKafkaTuple(String key, Message payload, String topic, String region) {
-        return new Values(key, payload, topic, region);
+    private Values makeRegionNotificationTuple(String region) {
+        return new Values(region, getCommandContext().fork(region));
     }
 }

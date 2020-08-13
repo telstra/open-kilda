@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,16 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.statistics;
+package org.openkilda.wfm.topology.floodlightrouter.service;
 
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.IFloodlightService;
-import org.projectfloodlight.openflow.types.DatapathId;
+public interface RegionMonitorCarrier {
+    void emitSpeakerAliveRequest(String region);
 
-import java.util.Set;
+    void emitNetworkDumpRequest(String region);
 
-public interface IStatisticsService extends IFloodlightService {
-    void processStatistics(FloodlightModuleContext context, Set<DatapathId> excludeSwitches);
-
-    void processStatistics(FloodlightModuleContext context, Set<DatapathId> excludeSwitches, Set<DatapathId> scope);
+    void emitRegionBecameUnavailableNotification(String region);
 }

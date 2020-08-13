@@ -61,6 +61,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -113,23 +114,31 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         isManagementRole = Objects.equals("management", configParams.get("role"));
     }
 
-    /**
-     * execute stats requests handling.
-     * @param context module context
-     */
     public void processStatistics(FloodlightModuleContext context, Set<DatapathId> excludeSwitches) {
+        processStatistics(context, excludeSwitches, switchService.getAllSwitchDpids());
+    }
+
+    /**
+         * execute stats requests handling.
+         * @param context module context
+         */
+    public void processStatistics(
+            FloodlightModuleContext context, Set<DatapathId> excludeSwitches, Set<DatapathId> scopeHint) {
+        final Set<DatapathId> scope = new HashSet<>(scopeHint);
         if (! isManagementRole) {
-            logger.debug("Received stats request for statistics floodlight with excludeSwitches: {}", excludeSwitches);
+            logger.debug(
+                    "Received stats request for statistics floodlight with excludeSwitches: {} and scope: {}",
+                    excludeSwitches, scope);
         } else {
-            logger.debug("Received stats request for management floodlight with excludeSwitches: {}", excludeSwitches);
+            logger.debug("Received stats request for management floodlight with scope: {}", scope);
         }
 
         statisticsTopic = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getStatsTopic();
         region = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getRegion();
 
-        switchService.getAllSwitchMap().values()
-                .stream()
-                .filter(it -> !excludeSwitches.contains(it.getId()))
+        scope.removeAll(excludeSwitches);
+        switchService.getAllSwitchMap().values().stream()
+                .filter(it -> scope.contains(it.getId()))
                 .forEach(iofSwitch -> {
                     try {
                         gatherPortStats(iofSwitch);
