@@ -139,13 +139,6 @@ class IslReplugSpec extends HealthCheckSpecification {
 
         cleanup:
         database.resetCosts()
-        // next 3 lines(workaround) should be removed once the 3677 issue is fixed
-        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
-            [isl, isl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }
-        }
-
     }
 
     def "New potential self-loop ISL (the same port on the same switch) is not getting discovered when replugging"() {
