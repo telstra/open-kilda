@@ -92,7 +92,12 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
 
     @Override
     public Collection<Flow> findAll() {
-        return loadAll(EMPTY_FILTERS, FetchStrategy.DIRECT_RELATIONS);
+        return findAll(FetchStrategy.DIRECT_RELATIONS);
+    }
+
+    @Override
+    public Collection<Flow> findAll(FetchStrategy fetchStrategy) {
+        return loadAll(EMPTY_FILTERS, fetchStrategy);
     }
 
     @Override

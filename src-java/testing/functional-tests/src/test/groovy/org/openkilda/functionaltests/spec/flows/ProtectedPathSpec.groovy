@@ -970,7 +970,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.id).last().histories.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow.id).last().payload.find { it.action == REROUTE_FAIL }
         }
         verifyAll(northbound.getFlow(flow.id).flowStatusDetails) {
             mainFlowPathStatus == "Down"
@@ -1134,7 +1134,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Flow status is DEGRADED"
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED
-            assert northbound.getFlowHistory(flow.id).last().histories.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow.id).last().payload.find { it.action == REROUTE_FAIL }
         }
 
 

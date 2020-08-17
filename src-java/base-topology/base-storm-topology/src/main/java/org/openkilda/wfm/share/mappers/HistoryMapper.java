@@ -17,7 +17,7 @@ package org.openkilda.wfm.share.mappers;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.payload.history.FlowDumpPayload;
-import org.openkilda.messaging.payload.history.FlowEventPayload;
+import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.messaging.payload.history.FlowHistoryPayload;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.model.Flow;
@@ -43,15 +43,18 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
+import java.util.List;
+
 @Slf4j
 @Mapper(uses = {FlowPathMapper.class})
 public abstract class HistoryMapper {
     public static final HistoryMapper INSTANCE = Mappers.getMapper(HistoryMapper.class);
 
     @Mapping(target = "timestamp", expression = "java(flowEvent.getTimestamp().getEpochSecond())")
-    @Mapping(target = "histories", ignore = true)
-    @Mapping(target = "dumps", ignore = true)
-    public abstract FlowEventPayload map(FlowEvent flowEvent);
+    @Mapping(target = "payload", source = "payload")
+    @Mapping(target = "dumps", source = "dumps")
+    public abstract FlowHistoryEntry map(
+            FlowEvent flowEvent, List<FlowHistoryPayload> payload, List<FlowDumpPayload> dumps);
 
     @Mapping(target = "timestamp", expression = "java(flowHistory.getTimestamp().getEpochSecond())")
     public abstract FlowHistoryPayload map(FlowHistory flowHistory);

@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -13,6 +14,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
@@ -23,16 +25,21 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
+
+import javax.inject.Provider
 
 @Narrative("""
 Covers PATCH /api/v2/flows/:flowId and PATCH /api/v1/flows/:flowId
@@ -40,6 +47,8 @@ This API allows to partially update a flow, i.e. update a flow without specifyin
 Depending on changed fields flow will be either updated+rerouted or just have its values changed in database.
 """)
 class PartialUpdateSpec extends HealthCheckSpecification {
+    @Autowired
+    Provider<TraffExamService> traffExamProvider
 
     @Tidy
     @Unroll
@@ -89,6 +98,18 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                 ],
                 [
                         field   : "pinned",
+                        newValue: true
+                ],
+                [
+                        field   : "pathComputationStrategy",
+                        newValue: PathComputationStrategy.LATENCY.toString().toLowerCase()
+                ],
+                [
+                        field   : "description",
+                        newValue: "updated"
+                ],
+                [
+                        field   : "ignoreBandwidth",
                         newValue: true
                 ]
         ]
@@ -527,6 +548,43 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                         }
                 ]
         ]
+    }
+
+    @Tidy
+    @Tags(HARDWARE)
+    def "Able to update flow encapsulationType using partial update"() {
+        given: "A flow with a 'transit_vlan' encapsulation"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            it.src.noviflow && !it.src.wb5164 && it.dst.noviflow && !it.dst.wb5164
+        }
+        assumeTrue("Unable to find required switches in topology", switchPair as boolean)
+
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
+        flowHelperV2.addFlow(flow)
+
+        def originalCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
+            !new Cookie(it.cookie).serviceFlag
+        }
+
+        when: "Request a flow partial update for an encapsulationType field(vxlan)"
+        def newEncapsulationTypeValue = FlowEncapsulationType.VXLAN.toString().toLowerCase()
+        def updateRequest = new FlowPatchV2().tap { it.encapsulationType = newEncapsulationTypeValue }
+        def response = flowHelperV2.partialUpdate(flow.flowId, updateRequest)
+
+        then: "Update response reflects the changes"
+        response.encapsulationType == newEncapsulationTypeValue
+
+        and: "Changes actually took place"
+        northboundV2.getFlow(flow.flowId).encapsulationType == newEncapsulationTypeValue
+
+        and: "Flow rules have been reinstalled"
+        !northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
+            !new Cookie(it.cookie).serviceFlag
+        }.any { it in originalCookies }
+
+        cleanup: "Remove the flow"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Shared

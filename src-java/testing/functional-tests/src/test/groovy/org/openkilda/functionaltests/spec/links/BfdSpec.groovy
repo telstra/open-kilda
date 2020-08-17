@@ -66,7 +66,7 @@ class BfdSpec extends HealthCheckSpecification {
         lockKeeper.addFlows([isl.aswitch])
 
         then: "ISL is rediscovered"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        Wrappers.wait(discoveryAuxiliaryInterval + WAIT_OFFSET) {
             assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
             assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED
         }
@@ -133,7 +133,7 @@ class BfdSpec extends HealthCheckSpecification {
         when: "Set BFD toggle back to 'on' state and restore the ISL"
         lockKeeper.addFlows([isl.aswitch])
         def toggleOn = northbound.toggleFeature(FeatureTogglesDto.builder().useBfdForIslIntegrityCheck(true).build())
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        Wrappers.wait(discoveryAuxiliaryInterval + WAIT_OFFSET) {
             assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
             assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED
         }

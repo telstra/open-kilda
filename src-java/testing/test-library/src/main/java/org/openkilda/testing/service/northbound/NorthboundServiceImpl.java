@@ -34,7 +34,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
-import org.openkilda.messaging.payload.history.FlowEventPayload;
+import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
@@ -107,22 +107,22 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public List<FlowEventPayload> getFlowHistory(String flowId) {
+    public List<FlowHistoryEntry> getFlowHistory(String flowId) {
         return getFlowHistory(flowId, null, null);
     }
 
     @Override
-    public List<FlowEventPayload> getFlowHistory(String flowId, Long timeFrom, Long timeTo) {
+    public List<FlowHistoryEntry> getFlowHistory(String flowId, Long timeFrom, Long timeTo) {
         return getFlowHistory(flowId, timeFrom, timeTo, null);
     }
 
     @Override
-    public List<FlowEventPayload> getFlowHistory(String flowId, Integer maxCount) {
+    public List<FlowHistoryEntry> getFlowHistory(String flowId, Integer maxCount) {
         return getFlowHistory(flowId, null, null, maxCount);
     }
 
     @Override
-    public List<FlowEventPayload> getFlowHistory(String flowId, Long timeFrom, Long timeTo, Integer maxCount) {
+    public List<FlowHistoryEntry> getFlowHistory(String flowId, Long timeFrom, Long timeTo, Integer maxCount) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/flows/{flow_id}/history");
         if (timeFrom != null) {
             uriBuilder.queryParam("timeFrom", timeFrom);
@@ -133,8 +133,8 @@ public class NorthboundServiceImpl implements NorthboundService {
         if (maxCount != null) {
             uriBuilder.queryParam("max_count", maxCount);
         }
-        FlowEventPayload[] flowHistory = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), FlowEventPayload[].class, flowId).getBody();
+        FlowHistoryEntry[] flowHistory = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowHistoryEntry[].class, flowId).getBody();
         return Arrays.asList(flowHistory);
     }
 

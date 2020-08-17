@@ -1,9 +1,11 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -18,7 +20,6 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.northbound.dto.v2.switches.SwitchLocationDtoV2
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
 
 import org.springframework.http.HttpStatus
@@ -149,19 +150,26 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         when: "Bring down all ports on src switch to make flow DOWN"
         def doPortDowns = true //helper var for cleanup
-        topology.getBusyPortsForSwitch(switchPair.src).each {
-            antiflap.portDown(switchPair.src.dpId, it)
+        def portsToDown = topology.getBusyPortsForSwitch(switchPair.src)
+        withPool {
+            portsToDown.eachParallel { // issue 3665
+                antiflap.portDown(switchPair.src.dpId, it)
+            }
         }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
                 it.state == IslChangeType.FAILED
-            }.size() == topology.getBusyPortsForSwitch(switchPair.src).size() * 2
+            }.size() == portsToDown.size() * 2
         }
 
         and: "Get all flows going through the src switch"
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(WAIT_OFFSET * 2) {
             assert northboundV2.getFlowStatus(protectedFlow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(protectedFlow.flowId).last().histories.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(protectedFlow.flowId).last().payload.find { it.action == REROUTE_FAIL }
+            assert northboundV2.getFlowStatus(defaultFlow.flowId).status == FlowState.DOWN
+            def deafultFlowHistory = northbound.getFlowHistory(defaultFlow.flowId).findAll { it.action == REROUTE_ACTION }
+            assert deafultFlowHistory.last().payload.find { it.action == REROUTE_FAIL }
+            assert deafultFlowHistory.find { it.taskId =~ /.+ : retry #1/ }
         }
         def getSwitchFlowsResponse6 = northbound.getSwitchFlows(switchPair.src.dpId)
 
@@ -170,7 +178,7 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         cleanup: "Delete the flows"
         [protectedFlow, singleFlow, defaultFlow].each { flowHelperV2.deleteFlow(it.flowId) }
-        doPortDowns && topology.getBusyPortsForSwitch(switchPair.src).each { antiflap.portUp(switchPair.src.dpId, it) }
+        doPortDowns && portsToDown.each { antiflap.portUp(switchPair.src.dpId, it) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }

@@ -134,6 +134,21 @@ public class NetworkUniIslService {
         endpointData.remove(endpoint);
     }
 
+    /**
+     * Process ISL removed notification.
+     */
+    public void islRemovedNotification(Endpoint endpoint, IslReference removedIsl) {
+        log.debug("Uni-ISL service receive ISL-REMOVED notification for {}", endpoint);
+
+        IslReference storedIslReference = lookupEndpointData(endpoint);
+        if (removedIsl.equals(storedIslReference)) {
+            log.info("Received ISL-REMOVED notification. The endpoint data for {} has been set to the initial value.",
+                    endpoint);
+            endpointData.put(endpoint, IslReference.of(endpoint));
+            carrier.exhaustedPollModeUpdateRequest(endpoint, false);
+        }
+    }
+
     // -- private --
 
     private void handleDiscoveryFail(Endpoint endpoint, IslDownReason downReason) {

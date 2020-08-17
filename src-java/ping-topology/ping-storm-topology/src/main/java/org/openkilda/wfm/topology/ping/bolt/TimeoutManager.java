@@ -107,7 +107,9 @@ public class TimeoutManager extends Abstract {
 
         TimeoutDescriptor descriptor = pendingPings.remove(response.getPingId());
         if (descriptor == null) {
-            log.warn("There is no pending request matching ping response {}", response.getPingId());
+            log.debug(
+                    "There is no pending request matching ping response {} (multiple responses are expected if switch "
+                            + "connected to multiple regions)", response.getPingId());
         } else {
             cancelTimeout(descriptor);
             emitResponse(input, descriptor, response);

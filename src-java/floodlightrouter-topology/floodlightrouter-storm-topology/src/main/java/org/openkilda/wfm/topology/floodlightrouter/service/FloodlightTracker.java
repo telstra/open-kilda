@@ -15,32 +15,30 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.service;
 
-import org.openkilda.model.SwitchId;
+import org.openkilda.messaging.AliveResponse;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 @Slf4j
 public class FloodlightTracker {
+    private final RegionMonitorCarrier carrier;
     private final AliveSetup aliveSetup;
-
-    @VisibleForTesting
-    protected Map<SwitchId, String> switchRegionMap = new HashMap<>();
 
     @VisibleForTesting
     protected Map<String, SpeakerStatus> floodlightStatus = new HashMap<>();
 
-    public FloodlightTracker(Set<String> floodlights, long aliveTimeout, long aliveInterval) {
-        this(floodlights, new AliveSetup(aliveTimeout, aliveInterval));
+    public FloodlightTracker(
+            RegionMonitorCarrier carrier, Set<String> floodlights, long aliveTimeout, long aliveInterval) {
+        this(carrier, floodlights, new AliveSetup(aliveTimeout, aliveInterval));
     }
 
-    FloodlightTracker(Set<String> floodlights, AliveSetup aliveSetup) {
+    FloodlightTracker(RegionMonitorCarrier carrier, Set<String> floodlights, AliveSetup aliveSetup) {
+        this.carrier = carrier;
         this.aliveSetup = aliveSetup;
 
         for (String region : floodlights) {
@@ -50,95 +48,58 @@ public class FloodlightTracker {
     }
 
     /**
-     * Update switch region mapping.
-     *
-     * @param switchId target switch
-     * @param region target region
+     * Handle alive response.
      */
-    public boolean updateSwitchRegion(SwitchId switchId, String region) {
-        String previous = switchRegionMap.put(switchId, region);
-        return !Objects.equals(region, previous);
-    }
-
-    /**
-     * Return region for switch.
-     *
-     * @param switchId target switch
-     * @return region of the switch
-     */
-    public String lookupRegion(SwitchId switchId) {
-        return switchRegionMap.get(switchId);
+    public void handleAliveResponse(String region, AliveResponse response) {
+        if (response.getFailedMessages() > 0) {
+            log.info(
+                    "Receive alive response with not zero(=={}) transport errors count - force network sync",
+                    response.getFailedMessages());
+            carrier.emitNetworkDumpRequest(region);
+        }
     }
 
     /**
      * Updates floodlight availability status according to last received alive response.
      */
-    public void handleAliveExpiration(MessageSender messageSender) {
-        Set<String> becomeInactive = new HashSet<>();
+    public void handleAliveExpiration() {
         for (SpeakerStatus status : floodlightStatus.values()) {
             if (aliveSetup.isAlive(status.getAliveMarker())) {
                 continue;
             }
 
-            log.warn("Floodlight region {} is marked as inactive no alive responses for {}", status.getRegion(),
-                     aliveSetup.timeFromLastSeen(status.getAliveMarker()));
             if (status.markInactive()) {
-                becomeInactive.add(status.getRegion());
+                log.error("Floodlight region {} is marked as inactive no alive responses for {}", status.getRegion(),
+                        aliveSetup.timeFromLastSeen(status.getAliveMarker()));
+                carrier.emitRegionBecameUnavailableNotification(status.getRegion());
             }
         }
-
-        emmitUnmanagedNotifications(messageSender, becomeInactive);
     }
 
     /**
-     * Handles alive response.
-     *
-     * @return flag whether discovery needed or not
+     * Register alive evidences (any received message from specific region).
      */
-    public boolean handleAliveResponse(String region, long timestamp) {
-        log.debug("Handling alive response for region {}", region);
+    public void handleAliveEvidence(String region, long timestamp) {
+        log.debug("Handling alive evidence for region {}", region);
         SpeakerStatus status = floodlightStatus.get(region);
 
         boolean isActiveNow = status.isActive();
         status.markActive(aliveSetup.makeMarker(timestamp));
 
         if (!isActiveNow) {
-            log.info("Region {} is went online", region);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Notify consumers about unmanaged switches.
-     *
-     * @param messageSender storm topology callback to handle transport.
-     */
-    private void emmitUnmanagedNotifications(MessageSender messageSender, Set<String> inactiveRegions) {
-        for (Map.Entry<SwitchId, String> entry : switchRegionMap.entrySet()) {
-            String region = entry.getValue();
-            if (!inactiveRegions.contains(region)) {
-                continue;
-            }
-
-            SwitchId sw = entry.getKey();
-            log.debug("Sending unmanaged switch notification for {}", sw.getId());
-            messageSender.emitSwitchUnmanagedNotification(sw);
+            log.info("Region {} is went online (force network sync)", region);
+            carrier.emitNetworkDumpRequest(region);
         }
     }
 
     /**
-     * Get regions that requires alive request.
-     *
-     * @return set of regions
+     * Emit alive request for regions stays quiet(do not produce any message) for some time.
      */
-    public Set<String> getRegionsForAliveRequest() {
-        Set<String> regions = new HashSet<>();
+    public void emitAliveRequests() {
         for (SpeakerStatus status : floodlightStatus.values()) {
             if (aliveSetup.isAliveRequestRequired(status.getAliveMarker())) {
-                regions.add(status.getRegion());
+                carrier.emitSpeakerAliveRequest(status.getRegion());
             }
         }
-        return regions;
     }
 }

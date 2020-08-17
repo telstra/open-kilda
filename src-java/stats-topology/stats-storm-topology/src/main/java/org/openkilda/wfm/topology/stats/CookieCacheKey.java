@@ -13,16 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.floodlightrouter.service;
+package org.openkilda.wfm.topology.stats;
 
 import org.openkilda.model.SwitchId;
 
-public interface MessageSender {
-    void emitSpeakerAliveRequest(String region);
+import lombok.Value;
 
-    void emitSwitchUnmanagedNotification(SwitchId sw);
-
-    void emitNetworkDumpRequest(String region);
-
-    void emitRegionNotification(SwitchMapping mapping);
+@Value
+public class CookieCacheKey {
+    private SwitchId switchId;
+    private long cookie;
 }

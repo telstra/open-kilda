@@ -37,6 +37,8 @@ public interface IslRepository extends Repository<Isl> {
 
     Optional<Isl> findByEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
 
+    Collection<Isl> findByPathIds(List<PathId> pathIds);
+
     /**
      * Finds ISLs by incomplete ISL information. If all parameters are null, will be returned a list of all ISLs.
      *

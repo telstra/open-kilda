@@ -29,33 +29,8 @@ public class CacheFlowEntry implements Serializable {
 
     @NonNull
     private String flowId;
-
-    private String ingressSwitch;
-    private String egressSwitch;
     private Long cookie;
-
-    public CacheFlowEntry(String flowId, Long cookie) {
-        this(flowId, null, null, cookie);
-    }
-
-    /**
-     * Make "clone" of existing object, replace ingressSwitch or egressSwitch with new value. Switch that must be
-     * replaced determined by point argument value.
-     */
-    public CacheFlowEntry replaceSwitch(String sw, MeasurePoint point) {
-        CacheFlowEntryBuilder replacement = toBuilder();
-        switch (point) {
-            case INGRESS:
-                replacement.ingressSwitch(sw);
-                break;
-            case EGRESS:
-                replacement.egressSwitch(sw);
-                break;
-            default:
-                throw new IllegalArgumentException(String.format("Unsupported measurement point value %s", point));
-        }
-        return replacement.build();
-    }
+    private MeasurePoint measurePoint;
 
     public CacheFlowEntry replaceCookie(Long cookie) {
         return toBuilder().cookie(cookie).build();

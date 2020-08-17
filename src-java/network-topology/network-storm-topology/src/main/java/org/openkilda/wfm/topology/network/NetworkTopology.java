@@ -285,9 +285,11 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         UniIslHandler bolt = new UniIslHandler();
         Fields portGrouping = new Fields(PortHandler.FIELD_ID_DATAPATH, PortHandler.FIELD_ID_PORT_NUMBER);
         Fields bfdPortGrouping = new Fields(BfdPortHandler.FIELD_ID_DATAPATH, BfdPortHandler.FIELD_ID_PORT_NUMBER);
+        Fields islGrouping = new Fields(IslHandler.FIELD_ID_DATAPATH, IslHandler.FIELD_ID_PORT_NUMBER);
         topology.setBolt(UniIslHandler.BOLT_ID, bolt, scaleFactor)
                 .fieldsGrouping(PortHandler.BOLT_ID, portGrouping)
-                .fieldsGrouping(BfdPortHandler.BOLT_ID, BfdPortHandler.STREAM_UNIISL_ID, bfdPortGrouping);
+                .fieldsGrouping(BfdPortHandler.BOLT_ID, BfdPortHandler.STREAM_UNIISL_ID, bfdPortGrouping)
+                .fieldsGrouping(IslHandler.BOLT_ID, IslHandler.STREAM_UNIISL_ID, islGrouping);
     }
 
     private void islHandler(TopologyBuilder topology, int scaleFactor) {

@@ -1021,7 +1021,7 @@ switches"() {
                 it.state == IslChangeType.FAILED
             }.size() == broughtDownPorts.size() * 2
             assert northbound.getFlowStatus(flow1.id).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow1.id).last().histories.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow1.id).last().payload.find { it.action == REROUTE_FAIL }
         }
 
         when: "Try to swap endpoints for two flows"
@@ -1307,8 +1307,11 @@ switches"() {
         error.errorDescription == sprintf("Reverted flows: [%s, %s]", flow2.flowId, flow1.flowId)
 
         and: "First flow is reverted to Down"
-        Wrappers.wait(PATH_INSTALLATION_TIME) {
+        Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow1.flowId).status == FlowState.DOWN
+            assert northbound.getFlowHistory(flow1.flowId).find {
+                it.action == "Flow rerouting" && it.taskId =~ (/.+ : retry #1/)
+            }
         }
         with(northboundV2.getFlow(flow1.flowId)) {
             source == flow1.source

@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,29 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.payload.history;
+package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import org.openkilda.wfm.share.bolt.MonotonicClock;
+import org.openkilda.wfm.topology.floodlightrouter.ComponentType;
+import org.openkilda.wfm.topology.floodlightrouter.TickId;
 
-import java.util.List;
-
-@Data
-@NoArgsConstructor
-public class FlowEventPayload {
-    private String flowId;
-
-    private long timestamp;
-
-    private String actor;
-
-    private String action;
-
-    private String taskId;
-
-    private String details;
-
-    private List<FlowHistoryPayload> histories;
-
-    private List<FlowDumpPayload> dumps;
+public class MonotonicTick extends MonotonicClock<TickId> {
+    public static final String BOLT_ID = ComponentType.CLOCK;
 }

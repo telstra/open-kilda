@@ -18,8 +18,10 @@ package org.openkilda.messaging.info.discovery;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -38,9 +40,19 @@ public class NetworkDumpSwitchData extends InfoData {
     @JsonProperty(value = "switch_record", required = true)
     private SpeakerSwitchView switchView;
 
+    @JsonProperty("write_mode")
+    private boolean writeMode;
+
     @JsonCreator
     public NetworkDumpSwitchData(
-            @JsonProperty("switch_record") @NonNull SpeakerSwitchView switchView) {
+            @JsonProperty("switch_record") @NonNull SpeakerSwitchView switchView,
+            @JsonProperty("write_mode") boolean writeMode) {
         this.switchView = switchView;
+        this.writeMode = writeMode;
+    }
+
+    @JsonIgnore
+    public SwitchId getSwitchId() {
+        return switchView.getDatapath();
     }
 }

@@ -31,7 +31,7 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.floodlightrouter.ComponentType;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
-import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMapping;
+import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingUpdate;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
 import com.google.common.collect.ImmutableMap;
@@ -51,6 +51,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
@@ -59,7 +60,7 @@ import java.util.Set;
 @RunWith(MockitoJUnitRunner.class)
 public class ControllerToSpeakerProxyBoltTest {
     private static final int TASK_ID_SPOUT = 0;
-    private static final int TASK_ID_REGION_TRACKER = 1;
+    private static final int SWITCH_MONITOR_BOLT = 1;
     private static final String STREAM_SPOUT_DEFAULT = Utils.DEFAULT_STREAM_ID;
 
     private ControllerToSpeakerProxyBolt subject;
@@ -85,7 +86,7 @@ public class ControllerToSpeakerProxyBoltTest {
         Set<String> regions = new HashSet<>();
         regions.add(REGION_ONE);
         regions.add(REGION_TWO);
-        subject = new ControllerToSpeakerProxyBolt(Stream.SPEAKER_DISCO, regions);
+        subject = new ControllerToSpeakerProxyBolt(Stream.SPEAKER_DISCO, regions, Duration.ofSeconds(900));
 
         when(topologyContext.getThisTaskId()).thenReturn(1);
         subject.prepare(topologyConfig, topologyContext, outputCollector);
@@ -94,14 +95,14 @@ public class ControllerToSpeakerProxyBoltTest {
 
         Map<Integer, String> taskToComponent = ImmutableMap.of(
                 TASK_ID_SPOUT, ComponentType.SPEAKER_KAFKA_SPOUT,
-                TASK_ID_REGION_TRACKER, RegionTrackerBolt.BOLT_ID);
+                SWITCH_MONITOR_BOLT, SwitchMonitorBolt.BOLT_ID);
         Map<String, Map<String, Fields>> componentToFields = ImmutableMap.of(
                 ComponentType.SPEAKER_KAFKA_SPOUT, ImmutableMap.of(
                         Utils.DEFAULT_STREAM_ID, new Fields(
                                 KafkaRecordTranslator.FIELD_ID_KEY, KafkaRecordTranslator.FIELD_ID_PAYLOAD,
                                 AbstractBolt.FIELD_ID_CONTEXT)),
-                RegionTrackerBolt.BOLT_ID, ImmutableMap.of(
-                        RegionTrackerBolt.STREAM_REGION_UPDATE_ID, RegionTrackerBolt.STREAM_REGION_UPDATE_FIELDS));
+                SwitchMonitorBolt.BOLT_ID, ImmutableMap.of(
+                        SwitchMonitorBolt.STREAM_REGION_MAPPING_ID, SwitchMonitorBolt.STREAM_REGION_MAPPING_FIELDS));
         generalTopologyContext = new GeneralTopologyContext(
                 topology, topologyConfig, taskToComponent, Collections.emptyMap(), componentToFields, "dummy");
     }
@@ -109,12 +110,12 @@ public class ControllerToSpeakerProxyBoltTest {
     @Test
     public void verifyConsumerToSpeakerTupleConsistency() {
         // region update
-        SwitchMapping switchMapping = new SwitchMapping(switchAlpha, REGION_ONE);
+        RegionMappingUpdate switchMapping = new RegionMappingUpdate(switchAlpha, REGION_ONE, true);
         Tuple notificationTuple = new TupleImpl(
                 generalTopologyContext, new Values(switchMapping, new CommandContext()),
-                TASK_ID_REGION_TRACKER, RegionTrackerBolt.STREAM_REGION_UPDATE_ID);
+                SWITCH_MONITOR_BOLT, RegionTrackerBolt.STREAM_REGION_NOTIFICATION_ID);
         subject.execute(notificationTuple);
-        assertTrue(subject.switchTracker.getMapping().containsKey(switchAlpha));
+        assertTrue(subject.switchMapping.getReadWrite().lookup(switchAlpha,  false).isPresent());
 
         // generic message
         CommandMessage discoCommand = new CommandMessage(
@@ -134,13 +135,13 @@ public class ControllerToSpeakerProxyBoltTest {
 
     @Test
     public void verifyConsumerToSpeakerTupleFails() throws Exception {
-        SwitchMapping switchMapping = new SwitchMapping(switchBeta, REGION_ONE);
+        RegionMappingUpdate switchMapping = new RegionMappingUpdate(switchBeta, REGION_ONE, true);
         Tuple notificationTuple = new TupleImpl(
                 generalTopologyContext, new Values(switchMapping, new CommandContext()),
-                TASK_ID_REGION_TRACKER, RegionTrackerBolt.STREAM_REGION_UPDATE_ID);
+                SWITCH_MONITOR_BOLT, RegionTrackerBolt.STREAM_REGION_NOTIFICATION_ID);
         subject.execute(notificationTuple);
-        assertTrue(subject.switchTracker.getMapping().containsKey(switchBeta));
-        assertFalse(subject.switchTracker.getMapping().containsKey(switchAlpha));
+        assertTrue(subject.switchMapping.getReadWrite().lookup(switchBeta, false).isPresent());
+        assertFalse(subject.switchMapping.getReadWrite().lookup(switchAlpha, false).isPresent());
         verify(outputCollector).ack(eq(notificationTuple));
 
         CommandMessage discoCommand = new CommandMessage(

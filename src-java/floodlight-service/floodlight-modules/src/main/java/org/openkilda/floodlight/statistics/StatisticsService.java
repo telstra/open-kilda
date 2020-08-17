@@ -38,7 +38,6 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.internal.DefaultSwitchRoleService;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -62,8 +61,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -79,6 +80,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
     private IKafkaProducerService producerService;
     private String statisticsTopic;
     private String region;
+    private boolean isManagementRole = true;
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -107,29 +109,36 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
     }
 
     @Override
-    public void startUp(FloodlightModuleContext floodlightModuleContext) {
+    public void startUp(FloodlightModuleContext moduleContext) {
+        Map<String, String> configParams = moduleContext.getConfigParams(this);
+        isManagementRole = Objects.equals("management", configParams.get("role"));
+    }
 
+    public void processStatistics(FloodlightModuleContext context, Set<DatapathId> excludeSwitches) {
+        processStatistics(context, excludeSwitches, switchService.getAllSwitchDpids());
     }
 
     /**
-     * execute stats requests handling.
-     * @param context module context
-     */
-    public void processStatistics(FloodlightModuleContext context, Set<DatapathId> excludeSwitches) {
-        Map<String, String> configParams = context.getConfigParams(DefaultSwitchRoleService.class);
-        String defaultRole = configParams.get("defaultRole");
-        if ("ROLE_SLAVE".equals(defaultRole)) {
-            logger.debug("Received stats request for statistics floodlight with excludeSwitches: {}", excludeSwitches);
+         * execute stats requests handling.
+         * @param context module context
+         */
+    public void processStatistics(
+            FloodlightModuleContext context, Set<DatapathId> excludeSwitches, Set<DatapathId> scopeHint) {
+        final Set<DatapathId> scope = new HashSet<>(scopeHint);
+        if (! isManagementRole) {
+            logger.debug(
+                    "Received stats request for statistics floodlight with excludeSwitches: {} and scope: {}",
+                    excludeSwitches, scope);
         } else {
-            logger.debug("Received stats request for management floodlight with excludeSwitches: {}", excludeSwitches);
+            logger.debug("Received stats request for management floodlight with scope: {}", scope);
         }
 
         statisticsTopic = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getStatsTopic();
         region = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getRegion();
 
-        switchService.getAllSwitchMap().values()
-                .stream()
-                .filter(it -> !excludeSwitches.contains(it.getId()))
+        scope.removeAll(excludeSwitches);
+        switchService.getAllSwitchMap().values().stream()
+                .filter(it -> scope.contains(it.getId()))
                 .forEach(iofSwitch -> {
                     try {
                         gatherPortStats(iofSwitch);
@@ -142,7 +151,6 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                     } catch (Exception e) {
                         logger.error(format("Failed to gather stats for flows on switch %s.", iofSwitch.getId()), e);
                     }
-
 
                     try {
                         gatherMeterStats(iofSwitch);

@@ -35,5 +35,5 @@ public interface IIslCarrier {
 
     void auxiliaryPollModeUpdateRequest(Endpoint endpoint, boolean enableAuxiliaryPollMode);
 
-    void exhaustedPollModeUpdateRequest(Endpoint endpoint, boolean enableExhaustedPollMode);
+    void islRemovedNotification(Endpoint endpoint, IslReference reference);
 }

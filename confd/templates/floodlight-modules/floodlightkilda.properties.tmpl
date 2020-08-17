@@ -48,7 +48,7 @@ net.floodlightcontroller.core.internal.OFSwitchManager.keyStorePath=/path/to.jec
 net.floodlightcontroller.core.internal.OFSwitchManager.keyStorePassword=PassFL
 net.floodlightcontroller.core.internal.OFSwitchManager.useSsl=NO
 net.floodlightcontroller.core.internal.OFSwitchManager.supportedOpenFlowVersions=1.2, 1.3
-net.floodlightcontroller.core.internal.OFSwitchManager.switchesInitialState={"00:00:00:00:00:00:00:01":"ROLE_MASTER","00:00:00:00:00:00:00:02":"ROLE_MASTER", "00:00:00:00:00:00:00:03":"ROLE_MASTER", "00:00:00:00:00:00:00:04":"ROLE_MASTER","00:00:00:00:00:00:00:05":"ROLE_MASTER"}
+net.floodlightcontroller.core.internal.OFSwitchManager.defaultInitialRole=ROLE_EQUAL
 net.floodlightcontroller.restserver.RestApiServer.keyStorePath=/path/to.jceks
 net.floodlightcontroller.restserver.RestApiServer.keyStorePassword=Password
 net.floodlightcontroller.restserver.RestApiServer.httpsNeedClientAuthentication=NO
@@ -78,7 +78,7 @@ org.openkilda.floodlight.pathverification.PathVerificationService.hmac256-secret
 org.openkilda.floodlight.pathverification.PathVerificationService.verification-bcast-packet-dst={{ getv "/kilda_floodlight_broadcast_mac_address" }}
 org.openkilda.floodlight.KildaCore.flow-ping-magic-src-mac-address={{ getv "/kilda_floodlight_flow_ping_magic_src_mac_address" }}
 org.openkilda.floodlight.KildaCore.server42-upd-port-offset={{ getv "/kilda_floodlight_server42_upd_port_offset" }}
-org.openkilda.floodlight.statistics.StatisticsService.interval=60
+org.openkilda.floodlight.statistics.StatisticsService.role=management
 org.openkilda.floodlight.switchmanager.SwitchManager.environment-naming-prefix={{ getv "/kilda_environment_naming_prefix" }}
 org.openkilda.floodlight.switchmanager.SwitchManager.connect-mode=AUTO
 org.openkilda.floodlight.switchmanager.SwitchManager.broadcast-rate-limit=200

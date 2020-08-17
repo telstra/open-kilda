@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.69.0 (13/08/2020)
+
+### Features:
+-  [#3623](https://github.com/telstra/open-kilda/pull/3623) Simultaneous switch availability in multiple regions [**floodlight**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#3650](https://github.com/telstra/open-kilda/pull/3650) Save cookie -> flowId data for each switch (Issue: [#3628](https://github.com/telstra/open-kilda/issues/3628)) [**storm-topologies**]
+-  [#3682](https://github.com/telstra/open-kilda/pull/3682) Fix deleting MOVED ISLs (Issue: [#3677](https://github.com/telstra/open-kilda/issues/3677)) [**storm-topologies**]
+-  [#3685](https://github.com/telstra/open-kilda/pull/3685) Use chunked messages for flow history response (Issue: [#3681](https://github.com/telstra/open-kilda/issues/3681)) [**northbound**][**storm-topologies**]
+-  [#3651](https://github.com/telstra/open-kilda/pull/3651) Make flow Degraded after reroute if protected flow is Down (Issue: [#3648](https://github.com/telstra/open-kilda/issues/3648)) 
+-  [#3675](https://github.com/telstra/open-kilda/pull/3675) Add check for the allocated paths to ensure that all ISLs are active on those paths (Issue: [#3665](https://github.com/telstra/open-kilda/issues/3665)) 
+-  [#3678](https://github.com/telstra/open-kilda/pull/3678) Use correct values in flow dump before flow update (Issue: [#3577](https://github.com/telstra/open-kilda/issues/3577)) 
+
+### Improvements:
+-  [#3683](https://github.com/telstra/open-kilda/pull/3683) Multi-floodlight part2 (feature-merge) (Issues: [#3580](https://github.com/telstra/open-kilda/issues/3580) [#3623](https://github.com/telstra/open-kilda/issues/3623)) [**floodlight**][**storm-topologies**]
+-  [#3655](https://github.com/telstra/open-kilda/pull/3655) Remove default controller role hack [**floodlight**]
+-  [#3621](https://github.com/telstra/open-kilda/pull/3621) minor improvements in func-tests (Issue: [#3677](https://github.com/telstra/open-kilda/issues/3677)) [**tests**]
+-  [#3659](https://github.com/telstra/open-kilda/pull/3659) extend PartialUpdateSpec [**tests**]
+
+### Other changes:
+-  [#3649](https://github.com/telstra/open-kilda/pull/3649) Add test that reveals issue with protected paths #3648 (Issue: [#3648](https://github.com/telstra/open-kilda/issues/3648)) [**tests**]
+-  [#3580](https://github.com/telstra/open-kilda/pull/3580) Update FL-route design documents [**docs**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.68.1...v1.69.0).
+
+### Affected Components:
+ping, router, nb, nbworker, stats, flow-hs, fl, network
+
+---
+
 ## v1.68.1 (10/08/2020)
 
 ### Features:
