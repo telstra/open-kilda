@@ -34,6 +34,7 @@ import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.client.support.BasicAuthorizationInterceptor;
 import org.springframework.http.client.support.HttpRequestWrapper;
+import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -46,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 
 @Configuration
+@EnableRetry
 @PropertySource("file:${kilda.config.file:kilda.properties}")
 @ComponentScan(basePackages = {"org.openkilda.testing.service", "org.openkilda.testing.tools"})
 public class DefaultServiceConfig {
