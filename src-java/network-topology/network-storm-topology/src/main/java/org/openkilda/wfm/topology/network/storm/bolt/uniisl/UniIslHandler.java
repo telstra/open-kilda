@@ -22,7 +22,7 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
-import org.openkilda.wfm.topology.network.model.BfdStatus;
+import org.openkilda.wfm.topology.network.model.BfdStatusUpdate;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.service.IUniIslCarrier;
@@ -133,7 +133,7 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
     }
 
     @Override
-    public void notifyBfdStatus(Endpoint endpoint, IslReference reference, BfdStatus status) {
+    public void notifyBfdStatus(Endpoint endpoint, IslReference reference, BfdStatusUpdate status) {
         emit(getCurrentTuple(), makeDefaultTuple(new IslBfdStatusUpdateCommand(endpoint, reference, status)));
     }
 
@@ -158,12 +158,8 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
 
     // UniIslCommand
 
-    public void processBfdUpDown(Endpoint endpoint, boolean up) {
-        service.uniIslBfdUpDown(endpoint, up);
-    }
-
-    public void processBfdKill(Endpoint endpoint) {
-        service.uniIslBfdKill(endpoint);
+    public void processBfdStatusUpdate(Endpoint endpoint, BfdStatusUpdate status) {
+        service.uniIslBfdStatusUpdate(endpoint, status);
     }
 
     public void processUniIslRemove(Endpoint endpoint) {

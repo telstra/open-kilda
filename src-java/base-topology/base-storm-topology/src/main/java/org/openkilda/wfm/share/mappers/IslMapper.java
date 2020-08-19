@@ -18,10 +18,12 @@ package org.openkilda.wfm.share.mappers;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.model.BfdSessionStatus;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.Switch;
 
+import com.google.common.base.Strings;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 
@@ -61,7 +63,7 @@ public abstract class IslMapper {
         return new IslInfoData(isl.getLatency(), src, dst, isl.getSpeed(), isl.getAvailableBandwidth(),
                 isl.getMaxBandwidth(), isl.getDefaultMaxBandwidth(), map(isl.getStatus()), map(isl.getActualStatus()),
                 isl.getCost(), timeCreateMillis, timeModifyMillis, isl.isUnderMaintenance(), isl.isEnableBfd(),
-                isl.getBfdSessionStatus(), null);
+                map(isl.getBfdSessionStatus()), null);
     }
 
     /**
@@ -92,7 +94,7 @@ public abstract class IslMapper {
         isl.setCost(islInfoData.getCost());
         isl.setUnderMaintenance(islInfoData.isUnderMaintenance());
         isl.setEnableBfd(islInfoData.isEnableBfd());
-        isl.setBfdSessionStatus(islInfoData.getBfdSessionStatus());
+        isl.setBfdSessionStatus(map(islInfoData.getBfdSessionStatus()));
 
         return isl;
     }
@@ -138,5 +140,25 @@ public abstract class IslMapper {
             default:
                 throw new IllegalArgumentException("Unsupported ISL status: " + status);
         }
+    }
+
+    /**
+     * Convert string representation of {@link BfdSessionStatus} into enum constant representation.
+     */
+    public BfdSessionStatus map(String raw) {
+        if (Strings.nullToEmpty(raw).trim().isEmpty()) {
+            return null;
+        }
+        return BfdSessionStatus.valueOf(raw.toUpperCase());
+    }
+
+    /**
+     * Convert {@link BfdSessionStatus} into string representation.
+     */
+    public String map(BfdSessionStatus status) {
+        if (status == null) {
+            return null;
+        }
+        return status.name().toLowerCase();
     }
 }

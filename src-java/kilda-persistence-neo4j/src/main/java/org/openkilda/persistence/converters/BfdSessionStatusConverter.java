@@ -13,27 +13,27 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.model;
+package org.openkilda.persistence.converters;
 
 import org.openkilda.model.BfdSessionStatus;
 
-import lombok.AllArgsConstructor;
-import lombok.Value;
+import com.google.common.base.Strings;
+import org.neo4j.ogm.typeconversion.AttributeConverter;
 
-@Value
-@AllArgsConstructor
-public class IslEndpointBfdStatus {
-    boolean enabled;
-
-    BfdSessionStatus status;
-
-    boolean forceReset;
-
-    public IslEndpointBfdStatus() {
-        this(false, null);
+public class BfdSessionStatusConverter implements AttributeConverter<BfdSessionStatus, String>  {
+    @Override
+    public String toGraphProperty(BfdSessionStatus modelView) {
+        if (modelView == null) {
+            return null;
+        }
+        return modelView.name().toLowerCase();
     }
 
-    public IslEndpointBfdStatus(boolean enabled, BfdSessionStatus status) {
-        this(enabled, status, false);
+    @Override
+    public BfdSessionStatus toEntityAttribute(String graphView) {
+        if (Strings.nullToEmpty(graphView).trim().isEmpty()) {
+            return null;
+        }
+        return BfdSessionStatus.valueOf(graphView.toUpperCase());
     }
 }

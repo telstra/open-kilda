@@ -15,6 +15,6 @@
 
 package org.openkilda.wfm.topology.network.model;
 
-public enum BfdStatus {
-    UP, DOWN, KILL
+public enum BfdStatusUpdate {
+    UP, DOWN, KILL, FAIL
 }

@@ -25,6 +25,7 @@ import org.openkilda.wfm.share.hubandspoke.TaskIdBasedKeyFactory;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.error.ControllerNotFoundException;
+import org.openkilda.wfm.topology.network.model.BfdStatusUpdate;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.service.IBfdGlobalToggleCarrier;
 import org.openkilda.wfm.topology.network.service.IBfdPortCarrier;
@@ -41,8 +42,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerBfdS
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerBfdSessionSetupCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerWorkerCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.sw.SwitchHandler;
-import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslBfdKillCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslBfdUpDownCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslBfdStatusUpdateCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslCommand;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
@@ -159,18 +159,32 @@ public class BfdPortHandler extends AbstractBolt
     }
 
     @Override
+    public void bfdFailNotification(Endpoint physicalEndpoint) {
+        globalToggleService.bfdFailNotification(physicalEndpoint);
+    }
+
+    @Override
     public void filteredBfdUpNotification(Endpoint physicalEndpoint) {
-        emit(STREAM_UNIISL_ID, getCurrentTuple(), makeUniIslTuple(new UniIslBfdUpDownCommand(physicalEndpoint, true)));
+        UniIslBfdStatusUpdateCommand command = new UniIslBfdStatusUpdateCommand(physicalEndpoint, BfdStatusUpdate.UP);
+        emit(STREAM_UNIISL_ID, getCurrentTuple(), makeUniIslTuple(command));
     }
 
     @Override
     public void filteredBfdDownNotification(Endpoint physicalEndpoint) {
-        emit(STREAM_UNIISL_ID, getCurrentTuple(), makeUniIslTuple(new UniIslBfdUpDownCommand(physicalEndpoint, false)));
+        UniIslBfdStatusUpdateCommand command = new UniIslBfdStatusUpdateCommand(physicalEndpoint, BfdStatusUpdate.DOWN);
+        emit(STREAM_UNIISL_ID, getCurrentTuple(), makeUniIslTuple(command));
     }
 
     @Override
     public void filteredBfdKillNotification(Endpoint physicalEndpoint) {
-        emit(STREAM_UNIISL_ID, getCurrentTuple(), makeUniIslTuple(new UniIslBfdKillCommand(physicalEndpoint)));
+        UniIslBfdStatusUpdateCommand command = new UniIslBfdStatusUpdateCommand(physicalEndpoint, BfdStatusUpdate.KILL);
+        emit(STREAM_UNIISL_ID, getCurrentTuple(), makeUniIslTuple(command));
+    }
+
+    @Override
+    public void filteredBfdFailNotification(Endpoint physicalEndpoint) {
+        UniIslBfdStatusUpdateCommand command = new UniIslBfdStatusUpdateCommand(physicalEndpoint, BfdStatusUpdate.FAIL);
+        emit(STREAM_UNIISL_ID, getCurrentTuple(), makeUniIslTuple(command));
     }
 
     // -- commands processing --

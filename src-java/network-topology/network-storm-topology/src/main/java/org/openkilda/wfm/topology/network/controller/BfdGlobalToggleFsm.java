@@ -61,6 +61,12 @@ public class BfdGlobalToggleFsm
         carrier.filteredBfdDownNotification(endpoint);
     }
 
+    public void emitBfdFail(BfdGlobalToggleFsmState from, BfdGlobalToggleFsmState to, BfdGlobalToggleFsmEvent event,
+                            BfdGlobalToggleFsmContext context) {
+        log.info("BFD event FAIL for {}", endpoint);
+        carrier.filteredBfdFailNotification(endpoint);
+    }
+
     // -- private/service methods --
 
     // -- service data types --
@@ -79,6 +85,9 @@ public class BfdGlobalToggleFsm
         BfdGlobalToggleFsmFactory(PersistenceManager persistenceManager) {
             featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
 
+            final String emitBfdKillMethod = "emitBfdKill";
+            final String emitBfdFailMethod = "emitBfdFail";
+
             builder = StateMachineBuilderFactory.create(
                     BfdGlobalToggleFsm.class, BfdGlobalToggleFsmState.class, BfdGlobalToggleFsmEvent.class,
                     BfdGlobalToggleFsmContext.class,
@@ -94,7 +103,10 @@ public class BfdGlobalToggleFsm
                     .on(BfdGlobalToggleFsmEvent.BFD_UP);
             builder.internalTransition()
                     .within(BfdGlobalToggleFsmState.DOWN_ENABLED).on(BfdGlobalToggleFsmEvent.BFD_KILL)
-                    .callMethod("emitBfdKill");
+                    .callMethod(emitBfdKillMethod);
+            builder.internalTransition()
+                    .within(BfdGlobalToggleFsmState.DOWN_ENABLED).on(BfdGlobalToggleFsmEvent.BFD_FAIL)
+                    .callMethod(emitBfdFailMethod);
 
             // DOWN_DISABLED
             builder.transition()
@@ -103,12 +115,15 @@ public class BfdGlobalToggleFsm
             builder.transition()
                     .from(BfdGlobalToggleFsmState.DOWN_DISABLED).to(BfdGlobalToggleFsmState.UP_DISABLED)
                     .on(BfdGlobalToggleFsmEvent.BFD_UP);
+            builder.internalTransition()
+                    .within(BfdGlobalToggleFsmState.DOWN_DISABLED).on(BfdGlobalToggleFsmEvent.BFD_FAIL)
+                    .callMethod(emitBfdFailMethod);
 
             // UP_ENABLED
             builder.transition()
                     .from(BfdGlobalToggleFsmState.UP_ENABLED).to(BfdGlobalToggleFsmState.UP_DISABLED)
                     .on(BfdGlobalToggleFsmEvent.DISABLE)
-                    .callMethod("emitBfdKill");
+                    .callMethod(emitBfdKillMethod);
             builder.transition()
                     .from(BfdGlobalToggleFsmState.UP_ENABLED).to(BfdGlobalToggleFsmState.DOWN_ENABLED)
                     .on(BfdGlobalToggleFsmEvent.BFD_DOWN)
@@ -116,7 +131,7 @@ public class BfdGlobalToggleFsm
             builder.transition()
                     .from(BfdGlobalToggleFsmState.UP_ENABLED).to(BfdGlobalToggleFsmState.DOWN_ENABLED)
                     .on(BfdGlobalToggleFsmEvent.BFD_KILL)
-                    .callMethod("emitBfdKill");
+                    .callMethod(emitBfdKillMethod);
             builder.onEntry(BfdGlobalToggleFsmState.UP_ENABLED)
                     .callMethod("emitBfdUp");
 
@@ -170,6 +185,6 @@ public class BfdGlobalToggleFsm
         KILL, NEXT,
 
         ENABLE, DISABLE,
-        BFD_UP, BFD_DOWN, BFD_KILL
+        BFD_UP, BFD_DOWN, BFD_KILL, BFD_FAIL
     }
 }
