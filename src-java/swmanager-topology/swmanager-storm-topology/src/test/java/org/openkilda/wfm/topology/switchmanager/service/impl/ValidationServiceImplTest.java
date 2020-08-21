@@ -31,6 +31,7 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.model.DetectConnectedDevices;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
@@ -41,6 +42,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
@@ -121,6 +123,27 @@ public class ValidationServiceImplTest {
         ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
         assertTrue(response.getMissingRules().isEmpty());
         assertEquals(ImmutableSet.of(1L, 2L), new HashSet<>(response.getProperRules()));
+        assertTrue(response.getExcessRules().isEmpty());
+    }
+
+    @Test
+    public void validateRulesSegmentAndIngressCookiesWithServer42Rules() {
+        SwitchProperties switchProperties = SwitchProperties.builder()
+                .server42FlowRtt(true)
+                .build();
+        ValidationService validationService =
+                new ValidationServiceImpl(persistenceManager()
+                        .withIngressCookies(4611686018427474000L)
+                        .withSwitchProperties(switchProperties)
+                        .build(),
+                        topologyConfig);
+        List<FlowEntry> flowEntries =
+                Lists.newArrayList(FlowEntry.builder().cookie(0x400000000001505AL).build(),
+                        FlowEntry.builder().cookie(0x40C000000001505AL).build());
+        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
+        assertTrue(response.getMissingRules().isEmpty());
+        assertEquals(ImmutableSet.of(0x400000000001505AL, 0x40C000000001505AL),
+                new HashSet<>(response.getProperRules()));
         assertTrue(response.getExcessRules().isEmpty());
     }
 
@@ -305,6 +328,7 @@ public class ValidationServiceImplTest {
         private FlowPathRepository flowPathRepository = mock(FlowPathRepository.class);
         private SwitchRepository switchRepository = mock(SwitchRepository.class);
         private SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
+        private FeatureTogglesRepository featureTogglesRepository = mock(FeatureTogglesRepository.class);
 
         private long[] segmentsCookies = new long[0];
         private long[] ingressCookies = new long[0];
@@ -318,6 +342,11 @@ public class ValidationServiceImplTest {
 
         private PersistenceManagerBuilder withIngressCookies(long... cookies) {
             ingressCookies = cookies;
+            return this;
+        }
+
+        private PersistenceManagerBuilder withSwitchProperties(SwitchProperties switchProperties) {
+            this.switchProperties = switchProperties;
             return this;
         }
 
@@ -415,6 +444,10 @@ public class ValidationServiceImplTest {
             when(switchPropertiesRepository.findBySwitchId(SWITCH_ID_B)).thenReturn(Optional.of(switchProperties));
             when(switchPropertiesRepository.findBySwitchId(SWITCH_ID_E)).thenReturn(Optional.of(switchProperties));
             when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
+
+            FeatureToggles featureToggles = FeatureToggles.builder().server42FlowRtt(true).build();
+            when(featureTogglesRepository.find()).thenReturn(Optional.of(featureToggles));
+            when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
 
             PersistenceManager persistenceManager = mock(PersistenceManager.class);
             when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);

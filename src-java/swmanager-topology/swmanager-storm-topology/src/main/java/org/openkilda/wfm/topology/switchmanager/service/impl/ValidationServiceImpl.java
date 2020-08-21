@@ -106,6 +106,7 @@ public class ValidationServiceImpl implements ValidationService {
         if (switchProperties.isServer42FlowRtt()
                 && featureTogglesRepository.find().map(FeatureToggles::getServer42FlowRtt).orElse(false)) {
             return paths.stream()
+                    .filter(path -> path.getFlow().isActualPathId(path.getPathId()))
                     .filter(path -> switchId.equals(path.getSrcSwitch().getSwitchId()))
                     .filter(path -> !path.isOneSwitchFlow())
                     .map(FlowPath::getCookie)
@@ -191,6 +192,7 @@ public class ValidationServiceImpl implements ValidationService {
         validateDefaultRules(presentRules, expectedDefaultRules, missingRules, properRules, excessRules,
                 misconfiguredRules);
 
+        log.warn("Proper rules: {}", properRules);
         return new ValidateRulesResult(
                 ImmutableList.copyOf(missingRules),
                 ImmutableList.copyOf(properRules),
