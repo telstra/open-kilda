@@ -339,6 +339,7 @@ public class RerouteService {
     public Map<Flow, Set<PathId>> getInactiveFlowsForRerouting() {
         log.info("Get inactive flows");
         return flowRepository.findDownFlows().stream()
+                .filter(flow -> !flow.isOneSwitchFlow())
                 .collect(toMap(Function.identity(),
                         flow -> flow.getPaths().stream()
                                 .filter(path -> FlowPathStatus.INACTIVE.equals(path.getStatus())
@@ -355,6 +356,7 @@ public class RerouteService {
         log.info("Get affected inactive flows for switch {}", switchId);
         return flowPathRepository.findInactiveBySegmentSwitch(switchId).stream()
                 .map(FlowPath::getFlow)
+                .filter(flow -> ! flow.isOneSwitchFlow())
                 .collect(toSet());
     }
 
@@ -395,6 +397,7 @@ public class RerouteService {
         for (Flow flow : affectedFlows) {
             log.info("Updating flow and path statuses for flow {} to {}, {}", flow.getFlowId(), newFlowStatus,
                     newFlowPathStatus);
+            flowDashboardLogger.onFlowStatusUpdate(flow.getFlowId(), newFlowStatus);
             transactionManager.doInTransaction(() -> {
                 FlowPath forward = flow.getForwardPath();
                 FlowPath reverse = flow.getReversePath();
