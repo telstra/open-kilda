@@ -7,6 +7,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -43,7 +44,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         def sw = topology.activeSwitches.first()
         northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
         Wrappers.wait(RULES_DELETION_TIME) { assert northbound.getSwitchRules(sw.dpId).flowEntries.isEmpty() }
-        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(sw, RW)
 
         when: "Connect the switch to the controller"
         switchHelper.reviveSwitch(sw, blockData)

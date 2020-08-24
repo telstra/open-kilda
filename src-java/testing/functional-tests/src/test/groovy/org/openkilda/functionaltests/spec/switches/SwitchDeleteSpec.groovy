@@ -4,6 +4,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -49,7 +50,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         given: "An inactive switch with ISLs"
         def sw = topology.getActiveSwitches()[0]
         def swIsls = topology.getRelatedIsls(sw)
-        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(sw, RW)
 
         when: "Try to delete the switch"
         northbound.deleteSwitch(sw.dpId, false)
@@ -75,7 +76,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
             swIsls.each { assert islUtils.getIslInfo(it).get().state == IslChangeType.FAILED }
         }
         // deactivate switch
-        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(sw, RW)
 
         when: "Try to delete the switch"
         northbound.deleteSwitch(sw.dpId, false)
@@ -105,7 +106,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         when: "Deactivate the switch"
         def swToDeactivate = topology.switches.find { it.dpId == flow.source.switchId }
-        def blockData = switchHelper.knockoutSwitch(swToDeactivate, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(swToDeactivate, RW)
 
         and: "Try to delete the switch"
         northbound.deleteSwitch(flow.source.switchId, false)
@@ -139,7 +140,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         // delete all ISLs on switch
         swIsls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
         // deactivate switch
-        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(sw, RW)
 
         when: "Try to delete the switch"
         def response = northbound.deleteSwitch(sw.dpId, false)
@@ -181,9 +182,11 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         cleanup: "Restore the switch, ISLs and reset costs"
         // restore switch
-        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
+        def blockData = lockKeeper.knockoutSwitch(sw, RW)
         Wrappers.wait(WAIT_OFFSET) {
-            mgmtFlManager.getFloodlightService(sw.getRegion()).getSwitches().every { it.switchId != sw.dpId }
+            flHelper.getFlsByMode(RW).each { fl ->
+                assert fl.floodlightService.getSwitches().every { it.switchId != sw.dpId }
+            }
         }
         switchHelper.reviveSwitch(sw, blockData)
         // restore ISLs

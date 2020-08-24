@@ -13,7 +13,7 @@ import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.service.floodlight.ManagementFloodlightManager
+import org.openkilda.testing.service.floodlight.model.Floodlight
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -45,7 +45,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     LockKeeperService lockKeeper
 
     @Autowired
-    ManagementFloodlightManager flFactory
+    List<Floodlight> floodlights
 
     @Value('${spring.profiles.active}')
     String profile
@@ -119,7 +119,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
 
         labService.createLab(topology)
         TimeUnit.SECONDS.sleep(5) //container with topology needs some time to fully start, this is async
-        flFactory.getRegions().each { lockKeeper.removeFloodlightAccessRestrictions(it) }
+        lockKeeper.removeFloodlightAccessRestrictions(floodlights*.region)
 
         //wait until topology is discovered
         Wrappers.wait(TOPOLOGY_DISCOVERING_TIME) {

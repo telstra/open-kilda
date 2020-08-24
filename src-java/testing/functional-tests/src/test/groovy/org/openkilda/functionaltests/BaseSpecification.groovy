@@ -14,8 +14,7 @@ import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
-import org.openkilda.testing.service.floodlight.ManagementFloodlightManager
-import org.openkilda.testing.service.floodlight.StatsFloodlightManager
+import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
@@ -35,9 +34,7 @@ class BaseSpecification extends Specification implements SetupOnce {
     @Autowired
     NorthboundService northbound
     @Autowired
-    ManagementFloodlightManager mgmtFlManager
-    @Autowired
-    StatsFloodlightManager statsFlManager
+    FloodlightsHelper flHelper
     @Autowired
     LockKeeperService lockKeeper
     @Autowired
@@ -79,12 +76,6 @@ class BaseSpecification extends Specification implements SetupOnce {
     int antiflapCooldown
     @Value('${antiflap.min}')
     int antiflapMin
-    @Value("#{'\${floodlight.regions}'.split(',')}")
-    List<String> regions
-    @Value("#{'\${floodlight.controllers.management.openflow}'.split(',')}")
-    List<String> managementControllers
-    @Value("#{'\${floodlight.controllers.stat.openflow}'.split(',')}")
-    List<String> statControllers
 
     /**
      * Use this instead of setupSpec in order to have access to Spring Context and do actions BeforeClass.

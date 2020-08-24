@@ -15,10 +15,13 @@
 
 package org.openkilda.testing.service.lockkeeper;
 
+import static java.util.stream.Collectors.toList;
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW;
+
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
-import org.openkilda.testing.service.floodlight.ManagementFloodlightManager;
-import org.openkilda.testing.service.floodlight.MultiFloodlightManager;
-import org.openkilda.testing.service.floodlight.StatsFloodlightManager;
+import org.openkilda.testing.service.floodlight.FloodlightsHelper;
+import org.openkilda.testing.service.floodlight.model.Floodlight;
+import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 import org.openkilda.testing.service.lockkeeper.model.ContainerName;
 import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress;
@@ -27,6 +30,7 @@ import org.openkilda.testing.service.lockkeeper.model.TrafficControlRequest;
 import org.openkilda.testing.service.northbound.NorthboundService;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -56,10 +60,9 @@ public class LockKeeperServiceImpl implements LockKeeperService {
 
     @Autowired
     private NorthboundService northbound;
+
     @Autowired
-    private ManagementFloodlightManager mgmtManager;
-    @Autowired
-    private StatsFloodlightManager statsManager;
+    private FloodlightsHelper flHelper;
 
     @Value("${kafka.bootstrap.server}")
     private String kafkaBootstrapServer;
@@ -77,7 +80,7 @@ public class LockKeeperServiceImpl implements LockKeeperService {
         restTemplate.exchange("/flows", HttpMethod.POST, new HttpEntity<>(flows, buildJsonHeaders()), String.class);
         log.debug("Added flows: {}", flows.stream()
                 .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
-                .collect(Collectors.toList()));
+                .collect(toList()));
     }
 
     @Override
@@ -86,7 +89,7 @@ public class LockKeeperServiceImpl implements LockKeeperService {
         restTemplate.exchange("/flows", HttpMethod.DELETE, new HttpEntity<>(flows, buildJsonHeaders()), String.class);
         log.debug("Removed flows: {}", flows.stream()
                 .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
-                .collect(Collectors.toList()));
+                .collect(toList()));
     }
 
     @Override
@@ -114,7 +117,7 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     @Override
     public void stopFloodlight(String region) {
         lockKeepersByRegion.get(region).exchange("/floodlight/stop",
-                HttpMethod.POST, new HttpEntity<>(new ContainerName(mgmtManager.getContainerName(region)),
+                HttpMethod.POST, new HttpEntity<>(new ContainerName(flHelper.getFlByRegion(region).getContainer()),
                         buildJsonHeaders()), String.class);
         log.debug("Stopping Floodlight");
     }
@@ -122,7 +125,7 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     @Override
     public void startFloodlight(String region) {
         lockKeepersByRegion.get(region).exchange("/floodlight/start",
-                HttpMethod.POST, new HttpEntity<>(new ContainerName(mgmtManager.getContainerName(region)),
+                HttpMethod.POST, new HttpEntity<>(new ContainerName(flHelper.getFlByRegion(region).getContainer()),
                         buildJsonHeaders()), String.class);
         log.debug("Starting Floodlight");
     }
@@ -130,25 +133,32 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     @Override
     public void restartFloodlight(String region) {
         lockKeepersByRegion.get(region).exchange("/floodlight/restart",
-                HttpMethod.POST, new HttpEntity<>(new ContainerName(mgmtManager.getContainerName(region)),
+                HttpMethod.POST, new HttpEntity<>(new ContainerName(flHelper.getFlByRegion(region).getContainer()),
                         buildJsonHeaders()), String.class);
         log.debug("Restarting Floodlight");
     }
 
     @Override
-    public FloodlightResourceAddress knockoutSwitch(Switch sw, MultiFloodlightManager manager) {
+    public List<FloodlightResourceAddress> knockoutSwitch(Switch sw, List<String> regions) {
         log.debug("Block Floodlight access to switch '{}' by adding iptables rules", sw.getName());
-        FloodlightResourceAddress flResourceAddress = LockKeeperService.toFlResource(sw, manager);
-        lockKeepersByRegion.get(sw.getRegion()).exchange("/floodlight/block-switch", HttpMethod.POST,
-                new HttpEntity<>(flResourceAddress, buildJsonHeaders()), String.class);
-        return flResourceAddress;
+        List<FloodlightResourceAddress> flResourceAddresses = toFlResources(sw, regions);
+        flResourceAddresses.forEach(address ->
+                lockKeepersByRegion.get(address.getRegion()).exchange("/floodlight/block-switch", HttpMethod.POST,
+                        new HttpEntity<>(address, buildJsonHeaders()), String.class));
+        return flResourceAddresses;
     }
 
     @Override
-    public void reviveSwitch(Switch sw, FloodlightResourceAddress flResourceAddress) {
+    public List<FloodlightResourceAddress> knockoutSwitch(Switch sw, FloodlightConnectMode mode) {
+        return knockoutSwitch(sw, flHelper.filterRegionsByMode(sw.getRegions(), RW));
+    }
+
+    @Override
+    public void reviveSwitch(Switch sw, List<FloodlightResourceAddress> flResourceAddresses) {
         log.debug("Unblock Floodlight access to switch '{}' by removing iptables rules", sw.getName());
-        lockKeepersByRegion.get(sw.getRegion()).exchange("/floodlight/unblock-switch", HttpMethod.POST,
-                new HttpEntity<>(flResourceAddress, buildJsonHeaders()), String.class);
+        flResourceAddresses.forEach(address ->
+                lockKeepersByRegion.get(address.getRegion()).exchange("/floodlight/unblock-switch", HttpMethod.POST,
+                        new HttpEntity<>(address, buildJsonHeaders()), String.class));
     }
 
     @Override
@@ -158,61 +168,63 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     }
 
     @Override
-    public void blockFloodlightAccess(String region, FloodlightResourceAddress address) {
+    public void blockFloodlightAccess(FloodlightResourceAddress address) {
         log.debug("Block floodlight access to {} by adding iptables rules", address);
-        lockKeepersByRegion.get(region).exchange("/floodlight/block",
+        lockKeepersByRegion.get(address.getRegion()).exchange("/floodlight/block",
                 HttpMethod.POST, new HttpEntity<>(address, buildJsonHeaders()), String.class);
     }
 
     @Override
-    public void unblockFloodlightAccess(String region, FloodlightResourceAddress address) {
+    public void unblockFloodlightAccess(FloodlightResourceAddress address) {
         log.debug("Unblock floodlight access to {} by removing iptables rules", address);
-        lockKeepersByRegion.get(region).exchange("/floodlight/unblock",
+        lockKeepersByRegion.get(address.getRegion()).exchange("/floodlight/unblock",
                 HttpMethod.POST, new HttpEntity<>(address, buildJsonHeaders()), String.class);
     }
 
     @Override
     public void shapeSwitchesTraffic(List<Switch> switches, TrafficControlData tcData) {
         log.debug("Add traffic control rules for switches {}",
-                switches.stream().map(Switch::getDpId).collect(Collectors.toList()));
-        switches.stream().collect(Collectors.groupingBy(Switch::getRegion)).entrySet().parallelStream()
-                .forEach(switchesForRegion -> {
-                    List<FloodlightResourceAddress> swResources = switchesForRegion.getValue().stream()
-                            .map(sw -> LockKeeperService.toFlResource(sw, mgmtManager)).collect(Collectors.toList());
-                    lockKeepersByRegion.get(switchesForRegion.getKey()).exchange("/floodlight/tc", HttpMethod.POST,
-                            new HttpEntity<>(new TrafficControlRequest(tcData, swResources), buildJsonHeaders()),
-                            String.class);
-                });
+                switches.stream().map(Switch::getDpId).collect(toList()));
+        switches.stream().flatMap(sw -> toFlResources(sw, sw.getRegions()).stream())
+                .collect(Collectors.groupingBy(FloodlightResourceAddress::getRegion)).entrySet().parallelStream()
+                .forEach(resourcesPerRegion -> lockKeepersByRegion.get(resourcesPerRegion.getKey())
+                        .exchange("/floodlight/tc", HttpMethod.POST,
+                                new HttpEntity<>(new TrafficControlRequest(tcData, resourcesPerRegion.getValue()),
+                                        buildJsonHeaders()), String.class));
     }
 
     @Override
-    public void cleanupTrafficShaperRules(String region) {
-        log.debug("Cleanup traffic control rules for region {}", region);
-        String containerName = mgmtManager.getContainerName(region);
-        lockKeepersByRegion.get(region).exchange("/floodlight/tc/cleanup",
-                HttpMethod.POST, new HttpEntity<>(new ContainerName(containerName), buildJsonHeaders()), String.class);
+    public void cleanupTrafficShaperRules(List<String> regions) {
+        regions.forEach(region -> {
+            log.debug("Cleanup traffic control rules for region {}", region);
+            lockKeepersByRegion.get(region).exchange("/floodlight/tc/cleanup", HttpMethod.POST,
+                    new HttpEntity<>(new ContainerName(flHelper.getFlByRegion(region).getContainer()),
+                            buildJsonHeaders()), String.class);
+        });
     }
 
     @Override
-    public void removeFloodlightAccessRestrictions(String region) {
+    public void removeFloodlightAccessRestrictions(List<String> regions) {
         log.debug("Allow floodlight access to everything by flushing iptables rules(INPUT/OUTPUT chains)");
-        String containerName = mgmtManager.getContainerName(region);
-        lockKeepersByRegion.get(region).exchange("/floodlight/unblock-all",
-                HttpMethod.POST, new HttpEntity<>(new ContainerName(containerName), buildJsonHeaders()), String.class);
+        regions.forEach(region -> {
+            lockKeepersByRegion.get(region).exchange("/floodlight/unblock-all", HttpMethod.POST,
+                    new HttpEntity<>(new ContainerName(flHelper.getFlByRegion(region).getContainer()),
+                            buildJsonHeaders()), String.class);
+        });
     }
 
     @Override
     public void knockoutFloodlight(String region) {
         log.debug("Knock out Floodlight service");
-        String containerName = mgmtManager.getContainerName(region);
-        blockFloodlightAccess(region, new FloodlightResourceAddress(containerName, getPort(kafkaBootstrapServer)));
+        blockFloodlightAccess(new FloodlightResourceAddress(region, flHelper.getFlByRegion(region).getContainer(),
+                getPort(kafkaBootstrapServer)));
     }
 
     @Override
     public void reviveFloodlight(String region) {
         log.debug("Revive Floodlight service");
-        String containerName = mgmtManager.getContainerName(region);
-        unblockFloodlightAccess(region, new FloodlightResourceAddress(containerName, getPort(kafkaBootstrapServer)));
+        unblockFloodlightAccess(new FloodlightResourceAddress(region, flHelper.getFlByRegion(region).getContainer(),
+                getPort(kafkaBootstrapServer)));
     }
 
     HttpHeaders buildJsonHeaders() {
@@ -224,5 +236,17 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     private Integer getPort(String uri) {
         String[] parts = uri.split(":");
         return Integer.valueOf(parts[parts.length - 1]);
+    }
+
+
+    private List<FloodlightResourceAddress> toFlResources(Switch sw, List<String> regions) {
+        return sw.getRegions().stream().filter(regions::contains).map(region -> {
+            Floodlight fl = flHelper.getFlByRegion(region);
+            String swAddress = fl.getFloodlightService().getSwitches().stream().filter(s ->
+                    sw.getDpId().equals(s.getSwitchId())).findFirst().get().getAddress();
+            Pair<String, Integer> inetAddress = LockKeeperService.parseAddressPort(swAddress);
+            return new FloodlightResourceAddress(region, fl.getContainer(), inetAddress.getLeft(),
+                    inetAddress.getRight());
+        }).collect(toList());
     }
 }

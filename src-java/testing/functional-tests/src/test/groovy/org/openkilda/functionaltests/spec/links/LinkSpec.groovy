@@ -7,6 +7,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -198,7 +199,7 @@ class LinkSpec extends HealthCheckSpecification {
     def "ISL should immediately fail if the port went down while switch was disconnected"() {
         when: "A switch disconnects"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
-        def blockData = switchHelper.knockoutSwitch(isl.srcSwitch, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(isl.srcSwitch, RW)
 
         and: "One of its ports goes down"
         //Bring down port on a-switch, which will lead to a port down on the Kilda switch
@@ -215,7 +216,7 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         when: "The switch disconnects again"
-        blockData = lockKeeper.knockoutSwitch(isl.srcSwitch, mgmtFlManager)
+        blockData = lockKeeper.knockoutSwitch(isl.srcSwitch, RW)
 
         and: "The DOWN port is brought back to UP state"
         lockKeeper.portsUp([isl.aswitch.inPort])
@@ -513,8 +514,8 @@ class LinkSpec extends HealthCheckSpecification {
         def isl = topology.islsForActiveSwitches.first()
 
         when: "Source and destination switches of the ISL suddenly disconnect"
-        def srcBlockData = lockKeeper.knockoutSwitch(isl.srcSwitch, mgmtFlManager)
-        def dstBlockData = lockKeeper.knockoutSwitch(isl.dstSwitch, mgmtFlManager)
+        def srcBlockData = lockKeeper.knockoutSwitch(isl.srcSwitch, RW)
+        def dstBlockData = lockKeeper.knockoutSwitch(isl.dstSwitch, RW)
 
         then: "ISL gets failed after discovery timeout"
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {

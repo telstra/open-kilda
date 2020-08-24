@@ -7,13 +7,11 @@ northbound.password={{ getv "/kilda_northbound_password" }}
 
 floodlight.username={{ getv "/kilda_floodlight_username" }}
 floodlight.password={{ getv "/kilda_floodlight_password" }}
-floodlight.controllers.management.openflow={{ getv "/kilda_floodlight_controllers_management_openflow" }}
-floodlight.controllers.management.endpoints= {{ getv "/kilda_floodlight_controllers_management_endpoints" }}
-floodlight.controllers.management.containers= {{ getv "/kilda_floodlight_controllers_management_containers" }}
-floodlight.controllers.stat.openflow={{ getv "/kilda_floodlight_controllers_stat_openflow" }}
-floodlight.controllers.stat.endpoints= {{ getv "/kilda_floodlight_controllers_stat_endpoints" }}
-floodlight.controllers.stat.containers= {{ getv "/kilda_floodlight_controllers_stat_containers" }}
+floodlight.openflows={{ getv "/kilda_floodlight_openflows" }}
+floodlight.endpoints={{ getv "/kilda_floodlight_endpoints" }}
+floodlight.containers={{ getv "/kilda_floodlight_containers" }}
 floodlight.regions={{ getv "/kilda_floodlight_regions" }}
+floodlight.modes={{ getv "/kilda_floodlight_modes" }}
 floodlight.alive.timeout={{ getv "/kilda_floodlight_alive_timeout" }}
 floodlight.alive.interval={{ getv "/kilda_floodlight_alive_interval" }}
 

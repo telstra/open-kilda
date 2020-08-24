@@ -70,8 +70,6 @@ public class TopologyDefinition {
 
     protected Integer bfdOffset;
 
-    protected List<String> controllers;
-
     /**
      * Creates TopologyDefinition instance.
      */
@@ -96,10 +94,6 @@ public class TopologyDefinition {
                 unmodifiableList(isls),
                 unmodifiableList(traffGens),
                 traffGenConfig);
-    }
-
-    public void setControllers(List<String> controllers) {
-        this.controllers = controllers;
     }
 
     public void setBfdOffset(Integer bfdOffset) {
@@ -218,7 +212,7 @@ public class TopologyDefinition {
         @NonNull
         private Status status;
         @NonNull
-        private String region;
+        private List<String> regions;
         @NonNull
         private List<OutPort> outPorts;
         private Integer maxPort;
@@ -237,7 +231,7 @@ public class TopologyDefinition {
                 @JsonProperty("dp_id") SwitchId dpId,
                 @JsonProperty("of_version") String ofVersion,
                 @JsonProperty("status") Status status,
-                @JsonProperty("region") String region,
+                @JsonProperty("regions") List<String> regions,
                 @JsonProperty("out_ports") List<OutPort> outPorts,
                 @JsonProperty("max_port") Integer maxPort,
                 @JsonProperty("controller") String controller,
@@ -249,7 +243,7 @@ public class TopologyDefinition {
                 maxPort = DEFAULT_MAX_PORT;
             }
 
-            return new Switch(name, dpId, ofVersion, status, region, outPorts, maxPort, controller, properties);
+            return new Switch(name, dpId, ofVersion, status, regions, outPorts, maxPort, controller, properties);
         }
 
         @JsonIgnore

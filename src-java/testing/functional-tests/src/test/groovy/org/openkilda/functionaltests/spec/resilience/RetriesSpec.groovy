@@ -4,12 +4,13 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.DELETE_SUCCESS
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.PATH_SWAP_ACTION
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PATH_SWAP_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -76,7 +77,7 @@ and at least 1 path must remain safe"
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         switchPair.paths.findAll { it != failoverPath }.each { pathHelper.makePathMorePreferable(failoverPath, it) }
         //disconnect the switch, but make it look like 'active'
-        def blockData = switchHelper.knockoutSwitch(switchToBreak, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(switchToBreak, RW)
         database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.ACTIVE)
 
         when: "Main path of the flow breaks initiating a reroute"
@@ -179,7 +180,7 @@ and at least 1 path must remain safe"
 
         when: "Disconnect dst switch on protected path"
         def swToManipulate = swPair.dst
-        def blockData = switchHelper.knockoutSwitch(swToManipulate, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(swToManipulate, RW)
         def isSwitchActivated = false
 
         and: "Mark the transit switch as ACTIVE in db"
@@ -281,7 +282,7 @@ and at least 1 path must remain safe"
         northboundV2.deleteFlow(flow.flowId)
 
         and: "One of the related switches does not respond"
-        def blockData = switchHelper.knockoutSwitch(swPair.src, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(swPair.src, RW)
 
         then: "Flow history shows failed delete rule retry attempts but flow deletion is successful at the end"
         wait(WAIT_OFFSET) {
@@ -293,7 +294,7 @@ and at least 1 path must remain safe"
         !northboundV2.getFlowStatus(flow.flowId)
 
         cleanup:
-        lockKeeper.cleanupTrafficShaperRules(swPair.src.region)
+        lockKeeper.cleanupTrafficShaperRules(swPair.src.regions)
         switchHelper.reviveSwitch(swPair.src, blockData, true)
     }
 
@@ -338,7 +339,7 @@ and at least 1 path must remain safe"
 
         and: "Disconnect the dst switch"
         def swToManipulate = swPair.dst
-        def blockData = switchHelper.knockoutSwitch(swToManipulate, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(swToManipulate, RW)
         def isSwitchActivated = false
 
         and: "Mark the dst switch as ACTIVE in db"
@@ -435,7 +436,7 @@ and at least 1 path must remain safe"
         }
 
         cleanup:
-        lockKeeper.cleanupTrafficShaperRules(swPair.src.region)
+        lockKeeper.cleanupTrafficShaperRules(swPair.src.regions)
         flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         wait(WAIT_OFFSET) { northbound.activeLinks.size() == topology.islsForActiveSwitches.size() * 2 }
