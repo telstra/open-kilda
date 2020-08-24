@@ -20,6 +20,7 @@ import static java.util.Collections.emptySet;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
@@ -73,17 +74,20 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
         Flow flow = persistenceManager.getTransactionManager().doInTransaction(() -> {
             Flow foundFlow = getFlow(flowId, FetchStrategy.DIRECT_RELATIONS);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
-                throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
-                        format("Flow %s is in progress now", flowId));
+                String message = format("Flow %s is in progress now", flowId);
+                stateMachine.setRerouteError(new RerouteError(message));
+                throw new FlowProcessingException(ErrorType.REQUEST_INVALID, message);
             }
 
             if (!foundFlow.getSrcSwitch().isActive()) {
-                throw new FlowProcessingException(ErrorType.UNPROCESSABLE_REQUEST,
-                        format("Flow's %s src switch is not active", flowId));
+                String message = format("Flow's %s src switch is not active", flowId);
+                stateMachine.setRerouteError(new RerouteError(message));
+                throw new FlowProcessingException(ErrorType.UNPROCESSABLE_REQUEST, message);
             }
             if (!foundFlow.getDestSwitch().isActive()) {
-                throw new FlowProcessingException(ErrorType.UNPROCESSABLE_REQUEST,
-                        format("Flow's %s dest switch is not active", flowId));
+                String message = format("Flow's %s dest switch is not active", flowId);
+                stateMachine.setRerouteError(new RerouteError(message));
+                throw new FlowProcessingException(ErrorType.UNPROCESSABLE_REQUEST, message);
             }
 
             stateMachine.setOriginalFlowStatus(foundFlow.getStatus());
