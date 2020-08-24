@@ -10,8 +10,8 @@ import { DygraphService } from '../../../common/services/dygraph.service';
 import { ToastrService } from 'ngx-toastr';
 import { IslDataService } from '../../../common/services/isl-data.service';
 import { IslDetailService } from '../../../common/services/isl-detail.service';
+import { NgxSpinnerService } from 'ngx-spinner';
 import { FormBuilder, FormGroup, Validators, NgForm } from '@angular/forms';
-import { NgxSpinnerService } from "ngx-spinner";
 import { ClipboardService } from "ngx-clipboard";
 import * as _moment from 'moment';
 import { LoaderService } from "../../../common/services/loader.service";
@@ -23,6 +23,7 @@ import { CommonService } from '../../../common/services/common.service';
 import { ModalComponent } from 'src/app/common/components/modal/modal.component';
 import { OtpComponent } from 'src/app/common/components/otp/otp.component';
 import { MessageObj } from 'src/app/common/constants/constants';
+import { FlowsService } from 'src/app/common/services/flows.service';
   declare var moment: any;
   @Component({
     selector: 'app-isl-detail',
@@ -32,6 +33,7 @@ import { MessageObj } from 'src/app/common/constants/constants';
 
   export class IslDetailComponent implements OnInit, AfterViewInit,OnDestroy {
     openedTab = "graph";
+    loaderName='graphSpinner';
     detailUrl: string = '';
     src_switch:string = '';
     src_port:string = '';
@@ -56,12 +58,16 @@ import { MessageObj } from 'src/app/common/constants/constants';
     responseGraph = [];
     src_switch_kilda: string;
     dst_switch_kilda:string;
+    dataForISLFLowGraph = [];
     callGraphAPIFlag: boolean = false;
     currentGraphData = {
         data:[],
         startDate:moment(new Date()).format("YYYY/MM/DD HH:mm:ss"),
         endDate: moment(new Date()).format("YYYY/MM/DD HH:mm:ss"),
-        timezone: "LOCAL"
+        timezone: "LOCAL",
+        labels:[],
+        series:{},
+        colors:[],
       };
     graphObj: any;
     message:{};
@@ -69,6 +75,7 @@ import { MessageObj } from 'src/app/common/constants/constants';
 
     filterForm: FormGroup;
     graphMetrics = [];
+    flowGraphMetrics=[];
     autoReloadTimerId = null;
     islForm: FormGroup;
     showCostEditing: boolean = false;
@@ -85,7 +92,7 @@ import { MessageObj } from 'src/app/common/constants/constants';
 
     @Output() hideToValue: EventEmitter<any> = new EventEmitter();
     newMessageDetail(){
-    this.islDataService.changeMessage(this.currentGraphData)
+      this.islDataService.changeMessage(this.currentGraphData)
     }
 
 
@@ -105,6 +112,8 @@ import { MessageObj } from 'src/app/common/constants/constants';
       private modalService: NgbModal,
       private commonService: CommonService,
       private islDetailService : IslDetailService,
+      private flowService:FlowsService,
+      private graphLoader:NgxSpinnerService
     ) {
       
       if(!this.commonService.hasPermission('menu_isl')){
@@ -139,9 +148,14 @@ import { MessageObj } from 'src/app/common/constants/constants';
       graph: ["rtt"],
       metric: ["bits"],
       auto_reload: [""],
+      direction:'forward',
+      flow_number:'top',
+      graph_type:['linegraph'],
+      no_flows:10,
       auto_reload_time: ["", Validators.compose([Validators.pattern("[0-9]*")])]
     });
     this.graphMetrics = this.dygraphService.getPortMetricData();
+    this.flowGraphMetrics = this.dygraphService.getFlowMetricData();
    
 
     }
@@ -152,7 +166,7 @@ import { MessageObj } from 'src/app/common/constants/constants';
         if(linkData && linkData.length){
           this.loaderService.hide();
           var retrievedObject = linkData[linkData.length-1];
-          this.src_switch =retrievedObject.source_switch;
+          this.src_switch = retrievedObject.source_switch;
           this.src_switch_name =retrievedObject.source_switch_name;
           this.src_port =retrievedObject.src_port;
           this.dst_switch =retrievedObject.target_switch;
@@ -379,16 +393,13 @@ import { MessageObj } from 'src/app/common/constants/constants';
   changeDate(input, event) {
     this.filterForm.controls[input].setValue(event.target.value);
     setTimeout(() => {
-
          this.loadGraphData();
-      
-    }, 0);
+       }, 0);
   }
 
 
     ngAfterViewInit() {
-     this.loadGraphData();
-
+     //this.loadGraphData();
     this.filterForm.get("auto_reload").valueChanges.subscribe(value => {
       if (value) {
         this.filterForm
@@ -461,6 +472,9 @@ get f() {
     if(this.filterForm.controls.graph.value == "rtt"){
       this.currentGraphName = "Round Trip Latency Graph (In Seconds)";
     } 
+    if(this.filterForm.controls.graph.value == "flow"){
+      this.currentGraphName = "ISL Flow Graph";
+    } 
     this.loadGraphData();
   }
 
@@ -498,7 +512,9 @@ get f() {
   loadGraphData(){
      if(this.filterForm.value.graph === 'latency' || this.filterForm.value.graph === 'rtt'){
               this.callGraphAPI();
-          }  
+        }else if(this.filterForm.value.graph === 'flow' || this.filterForm.value.graph === 'flowstacked'){
+          this.CallFlowGraphAPI();
+        }  
         else{
           this.callSourceGraphAPI();
         }
@@ -547,7 +563,7 @@ get f() {
       convertedEndDate = moment(new Date(formdata.toDate)).add(60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
       
     }
-
+    this.graphLoader.show(this.loaderName);
       this.dygraphService.getForwardGraphData(this.src_switch_kilda,
                                               this.src_port,
                                               this.dst_switch_kilda,
@@ -594,28 +610,198 @@ get f() {
           
           this.newMessageDetail()
           this.islDataService.currentMessage.subscribe(message => this.message = message)
-          this.loaderService.hide();
+          this.graphLoader.hide(this.loaderName);
        },error=>{
-         this.loaderService.hide();
+        this.graphLoader.hide(this.loaderName);
          this.toastr.error(MessageObj.reverse_graph_no_data,'Error');
        });
        },error=>{
+          this.graphLoader.hide(this.loaderName);
           this.loaderService.hide();
           this.toastr.error(MessageObj.forward_graph_no_data,'Error');
          
       });
                               
   }
+  loadIslAllFlowOrTopTen(){
+    if(this.dataForISLFLowGraph && this.dataForISLFLowGraph.length){
+      let formdata = this.filterForm.value;
+      let downsampling = formdata.download_sample;
+      let metric = formdata.metric;
+      let timezone = formdata.timezone;
+      let direction  = formdata.direction;
+      var data = this.dataForISLFLowGraph;
+      var no_flows = formdata.no_flows;
+      if(formdata.no_flows < 1){
+        this.filterForm.controls['no_flows'].setValue(1);
+        this.toastr.error("No of flows to be seen must be greater than zero", "Error");
+        return;
+      }
+      if(this.filterForm.controls['flow_number'].value == 'top' && this.dataForISLFLowGraph.length){
+        data = this.dataForISLFLowGraph.slice(0,no_flows);
+      }else if(this.filterForm.controls['flow_number'].value == 'least' && this.dataForISLFLowGraph.length){
+        data = this.dataForISLFLowGraph.slice(this.dataForISLFLowGraph.length-no_flows,this.dataForISLFLowGraph.length);
+      }
+      this.loadIslFlowGraph(data,formdata,timezone,direction);
+    }else{ 
+      this.CallFlowGraphAPI();
+    }
+  }
+  CallFlowGraphAPI(){
+    this.dataForISLFLowGraph = [];
+    let formdata = this.filterForm.value;
+    let downsampling = formdata.download_sample;
+    let metric = formdata.metric;
+    let timezone = formdata.timezone;
+    let direction  = formdata.direction;
+    var no_flows = formdata.no_flows;
+    let convertedStartDate = moment(new Date(formdata.fromDate)).add(-60, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
+    let convertedEndDate = moment(new Date(formdata.toDate)).add(60, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
+  
+    if (
+      moment(new Date(formdata.fromDate)).isAfter(new Date(formdata.toDate))
+    ) {
+      this.toastr.error("Start date can not be after End date", "Error");
+      return;
+    }
 
- 
+
+    if (
+      moment(new Date(formdata.toDate)).isBefore(new Date(formdata.fromDate))
+    ) {
+      this.toastr.error("To date should not be less than from date.", "Error");
+      return;
+    }
+
+
+    if (formdata.timezone == "UTC") {
+      convertedStartDate = moment(new Date(formdata.fromDate)).add(-60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
+      convertedEndDate = moment(new Date(formdata.toDate)).add(60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
+      
+    }
+
+   
+     let requestForwardPayload = {switches: [this.src_switch_kilda], outPort: this.src_port,startdate: convertedStartDate,enddate: convertedEndDate,downsample: downsampling, direction:direction, metric:metric};
+     let requestReversePayload = { switches: [this.dst_switch_kilda], inPort: this.dst_port,startdate: convertedStartDate, enddate: convertedEndDate, downsample: downsampling,direction:direction, metric:metric};
+      this.graphLoader.show(this.loaderName);
+     this.flowService.getFlowPathStats(requestForwardPayload).subscribe((dataForward : any) =>{
+      this.flowService.getFlowPathStats(requestReversePayload).subscribe((dataReverse : any) =>{
+            var data = dataForward.concat(dataReverse);
+            var data_for_graph = this.get_data_for_Isl_Flow_Graph(data);
+            no_flows = (data_for_graph.length > 10) ? no_flows : data_for_graph.length;
+            this.filterForm.controls['no_flows'].setValue(no_flows);
+            if(this.filterForm.controls['flow_number'].value == 'top' && data_for_graph.length){
+              data_for_graph = data_for_graph.slice(0,no_flows);
+            }else if(this.filterForm.controls['flow_number'].value == 'least' && data_for_graph.length){
+              data_for_graph = data_for_graph.slice(data_for_graph.length-no_flows,data_for_graph.length);
+            }  
+            this.graphLoader.hide(this.loaderName);          
+           this.loadIslFlowGraph(data_for_graph,formdata,timezone,direction);
+        },error =>{
+          this.graphLoader.hide(this.loaderName); 
+          var data = dataForward;
+          var data_for_graph = this.get_data_for_Isl_Flow_Graph(data);
+          no_flows = (data_for_graph.length > 10) ? no_flows : data_for_graph.length;
+          this.filterForm.controls['no_flows'].setValue(no_flows);
+          if(this.filterForm.controls['flow_number'].value == 'top' && data_for_graph.length){
+            data_for_graph = data_for_graph.slice(0,no_flows);
+          }else if(this.filterForm.controls['flow_number'].value == 'least' && data_for_graph.length){
+            data_for_graph = data_for_graph.slice(data_for_graph.length-no_flows,data_for_graph.length);
+          }
+          this.loadIslFlowGraph(data_for_graph,formdata,timezone,direction);
+          this.toastr.error(MessageObj.reverse_graph_no_data,'Error');
+        });
+       },error=>{
+            this.flowService.getFlowPathStats(requestReversePayload).subscribe((dataReverse : any) =>{
+              var data = dataReverse;              
+              var data_for_graph = this.get_data_for_Isl_Flow_Graph(data);              
+              no_flows = (data_for_graph.length > 10) ? no_flows : data_for_graph.length;
+              this.filterForm.controls['no_flows'].setValue(no_flows);
+              if(this.filterForm.controls['flow_number'].value == 'top' && data_for_graph.length){
+                data_for_graph = data_for_graph.slice(0,no_flows);
+              }else if(this.filterForm.controls['flow_number'].value == 'least' && data_for_graph.length){
+                data_for_graph = data_for_graph.slice(data_for_graph.length-no_flows,data_for_graph.length);
+              }
+              this.graphLoader.hide(this.loaderName); 
+              this.loadIslFlowGraph(data_for_graph,formdata,timezone,direction);
+            },error =>{
+              this.graphLoader.hide(this.loaderName); 
+              this.loadIslFlowGraph([],formdata,timezone,direction);
+              this.toastr.error(MessageObj.reverse_graph_no_data,'Error');
+            });
+      });
+  }
+  get_data_for_Isl_Flow_Graph(dataGraph){
+    if(dataGraph && dataGraph.length){
+      dataGraph.forEach(d => {
+        var sum =0;
+         Object.keys(d.dps).forEach((a)=>{
+          sum = sum + d.dps[a];
+        });
+         return  d['sum'] = sum;
+      });
+       dataGraph.sort((a,b)=>{
+        return b['sum'] - a['sum'];
+      });
+      this.dataForISLFLowGraph = dataGraph;
+       return dataGraph;
+     } 
+     return [];
+  }
+  copySelectedStatsFlows(){
+    var data_for_copy = [];
+    var data =this.dataForISLFLowGraph;
+    if(data && data.length){
+      data.forEach((d)=>{
+        data_for_copy.push(d.tags.flowid);
+      });
+    }
+    var no_flows = this.filterForm.controls['no_flows'].value;
+    if(this.filterForm.controls['flow_number'].value == 'top' && data_for_copy.length){
+      data_for_copy = data_for_copy.slice(0,no_flows);
+    }else if(this.filterForm.controls['flow_number'].value == 'least' && data_for_copy.length){
+      data_for_copy = this.dataForISLFLowGraph.slice(data_for_copy.length-no_flows,data_for_copy.length);
+    }
+     this.clipboardService.copyFromContent(JSON.stringify(data_for_copy));
+  }
+  loadIslFlowGraph(data,formdata,timezone,direction){
+    var graph =  this.filterForm.value.graph_type;
+    var graph_data = this.dygraphService.computeFlowGraphDataForISL(data, formdata.fromDate, formdata.toDate, timezone,direction);
+    var graphData =  graph_data["data"];
+    var labels = graph_data["labels"];
+    var series = {};
+    var colors = graph_data["color"];
+    if (labels && labels.length) {
+      for (var k = 0; k < labels.length; k++) {
+        if (k != 0) {
+          series[labels[k]] = { color: colors[k - 1] };
+        }
+      }
+    }
+    this.responseGraph = [];
+    this.currentGraphData.data = graphData;
+    this.currentGraphData.timezone = timezone;
+    this.currentGraphData.startDate = moment(new Date(formdata.fromDate));
+    this.currentGraphData.endDate = moment(new Date(formdata.toDate));
+    this.currentGraphData.labels = labels;
+    this.currentGraphData.series = series;
+    this.loaderService.hide();
+    if(this.filterForm.value.graph_type === 'stackedgraph'){
+      this.islDataService.changeIslFlowStackedGraph(this.currentGraphData);
+    this.islDataService.IslFlowStackedGraph.subscribe(message => this.message = message);
+    }else{
+    this.islDataService.changeIslFlowGraph(this.currentGraphData);
+    this.islDataService.IslFlowGraph.subscribe(message => this.message = message);
+    }
+    
+  }
   callSourceGraphAPI(){
-     
     let formdata = this.filterForm.value;
     let downsampling = formdata.download_sample;
     let metric = formdata.metric;
     let timezone = formdata.timezone;
     let graph = formdata.graph;
-
+    let direction  = formdata.direction;
     let convertedStartDate = moment(new Date(formdata.fromDate)).add(-60, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
     let convertedEndDate = moment(new Date(formdata.toDate)).add(60, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
 
@@ -647,7 +833,7 @@ get f() {
 
 
 
-
+    this.graphLoader.show(this.loaderName);
     this.dygraphService.getForwardGraphData(this.src_switch_kilda,
                                               this.src_port,
                                               this.dst_switch_kilda,
@@ -671,11 +857,11 @@ get f() {
           this.currentGraphData.timezone = timezone;
           this.currentGraphData.startDate = moment(new Date(formdata.fromDate));
           this.currentGraphData.endDate = moment(new Date(formdata.toDate));
-          this.loaderService.hide();
+          this.graphLoader.hide(this.loaderName);
           this.newMessageDetail()
           this.islDataService.currentMessage.subscribe(message => this.message = message)
        },error=>{
-        this.loaderService.hide();
+        this.graphLoader.hide(this.loaderName);
          this.toastr.error(MessageObj.reverse_graph_no_data,'Error');
          
       });
@@ -687,7 +873,6 @@ get f() {
     if(this.detailDataObservable.props.cost == "-"){
       this.detailDataObservable.props.cost = "";
     }
-
 
      this.islForm.controls["cost"].setValue(
              this.detailDataObservable.props.cost
@@ -827,8 +1012,7 @@ get f() {
           const modalRef2 = this.modalService.open(ModalComponent);
           modalRef2.componentInstance.title = "Warning";
           modalRef2.componentInstance.content = MessageObj.delete_isl_not_authorised;
-        }
-        
+        }        
       }
     });
   }

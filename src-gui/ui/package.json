@@ -47,7 +47,7 @@
     "ngx-clipboard": "^11.1.7",
     "ngx-contextmenu": "5.0.3",
     "ngx-moment": "^3.1.0",
-    "ngx-spinner": "^6.1.2",
+    "ngx-spinner": "^7.1.4",
     "ngx-toastr": "^9.0.2",
     "ngx-typeahead": "^6.0.0",
     "open-iconic": "^1.1.1",

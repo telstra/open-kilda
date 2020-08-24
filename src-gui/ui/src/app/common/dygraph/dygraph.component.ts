@@ -27,7 +27,6 @@ export class DygraphComponent implements OnInit, OnDestroy {
     chartHeight:"380",
     legend: "onmouseover",
     noDataLabel:"Please wait",
-    
   });
 
   jsonResponse: any;
@@ -153,15 +152,21 @@ export class DygraphComponent implements OnInit, OnDestroy {
       graphData.push(arr);
       //graphData.shift();
     }
-    
   
     return { data: graphData, labels: labels };
   }
 
   ngOnInit() {
+    
     this.islDataService.currentMessage.subscribe(message => {
       this.message = message;
       if (this.count >= 1) {
+        this.options = Object.assign({}, {
+          width: "auto",
+          chartHeight:"380",
+          legend: "onmouseover",
+          noDataLabel:"Please wait",
+        });
         this.drawGraphCall(message);
       }
       this.count++;
@@ -170,12 +175,52 @@ export class DygraphComponent implements OnInit, OnDestroy {
       this.optionsObject = message;
       this.graphDataOptions = message;
       if (this.objectCount >= 1) {
+        this.options = Object.assign({}, {
+          width: "auto",
+          chartHeight:"380",
+          legend: "onmouseover",
+          noDataLabel:"Please wait",
+        });
         this.drawGraphCall(message);
       }
       this.objectCount++;
     });
 
+    this.islDataService.IslFlowGraph.subscribe(message => {
+      this.message = message;
+      if (this.count >= 1) {
+        this.options = Object.assign({}, {
+          width: "auto",
+          chartHeight:"380",
+          legend: "onmouseover",
+          noDataLabel:"Please wait",
+        });
+        this.plotISLFlowGraph(message);
+      }
+      this.count++;
+    });
+
+    this.islDataService.IslFlowStackedGraph.subscribe(message => {
+      this.message = message;
+      if (this.count >= 1) {
+        this.options = Object.assign({}, {
+          width: "auto",
+          chartHeight:"380",
+          legend: "onmouseover",
+          noDataLabel:"Please wait",
+        });
+        this.plotISLStackedFlowGraph(message);
+      }
+      this.count++;
+    });
+
     this.dygraphService.flowGraph.subscribe(data => {
+      this.options = Object.assign({}, {
+        width: "auto",
+        chartHeight:"380",
+        legend: "onmouseover",
+        noDataLabel:"Please wait",
+      });
       this.plotFlowGraph(
         data.data,
         data.startDate,
@@ -188,6 +233,12 @@ export class DygraphComponent implements OnInit, OnDestroy {
     });
 
     this.dygraphService.meterGraph.subscribe(data => {
+      this.options = Object.assign({}, {
+        width: "auto",
+        chartHeight:"380",
+        legend: "onmouseover",
+        noDataLabel:"Please wait",
+      });
       this.plotMeterGraph(
         data.data,
         data.startDate,
@@ -201,7 +252,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
 
 
 
-  drawGraphCall(dataObj) {
+  drawGraphCall(dataObj) {    
    this.timezone = dataObj.timezone;
    this.jsonResponse = undefined;
 
@@ -243,12 +294,88 @@ export class DygraphComponent implements OnInit, OnDestroy {
       zoomCallback: this.zoomCallbackHandler
     });
   }
-
-    
    
   }
 
+  plotISLFlowGraph(dataObj) {
+    this.timezone = dataObj.timezone;
+    this.jsonResponse = undefined;
+    this.labels = dataObj.labels;  
+    this.data = dataObj.data; 
+  if(this.timezone == "UTC") {
+    this.options = Object.assign(this.options, {
+      labels: this.labels,
+      drawPoints: false,
+      animatedZooms: true,
+      labelsUTC: true,
+      series: dataObj.series,
+      legend: "onmouseover",
+      valueRange:[0,null],
+      connectSeparatedPoints:true,
+      legendFormatter:this.dygraphService.legendFormatter,
+        zoomCallback: this.zoomCallbackHandler
+      });
+  }else{
+    this.options = Object.assign(this.options, {
+      labels: this.labels,
+      drawPoints: false,
+      animatedZooms: true,
+      labelsUTC: false,
+      series: dataObj.series,
+      legend: "onmouseover",
+      valueRange:[0,null],
+      connectSeparatedPoints:true,
+      legendFormatter:this.dygraphService.legendFormatter,
+        zoomCallback: this.zoomCallbackHandler
+      });
+     }
+  }
 
+  plotISLStackedFlowGraph(dataObj) {
+    this.timezone = dataObj.timezone;
+    this.jsonResponse = undefined;
+    this.labels = dataObj.labels;  
+    this.data = dataObj.data; 
+  if(this.timezone == "UTC") {
+    this.options = Object.assign(this.options, {
+      labels: this.labels,
+      drawPoints: false,
+      animatedZooms: true,
+      labelsUTC: true,
+      series: dataObj.series,
+      legend: "onmouseover",
+      stackedGraph: true,
+      valueRange:[0,null],
+      connectSeparatedPoints:true,
+      legendFormatter:this.dygraphService.legendFormatter,
+        zoomCallback: this.zoomCallbackHandler,
+        axes: {
+          x: {
+            drawGrid: false
+          }
+        }
+      });
+  }else{
+    this.options = Object.assign(this.options, {
+      labels: this.labels,
+      drawPoints: false,
+      animatedZooms: true,
+      labelsUTC: false,
+      series: dataObj.series,
+      legend: "onmouseover",      
+      stackedGraph: true,
+      valueRange:[0,null],
+      connectSeparatedPoints:true,
+      legendFormatter:this.dygraphService.legendFormatter,
+        zoomCallback: this.zoomCallbackHandler,
+        axes: {
+          x: {
+            drawGrid: false
+          }
+        }
+      });
+     }
+  }
 
   zoomCallbackHandler =  (minX, maxX, yRanges) =>{
     this.zoomChange.emit({ minX:minX, maxX:maxX, yRanges:yRanges});
