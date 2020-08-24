@@ -25,13 +25,14 @@ import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.FlowSegmentCookie.FlowSegmentCookieBuilder;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.PathComputer;
-import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
@@ -211,7 +212,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
         }
     }
 
-    protected boolean isNotSamePath(PathPair pathPair, FlowPathPair flowPathPair) {
+    protected boolean isNotSamePath(GetPathsResult pathPair, FlowPathPair flowPathPair) {
         return flowPathPair.getForward() == null
                 || !flowPathBuilder.isSamePath(pathPair.getForward(), flowPathPair.getForward())
                 || flowPathPair.getReverse() == null
@@ -219,7 +220,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
     }
 
     protected FlowPathPair createFlowPathPair(Flow flow, List<FlowPath> pathsToReuseBandwidth,
-                                              PathPair pathPair, FlowResources flowResources,
+                                              GetPathsResult pathPair, FlowResources flowResources,
                                               boolean forceToIgnoreBandwidth) {
         final FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
                 .flowEffectiveId(flowResources.getUnmaskedCookie());
@@ -341,5 +342,12 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
         Optional.ofNullable(stateMachine.getNewProtectedForwardPath()).ifPresent(pathIds::add);
         Optional.ofNullable(stateMachine.getNewProtectedReversePath()).ifPresent(pathIds::add);
         return pathIds;
+    }
+
+    protected PathComputationStrategy[] getBackUpStrategies(PathComputationStrategy strategy) {
+        if (PathComputationStrategy.MAX_LATENCY.equals(strategy)) {
+            return new PathComputationStrategy[] {PathComputationStrategy.LATENCY};
+        }
+        return new PathComputationStrategy[0];
     }
 }

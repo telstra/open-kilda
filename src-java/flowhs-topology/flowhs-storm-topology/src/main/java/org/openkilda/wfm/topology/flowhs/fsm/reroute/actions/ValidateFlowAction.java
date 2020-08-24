@@ -99,8 +99,11 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
             stateMachine.setPeriodicPingsEnabled(foundFlow.isPeriodicPings());
 
             if (foundFlow.getTargetPathComputationStrategy() != null) {
+                stateMachine.setTargetPathComputationStrategy(foundFlow.getTargetPathComputationStrategy());
                 foundFlow.setPathComputationStrategy(foundFlow.getTargetPathComputationStrategy());
                 foundFlow.setTargetPathComputationStrategy(null);
+            } else {
+                stateMachine.setTargetPathComputationStrategy(foundFlow.getPathComputationStrategy());
             }
             foundFlow.setStatus(FlowStatus.IN_PROGRESS);
             flowRepository.createOrUpdate(foundFlow);

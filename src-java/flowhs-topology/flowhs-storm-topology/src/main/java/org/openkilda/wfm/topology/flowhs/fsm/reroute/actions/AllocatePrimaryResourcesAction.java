@@ -18,8 +18,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 import org.openkilda.messaging.info.reroute.error.NoPathFoundError;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.PathComputer;
-import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
@@ -70,15 +70,18 @@ public class AllocatePrimaryResourcesAction extends
 
         log.debug("Finding a new primary path for flow {}", flowId);
 
-        PathPair potentialPath;
+        GetPathsResult potentialPath;
         if (stateMachine.isIgnoreBandwidth()) {
             boolean originalIgnoreBandwidth = flow.isIgnoreBandwidth();
             flow.setIgnoreBandwidth(true);
-            potentialPath = pathComputer.getPath(flow);
+            potentialPath = pathComputer.getPath(flow, getBackUpStrategies(flow.getPathComputationStrategy()));
             flow.setIgnoreBandwidth(originalIgnoreBandwidth);
         } else {
-            potentialPath = pathComputer.getPath(flow, flow.getFlowPathIds());
+            potentialPath = pathComputer.getPath(
+                    flow, flow.getFlowPathIds(), getBackUpStrategies(flow.getPathComputationStrategy()));
         }
+
+        stateMachine.setNewPrimaryPathComputationStrategy(potentialPath.getUsedStrategy());
         FlowPathPair oldPaths = FlowPathPair.builder()
                 .forward(flow.getForwardPath())
                 .reverse(flow.getReversePath())

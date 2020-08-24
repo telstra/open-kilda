@@ -29,8 +29,8 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.FlowSegmentCookie.FlowSegmentCookieBuilder;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.PathComputer;
-import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
@@ -227,19 +227,19 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
 
     private void allocateMainPath(FlowCreateFsm fsm, Flow flow) throws UnroutableFlowException,
             RecoverableException, ResourceAllocationException {
-        PathPair pathPair = pathComputer.getPath(flow);
+        GetPathsResult paths = pathComputer.getPath(flow);
         FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
         final FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
                 .flowEffectiveId(flowResources.getUnmaskedCookie());
 
         FlowPath forward = flowPathBuilder.buildFlowPath(
-                flow, flowResources.getForward(), pathPair.getForward(),
+                flow, flowResources.getForward(), paths.getForward(),
                 cookieBuilder.direction(FlowPathDirection.FORWARD).build(), false);
         forward.setStatus(FlowPathStatus.IN_PROGRESS);
         flow.setForwardPath(forward);
 
         FlowPath reverse = flowPathBuilder.buildFlowPath(
-                flow, flowResources.getReverse(), pathPair.getReverse(),
+                flow, flowResources.getReverse(), paths.getReverse(),
                 cookieBuilder.direction(FlowPathDirection.REVERSE).build(), false);
         reverse.setStatus(FlowPathStatus.IN_PROGRESS);
         flow.setReversePath(reverse);
@@ -260,7 +260,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
     private void allocateProtectedPath(FlowCreateFsm fsm, Flow flow) throws UnroutableFlowException,
             RecoverableException, ResourceAllocationException, FlowNotFoundException {
         flow.setGroupId(getGroupId(flow.getFlowId()));
-        PathPair protectedPath = pathComputer.getPath(flow);
+        GetPathsResult protectedPath = pathComputer.getPath(flow);
 
         boolean overlappingProtectedPathFound =
                 flowPathBuilder.arePathsOverlapped(protectedPath.getForward(), flow.getForwardPath())

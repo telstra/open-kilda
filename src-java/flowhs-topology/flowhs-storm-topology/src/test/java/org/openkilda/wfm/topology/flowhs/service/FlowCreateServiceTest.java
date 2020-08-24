@@ -33,7 +33,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.pce.PathPair;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.wfm.CommandContext;
@@ -380,7 +380,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
                 .build());
     }
 
-    private void preparePathComputation(String flowId, PathPair pathPair)
+    private void preparePathComputation(String flowId, GetPathsResult pathPair)
             throws RecoverableException, UnroutableFlowException {
         when(pathComputer.getPath(makeFlowArgumentMatch(flowId))).thenReturn(pathPair);
     }

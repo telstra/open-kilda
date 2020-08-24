@@ -38,8 +38,9 @@ public interface PathComputer {
      * @param flow the {@link Flow} instance
      * @return {@link PathPair} instances
      */
-    default PathPair getPath(Flow flow) throws UnroutableFlowException, RecoverableException {
-        return getPath(flow, Collections.emptyList());
+    default GetPathsResult getPath(Flow flow, PathComputationStrategy... backUpStrategies)
+            throws UnroutableFlowException, RecoverableException {
+        return getPath(flow, Collections.emptyList(), backUpStrategies);
     }
 
     /**
@@ -50,7 +51,7 @@ public interface PathComputer {
      *                               be reused in new path computation.
      * @return {@link PathPair} instances
      */
-    PathPair getPath(Flow flow, List<PathId> reusePathsResources)
+    GetPathsResult getPath(Flow flow, List<PathId> reusePathsResources, PathComputationStrategy... backUpStrategies)
             throws UnroutableFlowException, RecoverableException;
 
     /**

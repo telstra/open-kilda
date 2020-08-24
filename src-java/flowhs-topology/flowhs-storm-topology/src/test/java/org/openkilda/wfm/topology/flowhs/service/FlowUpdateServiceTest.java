@@ -39,7 +39,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
-import org.openkilda.pce.PathPair;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -82,7 +82,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     @Test
     public void shouldFailUpdateFlowIfNoPathAvailable() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
-        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), any()))
+        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), any()))
                 .thenThrow(new UnroutableFlowException(injectedErrorMessage));
 
         FlowRequest request = makeRequest()
@@ -93,13 +93,13 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         Flow result = testExpectedFailure(request, origin, ErrorType.NOT_FOUND);
         Assert.assertEquals(origin.getBandwidth(), result.getBandwidth());
 
-        verify(pathComputer, times(11)).getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
+        verify(pathComputer, times(11)).getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), any());
     }
 
     @Test
     public void shouldFailRerouteFlowIfRecoverableException() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
-        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), any()))
+        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), any()))
                 .thenThrow(new RecoverableException(injectedErrorMessage));
 
         FlowRequest request = makeRequest()
@@ -109,7 +109,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         testExpectedFailure(request, origin, ErrorType.INTERNAL_ERROR);
 
         verify(pathComputer, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
-                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
+                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), any());
     }
 
     @Test
@@ -128,7 +128,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         testExpectedFailure(request, origin, ErrorType.INTERNAL_ERROR);
 
         verify(pathComputer, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
-                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
+                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), any());
         verify(repository, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
                 .updateAvailableBandwidth(any(), anyInt(), any(), anyInt(), anyLong());
     }
@@ -149,7 +149,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         testExpectedFailure(request, origin, ErrorType.INTERNAL_ERROR);
 
         verify(pathComputer, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
-                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
+                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), any());
         verify(flowResourcesManager, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
                 .allocateFlowResources(makeFlowArgumentMatch(origin.getFlowId()));
     }
@@ -555,9 +555,9 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         verifyPathReplace(origin, result);
     }
 
-    private void preparePathComputation(String flowId, PathPair pathPair)
+    private void preparePathComputation(String flowId, GetPathsResult pathPair)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any())).thenReturn(pathPair);
+        when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any(), any())).thenReturn(pathPair);
     }
 
     private FlowUpdateService makeService() {

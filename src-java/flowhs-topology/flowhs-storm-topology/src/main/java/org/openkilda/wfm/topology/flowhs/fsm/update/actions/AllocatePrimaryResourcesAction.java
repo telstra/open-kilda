@@ -18,8 +18,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.PathComputer;
-import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
@@ -76,7 +76,7 @@ public class AllocatePrimaryResourcesAction extends
         Flow flow = getFlow(flowId);
         log.debug("Finding a new primary path for flow {}", flowId);
         List<PathId> pathIdsToReuse = pathsToReuse.stream().map(FlowPath::getPathId).collect(Collectors.toList());
-        final PathPair potentialPath = pathComputer.getPath(flow, pathIdsToReuse);
+        final GetPathsResult potentialPath = pathComputer.getPath(flow, pathIdsToReuse);
 
         log.debug("Allocating resources for a new primary path of flow {}", flowId);
         FlowResources flowResources = resourcesManager.allocateFlowResources(flow);

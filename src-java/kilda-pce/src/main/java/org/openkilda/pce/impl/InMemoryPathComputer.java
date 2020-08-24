@@ -25,10 +25,10 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.AvailableNetworkFactory;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
-import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.finder.PathFinder;
@@ -39,6 +39,8 @@ import org.openkilda.pce.model.WeightFunction;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -64,22 +66,40 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     @Override
-    public PathPair getPath(Flow flow, List<PathId> reusePathsResources)
+    public GetPathsResult getPath(
+            Flow flow, List<PathId> reusePathsResources, PathComputationStrategy... backUpStrategies)
             throws UnroutableFlowException, RecoverableException {
-        return getPath(availableNetworkFactory.getAvailableNetwork(flow, reusePathsResources), flow);
+        List<PathComputationStrategy> strategies = new ArrayList<>();
+        strategies.add(flow.getPathComputationStrategy());
+        strategies.addAll(Arrays.asList(backUpStrategies));
+
+        AvailableNetwork network = availableNetworkFactory.getAvailableNetwork(flow, reusePathsResources);
+
+        for (int i = 0; i < strategies.size() - 1; i++) {
+            try {
+                return getPath(network, flow, strategies.get(i));
+            } catch (UnroutableFlowException e) {
+                log.warn(String.format("No path found for flow '%s' with '%s' strategy. Will try with "
+                        + "'%s' strategy.", flow.getFlowId(), strategies.get(i), strategies.get(i + 1)), e);
+            }
+        }
+
+        return getPath(network, flow, strategies.get(strategies.size() - 1));
     }
 
-    private PathPair getPath(AvailableNetwork network, Flow flow) throws UnroutableFlowException {
+    private GetPathsResult getPath(AvailableNetwork network, Flow flow, PathComputationStrategy strategy)
+            throws UnroutableFlowException {
         if (flow.isOneSwitchFlow()) {
             log.info("No path computation for one-switch flow");
             SwitchId singleSwitchId = flow.getSrcSwitch().getSwitchId();
-            return PathPair.builder()
+            return GetPathsResult.builder()
                     .forward(convertToPath(singleSwitchId, singleSwitchId, emptyList()))
                     .reverse(convertToPath(singleSwitchId, singleSwitchId, emptyList()))
+                    .usedStrategy(strategy)
                     .build();
         }
 
-        WeightFunction weightFunction = getWeightFunctionByStrategy(flow.getPathComputationStrategy());
+        WeightFunction weightFunction = getWeightFunctionByStrategy(strategy);
         Pair<List<Edge>, List<Edge>> biPath;
         try {
             network.reduceByWeight(weightFunction);
@@ -91,7 +111,8 @@ public class InMemoryPathComputer implements PathComputer {
             throw new UnroutableFlowException(message, e, flow.getFlowId(), flow.isIgnoreBandwidth());
         }
 
-        return convertToPathPair(flow.getSrcSwitch().getSwitchId(), flow.getDestSwitch().getSwitchId(), biPath);
+        return convertToGetPathsResult(flow.getSrcSwitch().getSwitchId(), flow.getDestSwitch().getSwitchId(), biPath,
+                strategy);
     }
 
     private Pair<List<Edge>, List<Edge>> findPathInNetwork(Flow flow, AvailableNetwork network,
@@ -202,11 +223,13 @@ public class InMemoryPathComputer implements PathComputer {
         return new PathWeight(total, edge.getAvailableBandwidth());
     }
 
-    private PathPair convertToPathPair(SwitchId srcSwitchId, SwitchId dstSwitchId,
-                                       Pair<List<Edge>, List<Edge>> biPath) {
-        return PathPair.builder()
+    private GetPathsResult convertToGetPathsResult(
+            SwitchId srcSwitchId, SwitchId dstSwitchId, Pair<List<Edge>, List<Edge>> biPath,
+            PathComputationStrategy strategy) {
+        return GetPathsResult.builder()
                 .forward(convertToPath(srcSwitchId, dstSwitchId, biPath.getLeft()))
                 .reverse(convertToPath(dstSwitchId, srcSwitchId, biPath.getRight()))
+                .usedStrategy(strategy)
                 .build();
     }
 
