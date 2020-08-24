@@ -51,6 +51,7 @@ import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathBuilder;
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
@@ -241,14 +242,15 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             flowPathRepository.createOrUpdate(newForwardPath);
             flowPathRepository.createOrUpdate(newReversePath);
 
-            updateIslsForFlowPath(newForwardPath, pathsToReuseBandwidth);
-            updateIslsForFlowPath(newReversePath, pathsToReuseBandwidth);
+            updateIslsForFlowPath(newForwardPath, pathsToReuseBandwidth, forceToIgnoreBandwidth);
+            updateIslsForFlowPath(newReversePath, pathsToReuseBandwidth, forceToIgnoreBandwidth);
         });
 
         return newFlowPaths;
     }
 
-    private void updateIslsForFlowPath(FlowPath flowPath, List<FlowPath> pathsToReuseBandwidth)
+    private void updateIslsForFlowPath(FlowPath flowPath, List<FlowPath> pathsToReuseBandwidth,
+                                       boolean forceToIgnoreBandwidth)
             throws ResourceAllocationException {
         for (PathSegment pathSegment : flowPath.getSegments()) {
             log.debug("Updating ISL for the path segment: {}", pathSegment);
@@ -271,19 +273,21 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
 
             updateAvailableBandwidth(pathSegment.getSrcSwitch().getSwitchId(), pathSegment.getSrcPort(),
                     pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort(),
-                    allowedOverprovisionedBandwidth);
+                    allowedOverprovisionedBandwidth, forceToIgnoreBandwidth);
         }
     }
 
-    private void updateAvailableBandwidth(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort,
-                                          long allowedOverprovisionedBandwidth) throws ResourceAllocationException {
+    @VisibleForTesting
+    void updateAvailableBandwidth(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort,
+                                         long allowedOverprovisionedBandwidth,
+                                         boolean forceToIgnoreBandwidth) throws ResourceAllocationException {
         long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(srcSwitch, srcPort,
                 dstSwitch, dstPort);
         log.debug("Updating ISL {}_{}-{}_{} with used bandwidth {}", srcSwitch, srcPort, dstSwitch, dstPort,
                 usedBandwidth);
         long islAvailableBandwidth =
                 islRepository.updateAvailableBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth);
-        if ((islAvailableBandwidth + allowedOverprovisionedBandwidth) < 0) {
+        if (!forceToIgnoreBandwidth && (islAvailableBandwidth + allowedOverprovisionedBandwidth) < 0) {
             throw new ResourceAllocationException(format("ISL %s_%d-%s_%d was overprovisioned",
                     srcSwitch, srcPort, dstSwitch, dstPort));
         }
