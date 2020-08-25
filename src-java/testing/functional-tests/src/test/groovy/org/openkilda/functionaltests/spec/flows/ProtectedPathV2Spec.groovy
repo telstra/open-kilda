@@ -216,9 +216,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         def uniquePathCount = switchPair.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size()
 
         when: "Create 5 flows with protected paths"
-//        List<FlowRequestV2> flows = (1..5).collect {
-        //workaround for issue #3703 https://github.com/telstra/open-kilda/issues/3703
-        List<FlowRequestV2> flows = (1..1).collect {
+        List<FlowRequestV2> flows = (1..5).collect {
             flowHelperV2.randomFlow(switchPair).tap {
                 maximumBandwidth = bandwidth
                 ignoreBandwidth = bandwidth == 0
@@ -1264,7 +1262,6 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/3140")
     def "System properly reroutes both paths if protected path breaks during auto-swap"() {
         given: "Switch pair with at least 4 diverse paths"
         def switchPair = topologyHelper.switchPairs.find {

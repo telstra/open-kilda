@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -96,7 +96,7 @@ public class RerouteService {
             // swapping affected primary paths with available protected
             List<FlowPath> pathsForSwapping = getPathsForSwapping(affectedFlowPaths);
             for (FlowPath path : pathsForSwapping) {
-                sender.emitPathSwapCommand(correlationId, path, command.getReason());
+                sender.emitPathSwapCommand(correlationId, path.getFlow().getFlowId(), command.getReason());
             }
 
             for (FlowWithAffectedPaths entry : groupPathsForRerouting(affectedFlowPaths)) {

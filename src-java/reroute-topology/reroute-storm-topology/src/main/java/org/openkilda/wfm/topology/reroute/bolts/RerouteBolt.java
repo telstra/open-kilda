@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.reroute.bolts;
 
+import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
+
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -25,17 +27,15 @@ import org.openkilda.messaging.command.reroute.RerouteAffectedInactiveFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.reroute.PathSwapResult;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
 import org.openkilda.messaging.info.reroute.SwitchStateChanged;
-import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
-import org.openkilda.wfm.topology.reroute.RerouteTopology;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 import org.openkilda.wfm.topology.reroute.service.RerouteService;
-import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.task.OutputCollector;
@@ -46,18 +46,19 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 public class RerouteBolt extends AbstractBolt implements MessageSender {
 
     public static final String FLOW_ID_FIELD = "flow-id";
     public static final String THROTTLING_DATA_FIELD = "throttling-data";
-    public static final String REROUTE_RESULT_FIELD = "reroute-result";
     public static final String BOLT_ID = "reroute-bolt";
     public static final String STREAM_REROUTE_REQUEST_ID = "reroute-request-stream";
     public static final String STREAM_MANUAL_REROUTE_REQUEST_ID = "manual-reroute-request-stream";
-    public static final String STREAM_REROUTE_RESULT_ID = "reroute-result-stream";
-    public static final String STREAM_SWAP_ID = "swap-stream";
+
+    public static final String STREAM_OPERATION_QUEUE_ID = "operation-queue";
+    public static final Fields FIELDS_OPERATION_QUEUE = new Fields(FLOW_ID_FIELD, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     private PersistenceManager persistenceManager;
     private transient RerouteService rerouteService;
@@ -81,7 +82,7 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
      */
     @Override
     protected void handleInput(Tuple tuple) throws PipelineException {
-        Message message = pullValue(tuple, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Message.class);
+        Message message = pullValue(tuple, FIELD_ID_PAYLOAD, Message.class);
 
         if (message instanceof CommandMessage) {
             handleCommandMessage((CommandMessage) message);
@@ -114,8 +115,12 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
             InfoData infoData = ((InfoMessage) message).getData();
             if (infoData instanceof RerouteResultInfoData) {
                 RerouteResultInfoData rerouteResultInfoData = (RerouteResultInfoData) infoData;
-                emitWithContext(STREAM_REROUTE_RESULT_ID, getCurrentTuple(),
+                emitWithContext(STREAM_OPERATION_QUEUE_ID, getCurrentTuple(),
                         new Values(rerouteResultInfoData.getFlowId(), rerouteResultInfoData));
+            } else if (infoData instanceof PathSwapResult) {
+                PathSwapResult pathSwapResult = (PathSwapResult) infoData;
+                emitWithContext(STREAM_OPERATION_QUEUE_ID, getCurrentTuple(),
+                        new Values(pathSwapResult.getFlowId(), pathSwapResult));
             } else if (infoData instanceof SwitchStateChanged) {
                 rerouteService.processSingleSwitchFlowStatusUpdate((SwitchStateChanged) infoData);
             } else {
@@ -158,20 +163,18 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
      * Emit swap command for consumer.
      *
      * @param correlationId correlation id to pass through
-     * @param path affected paths
-     * @param reason initial reason of reroute
+     * @param flowId flow
+     * @param reason initial reason of path swap
      */
     @Override
-    public void emitPathSwapCommand(String correlationId, FlowPath path, String reason) {
-        FlowPathSwapRequest request = new FlowPathSwapRequest(path.getFlow().getFlowId(), path.getPathId());
-        getOutput().emit(STREAM_SWAP_ID, getCurrentTuple(), new Values(correlationId,
-                new CommandMessage(request, System.currentTimeMillis(), correlationId)));
+    public void emitPathSwapCommand(String correlationId, String flowId, String reason) {
+        CommandContext context = new CommandContext(correlationId).fork(UUID.randomUUID().toString());
+        emit(STREAM_OPERATION_QUEUE_ID, getCurrentTuple(),
+                new Values(flowId, new FlowPathSwapRequest(flowId), context));
 
         log.warn("Flow {} swap path command message sent with correlationId {}, reason \"{}\"",
-                path.getFlow().getFlowId(), correlationId, reason);
+                flowId, context.getCorrelationId(), reason);
     }
-
-
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer output) {
@@ -179,8 +182,6 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
                 new Fields(FLOW_ID_FIELD, THROTTLING_DATA_FIELD, FIELD_ID_CONTEXT));
         output.declareStream(STREAM_MANUAL_REROUTE_REQUEST_ID,
                 new Fields(FLOW_ID_FIELD, THROTTLING_DATA_FIELD, FIELD_ID_CONTEXT));
-        output.declareStream(STREAM_REROUTE_RESULT_ID,
-                new Fields(FLOW_ID_FIELD, REROUTE_RESULT_FIELD, FIELD_ID_CONTEXT));
-        output.declareStream(STREAM_SWAP_ID, RerouteTopology.KAFKA_FIELDS);
+        output.declareStream(STREAM_OPERATION_QUEUE_ID, FIELDS_OPERATION_QUEUE);
     }
 }
