@@ -104,7 +104,7 @@ public class InMemoryPathComputer implements PathComputer {
         try {
             network.reduceByWeight(weightFunction);
 
-            biPath = findPathInNetwork(flow, network, weightFunction);
+            biPath = findPathInNetwork(flow, network, weightFunction, strategy);
         } catch (UnroutableFlowException e) {
             String message = format("Failed to find path with requested bandwidth=%s: %s",
                     flow.isIgnoreBandwidth() ? " ignored" : flow.getBandwidth(), e.getMessage());
@@ -116,10 +116,9 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     private Pair<List<Edge>, List<Edge>> findPathInNetwork(Flow flow, AvailableNetwork network,
-                                                           WeightFunction weightFunction)
+                                                           WeightFunction weightFunction,
+                                                           PathComputationStrategy strategy)
             throws UnroutableFlowException {
-        PathComputationStrategy strategy = flow.getPathComputationStrategy();
-
         if (PathComputationStrategy.MAX_LATENCY.equals(strategy)
                 && (flow.getMaxLatency() == null || flow.getMaxLatency() == 0)) {
             strategy = PathComputationStrategy.LATENCY;

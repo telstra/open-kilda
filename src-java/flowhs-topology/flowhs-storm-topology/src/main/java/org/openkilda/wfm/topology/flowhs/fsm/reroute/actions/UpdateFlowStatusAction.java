@@ -32,8 +32,6 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class UpdateFlowStatusAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-    private static final String DEGRADED_FLOW_STATUS_INFO = "Couldn't find non overlapping protected path";
-    private static final String IGNORED_BW_RE_ROUTE_FLOW_STATUS_INFO = "Couldn't find path with required bandwidth";
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public UpdateFlowStatusAction(PersistenceManager persistenceManager,
@@ -49,15 +47,12 @@ public class UpdateFlowStatusAction extends FlowProcessingAction<FlowRerouteFsm,
         FlowStatus resultStatus = persistenceManager.getTransactionManager().doInTransaction(() -> {
             Flow flow = getFlow(flowId, FetchStrategy.DIRECT_RELATIONS);
             FlowStatus flowStatus = flow.computeFlowStatus();
-            String statusInfo = DEGRADED_FLOW_STATUS_INFO;
-            if (stateMachine.isIgnoreBandwidth() && flowStatus == FlowStatus.DEGRADED) {
-                statusInfo = IGNORED_BW_RE_ROUTE_FLOW_STATUS_INFO;
-            }
+
             if (flowStatus != flow.getStatus()) {
                 dashboardLogger.onFlowStatusUpdate(flowId, flowStatus);
-                flowRepository.updateStatus(flowId, flowStatus, getFlowStatusInfo(flowStatus, stateMachine));
+                flowRepository.updateStatus(flowId, flowStatus, getFlowStatusInfo(flow, flowStatus, stateMachine));
             } else if (FlowStatus.DEGRADED.equals(flowStatus)) {
-                flowRepository.updateStatusInfo(flowId, statusInfo);
+                flowRepository.updateStatusInfo(flowId, getDegradedFlowStatusInfo(flow, stateMachine));
             }
             stateMachine.setNewFlowStatus(flowStatus);
             return flowStatus;
@@ -66,18 +61,30 @@ public class UpdateFlowStatusAction extends FlowProcessingAction<FlowRerouteFsm,
         stateMachine.saveActionToHistory(format("The flow status was set to %s", resultStatus));
     }
 
-    private String getFlowStatusInfo(FlowStatus flowStatus, FlowRerouteFsm stateMachine) {
+    private String getFlowStatusInfo(Flow flow, FlowStatus flowStatus, FlowRerouteFsm stateMachine) {
         String flowStatusInfo = null;
         if (!FlowStatus.UP.equals(flowStatus) && !flowStatus.equals(stateMachine.getOriginalFlowStatus())) {
             flowStatusInfo = stateMachine.getErrorReason();
             if (FlowStatus.DEGRADED.equals(flowStatus)) {
-                if (stateMachine.isIgnoreBandwidth()) {
-                    flowStatusInfo = IGNORED_BW_RE_ROUTE_FLOW_STATUS_INFO;
-                } else {
-                    flowStatusInfo = DEGRADED_FLOW_STATUS_INFO;
-                }
+                flowStatusInfo = getDegradedFlowStatusInfo(flow, stateMachine);
             }
         }
         return flowStatusInfo;
+    }
+
+    private String getDegradedFlowStatusInfo(Flow flow, FlowRerouteFsm stateMachine) {
+        boolean ignoreBandwidth = stateMachine.isIgnoreBandwidth();
+        boolean ignoreLatency = stateMachine.getNewPrimaryPathComputationStrategy() != flow.getPathComputationStrategy()
+                || (flow.isAllocateProtectedPath()
+                && stateMachine.getNewProtectedPathComputationStrategy() != flow.getPathComputationStrategy());
+        if (ignoreBandwidth && ignoreLatency) {
+            return "Couldn't find path with required bandwidth and latency";
+        } else if (ignoreBandwidth) {
+            return "Couldn't find path with required bandwidth";
+        } else if (ignoreLatency) {
+            return "Couldn't find path with required latency";
+        } else {
+            return "Couldn't find non overlapping protected path";
+        }
     }
 }
