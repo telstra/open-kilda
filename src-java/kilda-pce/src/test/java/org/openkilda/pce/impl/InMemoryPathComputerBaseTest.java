@@ -391,9 +391,9 @@ public class InMemoryPathComputerBaseTest {
 
         PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
                 new BestWeightAndShortestPathFinder(5), config);
-        GetPathsResult path = pathComputer.getPath(flow, PathComputationStrategy.COST);
+        GetPathsResult path = pathComputer.getPath(flow, PathComputationStrategy.LATENCY);
 
-        assertEquals(PathComputationStrategy.COST, path.getUsedStrategy());
+        assertEquals(PathComputationStrategy.LATENCY, path.getUsedStrategy());
         assertNotNull(path.getForward());
         assertNotNull(path.getReverse());
     }
