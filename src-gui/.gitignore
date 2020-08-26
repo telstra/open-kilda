@@ -29,6 +29,17 @@ src/main/resources/ui/*.js
 src/main/resources/ui/*.js.map
 ui/node_modules
 ui/package-lock.json
+src/main/resources/ui/index.html
+src/main/resources/ui/icon-*.*.png
+src/main/resources/ui/inbox-*.*.png
+src/main/resources/ui/link-regular-*.*.png
+src/main/resources/ui/server-regular.*.svg
+src/main/resources/ui/sort_*.*.png
+src/main/resources/ui/fontawesome-webfont.*.*
+src/main/resources/ui/import-export.*.png
+src/main/resources/ui/styles.*.css
+src/main/resources/ui/switch.*.png
+src/main/resources/ui/unlink-regular-black.*.png
 src/main/resources/ui/main.js
 src/main/resources/ui/main.js.map
 src/main/resources/ui/pollyfills.js
