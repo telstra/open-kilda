@@ -15,10 +15,12 @@
 
 package org.openkilda.wfm.share.mappers;
 
+import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathSegment;
 
@@ -26,6 +28,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -65,28 +68,27 @@ public abstract class FlowPathMapper {
         List<PathNodePayload> resultList = new ArrayList<>();
 
         Flow flow = flowPath.getFlow();
-        int srcPort = flow.isForward(flowPath) ? flow.getSrcPort() : flow.getDestPort();
-        int destPort = flow.isForward(flowPath) ? flow.getDestPort() : flow.getSrcPort();
+        FlowEndpoint ingress = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
+        FlowEndpoint egress = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
 
-        if (flowPath.getSegments().isEmpty()) {
-            resultList.add(
-                    new PathNodePayload(flowPath.getSrcSwitch().getSwitchId(), srcPort, destPort));
+        List<PathSegment> pathSegments = flowPath.getSegments();
+        Iterator<PathSegment> leftIter = pathSegments.iterator();
+        Iterator<PathSegment> rightIter = pathSegments.iterator();
+        if (! rightIter.hasNext()) {
+            resultList.add(new PathNodePayload(
+                    flowPath.getSrcSwitch().getSwitchId(), ingress.getPortNumber(), egress.getPortNumber()));
         } else {
-            List<PathSegment> pathSegments = flowPath.getSegments();
+            PathSegment left;
+            PathSegment right = rightIter.next();
 
-            resultList.add(new PathNodePayload(flowPath.getSrcSwitch().getSwitchId(), srcPort,
-                    pathSegments.get(0).getSrcPort()));
-
-            for (int i = 1; i < pathSegments.size(); i++) {
-                PathSegment inputNode = pathSegments.get(i - 1);
-                PathSegment outputNode = pathSegments.get(i);
-
-                resultList.add(new PathNodePayload(inputNode.getDestSwitch().getSwitchId(), inputNode.getDestPort(),
-                        outputNode.getSrcPort()));
+            resultList.add(new PathNodePayload(ingress.getSwitchId(), ingress.getPortNumber(), right.getSrcPort()));
+            while (rightIter.hasNext()) {
+                left = leftIter.next();
+                right = rightIter.next();
+                resultList.add(new PathNodePayload(
+                        left.getDestSwitch().getSwitchId(), left.getDestPort(), right.getSrcPort()));
             }
-
-            resultList.add(new PathNodePayload(flowPath.getDestSwitch().getSwitchId(),
-                    pathSegments.get(pathSegments.size() - 1).getDestPort(), destPort));
+            resultList.add(new PathNodePayload(egress.getSwitchId(), right.getDestPort(), egress.getPortNumber()));
         }
 
         return resultList;

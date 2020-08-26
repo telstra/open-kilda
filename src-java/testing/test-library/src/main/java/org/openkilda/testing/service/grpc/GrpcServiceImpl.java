@@ -35,6 +35,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -49,12 +50,14 @@ public class GrpcServiceImpl implements GrpcService {
     private RestTemplate restTemplate;
 
     @Override
+    @Retryable(exceptionExpression = "#{responseBodyAsString.contains('Could not create session')}")
     public SwitchInfoStatus getSwitchStatus(String switchAddress) {
         return restTemplate.exchange("/api/v1/noviflow/{switch_address}/status", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchInfoStatus.class, switchAddress).getBody();
     }
 
     @Override
+    @Retryable(exceptionExpression = "#{responseBodyAsString.contains('Could not create session')}")
     public List<LogicalPort> getSwitchLogicalPorts(String switchAddress) {
         LogicalPort[] logicalPorts =
                 restTemplate.exchange("/api/v1/noviflow/{switch_address}/logicalports", HttpMethod.GET,
@@ -63,6 +66,7 @@ public class GrpcServiceImpl implements GrpcService {
     }
 
     @Override
+    @Retryable(exceptionExpression = "#{responseBodyAsString.contains('Could not create session')}")
     public LogicalPortDto createLogicalPort(String switchAddress, LogicalPortDto payload) {
         HttpEntity<LogicalPortDto> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
         return restTemplate.exchange("/api/v1/noviflow/{switch_address}/logicalports", HttpMethod.PUT, httpEntity,
@@ -70,6 +74,7 @@ public class GrpcServiceImpl implements GrpcService {
     }
 
     @Override
+    @Retryable(exceptionExpression = "#{responseBodyAsString.contains('Could not create session')}")
     public LogicalPort getSwitchLogicalPortConfig(String switchAddress, Integer logicalPortNumber) {
         return restTemplate.exchange(
                 "/api/v1/noviflow/{switch_address}/logicalports/{logical_port_number}", HttpMethod.GET,
@@ -78,6 +83,7 @@ public class GrpcServiceImpl implements GrpcService {
     }
 
     @Override
+    @Retryable(exceptionExpression = "#{responseBodyAsString.contains('Could not create session')}")
     public GrpcDeleteOperationResponse deleteSwitchLogicalPort(String switchAddress, Integer logicalPortNumber) {
         return restTemplate.exchange(
                 "/api/v1/noviflow/{switch_address}/logicalports/{logical_port_number}", HttpMethod.DELETE,
@@ -86,12 +92,14 @@ public class GrpcServiceImpl implements GrpcService {
     }
 
     @Override
+    @Retryable(exceptionExpression = "#{responseBodyAsString.contains('Could not create session')}")
     public RemoteLogServer getRemoteLogServerForSwitch(String switchAddress) {
         return restTemplate.exchange("/api/v1/noviflow/{switch_address}/remotelogserver", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), RemoteLogServer.class, switchAddress).getBody();
     }
 
     @Override
+    @Retryable(exceptionExpression = "#{responseBodyAsString.contains('Could not create session')}")
     public RemoteLogServerDto setRemoteLogServerForSwitch(String switchAddress, RemoteLogServerDto payload) {
         HttpEntity<RemoteLogServerDto> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
         return restTemplate.exchange(
@@ -100,6 +108,7 @@ public class GrpcServiceImpl implements GrpcService {
     }
 
     @Override
+    @Retryable(exceptionExpression = "#{responseBodyAsString.contains('Could not create session')}")
     public GrpcDeleteOperationResponse deleteRemoteLogServerForSwitch(String switchAddress) {
         return restTemplate.exchange("/api/v1/noviflow/{switch_address}/remotelogserver", HttpMethod.DELETE,
                 new HttpEntity<>(buildHeadersWithCorrelationId()), GrpcDeleteOperationResponse.class,
@@ -107,6 +116,7 @@ public class GrpcServiceImpl implements GrpcService {
     }
 
     @Override
+    @Retryable(exceptionExpression = "#{responseBodyAsString.contains('Could not create session')}")
     public EnableLogMessagesResponse enableLogMessagesOnSwitch(String switchAddress, LogMessagesDto payload) {
         HttpEntity<Object> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
         return restTemplate.exchange("/api/v1/noviflow/{switch_address}/logmessages", HttpMethod.PUT, httpEntity,
@@ -114,6 +124,7 @@ public class GrpcServiceImpl implements GrpcService {
     }
 
     @Override
+    @Retryable(exceptionExpression = "#{responseBodyAsString.contains('Could not create session')}")
     public EnableLogMessagesResponse enableLogOfErrorsOnSwitch(String switchAddress, LogOferrorsDto payload) {
         HttpEntity<LogOferrorsDto> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
         return restTemplate.exchange("/api/v1/noviflow/{switch_address}/logoferrors", HttpMethod.PUT, httpEntity,
@@ -121,6 +132,7 @@ public class GrpcServiceImpl implements GrpcService {
     }
 
     @Override
+    @Retryable(exceptionExpression = "#{responseBodyAsString.contains('Could not create session')}")
     public LicenseResponse setLicenseForSwitch(String switchAddress, LicenseDto payload) {
         HttpEntity<Object> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
         return restTemplate.exchange("/api/v1/noviflow/{switch_address}/license", HttpMethod.PUT, httpEntity,
@@ -128,6 +140,7 @@ public class GrpcServiceImpl implements GrpcService {
     }
 
     @Override
+    @Retryable(exceptionExpression = "#{responseBodyAsString.contains('Could not create session')}")
     public PacketInOutStatsResponse getPacketInOutStats(String switchAddress) {
         return restTemplate.exchange("/api/v1/noviflow/{switch_address}/packet-in-out-stats", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), PacketInOutStatsResponse.class,

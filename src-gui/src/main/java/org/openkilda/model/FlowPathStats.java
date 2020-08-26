@@ -20,11 +20,14 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import lombok.Data;
+
 import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({ "flowid", "startDate", "endDate", "downsample", "switches", "direction", "metric" })
+@Data
 public class FlowPathStats {
 
     @JsonProperty("flowid")
@@ -44,7 +47,13 @@ public class FlowPathStats {
 
     @JsonProperty("downsample")
     private String downsample;
-
+    
+    @JsonProperty("inPort")
+    private String inPort;
+    
+    @JsonProperty("outPort")
+    private String outPort;
+   
     @JsonProperty("switches")
     private List<String> switches;
 

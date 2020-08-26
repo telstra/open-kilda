@@ -426,8 +426,6 @@ export class DygraphService {
     }
 
 
-
-
     if (typeof endDate !== "undefined" && endDate != null) {
       var dat = new Date(endDate);
       var lastTime = dat.getTime();
@@ -494,6 +492,100 @@ export class DygraphService {
               }else{
                 cookiesChecked[data[j].tags['cookie']] = [];
               cookiesChecked[data[j].tags['cookie']][data[j].tags.switchid]=colorCode;
+              color.push(colorCode);
+              }
+              
+            }
+            if(dataValues){
+              timestampArray = timestampArray.concat(Object.keys(dataValues));
+              dpsArray.push(dataValues);
+            }
+          
+        }
+
+        timestampArray = Array.from(new Set(timestampArray)); /**Extracting unique timestamps */
+        timestampArray.sort();
+
+        for(let m=0;m<timestampArray.length; m++){
+          let row=[];
+          for(let n=0;n<dpsArray.length;n++){
+            if(typeof dpsArray[n][timestampArray[m]] != 'undefined'){
+              row.push(dpsArray[n][timestampArray[m]]);
+            }else{
+              row.push(null);
+            }
+          }
+          row.unshift(new Date(Number(parseInt(timestampArray[m]) * 1000)));
+          maxtrixArray.push(row);
+        }
+      }
+    }
+    if (typeof endDate !== "undefined" && endDate != null) {
+      var dat = new Date(endDate);
+      var lastTime = dat.getTime();
+      var usedDate =
+      maxtrixArray && maxtrixArray.length
+          ? new Date(maxtrixArray[maxtrixArray.length - 1][0])
+          : new Date();
+      if (typeof timezone !== "undefined" && timezone == "UTC") {
+        lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
+      }
+      var arr = [new Date(lastTime)];
+      if(data && data.length){
+        for (var j = 0; j < data.length; j++) {
+          arr.push(null);
+        }
+      }
+     
+      maxtrixArray.push(arr);
+    }
+    return { labels: labels, data: maxtrixArray, color: color };
+  }
+
+  computeFlowGraphDataForISL(data, startDate, endDate, timezone,direction) {
+    let maxtrixArray = [];
+    var labels =["Date"];
+    var color = [];
+    let cookiesChecked = {};
+    if (typeof startDate !== "undefined" && startDate != null) {
+      var dat = new Date(startDate);
+      var startTime = dat.getTime();
+      var usedDate = new Date();
+      if (typeof timezone !== "undefined" && timezone == "UTC") {
+        startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
+      }
+      var arr = [new Date(startTime)];
+      if(data && data.length){
+        for (var j = 0; j < data.length; j++) {
+          arr.push(null);
+        }
+      }
+      maxtrixArray.push(arr);
+    }
+ 
+    if (data) {
+      if (data.length > 0) {
+
+        /**getting all unique dps timestamps */
+        let timestampArray = []; 
+        let dpsArray= [];
+        for (let j = 0; j < data.length; j++) {
+          var dataValues = typeof data[j] !== "undefined" ? data[j].dps : null;
+          
+          var metric = typeof data[j] !== "undefined" ? data[j].metric : "";
+            metric = metric + "(flowid="+data[j].tags['flowid']+")";
+            labels.push(metric);
+            var colorCode = this.getColorCode(j, color);
+            if(cookiesChecked && typeof(cookiesChecked[data[j].tags['flowid']])!='undefined' && typeof(cookiesChecked[data[j].tags['flowid']][data[j].tags.switchid])!='undefined'){
+              colorCode = cookiesChecked[data[j].tags['flowid']][data[j].tags.switchid]; 
+              color.push(colorCode);
+            }else{
+              if(cookiesChecked && typeof(cookiesChecked[data[j].tags['flowid']])!='undefined'){
+                cookiesChecked[data[j].tags['flowid']][data[j].tags.switchid]=colorCode;
+                color.push(colorCode);
+              }else{
+                cookiesChecked[data[j].tags['flowid']] = [];
+              cookiesChecked[data[j].tags['flowid']][data[j].tags.switchid]=colorCode;
               color.push(colorCode);
               }
               

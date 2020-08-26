@@ -28,8 +28,8 @@ import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.PathComputer;
-import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 
@@ -59,7 +59,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f);
+        GetPathsResult path = pathComputer.getPath(f);
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         assertEquals(new SwitchId("00:02"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path B
@@ -80,7 +80,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f);
+        GetPathsResult path = pathComputer.getPath(f);
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // ====> only difference is it should now have C as first hop .. since B is inactive
@@ -105,7 +105,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f);
+        GetPathsResult path = pathComputer.getPath(f);
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // ====> only difference is it should now have C as first hop .. since B is inactive
@@ -129,7 +129,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f);
+        GetPathsResult path = pathComputer.getPath(f);
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // ====> Should choose B .. because default cost (700) cheaper than 2000
@@ -172,7 +172,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f1);
+        GetPathsResult path = pathComputer.getPath(f1);
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(1));
 
@@ -214,7 +214,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f1);
+        GetPathsResult path = pathComputer.getPath(f1);
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(1));
 
@@ -248,7 +248,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
                 .pathComputationStrategy(PathComputationStrategy.COST)
                 .build();
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair diversePath = pathComputer.getPath(flow);
+        GetPathsResult diversePath = pathComputer.getPath(flow);
 
         diversePath.getForward().getSegments().forEach(
                 segment -> {
@@ -273,7 +273,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
                 .pathComputationStrategy(PathComputationStrategy.COST)
                 .build();
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair diversePath = pathComputer.getPath(flow);
+        GetPathsResult diversePath = pathComputer.getPath(flow);
 
         FlowPath forwardPath = FlowPath.builder()
                 .pathId(new PathId(UUID.randomUUID().toString()))
@@ -299,7 +299,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
 
         flowRepository.createOrUpdate(flow);
 
-        PathPair path2 = pathComputer.getPath(flow, flow.getFlowPathIds());
+        GetPathsResult path2 = pathComputer.getPath(flow, flow.getFlowPathIds());
         assertEquals(diversePath, path2);
     }
 }

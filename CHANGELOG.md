@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.70.0 (26/08/2020)
+
+
+### Bug Fixes:
+-  [#3688](https://github.com/telstra/open-kilda/pull/3688) Fix null pointer exception during producing flow dump (Issue: [#3552](https://github.com/telstra/open-kilda/issues/3552))
+-  [#3689](https://github.com/telstra/open-kilda/pull/3689) Filter out one switch flows from affected flows [**storm-topologies**]
+-  [#3692](https://github.com/telstra/open-kilda/pull/3692) Ignore overprovisioned isl check for ignore_bw flows
+-  [#3696](https://github.com/telstra/open-kilda/pull/3696) Fix reroutes for max_latency path computation strategy
+
+### Improvements:
+-  [#3690](https://github.com/telstra/open-kilda/pull/3690) Improve reroute error logging
+-  [#3679](https://github.com/telstra/open-kilda/pull/3679) Retry reroute with max_latency strategy
+
+### Other changes:
+-  [#3652](https://github.com/telstra/open-kilda/pull/3652) -adding feature to display flows stats graph on ISL (Issue: [#3646](https://github.com/telstra/open-kilda/issues/3646)) [**gui**]
+-  [#3684](https://github.com/telstra/open-kilda/pull/3684) Add retries for grpc calls in functional tests [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.69.0...v1.70.0).
+
+### Affected Components:
+flow-hs, gui, reroute
+
+### Upgrade notes:
+
+---
+
 ## v1.69.0 (13/08/2020)
 
 ### Features:

@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.junit.Assume.assumeFalse
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -151,6 +152,29 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
             assert flowInfo.statusInfo == "Switch $sw.dpId is inactive"
         }
 
+        when: "Other isl fails"
+        def isIslFailed = false
+        def islToFail = topology.isls.find() {isl-> isl.srcSwitch != sw && isl.dstSwitch != sw}
+        antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        isIslFailed = true
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getLink(islToFail).state == IslChangeType.FAILED
+        }
+
+        then: "Flow remains 'DOWN'"
+        assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
+
+        when: "Other isl is back online"
+        antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        isIslFailed = false
+
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getLink(islToFail).state == IslChangeType.DISCOVERED
+        }
+
+        then: "Flow remains 'DOWN'"
+        assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
+
         when: "The switch is connected back"
         switchHelper.reviveSwitch(sw, blockData, true)
         isSwitchDisconnected = false
@@ -166,6 +190,12 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
         isSwitchDisconnected && switchHelper.reviveSwitch(sw, blockData, true)
+        if (isIslFailed) {
+            antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+                assert northbound.getLink(islToFail).actualState == IslChangeType.DISCOVERED
+            }
+        }
     }
 
     @Tidy
@@ -563,7 +593,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
                 }
                 sleep(500)
             }
-            assert northboundV2.getFlow(firstFlow.flowId).statusInfo =~ /ISL (.*) become INACTIVE because of FAIL TIMEOUT (.*)/
+            assert northboundV2.getFlow(firstFlow.flowId).statusInfo =~ /ISL (.*) become INACTIVE(.*)/
             assert northboundV2.getFlow(secondFlow.flowId).statusInfo == "No path found.\
  Failed to find path with requested bandwidth= ignored: Switch $secondFlow.source.switchId doesn't \
 have links with enough bandwidth"

@@ -112,8 +112,9 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
         // It is impossible to understand whether ISL-free port is UP/DOWN on OF_12 switches.
         // Such switches always have 'config: []'.
         //also, ban WB5164 due to #2636
-        sw << getTopology().getActiveSwitches().unique { sw -> sw.description }
-                           .findAll { it.ofVersion != "OF_12" && !it.wb5164 }
+        sw << getTopology().getActiveSwitches().findAll { it.ofVersion != "OF_12" && !it.wb5164 }
+                .unique { it.nbFormat().with { [it.hardware, it.software] } }
+
     }
 
     List<Isl> getUniqueIsls() {

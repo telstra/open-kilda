@@ -16,6 +16,7 @@ export class AppComponent implements OnInit, AfterViewChecked {
   loaderMessage:string = null;
   currentUrl :any = '';
   sidebarSetting:any=false;
+  loaderName = 'commonSpinner';
 
   constructor(
     private userService: UserService,
@@ -53,12 +54,12 @@ export class AppComponent implements OnInit, AfterViewChecked {
   ngOnInit() {
     this.appLoader.messageReciever.subscribe((data)=>{
       if(data.show){
-        this.loader.show();
+        this.loader.show(this.loaderName);
         this.loaderMessage = data.message;
        
       }
       else if(!data.show){
-        this.loader.hide();
+        this.loader.hide(this.loaderName);
         this.loaderMessage = null;
       }
     });
