@@ -106,7 +106,6 @@ public class ValidationServiceImpl implements ValidationService {
         if (switchProperties.isServer42FlowRtt()
                 && featureTogglesRepository.find().map(FeatureToggles::getServer42FlowRtt).orElse(false)) {
             return paths.stream()
-                    .filter(path -> path.getFlow().isActualPathId(path.getPathId()))
                     .filter(path -> switchId.equals(path.getSrcSwitch().getSwitchId()))
                     .filter(path -> !path.isOneSwitchFlow())
                     .map(FlowPath::getCookie)
@@ -192,7 +191,6 @@ public class ValidationServiceImpl implements ValidationService {
         validateDefaultRules(presentRules, expectedDefaultRules, missingRules, properRules, excessRules,
                 misconfiguredRules);
 
-        log.warn("Proper rules: {}", properRules);
         return new ValidateRulesResult(
                 ImmutableList.copyOf(missingRules),
                 ImmutableList.copyOf(properRules),
@@ -279,12 +277,11 @@ public class ValidationServiceImpl implements ValidationService {
                 .forEach(result::add);
 
         // collect termination segments
-        Collection<FlowPath> affectedPaths = flowPathRepository.findByEndpointSwitch(switchId);
+        Collection<FlowPath> affectedPaths = flowPathRepository.findByEndpointSwitch(switchId).stream()
+                .filter(path -> path.getFlow().isActualPathId(path.getPathId()))
+                .collect(Collectors.toList());
         for (FlowPath path : affectedPaths) {
             Flow flow = path.getFlow();
-            if (! flow.isActualPathId(path.getPathId())) {
-                continue;
-            }
 
             result.add(path.getCookie().getValue());
 

@@ -133,16 +133,16 @@ public class ValidationServiceImplTest {
                 .build();
         ValidationService validationService =
                 new ValidationServiceImpl(persistenceManager()
-                        .withIngressCookies(4611686018427474000L)
+                        .withIngressCookies(1L)
                         .withSwitchProperties(switchProperties)
                         .build(),
                         topologyConfig);
         List<FlowEntry> flowEntries =
-                Lists.newArrayList(FlowEntry.builder().cookie(0x400000000001505AL).build(),
-                        FlowEntry.builder().cookie(0x40C000000001505AL).build());
+                Lists.newArrayList(FlowEntry.builder().cookie(0xC0000000000001L).build(),
+                        FlowEntry.builder().cookie(1L).build());
         ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
         assertTrue(response.getMissingRules().isEmpty());
-        assertEquals(ImmutableSet.of(0x400000000001505AL, 0x40C000000001505AL),
+        assertEquals(ImmutableSet.of(0xC0000000000001L, 1L),
                 new HashSet<>(response.getProperRules()));
         assertTrue(response.getExcessRules().isEmpty());
     }
