@@ -18,12 +18,14 @@ package org.openkilda.messaging.error;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.MessageContext;
 
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 /**
  * Class represents error abstract message.
  */
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class ErrorAbstractMessage extends AbstractMessage {
 
     private String errorMessage;

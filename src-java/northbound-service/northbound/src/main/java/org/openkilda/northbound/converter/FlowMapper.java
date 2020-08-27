@@ -107,7 +107,8 @@ public abstract class FlowMapper {
     }
 
     @Mapping(target = "flowId", ignore = true)
-    @Mapping(target = "maxLatency", source = "maxLatency")
+    @Mapping(target = "maxLatency",
+            expression = "java(flowPatchDto.getMaxLatency() != null ? flowPatchDto.getMaxLatency() * 1000000L : null)")
     @Mapping(target = "priority", source = "priority")
     @Mapping(target = "periodicPings", source = "periodicPings")
     @Mapping(target = "targetPathComputationStrategy", source = "targetPathComputationStrategy")
@@ -126,7 +127,8 @@ public abstract class FlowMapper {
     @Mapping(target = "flowId", ignore = true)
     @Mapping(target = "bandwidth", source = "maximumBandwidth")
     @Mapping(target = "allocateProtectedPath", source = "allocateProtectedPath")
-    @Mapping(target = "maxLatency", source = "maxLatency")
+    @Mapping(target = "maxLatency",
+            expression = "java(flowPatchDto.getMaxLatency() != null ? flowPatchDto.getMaxLatency() * 1000000L : null)")
     @Mapping(target = "priority", source = "priority")
     @Mapping(target = "periodicPings", source = "periodicPings")
     @Mapping(target = "diverseFlowId", source = "diverseFlowId")
@@ -150,6 +152,8 @@ public abstract class FlowMapper {
     @Mapping(target = "type", ignore = true)
     @Mapping(target = "bulkUpdateFlowIds", ignore = true)
     @Mapping(target = "doNotRevert", ignore = true)
+    @Mapping(target = "maxLatency",
+            expression = "java(request.getMaxLatency() != null ? request.getMaxLatency() * 1000000L : null)")
     public abstract FlowRequest toFlowRequest(FlowRequestV2 request);
 
     @Mapping(target = "flowId", source = "id")
@@ -160,6 +164,8 @@ public abstract class FlowMapper {
     @Mapping(target = "bulkUpdateFlowIds", ignore = true)
     @Mapping(target = "doNotRevert", ignore = true)
     @Mapping(target = "diverseFlowId", ignore = true)
+    @Mapping(target = "maxLatency",
+            expression = "java(payload.getMaxLatency() != null ? payload.getMaxLatency() * 1000000L : null)")
     public abstract FlowRequest toFlowRequest(FlowPayload payload);
 
     @Mapping(target = "outerVlanId", source = "vlanId")
@@ -283,11 +289,15 @@ public abstract class FlowMapper {
     @Mapping(target = "diverseWith", source = "f.diverseWith")
     @Mapping(target = "source", source = "source")
     @Mapping(target = "destination", source = "destination")
+    @Mapping(target = "maxLatency",
+            expression = "java(f.getMaxLatency() != null ? f.getMaxLatency() / 1000000L : null)")
     protected abstract FlowResponseV2 generatedMap(FlowDto f, FlowEndpointV2 source, FlowEndpointV2 destination);
 
     @Mapping(target = "id", source = "flowId")
     @Mapping(target = "maximumBandwidth", source = "bandwidth")
     @Mapping(target = "ignoreBandwidth", source = "ignoreBandwidth")
+    @Mapping(target = "maxLatency",
+            expression = "java(f.getMaxLatency() != null ? f.getMaxLatency() / 1000000L : null)")
     @Mapping(target = "status", source = "state")
     @Mapping(target = "created", source = "createdTime")
     @Mapping(target = "pinned", source = "pinned")
@@ -302,6 +312,8 @@ public abstract class FlowMapper {
     @Mapping(target = "destination", ignore = true)
     @Mapping(target = "created", ignore = true)
     @Mapping(target = "status", ignore = true)
+    @Mapping(target = "maxLatency",
+            expression = "java(f.getMaxLatency() != null ? f.getMaxLatency() / 1000000L : null)")
     protected abstract void generatedFlowResponsePayloadMap(@MappingTarget FlowResponsePayload target, FlowDto f);
 
     @Mapping(target = "flowId", source = "flowId")
