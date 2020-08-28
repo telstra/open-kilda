@@ -104,13 +104,44 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         }
 
         when: "Update the created flow"
-        flowHelperV2.updateFlow(flow.flowId, flow.tap { it.description = it.description + "updated" })
+        def updatedFlow = flow.jacksonCopy().tap {
+            it.maximumBandwidth = flow.maximumBandwidth + 1
+            it.maxLatency = flow.maxLatency + 1
+            it.pinned = !flow.pinned
+            it.periodicPings = !flow.periodicPings
+            it.source.vlanId = flow.source.vlanId + 1
+            it.destination.vlanId = flow.destination.vlanId + 1
+            it.ignoreBandwidth = !it.ignoreBandwidth
+            it.pathComputationStrategy = PathComputationStrategy.COST.toString()
+            it.description = it.description + "updated"
+        }
+        flowHelperV2.updateFlow(flow.flowId, updatedFlow)
 
         then: "History record is created after updating the flow"
         Long timestampAfterUpdate = System.currentTimeSeconds()
         def flowHistory1 = northbound.getFlowHistory(flow.flowId, specStartTime, timestampAfterUpdate)
         assert flowHistory1.size() == 2
         checkHistoryUpdateAction(flowHistory1[1], flow.flowId)
+        with (flowHistory1.last().dumps.find { it.type == "stateBefore" }) {
+            it.bandwidth == flow.maximumBandwidth
+            it.maxLatency == flow.maxLatency
+            it.pinned == flow.pinned
+            it.periodicPings == flow.periodicPings
+            it.sourceVlan == flow.source.vlanId
+            it.destinationVlan == flow.destination.vlanId
+            it.ignoreBandwidth == flow.ignoreBandwidth
+            it.pathComputationStrategy.toString() == flow.pathComputationStrategy
+        }
+        with (flowHistory1.last().dumps.find { it.type == "stateAfter" }) {
+            it.bandwidth == updatedFlow.maximumBandwidth
+            it.maxLatency == updatedFlow.maxLatency
+            it.pinned == updatedFlow.pinned
+            it.periodicPings == updatedFlow.periodicPings
+            it.sourceVlan == updatedFlow.source.vlanId
+            it.destinationVlan == updatedFlow.destination.vlanId
+            it.ignoreBandwidth == updatedFlow.ignoreBandwidth
+            it.pathComputationStrategy.toString() == updatedFlow.pathComputationStrategy
+        }
 
         while((System.currentTimeSeconds() - timestampAfterUpdate) < 1) {
             TimeUnit.MILLISECONDS.sleep(100);
