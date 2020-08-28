@@ -26,5 +26,7 @@ public interface BfdSessionRepository extends Repository<BfdSession> {
 
     boolean exists(SwitchId switchId, Integer port);
 
-    Optional<BfdSession> findBySwitchIdAndPort(SwitchId switchId, Integer port);
+    Optional<BfdSession> findBySwitchIdAndPort(SwitchId switchId, int port);
+
+    Optional<BfdSession> findBySwitchIdAndPhysicalPort(SwitchId switchId, int physicalPort);
 }

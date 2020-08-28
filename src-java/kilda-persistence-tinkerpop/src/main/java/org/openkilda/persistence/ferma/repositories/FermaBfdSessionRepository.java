@@ -27,6 +27,8 @@ import org.openkilda.persistence.repositories.BfdSessionRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
+import org.apache.tinkerpop.gremlin.structure.Vertex;
 
 import java.util.Collection;
 import java.util.List;
@@ -53,10 +55,7 @@ public class FermaBfdSessionRepository extends FermaGenericRepository<BfdSession
 
     @Override
     public boolean exists(SwitchId switchId, Integer port) {
-        try (GraphTraversal<?, ?> traversal = framedGraph().traverse(g -> g.V()
-                .hasLabel(BfdSessionFrame.FRAME_LABEL)
-                .has(BfdSessionFrame.SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
-                .has(BfdSessionFrame.PORT_PROPERTY, port))
+        try (GraphTraversal<?, ?> traversal = framedGraph().traverse(g -> makeLogicalPortTraverse(g, switchId, port))
                 .getRawTraversal()) {
             return traversal.hasNext();
         } catch (Exception e) {
@@ -65,14 +64,18 @@ public class FermaBfdSessionRepository extends FermaGenericRepository<BfdSession
     }
 
     @Override
-    public Optional<BfdSession> findBySwitchIdAndPort(SwitchId switchId, Integer port) {
-        List<? extends BfdSessionFrame> bfdSessionFrames = framedGraph().traverse(g -> g.V()
-                .hasLabel(BfdSessionFrame.FRAME_LABEL)
-                .has(BfdSessionFrame.SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
-                .has(BfdSessionFrame.PORT_PROPERTY, port))
-                .toListExplicit(BfdSessionFrame.class);
-        return bfdSessionFrames.isEmpty() ? Optional.empty() : Optional.of(bfdSessionFrames.get(0))
-                .map(BfdSession::new);
+    public Optional<BfdSession> findBySwitchIdAndPort(SwitchId switchId, int port) {
+        return makeOneOrZeroResults(framedGraph()
+                .traverse(g -> makeLogicalPortTraverse(g, switchId, port))
+                .toListExplicit(BfdSessionFrame.class));
+    }
+
+    @Override
+    public Optional<BfdSession> findBySwitchIdAndPhysicalPort(SwitchId switchId, int physicalPort) {
+        return makeOneOrZeroResults(framedGraph()
+                .traverse(g -> makeGenericTraverse(g, switchId)
+                        .has(BfdSessionFrame.PHYSICAL_PORT_PROPERTY, physicalPort))
+                .toListExplicit(BfdSessionFrame.class));
     }
 
     @Override
@@ -91,5 +94,26 @@ public class FermaBfdSessionRepository extends FermaGenericRepository<BfdSession
     @Override
     protected BfdSessionData doDetach(BfdSession entity, BfdSessionFrame frame) {
         return BfdSession.BfdSessionCloner.INSTANCE.copy(frame);
+    }
+
+    private Optional<BfdSession> makeOneOrZeroResults(List<? extends BfdSessionFrame> results) {
+        if (results.size() > 1) {
+            throw new PersistenceException(String.format("Found more than 1 BfdSession entity: %s", results));
+        }
+        return results.isEmpty()
+                ? Optional.empty()
+                : Optional.of(results.get(0)).map(BfdSession::new);
+    }
+
+    private GraphTraversal<Vertex, Vertex> makeLogicalPortTraverse(
+            GraphTraversalSource g, SwitchId switchId, int logicalPort) {
+        return makeGenericTraverse(g, switchId)
+                .has(BfdSessionFrame.PORT_PROPERTY, logicalPort);
+    }
+
+    private GraphTraversal<Vertex, Vertex> makeGenericTraverse(GraphTraversalSource g, SwitchId switchId) {
+        return g.V()
+                .hasLabel(BfdSessionFrame.FRAME_LABEL)
+                .has(BfdSessionFrame.SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(switchId));
     }
 }

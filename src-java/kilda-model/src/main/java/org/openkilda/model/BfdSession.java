@@ -33,6 +33,7 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
+import java.time.Duration;
 import java.util.Objects;
 
 @DefaultSerializer(BeanSerializer.class)
@@ -53,10 +54,12 @@ public class BfdSession implements CompositeDataEntity<BfdSession.BfdSessionData
 
     @Builder
     public BfdSession(@NonNull SwitchId switchId, String ipAddress, SwitchId remoteSwitchId,
-                      String remoteIpAddress, @NonNull Integer port, Integer discriminator) {
+                      String remoteIpAddress, @NonNull Integer port, @NonNull Integer physicalPort,
+                      Integer discriminator, Duration interval, short multiplier) {
         data = BfdSessionDataImpl.builder()
                 .switchId(switchId).ipAddress(ipAddress).remoteSwitchId(remoteSwitchId)
-                .remoteIpAddress(remoteIpAddress).port(port).discriminator(discriminator).build();
+                .remoteIpAddress(remoteIpAddress).port(port).physicalPort(physicalPort)
+                .discriminator(discriminator).interval(interval).multiplier(multiplier).build();
     }
 
     public BfdSession(@NonNull BfdSessionData data) {
@@ -112,9 +115,21 @@ public class BfdSession implements CompositeDataEntity<BfdSession.BfdSessionData
 
         void setPort(Integer port);
 
+        Integer getPhysicalPort();
+
+        void setPhysicalPort(Integer port);
+
         Integer getDiscriminator();
 
         void setDiscriminator(Integer discriminator);
+
+        Duration getInterval();
+
+        void setInterval(Duration interval);
+
+        Short getMultiplier();
+
+        void setMultiplier(Short multiplier);
     }
 
     /**
@@ -131,7 +146,10 @@ public class BfdSession implements CompositeDataEntity<BfdSession.BfdSessionData
         SwitchId remoteSwitchId;
         String remoteIpAddress;
         @NonNull Integer port;
+        @NonNull Integer physicalPort;
         Integer discriminator;
+        Duration interval;
+        @NonNull Short multiplier;
     }
 
     /**
