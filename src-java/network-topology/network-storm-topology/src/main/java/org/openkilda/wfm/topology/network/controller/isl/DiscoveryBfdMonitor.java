@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.network.controller.isl;
 
+import org.openkilda.model.BfdSessionStatus;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
 import org.openkilda.model.IslStatus;
@@ -45,7 +46,7 @@ public class DiscoveryBfdMonitor extends DiscoveryMonitor<IslEndpointBfdStatus> 
             IslEndpointBfdStatus entry = it.next();
 
             isEnabled &= entry.isEnabled();  // only if both endpoint are BFD capable we can use BFD statuses
-            isUp |= entry.getStatus() == IslStatus.ACTIVE;
+            isUp |= entry.getStatus() == BfdSessionStatus.UP;
         }
 
         if (isEnabled) {
@@ -62,17 +63,19 @@ public class DiscoveryBfdMonitor extends DiscoveryMonitor<IslEndpointBfdStatus> 
     @Override
     public void actualUpdate(IslFsmEvent event, IslFsmContext context) {
         final Endpoint endpoint = context.getEndpoint();
-        IslEndpointBfdStatus current = discoveryData.get(endpoint);
         IslEndpointBfdStatus update = null;
         switch (event) {
             case BFD_UP:
-                update = new IslEndpointBfdStatus(true, IslStatus.ACTIVE);
+                update = new IslEndpointBfdStatus(true, BfdSessionStatus.UP);
                 break;
             case BFD_DOWN:
-                update = new IslEndpointBfdStatus(current.isEnabled(), IslStatus.INACTIVE);
+                update = new IslEndpointBfdStatus(true, BfdSessionStatus.DOWN);
                 break;
             case BFD_KILL:
-                update = new IslEndpointBfdStatus(false, null);
+                update = new IslEndpointBfdStatus(false, null, true);
+                break;
+            case BFD_FAIL:
+                update = new IslEndpointBfdStatus(false, BfdSessionStatus.FAIL);
                 break;
 
             default:
@@ -86,7 +89,10 @@ public class DiscoveryBfdMonitor extends DiscoveryMonitor<IslEndpointBfdStatus> 
 
     @Override
     public void actualFlush(Endpoint endpoint, Isl persistentView) {
-        // there is no BFD related fields in ISL
+        IslEndpointBfdStatus bfdStatus = discoveryData.get(endpoint);
+        if (bfdStatus.isForceReset() || bfdStatus.getStatus() != null) {
+            persistentView.setBfdSessionStatus(bfdStatus.getStatus());
+        }
     }
 
     /**

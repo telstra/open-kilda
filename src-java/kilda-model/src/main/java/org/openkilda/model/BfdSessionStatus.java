@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,18 +13,8 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.storm.bolt.uniisl.command;
+package org.openkilda.model;
 
-import org.openkilda.wfm.share.model.Endpoint;
-import org.openkilda.wfm.topology.network.storm.bolt.uniisl.UniIslHandler;
-
-public class UniIslBfdKillCommand extends UniIslCommand {
-    public UniIslBfdKillCommand(Endpoint endpoint) {
-        super(endpoint);
-    }
-
-    @Override
-    public void apply(UniIslHandler handler) {
-        handler.processBfdKill(getEndpoint());
-    }
+public enum BfdSessionStatus {
+    UP, DOWN, FAIL
 }

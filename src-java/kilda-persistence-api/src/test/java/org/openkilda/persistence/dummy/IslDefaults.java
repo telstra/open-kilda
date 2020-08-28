@@ -15,6 +15,7 @@
 
 package org.openkilda.persistence.dummy;
 
+import org.openkilda.model.BfdSessionStatus;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 
@@ -31,7 +32,7 @@ public class IslDefaults {
 
     private boolean underMaintenance = false;
     private boolean enableBfd = false;
-    private String bfdSessionStatus = null;
+    private BfdSessionStatus bfdSessionStatus = null;
 
     /**
      * Populate {@link Isl} object with defaults.

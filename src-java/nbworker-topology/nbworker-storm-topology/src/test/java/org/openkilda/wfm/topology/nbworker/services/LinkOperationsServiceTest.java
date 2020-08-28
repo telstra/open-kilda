@@ -19,6 +19,12 @@ import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.verifyZeroInteractions;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -40,14 +46,23 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.IllegalIslStateException;
 import org.openkilda.wfm.error.IslNotFoundException;
+import org.openkilda.wfm.share.model.Endpoint;
 
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
+@RunWith(MockitoJUnitRunner.class)
 public class LinkOperationsServiceTest extends Neo4jBasedTest {
     private static IslRepository islRepository;
     private static SwitchRepository switchRepository;
@@ -61,6 +76,9 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
     private static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
     private static final int TEST_SWITCH_B_PORT = 1;
 
+    @Mock
+    private ILinkOperationsServiceCarrier carrier;
+
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
@@ -72,13 +90,10 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
         flowRepository = repositoryFactory.createFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
         pathSegmentRepository = repositoryFactory.createPathSegmentRepository();
+    }
 
-        ILinkOperationsServiceCarrier carrier = new ILinkOperationsServiceCarrier() {
-            @Override
-            public void islBfdFlagChanged(Isl isl) {
-            }
-        };
-
+    @Before
+    public void setUp() {
         linkOperationsService = new LinkOperationsService(carrier, persistenceManager.getRepositoryFactory(),
                 persistenceManager.getTransactionManager());
     }
@@ -148,6 +163,92 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
                 .deleteIsl(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT, TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT, true);
 
         assertTrue(islRepository.findAll().isEmpty());
+    }
+
+    @Test
+    public void shouldPropagateBfdEnableFlagUpdateOnFullUpdate() throws IslNotFoundException {
+        createIsl(IslStatus.ACTIVE);
+
+        Collection<Isl> result = linkOperationsService.updateEnableBfdFlag(
+                Endpoint.of(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT),
+                Endpoint.of(TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT), true);
+
+        Assert.assertEquals(2, result.size());
+
+        verifyBfdEnabledStatus(true);
+        verify(carrier, times(1)).islBfdFlagChanged(any(Isl.class));
+
+        verifyNoMoreInteractions(carrier);
+
+        reset(carrier);
+
+        // no propagation on subsequent request
+        result = linkOperationsService.updateEnableBfdFlag(
+                Endpoint.of(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT),
+                Endpoint.of(TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT), true);
+
+        Assert.assertEquals(2, result.size());
+        verifyZeroInteractions(carrier);
+    }
+
+    @Test
+    public void shouldPropagateBfdEnableFlagUpdateOnPartialUpdate() throws IslNotFoundException {
+        createIsl(IslStatus.ACTIVE);
+
+        islRepository.findByEndpoints(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT, TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT)
+                .ifPresent(isl -> {
+                    isl.setEnableBfd(true);
+                    islRepository.createOrUpdate(isl);
+                });
+
+        Collection<Isl> result = linkOperationsService.updateEnableBfdFlag(
+                Endpoint.of(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT),
+                Endpoint.of(TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT), true);
+
+        Assert.assertEquals(2, result.size());
+
+        verifyBfdEnabledStatus(true);
+        verify(carrier, times(1)).islBfdFlagChanged(any(Isl.class));
+
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test(expected = IslNotFoundException.class)
+    public void shouldFailIfThereIsNoIslForBfdEnableFlagUpdateRequest() throws IslNotFoundException {
+        linkOperationsService.updateEnableBfdFlag(
+                Endpoint.of(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT),
+                Endpoint.of(TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT), true);
+    }
+
+    @Test(expected = IslNotFoundException.class)
+    public void shouldFailIfThereIsUniIslOnlyForBfdEnableFlagUpdateRequest() throws IslNotFoundException {
+        Isl isl = new Isl();
+        isl.setSrcSwitch(createSwitchIfNotExist(TEST_SWITCH_A_ID));
+        isl.setSrcPort(TEST_SWITCH_A_PORT);
+        isl.setDestSwitch(createSwitchIfNotExist(TEST_SWITCH_B_ID));
+        isl.setDestPort(TEST_SWITCH_B_PORT);
+        isl.setCost(0);
+        isl.setStatus(IslStatus.ACTIVE);
+        islRepository.createOrUpdate(isl);
+
+        islRepository.createOrUpdate(isl);
+        linkOperationsService.updateEnableBfdFlag(
+                Endpoint.of(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT),
+                Endpoint.of(TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT), true);
+    }
+
+    private void verifyBfdEnabledStatus(boolean expectedValue) {
+        Endpoint source = Endpoint.of(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT);
+        Endpoint destination = Endpoint.of(TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT);
+        verifyBfdEnabledStatus(source, destination, expectedValue);
+        verifyBfdEnabledStatus(destination, source, expectedValue);
+    }
+
+    private void verifyBfdEnabledStatus(Endpoint leftEnd, Endpoint rightEnd, boolean expectedValue) {
+        Optional<Isl> potentialIsl = islRepository.findByEndpoints(
+                leftEnd.getDatapath(), leftEnd.getPortNumber(), rightEnd.getDatapath(), rightEnd.getPortNumber());
+        Assert.assertTrue(potentialIsl.isPresent());
+        Assert.assertEquals(expectedValue, potentialIsl.get().isEnableBfd());
     }
 
     private void createIsl(IslStatus status) {

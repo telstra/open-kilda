@@ -109,7 +109,6 @@ public class NetworkBfdGlobalToggleService {
     public void bfdStateChange(Endpoint physicalEndpoint, LinkStatus status) {
         log.debug("BFD global toggle service receive BFD status change for {} new-status:{}", physicalEndpoint, status);
 
-        BfdGlobalToggleFsm controller = lookupController(physicalEndpoint);
         BfdGlobalToggleFsm.BfdGlobalToggleFsmContext context = BfdGlobalToggleFsm.BfdGlobalToggleFsmContext.builder()
                 .build();
         BfdGlobalToggleFsm.BfdGlobalToggleFsmEvent event;
@@ -124,7 +123,7 @@ public class NetworkBfdGlobalToggleService {
                 throw new IllegalArgumentException(
                         String.format("Unsupported %s value %s", LinkStatus.class.getName(), status));
         }
-        controllerExecutor.fire(controller, event, context);
+        fireEvent(physicalEndpoint, event, context);
     }
 
     /**
@@ -132,11 +131,26 @@ public class NetworkBfdGlobalToggleService {
      */
     public void bfdKillNotification(Endpoint physicalEndpoint) {
         log.debug("BFD global toggle service receive BFD-kill notification");
-
-        BfdGlobalToggleFsm controller = lookupController(physicalEndpoint);
         BfdGlobalToggleFsm.BfdGlobalToggleFsmContext context = BfdGlobalToggleFsm.BfdGlobalToggleFsmContext.builder()
                 .build();
-        controllerExecutor.fire(controller, BfdGlobalToggleFsm.BfdGlobalToggleFsmEvent.BFD_KILL, context);
+        fireEvent(physicalEndpoint, BfdGlobalToggleFsm.BfdGlobalToggleFsmEvent.BFD_KILL, context);
+    }
+
+    /**
+     * Consume BFD-fail notification.
+     */
+    public void bfdFailNotification(Endpoint physicalEndpoint) {
+        log.debug("BFD global toggle service receive BFD-fail notification");
+        BfdGlobalToggleFsm.BfdGlobalToggleFsmContext context = BfdGlobalToggleFsm.BfdGlobalToggleFsmContext.builder()
+                .build();
+        fireEvent(physicalEndpoint, BfdGlobalToggleFsm.BfdGlobalToggleFsmEvent.BFD_FAIL, context);
+    }
+
+    private void fireEvent(
+            Endpoint endpoint,
+            BfdGlobalToggleFsm.BfdGlobalToggleFsmEvent event, BfdGlobalToggleFsm.BfdGlobalToggleFsmContext context) {
+        BfdGlobalToggleFsm controller = lookupController(endpoint);
+        controllerExecutor.fire(controller, event, context);
     }
 
     private BfdGlobalToggleFsm lookupController(Endpoint endpoint) {

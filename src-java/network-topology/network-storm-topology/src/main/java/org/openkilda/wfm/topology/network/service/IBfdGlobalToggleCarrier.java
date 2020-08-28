@@ -23,4 +23,6 @@ public interface IBfdGlobalToggleCarrier {
     void filteredBfdDownNotification(Endpoint physicalEndpoint);
 
     void filteredBfdKillNotification(Endpoint physicalEndpoint);
+
+    void filteredBfdFailNotification(Endpoint physicalEndpoint);
 }

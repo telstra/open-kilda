@@ -31,7 +31,7 @@ import org.openkilda.wfm.share.hubandspoke.TaskIdBasedKeyFactory;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.error.ControllerNotFoundException;
-import org.openkilda.wfm.topology.network.model.BfdStatus;
+import org.openkilda.wfm.topology.network.model.BfdStatusUpdate;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
@@ -252,7 +252,7 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
         service.roundTripStatusNotification(reference, status);
     }
 
-    public void processBfdStatusUpdate(Endpoint endpoint, IslReference reference, BfdStatus status) {
+    public void processBfdStatusUpdate(Endpoint endpoint, IslReference reference, BfdStatusUpdate status) {
         service.bfdStatusUpdate(endpoint, reference, status);
     }
 

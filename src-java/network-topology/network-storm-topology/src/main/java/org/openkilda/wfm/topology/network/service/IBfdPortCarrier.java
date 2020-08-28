@@ -28,4 +28,6 @@ public interface IBfdPortCarrier {
     void bfdDownNotification(Endpoint physicalEndpoint);
 
     void bfdKillNotification(Endpoint physicalEndpoint);
+
+    void bfdFailNotification(Endpoint physicalEndpoint);
 }

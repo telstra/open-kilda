@@ -834,6 +834,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                     .callMethod(action);
             builder.internalTransition().within(target).on(IslFsmEvent.BFD_KILL)
                     .callMethod(action);
+            builder.internalTransition().within(target).on(IslFsmEvent.BFD_FAIL)
+                    .callMethod(action);
             builder.internalTransition().within(target).on(IslFsmEvent.ROUND_TRIP_STATUS)
                     .callMethod(action);
 
@@ -876,7 +878,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         _BECOME_UP, _BECOME_DOWN, _BECOME_MOVED,
         _RESOURCES_DONE,
         _REMOVE_CONFIRMED,
-        BFD_UP, BFD_DOWN, BFD_KILL,
+        BFD_UP, BFD_DOWN, BFD_KILL, BFD_FAIL,
 
         HISTORY, ROUND_TRIP_STATUS,
         ISL_UP, ISL_DOWN, ISL_MOVE,

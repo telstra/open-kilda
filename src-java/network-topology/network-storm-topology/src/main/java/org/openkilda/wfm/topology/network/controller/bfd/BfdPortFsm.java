@@ -170,11 +170,13 @@ public final class BfdPortFsm extends
     public void setupFailEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                BfdPortFsmContext context) {
         logError("BFD-setup action have failed");
+        context.getOutput().bfdFailNotification(physicalEndpoint);
     }
 
     public void removeFailEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                 BfdPortFsmContext context) {
         logError("BFD-remove action have failed");
+        context.getOutput().bfdFailNotification(physicalEndpoint);
     }
 
     public void chargedFailEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
@@ -245,8 +247,18 @@ public final class BfdPortFsm extends
         logInfo("BFD session setup is successfully completed");
     }
 
+    public void conflictEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                              BfdPortFsmContext context) {
+        reportConflict();
+        context.getOutput().bfdFailNotification(physicalEndpoint);
+    }
+
     public void reportConflict(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                BfdPortFsmContext context) {
+        reportConflict();
+    }
+
+    private void reportConflict() {
         logError("BFD session created outside OpenKilda have been detected (ignore all request involving this port)");
     }
 
@@ -427,7 +439,7 @@ public final class BfdPortFsm extends
             builder.internalTransition().within(BfdPortFsmState.CONFLICT).on(BfdPortFsmEvent.DISABLE)
                     .callMethod(reportConflictMethod);
             builder.onEntry(BfdPortFsmState.CONFLICT)
-                    .callMethod(reportConflictMethod);
+                    .callMethod("conflictEnter");
 
             // PENDING
             builder.transition()
