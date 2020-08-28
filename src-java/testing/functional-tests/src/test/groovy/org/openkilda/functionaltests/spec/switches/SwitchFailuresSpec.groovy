@@ -69,7 +69,9 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
             def currentIsls = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow.flowId)))
             def pathChanged = !currentIsls.contains(isl) && !currentIsls.contains(isl.reversed)
             assert pathChanged || (northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN &&
-                    northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL })
+                    northbound.getFlowHistory(flow.flowId).find {
+                        it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+                    }?.payload?.last()?.action == REROUTE_FAIL)
         }
 
         and: "Cleanup: restore connection, remove the flow"

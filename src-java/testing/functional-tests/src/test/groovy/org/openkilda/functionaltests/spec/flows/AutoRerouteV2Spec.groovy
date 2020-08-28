@@ -226,7 +226,9 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         then: "The flow becomes 'Down'"
         wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow.flowId).find {
+                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+            }?.payload?.last()?.action == REROUTE_FAIL
         }
 
         when: "ISL goes back up"
@@ -456,6 +458,15 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
             assert flowInfo.statusInfo == "Not enough bandwidth or no path found. Failed to\
  find path with requested bandwidth=$flow.maximumBandwidth: Switch $flow.source.switchId doesn't have links with enough bandwidth"
             assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
+        }
+
+        and: "System retries to reroute the flow with ignored bandwidth"
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northboundV2.getFlow(flow.flowId).statusInfo == "No path found. Failed to find path with requested \
+bandwidth= ignored: Switch $flow.source.switchId doesn't have links with enough bandwidth"
+            assert northbound.getFlowHistory(flow.flowId).find {
+                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+            }?.payload?.last()?.action == REROUTE_FAIL
         }
 
         and: "Flow is not rerouted"
