@@ -7,6 +7,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -50,7 +51,7 @@ class RoundTripIslSpec extends HealthCheckSpecification {
         } ?: assumeTrue("Wasn't able to find a switch with suitable links", false)
 
         when: "Simulate connection lose between the switch and FL, the switch becomes DEACTIVATED and remains operable"
-        def mgmtBlockData = lockKeeper.knockoutSwitch(swToDeactivate, mgmtFlManager)
+        def mgmtBlockData = lockKeeper.knockoutSwitch(swToDeactivate, RW)
 
         def isSwDeactivated = true
         Wrappers.wait(customWaitOffset) {
@@ -102,8 +103,8 @@ for ISL alive confirmation)"
         def dstSwToDeactivate = roundTripIsl.dstSwitch
 
         when: "Switches lose connection to FL, switches become DEACTIVATED but keep processing packets"
-        def mgmtBlockDataSrcSw = lockKeeper.knockoutSwitch(srcSwToDeactivate, mgmtFlManager)
-        def mgmtBlockDataDstSw = lockKeeper.knockoutSwitch(dstSwToDeactivate, mgmtFlManager)
+        def mgmtBlockDataSrcSw = lockKeeper.knockoutSwitch(srcSwToDeactivate, RW)
+        def mgmtBlockDataDstSw = lockKeeper.knockoutSwitch(dstSwToDeactivate, RW)
         def areSwitchesDeactivated = true
         Wrappers.wait(customWaitOffset) {
             assert northbound.getSwitch(srcSwToDeactivate.dpId).state == SwitchChangeType.DEACTIVATED
@@ -150,7 +151,7 @@ round trip latency rule is removed on the dst switch"() {
         [roundTripIsl, roundTripIsl.reversed].each { assert database.getIslRoundTripStatus(it) == IslStatus.ACTIVE }
 
         when: "Simulate connection lose between the src switch and FL, switches become DEACTIVATED and remain operable"
-        def mgmtBlockData = lockKeeper.knockoutSwitch(srcSwToDeactivate, mgmtFlManager)
+        def mgmtBlockData = lockKeeper.knockoutSwitch(srcSwToDeactivate, RW)
         def isSrcSwDeactivated = true
         Wrappers.wait(customWaitOffset) {
             assert northbound.getSwitch(srcSwToDeactivate.dpId).state == SwitchChangeType.DEACTIVATED

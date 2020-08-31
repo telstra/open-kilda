@@ -30,10 +30,10 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.model.cookie.PortColourCookie
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto
@@ -44,7 +44,7 @@ import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
-import org.openkilda.testing.service.floodlight.MultiFloodlightManager
+import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -56,7 +56,6 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
 import java.math.RoundingMode
-
 /**
  * Provides helper operations for some Switch-related content.
  * This helper is also injected as a Groovy Extension Module, so methods can be called in two ways:
@@ -360,8 +359,8 @@ class SwitchHelper {
      * @param sw                    switch which is going to be disconnected
      * @param waitForRelatedLinks   make sure that all switch related ISLs are FAILED
      */
-    FloodlightResourceAddress knockoutSwitch(Switch sw, MultiFloodlightManager factory, boolean waitForRelatedLinks) {
-        def blockData = lockKeeper.knockoutSwitch(sw, factory)
+    List<FloodlightResourceAddress> knockoutSwitch(Switch sw, FloodlightConnectMode mode, boolean waitForRelatedLinks) {
+        def blockData = lockKeeper.knockoutSwitch(sw, mode)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
         }
@@ -377,8 +376,8 @@ class SwitchHelper {
         return blockData
     }
 
-    FloodlightResourceAddress knockoutSwitch(Switch sw, MultiFloodlightManager factory) {
-        knockoutSwitch(sw, factory, false)
+    List<FloodlightResourceAddress> knockoutSwitch(Switch sw, FloodlightConnectMode mode) {
+        knockoutSwitch(sw, mode, false)
     }
 
     /**
@@ -388,7 +387,7 @@ class SwitchHelper {
      * @param sw                    switch which is going to be connected
      * @param waitForRelatedLinks   make sure that all switch related ISLs are DISCOVERED
      */
-    void reviveSwitch(Switch sw, FloodlightResourceAddress flResourceAddress, boolean waitForRelatedLinks) {
+    void reviveSwitch(Switch sw, List<FloodlightResourceAddress> flResourceAddress, boolean waitForRelatedLinks) {
         lockKeeper.reviveSwitch(sw, flResourceAddress)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
@@ -406,7 +405,7 @@ class SwitchHelper {
         }
     }
 
-    void reviveSwitch(Switch sw, FloodlightResourceAddress flResourceAddress) {
+    void reviveSwitch(Switch sw, List<FloodlightResourceAddress> flResourceAddress) {
         reviveSwitch(sw, flResourceAddress, false)
     }
 }

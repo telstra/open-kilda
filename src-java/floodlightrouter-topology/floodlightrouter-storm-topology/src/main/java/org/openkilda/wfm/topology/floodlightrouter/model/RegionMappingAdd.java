@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,15 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.statsrouter;
+package org.openkilda.wfm.topology.floodlightrouter.model;
 
-/**
- * Represents components used in {@link StatsRouterTopology}.
- */
-public enum StatsRouterComponentType {
-    STATS_REQUEST_KAFKA_SPOUT,
-    FL_STATS_SWITCHES_KAFKA_SPOUT,
-    SPEAKER_KAFKA_BOLT,
-    STATS_STATS_REQUEST_KAFKA_BOLT,
-    ROUTER_BOLT
+import org.openkilda.model.SwitchId;
+
+public class RegionMappingAdd extends RegionMappingUpdate {
+    public RegionMappingAdd(SwitchId switchId, String region, boolean readWriteMode) {
+        super(switchId, region, readWriteMode);
+    }
+
+    @Override
+    public void apply(RegionMappingStorage storage) {
+        storage.update(this);
+    }
 }

@@ -142,7 +142,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         builder.setBolt(STATS_REQUESTER_BOLT.name(), new StatsRequesterBolt(persistenceManager), parallelism)
                 .shuffleGrouping(TICK_BOLT.name());
 
-        builder.setBolt(STATS_KILDA_SPEAKER_BOLT.name(), buildKafkaBolt(topologyConfig.getStatsRequestPrivTopic()))
+        builder.setBolt(STATS_KILDA_SPEAKER_BOLT.name(), buildKafkaBolt(topologyConfig.getSpeakerTopic()))
                 .shuffleGrouping(STATS_REQUESTER_BOLT.name(), STATS_REQUEST.name());
         builder.setBolt(STATS_GRPC_SPEAKER_BOLT.name(), buildKafkaBolt(topologyConfig.getGrpcSpeakerTopic()))
                 .shuffleGrouping(STATS_REQUESTER_BOLT.name(), GRPC_REQUEST.name());

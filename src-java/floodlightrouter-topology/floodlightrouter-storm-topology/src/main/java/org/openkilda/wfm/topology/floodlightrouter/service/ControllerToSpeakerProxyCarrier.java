@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,12 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.statsrouter;
+package org.openkilda.wfm.topology.floodlightrouter.service;
 
-/**
- * Represents stream used in {@link StatsRouterTopology}.
- */
-public enum StatsRouterStreamType {
-    MGMT_REQUEST,
-    STATS_REQUEST
+import org.openkilda.messaging.AbstractMessage;
+import org.openkilda.messaging.Message;
+import org.openkilda.model.SwitchId;
+
+public interface ControllerToSpeakerProxyCarrier {
+    void sendToSpeaker(Message message, String region);
+
+    void sendToSpeaker(AbstractMessage message, String region);
+
+    void regionNotFoundError(Message message, SwitchId switchId);
+
+    void regionNotFoundError(AbstractMessage message, SwitchId switchId);
 }

@@ -13,6 +13,7 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -94,7 +95,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
             assert defaultPlusFlowRules.size() == srcSwDefaultRules.size() + flowRulesCount + multiTableFlowRules
         }
 
-        def blockData = switchHelper.knockoutSwitch(srcSwitch, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(srcSwitch, RW)
 
         when: "Connect the switch to the controller"
         switchHelper.reviveSwitch(srcSwitch, blockData)

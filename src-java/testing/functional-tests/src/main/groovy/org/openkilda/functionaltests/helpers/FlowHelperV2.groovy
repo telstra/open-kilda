@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.UPDATE_SUCCESS
+import static FlowHistoryConstants.UPDATE_SUCCESS
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 

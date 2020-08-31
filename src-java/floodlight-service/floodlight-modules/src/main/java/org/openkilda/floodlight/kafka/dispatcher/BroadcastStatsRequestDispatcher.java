@@ -37,6 +37,6 @@ public class BroadcastStatsRequestDispatcher extends CommandDispatcher<Broadcast
 
     @Override
     protected Command makeCommand(CommandContext context, BroadcastWrapper wrapper) {
-        return new StatsCommand(context, (StatsRequest) wrapper.getPayload(), wrapper.getScope());
+        return new StatsCommand(context, wrapper.getScope());
     }
 }

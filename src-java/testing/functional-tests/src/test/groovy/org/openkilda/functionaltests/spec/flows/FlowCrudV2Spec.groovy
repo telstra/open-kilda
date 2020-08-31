@@ -13,6 +13,7 @@ import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -716,7 +717,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
         given: "Disconnected switch"
         def sw = topology.getActiveSwitches()[0]
-        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(sw, RW)
 
         when: "Try to create a one-switch flow on a deactivated switch"
         def flow = flowHelperV2.singleSwitchFlow(sw)

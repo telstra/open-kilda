@@ -16,8 +16,7 @@
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -30,7 +29,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.floodlightrouter.ComponentType;
-import org.openkilda.wfm.topology.floodlightrouter.Stream;
+import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingSet;
 import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingUpdate;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
@@ -66,10 +65,11 @@ public class ControllerToSpeakerProxyBoltTest {
     private ControllerToSpeakerProxyBolt subject;
 
     private static final SwitchId switchAlpha = new SwitchId(1);
-    private static final SwitchId switchBeta = new SwitchId(2);
 
     private static final String REGION_ONE = "1";
     private static final String REGION_TWO = "2";
+
+    private static final String TARGET_TOPIC = "topic";
 
     @Mock
     private TopologyContext topologyContext;
@@ -86,7 +86,7 @@ public class ControllerToSpeakerProxyBoltTest {
         Set<String> regions = new HashSet<>();
         regions.add(REGION_ONE);
         regions.add(REGION_TWO);
-        subject = new ControllerToSpeakerProxyBolt(Stream.SPEAKER_DISCO, regions, Duration.ofSeconds(900));
+        subject = new ControllerToSpeakerProxyBolt(TARGET_TOPIC, regions, Duration.ofSeconds(900));
 
         when(topologyContext.getThisTaskId()).thenReturn(1);
         subject.prepare(topologyConfig, topologyContext, outputCollector);
@@ -108,52 +108,53 @@ public class ControllerToSpeakerProxyBoltTest {
     }
 
     @Test
-    public void verifyConsumerToSpeakerTupleConsistency() {
-        // region update
-        RegionMappingUpdate switchMapping = new RegionMappingUpdate(switchAlpha, REGION_ONE, true);
-        Tuple notificationTuple = new TupleImpl(
-                generalTopologyContext, new Values(switchMapping, new CommandContext()),
-                SWITCH_MONITOR_BOLT, RegionTrackerBolt.STREAM_REGION_NOTIFICATION_ID);
-        subject.execute(notificationTuple);
-        assertTrue(subject.switchMapping.getReadWrite().lookup(switchAlpha,  false).isPresent());
-
-        // generic message
-        CommandMessage discoCommand = new CommandMessage(
-                new DiscoverIslCommandData(switchAlpha, 1, 1L),
-                3L, "discovery-confirmation");
-        Tuple tuple = new TupleImpl(
-                generalTopologyContext,
-                new Values(switchAlpha.toString(), discoCommand, new CommandContext(discoCommand)),
-                TASK_ID_SPOUT, STREAM_SPOUT_DEFAULT);
-        subject.execute(tuple);
-        ArgumentCaptor<Values> discoCommandValuesCaptor = ArgumentCaptor.forClass(Values.class);
-        verify(outputCollector).emit(eq(tuple), discoCommandValuesCaptor.capture());
-
-        assertEquals(switchAlpha.toString(), discoCommandValuesCaptor.getValue().get(0));
-        assertEquals(discoCommand, discoCommandValuesCaptor.getValue().get(1));
+    public void verifyMissingAnyRegionMapping() {
+        injectDiscoveryRequest(switchAlpha);
+        verifyNoMoreInteractions(outputCollector);
     }
 
     @Test
-    public void verifyConsumerToSpeakerTupleFails() throws Exception {
-        RegionMappingUpdate switchMapping = new RegionMappingUpdate(switchBeta, REGION_ONE, true);
-        Tuple notificationTuple = new TupleImpl(
-                generalTopologyContext, new Values(switchMapping, new CommandContext()),
-                SWITCH_MONITOR_BOLT, RegionTrackerBolt.STREAM_REGION_NOTIFICATION_ID);
-        subject.execute(notificationTuple);
-        assertTrue(subject.switchMapping.getReadWrite().lookup(switchBeta, false).isPresent());
-        assertFalse(subject.switchMapping.getReadWrite().lookup(switchAlpha, false).isPresent());
-        verify(outputCollector).ack(eq(notificationTuple));
-
-        CommandMessage discoCommand = new CommandMessage(
-                new DiscoverIslCommandData(switchAlpha, 1, 1L),
-                3L, "discovery-confirmation");
-        Tuple tuple = new TupleImpl(
-                generalTopologyContext,
-                new Values(switchAlpha.toString(), discoCommand, new CommandContext(discoCommand)),
-                TASK_ID_SPOUT, STREAM_SPOUT_DEFAULT);
-        subject.execute(tuple);
-
-        verify(outputCollector).ack(eq(tuple));
+    public void verifyMissingRwRegionMapping() {
+        injectRegionUpdate(new RegionMappingSet(switchAlpha, REGION_ONE, false));
+        injectDiscoveryRequest(switchAlpha);
         verifyNoMoreInteractions(outputCollector);
+    }
+
+    @Test
+    public void verifyHappyPath() {
+        injectRegionUpdate(new RegionMappingSet(switchAlpha, REGION_ONE, true));
+        CommandMessage request = injectDiscoveryRequest(switchAlpha);
+        ArgumentCaptor<Values> outputCaptor = ArgumentCaptor.forClass(Values.class);
+        verify(outputCollector).emit(any(Tuple.class), outputCaptor.capture());
+
+        assertEquals(switchAlpha.toString(), outputCaptor.getValue().get(0));
+        Values output = outputCaptor.getValue();
+        assertEquals(switchAlpha.toString(), output.get(0));  // key
+        assertEquals(request, output.get(1)); // value
+        assertEquals(TARGET_TOPIC, output.get(2)); // topic
+        assertEquals(REGION_ONE, output.get(3)); // region
+
+        verifyNoMoreInteractions(outputCollector);
+    }
+
+    private void injectRegionUpdate(RegionMappingUpdate update) {
+        Tuple input = new TupleImpl(
+                generalTopologyContext, new Values(update, new CommandContext()),
+                SWITCH_MONITOR_BOLT, RegionTrackerBolt.STREAM_REGION_NOTIFICATION_ID);
+        subject.execute(input);
+        verify(outputCollector).ack(eq(input));
+    }
+
+    private CommandMessage injectDiscoveryRequest(SwitchId switchId) {
+        CommandMessage discoCommand = new CommandMessage(
+                new DiscoverIslCommandData(switchId, 1, 1L),
+                3L, "discovery-confirmation");
+        Tuple input = new TupleImpl(
+                generalTopologyContext,
+                new Values(switchId.toString(), discoCommand, new CommandContext(discoCommand)),
+                TASK_ID_SPOUT, STREAM_SPOUT_DEFAULT);
+        subject.execute(input);
+        verify(outputCollector).ack(eq(input));
+        return discoCommand;
     }
 }

@@ -22,6 +22,8 @@ import lombok.Value;
 @Value
 public class FloodlightResourceAddress {
 
+    String region;
+
     String containerName;
 
     @JsonInclude(Include.NON_NULL)
@@ -30,19 +32,22 @@ public class FloodlightResourceAddress {
     @JsonInclude(Include.NON_NULL)
     Integer port;
 
-    public FloodlightResourceAddress(String containerName, String ip) {
+    public FloodlightResourceAddress(String region, String containerName, String ip) {
+        this.region = region;
         this.containerName = containerName;
         this.ip = ip;
         this.port = null;
     }
 
-    public FloodlightResourceAddress(String containerName, Integer port) {
+    public FloodlightResourceAddress(String region, String containerName, Integer port) {
+        this.region = region;
         this.containerName = containerName;
         this.ip = null;
         this.port = port;
     }
 
-    public FloodlightResourceAddress(String containerName, String ip, Integer port) {
+    public FloodlightResourceAddress(String region, String containerName, String ip, Integer port) {
+        this.region = region;
         this.containerName = containerName;
         this.ip = ip;
         this.port = port;

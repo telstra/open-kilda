@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.helpers.thread
+package org.openkilda.functionaltests.helpers
 
 class FlowHistoryConstants {
     public static String CREATE_ACTION = "Flow creating"

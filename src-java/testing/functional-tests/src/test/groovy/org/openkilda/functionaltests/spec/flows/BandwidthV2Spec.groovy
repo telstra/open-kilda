@@ -2,8 +2,8 @@ package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification

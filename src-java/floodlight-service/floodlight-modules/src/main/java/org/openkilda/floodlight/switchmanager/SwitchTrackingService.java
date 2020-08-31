@@ -162,9 +162,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         discoveryTopic = kafkaChannel.getTopoDiscoTopic();
         region = kafkaChannel.getRegion();
 
-        if (switchManager.isTrackingEnabled()) {
-            context.getServiceImpl(IOFSwitchService.class).addOFSwitchListener(this);
-        }
+        context.getServiceImpl(IOFSwitchService.class).addOFSwitchListener(this);
     }
 
     private void dumpAllSwitchesAction() {

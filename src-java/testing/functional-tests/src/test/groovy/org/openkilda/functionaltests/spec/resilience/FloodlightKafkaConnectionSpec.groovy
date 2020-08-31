@@ -5,10 +5,12 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchFeature
 
 import org.springframework.beans.factory.annotation.Value
@@ -20,17 +22,30 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
     @Value('${floodlight.alive.timeout}')
     int floodlightAliveTimeout
-    @Value('${floodlight.alive.interval}')
-    int floodlightAliveInterval
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
 
-    def "System survives temporary connection outage between Floodlight and Kafka"() {
-        setup: "Pick a region to break, find which isls are between regions"
-        assumeTrue("This test requires at least 2 floodlight regions", mgmtFlManager.regions.size() > 1)
-        def regionToBreak = mgmtFlManager.regions.first()
+    @Tidy
+    def "System properly handles ISL statuses during connection problems between Floodlights and Kafka"() {
+        setup: "All switches that have multiple management floodlights now remain with only 1"
+        def updatedRegions = topology.switches.collectEntries{ [(it.dpId): it.regions] }
+        def knockoutData = []
+        topology.switches.eachWithIndex { sw, i ->
+            def rwRegions = flHelper.filterRegionsByMode(sw.regions, RW)
+            def otherRegions = sw.regions - rwRegions
+            def regionToStay = rwRegions[i % rwRegions.size()]
+            def regionsToDc = rwRegions - regionToStay
+            knockoutData << [(sw): lockKeeper.knockoutSwitch(sw, regionsToDc)]
+            updatedRegions[sw.dpId] = [regionToStay] + otherRegions
+        }
+        assumeTrue("Can be run only if there are switches in 2+ regions",
+                updatedRegions.values().flatten().unique().size() > 1)
+
+        and: "Pick a region to break, find which isls are between regions"
+        def regionToBreak = flHelper.fls.findAll{ it.mode == RW }*.region.first()
         def islsBetweenRegions = topology.islsForActiveSwitches.findAll {
-            [it.srcSwitch, it.dstSwitch].any { it.region == regionToBreak } && it.srcSwitch.region != it.dstSwitch.region
+            [it.srcSwitch, it.dstSwitch].any { updatedRegions[it.dpId].contains(regionToBreak) } &&
+                    updatedRegions[it.srcSwitch.dpId] != updatedRegions[it.dstSwitch.dpId]
         }
 
         when: "Region 1 controller loses connection to Kafka"
@@ -41,9 +56,9 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         def nonRtlTransitIsls = islsBetweenRegions.findAll { isl ->
             [isl.srcSwitch, isl.dstSwitch].any { !it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
         }
-        def asyncWait = task {
+        def nonRtlShouldFail = task {
             wait(WAIT_OFFSET + discoveryTimeout) {
-                nonRtlTransitIsls.each { assert northbound.getLink(it).state == IslChangeType.FAILED }
+                nonRtlTransitIsls.forEach { assert northbound.getLink(it).state == IslChangeType.FAILED }
             }
         }
 
@@ -61,13 +76,14 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
         and: "After controller alive timeout switches in broken region become inactive but links are still discovered"
         wait(interval + WAIT_OFFSET) {
-            assert northbound.activeSwitches.size() == topology.activeSwitches.findAll { it.region != regionToBreak }.size()
+            assert northbound.activeSwitches.size() == topology.activeSwitches.findAll {
+                !updatedRegions[it.dpId].contains(regionToBreak) }.size()
         }
         linksToRemainAlive.each { assert northbound.getLink(it).state == IslChangeType.DISCOVERED }
 
         when: "System remains in this state for discovery timeout for ISLs"
         TimeUnit.SECONDS.sleep(discoveryTimeout + 1)
-        asyncWait.get()
+        nonRtlShouldFail.get()
 
         then: "All links except for non-rtl transit ones are still discovered"
         linksToRemainAlive.each { assert northbound.getLink(it).state == IslChangeType.DISCOVERED }
@@ -84,15 +100,19 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
         and: "System is able to successfully create a valid flow between regions"
         def swPair = topologyHelper.switchPairs.find { pair ->
-            [pair.src, pair.dst].any { it.region == regionToBreak }  && pair.src.region != pair.dst.region
+            [pair.src, pair.dst].any { updatedRegions[it.dpId].contains(regionToBreak) }  &&
+                    updatedRegions[pair.src.dpId] != updatedRegions[pair.dst.dpId]
         }
         def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow)
+        northboundV2.addFlow(flow)
+        wait(WAIT_OFFSET * 2) { //FL may be a bit laggy right after comming up, so this may take a bit longer than usual
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         cleanup:
-        asyncWait?.join()
+        nonRtlShouldFail?.join()
         flow && flowHelperV2.deleteFlow(flow.flowId)
+        knockoutData.each { it.each { sw, data -> lockKeeper.reviveSwitch(sw, data) } }
         if(flOut) {
             lockKeeper.reviveFloodlight(regionToBreak)
             wait(PERIODIC_SYNC_TIME) {
@@ -104,7 +124,8 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
     @Tidy
     def "System can detect switch changes if they happen while Floodlight was disconnected after it reconnects"() {
-        when: "Controller loses connection to kafka"
+        when: "Controllers lose connection to kafka"
+        def regions = flHelper.fls*.region
         regions.each { lockKeeper.knockoutFloodlight(it) }
         def regionsOut = true
         wait(floodlightAliveTimeout + WAIT_OFFSET) { assert northbound.activeSwitches.size() == 0 }

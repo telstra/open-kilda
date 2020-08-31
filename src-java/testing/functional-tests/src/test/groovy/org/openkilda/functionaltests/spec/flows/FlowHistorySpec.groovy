@@ -3,10 +3,10 @@ package org.openkilda.functionaltests.spec.flows
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.CREATE_ACTION
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.CREATE_SUCCESS
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.UPDATE_ACTION
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.UPDATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_SUCCESS
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification

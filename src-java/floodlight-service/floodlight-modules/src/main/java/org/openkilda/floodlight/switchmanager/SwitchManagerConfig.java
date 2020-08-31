@@ -93,10 +93,6 @@ public interface SwitchManagerConfig {
     @Default("false")
     boolean isOvsMetersEnabled();
 
-    @Key("tracking-enabled")
-    @Default("true")
-    boolean isTrackingEnabled();
-
     /**
      * This offset is used for encoding flow in_port number into udp_src port of Server 42 RTT packets.
      * Example: Flow with in_port 10. Server 42 Input rule will match RTT packets by

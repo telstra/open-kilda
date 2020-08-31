@@ -52,6 +52,9 @@ public class StatsKafkaMessageCollector extends KafkaMessageCollector {
                                 ConsumerLauncher launcher) {
         ExecutorService generalExecutor = buildExecutorWithNoQueue(consumerConfig.getGeneralExecutorCount());
         logger.info("Kafka Consumer: general executor threads = {}", consumerConfig.getGeneralExecutorCount());
-        launcher.launch(generalExecutor, new KafkaConsumerSetup(kafkaChannel.getStatsStatsRequetstPrivRegionTopic()));
+
+        // disco-topic we need to get and handle region alive requests
+        launcher.launch(generalExecutor, new KafkaConsumerSetup(
+                kafkaChannel.getSpeakerTopic(), kafkaChannel.getSpeakerDiscoTopic()));
     }
 }

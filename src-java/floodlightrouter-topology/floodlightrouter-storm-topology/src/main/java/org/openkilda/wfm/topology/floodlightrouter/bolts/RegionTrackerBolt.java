@@ -30,6 +30,7 @@ import org.openkilda.wfm.share.bolt.MonotonicClock;
 import org.openkilda.wfm.topology.floodlightrouter.ComponentType;
 import org.openkilda.wfm.topology.floodlightrouter.RegionAwareKafkaTopicSelector;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
+import org.openkilda.wfm.topology.floodlightrouter.TickId;
 import org.openkilda.wfm.topology.floodlightrouter.service.FloodlightTracker;
 import org.openkilda.wfm.topology.floodlightrouter.service.RegionMonitorCarrier;
 

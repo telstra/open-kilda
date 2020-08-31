@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,9 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.switches;
+package org.openkilda.testing.service.floodlight.model;
 
-import org.openkilda.messaging.command.CommandData;
-
-public class ListSwitchRequest extends CommandData {
+public enum FloodlightConnectMode {
+    RW,
+    RO
 }

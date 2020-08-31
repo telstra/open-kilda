@@ -43,15 +43,16 @@ public class OneToOneMappingTest {
         subject.add(SWITCH_BETA, REGION_A);
         subject.remove(SWITCH_ALPHA);
 
-        Optional<String> result = subject.lookup(SWITCH_ALPHA, true);
+        Optional<String> result = subject.lookup(SWITCH_ALPHA);
         Assert.assertTrue(result.isPresent());
         Assert.assertEquals(REGION_A, result.get());
 
-        Assert.assertFalse(subject.lookup(SWITCH_ALPHA, false).isPresent());
+        Assert.assertTrue(subject.lookup(SWITCH_ALPHA).isPresent());  // remove is delayed
+        clock.adjust(staleDelay.plus(Duration.ofSeconds(1)));
+        Assert.assertFalse(subject.lookup(SWITCH_ALPHA).isPresent());  // remove is delayed
 
-        // active mapping visible despite stale marker
-        Assert.assertTrue(subject.lookup(SWITCH_BETA, true).isPresent());
-        Assert.assertTrue(subject.lookup(SWITCH_BETA, false).isPresent());
+        // active mapping visible despite removed marker
+        Assert.assertTrue(subject.lookup(SWITCH_BETA).isPresent());
     }
 
     @Test
@@ -64,29 +65,29 @@ public class OneToOneMappingTest {
         subject.add(SWITCH_BETA, REGION_A);
         subject.remove(SWITCH_BETA);
 
-        Assert.assertTrue(subject.lookup(SWITCH_ALPHA, true).isPresent());
-        Assert.assertTrue(subject.lookup(SWITCH_BETA, true).isPresent());
+        Assert.assertTrue(subject.lookup(SWITCH_ALPHA).isPresent());
+        Assert.assertTrue(subject.lookup(SWITCH_BETA).isPresent());
 
         clock.adjust(staleDelay.minus(Duration.ofSeconds(1)));
 
         // make lookup for one of 2 existing records
-        Optional<String> result = subject.lookup(SWITCH_ALPHA, true);
+        Optional<String> result = subject.lookup(SWITCH_ALPHA);
         Assert.assertTrue(result.isPresent());
         Assert.assertEquals(REGION_A, result.get());
 
         clock.adjust(Duration.ofSeconds(2));
 
         // first record must be still alive, because of recent lookup for it
-        result = subject.lookup(SWITCH_ALPHA, true);
+        result = subject.lookup(SWITCH_ALPHA);
         Assert.assertTrue(result.isPresent());
         Assert.assertEquals(REGION_A, result.get());
 
         // while second must go away
-        Assert.assertFalse(subject.lookup(SWITCH_BETA, true).isPresent());
+        Assert.assertFalse(subject.lookup(SWITCH_BETA).isPresent());
 
         clock.adjust(staleDelay.plus(Duration.ofSeconds(1)));
         // now first record must go away too
-        Assert.assertFalse(subject.lookup(SWITCH_ALPHA, true).isPresent());
+        Assert.assertFalse(subject.lookup(SWITCH_ALPHA).isPresent());
     }
 
     private OneToOneMapping makeSubject() {

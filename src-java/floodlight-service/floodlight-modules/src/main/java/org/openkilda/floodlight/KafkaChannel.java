@@ -80,14 +80,6 @@ public class KafkaChannel implements IFloodlightModule {
         return formatTopicWithRegion(topics.getSpeakerRegionTopic());
     }
 
-    public String getStatsStatsRequetstPrivRegionTopic() {
-        return formatTopicWithRegion(topics.getStatsStatsRequestPrivRegionTopic());
-    }
-
-    public String getFlStatsSwitchesPrivRegionTopic() {
-        return formatTopicWithRegion(topics.getFlStatsSwitchesPrivRegionTopic());
-    }
-
     public String getSpeakerFlowTopic() {
         return formatTopicWithRegion(topics.getSpeakerFlowRegionTopic());
     }

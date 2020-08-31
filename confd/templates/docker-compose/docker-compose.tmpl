@@ -320,7 +320,10 @@ services:
       context: docker
       dockerfile: floodlight-modules/Dockerfile
     image: "kilda/floodlight:${full_build_number:-latest}"
-    command: ["floodlightStats", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_1"]
+    command:
+      - "floodlightStats"
+      - "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1.stats"
+      - "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_1.stats"
     ports:
       - "6654:6653"
       - "8082:8080"

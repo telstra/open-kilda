@@ -23,6 +23,4 @@ import java.util.Set;
 
 public interface IStatisticsService extends IFloodlightService {
     void processStatistics(FloodlightModuleContext context, Set<DatapathId> excludeSwitches);
-
-    void processStatistics(FloodlightModuleContext context, Set<DatapathId> excludeSwitches, Set<DatapathId> scope);
 }

@@ -26,8 +26,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
 
 @Configuration
 public class TopologyConfig {
@@ -35,10 +33,10 @@ public class TopologyConfig {
     @Value("file:${topology.definition.file:topology.yaml}")
     private Resource topologyDefinitionFile;
 
-    @Value("#{'${floodlight.controllers.management.openflow}'.split(',').get(0)}")
+    @Value("#{'${floodlight.openflow}'.split(',').get(0)}")
     private String managementController;
 
-    @Value("#{'${floodlight.controllers.stat.openflow}'.split(',').get(0)}")
+    @Value("#{'${floodlight.openflows}'.split(',').get(0)}")
     private String statController;
 
     @Value("${bfd.offset}")
@@ -48,14 +46,9 @@ public class TopologyConfig {
     public TopologyDefinition topologyDefinition() throws IOException {
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         mapper.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS);
-
         TopologyDefinition topologyDefinition =
                 mapper.readValue(topologyDefinitionFile.getInputStream(), TopologyDefinition.class);
-
-        List<String> controllerHosts = Arrays.asList(managementController, statController);
-
         topologyDefinition.setBfdOffset(bfdOffset);
-        topologyDefinition.setControllers(controllerHosts);
         for (TopologyDefinition.Switch sw : topologyDefinition.getSwitches()) {
             sw.setController(managementController + " " + statController);
         }

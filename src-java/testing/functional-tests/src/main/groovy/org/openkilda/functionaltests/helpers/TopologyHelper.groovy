@@ -9,6 +9,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Status
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.model.topology.TopologyDefinition.TraffGenConfig
 import org.openkilda.testing.service.database.Database
+import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.northbound.NorthboundService
 
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -27,9 +28,8 @@ class TopologyHelper {
     TopologyDefinition topology
     @Autowired
     Database database
-
-    @Value('#{\'${floodlight.regions}\'.split(\',\')}')
-    private List<String> regions;
+    @Autowired
+    FloodlightsHelper flHelper
 
     /**
      * Get a switch pair of random switches.
@@ -96,10 +96,12 @@ class TopologyHelper {
         def switches = northbound.getAllSwitches()
         def links = northbound.getAllLinks()
         def i = 0
-        def topoSwitches = switches.collect {
+        def switchIdsPerRegion = flHelper.fls.collectEntries {
+            [(it.region): it.floodlightService.getSwitches()*.switchId] }
+        def topoSwitches = switches.collect { sw ->
             i++
-            //TODO(rtretiak): properly discover the switch's region instead of just picking first
-            new Switch("ofsw$i", it.switchId, it.ofVersion, switchStateToStatus(it.state), regions.first(), [],
+            def applicableRegions = switchIdsPerRegion.findAll { it.value.contains(sw.switchId) }*.key
+            new Switch("ofsw$i", sw.switchId, sw.ofVersion, switchStateToStatus(sw.state), applicableRegions, [],
                     null, null, null)
         }
         def topoLinks = links.collect { link ->

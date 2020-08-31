@@ -6,6 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.model.PortProperties.DISCOVERY_ENABLED_DEFAULT
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -161,7 +162,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         }
 
         when: "Deactivate/activate src switch"
-        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
+        def blockData = lockKeeper.knockoutSwitch(sw, RW)
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
         }

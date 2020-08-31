@@ -25,7 +25,6 @@ import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.kafka.AbstractMessageSerializer;
 import org.openkilda.wfm.kafka.MessageSerializer;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.floodlightrouter.bolts.ControllerToSpeakerBroadcastBolt;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.ControllerToSpeakerProxyBolt;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.ControllerToSpeakerSharedProxyBolt;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.MonotonicTick;
@@ -96,9 +95,6 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
         speakerToSwitchManager(builder, parallelism, newParallelism, output);
         speakerToNorthbound(builder, parallelism, newParallelism, output);
         speakerToNbWorker(builder, parallelism, newParallelism, output);
-
-        speakerToFlStats(builder, parallelism, newParallelism, output);
-        flStatsToSpeaker(builder, parallelism, newParallelism, output);
 
         controllerToSpeaker(builder, parallelism, newParallelism, output);
 
@@ -218,29 +214,6 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                 topology, kafkaTopics.getTopoNbRegionTopic(), kafkaTopics.getTopoNbTopic(),
                 ComponentType.KILDA_NB_WORKER_KAFKA_SPOUT, ComponentType.KILDA_NB_WORKER_REPLY_BOLT,
                 output.getKafkaGenericOutput(), spoutParallelism, parallelism);
-    }
-
-    private void speakerToFlStats(
-            TopologyBuilder topology, int spoutParallelism, int parallelism, TopologyOutput output) {
-        declareSpeakerToControllerProxy(
-                topology, kafkaTopics.getFlStatsSwitchesPrivRegionTopic(), kafkaTopics.getFlStatsSwitchesPrivTopic(),
-                ComponentType.FL_STATS_SWITCHES_SPOUT, ComponentType.FL_STATS_SWITCHES_REPLY_BOLT,
-                output.getKafkaGenericOutput(), spoutParallelism, parallelism);
-    }
-
-    private void flStatsToSpeaker(
-            TopologyBuilder topology, int spoutParallelism, int parallelism, TopologyOutput output) {
-        KafkaSpout<String, Message> spout = buildKafkaSpout(
-                kafkaTopics.getStatsStatsRequestPrivTopic(), ComponentType.STATS_STATS_REQUEST_KAFKA_SPOUT);
-        topology.setSpout(ComponentType.STATS_STATS_REQUEST_KAFKA_SPOUT, spout, spoutParallelism);
-
-        ControllerToSpeakerBroadcastBolt broadcast = new ControllerToSpeakerBroadcastBolt(
-                kafkaTopics.getStatsStatsRequestPrivRegionTopic(), regions);
-        topology.setBolt(ComponentType.STATS_STATS_REQUEST_BOLT, broadcast, parallelism)
-                .shuffleGrouping(ComponentType.STATS_STATS_REQUEST_KAFKA_SPOUT);
-
-        output.getKafkaGenericOutput()
-                .shuffleGrouping(ComponentType.STATS_STATS_REQUEST_BOLT);
     }
 
     private void controllerToSpeaker(
