@@ -33,6 +33,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.hamcrest.MockitoHamcrest.argThat;
+import static org.openkilda.model.PathComputationStrategy.LATENCY;
+import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
@@ -46,10 +48,10 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
-import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
@@ -104,7 +106,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         testExpectedFailure(dummyRequestKey, request, commandContext, origin, FlowStatus.DOWN, ErrorType.NOT_FOUND);
 
         verify(pathComputer, times(11))
-                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
+                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), any());
     }
 
     @Test
@@ -117,7 +119,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         testExpectedFailure(dummyRequestKey, request, commandContext, origin, FlowStatus.UP, ErrorType.INTERNAL_ERROR);
 
         verify(pathComputer, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
-                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
+                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), any());
     }
 
     @Test
@@ -201,7 +203,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     @Test
     public void shouldFailRerouteOnUnsuccessfulInstallation() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
-        PathPair newPathPair = make3SwitchesPathPair();
+        GetPathsResult newPathPair = make3SwitchesPathPair();
         preparePathComputation(origin.getFlowId(), newPathPair);
 
         FlowRerouteService service = makeService();
@@ -238,7 +240,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     @Test
     public void shouldFailRerouteOnTimeoutDuringInstallation() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
-        PathPair newPathPair = make3SwitchesPathPair();
+        GetPathsResult newPathPair = make3SwitchesPathPair();
         preparePathComputation(origin.getFlowId(), newPathPair);
 
         FlowRerouteService service = makeService();
@@ -266,7 +268,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     @Test
     public void shouldFailRerouteOnUnsuccessfulValidation() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
-        PathPair newPathPair = make3SwitchesPathPair();
+        GetPathsResult newPathPair = make3SwitchesPathPair();
         preparePathComputation(origin.getFlowId(), newPathPair);
 
         FlowRerouteService service = makeService();
@@ -303,7 +305,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     @Test
     public void shouldFailRerouteOnTimeoutDuringValidation() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
-        PathPair newPathPair = make3SwitchesPathPair();
+        GetPathsResult newPathPair = make3SwitchesPathPair();
         preparePathComputation(origin.getFlowId(), newPathPair);
 
         FlowRerouteService service = makeService();
@@ -466,7 +468,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         origin.setStatus(FlowStatus.DOWN);
         flushFlowChanges(origin);
 
-        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair(origin.getPathComputationStrategy()));
 
         FlowRerouteService service = makeService();
         FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
@@ -496,7 +498,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         origin.setStatus(FlowStatus.DOWN);
         flushFlowChanges(origin);
 
-        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), any()))
+        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), any()))
                 .thenReturn(make2SwitchAltPathPair())
                 .thenReturn(make3SwitchesPathPair());
 
@@ -577,10 +579,10 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     @Test
     public void shouldProcessRerouteForValidRequest() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
-        origin.setTargetPathComputationStrategy(PathComputationStrategy.LATENCY);
+        origin.setTargetPathComputationStrategy(LATENCY);
         FlowRepository flowRepository = setupFlowRepositorySpy();
         flowRepository.createOrUpdate(origin);
-        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair(origin.getTargetPathComputationStrategy()));
 
         FlowRerouteService service = makeService();
         IslEndpoint affectedEndpoint = extractIslEndpoint(origin);
@@ -597,7 +599,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
         verifyPathReplace(origin, result);
-        assertEquals(PathComputationStrategy.LATENCY, result.getPathComputationStrategy());
+        assertEquals(LATENCY, result.getPathComputationStrategy());
         assertNull(result.getTargetPathComputationStrategy());
     }
 
@@ -618,6 +620,35 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         verifyNoPathReplace(origin, result);
     }
 
+    @Test
+    public void shouldMoveFlowToDegradedIfPathWithRequiredLatencyNotFound() throws Exception {
+        Flow origin = makeFlow();
+        origin.setTargetPathComputationStrategy(MAX_LATENCY);
+        FlowRepository flowRepository = setupFlowRepositorySpy();
+        flowRepository.createOrUpdate(origin);
+        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()),
+                any(List.class), eq(LATENCY)))
+                .thenReturn(make3SwitchesPathPair(LATENCY));
+
+        FlowRerouteService service = makeService();
+        IslEndpoint affectedEndpoint = extractIslEndpoint(origin);
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, true,
+                false, Collections.singleton(affectedEndpoint), null);
+        service.handleRequest(currentRequestKey, request, commandContext);
+
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
+
+        FlowSegmentRequest speakerRequest;
+        while ((speakerRequest = requests.poll()) != null) {
+            produceAsyncResponse(service, speakerRequest);
+        }
+
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.DEGRADED);
+        verifyPathReplace(origin, result);
+        assertEquals(MAX_LATENCY, result.getPathComputationStrategy());
+        assertNull(result.getTargetPathComputationStrategy());
+    }
+
     protected void produceAsyncResponse(FlowRerouteService service, FlowSegmentRequest speakerRequest) {
         service.handleAsyncResponse(currentRequestKey, buildSpeakerResponse(speakerRequest));
     }
@@ -635,12 +666,12 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     private void preparePathComputation(String flowId, Throwable error)
             throws RecoverableException, UnroutableFlowException {
         doThrow(error).when(pathComputer)
-                .getPath(makeFlowArgumentMatch(flowId), any());
+                .getPath(makeFlowArgumentMatch(flowId), any(), any());
     }
 
-    private void preparePathComputation(String flowId, PathPair pathPair)
+    private void preparePathComputation(String flowId, GetPathsResult pathPair)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any())).thenReturn(pathPair);
+        when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any(), any())).thenReturn(pathPair);
     }
 
     @Override

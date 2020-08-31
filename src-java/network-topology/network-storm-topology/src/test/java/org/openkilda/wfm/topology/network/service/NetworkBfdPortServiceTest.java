@@ -248,6 +248,8 @@ public class NetworkBfdPortServiceTest {
                 removeRequestPayload, NoviBfdSession.Errors.SWITCH_RESPONSE_ERROR);
         service.speakerResponse(removeRequestKey, alphaLogicalEndpoint, removeResponse);
 
+        verify(carrier).bfdFailNotification(alphaEndpoint);
+
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(bfdSessionRepository);
 

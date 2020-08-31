@@ -45,6 +45,7 @@ public class TestFlowBuilder {
     private long bandwidth;
     private boolean ignoreBandwidth = false;
     private PathComputationStrategy pathComputationStrategy = PathComputationStrategy.COST;
+    private long maxLatency;
 
     public TestFlowBuilder() {
     }
@@ -69,6 +70,7 @@ public class TestFlowBuilder {
                 .ignoreBandwidth(ignoreBandwidth)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .pathComputationStrategy(pathComputationStrategy)
+                .maxLatency(maxLatency)
                 .build();
 
         FlowPath forwardPath =

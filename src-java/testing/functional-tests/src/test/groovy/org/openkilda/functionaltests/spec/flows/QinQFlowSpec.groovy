@@ -20,6 +20,8 @@ import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v1.flows.PingInput
+import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
@@ -177,6 +179,21 @@ class QinQFlowSpec extends HealthCheckSpecification {
             it.source.innerVlanId == vlanFlow.destination.vlanId
             it.destination.vlanId == vlanFlow.destination.vlanId
             it.destination.innerVlanId == vlanFlow.source.vlanId
+        }
+
+        and: "Flow history shows actual info into stateBefore and stateAfter sections"
+        def flowHistory = northbound.getFlowHistory(qinqFlow.flowId)
+        with(flowHistory.last().dumps.find { it.type == "stateBefore" }){
+            it.sourceVlan == (srcVlanId ? srcVlanId : srcInnerVlanId)
+            it.sourceInnerVlan == (srcVlanId ? srcInnerVlanId : 0)
+            it.destinationVlan == (dstVlanId ? dstVlanId : dstInnerVlanId)
+            it.destinationInnerVlan ==  (dstVlanId ? dstInnerVlanId : 0)
+        }
+        with(flowHistory.last().dumps.find { it.type == "stateAfter" }){
+            it.sourceVlan == vlanFlow.source.vlanId
+            it.sourceInnerVlan == vlanFlow.destination.vlanId
+            it.destinationVlan == vlanFlow.destination.vlanId
+            it.destinationInnerVlan == vlanFlow.source.vlanId
         }
 
         then: "Both existing flows are still valid and pingable"
@@ -366,20 +383,28 @@ class QinQFlowSpec extends HealthCheckSpecification {
         flow.destination.innerVlanId = 432
         flowHelper.addFlow(flow)
 
-        then: "Flow is really created with requested innerVlan"
+        then: "Flow is really created with requested innerVlanId"
         with(northbound.getFlow(flow.id)) {
             it.source.innerVlanId == flow.source.innerVlanId
             it.destination.innerVlanId == flow.destination.innerVlanId
         }
 
-        when: "Update the flow(innerVlan)"
-        def newSrcInnerVlanId = flow.source.innerVlanId += 1
-        flowHelper.updateFlow(flow.id, flow.tap { flow.source.innerVlanId = newSrcInnerVlanId })
+        when: "Update the flow(innerVlan/vlanId) via partialUpdate"
+        def newDstVlanId = flow.destination.vlanId + 1
+        def newDstInnerVlanId = flow.destination.innerVlanId + 1
+        def updateRequest = new FlowPatchV2(
+                destination: new FlowPatchEndpoint(innerVlanId: newDstInnerVlanId, vlanId: newDstVlanId)
+        )
+        def response = flowHelperV2.partialUpdate(flow.id, updateRequest)
 
-        then: "Flow is really updated with requested innerVlan"
+        then: "Partial update response reflects the changes"
+        response.destination.vlanId == newDstVlanId
+        response.destination.innerVlanId == newDstInnerVlanId
+
+        and: "Flow is really updated with requested innerVlanId/vlanId"
         with(northbound.getFlow(flow.id)) {
-            it.source.innerVlanId == flow.source.innerVlanId
-            it.destination.innerVlanId == flow.destination.innerVlanId
+            it.destination.vlanId == newDstVlanId
+            it.destination.innerVlanId == newDstInnerVlanId
         }
 
         and: "Flow is valid and pingable"

@@ -13,29 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.payload.history;
+package org.openkilda.wfm.topology.stats;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import org.openkilda.model.SwitchId;
 
-import java.util.List;
+import lombok.Value;
 
-@Data
-@NoArgsConstructor
-public class FlowEventPayload {
-    private String flowId;
-
-    private long timestamp;
-
-    private String actor;
-
-    private String action;
-
-    private String taskId;
-
-    private String details;
-
-    private List<FlowHistoryPayload> histories;
-
-    private List<FlowDumpPayload> dumps;
+@Value
+public class CookieCacheKey {
+    private SwitchId switchId;
+    private long cookie;
 }

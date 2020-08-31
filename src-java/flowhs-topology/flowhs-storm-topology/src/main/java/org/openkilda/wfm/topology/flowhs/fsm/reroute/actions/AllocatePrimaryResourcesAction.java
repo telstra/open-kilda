@@ -18,8 +18,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 import org.openkilda.messaging.info.reroute.error.NoPathFoundError;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.PathComputer;
-import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
@@ -38,6 +38,8 @@ import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class AllocatePrimaryResourcesAction extends
@@ -66,19 +68,20 @@ public class AllocatePrimaryResourcesAction extends
             flow.setEncapsulationType(stateMachine.getNewEncapsulationType());
         }
 
-
-
         log.debug("Finding a new primary path for flow {}", flowId);
 
-        PathPair potentialPath;
+        GetPathsResult potentialPath;
         if (stateMachine.isIgnoreBandwidth()) {
             boolean originalIgnoreBandwidth = flow.isIgnoreBandwidth();
             flow.setIgnoreBandwidth(true);
-            potentialPath = pathComputer.getPath(flow);
+            potentialPath = pathComputer.getPath(flow, getBackUpStrategies(flow.getPathComputationStrategy()));
             flow.setIgnoreBandwidth(originalIgnoreBandwidth);
         } else {
-            potentialPath = pathComputer.getPath(flow, flow.getFlowPathIds());
+            potentialPath = pathComputer.getPath(
+                    flow, flow.getFlowPathIds(), getBackUpStrategies(flow.getPathComputationStrategy()));
         }
+
+        stateMachine.setNewPrimaryPathComputationStrategy(potentialPath.getUsedStrategy());
         FlowPathPair oldPaths = FlowPathPair.builder()
                 .forward(flow.getForwardPath())
                 .reverse(flow.getReversePath())
@@ -95,6 +98,10 @@ public class AllocatePrimaryResourcesAction extends
             stateMachine.setNewPrimaryResources(flowResources);
 
             List<FlowPath> pathsToReuse = Lists.newArrayList(flow.getForwardPath(), flow.getReversePath());
+            pathsToReuse.addAll(stateMachine.getRejectedPaths().stream()
+                    .map(flow::getPath)
+                    .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty))
+                    .collect(Collectors.toList()));
             FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources,
                     stateMachine.isIgnoreBandwidth());
             log.debug("New primary path has been created: {}", newPaths);

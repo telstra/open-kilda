@@ -19,8 +19,8 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.PathComputer;
-import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
@@ -65,20 +65,22 @@ public class AllocateProtectedResourcesAction extends
         String flowId = stateMachine.getFlowId();
         Flow flow = getFlow(flowId);
 
-        FlowPath primaryForwardPath = flow.getPath(stateMachine.getNewPrimaryForwardPath())
-                .orElse(flow.getForwardPath());
-        FlowPath primaryReversePath = flow.getPath(stateMachine.getNewPrimaryReversePath())
-                .orElse(flow.getReversePath());
-
         if (stateMachine.getNewEncapsulationType() != null) {
             // This is for PCE to use proper (updated) encapsulation type.
             flow.setEncapsulationType(stateMachine.getNewEncapsulationType());
         }
 
         log.debug("Finding a new protected path for flow {}", flowId);
-        PathPair potentialPath = pathComputer.getPath(flow,
+        GetPathsResult potentialPath = pathComputer.getPath(flow,
                 Stream.of(flow.getProtectedForwardPathId(), flow.getProtectedReversePathId())
-                        .filter(Objects::nonNull).collect(Collectors.toList()));
+                        .filter(Objects::nonNull).collect(Collectors.toList()),
+                getBackUpStrategies(flow.getPathComputationStrategy()));
+        stateMachine.setNewProtectedPathComputationStrategy(potentialPath.getUsedStrategy());
+
+        FlowPath primaryForwardPath = flow.getPath(stateMachine.getNewPrimaryForwardPath())
+                .orElse(flow.getForwardPath());
+        FlowPath primaryReversePath = flow.getPath(stateMachine.getNewPrimaryReversePath())
+                .orElse(flow.getReversePath());
 
         boolean overlappingProtectedPathFound = primaryForwardPath != null
                 && flowPathBuilder.arePathsOverlapped(potentialPath.getForward(), primaryForwardPath)
@@ -124,6 +126,10 @@ public class AllocateProtectedResourcesAction extends
 
                 List<FlowPath> pathsToReuse
                         = Lists.newArrayList(flow.getProtectedForwardPath(), flow.getProtectedReversePath());
+                pathsToReuse.addAll(stateMachine.getRejectedPaths().stream()
+                        .map(flow::getPath)
+                        .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty))
+                        .collect(Collectors.toList()));
                 FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources, false);
                 log.debug("New protected path has been created: {}", newPaths);
                 stateMachine.setNewProtectedForwardPath(newPaths.getForward().getPathId());

@@ -2,6 +2,8 @@ package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -294,6 +296,16 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         def flowPathAfterUpdate = PathHelper.convert(northbound.getFlowPath(flow.flowId))
         flowPathAfterUpdate == flowPath
         checkBandwidth(flowPathAfterUpdate, linksBeforeFlowCreate, linksAfterFlowUpdate)
+
+        //make sure 'retry' is finished
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northboundV2.getFlow(flow.flowId).statusInfo == "No path found. Failed to find path with requested \
+bandwidth= ignored: Switch $flow.source.switchId doesn't have links with enough bandwidth"
+            northbound.getFlowHistory(flow.flowId).last().taskId =~ (/.+ : retry #1 ignore_bw true/)
+            assert northbound.getFlowHistory(flow.flowId).find {
+                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+            }?.payload?.last()?.action == REROUTE_FAIL
+        }
 
         cleanup: "Delete the flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)

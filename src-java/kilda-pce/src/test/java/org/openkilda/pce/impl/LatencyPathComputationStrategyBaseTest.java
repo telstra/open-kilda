@@ -29,8 +29,8 @@ import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.PathComputer;
-import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 
@@ -59,7 +59,7 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(flow);
+        GetPathsResult path = pathComputer.getPath(flow);
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // should choose path B because it has lower latency
@@ -82,7 +82,7 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(flow);
+        GetPathsResult path = pathComputer.getPath(flow);
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // should have switch C as first hop since B is inactive
@@ -110,7 +110,7 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(flow);
+        GetPathsResult path = pathComputer.getPath(flow);
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // should now have C as first hop since A - B link is under maintenance
@@ -138,7 +138,7 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(flow);
+        GetPathsResult path = pathComputer.getPath(flow);
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // should now have C as first hop since A - B link is unstable
@@ -163,7 +163,7 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(flow);
+        GetPathsResult path = pathComputer.getPath(flow);
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // it should now have C as first hop since A - B segment has high latency
@@ -189,7 +189,7 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(flow);
+        GetPathsResult path = pathComputer.getPath(flow);
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // should choose B because default latency (500_000_000) is less then A-C latency (1_000_000_000)
@@ -252,7 +252,7 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
                 .pathComputationStrategy(PathComputationStrategy.LATENCY)
                 .build();
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair diversePath = pathComputer.getPath(flow);
+        GetPathsResult diversePath = pathComputer.getPath(flow);
 
         diversePath.getForward().getSegments().forEach(
                 segment -> {
@@ -277,7 +277,7 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
                 .pathComputationStrategy(PathComputationStrategy.LATENCY)
                 .build();
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair diversePath = pathComputer.getPath(flow);
+        GetPathsResult diversePath = pathComputer.getPath(flow);
 
         FlowPath forwardPath = FlowPath.builder()
                 .pathId(new PathId(UUID.randomUUID().toString()))
@@ -303,7 +303,7 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
 
         flowRepository.createOrUpdate(flow);
 
-        PathPair path2 = pathComputer.getPath(flow, flow.getFlowPathIds());
+        GetPathsResult path2 = pathComputer.getPath(flow, flow.getFlowPathIds());
         assertEquals(diversePath, path2);
     }
 

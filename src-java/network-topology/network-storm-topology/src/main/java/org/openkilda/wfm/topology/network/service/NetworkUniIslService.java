@@ -20,7 +20,7 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
-import org.openkilda.wfm.topology.network.model.BfdStatus;
+import org.openkilda.wfm.topology.network.model.BfdStatusUpdate;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
@@ -114,16 +114,12 @@ public class NetworkUniIslService {
     /**
      * .
      */
-    public void uniIslBfdUpDown(Endpoint endpoint, boolean isUp) {
-        handleBfdNotification(endpoint, isUp ? BfdStatus.UP : BfdStatus.DOWN);
-    }
-
-    /**
-     * .
-     */
-    public void uniIslBfdKill(Endpoint endpoint) {
-        log.debug("Uni-ISL service receive BFD-KILL notification for {}", endpoint);
-        handleBfdNotification(endpoint, BfdStatus.KILL);
+    public void uniIslBfdStatusUpdate(Endpoint endpoint, BfdStatusUpdate status) {
+        log.debug("Uni-ISL service receive BFD status update for {} - status:{}", endpoint, status);
+        IslReference reference = lookupEndpointData(endpoint);
+        if (isIslReferenceUsable(reference)) {
+            carrier.notifyBfdStatus(endpoint, reference, status);
+        }
     }
 
     /**
@@ -134,6 +130,21 @@ public class NetworkUniIslService {
         endpointData.remove(endpoint);
     }
 
+    /**
+     * Process ISL removed notification.
+     */
+    public void islRemovedNotification(Endpoint endpoint, IslReference removedIsl) {
+        log.debug("Uni-ISL service receive ISL-REMOVED notification for {}", endpoint);
+
+        IslReference storedIslReference = lookupEndpointData(endpoint);
+        if (removedIsl.equals(storedIslReference)) {
+            log.info("Received ISL-REMOVED notification. The endpoint data for {} has been set to the initial value.",
+                    endpoint);
+            endpointData.put(endpoint, IslReference.of(endpoint));
+            carrier.exhaustedPollModeUpdateRequest(endpoint, false);
+        }
+    }
+
     // -- private --
 
     private void handleDiscoveryFail(Endpoint endpoint, IslDownReason downReason) {
@@ -142,14 +153,6 @@ public class NetworkUniIslService {
             carrier.notifyIslDown(endpoint, reference, downReason);
         } else if (reference.isIncomplete()) {
             carrier.exhaustedPollModeUpdateRequest(endpoint, true);
-        }
-    }
-
-    private void handleBfdNotification(Endpoint endpoint, BfdStatus status) {
-        log.debug("Uni-ISL service receive BFD status update for {} - status:{}", endpoint, status);
-        IslReference reference = lookupEndpointData(endpoint);
-        if (isIslReferenceUsable(reference)) {
-            carrier.notifyBfdStatus(endpoint, reference, status);
         }
     }
 

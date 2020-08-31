@@ -35,9 +35,11 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.collect.Lists;
@@ -54,6 +56,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow_1";
@@ -73,6 +76,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
 
     static FlowRepository flowRepository;
     static FlowPathRepository flowPathRepository;
+    static PathSegmentRepository pathSegmentRepository;
     static SwitchRepository switchRepository;
 
     private Switch switchA;
@@ -82,6 +86,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     public static void setUp() {
         flowRepository = new Neo4jFlowRepository(neo4jSessionFactory, txManager);
         flowPathRepository = new Neo4jFlowPathRepository(neo4jSessionFactory, txManager);
+        pathSegmentRepository = new Neo4jPathSegmentRepository(neo4jSessionFactory, txManager);
         switchRepository = new Neo4jSwitchRepository(neo4jSessionFactory, txManager);
     }
 
@@ -106,6 +111,64 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
 
         assertEquals(switchA.getSwitchId(), foundFlow.getSrcSwitch().getSwitchId());
         assertEquals(switchB.getSwitchId(), foundFlow.getDestSwitch().getSwitchId());
+    }
+
+    @Test
+    public void findAllTest() {
+        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flowRepository.createOrUpdate(flow);
+        flowPathRepository.createOrUpdate(flow.getForwardPath());
+        flowPathRepository.createOrUpdate(flow.getReversePath());
+        Stream.concat(flow.getForwardPath().getSegments().stream(), flow.getReversePath().getSegments().stream())
+                .forEach(pathSegmentRepository::createOrUpdate);
+
+        Collection<Flow> allFlows = flowRepository.findAll();
+        assertEquals(1, allFlows.size());
+        Flow foundFlow = allFlows.iterator().next();
+
+        assertEquals(foundFlow, allFlows.iterator().next());
+        assertEquals(switchA, foundFlow.getSrcSwitch());
+        assertEquals(switchB, foundFlow.getDestSwitch());
+
+        // findAll() method must load only direct relations
+        assertNull(foundFlow.getForwardPath().getSrcSwitch());
+        assertNull(foundFlow.getForwardPath().getDestSwitch());
+        assertNull(foundFlow.getReversePath().getSrcSwitch());
+        assertNull(foundFlow.getReversePath().getDestSwitch());
+
+        assertTrue(foundFlow.getForwardPath().getSegments().isEmpty());
+        assertTrue(foundFlow.getReversePath().getSegments().isEmpty());
+    }
+
+    @Test
+    public void findAllWithFetchTest() {
+        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flowRepository.createOrUpdate(flow);
+        flowPathRepository.createOrUpdate(flow.getForwardPath());
+        flowPathRepository.createOrUpdate(flow.getReversePath());
+        Stream.concat(flow.getForwardPath().getSegments().stream(), flow.getReversePath().getSegments().stream())
+                .forEach(pathSegmentRepository::createOrUpdate);
+
+        Collection<Flow> allFlows = flowRepository.findAll(FetchStrategy.ALL_RELATIONS);
+        assertEquals(1, allFlows.size());
+        Flow foundFlow = allFlows.iterator().next();
+
+        assertEquals(foundFlow, allFlows.iterator().next());
+        assertEquals(switchA, foundFlow.getSrcSwitch());
+        assertEquals(switchB, foundFlow.getDestSwitch());
+
+        assertEquals(switchA, foundFlow.getForwardPath().getSrcSwitch());
+        assertEquals(switchB, foundFlow.getForwardPath().getDestSwitch());
+        assertEquals(switchB, foundFlow.getReversePath().getSrcSwitch());
+        assertEquals(switchA, foundFlow.getReversePath().getDestSwitch());
+
+        assertEquals(1, foundFlow.getForwardPath().getSegments().size());
+        assertEquals(1, foundFlow.getReversePath().getSegments().size());
+
+        assertEquals(switchA, foundFlow.getForwardPath().getSegments().iterator().next().getSrcSwitch());
+        assertEquals(switchB, foundFlow.getForwardPath().getSegments().iterator().next().getDestSwitch());
+        assertEquals(switchB, foundFlow.getReversePath().getSegments().iterator().next().getSrcSwitch());
+        assertEquals(switchA, foundFlow.getReversePath().getSegments().iterator().next().getDestSwitch());
     }
 
     @Test

@@ -16,12 +16,10 @@
 package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.flow.FlowHistoryData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.PortHistoryRequest;
 import org.openkilda.messaging.payload.history.FlowDumpPayload;
-import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryPayload;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.history.service.HistoryService;
@@ -30,7 +28,6 @@ import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.apache.storm.tuple.Tuple;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -59,12 +56,16 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
     }
 
     private List<InfoData> getFlowHistory(GetFlowHistoryRequest request) {
-        List<FlowEventPayload> flowEvents = listFlowEvents(
-                request.getFlowId(),
-                Instant.ofEpochSecond(request.getTimestampFrom()),
-                Instant.ofEpochSecond(request.getTimestampTo() + 1).minusMillis(1),
-                request.getMaxCount());
-        return Collections.singletonList(new FlowHistoryData(flowEvents));
+        Instant timeFrom = Instant.ofEpochSecond(request.getTimestampFrom());
+        Instant timeTo = Instant.ofEpochSecond(request.getTimestampTo() + 1).minusMillis(1);
+        return historyService.listFlowEvents(
+                request.getFlowId(), timeFrom, timeTo, request.getMaxCount()).stream()
+                .map(entry -> {
+                    List<FlowHistoryPayload> payload = listFlowHistories(entry.getTaskId());
+                    List<FlowDumpPayload> dumps = listFlowDumps(entry.getTaskId());
+                    return HistoryMapper.INSTANCE.map(entry, payload, dumps);
+                })
+                .collect(Collectors.toList());
     }
 
     private List<InfoData> getPortHistory(PortHistoryRequest request) {
@@ -72,15 +73,6 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
                request.getStart(), request.getEnd())
                 .stream()
                 .map(HistoryMapper.INSTANCE::map)
-                .collect(Collectors.toList());
-    }
-
-    private List<FlowEventPayload> listFlowEvents(String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
-        return historyService.listFlowEvents(flowId, timeFrom, timeTo, maxCount)
-                .stream()
-                .map(HistoryMapper.INSTANCE::map)
-                .peek(it -> it.setHistories(listFlowHistories(it.getTaskId())))
-                .peek(it -> it.setDumps(listFlowDumps(it.getTaskId())))
                 .collect(Collectors.toList());
     }
 

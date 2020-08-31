@@ -186,7 +186,7 @@ class FlowHelperV2 {
         def response = northboundV2.partialUpdate(flowId, flow)
         Wrappers.wait(PATH_INSTALLATION_TIME) {
             assert northboundV2.getFlowStatus(flowId).status == FlowState.UP
-            assert northbound.getFlowHistory(flowId).last().histories.last().action == UPDATE_SUCCESS
+            assert northbound.getFlowHistory(flowId).last().payload.last().action == UPDATE_SUCCESS
         }
         return response
     }

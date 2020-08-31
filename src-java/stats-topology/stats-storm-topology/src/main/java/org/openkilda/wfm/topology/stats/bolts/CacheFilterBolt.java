@@ -22,6 +22,7 @@ import org.openkilda.floodlight.api.request.EgressFlowSegmentInstallRequest;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.request.IngressFlowSegmentInstallRequest;
 import org.openkilda.floodlight.api.request.OneSwitchFlowInstallRequest;
+import org.openkilda.floodlight.api.request.TransitFlowSegmentInstallRequest;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.command.CommandData;
@@ -30,6 +31,7 @@ import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
+import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
@@ -145,8 +147,11 @@ public class CacheFilterBolt extends BaseRichBolt {
             } else if (data instanceof InstallOneSwitchFlow) {
                 InstallOneSwitchFlow command = (InstallOneSwitchFlow) data;
                 logMatchedRecord(command);
-                emitUpdateIngress(tuple, command, command.getMeterId());
-                emitUpdateEgress(tuple, command);
+                emitUpdateOneSwitch(tuple, command, command.getMeterId());
+            } else if (data instanceof InstallTransitFlow) {
+                InstallTransitFlow command = (InstallTransitFlow) data;
+                logMatchedRecord(command);
+                emitUpdateTransit(tuple, command);
             } else if (data instanceof RemoveFlow) {
                 RemoveFlow command = (RemoveFlow) data;
                 logMatchedRecord(command);
@@ -173,11 +178,13 @@ public class CacheFilterBolt extends BaseRichBolt {
             OneSwitchFlowInstallRequest request = (OneSwitchFlowInstallRequest) rawRequest;
             logMatchedRecord(request);
 
-            emit(input, Commands.UPDATE, MeasurePoint.INGRESS, request, request.getMeterConfig());
-            emit(input, Commands.UPDATE, MeasurePoint.EGRESS, request);
+            emit(input, Commands.UPDATE, MeasurePoint.ONE_SWITCH, request, request.getMeterConfig());
         } else if (rawRequest instanceof EgressFlowSegmentInstallRequest) {
             logMatchedRecord(rawRequest);
             emit(input, Commands.UPDATE, MeasurePoint.EGRESS, rawRequest);
+        } else if (rawRequest instanceof TransitFlowSegmentInstallRequest) {
+            logMatchedRecord(rawRequest);
+            emit(input, Commands.UPDATE, MeasurePoint.TRANSIT, rawRequest);
         } else if (rawRequest.isRemoveRequest()) {
             logMatchedRecord(rawRequest);
             emitRemove(input, rawRequest);
@@ -190,6 +197,14 @@ public class CacheFilterBolt extends BaseRichBolt {
 
     private void emitUpdateEgress(Tuple input, BaseFlow command) {
         emit(input, Commands.UPDATE, command, null, MeasurePoint.EGRESS);
+    }
+
+    private void emitUpdateTransit(Tuple input, BaseFlow command) {
+        emit(input, Commands.UPDATE, command, null, MeasurePoint.TRANSIT);
+    }
+
+    private void emitUpdateOneSwitch(Tuple input, BaseFlow command, Long meterId) {
+        emit(input, Commands.UPDATE, command, meterId, MeasurePoint.ONE_SWITCH);
     }
 
     private void emitRemove(Tuple tuple, BaseFlow command) {

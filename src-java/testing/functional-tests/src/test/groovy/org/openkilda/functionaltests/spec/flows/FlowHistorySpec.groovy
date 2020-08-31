@@ -12,7 +12,7 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.messaging.payload.history.FlowEventPayload
+import org.openkilda.messaging.payload.history.FlowHistoryEntry
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -215,26 +215,26 @@ class FlowHistorySpec extends HealthCheckSpecification {
         flowHistory.isEmpty()
     }
 
-    void checkHistoryCreateV1Action(FlowEventPayload flowHistory, String flowId) {
+    void checkHistoryCreateV1Action(FlowHistoryEntry flowHistory, String flowId) {
         assert flowHistory.action == CREATE_ACTION
-        assert flowHistory.histories.action[-1] == CREATE_SUCCESS
+        assert flowHistory.payload.action[-1] == CREATE_SUCCESS
         checkHistoryCommonStuff(flowHistory, flowId)
     }
 
-    void checkHistoryUpdateAction(FlowEventPayload flowHistory, String flowId) {
+    void checkHistoryUpdateAction(FlowHistoryEntry flowHistory, String flowId) {
         assert flowHistory.action == UPDATE_ACTION
-        assert flowHistory.histories.action[-1] == UPDATE_SUCCESS
+        assert flowHistory.payload.action[-1] == UPDATE_SUCCESS
         checkHistoryCommonStuff(flowHistory, flowId)
     }
 
-    void checkHistoryCommonStuff(FlowEventPayload flowHistory, String flowId) {
+    void checkHistoryCommonStuff(FlowHistoryEntry flowHistory, String flowId) {
         assert flowHistory.flowId == flowId
         assert flowHistory.taskId
     }
 
     /** We pass latest timestamp when changes were done.
      * Just for getting all records from history */
-    void checkHistoryDeleteAction(List<FlowEventPayload> flowHistory, String flowId) {
+    void checkHistoryDeleteAction(List<FlowHistoryEntry> flowHistory, String flowId) {
         checkHistoryCreateV1Action(flowHistory[0], flowId)
         checkHistoryUpdateAction(flowHistory[1], flowId)
     }

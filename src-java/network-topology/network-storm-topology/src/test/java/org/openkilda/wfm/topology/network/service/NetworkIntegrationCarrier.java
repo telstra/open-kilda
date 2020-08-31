@@ -27,7 +27,7 @@ import org.openkilda.model.SwitchStatus;
 import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
-import org.openkilda.wfm.topology.network.model.BfdStatus;
+import org.openkilda.wfm.topology.network.model.BfdStatusUpdate;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.OnlineStatus;
@@ -137,17 +137,22 @@ public class NetworkIntegrationCarrier
 
     @Override
     public void bfdUpNotification(Endpoint physicalEndpoint) {
-        uniIslService.uniIslBfdUpDown(physicalEndpoint, true);
+        uniIslService.uniIslBfdStatusUpdate(physicalEndpoint, BfdStatusUpdate.UP);
     }
 
     @Override
     public void bfdDownNotification(Endpoint physicalEndpoint) {
-        uniIslService.uniIslBfdUpDown(physicalEndpoint, false);
+        uniIslService.uniIslBfdStatusUpdate(physicalEndpoint, BfdStatusUpdate.DOWN);
     }
 
     @Override
     public void bfdKillNotification(Endpoint physicalEndpoint) {
-        uniIslService.uniIslBfdKill(physicalEndpoint);
+        uniIslService.uniIslBfdStatusUpdate(physicalEndpoint, BfdStatusUpdate.KILL);
+    }
+
+    @Override
+    public void bfdFailNotification(Endpoint physicalEndpoint) {
+        uniIslService.uniIslBfdStatusUpdate(physicalEndpoint, BfdStatusUpdate.FAIL);
     }
 
     @Override
@@ -233,7 +238,7 @@ public class NetworkIntegrationCarrier
     }
 
     @Override
-    public void notifyBfdStatus(Endpoint endpoint, IslReference reference, BfdStatus status) {
+    public void notifyBfdStatus(Endpoint endpoint, IslReference reference, BfdStatusUpdate status) {
         islService.bfdStatusUpdate(endpoint, reference, status);
     }
 
@@ -263,6 +268,11 @@ public class NetworkIntegrationCarrier
 
     @Override
     public void auxiliaryPollModeUpdateRequest(Endpoint endpoint, boolean enableAuxiliaryPollMode) {
+        // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
+    }
+
+    @Override
+    public void islRemovedNotification(Endpoint srcEndpoint, IslReference reference) {
         // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
     }
 }

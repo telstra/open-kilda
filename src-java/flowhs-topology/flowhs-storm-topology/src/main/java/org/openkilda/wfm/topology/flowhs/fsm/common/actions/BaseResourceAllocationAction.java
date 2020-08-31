@@ -23,12 +23,16 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.Isl;
+import org.openkilda.model.IslStatus;
+import org.openkilda.model.PathComputationStrategy;
+import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.FlowSegmentCookie.FlowSegmentCookieBuilder;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.PathComputer;
-import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
@@ -48,12 +52,15 @@ import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathBuilder;
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeException;
 import net.jodah.failsafe.RetryPolicy;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -196,9 +203,16 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
         } catch (FailsafeException ex) {
             throw ex.getCause();
         }
+
+        try {
+            checkAllocatedPaths(stateMachine);
+        } catch (ResourceAllocationException ex) {
+            saveRejectedResources(stateMachine);
+            throw ex;
+        }
     }
 
-    protected boolean isNotSamePath(PathPair pathPair, FlowPathPair flowPathPair) {
+    protected boolean isNotSamePath(GetPathsResult pathPair, FlowPathPair flowPathPair) {
         return flowPathPair.getForward() == null
                 || !flowPathBuilder.isSamePath(pathPair.getForward(), flowPathPair.getForward())
                 || flowPathPair.getReverse() == null
@@ -206,7 +220,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
     }
 
     protected FlowPathPair createFlowPathPair(Flow flow, List<FlowPath> pathsToReuseBandwidth,
-                                              PathPair pathPair, FlowResources flowResources,
+                                              GetPathsResult pathPair, FlowResources flowResources,
                                               boolean forceToIgnoreBandwidth) {
         final FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
                 .flowEffectiveId(flowResources.getUnmaskedCookie());
@@ -229,14 +243,15 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             flowPathRepository.createOrUpdate(newForwardPath);
             flowPathRepository.createOrUpdate(newReversePath);
 
-            updateIslsForFlowPath(newForwardPath, pathsToReuseBandwidth);
-            updateIslsForFlowPath(newReversePath, pathsToReuseBandwidth);
+            updateIslsForFlowPath(newForwardPath, pathsToReuseBandwidth, forceToIgnoreBandwidth);
+            updateIslsForFlowPath(newReversePath, pathsToReuseBandwidth, forceToIgnoreBandwidth);
         });
 
         return newFlowPaths;
     }
 
-    private void updateIslsForFlowPath(FlowPath flowPath, List<FlowPath> pathsToReuseBandwidth)
+    private void updateIslsForFlowPath(FlowPath flowPath, List<FlowPath> pathsToReuseBandwidth,
+                                       boolean forceToIgnoreBandwidth)
             throws ResourceAllocationException {
         for (PathSegment pathSegment : flowPath.getSegments()) {
             log.debug("Updating ISL for the path segment: {}", pathSegment);
@@ -259,19 +274,21 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
 
             updateAvailableBandwidth(pathSegment.getSrcSwitch().getSwitchId(), pathSegment.getSrcPort(),
                     pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort(),
-                    allowedOverprovisionedBandwidth);
+                    allowedOverprovisionedBandwidth, forceToIgnoreBandwidth);
         }
     }
 
-    private void updateAvailableBandwidth(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort,
-                                          long allowedOverprovisionedBandwidth) throws ResourceAllocationException {
+    @VisibleForTesting
+    void updateAvailableBandwidth(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort,
+                                         long allowedOverprovisionedBandwidth,
+                                         boolean forceToIgnoreBandwidth) throws ResourceAllocationException {
         long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(srcSwitch, srcPort,
                 dstSwitch, dstPort);
         log.debug("Updating ISL {}_{}-{}_{} with used bandwidth {}", srcSwitch, srcPort, dstSwitch, dstPort,
                 usedBandwidth);
         long islAvailableBandwidth =
                 islRepository.updateAvailableBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth);
-        if ((islAvailableBandwidth + allowedOverprovisionedBandwidth) < 0) {
+        if (!forceToIgnoreBandwidth && (islAvailableBandwidth + allowedOverprovisionedBandwidth) < 0) {
             throw new ResourceAllocationException(format("ISL %s_%d-%s_%d was overprovisioned",
                     srcSwitch, srcPort, dstSwitch, dstPort));
         }
@@ -285,5 +302,52 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                 format("The flow paths %s / %s were created (with allocated resources)",
                         newFlowPaths.getForward().getPathId(), newFlowPaths.getReverse().getPathId()),
                 dumpData);
+    }
+
+    private void checkAllocatedPaths(T stateMachine) throws ResourceAllocationException {
+        List<PathId> pathIds = makeAllocatedPathIdsList(stateMachine);
+
+        if (!pathIds.isEmpty()) {
+            Collection<Isl> pathIsls = islRepository.findByPathIds(pathIds);
+            for (Isl isl : pathIsls) {
+                if (!IslStatus.ACTIVE.equals(isl.getStatus())) {
+                    throw new ResourceAllocationException(
+                            format("ISL %s_%d-%s_%d is not active on the allocated path",
+                                    isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(),
+                                    isl.getDestSwitch().getSwitchId(), isl.getDestPort()));
+                }
+            }
+        }
+    }
+
+    private void saveRejectedResources(T stateMachine) {
+        stateMachine.getRejectedPaths().addAll(makeAllocatedPathIdsList(stateMachine));
+        Optional.ofNullable(stateMachine.getNewPrimaryResources())
+                .ifPresent(stateMachine.getRejectedResources()::add);
+        Optional.ofNullable(stateMachine.getNewProtectedResources())
+                .ifPresent(stateMachine.getRejectedResources()::add);
+
+        stateMachine.setNewPrimaryResources(null);
+        stateMachine.setNewPrimaryForwardPath(null);
+        stateMachine.setNewPrimaryReversePath(null);
+        stateMachine.setNewProtectedResources(null);
+        stateMachine.setNewProtectedForwardPath(null);
+        stateMachine.setNewProtectedReversePath(null);
+    }
+
+    private List<PathId> makeAllocatedPathIdsList(T stateMachine) {
+        List<PathId> pathIds = new ArrayList<>();
+        Optional.ofNullable(stateMachine.getNewPrimaryForwardPath()).ifPresent(pathIds::add);
+        Optional.ofNullable(stateMachine.getNewPrimaryReversePath()).ifPresent(pathIds::add);
+        Optional.ofNullable(stateMachine.getNewProtectedForwardPath()).ifPresent(pathIds::add);
+        Optional.ofNullable(stateMachine.getNewProtectedReversePath()).ifPresent(pathIds::add);
+        return pathIds;
+    }
+
+    protected PathComputationStrategy[] getBackUpStrategies(PathComputationStrategy strategy) {
+        if (PathComputationStrategy.MAX_LATENCY.equals(strategy)) {
+            return new PathComputationStrategy[] {PathComputationStrategy.LATENCY};
+        }
+        return new PathComputationStrategy[0];
     }
 }

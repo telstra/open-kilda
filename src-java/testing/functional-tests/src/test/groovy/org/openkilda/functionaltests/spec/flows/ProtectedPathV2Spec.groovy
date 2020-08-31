@@ -5,8 +5,9 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -281,6 +282,49 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         flowDescription | bandwidth
         "a metered"     | 1000
         "an unmetered"  | 0
+    }
+
+    @Tidy
+    def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute"() {
+        given: "Two switches with 2 diverse paths at least"
+        def switchPair = topologyHelper.switchPairs.find {
+            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() > 1
+        } ?: assumeTrue("No switches with at least 2 diverse paths", false)
+
+        when: "Create flow with protected path"
+        def flow = flowHelperV2.randomFlow(switchPair).tap { allocateProtectedPath = true }
+        flowHelperV2.addFlow(flow)
+        def path = northbound.getFlowPath(flow.flowId)
+
+        and: "Other paths have not enough bandwidth to host the flow in case of reroute"
+        def otherIsls = switchPair.paths.findAll { it != pathHelper.convert(path.protectedPath) &&
+                it != pathHelper.convert(path) }.collectMany { pathHelper.getInvolvedIsls(it) }
+                .unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
+        otherIsls.collectMany{[it, it.reversed]}.each {
+            database.updateIslAvailableBandwidth(it, flow.maximumBandwidth - 1)
+        }
+
+        and: "Main flow path breaks"
+        def mainIsl = pathHelper.getInvolvedIsls(path).first()
+        antiflap.portDown(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
+
+        then: "Main path swaps to protected, flow becomes degraded, main path UP, protected DOWN"
+        Wrappers.wait(WAIT_OFFSET) {
+            def newPath = northbound.getFlowPath(flow.flowId)
+            assert pathHelper.convert(newPath) == pathHelper.convert(path.protectedPath)
+            verifyAll(northbound.getFlow(flow.flowId)) {
+                status == FlowState.DEGRADED.toString()
+                flowStatusDetails.mainFlowPathStatus == "Up"
+                flowStatusDetails.protectedFlowPathStatus == "Down"
+                statusInfo.startsWith("Not enough bandwidth or no path found. Failed to find path with requested bandwidth=$flow.maximumBandwidth")
+            }
+        }
+
+        cleanup:
+        flowHelperV2.deleteFlow(flow.flowId)
+        mainIsl && antiflap.portUp(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
+        otherIsls && otherIsls.collectMany{[it, it.reversed]}.each { database.resetIslBandwidth(it) }
+        database.resetCosts()
     }
 
     @Tidy
@@ -983,7 +1027,9 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow.flowId).find {
+                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+            }?.payload?.last()?.action == REROUTE_FAIL
         }
         verifyAll(northboundV2.getFlow(flow.flowId).statusDetails) {
             mainPath == "Down"
@@ -1153,7 +1199,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
                 status == FlowState.DEGRADED.toString()
                 statusInfo == "Reroute is unsuccessful. Couldn't find new path(s)"
             }
-            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
         }
 
         when: "Update flow: disable protected path(allocateProtectedPath=false)"

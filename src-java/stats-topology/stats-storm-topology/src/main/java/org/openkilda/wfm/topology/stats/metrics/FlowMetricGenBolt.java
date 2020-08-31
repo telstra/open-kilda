@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.topology.stats.metrics;
 
+import static org.openkilda.wfm.topology.stats.MeasurePoint.EGRESS;
+import static org.openkilda.wfm.topology.stats.MeasurePoint.INGRESS;
+import static org.openkilda.wfm.topology.stats.MeasurePoint.ONE_SWITCH;
 import static org.openkilda.wfm.topology.stats.StatsTopology.STATS_FIELD;
 import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.COOKIE_CACHE_FIELD;
 
@@ -81,28 +84,18 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         if (flowEntry != null) {
             Map<String, String> flowTags = makeFlowTags(entry, flowEntry.getFlowId());
 
-            boolean isMatch = false;
             if (isFlowSegmentEntry) {
-                if (switchId.toOtsdFormat().equals(flowEntry.getIngressSwitch())) {
+                if (flowEntry.getMeasurePoint() == INGRESS || flowEntry.getMeasurePoint() == ONE_SWITCH) {
                     emitIngressMetrics(entry, timestamp, flowTags);
-                    isMatch = true;
                 }
-                if (switchId.toOtsdFormat().equals(flowEntry.getEgressSwitch())) {
+                if (flowEntry.getMeasurePoint() == EGRESS || flowEntry.getMeasurePoint() == ONE_SWITCH) {
                     emitEgressMetrics(entry, timestamp, flowTags);
-                    isMatch = true;
                 }
-            }
-
-            if (!isMatch && log.isDebugEnabled()) {
-                log.debug("FlowStatsEntry with cookie {} and flow {} is not ingress not egress bc switch {} "
-                                + "is not any of {}, {}", entry.getCookie(), flowId, switchId,
-                        flowEntry.getIngressSwitch(), flowEntry.getEgressSwitch());
             }
         }
     }
 
-    private void emitAnySwitchMetrics(FlowStatsEntry entry, long timestamp, SwitchId switchId, String flowId)
-            throws FlowCookieException {
+    private void emitAnySwitchMetrics(FlowStatsEntry entry, long timestamp, SwitchId switchId, String flowId) {
         Map<String, String> tags = new HashMap<>();
         tags.put("switchid", switchId.toOtsdFormat());
         tags.put("cookie", String.valueOf(entry.getCookie()));

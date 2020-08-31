@@ -17,6 +17,9 @@ package org.openkilda.wfm.topology.stats.bolts;
 
 import static java.util.Arrays.asList;
 import static org.mockito.Mockito.when;
+import static org.openkilda.wfm.topology.stats.MeasurePoint.EGRESS;
+import static org.openkilda.wfm.topology.stats.MeasurePoint.INGRESS;
+import static org.openkilda.wfm.topology.stats.MeasurePoint.TRANSIT;
 
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
@@ -26,13 +29,16 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
+import org.openkilda.wfm.topology.stats.MeasurePoint;
 import org.openkilda.wfm.topology.stats.MeterCacheKey;
 
 import org.junit.Assert;
@@ -41,7 +47,9 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -60,6 +68,7 @@ public class CacheBoltTest {
 
     private static final SwitchId SRC_SWITCH_ID = new SwitchId(1L);
     private static final SwitchId DST_SWITCH_ID = new SwitchId(2L);
+    private static final SwitchId TRANSIT_SWITCH_ID = new SwitchId(3L);
 
     @Mock
     private PersistenceManager persistenceManager;
@@ -71,7 +80,7 @@ public class CacheBoltTest {
     @Test
     public void cacheBoltInitCookieTest() {
         Flow flow = getFlow();
-        when(flowRepository.findAll()).thenReturn(Collections.singletonList(flow));
+        when(flowRepository.findAll(FetchStrategy.ALL_RELATIONS)).thenReturn(Collections.singletonList(flow));
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
@@ -80,21 +89,31 @@ public class CacheBoltTest {
 
         Map<Long, CacheFlowEntry> srcCache = cacheBolt.createCookieToFlowCache(getFlowStatsDataSrcSwitch());
 
-        Assert.assertEquals(2, srcCache.size());
-        assertCookieCache(flow, srcCache, FORWARD_PATH_COOKIE);
-        assertCookieCache(flow, srcCache, PROTECTED_FORWARD_PATH_COOKIE);
+        Assert.assertEquals(3, srcCache.size());
+        assertCookieCache(flow, srcCache, FORWARD_PATH_COOKIE, INGRESS);
+        assertCookieCache(flow, srcCache, REVERSE_PATH_COOKIE, EGRESS);
+        assertCookieCache(flow, srcCache, PROTECTED_REVERSE_PATH_COOKIE, EGRESS);
 
         Map<Long, CacheFlowEntry> dstCache = cacheBolt.createCookieToFlowCache(getFlowStatsDataDstSwitch());
 
-        Assert.assertEquals(2, dstCache.size());
-        assertCookieCache(flow, dstCache, REVERSE_PATH_COOKIE);
-        assertCookieCache(flow, dstCache, PROTECTED_REVERSE_PATH_COOKIE);
+        Assert.assertEquals(3, dstCache.size());
+        assertCookieCache(flow, dstCache, FORWARD_PATH_COOKIE, EGRESS);
+        assertCookieCache(flow, dstCache, REVERSE_PATH_COOKIE, INGRESS);
+        assertCookieCache(flow, dstCache, PROTECTED_FORWARD_PATH_COOKIE, EGRESS);
+
+        Map<Long, CacheFlowEntry> transitCache = cacheBolt.createCookieToFlowCache(getFlowStatsDataTransitSwitch());
+
+        Assert.assertEquals(4, transitCache.size());
+        assertCookieCache(flow, transitCache, REVERSE_PATH_COOKIE, TRANSIT);
+        assertCookieCache(flow, transitCache, PROTECTED_REVERSE_PATH_COOKIE, TRANSIT);
+        assertCookieCache(flow, transitCache, PROTECTED_REVERSE_PATH_COOKIE, TRANSIT);
+        assertCookieCache(flow, transitCache, PROTECTED_REVERSE_PATH_COOKIE, TRANSIT);
     }
 
     @Test
     public void cacheBoltInitMeterTest() {
         Flow flow = getFlow();
-        when(flowRepository.findAll()).thenReturn(Collections.singletonList(flow));
+        when(flowRepository.findAll(FetchStrategy.ALL_RELATIONS)).thenReturn(Collections.singletonList(flow));
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
@@ -114,12 +133,17 @@ public class CacheBoltTest {
 
         assertMeterCache(flow, DST_SWITCH_ID, dstCache, REVERSE_METER_ID, REVERSE_PATH_COOKIE);
         assertMeterCache(flow, DST_SWITCH_ID, dstCache, PROTECTED_REVERSE_METER_ID, PROTECTED_REVERSE_PATH_COOKIE);
+
+        Map<MeterCacheKey, CacheFlowEntry> transitCache = cacheBolt.createSwitchAndMeterToFlowCache(
+                getMeterStatsDataDstSwitch());
     }
 
-    private void assertCookieCache(Flow flow, Map<Long, CacheFlowEntry> cookieToFlowCache, Long cookie) {
+    private void assertCookieCache(Flow flow, Map<Long, CacheFlowEntry> cookieToFlowCache, Long cookie,
+                                   MeasurePoint measurePoint) {
         CacheFlowEntry entry = cookieToFlowCache.get(cookie);
         Assert.assertEquals(flow.getFlowId(), entry.getFlowId());
         Assert.assertEquals(cookie, entry.getCookie());
+        Assert.assertEquals(measurePoint, entry.getMeasurePoint());
     }
 
     private void assertMeterCache(Flow flow, SwitchId switchId, Map<MeterCacheKey, CacheFlowEntry> cache,
@@ -147,6 +171,18 @@ public class CacheBoltTest {
     }
 
     private FlowPath getPath(Flow flow, Switch src, Switch dest, long cookie, long meterId) {
+        Switch transitSwitch = Switch.builder().switchId(TRANSIT_SWITCH_ID).build();
+
+        List<PathSegment> segments = new ArrayList<>();
+        segments.add(PathSegment.builder()
+                .srcSwitch(src)
+                .destSwitch(transitSwitch)
+                .build());
+        segments.add(PathSegment.builder()
+                .srcSwitch(transitSwitch)
+                .destSwitch(dest)
+                .build());
+
         return FlowPath.builder()
                 .pathId(new PathId(uuid()))
                 .flow(flow)
@@ -154,6 +190,7 @@ public class CacheBoltTest {
                 .destSwitch(dest)
                 .cookie(new FlowSegmentCookie(cookie))
                 .meterId(new MeterId(meterId))
+                .segments(segments)
                 .build();
     }
 
@@ -164,12 +201,22 @@ public class CacheBoltTest {
     private FlowStatsData getFlowStatsDataSrcSwitch() {
         return new FlowStatsData(SRC_SWITCH_ID, asList(
                 new FlowStatsEntry(0, FORWARD_PATH_COOKIE, 0, 0, 0, 0),
-                new FlowStatsEntry(0, PROTECTED_FORWARD_PATH_COOKIE, 0, 0, 0, 0)));
+                new FlowStatsEntry(0, REVERSE_PATH_COOKIE, 0, 0, 0, 0),
+                new FlowStatsEntry(0, PROTECTED_REVERSE_PATH_COOKIE, 0, 0, 0, 0)));
     }
 
     private FlowStatsData getFlowStatsDataDstSwitch() {
         return new FlowStatsData(DST_SWITCH_ID, asList(
+                new FlowStatsEntry(0, FORWARD_PATH_COOKIE, 0, 0, 0, 0),
                 new FlowStatsEntry(0, REVERSE_PATH_COOKIE, 0, 0, 0, 0),
+                new FlowStatsEntry(0, PROTECTED_FORWARD_PATH_COOKIE, 0, 0, 0, 0)));
+    }
+
+    private FlowStatsData getFlowStatsDataTransitSwitch() {
+        return new FlowStatsData(TRANSIT_SWITCH_ID, asList(
+                new FlowStatsEntry(0, FORWARD_PATH_COOKIE, 0, 0, 0, 0),
+                new FlowStatsEntry(0, REVERSE_PATH_COOKIE, 0, 0, 0, 0),
+                new FlowStatsEntry(0, PROTECTED_FORWARD_PATH_COOKIE, 0, 0, 0, 0),
                 new FlowStatsEntry(0, PROTECTED_REVERSE_PATH_COOKIE, 0, 0, 0, 0)));
     }
 

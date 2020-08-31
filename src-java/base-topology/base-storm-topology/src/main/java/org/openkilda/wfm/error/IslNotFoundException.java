@@ -16,8 +16,13 @@
 package org.openkilda.wfm.error;
 
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.share.model.Endpoint;
 
 public class IslNotFoundException extends Exception {
+    public IslNotFoundException(Endpoint leftEnd, Endpoint rightEnd) {
+        this(leftEnd.getDatapath(), leftEnd.getPortNumber(), rightEnd.getDatapath(), rightEnd.getPortNumber());
+    }
+
     public IslNotFoundException(SwitchId srcSwitchId, Integer srcPort, SwitchId dstSwitchId, Integer dstPort) {
         super(String.format("There is no ISL between %s-%d and %s-%d.", srcSwitchId, srcPort, dstSwitchId, dstPort));
     }

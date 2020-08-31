@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,18 +16,19 @@
 package org.openkilda.wfm.topology.network.storm.bolt.uniisl.command;
 
 import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.UniIslHandler;
 
-public class UniIslBfdUpDownCommand extends UniIslCommand {
-    private final boolean up;
+public class UniIslNotifyIslRemovedCommand extends UniIslCommand {
+    private final IslReference reference;
 
-    public UniIslBfdUpDownCommand(Endpoint endpoint, boolean up) {
+    public UniIslNotifyIslRemovedCommand(Endpoint endpoint, IslReference reference) {
         super(endpoint);
-        this.up = up;
+        this.reference = reference;
     }
 
     @Override
     public void apply(UniIslHandler handler) {
-        handler.processBfdUpDown(getEndpoint(), up);
+        handler.processIslRemovedNotification(getEndpoint(), reference);
     }
 }

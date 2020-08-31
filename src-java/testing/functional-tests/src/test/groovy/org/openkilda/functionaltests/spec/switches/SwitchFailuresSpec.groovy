@@ -70,7 +70,9 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
             def currentIsls = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow.flowId)))
             def pathChanged = !currentIsls.contains(isl) && !currentIsls.contains(isl.reversed)
             assert pathChanged || (northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN &&
-                    northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL })
+                    northbound.getFlowHistory(flow.flowId).find {
+                        it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+                    }?.payload?.last()?.action == REROUTE_FAIL)
         }
 
         and: "Cleanup: restore connection, remove the flow"
@@ -97,14 +99,14 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         and: "Switch reconnects in the middle of reroute"
         Wrappers.wait(WAIT_OFFSET, 0) {
             def reroute = northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }
-            assert reroute.histories.last().action == "Started validation of installed non ingress rules"
+            assert reroute.payload.last().action == "Started validation of installed non ingress rules"
         }
         lockKeeper.reviveSwitch(swPair.src, lockKeeper.knockoutSwitch(swPair.src, RW))
 
         then: "Flow reroute is successful"
         Wrappers.wait(PATH_INSTALLATION_TIME * 2) { //double timeout since rerouted is slowed by delay
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert northbound.getFlowHistory(flow.flowId).last().histories.last().action == REROUTE_SUCCESS
+            assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == REROUTE_SUCCESS
         }
 
         and: "Blinking switch has no rule anomalies"

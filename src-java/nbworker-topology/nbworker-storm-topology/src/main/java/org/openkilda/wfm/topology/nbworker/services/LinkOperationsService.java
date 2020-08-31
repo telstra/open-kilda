@@ -25,6 +25,7 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.error.IllegalIslStateException;
 import org.openkilda.wfm.error.IslNotFoundException;
+import org.openkilda.wfm.share.model.Endpoint;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -41,7 +42,6 @@ public class LinkOperationsService {
     private IslRepository islRepository;
     private FlowPathRepository flowPathRepository;
     private TransactionManager transactionManager;
-
 
     public LinkOperationsService(ILinkOperationsServiceCarrier carrier,
                                  RepositoryFactory repositoryFactory,
@@ -153,36 +153,41 @@ public class LinkOperationsService {
     /**
      * Update the "Under maintenance" flag in ISL.
      *
-     * @param srcSwitchId source switch id.
-     * @param srcPort source port.
-     * @param dstSwitchId destination switch id.
-     * @param dstPort destination port.
-     * @param enableBfd "Enable bfd" flag.
-     * @return updated isl.
      * @throws IslNotFoundException if there is no isl with these parameters.
      */
-    public Collection<Isl> updateLinkEnableBfdFlag(SwitchId srcSwitchId, Integer srcPort,
-                                                    SwitchId dstSwitchId, Integer dstPort,
-                                                    boolean enableBfd) throws IslNotFoundException {
+    public Collection<Isl> updateEnableBfdFlag(Endpoint source, Endpoint destination, boolean flagValue)
+            throws IslNotFoundException {
         return transactionManager.doInTransaction(() -> {
-            Optional<Isl> foundIsl = islRepository.findByEndpoints(srcSwitchId, srcPort, dstSwitchId, dstPort);
-            if (!foundIsl.isPresent()) {
-                return Optional.<List<Isl>>empty();
+            List<Isl> processed = new ArrayList<>(2);
+            boolean madeChange;
+            madeChange = updateUniIslEnableBfdFlag(source, destination, flagValue, processed);
+            madeChange |= updateUniIslEnableBfdFlag(destination, source, flagValue, processed);
+
+            if (processed.size() != 2) {
+                throw new IslNotFoundException(source, destination);
+            }
+            if (madeChange) {
+                carrier.islBfdFlagChanged(processed.get(0));
             }
 
-            Isl isl = foundIsl.get();
+            return processed;
+        });
+    }
 
-            if (isl.isEnableBfd() == enableBfd) {
-                return Optional.of(Arrays.asList(isl));
-            }
+    private boolean updateUniIslEnableBfdFlag(
+            Endpoint leftEnd, Endpoint rightEnd, boolean flagValue, List<Isl> processed) {
+        Optional<Isl> isl = islRepository.findByEndpoints(
+                leftEnd.getDatapath(), leftEnd.getPortNumber(), rightEnd.getDatapath(), rightEnd.getPortNumber());
+        boolean madeChange = false;
+        if (isl.isPresent()) {
+            Isl target = isl.get();
+            madeChange = target.isEnableBfd() != flagValue;
 
-            isl.setEnableBfd(enableBfd);
+            target.setEnableBfd(flagValue);
+            islRepository.createOrUpdate(target);
 
-            islRepository.createOrUpdate(isl);
-
-            carrier.islBfdFlagChanged(isl);
-
-            return Optional.of(Arrays.asList(isl));
-        }).orElseThrow(() -> new IslNotFoundException(srcSwitchId, srcPort, dstSwitchId, dstPort));
+            processed.add(target);
+        }
+        return madeChange;
     }
 }

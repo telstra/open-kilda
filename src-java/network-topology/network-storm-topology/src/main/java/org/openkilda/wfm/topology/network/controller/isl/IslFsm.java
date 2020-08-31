@@ -299,7 +299,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void deletedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("Isl FSM for {} have reached termination state (ready for being removed)", reference);
-        sendEnableExhaustedPollMode(context.getOutput());
+        sendIslRemovedNotification(context.getOutput());
     }
 
     public void resurrectNotification(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -343,9 +343,9 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         }
     }
 
-    private void sendEnableExhaustedPollMode(IIslCarrier carrier) {
-        carrier.exhaustedPollModeUpdateRequest(reference.getSource(), true);
-        carrier.exhaustedPollModeUpdateRequest(reference.getDest(), true);
+    private void sendIslRemovedNotification(IIslCarrier carrier) {
+        carrier.islRemovedNotification(reference.getSource(), reference);
+        carrier.islRemovedNotification(reference.getDest(), reference);
     }
 
     private void sendRemoveMultiTable(IIslCarrier carrier) {
@@ -834,6 +834,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                     .callMethod(action);
             builder.internalTransition().within(target).on(IslFsmEvent.BFD_KILL)
                     .callMethod(action);
+            builder.internalTransition().within(target).on(IslFsmEvent.BFD_FAIL)
+                    .callMethod(action);
             builder.internalTransition().within(target).on(IslFsmEvent.ROUND_TRIP_STATUS)
                     .callMethod(action);
 
@@ -876,7 +878,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         _BECOME_UP, _BECOME_DOWN, _BECOME_MOVED,
         _RESOURCES_DONE,
         _REMOVE_CONFIRMED,
-        BFD_UP, BFD_DOWN, BFD_KILL,
+        BFD_UP, BFD_DOWN, BFD_KILL, BFD_FAIL,
 
         HISTORY, ROUND_TRIP_STATUS,
         ISL_UP, ISL_DOWN, ISL_MOVE,

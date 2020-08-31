@@ -33,10 +33,12 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
+import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
 import java.util.Objects;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class RevertResourceAllocationAction extends
@@ -52,19 +54,24 @@ public class RevertResourceAllocationAction extends
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         persistenceManager.getTransactionManager().doInTransaction(() -> {
-            Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
+            Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.ALL_RELATIONS);
 
             FlowResources newPrimaryResources = stateMachine.getNewPrimaryResources();
             if (newPrimaryResources != null) {
-                resourcesManager.deallocatePathResources(newPrimaryResources);
                 saveHistory(stateMachine, flow, newPrimaryResources);
+                resourcesManager.deallocatePathResources(newPrimaryResources);
             }
 
             FlowResources newProtectedResources = stateMachine.getNewProtectedResources();
             if (newProtectedResources != null) {
-                resourcesManager.deallocatePathResources(newProtectedResources);
                 saveHistory(stateMachine, flow, newProtectedResources);
+                resourcesManager.deallocatePathResources(newProtectedResources);
             }
+
+            stateMachine.getRejectedResources().forEach(flowResources -> {
+                saveHistory(stateMachine, flow, flowResources);
+                resourcesManager.deallocatePathResources(flowResources);
+            });
 
             FlowPath newPrimaryForward = null;
             FlowPath newPrimaryReverse = null;
@@ -82,8 +89,15 @@ public class RevertResourceAllocationAction extends
                 newProtectedReverse = getFlowPath(stateMachine.getNewProtectedReversePath());
             }
 
-            flowPathRepository.lockInvolvedSwitches(Stream.of(newPrimaryForward, newPrimaryReverse,
-                    newProtectedForward, newProtectedReverse).filter(Objects::nonNull).toArray(FlowPath[]::new));
+            List<FlowPath> flowPaths = Lists.newArrayList(newPrimaryForward, newPrimaryReverse,
+                    newProtectedForward, newProtectedReverse);
+            List<FlowPath> rejectedFlowPaths = stateMachine.getRejectedPaths().stream()
+                    .map(this::getFlowPath)
+                    .collect(Collectors.toList());
+            flowPaths.addAll(rejectedFlowPaths);
+
+            flowPathRepository.lockInvolvedSwitches(
+                    flowPaths.stream().filter(Objects::nonNull).toArray(FlowPath[]::new));
 
             if (newPrimaryForward != null && newPrimaryReverse != null) {
                 log.debug("Removing the new primary paths {} / {}", newPrimaryForward, newPrimaryReverse);
@@ -102,6 +116,13 @@ public class RevertResourceAllocationAction extends
 
                 saveRemovalActionWithDumpToHistory(stateMachine, flow, pathsToDelete);
             }
+
+            rejectedFlowPaths.forEach(flowPath -> {
+                log.debug("Removing the rejected path {}", flowPath);
+                deleteFlowPath(flowPath);
+
+                saveRemovalActionWithDumpToHistory(stateMachine, flow, flowPath);
+            });
         });
 
         stateMachine.setNewPrimaryResources(null);

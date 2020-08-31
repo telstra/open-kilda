@@ -60,7 +60,7 @@ import org.openkilda.stubs.ManualClock;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
-import org.openkilda.wfm.topology.network.model.BfdStatus;
+import org.openkilda.wfm.topology.network.model.BfdStatusUpdate;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
@@ -429,8 +429,9 @@ public class NetworkIslServiceTest {
         verify(carrier).auxiliaryPollModeUpdateRequest(endpointAlpha1, false);
         verify(carrier).auxiliaryPollModeUpdateRequest(endpointBeta2, false);
 
-        verify(carrier).exhaustedPollModeUpdateRequest(endpointAlpha1, true);
-        verify(carrier).exhaustedPollModeUpdateRequest(endpointBeta2, true);
+        IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
+        verify(carrier).islRemovedNotification(endpointAlpha1, reference);
+        verify(carrier).islRemovedNotification(endpointBeta2, reference);
 
         verifyNoMoreInteractions(carrier);
     }
@@ -673,34 +674,34 @@ public class NetworkIslServiceTest {
         reset(dashboardLogger);
 
         // one BFD session is removed
-        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatus.DOWN);
+        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatusUpdate.DOWN);
 
         // one BFD session is reinstalled
-        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatus.UP);
-        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatus.DOWN);
+        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatusUpdate.UP);
+        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatusUpdate.DOWN);
 
         // second BFD session is reinstalled
-        service.bfdStatusUpdate(endpointBeta2, reference, BfdStatus.UP);
+        service.bfdStatusUpdate(endpointBeta2, reference, BfdStatusUpdate.UP);
         verify(carrier).auxiliaryPollModeUpdateRequest(eq(reference.getSource()), eq(true));
         verify(carrier).auxiliaryPollModeUpdateRequest(eq(reference.getDest()), eq(true));
-        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatus.UP);
+        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatusUpdate.UP);
 
         verify(dashboardLogger, never()).onIslDown(eq(reference));
 
         // only now BFD events must be able to control ISL state
-        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatus.DOWN);
+        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatusUpdate.DOWN);
         verify(dashboardLogger, never()).onIslDown(eq(reference));  // opposite session still UP
-        service.bfdStatusUpdate(endpointBeta2, reference, BfdStatus.DOWN);
+        service.bfdStatusUpdate(endpointBeta2, reference, BfdStatusUpdate.DOWN);
 
         verify(dashboardLogger).onIslDown(eq(reference));  // both BFD session are down
         reset(dashboardLogger);
 
-        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatus.UP);
+        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatusUpdate.UP);
         verify(dashboardLogger).onIslUp(eq(reference));  // one BFD session enough to raise ISL UP
         verifyNoMoreInteractions(dashboardLogger);
         reset(dashboardLogger);
 
-        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatus.DOWN);
+        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatusUpdate.DOWN);
         verify(dashboardLogger).onIslDown(eq(reference));  // both BFD session are down (again)
     }
 
@@ -717,8 +718,8 @@ public class NetworkIslServiceTest {
         service.islUp(reference.getSource(), reference, new IslDataHolder(100, 100, 100));
         verifyNoMoreInteractions(dashboardLogger);
 
-        service.bfdStatusUpdate(reference.getSource(), reference, BfdStatus.DOWN);
-        service.bfdStatusUpdate(reference.getDest(), reference, BfdStatus.DOWN);
+        service.bfdStatusUpdate(reference.getSource(), reference, BfdStatusUpdate.DOWN);
+        service.bfdStatusUpdate(reference.getDest(), reference, BfdStatusUpdate.DOWN);
 
         // from poll point of view ISL is UP but BFD must force status to DOWN
         verify(dashboardLogger).onIslDown(eq(reference));
@@ -738,8 +739,8 @@ public class NetworkIslServiceTest {
     private IslReference prepareBfdEnabledIsl() {
         IslReference reference = prepareActiveIsl();
 
-        service.bfdStatusUpdate(reference.getSource(), reference, BfdStatus.UP);
-        service.bfdStatusUpdate(reference.getDest(), reference, BfdStatus.UP);
+        service.bfdStatusUpdate(reference.getSource(), reference, BfdStatusUpdate.UP);
+        service.bfdStatusUpdate(reference.getDest(), reference, BfdStatusUpdate.UP);
 
         return reference;
     }

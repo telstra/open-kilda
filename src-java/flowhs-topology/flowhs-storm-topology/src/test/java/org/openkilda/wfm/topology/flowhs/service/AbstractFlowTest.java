@@ -40,12 +40,13 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
 import org.openkilda.pce.PathComputer;
-import org.openkilda.pce.PathPair;
 import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.dummy.IslDirectionalReference;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
@@ -294,8 +295,8 @@ public abstract class AbstractFlowTest extends Neo4jBasedTest {
                         flowDestination.getOuterVlanId()));
     }
 
-    protected PathPair makeOneSwitchPathPair() {
-        return PathPair.builder()
+    protected GetPathsResult makeOneSwitchPathPair() {
+        return GetPathsResult.builder()
                 .forward(Path.builder()
                         .srcSwitchId(SWITCH_SOURCE)
                         .destSwitchId(SWITCH_SOURCE)
@@ -309,21 +310,21 @@ public abstract class AbstractFlowTest extends Neo4jBasedTest {
                 .build();
     }
 
-    protected PathPair make2SwitchesPathPair() {
+    protected GetPathsResult make2SwitchesPathPair() {
         return makeSourceDestPathPair(islSourceDest);
     }
 
-    protected PathPair make2SwitchAltPathPair() {
+    protected GetPathsResult make2SwitchAltPathPair() {
         return makeSourceDestPathPair(islSourceDestAlt);
     }
 
-    private PathPair makeSourceDestPathPair(IslDirectionalReference islReference) {
+    private GetPathsResult makeSourceDestPathPair(IslDirectionalReference islReference) {
         List<Segment> forwardSegments = ImmutableList.of(
                 makePathSegment(islReference));
         List<Segment> reverseSegments = ImmutableList.of(
                 makePathSegment(islReference.makeOpposite()));
 
-        return PathPair.builder()
+        return GetPathsResult.builder()
                 .forward(Path.builder()
                         .srcSwitchId(SWITCH_SOURCE)
                         .destSwitchId(SWITCH_DEST)
@@ -334,10 +335,15 @@ public abstract class AbstractFlowTest extends Neo4jBasedTest {
                         .destSwitchId(SWITCH_SOURCE)
                         .segments(reverseSegments)
                         .build())
+                .usedStrategy(PathComputationStrategy.COST)
                 .build();
     }
 
-    protected PathPair make3SwitchesPathPair() {
+    protected GetPathsResult make3SwitchesPathPair() {
+        return make3SwitchesPathPair(PathComputationStrategy.COST);
+    }
+
+    protected GetPathsResult make3SwitchesPathPair(PathComputationStrategy pathComputationStrategy) {
         List<Segment> forwardSegments = ImmutableList.of(
                 makePathSegment(islSourceTransit),
                 makePathSegment(islTransitDest));
@@ -345,7 +351,7 @@ public abstract class AbstractFlowTest extends Neo4jBasedTest {
                 makePathSegment(islTransitDest.makeOpposite()),
                 makePathSegment(islSourceTransit.makeOpposite()));
 
-        return PathPair.builder()
+        return GetPathsResult.builder()
                 .forward(Path.builder()
                         .srcSwitchId(SWITCH_SOURCE)
                         .destSwitchId(SWITCH_DEST)
@@ -356,6 +362,7 @@ public abstract class AbstractFlowTest extends Neo4jBasedTest {
                         .destSwitchId(SWITCH_SOURCE)
                         .segments(reverseSegments)
                         .build())
+                .usedStrategy(pathComputationStrategy)
                 .build();
     }
 

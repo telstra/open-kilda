@@ -11,7 +11,7 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.payload.history.FlowEventPayload
+import org.openkilda.messaging.payload.history.FlowHistoryEntry
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.history.FlowEvent
@@ -39,7 +39,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
     @Shared
     String flowWithHistory
     @Shared
-    List<FlowEventPayload> bigHistory
+    List<FlowHistoryEntry> bigHistory
 
     def setupOnce() {
         specStartTime = System.currentTimeSeconds()
@@ -104,13 +104,44 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         }
 
         when: "Update the created flow"
-        flowHelperV2.updateFlow(flow.flowId, flow.tap { it.description = it.description + "updated" })
+        def updatedFlow = flow.jacksonCopy().tap {
+            it.maximumBandwidth = flow.maximumBandwidth + 1
+            it.maxLatency = flow.maxLatency + 1
+            it.pinned = !flow.pinned
+            it.periodicPings = !flow.periodicPings
+            it.source.vlanId = flow.source.vlanId + 1
+            it.destination.vlanId = flow.destination.vlanId + 1
+            it.ignoreBandwidth = !it.ignoreBandwidth
+            it.pathComputationStrategy = PathComputationStrategy.COST.toString()
+            it.description = it.description + "updated"
+        }
+        flowHelperV2.updateFlow(flow.flowId, updatedFlow)
 
         then: "History record is created after updating the flow"
         Long timestampAfterUpdate = System.currentTimeSeconds()
         def flowHistory1 = northbound.getFlowHistory(flow.flowId, specStartTime, timestampAfterUpdate)
         assert flowHistory1.size() == 2
         checkHistoryUpdateAction(flowHistory1[1], flow.flowId)
+        with (flowHistory1.last().dumps.find { it.type == "stateBefore" }) {
+            it.bandwidth == flow.maximumBandwidth
+            it.maxLatency == flow.maxLatency
+            it.pinned == flow.pinned
+            it.periodicPings == flow.periodicPings
+            it.sourceVlan == flow.source.vlanId
+            it.destinationVlan == flow.destination.vlanId
+            it.ignoreBandwidth == flow.ignoreBandwidth
+            it.pathComputationStrategy.toString() == flow.pathComputationStrategy
+        }
+        with (flowHistory1.last().dumps.find { it.type == "stateAfter" }) {
+            it.bandwidth == updatedFlow.maximumBandwidth
+            it.maxLatency == updatedFlow.maxLatency
+            it.pinned == updatedFlow.pinned
+            it.periodicPings == updatedFlow.periodicPings
+            it.sourceVlan == updatedFlow.source.vlanId
+            it.destinationVlan == updatedFlow.destination.vlanId
+            it.ignoreBandwidth == updatedFlow.ignoreBandwidth
+            it.pathComputationStrategy.toString() == updatedFlow.pathComputationStrategy
+        }
 
         while((System.currentTimeSeconds() - timestampAfterUpdate) < 1) {
             TimeUnit.MILLISECONDS.sleep(100);
@@ -265,26 +296,26 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         ]
     }
 
-    void checkHistoryCreateV2Action(FlowEventPayload flowHistory, String flowId) {
+    void checkHistoryCreateV2Action(FlowHistoryEntry flowHistory, String flowId) {
         assert flowHistory.action == CREATE_ACTION
-        assert flowHistory.histories.action[-1] == CREATE_SUCCESS
+        assert flowHistory.payload.action[-1] == CREATE_SUCCESS
         checkHistoryCommonStuff(flowHistory, flowId)
     }
 
-    void checkHistoryUpdateAction(FlowEventPayload flowHistory, String flowId) {
+    void checkHistoryUpdateAction(FlowHistoryEntry flowHistory, String flowId) {
         assert flowHistory.action == UPDATE_ACTION
-        assert flowHistory.histories.action[-1] == UPDATE_SUCCESS
+        assert flowHistory.payload.action[-1] == UPDATE_SUCCESS
         checkHistoryCommonStuff(flowHistory, flowId)
     }
 
-    void checkHistoryCommonStuff(FlowEventPayload flowHistory, String flowId) {
+    void checkHistoryCommonStuff(FlowHistoryEntry flowHistory, String flowId) {
         assert flowHistory.flowId == flowId
         assert flowHistory.taskId
     }
 
     /** We pass latest timestamp when changes were done.
      * Just for getting all records from history */
-    void checkHistoryDeleteAction(List<FlowEventPayload> flowHistory, String flowId) {
+    void checkHistoryDeleteAction(List<FlowHistoryEntry> flowHistory, String flowId) {
         checkHistoryCreateV2Action(flowHistory[0], flowId)
         checkHistoryUpdateAction(flowHistory[1], flowId)
     }

@@ -18,8 +18,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
+import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.PathComputer;
-import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class AllocateProtectedResourcesAction extends
@@ -74,7 +75,7 @@ public class AllocateProtectedResourcesAction extends
         Flow flow = getFlow(flowId);
         log.debug("Finding a new protected path for flow {}", flowId);
         List<PathId> pathIdsToReuse = pathsToReuse.stream().map(FlowPath::getPathId).collect(Collectors.toList());
-        PathPair potentialPath = pathComputer.getPath(flow, pathIdsToReuse);
+        GetPathsResult potentialPath = pathComputer.getPath(flow, pathIdsToReuse);
 
         PathId newPrimaryForwardPathId = stateMachine.getNewPrimaryForwardPath();
         FlowPath primaryForwardPath = getFlowPath(flow, newPrimaryForwardPathId);
@@ -95,6 +96,10 @@ public class AllocateProtectedResourcesAction extends
 
             pathsToReuse.add(flow.getProtectedForwardPath());
             pathsToReuse.add(flow.getProtectedReversePath());
+            pathsToReuse.addAll(stateMachine.getRejectedPaths().stream()
+                    .map(flow::getPath)
+                    .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty))
+                    .collect(Collectors.toList()));
             FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources, false);
             log.debug("New protected path has been created: {}", newPaths);
             stateMachine.setNewProtectedForwardPath(newPaths.getForward().getPathId());

@@ -41,7 +41,7 @@ class BfdSpec extends HealthCheckSpecification {
         def createBfdResponse = northbound.setLinkBfd(islUtils.toLinkEnableBfd(isl, true))
 
         then: "Response reports successful installation of the session"
-        createBfdResponse.size() == 1 //TODO(rtretiak): should be '2'. See #2342
+        createBfdResponse.size() == 2
         createBfdResponse.each {
             assert it.enableBfd
         }
@@ -75,7 +75,7 @@ class BfdSpec extends HealthCheckSpecification {
         def removeBfdResponse = northbound.setLinkBfd(islUtils.toLinkEnableBfd(isl, false))
 
         then: "Response reports successful deletion of the session"
-        removeBfdResponse.size() == 1 //TODO(rtretiak): should be '2'. See #2342
+        removeBfdResponse.size() == 2
         removeBfdResponse.each {
             assert !it.enableBfd
         }

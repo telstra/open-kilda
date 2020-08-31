@@ -740,7 +740,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         def newFlowPath
         Wrappers.wait(WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert northbound.getFlowHistory(flow.flowId).last().histories.last().action == UPDATE_SUCCESS
+            assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == UPDATE_SUCCESS
             newFlowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
             assert newFlowPath == currentProtectedPath
         }
@@ -773,7 +773,7 @@ mode with existing flows and hold flows of different table-mode types"() {
                     northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
             newFlowPath2 = PathHelper.convert(northbound.getFlowPath(flow.flowId))
             assert newFlowPath2 == desiredPath
-            assert northbound.getFlowHistory(flow.flowId).last().histories.last().action == UPDATE_SUCCESS
+            assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == UPDATE_SUCCESS
         }
 
         then: "Flow rules are still in the same table mode as previously"
@@ -1383,7 +1383,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         Wrappers.wait(RULES_INSTALLATION_TIME * 2) {
             def reroutes = northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }
             assert reroutes.size() == 1
-            assert reroutes.last().histories.last().action == REROUTE_SUCCESS
+            assert reroutes.last().payload.last().action == REROUTE_SUCCESS
             northbound.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 

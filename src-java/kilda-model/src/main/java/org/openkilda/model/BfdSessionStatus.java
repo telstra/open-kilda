@@ -13,8 +13,8 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.model;
+package org.openkilda.model;
 
-public enum BfdStatus {
-    UP, DOWN, KILL
+public enum BfdSessionStatus {
+    UP, DOWN, FAIL
 }

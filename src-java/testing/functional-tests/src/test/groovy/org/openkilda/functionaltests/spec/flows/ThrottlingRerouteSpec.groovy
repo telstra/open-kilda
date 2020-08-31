@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -74,7 +75,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
             //Flow should go DOWN or change path on reroute. In our case it doesn't matter which of these happen.
             assert (northboundV2.getFlowStatus(flows.first().flowId).status == FlowState.DOWN &&
                     northbound.getFlowHistory(flows.first().flowId).find {
-                        it.action == "Flow rerouting" && it.taskId =~ (/.+ : retry #1/) })||
+                        it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1/) })||
                     northbound.getFlowPath(flows.first().flowId) != flowPaths.first()
         }
 
@@ -83,7 +84,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
             flowPaths[1..-1].each { flowPath ->
                 assert (northboundV2.getFlowStatus(flowPath.id).status == FlowState.DOWN &&
                         northbound.getFlowHistory(flowPath.id).find {
-                    it.action == "Flow rerouting" && it.taskId =~ (/.+ : retry #1/)
+                    it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1/)
                 })  ||
                         (northbound.getFlowPath(flowPath.id) != flowPath &&
                                 northboundV2.getFlowStatus(flowPath.id).status == FlowState.UP)
@@ -160,7 +161,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(untilHardTimeoutEnds() + WAIT_OFFSET) {
             flowPathsClone.removeAll { flowPath ->
                 (northboundV2.getFlowStatus(flowPath.id).status == FlowState.DOWN && northbound
-                        .getFlowHistory(flowPath.id).last().histories.find { it.action == REROUTE_FAIL }) ||
+                        .getFlowHistory(flowPath.id).last().payload.find { it.action == REROUTE_FAIL }) ||
                         northbound.getFlowPath(flowPath.id) != flowPath
             }
             assert flowPathsClone.empty

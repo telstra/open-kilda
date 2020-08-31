@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -1022,7 +1023,9 @@ switches"() {
                 it.state == IslChangeType.FAILED
             }.size() == broughtDownPorts.size() * 2
             assert northbound.getFlowStatus(flow1.id).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow1.id).last().histories.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow1.id).find {
+                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+            }?.payload?.last()?.action == REROUTE_FAIL
         }
 
         when: "Try to swap endpoints for two flows"
@@ -1311,7 +1314,7 @@ switches"() {
         Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow1.flowId).status == FlowState.DOWN
             assert northbound.getFlowHistory(flow1.flowId).find {
-                it.action == "Flow rerouting" && it.taskId =~ (/.+ : retry #1/)
+                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1/)
             }
         }
         with(northboundV2.getFlow(flow1.flowId)) {

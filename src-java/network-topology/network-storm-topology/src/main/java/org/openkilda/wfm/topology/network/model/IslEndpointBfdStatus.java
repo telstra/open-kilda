@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.network.model;
 
-import org.openkilda.model.IslStatus;
+import org.openkilda.model.BfdSessionStatus;
 
 import lombok.AllArgsConstructor;
 import lombok.Value;
@@ -25,9 +25,15 @@ import lombok.Value;
 public class IslEndpointBfdStatus {
     boolean enabled;
 
-    IslStatus status;
+    BfdSessionStatus status;
+
+    boolean forceReset;
 
     public IslEndpointBfdStatus() {
         this(false, null);
+    }
+
+    public IslEndpointBfdStatus(boolean enabled, BfdSessionStatus status) {
+        this(enabled, status, false);
     }
 }
