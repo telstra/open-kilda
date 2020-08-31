@@ -100,7 +100,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
             dump.pinned == flow.pinned
             dump.pathComputationStrategy.toString() == flow.pathComputationStrategy
             dump.periodicPings == flow.periodicPings
-            dump.maxLatency == flow.maxLatency
+            dump.maxLatency / 1000000L == flow.maxLatency
         }
 
         when: "Update the created flow"

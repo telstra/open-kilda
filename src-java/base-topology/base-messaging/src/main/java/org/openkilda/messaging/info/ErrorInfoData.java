@@ -16,12 +16,14 @@
 package org.openkilda.messaging.info;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * Class represents error info data.
  */
 //FIXME: should be deleted after OpenTSDB topology messaging is refactored to use Messages instead of InfoData
 @Data
+@EqualsAndHashCode(callSuper = false)
 public class ErrorInfoData extends InfoData {
     private String errorMessage;
     private String errorDescription;

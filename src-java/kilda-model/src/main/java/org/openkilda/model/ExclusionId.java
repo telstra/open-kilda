@@ -54,7 +54,6 @@ public class ExclusionId implements Serializable {
     @Property(name = "flow_id")
     private String flowId;
 
-    @NonNull
     @Property(name = "id")
     private int id;
 
