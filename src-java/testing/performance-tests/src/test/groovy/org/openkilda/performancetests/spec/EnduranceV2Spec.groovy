@@ -86,8 +86,7 @@ class EnduranceV2Spec extends BaseSpecification {
         Wrappers.wait(flows.size() / 2) {
             flows.each {
                 assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP
-                //https://github.com/telstra/open-kilda/issues/3077
-//                northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
+                northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
             }
         }
 
@@ -105,7 +104,11 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
             (topology.isls - brokenIsls).each {
                 assert islUtils.getIslInfo(isls, it).get().state == IslChangeType.DISCOVERED
             }
-            assert northboundV2.getAllFlows().findAll { it.status == FlowState.IN_PROGRESS.toString() }.empty
+            assert northboundV2.getAllFlows().findAll {
+                it.status == FlowState.IN_PROGRESS.toString() ||
+                        it.statusDetails?.mainPath == FlowState.IN_PROGRESS.toString() ||
+                        it.statusDetails?.protectedPath == FlowState.IN_PROGRESS.toString()
+            }.empty
         }
 
         then: "All Up flows are pingable"
@@ -178,7 +181,8 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
         //define payload generating method that will be called each time flow creation is issued
         makeFlowPayload = {
             def flow = flowHelperV2.randomFlow(*topoHelper.getRandomSwitchPair(), false, flows)
-            flow.maximumBandwidth = 300000
+            flow.maximumBandwidth = 200000
+            flow.allocateProtectedPath = r.nextBoolean()
             return flow
         }
         //'dice' below defines events and their chances to appear
