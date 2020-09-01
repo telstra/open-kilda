@@ -124,7 +124,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         checkHistoryUpdateAction(flowHistory1[1], flow.flowId)
         with (flowHistory1.last().dumps.find { it.type == "stateBefore" }) {
             it.bandwidth == flow.maximumBandwidth
-            it.maxLatency == flow.maxLatency
+            it.maxLatency == flow.maxLatency * 1000000
             it.pinned == flow.pinned
             it.periodicPings == flow.periodicPings
             it.sourceVlan == flow.source.vlanId
@@ -134,7 +134,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         }
         with (flowHistory1.last().dumps.find { it.type == "stateAfter" }) {
             it.bandwidth == updatedFlow.maximumBandwidth
-            it.maxLatency == updatedFlow.maxLatency
+            it.maxLatency == updatedFlow.maxLatency * 1000000
             it.pinned == updatedFlow.pinned
             it.periodicPings == updatedFlow.periodicPings
             it.sourceVlan == updatedFlow.source.vlanId
