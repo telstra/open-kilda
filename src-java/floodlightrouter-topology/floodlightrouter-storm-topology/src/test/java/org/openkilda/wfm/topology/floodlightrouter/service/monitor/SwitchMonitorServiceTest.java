@@ -57,7 +57,6 @@ public class SwitchMonitorServiceTest {
 
         SwitchInfoData swAdd = new SwitchInfoData(SWITCH_ALPHA, SwitchChangeType.ADDED);
         subject.handleStatusUpdateNotification(swAdd, REGION_ALPHA);
-        verify(carrier).switchStatusUpdateNotification(eq(swAdd.getSwitchId()), eq(swAdd));
         verify(carrier).regionUpdateNotification(
                 eq(new RegionMappingAdd(swAdd.getSwitchId(), REGION_ALPHA, false)));
         verifyNoMoreInteractions(carrier);
