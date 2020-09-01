@@ -37,6 +37,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
         timestampBefore = System.currentTimeSeconds() - 5
     }
 
+    @Tidy
     def "History records are created for the create/update actions using custom timeline"() {
         when: "Create a flow"
         assumeTrue("Multi table is not enabled in kilda configuration", useMultitable)
@@ -83,7 +84,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
             dump.pinned == flow.pinned
             dump.pathComputationStrategy.toString() == flow.pathComputationStrategy
             dump.periodicPings == flow.periodicPings
-            dump.maxLatency == flow.maxLatency
+            dump.maxLatency == flow.maxLatency * 1000000
         }
 
         when: "Update the created flow"
