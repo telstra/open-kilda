@@ -225,7 +225,7 @@ namespace org::openkilda {
                         if (eth->getDestMac() != src_mac) {
                             BOOST_LOG_TRIVIAL(error)
                                 << "drop packet by invalid mac dst: " << eth->getDestMac().toString() << " "
-                                << "expected :" << src_mac.toString();
+                                << "expected: " << src_mac.toString();
                         } else {
                             BOOST_LOG_TRIVIAL(error)
                                 << "drop packet by missed udp layer";

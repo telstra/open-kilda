@@ -1,7 +1,7 @@
 package org.openkilda.functionaltests.spec.server42
 
 import static org.junit.Assume.assumeTrue
-import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
+import static org.openkilda.testing.Constants.STATS_FROM_SERVER42_LOGGING_TIMEOUT
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -26,6 +26,67 @@ class Server42RttSpec extends HealthCheckSpecification {
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix
 
+    def "Create flow with server42 Rtt feature and check datapoints in opentsdb"() {
+        given: "Two active neighboring switches with server42"
+        def server42switches = topology.getActiveServer42Switches();
+        def server42switchesDpIds = server42switches*.dpId;
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            it.src.dpId in server42switchesDpIds && it.dst.dpId in server42switchesDpIds
+        }
+        assumeTrue("Was not able to find a switch with a server42 connected", switchPair != null)
+        def flowRttFeatureStartState = isEnabledFlowRtt();
+
+        when: "Set server42FlowRtt toggle to true"
+        enableFlowRtt()
+
+        and: "Set server 42 src switch enabled"
+        def flowRttSrcSwitchFeatureStartState = isEnabledFlowRttForSwitch(switchPair.src);
+        enableFlowRttForSwitch(switchPair.src)
+
+        def flowRttDstSwitchFeatureStartState = isEnabledFlowRttForSwitch(switchPair.dst);
+        enableFlowRttForSwitch(switchPair.dst)
+
+        and: "Flow created"
+        def flowCreateTime = new Date()
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flowHelperV2.addFlow(flow)
+
+        then: "Check if stats for forward is available"
+        def statsData = null
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+            statsData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "forward"]).dps
+            assert statsData && !statsData.empty
+        }
+
+        and: "Check if stats for reverse is available"
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+            statsData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "reverse"]).dps
+            assert statsData && !statsData.empty
+        }
+
+        and: "Cleanup: revert system to original state"
+        flowHelperV2.deleteFlow(flow.flowId)
+        if (flowRttFeatureStartState) {
+            enableFlowRtt()
+        } else {
+            disableFlowRtt()
+        }
+        if (flowRttSrcSwitchFeatureStartState) {
+            enableFlowRttForSwitch(switchPair.src)
+        } else {
+            disableFlowRttForSwitch(switchPair.src)
+        }
+        if (flowRttDstSwitchFeatureStartState) {
+            enableFlowRttForSwitch(switchPair.dst)
+        } else {
+            disableFlowRttForSwitch(switchPair.dst)
+        }
+    }
+
     def "Create two flow with server42 Rtt feature and check datapoints in opentsdb"() {
         given: "Two active neighboring switches one with server42 and one without"
         def server42switches = topology.getActiveServer42Switches();
@@ -45,26 +106,27 @@ class Server42RttSpec extends HealthCheckSpecification {
         enableFlowRttForSwitch(server42Switch)
 
         and: "Flow for forward metric created"
-        def flowCreateTime = new Date()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
+        def flowCreateTimeForward = new Date()
 
         and: "Reversed flow for backward metric created"
         def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed)
         flowHelperV2.addFlow(reversedFlow)
+        def flowCreateTimeReverse = new Date();
 
         then: "Check if stats for forward is available"
         def statsData = null
-        Wrappers.wait(STATS_LOGGING_TIMEOUT, 1) {
-            statsData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+            statsData = otsdb.query(flowCreateTimeForward, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "forward"]).dps
             assert statsData && !statsData.empty
         }
 
         and: "Check if stats for reverse is available"
-        Wrappers.wait(STATS_LOGGING_TIMEOUT, 1) {
-            statsData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+            statsData = otsdb.query(flowCreateTimeReverse, metricPrefix + "flow.rtt",
                     [flowid   : reversedFlow.flowId,
                      direction: "reverse"]).dps
             assert statsData && !statsData.empty
@@ -145,7 +207,7 @@ class Server42RttSpec extends HealthCheckSpecification {
         checkpointTime = new Date()
 
         then: "Check if stats for forward is available"
-        Wrappers.wait(STATS_LOGGING_TIMEOUT, 1) {
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "forward"]).dps
@@ -153,7 +215,7 @@ class Server42RttSpec extends HealthCheckSpecification {
         }
 
         and: "Check if stats for reverse is available"
-        Wrappers.wait(STATS_LOGGING_TIMEOUT, 1) {
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                     [flowid   : reversedFlow.flowId,
                      direction: "reverse"]).dps
@@ -164,7 +226,7 @@ class Server42RttSpec extends HealthCheckSpecification {
         disableFlowRtt()
 
         then: "Check if stats for forward is not available"
-        Wrappers.wait(STATS_LOGGING_TIMEOUT, 1) {
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             statsData = otsdb.query(10.seconds.ago, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "forward"]).dps
@@ -172,7 +234,7 @@ class Server42RttSpec extends HealthCheckSpecification {
         }
 
         and: "No data points for reverse flow found"
-        Wrappers.wait(STATS_LOGGING_TIMEOUT, 1) {
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             statsData = otsdb.query(10.seconds.ago, metricPrefix + "flow.rtt",
                     [flowid   : reversedFlow.flowId,
                      direction: "reverse"]).dps
@@ -183,7 +245,7 @@ class Server42RttSpec extends HealthCheckSpecification {
         enableFlowRtt()
 
         then: "Check if stats for forward is available"
-        Wrappers.wait(STATS_LOGGING_TIMEOUT, 1) {
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             statsData = otsdb.query(10.seconds.ago, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "forward"]).dps
@@ -191,7 +253,7 @@ class Server42RttSpec extends HealthCheckSpecification {
         }
 
         and: "Check if stats for reverse is available"
-        Wrappers.wait(STATS_LOGGING_TIMEOUT, 1) {
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             statsData = otsdb.query(10.seconds.ago, metricPrefix + "flow.rtt",
                     [flowid   : reversedFlow.flowId,
                      direction: "reverse"]).dps
@@ -202,7 +264,7 @@ class Server42RttSpec extends HealthCheckSpecification {
         disableFlowRttForSwitch(server42Switch)
 
         then: "Check if stats for forward is not available"
-        Wrappers.wait(STATS_LOGGING_TIMEOUT, 1) {
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             statsData = otsdb.query(10.seconds.ago, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "forward"]).dps
@@ -210,7 +272,7 @@ class Server42RttSpec extends HealthCheckSpecification {
         }
 
         and: "No data points for reverse flow found"
-        Wrappers.wait(STATS_LOGGING_TIMEOUT, 1) {
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             statsData = otsdb.query(10.seconds.ago, metricPrefix + "flow.rtt",
                     [flowid   : reversedFlow.flowId,
                      direction: "reverse"]).dps
@@ -221,7 +283,7 @@ class Server42RttSpec extends HealthCheckSpecification {
         enableFlowRttForSwitch(server42Switch)
 
         then: "Check if stats for forward is available"
-        Wrappers.wait(STATS_LOGGING_TIMEOUT, 1) {
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             statsData = otsdb.query(10.seconds.ago, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "forward"]).dps
@@ -229,7 +291,7 @@ class Server42RttSpec extends HealthCheckSpecification {
         }
 
         and: "Check if stats for reverse is available"
-        Wrappers.wait(STATS_LOGGING_TIMEOUT, 1) {
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             statsData = otsdb.query(10.seconds.ago, metricPrefix + "flow.rtt",
                     [flowid   : reversedFlow.flowId,
                      direction: "reverse"]).dps

@@ -45,7 +45,7 @@ import javax.annotation.PostConstruct;
 @Slf4j
 public class ControlServer extends Thread {
 
-    private HashMap<String, Flow> flows = new HashMap<>();
+    private HashMap<FlowKey, Flow> flows = new HashMap<>();
 
     @Value("${openkilda.server42.control.zeromq.control.server.endpoint}")
     private String bindEndpoint;
@@ -80,15 +80,16 @@ public class ControlServer extends Thread {
                         case ADD_FLOW:
                             for (Any any : commandPacket.getCommandList()) {
                                 AddFlow addFlow = any.unpack(AddFlow.class);
-                                flows.put(addFlow.getFlow().getFlowId(), addFlow.getFlow());
+                                flows.put(FlowKey.fromFlow(addFlow.getFlow()), addFlow.getFlow());
                                 statsServer.addFlow(addFlow.getFlow());
                             }
                             break;
                         case REMOVE_FLOW:
                             for (Any any : commandPacket.getCommandList()) {
                                 RemoveFlow removeFlow = any.unpack(RemoveFlow.class);
-                                flows.remove(removeFlow.getFlow().getFlowId());
-                                statsServer.removeFlow(removeFlow.getFlow().getFlowId());
+                                FlowKey flowKey = FlowKey.fromFlow(removeFlow.getFlow());
+                                flows.remove(flowKey);
+                                statsServer.removeFlow(flowKey);
                             }
                             break;
                         case CLEAR_FLOWS:
