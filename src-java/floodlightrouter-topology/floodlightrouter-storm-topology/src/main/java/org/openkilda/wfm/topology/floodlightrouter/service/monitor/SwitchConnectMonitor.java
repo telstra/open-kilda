@@ -88,11 +88,17 @@ public abstract class SwitchConnectMonitor {
      */
     public void handleNetworkDumpResponse(NetworkDumpSwitchData switchData, String region) {
         ensureSwitchIdMatch(switchData.getSwitchId());
-        handleConnect(switchData, region);
+        if (isReadWriteMode() == switchData.isWriteMode()) {
+            handlePeriodicDump(switchData, region);
+        }
     }
 
     public boolean isAvailable() {
         return ! availableInRegions.isEmpty();
+    }
+
+    protected void handlePeriodicDump(NetworkDumpSwitchData switchData, String region) {
+        handleConnect(switchData, region);
     }
 
     protected void handleConnect(InfoData notification, String region) {
@@ -153,6 +159,10 @@ public abstract class SwitchConnectMonitor {
     protected abstract boolean isConnectNotification(SwitchInfoData notification);
 
     protected abstract boolean isDisconnectNotification(SwitchInfoData notification);
+
+    protected void reportNotificationDrop(InfoData notification) {
+        log.debug("Drop speaker switch {} notification: {}", switchId, notification);
+    }
 
     protected String formatConnectMode() {
         return isReadWriteMode() ? "RW" : "RO";
