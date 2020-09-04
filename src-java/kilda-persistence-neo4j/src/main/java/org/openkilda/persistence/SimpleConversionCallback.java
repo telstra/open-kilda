@@ -88,7 +88,31 @@ class SimpleConversionCallback implements ConversionCallback {
             throw new PersistenceException("Unable to locate appropriate converter for null-valued target type and "
                     + value);
         }
-        // Look up for a converter with corresponding entity and graph classes.
+        // Look up for a converter with exact entity and graph classes.
+        for (Map.Entry<ParameterizedType, Class<? extends AttributeConverter>> converter : converters.entrySet()) {
+            Type[] genericTypes = converter.getKey().getActualTypeArguments();
+            Class entityClass = (Class) genericTypes[0];
+            Class graphClass = (Class) genericTypes[1];
+
+            if (targetType.equals(entityClass) && graphClass.equals(value.getClass())) {
+                try {
+                    return (T) converter.getValue().newInstance().toEntityAttribute(value);
+                } catch (InstantiationException | IllegalAccessException ex) {
+                    throw new PersistenceException("Unable to instantiate the converter "
+                            + converter.getValue().getSimpleName(), ex);
+                }
+            }
+
+            if (targetType.equals(graphClass) && entityClass.equals(value.getClass())) {
+                try {
+                    return (T) converter.getValue().newInstance().toGraphProperty(value);
+                } catch (InstantiationException | IllegalAccessException ex) {
+                    throw new PersistenceException("Unable to instantiate the converter "
+                            + converter.getValue().getSimpleName(), ex);
+                }
+            }
+        }
+        // Look up for a converter with assignable entity and graph classes.
         for (Map.Entry<ParameterizedType, Class<? extends AttributeConverter>> converter : converters.entrySet()) {
             Type[] genericTypes = converter.getKey().getActualTypeArguments();
             Class entityClass = (Class) genericTypes[0];
@@ -98,7 +122,7 @@ class SimpleConversionCallback implements ConversionCallback {
                 try {
                     return (T) converter.getValue().newInstance().toEntityAttribute(value);
                 } catch (InstantiationException | IllegalAccessException ex) {
-                    throw new PersistenceException("Unable to instaniate the converter "
+                    throw new PersistenceException("Unable to instantiate the converter "
                             + converter.getValue().getSimpleName(), ex);
                 }
             }
@@ -107,7 +131,7 @@ class SimpleConversionCallback implements ConversionCallback {
                 try {
                     return (T) converter.getValue().newInstance().toGraphProperty(value);
                 } catch (InstantiationException | IllegalAccessException ex) {
-                    throw new PersistenceException("Unable to instaniate the converter "
+                    throw new PersistenceException("Unable to instantiate the converter "
                             + converter.getValue().getSimpleName(), ex);
                 }
             }
