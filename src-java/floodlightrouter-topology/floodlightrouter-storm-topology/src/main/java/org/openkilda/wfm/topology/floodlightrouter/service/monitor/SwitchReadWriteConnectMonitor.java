@@ -40,13 +40,11 @@ public class SwitchReadWriteConnectMonitor extends SwitchConnectMonitor {
     }
 
     @Override
-    public void handleNetworkDumpResponse(NetworkDumpSwitchData switchData, String region) {
-        if (switchData.isWriteMode()) {
-            super.handleNetworkDumpResponse(switchData, region);
-            if (Objects.equals(activeRegion, region)) {
-                // proxy network dump for active region only
-                carrier.switchStatusUpdateNotification(switchId, switchData);
-            }
+    protected void handlePeriodicDump(NetworkDumpSwitchData switchData, String region) {
+        super.handlePeriodicDump(switchData, region);
+        if (Objects.equals(activeRegion, region)) {
+            // proxy network dump for active region only
+            carrier.switchStatusUpdateNotification(switchId, switchData);
         }
     }
 

@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.floodlightrouter.service.monitor;
 
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.SwitchId;
@@ -33,24 +32,15 @@ public class SwitchReadOnlyConnectMonitor extends SwitchConnectMonitor {
     }
 
     @Override
-    public void handleNetworkDumpResponse(NetworkDumpSwitchData switchData, String region) {
-        if (! switchData.isWriteMode()) {
-            super.handleNetworkDumpResponse(switchData, region);
-        }
-    }
-
-    @Override
     protected void becomeAvailable(InfoData notification, String region) {
         super.becomeAvailable(notification, region);
-        // TODO(surabujin): network topology do not handle this event, so we can drop it here
-        carrier.switchStatusUpdateNotification(switchId, notification);
+        reportNotificationDrop(notification);
     }
 
     @Override
     protected void becomeUnavailable(InfoData notification) {
         super.becomeUnavailable(notification);
-        // TODO(surabujin): network topology do not handle this event, so we can drop it here
-        carrier.switchStatusUpdateNotification(switchId, notification);
+        reportNotificationDrop(notification);
     }
 
     @Override
