@@ -3,12 +3,14 @@ package org.openkilda.functionaltests.spec.flows
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -1021,7 +1023,9 @@ switches"() {
                 it.state == IslChangeType.FAILED
             }.size() == broughtDownPorts.size() * 2
             assert northbound.getFlowStatus(flow1.id).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow1.id).last().payload.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow1.id).find {
+                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+            }?.payload?.last()?.action == REROUTE_FAIL
         }
 
         when: "Try to swap endpoints for two flows"
@@ -1294,7 +1298,7 @@ switches"() {
         flowHelperV2.addFlow(flow2)
 
         when: "Try to swap flow src endoints, but flow1 src switch does not respond"
-        def blockData = switchHelper.knockoutSwitch(swPair1.src, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(swPair1.src, RW)
         database.setSwitchStatus(swPair1.src.dpId, SwitchStatus.ACTIVE)
         northbound.swapFlowEndpoint(new SwapFlowPayload(flow1.flowId, flow2.source, flow1.destination),
                 new SwapFlowPayload(flow2.flowId, flow1.source, flow2.destination))
@@ -1310,7 +1314,7 @@ switches"() {
         Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow1.flowId).status == FlowState.DOWN
             assert northbound.getFlowHistory(flow1.flowId).find {
-                it.action == "Flow rerouting" && it.taskId =~ (/.+ : retry #1/)
+                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1/)
             }
         }
         with(northboundV2.getFlow(flow1.flowId)) {

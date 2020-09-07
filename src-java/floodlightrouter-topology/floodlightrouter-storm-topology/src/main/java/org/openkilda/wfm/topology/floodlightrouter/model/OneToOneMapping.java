@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-public class OneToOneMapping {
+class OneToOneMapping implements MappingApproach {
     private final Clock clock;
     private final Duration staleWipeDelay;
 
@@ -43,29 +43,29 @@ public class OneToOneMapping {
     /**
      * Lookup entry.
      */
-    public Optional<String> lookup(SwitchId switchId, boolean allowStale) {
+    public Optional<String> lookup(SwitchId switchId) {
         flushStale();
         String result = actual.get(switchId);
         if (result != null) {
             return Optional.of(result);
         }
-        if (allowStale) {
-            return Optional.ofNullable(lookupStale(switchId));
-        }
-        return Optional.empty();
+        return Optional.ofNullable(lookupStale(switchId));
     }
 
-    /**
-     * Add mapping entry.
-     */
+    @Override
+    public void set(SwitchId switchId, String region) {
+        add(switchId, region);
+    }
+
     public void add(SwitchId switchId, String region) {
         actual.put(switchId, region);
         removed.remove(switchId);
     }
 
-    /**
-     * Remove(make stale) mapping entry.
-     */
+    public void remove(SwitchId switchId, String region) {
+        remove(switchId);
+    }
+
     public void remove(SwitchId switchId) {
         String region = actual.remove(switchId);
         if (region != null && ! staleWipeDelay.isZero()) {

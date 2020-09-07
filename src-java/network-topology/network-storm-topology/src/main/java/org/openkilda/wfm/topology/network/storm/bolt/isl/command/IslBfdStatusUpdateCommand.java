@@ -17,13 +17,13 @@ package org.openkilda.wfm.topology.network.storm.bolt.isl.command;
 
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
-import org.openkilda.wfm.topology.network.model.BfdStatus;
+import org.openkilda.wfm.topology.network.model.BfdStatusUpdate;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
 
 public class IslBfdStatusUpdateCommand extends IslCommand {
-    private final BfdStatus status;
+    private final BfdStatusUpdate status;
 
-    public IslBfdStatusUpdateCommand(Endpoint endpoint, IslReference reference, BfdStatus status) {
+    public IslBfdStatusUpdateCommand(Endpoint endpoint, IslReference reference, BfdStatusUpdate status) {
         super(endpoint, reference);
         this.status = status;
     }

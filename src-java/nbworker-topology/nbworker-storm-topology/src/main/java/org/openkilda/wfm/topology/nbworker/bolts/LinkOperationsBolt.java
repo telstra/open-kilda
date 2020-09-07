@@ -48,6 +48,7 @@ import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.LinkPropsException;
 import org.openkilda.wfm.share.mappers.IslMapper;
 import org.openkilda.wfm.share.mappers.LinkPropsMapper;
+import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
 import org.openkilda.wfm.topology.nbworker.services.ILinkOperationsServiceCarrier;
@@ -340,16 +341,11 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
     }
 
     private List<? extends InfoData> updateLinkEnableBfdFlag(UpdateLinkEnableBfdRequest request) {
-        SwitchId srcSwitch = request.getSource().getDatapath();
-        Integer srcPort = request.getSource().getPortNumber();
-        SwitchId dstSwitch = request.getDestination().getDatapath();
-        Integer dstPort = request.getDestination().getPortNumber();
+        Endpoint source = new Endpoint(request.getSource());
+        Endpoint destination = new Endpoint(request.getDestination());
 
         try {
-            return linkOperationsService.updateLinkEnableBfdFlag(
-                    srcSwitch, srcPort,
-                    dstSwitch, dstPort, request.isEnableBfd())
-                    .stream()
+            return linkOperationsService.updateEnableBfdFlag(source, destination, request.isEnableBfd()).stream()
                     .map(IslMapper.INSTANCE::map)
                     .collect(Collectors.toList());
 

@@ -36,8 +36,8 @@ public interface StatsTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getSpeakerFlowHsTopic();
     }
 
-    default String getStatsRequestPrivTopic() {
-        return getKafkaTopics().getStatsRequestPrivTopic();
+    default String getSpeakerTopic() {
+        return getKafkaTopics().getSpeakerTopic();
     }
 
     default String getGrpcSpeakerTopic() {

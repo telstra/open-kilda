@@ -779,13 +779,6 @@ public interface ISwitchManager extends IFloodlightService {
     List<OFPortDesc> dumpPortsDescription(DatapathId dpid) throws SwitchOperationException;
 
     /**
-     * Return if tracking is enabled.
-     *
-     * @return true if tracking is enabled.
-     */
-    boolean isTrackingEnabled();
-
-    /**
      * Return switch manager config.
      *
      * @return SwitchManagerConfig.

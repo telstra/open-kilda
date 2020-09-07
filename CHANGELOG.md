@@ -1,7 +1,31 @@
 # Changelog
 
-## v1.70.0 (26/08/2020)
+## v1.70.1 (07/09/2020)
 
+### Features:
+-  [#3674](https://github.com/telstra/open-kilda/pull/3674) Use floodlightrouter sw tracking for stats requests routing [**floodlight**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#3708](https://github.com/telstra/open-kilda/pull/3708) Minor test fix for flow maxLatency history [**tests**]
+
+### Improvements:
+-  [#3680](https://github.com/telstra/open-kilda/pull/3680) check flow fields in flowHistory(state before/after) [**tests**]
+-  [#3686](https://github.com/telstra/open-kilda/pull/3686) refactor tests(make sure that flowReroute is finished) [**tests**]
+-  [#3687](https://github.com/telstra/open-kilda/pull/3687) remove workaround for #3677 [**tests**]
+-  [#3702](https://github.com/telstra/open-kilda/pull/3702) max latency in ms for the api [**northbound**]
+-  [#3707](https://github.com/telstra/open-kilda/pull/3707) More accurate handling of newrok dumps for region mappings [**storm-topologies**]
+-  [#3691](https://github.com/telstra/open-kilda/pull/3691) Make BFD enable/disable API more obvious (Issue: [#2342](https://github.com/telstra/open-kilda/issues/2342)) [**storm-topologies**]
+-  [#3706](https://github.com/telstra/open-kilda/pull/3706) Minor tests adjustments [**tests**]
+-  [#3645](https://github.com/telstra/open-kilda/pull/3645) Update test framework to allow 2+ management floodlights for switch [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.70.0...v1.70.1).
+
+### Affected Components:
+network, router, nb, nbworker, fl
+
+---
+
+## v1.70.0 (26/08/2020)
 
 ### Bug Fixes:
 -  [#3688](https://github.com/telstra/open-kilda/pull/3688) Fix null pointer exception during producing flow dump (Issue: [#3552](https://github.com/telstra/open-kilda/issues/3552))

@@ -17,11 +17,17 @@ package org.openkilda.wfm.topology.floodlightrouter.model;
 
 import org.openkilda.model.SwitchId;
 
-import lombok.Value;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 
-@Value
-public class RegionMappingUpdate {
-    private SwitchId switchId;
-    private String region;
-    private boolean readWriteMode;
+@Getter
+@EqualsAndHashCode
+@AllArgsConstructor
+public abstract class RegionMappingUpdate {
+    private final SwitchId switchId;
+    private final String region;
+    private final boolean readWriteMode;
+
+    public abstract void apply(RegionMappingStorage storage);
 }

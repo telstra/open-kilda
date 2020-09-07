@@ -30,7 +30,6 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -69,9 +68,8 @@ public class StatsRequesterBolt extends AbstractBolt {
             unhandledInput(input);
             return;
         }
-        StatsRequest statsRequestData = new StatsRequest(ImmutableList.of());
-        CommandMessage statsRequest = new CommandMessage(statsRequestData,
-                System.currentTimeMillis(), getCommandContext().getCorrelationId());
+        CommandMessage statsRequest = new CommandMessage(
+                new StatsRequest(), System.currentTimeMillis(), getCommandContext().getCorrelationId());
         Values values = new Values(statsRequest);
         emit(STATS_REQUEST.name(), input, values);
 

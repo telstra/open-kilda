@@ -70,6 +70,7 @@ public interface KafkaTopicsConfig {
     @Default("kilda.speaker")
     String getSpeakerRegionTopic();
 
+    // removed
     @Key("stats.request.priv")
     @Default("kilda.stats.request.priv")
     String getStatsRequestPrivTopic();
@@ -78,18 +79,22 @@ public interface KafkaTopicsConfig {
     @Default("kilda.stats.request.priv.region")
     String getStatsRequestPrivRegionTopic();
 
+    // removed
     @Key("stats.stats-request.priv")
     @Default("kilda.stats.stats-request.priv")
     String getStatsStatsRequestPrivTopic();
 
+    // removed
     @Key("stats.stats-request.priv.region")
     @Default("kilda.stats.stats-request.priv.region")
     String getStatsStatsRequestPrivRegionTopic();
 
+    // removed
     @Key("fl-stats.switches.priv")
     @Default("kilda.fl-stats.switches.priv")
     String getFlStatsSwitchesPrivTopic();
 
+    // removed
     @Key("fl-stats.switches.priv.region")
     @Default("kilda.fl-stats.switches.priv.region")
     String getFlStatsSwitchesPrivRegionTopic();

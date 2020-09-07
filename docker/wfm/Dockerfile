@@ -90,12 +90,6 @@ COPY BUILD/reroute-storm-topology/build.gradle                  /app/reroute-sto
 
 
 
-#statsrouter
-COPY BUILD/statsrouter-storm-topology/libs/*                    /app/statsrouter-storm-topology/libs/
-COPY BUILD/statsrouter-storm-topology/build.gradle              /app/statsrouter-storm-topology
-
-
-
 #stats
 COPY BUILD/stats-storm-topology/libs/*                          /app/stats-storm-topology/libs/
 COPY BUILD/stats-storm-topology/build.gradle                    /app/stats-storm-topology/

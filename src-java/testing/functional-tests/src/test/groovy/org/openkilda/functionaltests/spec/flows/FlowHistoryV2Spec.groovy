@@ -1,10 +1,10 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.CREATE_ACTION
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.CREATE_SUCCESS
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.UPDATE_ACTION
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.UPDATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_SUCCESS
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -100,17 +100,48 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
             dump.pinned == flow.pinned
             dump.pathComputationStrategy.toString() == flow.pathComputationStrategy
             dump.periodicPings == flow.periodicPings
-            dump.maxLatency == flow.maxLatency
+            dump.maxLatency / 1000000L == flow.maxLatency
         }
 
         when: "Update the created flow"
-        flowHelperV2.updateFlow(flow.flowId, flow.tap { it.description = it.description + "updated" })
+        def updatedFlow = flow.jacksonCopy().tap {
+            it.maximumBandwidth = flow.maximumBandwidth + 1
+            it.maxLatency = flow.maxLatency + 1
+            it.pinned = !flow.pinned
+            it.periodicPings = !flow.periodicPings
+            it.source.vlanId = flow.source.vlanId + 1
+            it.destination.vlanId = flow.destination.vlanId + 1
+            it.ignoreBandwidth = !it.ignoreBandwidth
+            it.pathComputationStrategy = PathComputationStrategy.COST.toString()
+            it.description = it.description + "updated"
+        }
+        flowHelperV2.updateFlow(flow.flowId, updatedFlow)
 
         then: "History record is created after updating the flow"
         Long timestampAfterUpdate = System.currentTimeSeconds()
         def flowHistory1 = northbound.getFlowHistory(flow.flowId, specStartTime, timestampAfterUpdate)
         assert flowHistory1.size() == 2
         checkHistoryUpdateAction(flowHistory1[1], flow.flowId)
+        with (flowHistory1.last().dumps.find { it.type == "stateBefore" }) {
+            it.bandwidth == flow.maximumBandwidth
+            it.maxLatency == flow.maxLatency * 1000000
+            it.pinned == flow.pinned
+            it.periodicPings == flow.periodicPings
+            it.sourceVlan == flow.source.vlanId
+            it.destinationVlan == flow.destination.vlanId
+            it.ignoreBandwidth == flow.ignoreBandwidth
+            it.pathComputationStrategy.toString() == flow.pathComputationStrategy
+        }
+        with (flowHistory1.last().dumps.find { it.type == "stateAfter" }) {
+            it.bandwidth == updatedFlow.maximumBandwidth
+            it.maxLatency == updatedFlow.maxLatency * 1000000
+            it.pinned == updatedFlow.pinned
+            it.periodicPings == updatedFlow.periodicPings
+            it.sourceVlan == updatedFlow.source.vlanId
+            it.destinationVlan == updatedFlow.destination.vlanId
+            it.ignoreBandwidth == updatedFlow.ignoreBandwidth
+            it.pathComputationStrategy.toString() == updatedFlow.pathComputationStrategy
+        }
 
         while((System.currentTimeSeconds() - timestampAfterUpdate) < 1) {
             TimeUnit.MILLISECONDS.sleep(100);

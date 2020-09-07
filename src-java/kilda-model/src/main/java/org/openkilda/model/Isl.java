@@ -120,7 +120,8 @@ public class Isl implements Serializable {
     private boolean enableBfd;
 
     @Property(name = "bfd_session_status")
-    private String bfdSessionStatus;
+    @Convert(graphPropertyType = String.class)
+    private BfdSessionStatus bfdSessionStatus;
 
     @Property(name = "time_unstable")
     @Convert(InstantStringConverter.class)
@@ -137,7 +138,7 @@ public class Isl implements Serializable {
                long latency, long speed, int cost, long maxBandwidth, long defaultMaxBandwidth, long availableBandwidth,
                IslStatus status, IslStatus actualStatus, IslStatus roundTripStatus,
                Instant timeCreate, Instant timeModify, boolean underMaintenance, boolean enableBfd,
-               String bfdSessionStatus, Instant timeUnstable) {
+               BfdSessionStatus bfdSessionStatus, Instant timeUnstable) {
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
         this.srcPort = srcPort;

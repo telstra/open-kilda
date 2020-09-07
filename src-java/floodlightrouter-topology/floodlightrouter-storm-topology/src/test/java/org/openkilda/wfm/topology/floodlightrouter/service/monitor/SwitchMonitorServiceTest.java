@@ -27,7 +27,8 @@ import org.openkilda.messaging.model.SpeakerSwitchPortView.State;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 import org.openkilda.stubs.ManualClock;
-import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingUpdate;
+import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingAdd;
+import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingSet;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMonitorCarrier;
 
 import org.junit.Assert;
@@ -56,16 +57,15 @@ public class SwitchMonitorServiceTest {
 
         SwitchInfoData swAdd = new SwitchInfoData(SWITCH_ALPHA, SwitchChangeType.ADDED);
         subject.handleStatusUpdateNotification(swAdd, REGION_ALPHA);
-        verify(carrier).switchStatusUpdateNotification(eq(swAdd.getSwitchId()), eq(swAdd));
         verify(carrier).regionUpdateNotification(
-                eq(new RegionMappingUpdate(swAdd.getSwitchId(), REGION_ALPHA, false)));
+                eq(new RegionMappingAdd(swAdd.getSwitchId(), REGION_ALPHA, false)));
         verifyNoMoreInteractions(carrier);
 
         SwitchInfoData swActivate = makeSwitchActivateNotification(swAdd.getSwitchId());
         subject.handleStatusUpdateNotification(swActivate, REGION_ALPHA);
         verify(carrier).switchStatusUpdateNotification(eq(swActivate.getSwitchId()), eq(swActivate));
         verify(carrier).regionUpdateNotification(
-                eq(new RegionMappingUpdate(swActivate.getSwitchId(), REGION_ALPHA, true)));
+                eq(new RegionMappingSet(swActivate.getSwitchId(), REGION_ALPHA, true)));
         verifyNoMoreInteractions(carrier);
     }
 

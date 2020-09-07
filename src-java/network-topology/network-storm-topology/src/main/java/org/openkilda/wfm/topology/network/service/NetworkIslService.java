@@ -32,7 +32,7 @@ import org.openkilda.wfm.topology.network.controller.isl.IslFsm.IslFsmContext;
 import org.openkilda.wfm.topology.network.controller.isl.IslFsm.IslFsmEvent;
 import org.openkilda.wfm.topology.network.controller.isl.IslFsm.IslFsmState;
 import org.openkilda.wfm.topology.network.error.IslControllerNotFoundException;
-import org.openkilda.wfm.topology.network.model.BfdStatus;
+import org.openkilda.wfm.topology.network.model.BfdStatusUpdate;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
@@ -143,7 +143,7 @@ public class NetworkIslService {
     /**
      * Handle BFD status events.
      */
-    public void bfdStatusUpdate(Endpoint endpoint, IslReference reference, BfdStatus status) {
+    public void bfdStatusUpdate(Endpoint endpoint, IslReference reference, BfdStatusUpdate status) {
         log.debug("ISL service receive BFD status update for {} (on {}) - {}", reference, endpoint, status);
         IslFsm islFsm = locateController(reference).fsm;
         IslFsmEvent event;
@@ -156,6 +156,9 @@ public class NetworkIslService {
                 break;
             case KILL:
                 event = IslFsmEvent.BFD_KILL;
+                break;
+            case FAIL:
+                event = IslFsmEvent.BFD_FAIL;
                 break;
 
             default:

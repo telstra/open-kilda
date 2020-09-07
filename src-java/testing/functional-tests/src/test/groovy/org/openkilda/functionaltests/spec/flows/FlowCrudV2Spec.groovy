@@ -13,6 +13,7 @@ import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -716,7 +717,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
         given: "Disconnected switch"
         def sw = topology.getActiveSwitches()[0]
-        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(sw, RW)
 
         when: "Try to create a one-switch flow on a deactivated switch"
         def flow = flowHelperV2.singleSwitchFlow(sw)
@@ -925,19 +926,29 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         when: "Update the flow: port number and vlan id on the src endpoint"
         def flowInfoFromDb1 = database.getFlow(flow.flowId)
-        def newPortNumber = topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
-            it.dpId == flow.source.switchId
-        }).last()
-        def newVlanId = flow.destination.vlanId + 1
-        flowHelperV2.updateFlow(flow.flowId, flow.tap {
-            it.source.portNumber = newPortNumber
-            it.source.vlanId = newVlanId
-        })
+        def updatedFlow = flow.jacksonCopy().tap {
+            it.source.portNumber = topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
+                it.dpId == flow.source.switchId
+            }).last()
+            it.source.vlanId = flow.destination.vlanId + 1
+        }
+        flowHelperV2.updateFlow(flow.flowId, updatedFlow)
 
         then: "Flow is really updated"
         with(northboundV2.getFlow(flow.flowId)) {
-            it.source.portNumber == newPortNumber
-            it.source.vlanId == newVlanId
+            it.source.portNumber == updatedFlow.source.portNumber
+            it.source.vlanId == updatedFlow.source.vlanId
+        }
+
+        and: "Flow history shows actual info into stateBefore and stateAfter sections"
+        def flowHistory = northbound.getFlowHistory(flow.flowId)
+        with(flowHistory.last().dumps.find { it.type == "stateBefore" }){
+            it.sourcePort == flow.source.portNumber
+            it.sourceVlan == flow.source.vlanId
+        }
+        with(flowHistory.last().dumps.find { it.type == "stateAfter" }){
+            it.sourcePort == updatedFlow.source.portNumber
+            it.sourceVlan == updatedFlow.source.vlanId
         }
 
         and: "Flow rules are recreated"
@@ -954,9 +965,10 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                     it.cookie in [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value]
                 }.size() == 2
                 def ingressRule = rules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }
-                ingressRule.match.inPort == newPortNumber.toString()
+                ingressRule.match.inPort == updatedFlow.source.portNumber.toString()
                 //vlan is matched in shared rule
-                isMultiTableEnabled ? !ingressRule.match.vlanVid : (ingressRule.match.vlanVid == newVlanId.toString())
+                isMultiTableEnabled ? !ingressRule.match.vlanVid : (ingressRule.match.vlanVid == updatedFlow.source
+                        .vlanId.toString())
             }
         }
 
@@ -978,12 +990,21 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         def newDstSwitch = allSwitches[2]
         flowHelperV2.updateFlow(flow.flowId, flow.tap {
             it.destination.switchId = newDstSwitch.dpId
-            it.destination.portNumber = newPortNumber
+            it.destination.portNumber = updatedFlow.source.portNumber
         })
 
         then: "Flow is really updated"
         with(northboundV2.getFlow(flow.flowId)) {
             it.destination.switchId == newDstSwitch.dpId
+        }
+
+        and: "Flow history shows actual info into stateBefore and stateAfter sections"
+        def flowHistory2 = northbound.getFlowHistory(flow.flowId)
+        with(flowHistory2.last().dumps.find { it.type == "stateBefore" }){
+            it.destinationSwitch == dstSwitch.dpId.toString()
+        }
+        with(flowHistory2.last().dumps.find { it.type == "stateAfter" }){
+            it.destinationSwitch == newDstSwitch.dpId.toString()
         }
 
         and: "Flow rules are removed from the old dst switch"

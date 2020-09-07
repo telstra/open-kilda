@@ -3,11 +3,12 @@ package org.openkilda.functionaltests.spec.switches
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -41,8 +42,8 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         when: "Two neighbouring switches of the flow go down simultaneously"
-        def srcBlockData = lockKeeper.knockoutSwitch(isl.srcSwitch, mgmtFlManager)
-        def dstBlockData = lockKeeper.knockoutSwitch(isl.dstSwitch, mgmtFlManager)
+        def srcBlockData = lockKeeper.knockoutSwitch(isl.srcSwitch, RW)
+        def dstBlockData = lockKeeper.knockoutSwitch(isl.dstSwitch, RW)
         def timeSwitchesBroke = System.currentTimeMillis()
         def untilIslShouldFail = { timeSwitchesBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
 
@@ -69,7 +70,9 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
             def currentIsls = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow.flowId)))
             def pathChanged = !currentIsls.contains(isl) && !currentIsls.contains(isl.reversed)
             assert pathChanged || (northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN &&
-                    northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL })
+                    northbound.getFlowHistory(flow.flowId).find {
+                        it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+                    }?.payload?.last()?.action == REROUTE_FAIL)
         }
 
         and: "Cleanup: restore connection, remove the flow"
@@ -98,7 +101,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
             def reroute = northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }
             assert reroute.payload.last().action == "Started validation of installed non ingress rules"
         }
-        lockKeeper.reviveSwitch(swPair.src, lockKeeper.knockoutSwitch(swPair.src, mgmtFlManager))
+        lockKeeper.reviveSwitch(swPair.src, lockKeeper.knockoutSwitch(swPair.src, RW))
 
         then: "Flow reroute is successful"
         Wrappers.wait(PATH_INSTALLATION_TIME * 2) { //double timeout since rerouted is slowed by delay
@@ -115,7 +118,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         cleanup:
-        lockKeeper.cleanupTrafficShaperRules(swPair.dst.region)
+        lockKeeper.cleanupTrafficShaperRules(swPair.dst.regions)
         flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         database.resetCosts()
@@ -127,7 +130,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         northboundV2.addFlow(flow)
         sleep(50)
-        def blockData = lockKeeper.knockoutSwitch(srcSwitch, mgmtFlManager)
+        def blockData = lockKeeper.knockoutSwitch(srcSwitch, RW)
 
         then: "Flow eventually goes DOWN"
         Wrappers.wait(WAIT_OFFSET) {

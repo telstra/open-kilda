@@ -45,6 +45,7 @@ UNOPERATIONAL --> PENDING : enable
 CONFLICT --> IDLE : port-down
 CONFLICT --> UNOPERATIONAL : offline
 CONFLICT : enter / report conflict
+CONFLICT : enter / emit bfd-fail
 CONFLICT : enable / report conflict
 CONFLICT : disable / report conflict
 
@@ -71,6 +72,7 @@ SETUP_FAIL --> INIT_REMOVE : disable
 SETUP_FAIL --> SETUP_INTERRUPT : offline
 SETUP_FAIL --> INIT_CLEANUP : kill
 SETUP_FAIL : enter / report fail
+SETUP_FAIL : enter / emit bfd-fail
 SETUP_FAIL : enable / report malfunction
 
 SETUP_INTERRUPT --> SETUP_RECOVERY : port-up / set linkStatus = UP\nport-down / set linkStatus DOWN
@@ -125,6 +127,7 @@ DO_REMOVE : port-down / proxy to action
 REMOVE_FAIL --> CHARGED_FAIL: enable / save ISL reference
 REMOVE_FAIL --> REMOVE_INTERRUPT : offline
 REMOVE_FAIL : enter / report fail
+REMOVE_FAIL : enter / emit bfd-fail
 REMOVE_FAIL : disable / report malfunction
 
 REMOVE_INTERRUPT --> INIT_REMOVE : port-up / set linkStatus = UP\nport-down / set linkStatus DOWN

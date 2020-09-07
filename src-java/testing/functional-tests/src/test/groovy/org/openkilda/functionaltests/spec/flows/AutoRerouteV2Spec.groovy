@@ -6,12 +6,13 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -142,7 +143,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         when: "The switch is disconnected"
-        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(sw, RW)
         def isSwitchDisconnected = true
 
         then: "Flow becomes 'Down'"
@@ -226,7 +227,9 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         then: "The flow becomes 'Down'"
         wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow.flowId).find {
+                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+            }?.payload?.last()?.action == REROUTE_FAIL
         }
 
         when: "ISL goes back up"
@@ -357,7 +360,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         when: "Disconnect one of the switches not used by flow"
         def involvedSwitches = pathHelper.getInvolvedSwitches(flowPath)
         def switchToDisconnect = topology.getActiveSwitches().find { !involvedSwitches.contains(it) }
-        def blockData = lockKeeper.knockoutSwitch(switchToDisconnect, mgmtFlManager)
+        def blockData = lockKeeper.knockoutSwitch(switchToDisconnect, RW)
 
         then: "The switch is really disconnected from the controller"
         Wrappers.wait(WAIT_OFFSET) { assert !(switchToDisconnect.dpId in northbound.getActiveSwitches()*.switchId) }
@@ -458,6 +461,15 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
             assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
         }
 
+        and: "System retries to reroute the flow with ignored bandwidth"
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northboundV2.getFlow(flow.flowId).statusInfo == "No path found. Failed to find path with requested \
+bandwidth= ignored: Switch $flow.source.switchId doesn't have links with enough bandwidth"
+            assert northbound.getFlowHistory(flow.flowId).find {
+                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+            }?.payload?.last()?.action == REROUTE_FAIL
+        }
+
         and: "Flow is not rerouted"
         Wrappers.timedLoop(rerouteDelay) {
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
@@ -539,7 +551,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         when: "Disconnect the src switch of the first flow from the controller"
         def islToBreak = pathHelper.getInvolvedIsls(firstFlowMainPath).first()
-        def blockData = lockKeeper.knockoutSwitch(switchPair1.src, mgmtFlManager)
+        def blockData = lockKeeper.knockoutSwitch(switchPair1.src, RW)
         wait(discoveryTimeout + WAIT_OFFSET) {
             assert northbound.getSwitch(switchPair1.src.dpId).state == SwitchChangeType.DEACTIVATED
         }
@@ -650,7 +662,7 @@ have links with enough bandwidth"
 
         when: "Deactivate the src switch"
         def swToDeactivate = switchPair.src
-        def blockData = lockKeeper.knockoutSwitch(swToDeactivate, mgmtFlManager)
+        def blockData = lockKeeper.knockoutSwitch(swToDeactivate, RW)
         def isSwDeactivated = true
         // it takes more time to DEACTIVATE a switch via the 'knockoutSwitch' method on the stage env
         Wrappers.wait(WAIT_OFFSET * 4) {
@@ -718,7 +730,7 @@ have links with enough bandwidth"
         when: "Generate switchUp event on switch which is not related to the flow"
         def involvedSwitches = pathHelper.getInvolvedSwitches(flowPath)*.dpId
         def switchToManipulate = topology.activeSwitches.find { !(it.dpId in involvedSwitches) }
-        def blockData = switchHelper.knockoutSwitch(switchToManipulate, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(switchToManipulate, RW)
         def isSwitchActivated = false
         wait(WAIT_OFFSET) {
             def prevHistorySize = northbound.getFlowHistory(flow.flowId).size()
@@ -838,7 +850,7 @@ triggering one more reroute of the current path"
         }
 
         cleanup:
-        swPair && lockKeeper.cleanupTrafficShaperRules(swPair.dst.region)
+        swPair && lockKeeper.cleanupTrafficShaperRules(swPair.dst.regions)
         flow && flowHelperV2.deleteFlow(flow.flowId)
         withPool {
             [mainPathUniqueIsl, commonIsl].eachParallel { Isl isl ->

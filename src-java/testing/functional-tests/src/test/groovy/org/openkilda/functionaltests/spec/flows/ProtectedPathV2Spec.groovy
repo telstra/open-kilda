@@ -5,8 +5,9 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -1026,7 +1027,9 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
+            assert northbound.getFlowHistory(flow.flowId).find {
+                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+            }?.payload?.last()?.action == REROUTE_FAIL
         }
         verifyAll(northboundV2.getFlow(flow.flowId).statusDetails) {
             mainPath == "Down"

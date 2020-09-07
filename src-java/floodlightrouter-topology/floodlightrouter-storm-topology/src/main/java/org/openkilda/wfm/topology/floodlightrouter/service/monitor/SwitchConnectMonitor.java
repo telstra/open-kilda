@@ -19,7 +19,6 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingUpdate;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMonitorCarrier;
 
 import lombok.Getter;
@@ -28,8 +27,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -40,7 +37,6 @@ public abstract class SwitchConnectMonitor {
     protected final SwitchId switchId;
 
     protected final Set<String> availableInRegions = new HashSet<>();
-    private String activeRegion = null;
 
     /**
      * Last time when connection was marked as unavailable. Caller must use {@code isAvailable()} result to detect
@@ -79,9 +75,10 @@ public abstract class SwitchConnectMonitor {
      */
     public void handleRegionOfflineNotification(String region) {
         if (availableInRegions.remove(region)) {
-            handleAvailableRegionsSetUpdate();
+            handleRegionLose(region);
             if (availableInRegions.isEmpty()) {
                 becomeUnavailableDueToRegionOffline();
+                becomeUnavailableAt = clock.instant();
             }
         }
     }
@@ -91,12 +88,8 @@ public abstract class SwitchConnectMonitor {
      */
     public void handleNetworkDumpResponse(NetworkDumpSwitchData switchData, String region) {
         ensureSwitchIdMatch(switchData.getSwitchId());
-
-        boolean availableNow = isAvailable();
-        handleConnect(switchData, region);
-        if (availableNow && Objects.equals(activeRegion, region)) {
-            // proxy network dump for active region only
-            carrier.switchStatusUpdateNotification(switchId, switchData);
+        if (isReadWriteMode() == switchData.isWriteMode()) {
+            handlePeriodicDump(switchData, region);
         }
     }
 
@@ -104,50 +97,53 @@ public abstract class SwitchConnectMonitor {
         return ! availableInRegions.isEmpty();
     }
 
+    protected void handlePeriodicDump(NetworkDumpSwitchData switchData, String region) {
+        handleConnect(switchData, region);
+    }
+
     protected void handleConnect(InfoData notification, String region) {
         if (availableInRegions.add(region)) {
             if (availableInRegions.size() == 1) {
                 becomeAvailable(notification, region);
             }
-            handleAvailableRegionsSetUpdate();
+            handleRegionAcquire(region);
         }
     }
 
     protected void handleDisconnect(SwitchInfoData notification, String region) {
         if (availableInRegions.remove(region)) {
-            handleAvailableRegionsSetUpdate();
+            handleRegionLose(region);
             if (availableInRegions.isEmpty()) {
                 becomeUnavailable(notification);
+                becomeUnavailableAt = clock.instant();
             }
         }
     }
 
     protected void becomeAvailable(InfoData notification, String region) {
-        activeRegion = region;
-        log.info("Set {} active region for {} to \"{}\"", formatConnectMode(), switchId, activeRegion);
-
-        carrier.regionUpdateNotification(new RegionMappingUpdate(switchId, activeRegion, isReadWriteMode()));
-        carrier.switchStatusUpdateNotification(switchId, notification);
+        // noop
     }
 
     protected void becomeUnavailable(InfoData notification) {
-        becomeUnavailableAt = clock.instant();
-        activeRegion = null;
-        log.info("There is no any {} available regions for {} - switch is unavailable", formatConnectMode(), switchId);
-
-        carrier.regionUpdateNotification(new RegionMappingUpdate(switchId, null, isReadWriteMode()));
-        carrier.switchStatusUpdateNotification(switchId, notification);
+        // noop
     }
 
-    protected abstract void becomeUnavailableDueToRegionOffline();
+    protected void becomeUnavailableDueToRegionOffline() {
+        // noop
+    }
+
+    protected void handleRegionAcquire(String region) {
+        handleAvailableRegionsSetUpdate();
+    }
+
+    protected void handleRegionLose(String region) {
+        handleAvailableRegionsSetUpdate();
+    }
 
     protected void handleAvailableRegionsSetUpdate() {
         log.info(
                 "List of {} availability zones for {} has changed to: {}",
                 formatConnectMode(), switchId, formatAvailableRegionsSet());
-        if (!availableInRegions.contains(activeRegion) && !availableInRegions.isEmpty()) {
-            swapActiveRegion();
-        }
     }
 
     protected void ensureSwitchIdMatch(SwitchId affectedSwitchId) {
@@ -164,27 +160,15 @@ public abstract class SwitchConnectMonitor {
 
     protected abstract boolean isDisconnectNotification(SwitchInfoData notification);
 
-    private void swapActiveRegion() {
-        Iterator<String> iter = availableInRegions.iterator();
-        if (iter.hasNext()) {
-            String current = activeRegion;
-            activeRegion = iter.next();
-            log.info(
-                    "Change {} active region for {} from \"{}\" to \"{}\"",
-                    formatConnectMode(), switchId, current, activeRegion);
-            carrier.regionUpdateNotification(new RegionMappingUpdate(switchId, activeRegion, isReadWriteMode()));
-        } else {
-            throw new IllegalStateException(String.format(
-                    "Unable to determine \"next\" available region for switch %s, availability regions set is empty",
-                    switchId));
-        }
+    protected void reportNotificationDrop(InfoData notification) {
+        log.debug("Drop speaker switch {} notification: {}", switchId, notification);
     }
 
-    private String formatConnectMode() {
+    protected String formatConnectMode() {
         return isReadWriteMode() ? "RW" : "RO";
     }
 
-    private String formatAvailableRegionsSet() {
+    protected String formatAvailableRegionsSet() {
         return "{" + availableInRegions.stream()
                 .sorted()
                 .collect(Collectors.joining(", ")) + "}";

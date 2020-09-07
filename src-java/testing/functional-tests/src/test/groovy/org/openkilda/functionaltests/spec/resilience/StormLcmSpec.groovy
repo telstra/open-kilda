@@ -4,6 +4,7 @@ import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -92,8 +93,8 @@ class StormLcmSpec extends HealthCheckSpecification {
 
         and: "Disconnect switches on both ends of ISL"
         def islUnderTest = topology.islsForActiveSwitches.first()
-        def srcBlockData = lockKeeper.knockoutSwitch(islUnderTest.srcSwitch, mgmtFlManager)
-        def dstBlockData = lockKeeper.knockoutSwitch(islUnderTest.dstSwitch, mgmtFlManager)
+        def srcBlockData = lockKeeper.knockoutSwitch(islUnderTest.srcSwitch, RW)
+        def dstBlockData = lockKeeper.knockoutSwitch(islUnderTest.dstSwitch, RW)
 
         and: "Deploy network topology back"
         wfmManipulator.deployTopology("network")

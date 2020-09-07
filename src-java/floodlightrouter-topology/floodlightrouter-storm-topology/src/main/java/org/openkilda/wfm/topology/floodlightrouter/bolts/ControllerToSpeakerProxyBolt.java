@@ -17,18 +17,20 @@ package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.command.BroadcastWrapper;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.stats.StatsRequest;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.floodlightrouter.RegionAwareKafkaTopicSelector;
 import org.openkilda.wfm.topology.floodlightrouter.model.RegionMapping;
 import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingUpdate;
+import org.openkilda.wfm.topology.floodlightrouter.service.ControllerToSpeakerProxyCarrier;
+import org.openkilda.wfm.topology.floodlightrouter.service.ControllerToSpeakerProxyService;
 import org.openkilda.wfm.topology.floodlightrouter.service.RouterUtils;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
-import com.google.common.collect.ImmutableSet;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -36,24 +38,22 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.time.Clock;
 import java.time.Duration;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 @Slf4j
-public class ControllerToSpeakerProxyBolt extends AbstractBolt {
+public class ControllerToSpeakerProxyBolt extends AbstractBolt implements ControllerToSpeakerProxyCarrier {
     private final String targetTopic;
 
     protected transient RegionMapping switchMapping;
     protected final Set<String> allRegions;
     private final Duration switchMappingRemoveDelay;
 
+    private transient ControllerToSpeakerProxyService service;
+
     public ControllerToSpeakerProxyBolt(String targetTopic, Set<String> allRegions, Duration switchMappingRemoveDelay) {
         this.targetTopic = targetTopic;
-        this.allRegions = ImmutableSet.copyOf(allRegions);
+        this.allRegions = allRegions;
         this.switchMappingRemoveDelay = switchMappingRemoveDelay;
     }
 
@@ -68,74 +68,68 @@ public class ControllerToSpeakerProxyBolt extends AbstractBolt {
 
     @Override
     public void handleInput(Tuple input) throws Exception {
-        handleControllerRequest(pullControllerPayload(input));
+        Object raw = pullControllerPayload(input);
+        if (raw instanceof Message) {
+            handleControllerRequest((Message) raw);
+        } else if (raw instanceof AbstractMessage) {
+            handleControllerRequest((AbstractMessage) raw);
+        } else {
+            unhandledInput(input);
+        }
     }
 
     private void handleSwitchMappingUpdate(Tuple input) throws PipelineException {
-        switchMapping.update(pullValue(input, SwitchMonitorBolt.FIELD_ID_PAYLOAD, RegionMappingUpdate.class));
+        service.switchMappingUpdate(pullValue(input, SwitchMonitorBolt.FIELD_ID_PAYLOAD, RegionMappingUpdate.class));
     }
 
-    private void handleControllerRequest(Object message) throws PipelineException {
-        if (message instanceof CommandMessage && RouterUtils.isBroadcast(((CommandMessage) message).getData())) {
-            handleBroadcastRequest((CommandMessage) message);
+    private void handleControllerRequest(Message message) {
+        if (message instanceof CommandMessage) {
+            handleControllerRequest((CommandMessage) message);
         } else {
-            handleUnicastRequest(message);
+            service.unicastRequest(message);
         }
     }
 
-    private void handleBroadcastRequest(CommandMessage message) throws PipelineException {
-        Map<String, Set<SwitchId>> population = switchMapping.organizeReadWritePopulationPerRegion();
-        for (String region : allRegions) {
-            Set<SwitchId> scope = population.getOrDefault(region, Collections.emptySet());
-            BroadcastWrapper wrapper = new BroadcastWrapper(scope, message.getData());
-            proxyRequestToSpeaker(
-                    new CommandMessage(wrapper, message.getTimestamp(), message.getCorrelationId()), region);
-        }
-    }
-
-    private void handleUnicastRequest(Object payload) throws PipelineException {
-        SwitchId switchId = lookupSwitchId(payload);
-        if (switchId != null) {
-            Optional<String> region = switchMapping.lookupReadWriteRegion(switchId);
-            if (region.isPresent()) {
-                proxyRequestToSpeaker(payload, region.get());
-            } else {
-                handleRegionNotFoundError(payload, switchId);
-            }
+    private void handleControllerRequest(CommandMessage message) {
+        CommandData payload = message.getData();
+        if (payload instanceof StatsRequest) {
+            service.statsRequest((StatsRequest) payload, message.getCorrelationId());
+        } else if (RouterUtils.isBroadcast(payload)) {
+            service.broadcastRequest(message);
         } else {
-            log.error("Unable to lookup switch for message: {}", payload);
+            service.unicastRequest(message);
         }
     }
 
-    private SwitchId lookupSwitchId(Object message) {
-        SwitchId switchId;
-
-        if (message instanceof AbstractMessage) {
-            switchId = RouterUtils.lookupSwitchId((AbstractMessage) message);
-        } else if (message instanceof Message) {
-            switchId = RouterUtils.lookupSwitchId((Message) message);
-        } else {
-            throw new IllegalArgumentException(String.format(
-                    "Unable to extract switch Id - unknown payload type %s - %s",
-                    message.getClass().getName(), message));
-        }
-
-        return switchId;
-    }
-
-    protected void handleRegionNotFoundError(Object payload, SwitchId switchId) {
-        log.error("Unable to route request - region that owns switch {} is unknown (message: {})", switchId, payload);
-    }
-
-    protected void proxyRequestToSpeaker(Object payload, String region) throws PipelineException {
-        Tuple input = getCurrentTuple();
-        String key = pullValue(input, KafkaRecordTranslator.FIELD_ID_KEY, String.class);
-        getOutput().emit(input, makeDefaultTuple(payload, key, region));
+    private void handleControllerRequest(AbstractMessage message) {
+        service.unicastHsRequest(message);
     }
 
     protected void init() {
-        switchMapping = new RegionMapping(Clock.systemUTC(), switchMappingRemoveDelay);
+        service = new ControllerToSpeakerProxyService(this, allRegions, switchMappingRemoveDelay);
     }
+
+    // ControllerToSpeakerProxyCarrier
+
+    public void sendToSpeaker(Message message, String region) {
+        getOutput().emit(getCurrentTuple(), makeDefaultTuple(message, pullKafkaKey(), region));
+    }
+
+    public void sendToSpeaker(AbstractMessage message, String region) {
+        getOutput().emit(getCurrentTuple(), makeDefaultTuple(message, pullKafkaKey(), region));
+    }
+
+    @Override
+    public void regionNotFoundError(Message message, SwitchId switchId) {
+        handleRegionNotFoundError(message, switchId);
+    }
+
+    @Override
+    public void regionNotFoundError(AbstractMessage message, SwitchId switchId) {
+        handleRegionNotFoundError(message, switchId);
+    }
+
+    // stream management
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
@@ -151,5 +145,23 @@ public class ControllerToSpeakerProxyBolt extends AbstractBolt {
 
     protected Values makeDefaultTuple(Object payload, String key, String region) {
         return new Values(key, payload, targetTopic, region);
+    }
+
+    // own code
+
+    protected void handleRegionNotFoundError(Object payload, SwitchId switchId) {
+        log.error("Unable to route request - region that owns switch {} is unknown (message: {})", switchId, payload);
+    }
+
+    private String pullKafkaKey() {
+        String result;
+        Tuple tuple = getCurrentTuple();
+        try {
+            result = pullValue(tuple, KafkaRecordTranslator.FIELD_ID_KEY, String.class);
+        } catch (PipelineException e) {
+            log.error("Unable to read kafka-key from tuple {}: {}", formatTuplePayload(tuple), e);
+            return null;
+        }
+        return result;
     }
 }

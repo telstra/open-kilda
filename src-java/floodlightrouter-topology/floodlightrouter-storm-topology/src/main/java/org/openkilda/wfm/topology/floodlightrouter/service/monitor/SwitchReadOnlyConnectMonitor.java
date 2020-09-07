@@ -15,10 +15,12 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.service.monitor;
 
-import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingAdd;
+import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingRemove;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMonitorCarrier;
 
 import java.time.Clock;
@@ -30,16 +32,27 @@ public class SwitchReadOnlyConnectMonitor extends SwitchConnectMonitor {
     }
 
     @Override
-    public void handleNetworkDumpResponse(NetworkDumpSwitchData switchData, String region) {
-        if (! switchData.isWriteMode()) {
-            super.handleNetworkDumpResponse(switchData, region);
-        }
+    protected void becomeAvailable(InfoData notification, String region) {
+        super.becomeAvailable(notification, region);
+        reportNotificationDrop(notification);
     }
 
     @Override
-    protected void becomeUnavailableDueToRegionOffline() {
-        // FIXME(surabujin): possible it must be ignored i.e. do nothing for read-only connections
-        becomeUnavailable(new SwitchInfoData(switchId, SwitchChangeType.REMOVED));
+    protected void becomeUnavailable(InfoData notification) {
+        super.becomeUnavailable(notification);
+        reportNotificationDrop(notification);
+    }
+
+    @Override
+    protected void handleRegionAcquire(String region) {
+        super.handleRegionAcquire(region);
+        carrier.regionUpdateNotification(new RegionMappingAdd(switchId, region, false));
+    }
+
+    @Override
+    protected void handleRegionLose(String region) {
+        super.handleRegionLose(region);
+        carrier.regionUpdateNotification(new RegionMappingRemove(switchId, region, false));
     }
 
     @Override

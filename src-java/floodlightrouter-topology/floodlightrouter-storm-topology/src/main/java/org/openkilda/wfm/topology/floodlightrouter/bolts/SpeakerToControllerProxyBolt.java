@@ -71,7 +71,7 @@ public class SpeakerToControllerProxyBolt extends AbstractBolt {
 
     private void handleSwitchMappingUpdate(Tuple input) throws PipelineException {
         RegionMappingUpdate update = pullValue(input, SwitchMonitorBolt.FIELD_ID_PAYLOAD, RegionMappingUpdate.class);
-        switchMapping.update(update);
+        switchMapping.apply(update);
     }
 
     private void proxy(String key, Object value) {

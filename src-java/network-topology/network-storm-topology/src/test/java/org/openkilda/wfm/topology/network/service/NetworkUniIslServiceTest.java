@@ -34,7 +34,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.mappers.IslMapper;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
-import org.openkilda.wfm.topology.network.model.BfdStatus;
+import org.openkilda.wfm.topology.network.model.BfdStatusUpdate;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
@@ -301,14 +301,14 @@ public class NetworkUniIslServiceTest {
 
         resetMocks();
 
-        service.uniIslBfdUpDown(endpoint1, true);
-        service.uniIslBfdKill(endpoint1);
+        service.uniIslBfdStatusUpdate(endpoint1, BfdStatusUpdate.UP);
+        service.uniIslBfdStatusUpdate(endpoint1, BfdStatusUpdate.KILL);
 
         //System.out.println(mockingDetails(carrier).printInvocations());
 
         InOrder order = inOrder(carrier);
-        order.verify(carrier).notifyBfdStatus(endpoint1, IslReference.of(islA1toB1), BfdStatus.UP);
-        order.verify(carrier).notifyBfdStatus(endpoint1, IslReference.of(islA1toB1), BfdStatus.KILL);
+        order.verify(carrier).notifyBfdStatus(endpoint1, IslReference.of(islA1toB1), BfdStatusUpdate.UP);
+        order.verify(carrier).notifyBfdStatus(endpoint1, IslReference.of(islA1toB1), BfdStatusUpdate.KILL);
     }
 
     @Test
@@ -330,14 +330,14 @@ public class NetworkUniIslServiceTest {
         IslInfoData disco1 = IslMapper.INSTANCE.map(islA1toB1);
 
         service.uniIslDiscovery(endpoint1, disco1);
-        service.uniIslBfdUpDown(endpoint1, true);
+        service.uniIslBfdStatusUpdate(endpoint1, BfdStatusUpdate.UP);
 
         resetMocks();
 
         service.uniIslPhysicalDown(endpoint1);
-        service.uniIslBfdUpDown(endpoint1, true);
-        service.uniIslBfdUpDown(endpoint1, false);
-        service.uniIslBfdUpDown(endpoint1, true);
+        service.uniIslBfdStatusUpdate(endpoint1, BfdStatusUpdate.UP);
+        service.uniIslBfdStatusUpdate(endpoint1, BfdStatusUpdate.DOWN);
+        service.uniIslBfdStatusUpdate(endpoint1, BfdStatusUpdate.UP);
 
         //System.out.println(mockingDetails(carrier).printInvocations());
 
@@ -345,9 +345,9 @@ public class NetworkUniIslServiceTest {
 
         IslReference reference = IslReference.of(islA1toB1);
         order.verify(carrier).notifyIslDown(endpoint1, reference, IslDownReason.PORT_DOWN);
-        order.verify(carrier).notifyBfdStatus(endpoint1, reference, BfdStatus.UP);
-        order.verify(carrier).notifyBfdStatus(endpoint1, reference, BfdStatus.DOWN);
-        order.verify(carrier).notifyBfdStatus(endpoint1, reference, BfdStatus.UP);
+        order.verify(carrier).notifyBfdStatus(endpoint1, reference, BfdStatusUpdate.UP);
+        order.verify(carrier).notifyBfdStatus(endpoint1, reference, BfdStatusUpdate.DOWN);
+        order.verify(carrier).notifyBfdStatus(endpoint1, reference, BfdStatusUpdate.UP);
     }
 
     @Test
@@ -368,10 +368,10 @@ public class NetworkUniIslServiceTest {
 
         resetMocks();
 
-        service.uniIslBfdUpDown(endpoint, true);
+        service.uniIslBfdStatusUpdate(endpoint, BfdStatusUpdate.UP);
 
         // System.out.println(mockingDetails(carrier).printInvocations());
-        verify(carrier).notifyBfdStatus(endpoint, IslReference.of(link), BfdStatus.UP);
+        verify(carrier).notifyBfdStatus(endpoint, IslReference.of(link), BfdStatusUpdate.UP);
     }
 
     @Test

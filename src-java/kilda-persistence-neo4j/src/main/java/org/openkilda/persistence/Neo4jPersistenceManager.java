@@ -15,6 +15,7 @@
 
 package org.openkilda.persistence;
 
+import org.openkilda.persistence.converters.BfdSessionStatusConverter;
 import org.openkilda.persistence.converters.ConnectedDeviceTypeConverter;
 import org.openkilda.persistence.converters.CookieConverter;
 import org.openkilda.persistence.converters.ExclusionCookieConverter;
@@ -91,6 +92,7 @@ public class Neo4jPersistenceManager implements PersistenceManager {
                                     FlowStatusConverter.class,
                                     IslDownReasonConverter.class,
                                     IslStatusConverter.class,
+                                    BfdSessionStatusConverter.class,
                                     MeterIdConverter.class,
                                     MirrorDirectionConverter.class,
                                     MirrorGroupTypeConverter.class,

@@ -5,10 +5,11 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -212,7 +213,7 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         when: "Deactivate the src switch"
         def switchToDisconnect = topology.switches.find { it.dpId == switchPair.src.dpId }
-        def blockData = switchHelper.knockoutSwitch(switchToDisconnect, mgmtFlManager)
+        def blockData = switchHelper.knockoutSwitch(switchToDisconnect, RW)
 
         and: "Get all flows going through the deactivated src switch"
         def switchFlowsResponseSrcSwitch = northbound.getSwitchFlows(switchPair.src.dpId)

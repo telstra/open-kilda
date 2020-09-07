@@ -16,7 +16,7 @@
 package org.openkilda.testing.service.lockkeeper;
 
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
-import org.openkilda.testing.service.floodlight.MultiFloodlightManager;
+import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress;
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData;
@@ -49,21 +49,23 @@ public interface LockKeeperService {
 
     void restartFloodlight(String region);
 
-    FloodlightResourceAddress knockoutSwitch(Switch sw, MultiFloodlightManager factory);
+    List<FloodlightResourceAddress> knockoutSwitch(Switch sw, List<String> regions);
 
-    void reviveSwitch(Switch sw, FloodlightResourceAddress flResourceAddress);
+    List<FloodlightResourceAddress> knockoutSwitch(Switch sw, FloodlightConnectMode mode);
+
+    void reviveSwitch(Switch sw, List<FloodlightResourceAddress> flResourceAddress);
 
     void setController(Switch sw, String controller);
 
-    void blockFloodlightAccess(String region, FloodlightResourceAddress address);
+    void blockFloodlightAccess(FloodlightResourceAddress address);
 
-    void unblockFloodlightAccess(String region, FloodlightResourceAddress address);
+    void unblockFloodlightAccess(FloodlightResourceAddress address);
 
     void shapeSwitchesTraffic(List<Switch> switches, TrafficControlData tcData);
 
-    void cleanupTrafficShaperRules(String region);
+    void cleanupTrafficShaperRules(List<String> regions);
 
-    void removeFloodlightAccessRestrictions(String region);
+    void removeFloodlightAccessRestrictions(List<String> regions);
 
     void knockoutFloodlight(String region);
 
@@ -80,16 +82,5 @@ public interface LockKeeperService {
             throw new RuntimeException(
                     String.format("Unable to parse inetaddress returned flow Floodlight: %s", flFormatInetAddress));
         }
-    }
-
-    /**
-     * Convert switch representation to FloodlightResourceAddress format.
-     */
-    static FloodlightResourceAddress toFlResource(Switch sw, MultiFloodlightManager manager) {
-        String swInfo = manager.getFloodlightService(sw.getRegion()).getSwitches().stream().filter(s ->
-                sw.getDpId().equals(s.getSwitchId())).findFirst().get().getAddress();
-        Pair<String, Integer> inetAddress = parseAddressPort(swInfo);
-        String containerName = manager.getContainerName(sw.getRegion());
-        return new FloodlightResourceAddress(containerName, inetAddress.getLeft(), inetAddress.getRight());
     }
 }

@@ -30,7 +30,6 @@ import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
-import org.openkilda.messaging.command.stats.StatsRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpGroupsRequest;
@@ -55,6 +54,8 @@ import org.openkilda.messaging.payload.switches.RemoveIslDefaultRulesCommand;
 import org.openkilda.model.SwitchId;
 
 public final class RouterUtils {
+    private static final String unableToExtractSwitchIdErrorFormat =  "Unable to extract switchId from %s";
+
     private RouterUtils() {
     }
 
@@ -63,15 +64,14 @@ public final class RouterUtils {
      */
     public static boolean isBroadcast(CommandData payload) {
         return payload instanceof PortsCommandData
-                || payload instanceof ConnectModeRequest
-                || payload instanceof StatsRequest;
+                || payload instanceof ConnectModeRequest;
     }
 
     /**
      * lookup SwitchId in message object.
      *
      * @param message - target
-     * @return - SwitchId or null
+     * @return - SwitchId
      */
     public static SwitchId lookupSwitchId(Message message) {
         if (message instanceof CommandMessage) {
@@ -136,19 +136,20 @@ public final class RouterUtils {
                 return ((DumpGroupsRequest) commandData).getSwitchId();
             }
         }
-        return null;
+
+        throw new IllegalArgumentException(String.format(unableToExtractSwitchIdErrorFormat, message));
     }
 
     /**
      * Lookup SwitchId in message object.
      *
      * @param message - target
-     * @return - SwitchId or null
+     * @return - SwitchId
      */
     public static SwitchId lookupSwitchId(AbstractMessage message) {
         if (message instanceof SpeakerRequest) {
             return ((SpeakerRequest) message).getSwitchId();
         }
-        return null;
+        throw new IllegalArgumentException(String.format(unableToExtractSwitchIdErrorFormat, message));
     }
 }

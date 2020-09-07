@@ -1,12 +1,13 @@
 package org.openkilda.performancetests.helpers
 
-import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.performancetests.model.CustomTopology
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.labservice.model.LabInstance
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -27,21 +28,13 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
     NorthboundService northbound
     @Autowired
     LabService labService
-
+    @Autowired
+    FloodlightsHelper flHelper
     @Autowired
     IslUtils islUtils
 
     @Value('${discovery.timeout}')
     int discoveryTimeout
-
-    @Value("#{'\${floodlight.regions}'.split(',')}")
-    List<String> regions
-
-    @Value("#{'\${floodlight.controllers.management.openflow}'.split(',')}")
-    List<String> managementControllers
-
-    @Value("#{'\${floodlight.controllers.stat.openflow}'.split(',')}")
-    List<String> statControllers
 
     /**
      * First connect all switches in a 'line'. Then start randomly adding hordes.
@@ -53,9 +46,9 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
         }
         def topo = new CustomTopology()
         switchesAmount.times { i ->
-            def regionIndex = i % regions.size()
-            topo.addCasualSwitch("${managementControllers[regionIndex]} ${statControllers[regionIndex]}",
-                    regions[regionIndex])
+            def fls = flHelper.fls.findAll { it.mode == RW }
+            def fl = fls[i % fls.size()]
+            topo.addCasualSwitch(fl.openflow, [fl.region])
         }
         //form a line of switches
         def allSwitches = topo.getSwitches()
@@ -68,8 +61,6 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
             def dst = topo.pickRandomSwitch([src])
             topo.addIsl(src, dst)
         }
-
-        topo.setControllers(managementControllers)
         labService.createLab(topo)
         Wrappers.wait(30 + switchesAmount * 3, 5) {
             verifyTopology(topo)
