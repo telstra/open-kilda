@@ -25,6 +25,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -206,38 +207,47 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
     @Tidy
     @Unroll
-    def "System is able to switch #flowDescription flow to protected path"() {
+    def "System is able to switch #flowDescription flows to protected paths"() {
         given: "Two active not neighboring switches with three diverse paths at least"
-        def allIsls = northbound.getAllLinks()
+        def initialIsls = northbound.getAllLinks()
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
             it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
         } ?: assumeTrue("No suiting switches found", false)
         def uniquePathCount = switchPair.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size()
 
-        when: "Create flow with protected path"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.maximumBandwidth = bandwidth
-        flow.ignoreBandwidth = bandwidth == 0
-        flow.allocateProtectedPath = true
-        flowHelperV2.addFlow(flow)
+        when: "Create 5 flows with protected paths"
+//        List<FlowRequestV2> flows = (1..5).collect {
+        //workaround for issue #3703 https://github.com/telstra/open-kilda/issues/3703
+        List<FlowRequestV2> flows = (1..1).collect {
+            flowHelperV2.randomFlow(switchPair).tap {
+                maximumBandwidth = bandwidth
+                ignoreBandwidth = bandwidth == 0
+                allocateProtectedPath = true
+            }
+        }
+        flows.each { flowHelperV2.addFlow(it) }
 
-        then: "Flow is created with protected path"
-        def flowPathInfo = northbound.getFlowPath(flow.flowId)
-        flowPathInfo.protectedPath
+        then: "Flows are created with protected path"
+        def flowPathsInfo = flows.collect { northbound.getFlowPath(it.flowId) }
+        flowPathsInfo.each { assert it.protectedPath }
 
-        and: "Current path is not equal to protected path"
-        def currentPath = pathHelper.convert(flowPathInfo)
-        def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
+        and: "Current paths are not equal to protected paths"
+        def currentPath = pathHelper.convert(flowPathsInfo[0])
+        def currentProtectedPath = pathHelper.convert(flowPathsInfo[0].protectedPath)
         currentPath != currentProtectedPath
+        //check that all other flows use the same paths, so above verification applies to all of them
+        flowPathsInfo.each { flowPathInfo ->
+            assert pathHelper.convert(flowPathInfo) == currentPath
+            assert pathHelper.convert(flowPathInfo.protectedPath) == currentProtectedPath
+        }
 
-        and: "Bandwidth is reserved for protected path on involved ISLs"
-        def protectedIsls = pathHelper.getInvolvedIsls(currentProtectedPath)
+        and: "Bandwidth is reserved for protected paths on involved ISLs"
+        def protectedIsls = pathHelper.getInvolvedIsls(currentPath)
         def protectedIslsInfo = protectedIsls.collect { islUtils.getIslInfo(it).get() }
-
-        allIsls.each { isl ->
-            protectedIslsInfo.each { protectedIsl ->
-                if (isl.id == protectedIsl.id) {
-                    assert isl.availableBandwidth - protectedIsl.availableBandwidth == flow.maximumBandwidth
+        initialIsls.each { initialIsl ->
+            protectedIslsInfo.each { currentIsl ->
+                if (initialIsl.id == currentIsl.id) {
+                    assert initialIsl.availableBandwidth - currentIsl.availableBandwidth == flows.sum { it.maximumBandwidth }
                 }
             }
         }
@@ -246,15 +256,17 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
         def portDown = antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
-        then: "Flow is switched to protected path"
+        then: "Flows are switched to protected paths"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            def flowPathInfoAfterRerouting = northbound.getFlowPath(flow.flowId)
+            flows.each { flow ->
+                assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+                def flowPathInfoAfterRerouting = northbound.getFlowPath(flow.flowId)
 
-            assert pathHelper.convert(flowPathInfoAfterRerouting) == currentProtectedPath
-            if (4 <= uniquePathCount) {
-                assert pathHelper.convert(flowPathInfoAfterRerouting.protectedPath) != currentPath
-                assert pathHelper.convert(flowPathInfoAfterRerouting.protectedPath) != currentProtectedPath
+                assert pathHelper.convert(flowPathInfoAfterRerouting) == currentProtectedPath
+                if (4 <= uniquePathCount) {
+                    assert pathHelper.convert(flowPathInfoAfterRerouting.protectedPath) != currentPath
+                    assert pathHelper.convert(flowPathInfoAfterRerouting.protectedPath) != currentProtectedPath
+                }
             }
         }
 
@@ -265,10 +277,10 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         }
 
         then: "Path of the flow is not changed"
-        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentProtectedPath
+        flows.each { assert pathHelper.convert(northbound.getFlowPath(it.flowId)) == currentProtectedPath }
 
         cleanup: "Revert system to original state"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flows.each { flowHelperV2.deleteFlow(it.flowId) }
         if (portDown && !portUp) {
             antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
