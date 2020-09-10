@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.70.2 (10/09/2020)
+
+### Bug Fixes:
+-  [#3711](https://github.com/telstra/open-kilda/pull/3711) Fix validation of server42 ingress rules (Issue: [#3673](https://github.com/telstra/open-kilda/issues/3673)) [**storm-topologies**]
+
+### Improvements:
+-  [#3700](https://github.com/telstra/open-kilda/pull/3700) Skip excess paths in validation for server42 rules [**storm-topologies**]
+-  [#3716](https://github.com/telstra/open-kilda/pull/3716) Add confd key in order to change space used for logging [**floodlight**]
+
+### Other changes:
+-  [#3704](https://github.com/telstra/open-kilda/pull/3704) Update func tests to be able to reveal #3703 [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.70.1...v1.70.2).
+
+### Affected Components:
+fl, swmanager
+
+---
+
 ## v1.70.1 (07/09/2020)
 
 ### Features:
