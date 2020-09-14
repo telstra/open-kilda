@@ -18,6 +18,9 @@ package org.openkilda.persistence;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.persistence.converters.CookieConverter;
+import org.openkilda.persistence.converters.ExclusionCookieConverter;
 import org.openkilda.persistence.converters.SwitchIdConverter;
 
 import org.junit.Test;
@@ -54,6 +57,21 @@ public class SimpleConversionCallbackTest {
 
         // then
         assertEquals(entity, actualEntity);
+    }
+
+    @Test
+    public void shouldUseExactTypeConverterWhenMultipleAvailable() {
+        // given
+        SimpleConversionCallback conversionCallback =
+                new SimpleConversionCallback(Arrays.asList(CookieConverter.class,
+                        ExclusionCookieConverter.class));
+        long graphObject = 1L;
+
+        //when
+        FlowSegmentCookie cookie = conversionCallback.convert(FlowSegmentCookie.class, graphObject);
+
+        // then
+        assertEquals(cookie.getClass(), FlowSegmentCookie.class);
     }
 }
 

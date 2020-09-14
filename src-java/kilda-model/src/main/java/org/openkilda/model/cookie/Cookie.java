@@ -91,7 +91,7 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
     }
 
     /**
-     * Conver existing {@link Cookie} instance into {@link CookieBuilder}.
+     * Convert existing {@link Cookie} instance into {@link CookieBuilder}.
      */
     public CookieBuilder toBuilder() {
         return new CookieBuilder()

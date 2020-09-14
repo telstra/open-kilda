@@ -17,7 +17,11 @@ Do not change this file, all changes will be lost. Change corresponding template
     <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
       <fileNamePattern>{{ getv "/kilda_logging_logfile_path" }}/floodlight-${FL_ROLE}-${FL_REGION}.log.json.%d{yyyy-MM-dd}.%i</fileNamePattern>
        <maxFileSize>100MB</maxFileSize>
+{{ if exists "/kilda_floodlight_logging_total_size_cap" }}
+       <totalSizeCap>{{ getv "/kilda_floodlight_logging_total_size_cap" }}</totalSizeCap>
+{{- else }}
        <totalSizeCap>20GB</totalSizeCap>
+{{- end }}
        <maxHistory>10</maxHistory>
     </rollingPolicy>
     <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">

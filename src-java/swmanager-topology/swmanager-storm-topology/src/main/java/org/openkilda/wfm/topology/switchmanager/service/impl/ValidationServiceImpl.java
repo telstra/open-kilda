@@ -277,12 +277,11 @@ public class ValidationServiceImpl implements ValidationService {
                 .forEach(result::add);
 
         // collect termination segments
-        Collection<FlowPath> affectedPaths = flowPathRepository.findByEndpointSwitch(switchId);
+        Collection<FlowPath> affectedPaths = flowPathRepository.findByEndpointSwitch(switchId).stream()
+                .filter(path -> path.getFlow().isActualPathId(path.getPathId()))
+                .collect(Collectors.toList());
         for (FlowPath path : affectedPaths) {
             Flow flow = path.getFlow();
-            if (! flow.isActualPathId(path.getPathId())) {
-                continue;
-            }
 
             result.add(path.getCookie().getValue());
 
