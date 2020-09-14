@@ -27,7 +27,8 @@ export class TopologyService {
     FLOW_CHECKED: 0,
     REFRESH_CHECKED: 0,
     REFRESH_INTERVAL: 1,
-    REFRESH_TYPE: "m"
+    REFRESH_TYPE: "m",
+    WORLDMAP:0
   }
 
   constructor(private cookieService: CookieManagerService) {

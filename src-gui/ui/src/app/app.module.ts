@@ -94,6 +94,7 @@ import { PortInventoryFlowsComponent } from './modules/switches/port-inventory-f
 import { ConnectedDevicesComponent } from './modules/flows/connected-devices/connected-devices.component';
 import { AffectedFlowsReportComponent } from './modules/reports/affected-flows-report/affected-flows-report.component';
 import { AffectedFlowListComponent } from './modules/reports/affected-flow-list/affected-flow-list.component';
+import { WorldMapViewComponent } from './modules/topology/world-map-view/world-map-view.component';
 
 @NgModule({
   declarations: [
@@ -174,6 +175,7 @@ import { AffectedFlowListComponent } from './modules/reports/affected-flow-list/
     ConnectedDevicesComponent,
     AffectedFlowsReportComponent,
     AffectedFlowListComponent,
+    WorldMapViewComponent,
   ],
   imports: [
     HttpClientModule,

@@ -7,4 +7,5 @@ export interface TopologyView {
     REFRESH_CHECKED: number,
     REFRESH_INTERVAL: number,
     REFRESH_TYPE: string
+    WORLDMAP:number
 }

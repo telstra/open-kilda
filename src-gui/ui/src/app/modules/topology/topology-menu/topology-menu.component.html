@@ -4,7 +4,9 @@
   <input type="hidden" id="m_s_dropdown">
   <input type="hidden" id="switch">
 
-  
+  <span class="world-map-view" ngbPopover="World Map View" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave" data-toggle="modal" id="viewWorldMap" (click)="showWorldMap()">
+    <i class="fa fa-map-o" aria-hidden="true"></i>
+  </span>
   <span class="affected-isl" ngbPopover="Affected ISL" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave" data-toggle="modal" id="viewISL" (click)="showAffectedISL()">
     <i class="icon-affected-isl" aria-hidden="true"></i>
   </span>

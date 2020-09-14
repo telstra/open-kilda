@@ -93,6 +93,13 @@ export class TopologyMenuComponent implements OnInit {
     this.toggleRefreshMenu();
   }
 
+  showWorldMap(){
+    let settings = this.topologyService.getViewOptions();
+    var val = (settings.WORLDMAP == 0) ? 1 :0;
+    settings.WORLDMAP = val;
+    this.topologyService.setViewOptinos(settings);
+  }
+
   showIsl() {
     let settings = this.defaultSetting;
     settings.ISL_CHECKED = 1;

@@ -38,6 +38,9 @@ public class SwitchInfo implements Serializable {
     @JsonProperty("switch_id")
     private String switchId;
     
+    @JsonProperty("port")
+    private String port;
+    
     @JsonProperty("address")
     private String address;
     
@@ -64,6 +67,9 @@ public class SwitchInfo implements Serializable {
 
     @JsonProperty("pop-location")
     private PopLocation popLocation;
+    
+    @JsonProperty("location")
+    private Location location;
 
     @JsonProperty("model")
     private String model;

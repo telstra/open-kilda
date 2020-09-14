@@ -1,12 +1,13 @@
-<div id="switchesgraph" class="topology-container" >
+<div class="row">
+  <div id="switchesgraph" class="topology-container" [hidden]="showWorldMap">
     <div class="graph-wrapper" [hidden]="graphShow"></div>
   <svg id="" width="1100" height="450"></svg>
 </div>
-<div class="row">
+  <div class="row">
     <ng-template #itemTpl let-result>
         <span> {{ result.result }}</span>
     </ng-template>
-  <div class="checkbox-wrapper pull-right">
+  <div class="checkbox-wrapper pull-right" [hidden]="showWorldMap">
     <div class="check-connections">
       <div class="checkbox-btns">
         <div id="ui-container" class="ui-widget" [class.active]="searchView">
@@ -118,5 +119,11 @@
     </div>
     
   </div>
-  
 </div>
+</div>
+
+<div id="worldmap" class="topology-container" [hidden]="!showWorldMap">  
+  <app-world-map-view [data]="graphdata" *ngIf="showWorldMap"></app-world-map-view>
+</div>
+
+
