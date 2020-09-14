@@ -101,6 +101,30 @@ network, nbworker
 
 ---
 
+## v1.68.0 (03/08/2020)
+
+### Features:
+-  [#3604](https://github.com/telstra/open-kilda/pull/3604) Implementation of smart discovery feature. (Issue: [#3548](https://github.com/telstra/open-kilda/issues/3548)) [**storm-topologies**]
+
+### Bug Fixes:
+-  [#3654](https://github.com/telstra/open-kilda/pull/3654) Improve flow history dumps (Issue: [#3031](https://github.com/telstra/open-kilda/issues/3031)) 
+
+### Improvements:
+-  [#3653](https://github.com/telstra/open-kilda/pull/3653) Add missing fields to flow patch operation. [**northbound**][**storm-topologies**]
+-  [#3657](https://github.com/telstra/open-kilda/pull/3657) improve cleanup in swapEndpointSpec [**tests**]
+-  [#3666](https://github.com/telstra/open-kilda/pull/3666) Floodlight repo fetch tag insead branch 
+-  [#3640](https://github.com/telstra/open-kilda/pull/3640) refactor rest according to #3639 [**tests**]
+
+### Other changes:
+-  [#3576](https://github.com/telstra/open-kilda/pull/3576) Decrease amount of kafka bolts in flrouter [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.67.0...v1.68.0).
+
+### Affected Components:
+nb, flow-hs, router, nbworker, network
+
+---
+
 ## v1.67.0 (29/07/2020)
 
 ### Features:
