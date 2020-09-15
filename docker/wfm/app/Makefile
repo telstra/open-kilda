@@ -1,6 +1,6 @@
 # WFM topology management
 
-TOPOLOGY := network flowhs stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control
+TOPOLOGY := network flowhs stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control snmp
 
 ENTRY_network := org.openkilda.wfm.topology.network.NetworkTopology
 ENTRY_flowhs := org.openkilda.wfm.topology.flowhs.FlowHsTopology

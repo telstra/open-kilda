@@ -106,6 +106,10 @@ COPY BUILD/server42-control-storm-topology/libs/*                      /app/serv
 COPY BUILD/server42-control-storm-topology/build.gradle                /app/server42-control-storm-topology/
 
 
+#snmp
+COPY BUILD/snmp-storm-topology/libs/*                      /app/snmp-storm-topology/libs/
+COPY BUILD/snmp-storm-topology/build.gradle                /app/snmp-storm-topology/
+
 CMD /app/entry-point.sh
 
 RUN TZ=Australia/Melbourne date >> /container_baked_on.txt
