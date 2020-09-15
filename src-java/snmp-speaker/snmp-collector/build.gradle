@@ -1,0 +1,75 @@
+plugins {
+    id 'org.springframework.boot' version '2.3.1.RELEASE'
+    // this will get boot dependency in, kind of have a BOM
+    id 'io.spring.dependency-management' version '1.0.9.RELEASE'
+}
+
+description = 'SNMP Collector'
+
+configurations {
+    all {
+        exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
+    }
+}
+dependencies {
+
+    implementation project(':base-messaging')
+    implementation project(':snmp-messaging')
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-log4j2'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    implementation 'javax.validation:validation-api:2.0.0.Final'
+    implementation 'org.hibernate.validator:hibernate-validator:6.0.10.Final'
+
+
+    implementation  'org.snmp4j:snmp4j:2.6.3'
+
+    implementation 'com.google.guava:guava'
+
+    implementation('org.apache.kafka:kafka-clients') {
+        version {
+            strictly '0.10.2.1'
+        }
+    }
+    implementation('org.apache.kafka:kafka_2.11') {
+        version {
+            strictly '0.10.2.1'
+        }
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        exclude group: 'log4j', module: 'log4j'
+    }
+
+    implementation 'org.apache.logging.log4j:log4j-api'
+    implementation 'org.apache.logging.log4j:log4j-core'
+
+    implementation 'org.springframework.security:spring-security-test'
+    testImplementation 'junit:junit'
+    testImplementation('org.springframework.boot:spring-boot-starter-test') {
+        exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+    }
+    testImplementation 'org.mockito:mockito-core'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}
+
+bootJar {
+    mainClassName = 'org.openkilda.snmp.collector.Application'
+}
+
+
+def profile="dev"
+bootRun {
+    args=["--spring.profiles.active="+profile]
+    //jvmArgs=["-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"]
+}
+

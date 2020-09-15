@@ -1,0 +1,6 @@
+---
+- name: kilda
+  active: true # assume only one collection will be active
+  collectionGroups: # a list of SnmpCollectionGroup names
+    - mib2
+    - noviflow

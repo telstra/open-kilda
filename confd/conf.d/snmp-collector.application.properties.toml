@@ -1,0 +1,5 @@
+[template]
+src = "snmp-collector/application.properties.tmpl"
+dest = "src-java/snmp-speaker/snmp-collector/src/main/resources/application.properties"
+keys = [ "/" ]
+mode = "0644"

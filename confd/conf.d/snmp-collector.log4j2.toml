@@ -1,0 +1,5 @@
+[template]
+src = "snmp-collector/log4j2.xml.tmpl"
+dest = "src-java/snmp-speaker/snmp-collector/src/main/resources/log4j2.xml"
+keys = [ "/" ]
+mode = "0644"

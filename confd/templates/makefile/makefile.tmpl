@@ -34,6 +34,8 @@ docker/storm/lib:
 
 build-latest: build-base compile
 	docker-compose build
+{{if not (exists "/no_snmp_collector")}}        docker build -t kilda/snmp-collector:latest -f docker/snmp-collector/Dockerfile docker/BUILD/snmp-collector
+{{end}}
 
 run-dev:
 	docker-compose up

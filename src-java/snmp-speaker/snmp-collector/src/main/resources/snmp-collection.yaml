@@ -1,0 +1,9 @@
+---
+# High level configs of what kind of snmp metrics this speaker will handle
+
+#SnmpCollection: # the confile file is assumed to give multiple collections.
+- name: kilda
+  active: yes
+  collectionGroups: # a list of SnmpCollectionGroup names
+    - mib2
+    - noviflow

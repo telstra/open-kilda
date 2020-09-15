@@ -30,7 +30,7 @@ def parse_cmdline():
 
 
 def main(args):
-    group_uuid = uuid.uuid4()
+    group_uuid = str(uuid.uuid4())
     consumer = KafkaConsumer(bootstrap_servers=args.server,
                              auto_offset_reset='latest',
                              group_id=group_uuid,
@@ -39,7 +39,7 @@ def main(args):
     consumer.subscribe(topics)
 
     for message in consumer:
-        print (message)
+        print(message)
 
 
 if __name__ == "__main__":

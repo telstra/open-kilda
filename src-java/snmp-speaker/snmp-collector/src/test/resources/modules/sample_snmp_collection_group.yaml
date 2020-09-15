@@ -1,0 +1,13 @@
+---
+name: noviflow
+systems:
+  - name: systemdef1
+    sysObjectIDMask: 1.3.6.1.4.2
+    collections:
+      - ifTable
+groups:
+  - name: ifTable
+    instance: ifIndex
+    metrics:
+      - metric: packetsent
+        oid: 1.3.6.1.4.2

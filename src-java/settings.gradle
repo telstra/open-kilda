@@ -49,6 +49,8 @@ include 'atdd-staging'
 include 'functional-tests'
 include 'performance-tests'
 include 'test-library'
+include 'snmp-messaging'
+include 'snmp-collector'
 
 project(':base-messaging').projectDir = "$rootDir/base-topology/base-messaging" as File
 project(':base-storm-topology').projectDir = "$rootDir/base-topology/base-storm-topology" as File
@@ -89,3 +91,7 @@ project(':atdd-staging').projectDir = "$rootDir/testing/atdd-staging" as File
 project(':functional-tests').projectDir = "$rootDir/testing/functional-tests" as File
 project(':performance-tests').projectDir = "$rootDir/testing/performance-tests" as File
 project(':test-library').projectDir = "$rootDir/testing/test-library" as File
+
+project(':snmp-messaging').projectDir = "$rootDir/snmp-speaker/snmp-messaging" as File
+project(':snmp-collector').projectDir = "$rootDir/snmp-speaker/snmp-collector" as File
+
