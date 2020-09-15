@@ -47,6 +47,10 @@ public interface StatsTopologyConfig extends AbstractTopologyConfig {
     default String getServer42StatsFlowRttTopic() {
         return getKafkaTopics().getServer42StatsFlowRttTopic();
     }
+        
+    default String getSnmpMetricsTopic() {
+        return getKafkaTopics().getSnmpMetricsTopic();
+    }
 
     @Key("opentsdb.metric.prefix")
     @Default("kilda.")
@@ -55,4 +59,8 @@ public interface StatsTopologyConfig extends AbstractTopologyConfig {
     @Key("statistics.interval")
     @Default("60")
     int getStatisticsRequestInterval();
+
+    @Key("snmp.metric.prefix")
+    @Default("kilda.snmp.")
+    String getSnmpMetricPrefix();
 }

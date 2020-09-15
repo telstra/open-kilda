@@ -241,4 +241,8 @@ public interface KafkaTopicsConfig {
     @Key("topo.nbworker.server42-storm")
     @Default("kilda.nbworker.server42-storm-notify.priv")
     String getNbWorkerServer42StormNotifyTopic();
+    
+    @Key("snmp.metrics")
+    @Default("kilda.snmp.metrics")
+    String getSnmpMetricsTopic();
 }

@@ -23,6 +23,8 @@ import static org.openkilda.wfm.topology.stats.StatsComponentType.PACKET_IN_OUT_
 import static org.openkilda.wfm.topology.stats.StatsComponentType.PORT_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.SERVER42_STATS_FLOW_RTT_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.SERVER42_STATS_FLOW_RTT_SPOUT;
+import static org.openkilda.wfm.topology.stats.StatsComponentType.SNMP_METRICS_BOLT;
+import static org.openkilda.wfm.topology.stats.StatsComponentType.SNMP_METRICS_SPOUT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_FILTER_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_GRPC_SPEAKER_BOLT;
@@ -54,6 +56,7 @@ import org.openkilda.wfm.topology.stats.metrics.MeterConfigMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.MeterStatsMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.PacketInOutMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.PortMetricGenBolt;
+import org.openkilda.wfm.topology.stats.metrics.SnmpMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.SystemRuleMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.TableStatsMetricGenBolt;
 import org.openkilda.wfm.topology.utils.JsonKafkaTranslator;
@@ -155,6 +158,12 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 new FlowRttMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
                 .shuffleGrouping(SERVER42_STATS_FLOW_RTT_SPOUT.name());
 
+        KafkaSpout snmpMetricSpout = buildKafkaSpout(topologyConfig.getSnmpMetricsTopic(), SNMP_METRICS_SPOUT.name());
+        builder.setSpout(SNMP_METRICS_SPOUT.name(), snmpMetricSpout, parallelism);
+        builder.setBolt(SNMP_METRICS_BOLT.name(),
+                new SnmpMetricGenBolt(topologyConfig.getSnmpMetricPrefix()), parallelism)
+                .shuffleGrouping(SNMP_METRICS_SPOUT.name());
+
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
         builder.setBolt("stats-opentsdb", createKafkaBolt(openTsdbTopic))
                 .shuffleGrouping(PORT_STATS_METRIC_GEN.name())
@@ -164,7 +173,8 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 .shuffleGrouping(TABLE_STATS_METRIC_GEN.name())
                 .shuffleGrouping(SYSTEM_RULE_STATS_METRIC_GEN.name())
                 .shuffleGrouping(PACKET_IN_OUT_STATS_METRIC_GEN.name())
-                .shuffleGrouping(SERVER42_STATS_FLOW_RTT_METRIC_GEN.name());
+                .shuffleGrouping(SERVER42_STATS_FLOW_RTT_METRIC_GEN.name())
+                .shuffleGrouping(SNMP_METRICS_BOLT.name());
 
         return builder.createTopology();
     }
