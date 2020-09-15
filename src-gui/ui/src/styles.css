@@ -2617,6 +2617,9 @@ a.badge.badge-dark.custom-button {
 .topology-container{
   margin-top:5px;
 }
+.world-map-container{
+  margin-top:-20px;
+}
 .flow-path-icons{
   margin: 6px 10px 0px 5px;
   float: right;

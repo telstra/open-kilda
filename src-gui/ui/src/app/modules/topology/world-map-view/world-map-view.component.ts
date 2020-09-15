@@ -64,7 +64,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 	// minimise = document.getElementById('popup-minimize');
 	// maximise = document.getElementById('popup-maximize');
 	graph_loader = document.getElementById('graph_loader');
-	default_location:{
+	default_location:any={
 		"pop": "Unknown",
 		"datacenter": "Unknown",
 		"latitude": 22.8951683,
@@ -100,19 +100,19 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 	}
 
 	groupBy(objectArray, property) {
+		var self = this;
 		return objectArray.reduce((acc, obj) => {
 		   var key = obj[property];
-		   if(key == null || key == ''){
+		   if(key == null || key == '' || key =='string'){
 			   key = "Unknown";
 		   }
 		   var location = obj.location;
 		   if(!(location.latitude && location.longitude)){
-				obj.location = this.default_location; 
+				obj.location = self.default_location; 
 		   }
 		   if (!acc[key]) {
 			  acc[key] = [];
-		   }
-		  
+		   }		  
 		   acc[key].push(obj);
 		   return acc;
 		}, {});
@@ -195,7 +195,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 		  center: [0, 0],
 		  zoom: 2,
 		  minZoom: 2,
-		  maxZoom:14,
+		  maxZoom:20,
 		})
 	  });
 	this.map.addInteraction(this.selectSingleClick); 

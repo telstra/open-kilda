@@ -64,6 +64,9 @@ public class SwitchInfo implements Serializable {
 
     @JsonProperty("uuid")
     private String uuid;
+    
+    @JsonProperty("pop")
+    private String pop;
 
     @JsonProperty("pop-location")
     private PopLocation popLocation;
