@@ -133,5 +133,11 @@ export const MessageObj = {
     pwd_changed:"Password changed successfully!",
     pwd_copied:"Password Copied",
     session_expired:"Your session has been expired",
+    loading_data:'Loading Data..',
+    error_loading_data:'Error Loading Data.',
+    adding_provider:'Adding Provider..',
+    updating_provider:'Updating Provider..',
+    provider_added_success:'Provider added Successfully.',
+    provider_updated_success:'Provider updated Successfully.',
 
 }
