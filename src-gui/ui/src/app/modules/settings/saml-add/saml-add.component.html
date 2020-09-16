@@ -1,0 +1,112 @@
+<form [formGroup]="samlAddForm" id="addSamlForm" enctype="multipart/form-data" (ngSubmit)="addProvider()" novalidate #samlForm="ngForm">
+  <div class="form-group row" [ngClass]="{'error': samlAddForm.controls['name'].errors && samlForm.submitted}">
+    <label class="col-sm-2 control-label required">Name:</label>
+    <div class="col-sm-6">
+      <input class="form-control" mdInput  type="text" formControlName="name" placeholder="Name" required/>
+      <div *ngIf="samlAddForm.controls['name'].errors && samlAddForm.controls['name'].errors.required && samlForm.submitted" class="invalid-feedback" >
+        <span >Name is required.</span>
+      </div>
+    </div>
+  </div>
+  <div class="form-group row" [ngClass]="{'error': samlAddForm.controls['entityId'].errors && samlForm.submitted}">
+    <label class="col-sm-2 control-label required">Entity ID:</label>
+    <div class="col-sm-6">
+      <input class="form-control" type="text" formControlName="entityId" placeholder="Entity ID">
+      <div *ngIf="samlAddForm.controls['entityId'].errors && samlForm.submitted" class="invalid-feedback" >
+          <span>Entity ID is required.</span>
+      </div>
+    </div>
+  </div>
+  <div class="form-group row" [ngClass]="{'error': samlAddForm.controls['idp_attribute'].errors && samlForm.submitted}">
+    <label for="role" class="col-sm-2 control-label required">IDP Attribute</label> 
+     <div class="col-sm-6">
+       <input  type="text" class="form-control" placeholder="IDP Attribute" formControlName="idp_attribute" name="idp_attribute" id="idp_attribute" >
+       <div *ngIf="samlAddForm.controls['idp_attribute'].errors && samlForm.submitted" class="invalid-feedback" >
+        <span>IDP Attribute is required.</span>
+    </div>
+     </div>
+  
+    </div>
+  <div class="form-group row" [ngClass]="{'error': metadata_required && samlForm.submitted}">
+    <label class="col-sm-2 control-label required">MetaData:</label>
+    <div class="col-sm-6">
+      <div class="col-md-12">
+        <input type="file" style="visibility:hidden;position: relative;float: left;width: 10px;margin-left: -27px;" (change)="getFile($event)" formControlName="file" #file>
+        <button  style="margin-left:-15px" type="button" class="btn btn-dark " (click)="file.click()" [disabled]="samlAddForm.controls['url'].value" >Upload file</button>
+        <span *ngIf="samlAddForm.controls['file'].value" class="ml-2" >{{(files && files.length) ?  files[0].name: ''}} <i (click)="emptyFile()" style="position: absolute;" class="close" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+       </i></span>
+      </div>
+       <div class="col-md-12" style="margin: 10px 25px;float: left;">OR</div>
+      <div class="col-md-12" style="margin-left: -15px">
+        <input class="form-control" type="text" [disabled]="samlAddForm.controls['file'].value" formControlName="url"  placeholder="Metadata URL">
+      </div>
+      
+      <div *ngIf="metadata_required && samlForm.submitted" class="invalid-feedback" >
+          <span>MetaData is required.</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="form-group row">
+    <label for="role" class="col-sm-2">Status</label> 
+    <div class='col-sm-6'>
+      <div class="pull-left">
+        <div class="onoffswitch">
+          <input  formControlName="status" [checked]="settingStatus" type="checkbox" (change)="setsettingStatus($event)" name="status" class="onoffswitch-checkbox"
+            id="onoffstatus">
+          <label class="onoffswitch-label" for="onoffstatus">
+            <span class="onoffswitch-inner onoffswitch-inner-setting-status "></span>
+            <span class="onoffswitch-switch"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+     <!-- <div class="col-sm-6">
+       <input  type="checkbox" formControlName="status" name="status" id="status" value="true">
+     </div> -->
+  </div>
+  <div class="form-group row">
+      <label for="role" class="col-sm-2">User Creation</label> 
+      <div class='col-sm-6'>
+        <div class="pull-left">
+          <div class="onoffswitch">
+            <input  formControlName="user_creation" [checked]="userCreation" type="checkbox" (change)="setUserCreation($event)" name="user_creation" class="onoffswitch-checkbox"
+              id="onoffuser_creation">
+            <label class="onoffswitch-label" for="onoffuser_creation">
+              <span class="onoffswitch-inner "></span>
+              <span class="onoffswitch-switch"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+       <!-- <div class="col-sm-6">
+         <input  type="checkbox" formControlName="user_creation" name="user_creation" id="user_creation" value="true">
+       </div> -->
+    </div>
+
+  <div *ngIf="samlAddForm.controls['user_creation'].value ==true" class="form-group row" [ngClass]="{'error': userCreation && !samlAddForm.controls['roles'].value && samlForm.submitted}">
+      <label class="col-sm-2 control-label required">Role:</label>
+      <div class="col-sm-6">
+        <ng-select
+          formControlName="roles"
+           [items]="roleData"
+           bindLabel="name"
+           bindValue="id"
+           labelForId="id"
+           [multiple]="true"
+           placeholder="Select Role"
+           clearAllText="Clear"
+        > </ng-select>
+        <div *ngIf="userCreation && !samlAddForm.controls['roles'].value && samlForm.submitted" class="invalid-feedback" >
+          <span>Role is required.</span>
+        </div>
+      </div>
+    </div>
+  <div class="form-group row">
+      <div class="col-sm-8 text-right">
+        <button id="closeUserForm" type="button" class="btn kilda_btn" (click)="close()">Cancel</button>
+        <button type="submit" id="submitBtn" class="btn kilda_btn">Save</button>
+      </div>
+  </div>
+</form>

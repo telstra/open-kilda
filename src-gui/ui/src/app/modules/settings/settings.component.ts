@@ -12,15 +12,21 @@ import { MessageObj } from 'src/app/common/constants/constants';
 })
 export class SettingsComponent implements OnInit {
 
-  openedTab = 'identityserver';
+  openedTab = 'storesetting';
+  openedInnerTab = 'identityserver'
   isIdentityServer = false;
   constructor(
     private titleService: Title,
-    private commonService:CommonService,
+    public commonService:CommonService,
     private toastr:ToastrService,
     private router:Router
   ) { 
     if(!this.commonService.hasPermission('store_setting')){
+      if(!this.commonService.hasPermission('application_setting')){
+        this.openedTab = 'samlsetting';
+      }else{
+        this.openedTab = 'applicationsetting';
+      }
       this.toastr.error(MessageObj.unauthorised);  
        this.router.navigate(["/home"]);
       }
@@ -35,6 +41,9 @@ export class SettingsComponent implements OnInit {
   
   openTab(tab){
     this.openedTab = tab;
+  }
+  openinnerTab(tab){
+    this.openedInnerTab = tab;
   }
 
 }

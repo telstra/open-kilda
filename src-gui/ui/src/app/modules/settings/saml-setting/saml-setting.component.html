@@ -1,0 +1,22 @@
+  <div class="row">
+      <div class="col-md-12" *ngIf="!AddAuthProvider && !EditAuthProvider">
+                <button class="btn btn-sm btn-dark pull-right" (click)="addAuthProvider()">Add Provider</button>
+                <div class="dataTables_wrapper no-footer">
+                   <app-saml-list-table *ngIf="!loadProviderData" [data]="authProviders" (editsaml)="editProvider($event)" (deletesaml)="deleteProvider($event)"></app-saml-list-table>
+                </div>  
+          </div>
+          <div class="col-md-12 mt-1" *ngIf="AddAuthProvider">
+            <div _ngcontent-c14="" class="card">
+                <div _ngcontent-c14="" class="card-body">
+                        <app-saml-add (cancel)="cancelAction()"></app-saml-add>
+                    </div>
+                </div>
+            </div> 
+            <div class="col-md-12 mt-1" *ngIf="EditAuthProvider">
+                <div _ngcontent-c14="" class="card">
+                    <div _ngcontent-c14="" class="card-body">
+                            <app-saml-edit [data]="EditProviderData" (cancel)="cancelAction()"></app-saml-edit>
+                        </div>
+                    </div>
+                </div>
+      </div>
