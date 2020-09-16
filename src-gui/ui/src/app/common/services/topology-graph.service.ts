@@ -73,13 +73,28 @@ export class TopologyGraphService {
 			")"
 		);		
 	});
-	this.simulation = d3.forceSimulation(data.nodes)                 // Force algorithm is applied to data.nodes
-      .force("link", d3.forceLink()                               // This force provides links between nodes
-            .id(function(d:any) { return d.switch_id; })                     // This provide  the id of a node
-            .links(data.links)                                    // and this the list of links
-      )
-      .force("charge_force", d3.forceManyBody().strength(-1000))         // This adds repulsion between nodes. Play with the -400 for the repulsion strength
-      .force("center", d3.forceCenter(width / 2, height / 2));     // This force attracts nodes to the center of the svg area
+	this.simulation = d3.forceSimulation()                 // Force algorithm is applied to data.nodes      
+      .velocityDecay(0.2)
+      .force('collision', d3.forceCollide().radius(function(d) {
+        return 20;
+      }))
+      .force("charge_force",d3.forceManyBody().strength(-1000))
+      .force("xPos", d3.forceX(width /2))
+      .force("yPos", d3.forceY(height / 2)) ; 
+    this.simulation.nodes(data.nodes);
+    this.simulation.force("link", d3.forceLink().links(data.links).distance((d:any)=>{
+      let distance = 150;
+       try{
+      if(!d.flow_count){
+        if(d.speed == "40000000"){
+          distance = 100;
+        }else {
+          distance = 300;
+        }
+       }
+       }catch(e){}
+       return distance; 
+     }).strength(0.1));
 	  this.simulation.stop();
 	  this.simulation.on("tick", () => { 
 		this.ticked();
@@ -112,20 +127,21 @@ export class TopologyGraphService {
   zoomFit = () => {
     var bounds = this.g.node().getBBox();
     var parent = this.g.node().parentElement;
-    var fullWidth = 400,
-      fullHeight = 360;
+    var fullWidth = $(parent).width(),
+    fullHeight = $(parent).height();
     var width = bounds.width,
       height = bounds.height;
+
     var midX = (bounds.x + width) / 2,
       midY = (bounds.y + height) / 2;
     if (width == 0 || height == 0) return;
 
     if(this.graph_data.nodes.length >=50){
       let newtranformation = d3.zoomIdentity
-      .scale(this.min_zoom)
+      .scale(this.scaleLimit)
      .translate(
-      (fullWidth/2 - this.min_zoom*midX)/this.min_zoom,
-      (fullHeight/2 - this.min_zoom*midY)/this.min_zoom
+      (fullWidth/2 - this.scaleLimit*midX)/this.scaleLimit,
+      (fullHeight/2 - this.scaleLimit*midY)/this.scaleLimit
       ); 
       this.svgElement.transition().duration(300).call(this.zoom.transform, newtranformation);
     }else{

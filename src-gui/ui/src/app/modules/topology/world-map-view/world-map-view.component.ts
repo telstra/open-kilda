@@ -102,14 +102,11 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 	groupBy(objectArray, property) {
 		var self = this;
 		return objectArray.reduce((acc, obj) => {
-		   var key = obj[property];
-		   if(key == null || key == '' || key =='string'){
-			   key = "Unknown";
+			var keyValue = obj[property];
+			if(!(keyValue.latitude && keyValue.longitude)){
+				obj[property] = self.default_location; 
 		   }
-		   var location = obj.location;
-		   if(!(location.latitude && location.longitude)){
-				obj.location = self.default_location; 
-		   }
+		   var key = obj[property].latitude+"_"+obj[property].longitude;
 		   if (!acc[key]) {
 			  acc[key] = [];
 		   }		  
@@ -124,11 +121,18 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 			  if(this.data && this.data.switch && this.data.switch.length){
 				this.links = this.data.isl;
 				this.switches = this.data.switch;
-				var popWiseData = this.groupBy(this.switches,'pop');
+				var popWiseData = this.groupBy(this.switches,'location');
 				Object.keys(popWiseData).forEach((key)=>{
 					var switchIds = popWiseData[key].map(s=>{ return s.switch_id;});
+					var pops = popWiseData[key].map(s=>{
+						if(s.pop =='' || s.pop =='undfined'){
+							return "Unknown";
+						} 
+						return s.pop;
+					}).filter((value,i,self)=>{ return self.indexOf(value) === i; }).join(",");
 					var links = this.getPopLinks(popWiseData[key],this.links);
 					var d = {"id":key,
+							"pops":pops,
 							"switches":popWiseData[key],
 							"location":popWiseData[key][0].location,
 							"links":links,
@@ -136,6 +140,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 						};
 					this.pops.push(d);
 				});
+
 				// fetching the links between pops
 
 				for(var i=0; i < this.pops.length; i++){
@@ -248,8 +253,8 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 			if(featureValues && featureValues.type == 'marker'){
 				var coordinate = feature.values_.features[0].getGeometry().getCoordinates();
 				self.popinfocontent.innerHTML = "";
-				var html = "<div class='row'><div class='col-md-12'><div class='form-group'><label><b>Pop: </b></label><span>"+featureValues.id+"</span></div>";
-				html+= "<div class='form-group'><label><b>City: </b></label><span>"+featureValues.city+"</span></div><div class='form-group'><label><b>Country: </b></label><span>"+featureValues.country+"</span></div></div></div>";
+				var html = "<div class='col-md-12'><div class='form-group'><label><b>Pop: </b></label><span>"+featureValues.pop+"</span></div>";
+				html+= "<div class='form-group'><label><b>City: </b></label><span>"+featureValues.city+"</span></div><div class='form-group'><label><b>Country: </b></label><span>"+featureValues.country+"</span></div></div>";
 				self.popinfocontent.innerHTML = html;
 				self.popInfoOverlay.setPosition(coordinate);
 						
@@ -355,6 +360,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 			this.markers[i]  = new Feature({
 				geometry:new Point(proj.fromLonLat([data.location.longitude,data.location.latitude])),
 				type:'marker',
+				pop:data.pops,
 				id:data.id,
 				status:popState,
 				switches:data.switches,
@@ -431,7 +437,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
   getIslHtml(values){
 	  var linksData = typeof(values.linksData) !='undefined' ? values.linksData : [];
 	  
-	  var html="<div class='table-wrapper-scroll-y my-custom-scrollbar'><table  class='table table-bordered table-striped mb-0'><thead><th>Source Switch</th><th>Src Port</th><th>Target Switch</th><th>Dst Port</th><th>Status</th><thead><tbody>";
+	  var html="<div class='table-wrapper-scroll-y my-custom-scrollbar'><table  class='table table-bordered table-striped mb-0'><thead><th>Src Switch</th><th>Src Port</th><th>Dst Switch</th><th>Dst Port</th><th>Status</th><thead><tbody>";
 	  if(linksData.length > 0){
 		linksData.forEach(link=>{
 			var url = "isl/switch/isl/" + link.source_switch+"/"+link.src_port+"/"+link.target_switch+"/"+link.dst_port;
