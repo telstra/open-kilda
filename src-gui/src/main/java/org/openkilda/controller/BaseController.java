@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,7 +17,10 @@ package org.openkilda.controller;
 
 import org.openkilda.constants.IConstants;
 import org.openkilda.constants.Status;
+import org.openkilda.saml.service.SamlService;
+import org.openkilda.security.SecurityConfig;
 
+import org.opensaml.saml2.core.NameID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +29,7 @@ import org.springframework.boot.autoconfigure.web.ErrorController;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.saml.SAMLCredential;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -50,6 +54,12 @@ public abstract class BaseController implements ErrorController {
     
     @Autowired
     private MessageUtils messageUtils;
+    
+    @Autowired
+    private SamlService samlService;
+    
+    @Autowired
+    private SecurityConfig securityConfig;
 
     /**
      * Validate request.
@@ -73,9 +83,11 @@ public abstract class BaseController implements ErrorController {
 
             modelAndView = new ModelAndView(IConstants.View.REDIRECT_HOME);
         } else {
-            LOGGER.warn("User in not logged in, redirected to login page. Requested view name: "
+            LOGGER.warn("User is not logged in, redirected to login page. Requested view name: "
                     + viewName);
             modelAndView = new ModelAndView("login");
+            modelAndView.addObject("idps", samlService.getAllActiveIdp());
+            modelAndView.addObject("appUrl", securityConfig.getApplicationBaseUrl());
         }
         return modelAndView;
     }
@@ -144,8 +156,16 @@ public abstract class BaseController implements ErrorController {
             boolean isValid = (authentication.isAuthenticated()
                     && !(authentication instanceof AnonymousAuthenticationToken));
             if (isValid) {
-                UserEntity userEntity = (UserEntity) authentication.getPrincipal();
-                userEntity = userRepository.findByUserId(userEntity.getUserId());
+                UserEntity userEntity = null;
+                if (authentication.getCredentials() instanceof SAMLCredential) {
+                    NameID nameId = (NameID) authentication.getPrincipal();
+                    userEntity = userRepository.findByUsernameIgnoreCase(nameId.getValue());
+                    LOGGER.info("logged in via SAML : " + nameId.getValue());
+                } else {
+                    userEntity = (UserEntity) authentication.getPrincipal();
+                    userEntity = userRepository.findByUserId(userEntity.getUserId());
+                    LOGGER.info("logged in via normal : ", userEntity.getEmail());
+                }
                 if (userEntity != null
                         && userEntity.getStatusEntity().getStatusCode().equalsIgnoreCase(Status.ACTIVE.getCode())) {
                     isValid = true;

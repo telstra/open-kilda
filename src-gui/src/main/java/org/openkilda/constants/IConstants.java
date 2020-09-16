@@ -110,6 +110,12 @@ public abstract class IConstants {
         public static final String ADMIN = "ROLE_ADMIN";
         public static final String USER = "ROLE_USER";
     }
+    
+    public enum IdpProviderType {
+
+        FILE, URL;
+
+    }
 
     public final class Status {
         
@@ -301,6 +307,18 @@ public abstract class IConstants {
 
         public static final String TOPOLOGY_SETTING = "topology_setting";
     }
+    
+    public interface SamlUrl {
+      
+        public static final String SAML = "/saml/";
+        public static final String SAML_METADATA = SAML + "metadata";
+        public static final String SAML_LOGIN = SAML + "login";
+        public static final String SAML_SSO = SAML + "SSO";
+        public static final String SAML_LOGOUT = SAML + "logout";
+        public static final String SAML_AUTHENTICATE = SAML + "authenticate";
+    
+    }
+    
 
     public final class View {
         
