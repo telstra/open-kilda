@@ -1,5 +1,6 @@
 #Tomcat Configurations
 server.port=1010
+server.host=localhost
 server.contextPath=/openkilda
 server.ssl.enabled = true
 

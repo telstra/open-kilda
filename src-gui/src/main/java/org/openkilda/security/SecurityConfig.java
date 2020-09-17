@@ -88,8 +88,6 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.usermanagement.service.UserService;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -268,12 +266,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         } else {
             scheme = "http://";
         }
-        try {
-            acsUrl = scheme + InetAddress.getLocalHost().getHostAddress() + ":" 
+        acsUrl = scheme + env.getProperty("server.host") + ":" 
                 + env.getProperty("server.port") + contextPath;
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-        }
         return acsUrl;
     }
     
