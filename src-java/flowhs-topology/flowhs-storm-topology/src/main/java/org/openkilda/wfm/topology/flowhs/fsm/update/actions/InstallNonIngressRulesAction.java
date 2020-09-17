@@ -19,6 +19,7 @@ import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
@@ -57,15 +58,15 @@ public class InstallNonIngressRulesAction
         // primary path
         FlowPath newPrimaryForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
         FlowPath newPrimaryReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
-        Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(commandBuilder.buildAllExceptIngress(
-                stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse));
+        Collection<FlowSegmentRequestFactory> commands = buildCommands(commandBuilder, stateMachine.getCommandContext(),
+                flow, newPrimaryForward, newPrimaryReverse, stateMachine.getEndpointUpdate());
 
         // protected path
         if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
             FlowPath newProtectedForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
             FlowPath newProtectedReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
-            commands.addAll(commandBuilder.buildAllExceptIngress(
-                    stateMachine.getCommandContext(), flow, newProtectedForward, newProtectedReverse));
+            commands.addAll(buildCommands(commandBuilder, stateMachine.getCommandContext(), flow,
+                    newProtectedForward, newProtectedReverse, stateMachine.getEndpointUpdate()));
         }
 
         // emitting
@@ -79,6 +80,23 @@ public class InstallNonIngressRulesAction
             stateMachine.fire(Event.RULES_INSTALLED);
         } else {
             stateMachine.saveActionToHistory("Commands for installing non ingress rules have been sent");
+        }
+    }
+
+    private Collection<FlowSegmentRequestFactory> buildCommands(FlowCommandBuilder commandBuilder,
+                                                                CommandContext context, Flow flow,
+                                                                FlowPath path, FlowPath oppositePath,
+                                                                FlowUpdateFsm.EndpointUpdate endpointUpdate) {
+        switch (endpointUpdate) {
+            case BOTH:
+                return new ArrayList<>(commandBuilder.buildEgressOnly(context, flow, path, oppositePath));
+            case SOURCE:
+                return new ArrayList<>(commandBuilder.buildEgressOnlyOneDirection(context, flow, oppositePath, path));
+            case DESTINATION:
+                return new ArrayList<>(commandBuilder.buildEgressOnlyOneDirection(context, flow, path, oppositePath));
+            default:
+                return new ArrayList<>(commandBuilder.buildAllExceptIngress(context, flow, path, oppositePath));
+
         }
     }
 }

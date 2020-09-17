@@ -109,10 +109,51 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 speakerRequestBuildContext);
     }
 
+    @Override
+    public List<FlowSegmentRequestFactory> buildIngressOnlyOneDirection(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath,
+            PathContext pathContext) {
+        return makeRequests(context, flow, path, oppositePath, true, false, false,
+                pathContext);
+    }
+
+    @Override
+    public List<FlowSegmentRequestFactory> buildEgressOnly(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath) {
+        return makeRequests(context, flow, path, oppositePath, false, false, true, SpeakerRequestBuildContext.EMPTY);
+    }
+
+    @Override
+    public List<FlowSegmentRequestFactory> buildEgressOnlyOneDirection(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath) {
+
+        return makeRequests(context, flow, path, oppositePath, false, false, true,
+                SpeakerRequestBuildContext.EMPTY.getForward());
+
+    }
+
+    // NOTE(tdurakov): partially duplicating method below due to unreliable swap in it
+    private List<FlowSegmentRequestFactory> makeRequests(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath, boolean doIngress,
+            boolean doTransit, boolean doEgress, PathContext pathContext) {
+        if (path == null || oppositePath == null) {
+            throw new IllegalArgumentException("Both flow paths must be not null");
+        }
+        FlowTransitEncapsulation encapsulation = null;
+        if (!flow.isOneSwitchFlow()) {
+            encapsulation = getEncapsulation(
+                    flow.getEncapsulationType(), path.getPathId(), oppositePath.getPathId());
+        }
+
+        return new ArrayList<>(makePathRequests(flow, path, context, encapsulation,
+                doIngress, doTransit, doEgress, createRulesContext(pathContext)));
+    }
+
     private List<FlowSegmentRequestFactory> makeRequests(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath,
             boolean doIngress, boolean doTransit, boolean doEgress,
             SpeakerRequestBuildContext speakerRequestBuildContext) {
+        // TODO: this swap is weird, need to clean this up and not to rely on luck.
         if (path == null) {
             path = oppositePath;
             oppositePath = null;
@@ -166,6 +207,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 pathContext.isRemoveCustomerPortLldpRule(),
                 pathContext.isRemoveCustomerPortArpRule(),
                 pathContext.isRemoveOuterVlanMatchSharedRule(),
+                pathContext.isUpdateMeter(),
                 pathContext.isRemoveServer42InputRule(),
                 pathContext.isRemoveServer42IngressRule(),
                 pathContext.isInstallServer42InputRule(),

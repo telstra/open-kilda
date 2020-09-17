@@ -959,9 +959,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                 !new Cookie(it.cookie).serviceFlag
             }) { rules ->
                 rules.findAll {
-                    it.cookie in [flowInfoFromDb1.forwardPath.cookie.value, flowInfoFromDb1.reversePath.cookie.value]
-                }.empty
-                rules.findAll {
                     it.cookie in [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value]
                 }.size() == 2
                 def ingressRule = rules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }

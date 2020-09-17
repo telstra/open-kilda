@@ -58,10 +58,31 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowUpdateFs
 
         SpeakerRequestBuildContext speakerContext = buildBaseSpeakerContextForInstall(
                 newPrimaryForward.getSrcSwitch().getSwitchId(), newPrimaryReverse.getSrcSwitch().getSwitchId());
-
-        Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(
-                commandBuilder.buildIngressOnly(
+        Collection<FlowSegmentRequestFactory> commands = new ArrayList<>();
+        switch (stateMachine.getEndpointUpdate()) {
+            case SOURCE:
+                speakerContext.getForward().setUpdateMeter(false);
+                commands.addAll(commandBuilder.buildIngressOnlyOneDirection(
+                        stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse,
+                        speakerContext.getForward()));
+                break;
+            case DESTINATION:
+                speakerContext.getReverse().setUpdateMeter(false);
+                commands.addAll(commandBuilder.buildIngressOnlyOneDirection(
+                        stateMachine.getCommandContext(), flow, newPrimaryReverse, newPrimaryForward,
+                        speakerContext.getReverse()));
+                break;
+            case BOTH:
+                speakerContext.getForward().setUpdateMeter(false);
+                speakerContext.getReverse().setUpdateMeter(false);
+                commands.addAll(commandBuilder.buildIngressOnly(
                         stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse, speakerContext));
+                break;
+            default:
+                commands.addAll(commandBuilder.buildIngressOnly(
+                        stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse, speakerContext));
+                break;
+        }
 
         // Installation of ingress rules for protected paths is skipped. These paths are activated on swap.
 
