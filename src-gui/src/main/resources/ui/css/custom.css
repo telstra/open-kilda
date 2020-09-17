@@ -2761,4 +2761,18 @@ div#portsTable_info {
     padding: 10px 5px;
     font-size: 12px;
 }
+.or-seperator {
+    margin: 20px 0 10px;
+    text-align: center;
+    border-top: 1px solid #ccc;
+    float: left;
+    width:100%;
+}
+.or-seperator i {
+    padding: 0 10px;
+    background: #FFF;
+    position: relative;
+    top: -11px;
+    z-index: 1;
+}
 
