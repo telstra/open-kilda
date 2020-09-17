@@ -18,7 +18,6 @@ kilda_opentsdb_port: "4242"
 kilda_storm_numbus_hosts: "nimbus.pendev"
 
 kilda_gui_port: 1010
-kilda_gui_host: localhost
 kilda_smtp_host: "127.0.0.1"
 kilda_smtp_port: "25"
 kilda_mail_from: "donotreply@openkilda.org"

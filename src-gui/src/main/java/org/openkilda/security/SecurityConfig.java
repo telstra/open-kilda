@@ -37,7 +37,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
-import org.springframework.core.env.Environment;
 import org.springframework.core.io.Resource;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
@@ -132,9 +131,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     
     @Autowired
     private SamlRepository idpRepository;
-    
-    @Autowired
-    private Environment env;
     
     /*
      * (non-Javadoc)
@@ -244,31 +240,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Bean
     public MetadataGenerator metadataGenerator() {
         MetadataGenerator metadataGenerator = new MetadataGenerator();
-        metadataGenerator.setEntityId(getApplicationBaseUrl() + SamlUrl.SAML_METADATA);
+        metadataGenerator.setEntityId("openkilda");
         metadataGenerator.setExtendedMetadata(extendedMetadata());
         metadataGenerator.setIncludeDiscoveryExtension(false);
         metadataGenerator.setKeyManager(keyManager());
-        metadataGenerator.setEntityBaseURL(getApplicationBaseUrl());
         return metadataGenerator;
-    }
-    
-    /**
-     * Gets application base url.
-     *
-     * @return the application base url
-     */
-    public String getApplicationBaseUrl() {
-        String acsUrl = null;
-        String ssl = env.getProperty("server.ssl.enabled");
-        String scheme;
-        if (ssl.equalsIgnoreCase("true")) {
-            scheme = "https://";
-        } else {
-            scheme = "http://";
-        }
-        acsUrl = scheme + env.getProperty("server.host") + ":" 
-                + env.getProperty("server.port") + contextPath;
-        return acsUrl;
     }
     
     @Bean

@@ -44,14 +44,14 @@ body {
                <c:if test="${idps.size() > 1 }">
 	            <div class="col-md-12 text-center">
 	            	<c:forEach items="${idps}" var="idp">
-		                <a href="${appUrl}/saml/login?idp=${idp.entityId}" class="btn btn-md kilda_btn" >${idp.idpName}</a>
+		                <a href="<%=request.getContextPath()%>/saml/login?idp=${idp.entityId}" class="btn btn-md kilda_btn" >${idp.idpName}</a>
 		         </c:forEach>
 	            </div>
 		      </c:if>
 		      <c:if test="${idps.size() == 1 }">
 		      	<span class="button-checkbox" >
 	             <c:forEach items="${idps}" var="idp">
-		                <a href="${appUrl}/saml/login?idp=${idp.entityId}" class="btn btn-md btn-primary btn-submit" >${idp.idpName}</a>
+		                <a href="<%=request.getContextPath()%>/saml/login?idp=${idp.entityId}" class="btn btn-md btn-primary btn-submit" >${idp.idpName}</a>
 
 		         </c:forEach>
 		        </span>

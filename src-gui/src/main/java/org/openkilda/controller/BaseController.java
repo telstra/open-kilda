@@ -18,7 +18,6 @@ package org.openkilda.controller;
 import org.openkilda.constants.IConstants;
 import org.openkilda.constants.Status;
 import org.openkilda.saml.service.SamlService;
-import org.openkilda.security.SecurityConfig;
 
 import org.opensaml.saml2.core.NameID;
 import org.slf4j.Logger;
@@ -57,9 +56,6 @@ public abstract class BaseController implements ErrorController {
     
     @Autowired
     private SamlService samlService;
-    
-    @Autowired
-    private SecurityConfig securityConfig;
 
     /**
      * Validate request.
@@ -87,7 +83,6 @@ public abstract class BaseController implements ErrorController {
                     + viewName);
             modelAndView = new ModelAndView("login");
             modelAndView.addObject("idps", samlService.getAllActiveIdp());
-            modelAndView.addObject("appUrl", securityConfig.getApplicationBaseUrl());
         }
         return modelAndView;
     }
