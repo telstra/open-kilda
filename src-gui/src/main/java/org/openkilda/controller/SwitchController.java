@@ -49,6 +49,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.usermanagement.exception.RequestValidationException;
 import org.usermanagement.util.MessageUtils;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 
 /**
@@ -291,12 +292,13 @@ public class SwitchController {
      * @param switchId the switch id
      * @param port the port
      * @return the customers detail
+     * @throws AccessDeniedException the access denied exception
      */
     @RequestMapping(path = "/{switchId}/flows", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody ResponseEntity<List<?>> getPortFlows(@PathVariable final String switchId,
             @RequestParam(value = "port", required = false) final String port, 
-            @RequestParam(value = "inventory", required = false) final boolean inventory) {
+            @RequestParam(value = "inventory", required = false) final boolean inventory) throws AccessDeniedException {
         return serviceSwitch.getPortFlows(switchId, port, inventory);
     }
 

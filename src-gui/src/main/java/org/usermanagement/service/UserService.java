@@ -55,6 +55,7 @@ import org.usermanagement.util.MessageUtils;
 import org.usermanagement.util.ValidatorUtil;
 import org.usermanagement.validator.UserValidator;
 
+import java.nio.file.AccessDeniedException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -106,6 +107,9 @@ public class UserService implements UserDetailsService {
     
     @Autowired
     private ServerContext serverContext;
+    
+    @Autowired
+    private MessageUtils messageUtils;
 
     /*
      * (non-Javadoc)
@@ -554,10 +558,14 @@ public class UserService implements UserDetailsService {
      * Gets the logged in user info.
      *
      * @return the logged in user info
+     * @throws AccessDeniedException the access denied exception
      */
-    public UserInfo getLoggedInUserInfo() {
-        UserInfo userInfo = new UserInfo();
+    public UserInfo getLoggedInUserInfo() throws AccessDeniedException {
         RequestContext requestContext = serverContext.getRequestContext();
+        if (requestContext.getUserId() == null) {
+            throw new AccessDeniedException(messageUtils.getUnauthorizedMessage());
+        }
+        UserInfo userInfo = new UserInfo();
         userInfo.setUserId(requestContext.getUserId());
         userInfo.setUsername(requestContext.getUserName());
         userInfo.setIs2FaEnabled(requestContext.getIs2FaEnabled());

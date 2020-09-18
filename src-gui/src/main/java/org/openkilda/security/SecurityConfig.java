@@ -83,6 +83,8 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationFa
 import org.springframework.security.web.authentication.logout.LogoutHandler;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.security.web.authentication.logout.SimpleUrlLogoutSuccessHandler;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.usermanagement.service.UserService;
 
@@ -144,16 +146,20 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Override
     protected void configure(final HttpSecurity http) throws Exception {
-
-        http.csrf().disable().formLogin().loginPage("/login").failureHandler(authenticationFailureHandler())
-        .and().authorizeRequests()
-        .antMatchers("/login", "/authenticate", "/forgotpassword", "/401", "/saml/login/**", 
-               "/saml/metadata/**", "/saml/SSO/**")
-        .permitAll().antMatchers("/saml/logout/**").authenticated().and()
-        .logout().permitAll().and().addFilterBefore(metadataGeneratorFilter(), ChannelProcessingFilter.class)
-        .exceptionHandling().accessDeniedHandler(accessDeniedHandler).and()
-        .sessionManagement().invalidSessionUrl("/401");
-
+        
+        http.csrf().ignoringAntMatchers("/saml/**")
+        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()).and()
+        .authorizeRequests()
+        .antMatchers("/login", "/authenticate", "/saml/authenticate", "/forgotpassword", "/401", "/saml/login/**", 
+             "/saml/metadata/**", "/saml/SSO/**")
+      .permitAll()
+      .and().addFilterBefore(metadataGeneratorFilter(), ChannelProcessingFilter.class)
+      .exceptionHandling().accessDeniedHandler(accessDeniedHandler).and()
+      .headers().addHeaderWriter(new StaticHeadersWriter("X-Content-Security-Policy", "default-src 'self'"))
+      .addHeaderWriter(new StaticHeadersWriter("Feature-Policy", "none"))
+      .addHeaderWriter(new StaticHeadersWriter("Referrer-Policy", "same-origin"))
+      .and().sessionManagement().invalidSessionUrl("/401");
+      
     }
     
     @Override
