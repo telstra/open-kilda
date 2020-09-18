@@ -8,20 +8,20 @@
       </div>
     </div>
   </div>
-  <div class="form-group row" [ngClass]="{'error': samlEditForm.controls['entityId'].errors && samlForm.submitted}">
+  <div class="form-group row" [ngClass]="{'error': samlEditForm.controls['entity_id'].errors && samlForm.submitted}">
     <label class="col-sm-2 control-label required">Entity ID:</label>
     <div class="col-sm-6">
-      <input class="form-control" type="text" formControlName="entityId" placeholder="Entity ID">
-      <div *ngIf="samlEditForm.controls['entityId'].errors && samlForm.submitted" class="invalid-feedback" >
+      <input class="form-control" type="text" formControlName="entity_id" placeholder="Entity ID">
+      <div *ngIf="samlEditForm.controls['entity_id'].errors && samlForm.submitted" class="invalid-feedback" >
           <span>Entity ID is required.</span>
       </div>
     </div>
   </div>
-  <div class="form-group row" [ngClass]="{'error': samlEditForm.controls['idp_attribute'].errors && samlForm.submitted}">
+  <div class="form-group row" [ngClass]="{'error': samlEditForm.controls['attribute'].errors && samlForm.submitted}">
     <label for="role" class="col-sm-2 control-label required">IDP Attribute</label> 
      <div class="col-sm-6">
-       <input  type="text" class="form-control" placeholder="IDP Attribute" formControlName="idp_attribute" name="idp_attribute" id="idp_attribute" >
-       <div *ngIf="samlEditForm.controls['idp_attribute'].errors && samlForm.submitted" class="invalid-feedback" >
+       <input  type="text" class="form-control" placeholder="IDP Attribute" formControlName="attribute" name="attribute" id="attribute" >
+       <div *ngIf="samlEditForm.controls['attribute'].errors && samlForm.submitted" class="invalid-feedback" >
         <span>IDP Attribute is required.</span>
     </div>
       </div>
@@ -64,9 +64,6 @@
         </div>
       </div>
     </div>
-     <!-- <div class="col-sm-6">
-       <input  type="checkbox" formControlName="status" name="status" id="status" value="true">
-     </div> -->
   </div>
 
   <div class="form-group row">
@@ -83,9 +80,6 @@
           </div>
         </div>
       </div>
-      <!-- <div class="col-sm-6">
-         <input  type="checkbox" formControlName="user_creation" name="user_creation" id="user_creation" value="true">
-       </div> -->
     </div>
 
   <div *ngIf="samlEditForm.controls['user_creation'].value ==true" class="form-group row" [ngClass]="{'error': userCreation && !samlEditForm.controls['roles'].value && samlForm.submitted}">

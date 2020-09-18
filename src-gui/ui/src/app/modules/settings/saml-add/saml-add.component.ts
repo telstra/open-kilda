@@ -23,7 +23,7 @@ export class SamlAddComponent implements OnInit {
   roles:any;
   metadata_required:any=false;
   userCreation:any=false;
-  settingStatus:any=false;
+  settingStatus:any=true;
   constructor(
     private formBuilder:FormBuilder, 
     private roleService: RoleService, 
@@ -49,13 +49,13 @@ export class SamlAddComponent implements OnInit {
   private createForm() {
     this.samlAddForm = this.formBuilder.group({
       name : ['',Validators.required],
-      entityId : ['', Validators.required],
+      entity_id : ['', Validators.required],
       url:[''],
       file:[''],
       roles: [''],
       status: [true],
       user_creation:[false],
-      idp_attribute:['',Validators.required]
+      attribute:['',Validators.required]
     });
   }
 
@@ -101,11 +101,11 @@ export class SamlAddComponent implements OnInit {
     this.metadata_required = false
     const formData = new FormData();
     formData.append('name',this.samlAddForm.value.name);
-    formData.append('entityId',this.samlAddForm.value.entityId);
-    formData.append('activeStatus',this.samlAddForm.value.status);
-    formData.append('userCreation',this.samlAddForm.value.user_creation);
-    formData.append('roleIds',this.samlAddForm.value.roles);
-    formData.append('idpAttribute',this.samlAddForm.value.idp_attribute);
+    formData.append('entity_id',this.samlAddForm.value.entity_id);
+    formData.append('status',this.samlAddForm.value.status);
+    formData.append('user_creation',this.samlAddForm.value.user_creation);
+    formData.append('role_ids',this.samlAddForm.value.roles);
+    formData.append('attribute',this.samlAddForm.value.attribute);
     
     if(this.samlAddForm.value.url){
       formData.append('url',this.samlAddForm.value.url);

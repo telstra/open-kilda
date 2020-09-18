@@ -20,7 +20,7 @@ export class SamlEditComponent implements OnInit,OnChanges {
   
   @ViewChild("file")
   fileElementRef: ElementRef;
-  idp_id:any=null;
+  uuid:any=null;
   files:FileList;
   samlEditForm: FormGroup;
   fileUploaded:any='';
@@ -64,13 +64,13 @@ export class SamlEditComponent implements OnInit,OnChanges {
   private updateForm() {
     this.samlEditForm = this.formBuilder.group({
       name : ['',Validators.required],
-      entityId : ['', Validators.required],
+      entity_id : ['', Validators.required],
       url:new FormControl(null),
       file:new FormControl(null),
       roles: [''],
       status: [true],
       user_creation:[false],
-      idp_attribute:['',Validators.required]
+      attribute:['',Validators.required]
     });
    
   }
@@ -103,13 +103,13 @@ export class SamlEditComponent implements OnInit,OnChanges {
   updateProvider(){
     this.submitted = true;
     if (this.samlEditForm.invalid) {
-      if(!this.samlEditForm.value.file && !this.samlEditForm.value.url  && !this.providerData.idp_metadata){
+      if(!this.samlEditForm.value.file && !this.samlEditForm.value.url  && !this.providerData.metadata){
         this.metadata_required = true;
       }
       return;
     }
 
-    if(!this.samlEditForm.value.file && !this.samlEditForm.value.url  && !this.providerData.idp_metadata){
+    if(!this.samlEditForm.value.file && !this.samlEditForm.value.url  && !this.providerData.metadata){
       this.metadata_required = true;
       return;
     }
@@ -119,11 +119,11 @@ export class SamlEditComponent implements OnInit,OnChanges {
     this.metadata_required = false
     const formData = new FormData();
     formData.append('name',this.samlEditForm.value.name);
-    formData.append('entityId',this.samlEditForm.value.entityId);
-    formData.append('activeStatus',this.samlEditForm.value.status);
-    formData.append('userCreation',this.samlEditForm.value.user_creation);
-    formData.append('roleIds',this.samlEditForm.value.roles);    
-    formData.append('idpAttribute',this.samlEditForm.value.idp_attribute);
+    formData.append('entity_id',this.samlEditForm.value.entity_id);
+    formData.append('status',this.samlEditForm.value.status);
+    formData.append('user_creation',this.samlEditForm.value.user_creation);
+    formData.append('role_ids',this.samlEditForm.value.roles);    
+    formData.append('attribute',this.samlEditForm.value.attribute);
     if(this.samlEditForm.value.url){
       formData.append('url',this.samlEditForm.value.url);
     }
@@ -131,7 +131,7 @@ export class SamlEditComponent implements OnInit,OnChanges {
       formData.append('file',this.files[0]);
     }
     this.loaderService.show(MessageObj.updating_provider);
-    this.samlSettingService.updateAuthProvider(formData,this.idp_id).subscribe((res:any)=>{
+    this.samlSettingService.updateAuthProvider(formData,this.uuid).subscribe((res:any)=>{
       this.toastr.success(MessageObj.provider_updated_success);
       this.loaderService.hide();
       this.cancel.emit();
@@ -149,7 +149,7 @@ export class SamlEditComponent implements OnInit,OnChanges {
     if( typeof(change.data)!='undefined' && change.data){
       if(typeof(change.data)!=='undefined' && change.data.currentValue){
         this.data  = change.data.currentValue;
-        this.idp_id = this.data.idp_id;
+        this.uuid = this.data.uuid;
       }
     }
   }
@@ -158,16 +158,16 @@ export class SamlEditComponent implements OnInit,OnChanges {
     this.loaderService.show(MessageObj.loading_data);
     this.samlSettingService.getDetail(id).subscribe((res)=>{
       this.providerData = res;
-      if(res.idp_provider_type =='FILE'){
+      if(res.type =='FILE'){
         this.fileUploaded = 'file.xml';
       } 
-      this.samlEditForm.controls['name'].setValue(res.idp_name);
-      this.samlEditForm.controls['entityId'].setValue(res.entity_id);
+      this.samlEditForm.controls['name'].setValue(res.name);
+      this.samlEditForm.controls['entity_id'].setValue(res.entity_id);
       this.samlEditForm.controls['roles'].setValue(res.roles);
-      this.samlEditForm.controls['status'].setValue(res.idp_active_status);
-      this.samlEditForm.controls['user_creation'].setValue(res.allow_user_creation);
-      this.samlEditForm.controls['idp_attribute'].setValue(res.saml_attribute);
-      this.samlEditForm.controls['url'].setValue(res.idp_provider_type =='URL' ? res.idp_url:'');
+      this.samlEditForm.controls['status'].setValue(res.status);
+      this.samlEditForm.controls['user_creation'].setValue(res.user_creation);
+      this.samlEditForm.controls['attribute'].setValue(res.attribute);
+      this.samlEditForm.controls['url'].setValue(res.type =='URL' ? res.url:'');
       this.loaderService.hide();
       
     },(error)=>{
@@ -182,6 +182,6 @@ export class SamlEditComponent implements OnInit,OnChanges {
   ngOnInit() {
     this.titleService.setTitle('OPEN KILDA - Update Provider');
     this.updateForm();
-    this.getDetail(this.idp_id);
+    this.getDetail(this.uuid);
   }
 }

@@ -11,21 +11,18 @@ export class SamlSettingService {
   constructor(private httpClient: HttpClient) { }
 
    getAuthProviders() : Observable<any>{
-     return this.httpClient.get<any>(`${environment.apiEndPoint}/samlconfig/getAll`);
+     return this.httpClient.get<any>(`${environment.apiEndPoint}/samlconfig`);
    }
-   getDetail(id){
-    return this.httpClient.get<any>(`${environment.apiEndPoint}/samlconfig/${id}`);
+   getDetail(uuid){
+    return this.httpClient.get<any>(`${environment.apiEndPoint}/samlconfig/${uuid}`);
    }
     saveAuthProvider(data){
-       return this.httpClient.post(`${environment.apiEndPoint}/samlconfig/save`,data);
+       return this.httpClient.post(`${environment.apiEndPoint}/samlconfig`,data);
     }
-    updateAuthProvider(data,id){
-      return this.httpClient.patch(`${environment.apiEndPoint}/samlconfig/update/${id}`,data);
+    updateAuthProvider(data,uuid){
+      return this.httpClient.patch(`${environment.apiEndPoint}/samlconfig/${uuid}`,data);
    }
-   loadAuthProviderConfig(idp_id,type,data){
-      return this.httpClient.post(`${environment.apiEndPoint}/samlconfig/load/${idp_id}?type=${type}`,data);
-    }
-    deleteAuthProvider(idp_id){
-      return this.httpClient.delete(`${environment.apiEndPoint}/samlconfig/${idp_id}`);
+    deleteAuthProvider(uuid){
+      return this.httpClient.delete(`${environment.apiEndPoint}/samlconfig/${uuid}`);
   }
 }

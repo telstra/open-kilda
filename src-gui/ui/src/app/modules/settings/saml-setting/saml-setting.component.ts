@@ -78,7 +78,7 @@ export class SamlSettingComponent implements OnInit,OnChanges {
     
     modalReff.result.then((response) => {
       if(response && response == true){
-        this.samlSettingService.deleteAuthProvider(row.idp_id).subscribe((res:any)=>{
+        this.samlSettingService.deleteAuthProvider(row.uuid).subscribe((res:any)=>{
           modalReff.close();
           this.authProviders = [];
           this.getAuthProviders();

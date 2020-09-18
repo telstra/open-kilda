@@ -12,10 +12,7 @@
               <h6 class="card-title card-custom-title">Identity Server</h6>
               <div _ngcontent-c14="" class="card">
                   <div _ngcontent-c14="" class="card-body">
-                      <!-- <div class="col-sm-9"> -->
                         <app-identity-server *ngIf="openedTab == 'storesetting'"></app-identity-server>
-
-                      <!-- </div> -->
                   </div>
               </div>
             </div>
@@ -23,10 +20,7 @@
               <h6 class="card-title card-custom-title">Link Store</h6>
               <div _ngcontent-c14="" class="card">
                   <div _ngcontent-c14="" class="card-body">
-                      <!-- <div class="col-sm-9"> -->
                         <app-link-store *ngIf="openedTab == 'storesetting'"></app-link-store>
-
-                      <!-- </div> -->
                   </div>
               </div>
             </div>
@@ -34,38 +28,16 @@
               <h6 class="card-title card-custom-title">Switch Store</h6>
               <div _ngcontent-c14="" class="card">
                   <div _ngcontent-c14="" class="card-body">
-                      <!-- <div class="col-sm-9"> -->
                         <app-switch-store *ngIf="openedTab == 'storesetting'"></app-switch-store>
-
-                      <!-- </div> -->
                   </div>
               </div>
             </div>
-            <!-- <div id="exTab1" class="col-lg-12 tab-wrapper">
-              <ul class="nav nav-pills">
-                  <li id="identityServerTabHeader" [ngClass]="{'active': openedInnerTab == 'identityserver'}"><a class="loadTabData" href="javascript:void(0);" (click)="openinnerTab('identityserver');">Identity Server</a></li>
-                  <li id="linkStoreTabHeader" *ngIf="isIdentityServer" [ngClass]="{'active': openedInnerTab == 'linkstore'}"><a class="loadTabData" href="javascript:void(0);" (click)="openinnerTab('linkstore');">Link Store</a></li>
-                  <li id="switchStoreTabHeader" *ngIf="isIdentityServer" [ngClass]="{'active': openedInnerTab == 'switchstore'}"><a class="loadTabData" href="javascript:void(0);" (click)="openinnerTab('switchstore');">Switch Store</a></li>
-                </ul>
-                <div class="tab-content clearfix">
-                  <div class="tab-pane" [ngClass]="{'active': openedInnerTab == 'identityserver'}">
-                      <app-identity-server  *ngIf="openedInnerTab == 'identityserver'"></app-identity-server>
-                  </div>
-                  <div class="tab-pane" [ngClass]="{'active': openedInnerTab == 'linkstore'}">
-                      <app-link-store *ngIf="openedInnerTab == 'linkstore'"></app-link-store>
-                  </div>
-                  <div class="tab-pane" [ngClass]="{'active': openedInnerTab == 'switchstore'}">
-                    <app-switch-store *ngIf="openedInnerTab == 'switchstore'"></app-switch-store>
-                 </div>
-                </div>
-              </div> -->
+           
           </div>
           <div class="tab-pane" [ngClass]="{'active': openedTab == 'applicationsetting'}">
-              <!-- <app-link-store *ngIf="openedTab == 'linkstore'"></app-link-store> -->
               <app-session *ngIf="openedTab == 'applicationsetting'"></app-session>
           </div>
           <div class="tab-pane" [ngClass]="{'active': openedTab == 'samlsetting'}">
-            <!-- <app-switch-store *ngIf="openedTab == 'switchstore'"></app-switch-store> -->
             <app-saml-setting *ngIf="openedTab == 'samlsetting'"></app-saml-setting>
         </div>
         </div>

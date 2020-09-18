@@ -10,9 +10,9 @@
     </thead>
     <tbody>
     <tr class="flowDataRow "  *ngFor="let row of data; let i = index">
-        <td>{{row.idp_name}}</td>
+        <td>{{row.name}}</td>
         <td>{{row.entity_id}}</td>
-        <td>{{(row.idp_active_status == true) ?'Active':'InActive'}}</td>
+        <td>{{(row.status == true) ?'Active':'InActive'}}</td>
         <td>
         <a class="pull-left" title="Edit Provider"  (click)="editProvider(row)">
             <i class="fa fa-edit"></i>
