@@ -22,6 +22,7 @@ import org.openkilda.exception.OtpRequiredException;
 import org.openkilda.exception.TwoFaKeyNotSetException;
 import org.openkilda.saml.entity.SamlConfig;
 import org.openkilda.saml.repository.SamlRepository;
+import org.openkilda.saml.service.SamlService;
 import org.openkilda.security.CustomWebAuthenticationDetails;
 import org.openkilda.security.TwoFactorUtility;
 import org.openkilda.utility.StringUtil;
@@ -49,7 +50,6 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.usermanagement.dao.entity.PermissionEntity;
 import org.usermanagement.dao.entity.RoleEntity;
-import org.usermanagement.dao.entity.StatusEntity;
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.dao.repository.PermissionRepository;
 import org.usermanagement.dao.repository.UserRepository;
@@ -58,7 +58,6 @@ import org.usermanagement.service.RoleService;
 import org.usermanagement.service.UserService;
 import org.usermanagement.util.ValidatorUtil;
 
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -96,6 +95,9 @@ public class LoginController extends BaseController {
     
     @Autowired
     private RoleService roleService;
+    
+    @Autowired
+    private SamlService samlService;
     
     @Value("${application.name}")
     private String applicationName;
@@ -288,7 +290,7 @@ public class LoginController extends BaseController {
                         list.add(roleEntity.getRoleId());
                     }
                     Set<RoleEntity> roleEntities = roleService.getRolesById(list);
-                    userEntity = createUser(nameId.getValue(), roleEntities);
+                    userEntity = samlService.createUser(nameId.getValue(), roleEntities);
                     String password = ValidatorUtil.randomAlphaNumeric(16);
                     userEntity.setPassword(StringUtil.encodeString(password));
                     userRepository.save(userEntity);
@@ -315,22 +317,5 @@ public class LoginController extends BaseController {
             redir.addFlashAttribute("error", error);
         }
         return modelAndView;
-    }
-    
-    private UserEntity createUser(String value, Set<RoleEntity> list) {
-        UserEntity userEntity = new UserEntity();
-        userEntity.setUsername(value);
-        userEntity.setEmail(value);
-        userEntity.setName(value);
-        userEntity.setRoles(list);
-        userEntity.setActiveFlag(true);
-        userEntity.setLoginTime(new Timestamp(System.currentTimeMillis()));
-        userEntity.setLogoutTime(new Timestamp(System.currentTimeMillis()));
-        userEntity.setIsAuthorized(true);
-        userEntity.setIs2FaEnabled(false);
-        userEntity.setIs2FaConfigured(false);
-        StatusEntity statusEntity = Status.ACTIVE.getStatusEntity();
-        userEntity.setStatusEntity(statusEntity);
-        return userEntity;
     }
 }

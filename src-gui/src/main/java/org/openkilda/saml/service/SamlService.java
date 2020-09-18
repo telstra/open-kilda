@@ -16,6 +16,7 @@
 package org.openkilda.saml.service;
 
 import org.openkilda.constants.IConstants;
+import org.openkilda.constants.Status;
 import org.openkilda.saml.entity.SamlConfig;
 import org.openkilda.saml.model.SamlConfigResponse;
 import org.openkilda.saml.provider.DbMetadataProvider;
@@ -38,6 +39,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import org.usermanagement.dao.entity.RoleEntity;
+import org.usermanagement.dao.entity.StatusEntity;
+import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.exception.RequestValidationException;
 import org.usermanagement.model.Message;
 import org.usermanagement.service.RoleService;
@@ -52,6 +55,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.sql.Blob;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -504,5 +508,27 @@ public class SamlService {
         } catch (MetadataProviderException e) {
             e.printStackTrace();
         }
+    }
+    
+    /**
+     * Creates the saml user.
+     * @param username the username
+     * @param roles the user roles
+     */
+    public UserEntity createUser(String username, Set<RoleEntity> roles) {
+        UserEntity userEntity = new UserEntity();
+        userEntity.setUsername(username);
+        userEntity.setEmail(username);
+        userEntity.setName(username);
+        userEntity.setRoles(roles);
+        userEntity.setActiveFlag(true);
+        userEntity.setLoginTime(new Timestamp(System.currentTimeMillis()));
+        userEntity.setLogoutTime(new Timestamp(System.currentTimeMillis()));
+        userEntity.setIsAuthorized(true);
+        userEntity.setIs2FaEnabled(false);
+        userEntity.setIs2FaConfigured(false);
+        StatusEntity statusEntity = Status.ACTIVE.getStatusEntity();
+        userEntity.setStatusEntity(statusEntity);
+        return userEntity;
     }
 }
