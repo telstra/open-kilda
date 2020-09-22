@@ -37,11 +37,12 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class PathsService {
-    private static final int MAX_PATH_COUNT = 500;
+    public static final int MAX_PATH_COUNT = 500;
     private PathComputer pathComputer;
     private SwitchRepository switchRepository;
     private KildaConfigurationRepository kildaConfigurationRepository;
@@ -57,7 +58,9 @@ public class PathsService {
     /**
      * Get paths.
      */
-    public List<PathsInfoData> getPaths(SwitchId srcSwitchId, SwitchId dstSwitchId)
+    public List<PathsInfoData> getPaths(
+            SwitchId srcSwitchId, SwitchId dstSwitchId, FlowEncapsulationType requestEncapsulationType,
+            PathComputationStrategy requestPathComputationStrategy)
             throws RecoverableException, SwitchNotFoundException, UnroutableFlowException {
         if (Objects.equals(srcSwitchId, dstSwitchId)) {
             throw new IllegalArgumentException(
@@ -69,10 +72,12 @@ public class PathsService {
         if (!switchRepository.exists(dstSwitchId)) {
             throw new SwitchNotFoundException(dstSwitchId);
         }
-        // TODO(tdurakov): NB request should accept encapsulation type as well, right now will use env default
+
         KildaConfiguration kildaConfiguration = kildaConfigurationRepository.get();
-        FlowEncapsulationType flowEncapsulationType = kildaConfiguration.getFlowEncapsulationType();
-        PathComputationStrategy pathComputationStrategy = kildaConfiguration.getPathComputationStrategy();
+        FlowEncapsulationType flowEncapsulationType = Optional.ofNullable(requestEncapsulationType)
+                .orElse(kildaConfiguration.getFlowEncapsulationType());
+        PathComputationStrategy pathComputationStrategy = Optional.ofNullable(requestPathComputationStrategy)
+                .orElse(kildaConfiguration.getPathComputationStrategy());
         List<Path> flowPaths = pathComputer.getNPaths(srcSwitchId, dstSwitchId, MAX_PATH_COUNT, flowEncapsulationType,
                 pathComputationStrategy);
 

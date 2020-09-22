@@ -16,11 +16,14 @@
 package org.openkilda.northbound.controller.v1;
 
 import org.openkilda.messaging.payload.network.PathsDto;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.service.NetworkService;
 
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
@@ -47,7 +50,14 @@ public class NetworkController extends BaseController {
     @ApiOperation(value = "Get paths between two switches", response = PathsDto.class)
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<PathsDto> getPaths(
-            @RequestParam("src_switch") SwitchId srcSwitchId, @RequestParam("dst_switch") SwitchId dstSwitchId) {
-        return networkService.getPaths(srcSwitchId, dstSwitchId);
+            @RequestParam("src_switch") SwitchId srcSwitchId, @RequestParam("dst_switch") SwitchId dstSwitchId,
+            @ApiParam(value = "Valid values are: TRANSIT_VLAN, VXLAN. If encapsulation type is not specified, default "
+                    + "value from Kilda Configuration will be used")
+            @RequestParam(value = "encapsulation_type", required = false) FlowEncapsulationType encapsulationType,
+            @ApiParam(value = "Valid values are: COST, LATENCY, MAX_LATENCY, COST_AND_AVAILABLE_BANDWIDTH. If path "
+                    + "computation strategy is not specified, default value from Kilda Configuration will be used")
+            @RequestParam(value = "path_computation_strategy", required = false)
+                    PathComputationStrategy pathComputationStrategy) {
+        return networkService.getPaths(srcSwitchId, dstSwitchId, encapsulationType, pathComputationStrategy);
     }
 }
