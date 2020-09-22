@@ -16,7 +16,7 @@
 package org.usermanagement.dao.entity;
 
 import org.openkilda.entity.BaseEntity;
-import org.openkilda.saml.entity.SamlConfig;
+import org.openkilda.saml.dao.entity.SamlConfigEntity;
 
 import java.io.Serializable;
 import java.util.HashSet;
@@ -67,9 +67,9 @@ public class RoleEntity extends BaseEntity implements Serializable {
     
     
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "saml_user_role", joinColumns = { @JoinColumn(name = "role_id") }, inverseJoinColumns = {
+    @JoinTable(name = "saml_user_roles", joinColumns = { @JoinColumn(name = "role_id") }, inverseJoinColumns = {
             @JoinColumn(name = "id") })
-    private Set<SamlConfig> samlUsers = new HashSet<SamlConfig>();
+    private Set<SamlConfigEntity> samlUsers = new HashSet<SamlConfigEntity>();
     
     /* (non-Javadoc)
      * @see org.openkilda.entity.BaseEntity#id()
@@ -79,11 +79,11 @@ public class RoleEntity extends BaseEntity implements Serializable {
         return roleId;
     }
 
-    public Set<SamlConfig> getSamlUsers() {
+    public Set<SamlConfigEntity> getSamlUsers() {
         return samlUsers;
     }
 
-    public void setSamlUsers(Set<SamlConfig> samlUsers) {
+    public void setSamlUsers(Set<SamlConfigEntity> samlUsers) {
         this.samlUsers = samlUsers;
     }
 

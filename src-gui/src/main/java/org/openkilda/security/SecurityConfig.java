@@ -16,7 +16,7 @@
 package org.openkilda.security;
 
 import org.openkilda.constants.IConstants.SamlUrl;
-import org.openkilda.saml.entity.SamlConfig;
+import org.openkilda.saml.dao.entity.SamlConfigEntity;
 import org.openkilda.saml.provider.DbMetadataProvider;
 import org.openkilda.saml.provider.UrlMetadataProvider;
 import org.openkilda.saml.repository.SamlRepository;
@@ -64,6 +64,7 @@ import org.springframework.security.saml.processor.HTTPPostBinding;
 import org.springframework.security.saml.processor.HTTPRedirectDeflateBinding;
 import org.springframework.security.saml.processor.SAMLBinding;
 import org.springframework.security.saml.processor.SAMLProcessorImpl;
+import org.springframework.security.saml.storage.EmptyStorageFactory;
 import org.springframework.security.saml.util.VelocityFactory;
 import org.springframework.security.saml.websso.SingleLogoutProfile;
 import org.springframework.security.saml.websso.SingleLogoutProfileImpl;
@@ -132,7 +133,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     private AccessDeniedHandler accessDeniedHandler;
     
     @Autowired
-    private SamlRepository idpRepository;
+    private SamlRepository samlRepository;
     
     /*
      * (non-Javadoc)
@@ -142,11 +143,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
      * #configure(org.springframework.security.config.annotation.web.builders.
      * HttpSecurity)
      */
-
-
     @Override
     protected void configure(final HttpSecurity http) throws Exception {
-        
         http.csrf().ignoringAntMatchers("/saml/**")
         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()).and()
         .authorizeRequests()
@@ -173,7 +171,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
      * @see org.springframework.security.config.annotation.web.configuration.
      * WebSecurityConfigurerAdapter #authenticationManager()
      */
-    
     @Override
     @Bean("authenticationManager")
     public ProviderManager authenticationManager() {
@@ -299,7 +296,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     public SecurityContextLogoutHandler logoutHandler() {
         SecurityContextLogoutHandler logoutHandler = new SecurityContextLogoutHandler();
         logoutHandler.setInvalidateHttpSession(true);
-        logoutHandler.setClearAuthentication(false);
+        logoutHandler.setClearAuthentication(true);
         return logoutHandler;
     }
 
@@ -383,7 +380,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Bean
     public SAMLContextProviderImpl contextProvider() {
-        return new SAMLContextProviderImpl();
+        SAMLContextProviderImpl provider = new SAMLContextProviderImpl();
+        provider.setStorageFactory(new EmptyStorageFactory());
+        return provider;
     }
 
     @Bean
@@ -395,29 +394,32 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Qualifier("metadata")
     public CachingMetadataManager metadata(ExtendedMetadataDelegate extendedMetadataDelegate) 
             throws MetadataProviderException, IOException {
-        List<MetadataProvider> providers = new ArrayList<>();
-        List<SamlConfig> enList = idpRepository.findAll();
-        if (enList != null) {
-            for (final SamlConfig mdprovId : enList) {
-                if (mdprovId.getIdpUrl() != null) {
-                    UrlMetadataProvider urlProvider = new UrlMetadataProvider(new Timer(true), 
-                            new HttpClient(), mdprovId.getIdpId());
-                    urlProvider.setParserPool(ParserPoolHolder.getPool());
-                    ExtendedMetadataDelegate md = new ExtendedMetadataDelegate(urlProvider,  extendedMetadata());
-                    md.setMetadataTrustCheck(false);
-                    md.setMetadataRequireSignature(false);
-                    providers.add(md);
+        List<MetadataProvider> metadataProviderList = new ArrayList<>();
+        List<SamlConfigEntity> samlConfigEntityList = samlRepository.findAll();
+        if (samlConfigEntityList != null) {
+            for (final SamlConfigEntity samlConfigEntity : samlConfigEntityList) {
+                if (samlConfigEntity.getUrl() != null) {
+                    UrlMetadataProvider urlMetadataProvider = new UrlMetadataProvider(new Timer(true), 
+                            new HttpClient(), samlConfigEntity.getUuid());
+                    urlMetadataProvider.setParserPool(ParserPoolHolder.getPool());
+                    ExtendedMetadataDelegate metadataDelegate = new ExtendedMetadataDelegate(urlMetadataProvider, 
+                            extendedMetadata());
+                    metadataDelegate.setMetadataTrustCheck(false);
+                    metadataDelegate.setMetadataRequireSignature(false);
+                    metadataProviderList.add(metadataDelegate);
                 } else {
-                    DbMetadataProvider metadataProvider = new DbMetadataProvider(new Timer(true), mdprovId.getIdpId());
+                    DbMetadataProvider metadataProvider = new DbMetadataProvider(new Timer(true), 
+                            samlConfigEntity.getUuid());
                     metadataProvider.setParserPool(ParserPoolHolder.getPool());
-                    ExtendedMetadataDelegate md = new ExtendedMetadataDelegate(metadataProvider,  extendedMetadata());
-                    md.setMetadataTrustCheck(false);
-                    md.setMetadataRequireSignature(false);
-                    providers.add(md);
+                    ExtendedMetadataDelegate metadataDelegate = new ExtendedMetadataDelegate(metadataProvider, 
+                            extendedMetadata());
+                    metadataDelegate.setMetadataTrustCheck(false);
+                    metadataDelegate.setMetadataRequireSignature(false);
+                    metadataProviderList.add(metadataDelegate);
                 }
             }
         }
-        return new CachingMetadataManager(providers);
+        return new CachingMetadataManager(metadataProviderList);
     }
 
     @Bean

@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 
 package org.openkilda.saml.model;
 
-import org.openkilda.constants.IConstants.IdpProviderType;
+import org.openkilda.constants.IConstants.ProviderType;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -34,45 +34,41 @@ import java.util.Set;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
 @Component
-public class SamlConfigResponse implements Serializable {
+public class SamlConfig implements Serializable {
 
     private static final long serialVersionUID = 5779373512137456449L;
     
     @JsonProperty("id")
     private Long id;
     
-    @JsonProperty("idp_id")
-    private String idpId;
+    @JsonProperty("uuid")
+    private String uuid;
     
-    @JsonProperty("idp_metadata")
-    private String idpMetadata;
+    @JsonProperty("metadata")
+    private String metadata;
     
-    @JsonProperty("idp_name")
-    private String idpName;
+    @JsonProperty("name")
+    private String name;
     
-    @JsonProperty("idp_url")
-    private String idpUrl;
+    @JsonProperty("url")
+    private String url;
     
     @JsonProperty("entity_id")
     private String entityId;
     
-    @JsonProperty("saml_attribute")
-    private String samlAttribute;
+    @JsonProperty("attribute")
+    private String attribute;
     
-    @JsonProperty("idp_provider_type")
-    private IdpProviderType idpProviderType;
+    @JsonProperty("type")
+    private ProviderType type;
     
-    @JsonProperty("allow_user_creation")
-    private boolean allowUserCreation;
+    @JsonProperty("user_creation")
+    private boolean userCreation;
 
-    @JsonProperty("idp_active_status")
-    private boolean activeStatus;
-    
-    @JsonProperty("require_update")
-    private boolean requireUpdate;
+    @JsonProperty("status")
+    private boolean status;
     
     @JsonProperty("roles")
     private Set<Long> roles;
-    
     
 }

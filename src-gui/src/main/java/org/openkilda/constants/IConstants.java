@@ -111,7 +111,7 @@ public abstract class IConstants {
         public static final String USER = "ROLE_USER";
     }
     
-    public enum IdpProviderType {
+    public enum ProviderType {
 
         FILE, URL;
 

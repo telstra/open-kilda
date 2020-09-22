@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 
 package org.openkilda.saml.provider;
 
-import org.openkilda.saml.model.SamlConfigResponse;
+import org.openkilda.saml.model.SamlConfig;
 import org.openkilda.saml.service.SamlService;
 import org.openkilda.security.ApplicationContextProvider;
 
@@ -48,7 +48,7 @@ public class UrlMetadataProvider extends HTTPMetadataProvider {
         setMetaDataEntityId(entityId);
     }
 
-    public String getMetaDataEntityId() {  
+    public String getMetaDataEntityId() { 
         return metaDataEntityId;  
     }
     
@@ -63,8 +63,8 @@ public class UrlMetadataProvider extends HTTPMetadataProvider {
 
     @Override
     public String getMetadataURI() { 
-        SamlService idpService = ApplicationContextProvider.getContext().getBean(SamlService.class);
-        SamlConfigResponse res = idpService.getById(getMetaDataEntityId());
-        return res.getIdpUrl();
+        SamlService samlService = ApplicationContextProvider.getContext().getBean(SamlService.class);
+        SamlConfig samlConfig = samlService.getById(getMetaDataEntityId());
+        return samlConfig.getUrl();
     } 
 }

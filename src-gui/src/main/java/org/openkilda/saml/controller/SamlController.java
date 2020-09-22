@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,142 +15,103 @@
 
 package org.openkilda.saml.controller;
 
+import org.openkilda.constants.IConstants;
+import org.openkilda.constants.Status;
 import org.openkilda.controller.BaseController;
-import org.openkilda.saml.model.SamlConfigResponse;
-import org.openkilda.saml.service.SamlService;
+import org.openkilda.saml.model.SamlConfig;
 
-import org.opensaml.saml2.metadata.provider.MetadataProviderException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.log4j.Logger;
+
+import org.opensaml.saml2.core.NameID;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.http.HttpStatus;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.saml.SAMLCredential;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
-import org.usermanagement.model.Message;
+import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.usermanagement.dao.entity.RoleEntity;
+import org.usermanagement.model.UserInfo;
+import org.usermanagement.service.RoleService;
+import org.usermanagement.service.UserService;
+import org.usermanagement.util.MessageUtils;
 
-import java.util.List;
+import java.util.Set;
 
-/**
- * The Class SamlController.
- *
- * @author Swati Sharma
- */
+import javax.servlet.http.HttpServletRequest;
 
-@RestController
-@RequestMapping(value = "/api/samlconfig")
-@ComponentScan
+@Controller
+@RequestMapping(value = "/saml")
 public class SamlController extends BaseController {
 
+    private static final Logger LOGGER = Logger.getLogger(SamlController.class);
+
     @Autowired
-    private SamlService idpService;
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(SamlController.class);
+    private UserService userService;
+    
+    @Autowired
+    private RoleService roleService;
+    
+    @Autowired
+    private MessageUtils messageUtil;
     
     /**
-     * Saves the provider.
+     * Saml Authenticate.
      *
-     * @param file the metadata file
-     * @param name the provider name
-     * @param url the metadata url
-     * @param entityId the entityId
-     * @param activeStatus the provider status
-     * @param idpAttribute the idpAttribute
-     * @param userCreation the userCreation
-     * @param roleIds the role Ids
-     * @return the SamlConfigResponse
+     * @param request the request
+     * @return the model and view
      */
-    @PostMapping("/save")
-    @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-    public SamlConfigResponse uploadFile(@RequestParam(name = "file", required = false) MultipartFile file, 
-            @RequestParam(name = "name", required = true) String name, 
-            @RequestParam(name = "url", required = false) String url,
-            @RequestParam(name = "entityId", required = true) String entityId,
-            @RequestParam(name = "activeStatus", required = true) boolean activeStatus,
-            @RequestParam(name = "idpAttribute", required = true) String idpAttribute,
-            @RequestParam(name = "userCreation", required = true) boolean userCreation,
-            @RequestParam(name = "roleIds", required = false) List<Long> roleIds) {
-        SamlConfigResponse entity = idpService.storeFile(file, name, url, entityId, activeStatus, 
-                userCreation, roleIds, idpAttribute);
-        try {
-            idpService.loadIdpMetadata(entity.getIdpId(), entity.getIdpProviderType().name());
-        } catch (MetadataProviderException e) {
-            e.printStackTrace();
+    @RequestMapping(value = "/authenticate")
+    public ModelAndView samlAuthenticate(final HttpServletRequest request, RedirectAttributes redir) {
+        
+        ModelAndView modelAndView = null;
+        String error = null;
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (null != authentication) {
+            boolean isValid = (authentication.isAuthenticated()
+                    && !(authentication instanceof AnonymousAuthenticationToken));
+            if (isValid) {
+                SAMLCredential saml = (SAMLCredential) authentication.getCredentials();
+                SamlConfig samlConfig = samlService.getConfigByEntityId(saml.getRemoteEntityID());
+                NameID nameId = (NameID) authentication.getPrincipal();
+                String username = nameId.getValue();
+                UserInfo userInfo = userService.getUserInfoByUsername(username);
+                if (userInfo != null
+                        && userInfo.getStatus().equalsIgnoreCase(Status.ACTIVE.name())) {
+                    userService.populateUserInfo(userInfo, username);
+                    request.getSession().setAttribute(IConstants.SESSION_OBJECT, userInfo);
+                    userService.updateLoginDetail(username);
+                    modelAndView = new ModelAndView(IConstants.View.REDIRECT_HOME);
+                } else if (userInfo != null
+                        && userInfo.getStatus().equalsIgnoreCase(Status.INACTIVE.name())) {
+                    error = messageUtil.getAttributeUserInactive();
+                    request.getSession(false);
+                    modelAndView = new ModelAndView(IConstants.View.REDIRECT_LOGIN);
+                } else if (userInfo == null && samlConfig.isUserCreation()) {
+                    Set<RoleEntity> roleEntities = roleService.getRoleByIds(samlConfig.getRoles());
+                    userService.createSamlUser(nameId.getValue(), roleEntities);
+                    UserInfo userInfo1 = getLoggedInUser(request);
+                    userService.populateUserInfo(userInfo1, username);
+                    userService.updateLoginDetail(username);
+                    modelAndView = new ModelAndView(IConstants.View.REDIRECT_HOME);
+                }  else {
+                    error = messageUtil.getAttributeUserDoesNotExist();
+                    LOGGER.warn("User is not logged in, redirected to login page. Requested view name: ");
+                    request.getSession(false);
+                    modelAndView = new ModelAndView(IConstants.View.REDIRECT_LOGIN);
+                }
+            }
+        } else {
+            error = messageUtil.getAttributeAuthenticationFailure();
+            LOGGER.warn("User is not logged in, redirected to login page. Requested view name: ");
+            modelAndView = new ModelAndView(IConstants.View.LOGIN);
+        } 
+        if (error != null) {
+            redir.addFlashAttribute("error", error);
         }
-        return entity;
+        return modelAndView;
     }
-    
-    /**
-     * Updates the provider.
-     *
-     * @param file the metadata file
-     * @param idpUrl the metadata url
-     * @param name the provider name
-     * @param entityId the entityId
-     * @param activeStatus the provider status
-     * @param idpAttribute the idpAttribute
-     * @param userCreation the userCreation
-     * @param roleIds the role Ids
-     * @return the SamlConfigResponse
-     */
-    @RequestMapping(value = "/update/{idp_id}", method = RequestMethod.PATCH)
-    @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-    public SamlConfigResponse updateIdp(@PathVariable("idp_id") String idpId, 
-            @RequestParam(name = "file", required = false) MultipartFile file, 
-            @RequestParam(name = "name", required = true) String name, 
-            @RequestParam(name = "url", required = false) String idpUrl,
-            @RequestParam(name = "entityId", required = false) String entityId,
-            @RequestParam(name = "activeStatus", required = true) boolean activeStatus,
-            @RequestParam(name = "idpAttribute", required = true) String idpAttribute,
-            @RequestParam(name = "userCreation", required = true) boolean userCreation,
-            @RequestParam(name = "roleIds", required = false) List<Long> roleIds) {
-        SamlConfigResponse res = idpService.updateIdp(idpId, file, name, idpUrl, entityId, activeStatus, 
-                idpAttribute, userCreation, roleIds);
-        if (res.isRequireUpdate()) {
-            idpService.updateIdpMetadata(res.getIdpId(), res.getIdpProviderType().name());
-        }
-        return res;
-    }
-    
-    @ResponseStatus(HttpStatus.OK)
-    @RequestMapping(value = "/{idpId}", method = RequestMethod.GET)
-    public SamlConfigResponse getById(@PathVariable("idpId") final String idpId) {
-        SamlConfigResponse identityProviderResponse = idpService.getById(idpId);
-        return identityProviderResponse;
-    }
-    
-    @ResponseStatus(HttpStatus.OK)
-    @RequestMapping(value = "/{idp_id}", method = RequestMethod.DELETE)
-    public Message deleteByIdpId(@PathVariable("idp_id") final String id) {
-        return idpService.deleteIdpByIdpId(id);
-    }
-    
-    @ResponseStatus(HttpStatus.OK)
-    @RequestMapping(value = "/update/status/{idp_id}", method = RequestMethod.PUT)
-    public SamlConfigResponse updateIdpStatus(@PathVariable("idp_id") final String id, @RequestParam boolean status) {
-        return idpService.updateIdpStatus(id, status);
-    }
-
-    @ResponseStatus(HttpStatus.OK)
-    @RequestMapping(value = "/getAll", method = RequestMethod.GET)
-    public List<SamlConfigResponse> getAll() {
-        List<SamlConfigResponse> idpResponseList = idpService.getAll();
-        return idpResponseList;
-    }
-    
-    @ResponseStatus(HttpStatus.OK)
-    @RequestMapping(value = "/getAll/active", method = RequestMethod.GET)
-    public List<SamlConfigResponse> getAllActiveIdp() {
-        List<SamlConfigResponse> idpResponseList = idpService.getAllActiveIdp();
-        return idpResponseList;
-    }
-    
 }

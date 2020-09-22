@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 
 package org.openkilda.saml.repository;
 
-import org.openkilda.saml.entity.SamlConfig;
+import org.openkilda.saml.dao.entity.SamlConfigEntity;
 
 import org.springframework.context.annotation.ComponentScan;
 
@@ -28,18 +28,18 @@ import java.util.List;
 @Repository
 @ComponentScan
 @Component
-public interface SamlRepository extends JpaRepository<SamlConfig, Long> {
+public interface SamlRepository extends JpaRepository<SamlConfigEntity, Long> {
 
-    SamlConfig findByEntityIdOrIdpNameEqualsIgnoreCase(String entityId, String idpName);
+    SamlConfigEntity findByEntityIdOrNameEqualsIgnoreCase(String entityId, String name);
 
-    SamlConfig findByIdpId(String idpId);
+    SamlConfigEntity findByUuid(String uuid);
 
-    SamlConfig findByEntityId(String entityId);
+    SamlConfigEntity findByEntityId(String entityId);
 
-    SamlConfig findByIdpIdNotAndEntityIdOrIdpIdNotAndIdpNameEqualsIgnoreCase(String idpId, 
+    SamlConfigEntity findByUuidNotAndEntityIdOrUuidNotAndNameEqualsIgnoreCase(String idpId, 
             String entityId, String idpId2, String name);
 
-    List<SamlConfig> findAllByActiveStatus(boolean status);
+    List<SamlConfigEntity> findAllByStatus(boolean status);
 
 
 }
