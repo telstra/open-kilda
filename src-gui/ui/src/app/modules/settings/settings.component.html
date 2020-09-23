@@ -4,7 +4,7 @@
       <ul class="nav nav-pills">
           <li *ngIf="commonService.hasPermission('store_setting')" id="storeSettingTabHeader" [ngClass]="{'active': openedTab == 'storesetting'}"><a class="loadTabData" href="javascript:void(0);" (click)="openTab('storesetting');">Store Setting</a></li>
           <li *ngIf="commonService.hasPermission('application_setting')" id="ApplicationSettingTabHeader"  [ngClass]="{'active': openedTab == 'applicationsetting'}"><a class="loadTabData" href="javascript:void(0);" (click)="openTab('applicationsetting');">Application Setting</a></li>
-          <li id="SamlSettingTabHeader"  [ngClass]="{'active': openedTab == 'samlsetting'}"><a class="loadTabData" href="javascript:void(0);" (click)="openTab('samlsetting');">Saml Setting</a></li>
+          <li  *ngIf="commonService.hasPermission('saml_setting')" id="SamlSettingTabHeader"  [ngClass]="{'active': openedTab == 'samlsetting'}"><a class="loadTabData" href="javascript:void(0);" (click)="openTab('samlsetting');">Saml Setting</a></li>
         </ul>
         <div class="tab-content clearfix">
           <div class="tab-pane" [ngClass]="{'active': openedTab == 'storesetting'}">

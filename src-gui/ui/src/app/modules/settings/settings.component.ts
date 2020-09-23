@@ -21,14 +21,17 @@ export class SettingsComponent implements OnInit {
     private toastr:ToastrService,
     private router:Router
   ) { 
-    if(!this.commonService.hasPermission('store_setting')){
-      if(!this.commonService.hasPermission('application_setting')){
-        this.openedTab = 'samlsetting';
-      }else{
-        this.openedTab = 'applicationsetting';
-      }
+    if(!this.commonService.hasPermission('store_setting') && !this.commonService.hasPermission('application_setting') && !this.commonService.hasPermission('saml_setting')){
       this.toastr.error(MessageObj.unauthorised);  
        this.router.navigate(["/home"]);
+      }else{
+        if(this.commonService.hasPermission('store_setting')){
+          this.openedTab = 'storesetting';
+        }else if(this.commonService.hasPermission('application_setting')){
+          this.openedTab = 'applicationsetting';
+        }else if(this.commonService.hasPermission('saml_setting')){
+          this.openedTab = "samlsetting";
+        }
       }
   }
 
