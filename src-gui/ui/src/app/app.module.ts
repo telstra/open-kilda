@@ -98,6 +98,7 @@ import { SamlSettingComponent } from './modules/settings/saml-setting/saml-setti
 import { SamlAddComponent } from './modules/settings/saml-add/saml-add.component';
 import { SamlEditComponent } from './modules/settings/saml-edit/saml-edit.component';
 import { SamlListTableComponent } from './modules/settings/saml-list-table/saml-list-table.component';
+import { WorldMapViewComponent } from './modules/topology/world-map-view/world-map-view.component';
 
 @NgModule({
   declarations: [
@@ -182,6 +183,7 @@ import { SamlListTableComponent } from './modules/settings/saml-list-table/saml-
     SamlAddComponent,
     SamlEditComponent,
     SamlListTableComponent,
+    WorldMapViewComponent,
   ],
   imports: [
     HttpClientModule,
