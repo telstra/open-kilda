@@ -297,6 +297,8 @@ public abstract class IConstants {
         
         public static final String SW_SWITCH_METERS = "sw_switch_meters";
         
+        public static final String SAML_SETTING = "saml_setting";
+        
     }
 
     public final class Settings {

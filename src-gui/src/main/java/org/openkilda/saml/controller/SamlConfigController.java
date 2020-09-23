@@ -15,6 +15,8 @@
 
 package org.openkilda.saml.controller;
 
+import org.openkilda.auth.model.Permissions;
+import org.openkilda.constants.IConstants;
 import org.openkilda.controller.BaseController;
 import org.openkilda.saml.model.SamlConfig;
 import org.openkilda.saml.service.SamlService;
@@ -62,6 +64,7 @@ public class SamlConfigController extends BaseController {
      * @return the SamlConfig
      */
     @PostMapping
+    @Permissions(values = { IConstants.Permission.SAML_SETTING })
     public SamlConfig create(@RequestParam(name = "file", required = false) MultipartFile file, 
             @RequestParam(name = "name", required = true) String name, 
             @RequestParam(name = "url", required = false) String url,
@@ -89,6 +92,7 @@ public class SamlConfigController extends BaseController {
      * @return the SamlConfig
      */
     @RequestMapping(value = "/{uuid}", method = RequestMethod.PATCH)
+    @Permissions(values = { IConstants.Permission.SAML_SETTING })
     public SamlConfig update(@PathVariable("uuid") String uuid, 
             @RequestParam(name = "file", required = false) MultipartFile file, 
             @RequestParam(name = "name", required = true) String name, 
@@ -105,6 +109,7 @@ public class SamlConfigController extends BaseController {
     
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{uuid}", method = RequestMethod.GET)
+    @Permissions(values = { IConstants.Permission.SAML_SETTING })
     public SamlConfig getById(@PathVariable("uuid") final String uuid) {
         SamlConfig configResponse = samlService.getById(uuid);
         return configResponse;
@@ -112,12 +117,14 @@ public class SamlConfigController extends BaseController {
     
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{uuid}", method = RequestMethod.DELETE)
+    @Permissions(values = { IConstants.Permission.SAML_SETTING })
     public Message delete(@PathVariable("uuid") final String uuid) {
         return samlService.deleteByUuid(uuid);
     }
 
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.GET)
+    @Permissions(values = { IConstants.Permission.SAML_SETTING })
     public List<SamlConfig> getAll() {
         return samlService.getAll();
     }
