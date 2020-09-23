@@ -52,7 +52,6 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 	linkFeatures:any = [];
 	mouseCoordinates:any=null;
 	clusterDistance:any=50;
-	styleCache = {};
 	overlay:any; 
 	popInfoOverlay:any;
 	container=  document.getElementById('popup');
@@ -382,7 +381,6 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 		source: this.clusterSource,
 		style: function (feature) {
 			var size = feature.get('features').length;
-			var style = self.styleCache[size];
 			var status = self.getStatusOfPops(feature.get('features'));
 			if(size > 1){
 				var icon =new Icon({
@@ -395,24 +393,21 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 						scale: 0.4
 					  });
 				}				
-				if (!style) {
-					style = new Style({
+				var style = new Style({
 					image: icon,
-					  text: new Text({
-						text: size.toString(),
-						fill: new Fill({
-						  color: '#000',
-						}),
-					  }),
-					});
-					self.styleCache[size] = style;
-				  }
+					text: new Text({
+					text: size.toString(),
+					fill: new Fill({
+						color: '#000',
+					}),
+					}),
+				});
 			}else{
 				var color = "black";
 				if(status == 'FAILED'){
 					color = 'red';
 				}
-				style =  new Style({
+				var style =  new Style({
 					image:new CircleStyle({
 					  radius: 5,
 					  fill: new Fill({color: 'white'}),
@@ -579,9 +574,9 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 							}),					
 							text: new Text({
 								text: no_links,
-								font: '10px "Roboto", Helvetica Neue, Helvetica, Arial, sans-serif',
+								font: '10px Arial, sans-serif',
 								fill: new Fill({ color: 'black' }),
-								stroke: new Stroke({ color: 'black', width: 2 })
+								stroke: new Stroke({ color: 'black', width: 0.5 })
 							  }),
 						  });
 					  }
@@ -677,9 +672,9 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 					}),					
 					text: new Text({
 						text: links,
-						font: '10px "Roboto", Helvetica Neue, Helvetica, Arial, sans-serif',
+						font: '10px "Arial, sans-serif',
 						fill: new Fill({ color: 'black' }),
-						stroke: new Stroke({ color: 'black', width: 2 })
+						stroke: new Stroke({ color: 'black', width:0.5 })
 					  })
 				  });
 				} else {
