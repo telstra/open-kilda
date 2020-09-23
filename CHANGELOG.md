@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.71.0 (23/09/2020)
+
+### Features:
+-  [#3723](https://github.com/telstra/open-kilda/pull/3723) Feature to display topology on a world map (Issue: [#2372](https://github.com/telstra/open-kilda/issues/2372)) [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.70.2...v1.71.0).
+
+### Affected Components:
+gui
+
+---
+
 ## v1.70.2 (10/09/2020)
 
 ### Bug Fixes:

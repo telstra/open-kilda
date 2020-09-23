@@ -1,0 +1,10 @@
+#world_map {
+    height: 700px;
+    width: 100%;
+  }
+ .ol-rotate .ol-unselectable .ol-control .ol-hidden{
+ 	display:none!important;
+ }
+ .ol-attribution .ol-unselectable .ol-control .ol-uncollapsible{
+ 	display: none!important;
+ }

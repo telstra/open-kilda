@@ -42,6 +42,7 @@ export class TopologyMenuComponent implements OnInit {
   @Input() currentState;
   refreshMenu = "hide";
   showInfoFlag = "hide";
+  worldMapText = "World Map View";
   submenu = '';
   refreshIntervals = [
     { label: "30 SECONDS", value: 30 },
@@ -64,6 +65,11 @@ export class TopologyMenuComponent implements OnInit {
   
   ngOnInit() {
     this.defaultSetting = this.topologyService.getViewOptions();
+    if(this.defaultSetting.WORLDMAP){
+      this.worldMapText = "Topology View";
+    }else{
+      this.worldMapText = "World Map View";
+    }
     this.topologyService.settingReceiver.subscribe((data: TopologyView) => {
       this.defaultSetting = data;
     });
@@ -91,6 +97,18 @@ export class TopologyMenuComponent implements OnInit {
     currentSettings.REFRESH_INTERVAL = 0;
     this.topologyService.setAutoRefreshSetting(currentSettings);
     this.toggleRefreshMenu();
+  }
+
+  showWorldMap(){
+    let settings = this.topologyService.getViewOptions();
+    var val = (settings.WORLDMAP == 0) ? 1 :0;
+    if(val){
+      this.worldMapText = "Topology View";
+    }else{
+      this.worldMapText = "World Map View";
+    }
+    settings.WORLDMAP = val;
+    this.topologyService.setViewOptinos(settings);
   }
 
   showIsl() {
