@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.71.1 (23/09/2020)
+
+### Bug Fixes:
+-  [#3737](https://github.com/telstra/open-kilda/pull/3737) Hotfix/world map cluster cache issue (Issue: [#3736](https://github.com/telstra/open-kilda/issues/3736)) [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.71.0...v1.71.1).
+
+### Affected Components:
+gui
+
+---
+
 ## v1.71.0 (23/09/2020)
 
 ### Features:
