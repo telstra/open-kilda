@@ -2617,6 +2617,9 @@ a.badge.badge-dark.custom-button {
 .topology-container{
   margin-top:5px;
 }
+.world-map-container{
+  margin-top:-20px;
+}
 .flow-path-icons{
   margin: 6px 10px 0px 5px;
   float: right;
@@ -2912,4 +2915,150 @@ left: calc(100% - 16px);
 
 .enabledisableswitch-checkbox:checked + .enabledisableswitch-label .onoffswitch-switch {
   right: -6px;
+}
+
+
+
+/**** world map css **/
+.ol-popup {
+  position: absolute;
+  background-color: white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px solid #cccccc;
+  bottom: 12px;
+  left: -50px;
+  height:350px;
+  min-width: 400px;
+  min-height: 350px;
+}
+.ol-popup:after, .ol-popup:before {
+  top: 100%;
+  border: solid transparent;
+  content: " ";
+  height: 0;
+  width: 0;
+  position: absolute;
+  pointer-events: none;
+}
+.ol-popup:after {
+  border-top-color: white;
+  border-width: 10px;
+  left: 48px;
+  margin-left: -10px;
+}
+.ol-popup:before {
+  border-top-color: #cccccc;
+  border-width: 11px;
+  left: 48px;
+  margin-left: -11px;
+}
+
+.ol-popup-info {
+  position: absolute;
+  background-color: white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px solid #cccccc;
+  bottom: 12px;
+  left: -50px;
+  height:100px;
+  min-width: 150px;
+  min-height: 100px;
+}
+.ol-popup-info:after, .ol-popup-info:before {
+  top: 100%;
+  border: solid transparent;
+  content: " ";
+  height: 0;
+  width: 0;
+  position: absolute;
+  pointer-events: none;
+}
+.ol-popup-info:after {
+  border-top-color: white;
+  border-width: 10px;
+  left: 48px;
+  margin-left: -10px;
+}
+.ol-popup-info:before {
+  border-top-color: #cccccc;
+  border-width: 11px;
+  left: 48px;
+  margin-left: -11px;
+}
+
+.ol-popup-closer {
+  text-decoration: none;
+  position: absolute;
+  top: 2px;
+  right: 8px;
+}
+.ol-popup-closer:after {
+  content: "✖";
+}
+.ol-popup-minimize {
+  text-decoration: none;
+  position: absolute;
+  top: 2px;
+  right: 35px;
+}
+.ol-popup-minimize:after {
+  content: "-";
+}
+.ol-popup-maximize {
+  text-decoration: none;
+  position: absolute;
+  top: 2px;
+  right: 25px;
+}
+.ol-popup-maximize:after {
+  content: "[]";
+}
+
+#popup-content .circle.blue {
+  fill: #fff;
+  stroke: #00baff;
+  stroke-width: 1px;
+}
+#popup-content .circle.blue.hover {
+  fill: #c8e3f5;
+  stroke: #addff1;
+  stroke-width: 8px;
+}
+#popup #graph_loader{
+  position: absolute;
+  height: 380px;
+  width: 430px;
+  max-width: 450px;
+  max-height: 400px;
+  align-content: center;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  text-align:center;
+  background: #FFF;
+} 
+.my-custom-scrollbar {
+  position: relative;
+  height: 300px;
+  overflow: auto;
+  }
+  .table-wrapper-scroll-y {
+  display: block;
+  }
+  #popup-content .tableLinks table th{
+    background: #CCC;
+    width:10%;
+  } 
+  
+  .islLink a:hover {
+    color: #212529!important;
+    text-decoration: none!important;
+}
+.islLink a {
+  color: #212529!important;
+  text-decoration: none!important;
 }

@@ -51,10 +51,11 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
   searchModel: any = "";
   searchHidden = false;
   autoRefreshTimerInstance: any;
-
+  showWorldMap = false;
   width: number;
   height: number;
   graphShow=false;
+  loadWorldMap = false;
   min_zoom = 0.15;
   scaleLimit = 0.05;
   max_zoom = 3;
@@ -1987,8 +1988,25 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         .style("visibility", "hidden");
     }
 
+    if(setting.WORLDMAP){
+        this.showWorldMap = true;
+        this.addOverlayHtml()
+    }else{
+      this.showWorldMap = false; 
+    }
+
     this.onAutoRefreshSettingUpdate(setting);
   };
+  addOverlayHtml(){
+    //var html = '<div #popup id="popup" class="ol-popup"><a  href="javascript:void(0)" id="popup-minimize" class="ol-popup-minimize"><a  href="javascript:void(0)" id="popup-maximize" class="ol-popup-maximize"><a  href="#" id="popup-closer" class="ol-popup-closer"></a>';
+    var html = '<div #popup id="popup" class="ol-popup"><a  href="#" id="popup-closer" class="ol-popup-closer"></a>';
+    html+= '<div id="graph_loader" style="display:none;"><span style="padding:150px 180px;float:left;">Loading...</span></div> <div #content id="popup-content" ></div></div>';
+    html+= '<div #popinfoContainer id="popInfoContainer" class="ol-popup-info"><a  href="#" id="popInfocloser" class="ol-popup-closer"></a>';
+    html+= '<div #popInfocontent id="popInfocontent" ></div></div>';
+   
+    jQuery("#worldmap").append(html);
+   
+  }
 
   onAutoRefreshSettingUpdate = (setting: TopologyView) => {
     if (this.autoRefreshTimerInstance) {
