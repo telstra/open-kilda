@@ -118,7 +118,8 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
     }
 
     List<Isl> getUniqueIsls() {
-        def uniqueSwitches = getTopology().getActiveSwitches().unique { sw -> sw.description }*.dpId
+        def uniqueSwitches = getTopology().getActiveSwitches()
+                .unique { it.nbFormat().with { [it.hardware, it.software] } }*.dpId
         def isls = topology.islsForActiveSwitches.collect { [it, it.reversed] }.flatten()
         return isls.unique { it.srcSwitch.dpId }.findAll { it.srcSwitch.dpId in uniqueSwitches }
     }
