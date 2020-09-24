@@ -20,6 +20,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.controller.BaseController;
+import org.openkilda.northbound.editor.CaseInsensitiveEnumEditor;
 import org.openkilda.northbound.service.NetworkService;
 
 import io.swagger.annotations.ApiOperation;
@@ -27,7 +28,9 @@ import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -59,5 +62,16 @@ public class NetworkController extends BaseController {
             @RequestParam(value = "path_computation_strategy", required = false)
                     PathComputationStrategy pathComputationStrategy) {
         return networkService.getPaths(srcSwitchId, dstSwitchId, encapsulationType, pathComputationStrategy);
+    }
+
+    /**
+     * This method adds custom Editor to parse Enums from string ignoring case.
+     */
+    @InitBinder
+    public void initBinder(WebDataBinder binder) {
+        binder.registerCustomEditor(FlowEncapsulationType.class,
+                new CaseInsensitiveEnumEditor(FlowEncapsulationType.class));
+        binder.registerCustomEditor(PathComputationStrategy.class,
+                new CaseInsensitiveEnumEditor(PathComputationStrategy.class));
     }
 }
