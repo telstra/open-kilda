@@ -20,6 +20,8 @@ import org.openkilda.messaging.info.network.PathsInfoData;
 import org.openkilda.messaging.nbtopology.request.GetPathsRequest;
 import org.openkilda.messaging.payload.network.PathDto;
 import org.openkilda.messaging.payload.network.PathsDto;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.PathMapper;
 import org.openkilda.northbound.messaging.MessagingChannel;
@@ -50,10 +52,12 @@ public class NetworkServiceImpl implements NetworkService {
     private MessagingChannel messagingChannel;
 
     @Override
-    public CompletableFuture<PathsDto> getPaths(SwitchId srcSwitch, SwitchId dstSwitch) {
+    public CompletableFuture<PathsDto> getPaths(
+            SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType encapsulationType,
+            PathComputationStrategy pathComputationStrategy) {
         String correlationId = RequestCorrelationId.getId();
 
-        GetPathsRequest request = new GetPathsRequest(srcSwitch, dstSwitch);
+        GetPathsRequest request = new GetPathsRequest(srcSwitch, dstSwitch, encapsulationType, pathComputationStrategy);
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
 
         return messagingChannel.sendAndGetChunked(nbworkerTopic, message)

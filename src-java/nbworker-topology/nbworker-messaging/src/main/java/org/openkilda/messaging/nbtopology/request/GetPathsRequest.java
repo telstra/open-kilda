@@ -16,6 +16,8 @@
 package org.openkilda.messaging.nbtopology.request;
 
 import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -28,14 +30,24 @@ import lombok.Value;
 public class GetPathsRequest extends BaseRequest {
 
     @JsonProperty("src_switch_id")
-    private SwitchId srcSwitchId;
+    SwitchId srcSwitchId;
 
     @JsonProperty("dst_switch_id")
-    private SwitchId dstSwitchId;
+    SwitchId dstSwitchId;
+
+    @JsonProperty("encapsulation_type")
+    FlowEncapsulationType encapsulationType;
+
+    @JsonProperty("path_computation_strategy")
+    PathComputationStrategy pathComputationStrategy;
 
     public GetPathsRequest(@JsonProperty("src_switch_id") SwitchId srcSwitchId,
-                           @JsonProperty("dst_switch_id") SwitchId dstSwitchId) {
+                           @JsonProperty("dst_switch_id") SwitchId dstSwitchId,
+                           @JsonProperty("encapsulation_type") FlowEncapsulationType encapsulationType,
+                           @JsonProperty("path_computation_strategy") PathComputationStrategy pathComputationStrategy) {
         this.srcSwitchId = srcSwitchId;
         this.dstSwitchId = dstSwitchId;
+        this.encapsulationType = encapsulationType;
+        this.pathComputationStrategy = pathComputationStrategy;
     }
 }

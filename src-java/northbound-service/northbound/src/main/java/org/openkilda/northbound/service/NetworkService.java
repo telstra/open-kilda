@@ -16,6 +16,8 @@
 package org.openkilda.northbound.service;
 
 import org.openkilda.messaging.payload.network.PathsDto;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 
 import java.util.concurrent.CompletableFuture;
@@ -28,5 +30,7 @@ public interface NetworkService {
     /**
      * Gets pathes between two switches.
      */
-    CompletableFuture<PathsDto> getPaths(SwitchId srcSwitch, SwitchId dstSwitch);
+    CompletableFuture<PathsDto> getPaths(
+            SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType encapsulationType,
+            PathComputationStrategy pathComputationStrategy);
 }
