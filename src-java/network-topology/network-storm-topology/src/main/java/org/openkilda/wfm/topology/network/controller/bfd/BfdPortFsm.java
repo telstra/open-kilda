@@ -67,9 +67,10 @@ public final class BfdPortFsm extends
     @Getter
     private final Endpoint logicalEndpoint;
 
+    private final PortStatusMonitor portStatusMonitor;
+
     private IslReference islReference;
     private BfdDescriptor sessionDescriptor = null;
-    private LinkStatus linkStatus = LinkStatus.DOWN;
     private BfdAction action = null;
 
     public static BfdPortFsmFactory factory() {
@@ -83,9 +84,15 @@ public final class BfdPortFsm extends
 
         this.logicalEndpoint = endpoint;
         this.physicalEndpoint = Endpoint.of(logicalEndpoint.getDatapath(), physicalPortNumber);
+
+        portStatusMonitor = new PortStatusMonitor(this);
     }
 
     // -- external API --
+
+    public void updateLinkStatus(IBfdPortCarrier carrier, LinkStatus status) {
+        portStatusMonitor.update(carrier, status);
+    }
 
     public boolean isDoingCleanup() {
         return BfdPortFsmState.DO_CLEANUP == getCurrentState();
@@ -124,6 +131,15 @@ public final class BfdPortFsm extends
         logInfo("ready for setup requests");
     }
 
+    public void doSetupEnter(
+            BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
+        portStatusMonitor.cleanTransitions();
+
+        logInfo(String.format("BFD session setup process have started - discriminator:%s, remote-datapath:%s",
+                sessionDescriptor.getDiscriminator(), sessionDescriptor.getRemote().getDatapath()));
+        action = new BfdSessionSetupAction(context.getOutput(), makeBfdSessionRecord());
+    }
+
     public void saveIslReference(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                  BfdPortFsmContext context) {
         islReference = context.getIslReference();
@@ -152,18 +168,22 @@ public final class BfdPortFsm extends
 
     public void activeExit(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
         logInfo("notify consumer(s) to STOP react on BFD event");
+        portStatusMonitor.cleanTransitions();
         context.getOutput().bfdKillNotification(physicalEndpoint);
+    }
+
+    public void waitStatusEnter(
+            BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
+        portStatusMonitor.pull(context.getOutput());
     }
 
     public void upEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
         logInfo("LINK detected");
-        linkStatus = LinkStatus.UP;
         context.getOutput().bfdUpNotification(physicalEndpoint);
     }
 
     public void downEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
         logInfo("LINK corrupted");
-        linkStatus = LinkStatus.DOWN;
         context.getOutput().bfdDownNotification(physicalEndpoint);
     }
 
@@ -184,28 +204,11 @@ public final class BfdPortFsm extends
         logError("BFD-remove action have failed (for re-setup)");
     }
 
-    public void doCleanupEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                               BfdPortFsmContext context) {
-        logInfo("perform housekeeping - release all resources");
-
-        // We can't receive link status update messages after port handler remove. Force DOWN link status for action
-        // so it will not wait for link update and react only on speaker response.
-        action.updateLinkStatus(LinkStatus.DOWN)
-                .ifPresent(result -> handleActionResult(result, context));
-    }
-
-    public void makeBfdSetupAction(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                   BfdPortFsmContext context) {
-        logInfo(String.format("BFD session setup process have started - discriminator:%s, remote-datapath:%s",
-                              sessionDescriptor.getDiscriminator(), sessionDescriptor.getRemote().getDatapath()));
-        action = new BfdSessionSetupAction(context.getOutput(), makeBfdSessionRecord());
-    }
-
     public void makeBfdRemoveAction(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                     BfdPortFsmContext context) {
         logInfo(String.format("perform BFD session remove - discriminator:%s, remote-datapath:%s",
                               sessionDescriptor.getDiscriminator(), sessionDescriptor.getRemote().getDatapath()));
-        action = new BfdSessionRemoveAction(context.getOutput(), makeBfdSessionRecord(), linkStatus);
+        action = new BfdSessionRemoveAction(context.getOutput(), makeBfdSessionRecord());
     }
 
     public void proxySpeakerResponseIntoAction(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
@@ -214,52 +217,9 @@ public final class BfdPortFsm extends
                 .ifPresent(result -> handleActionResult(result, context));
     }
 
-    public void proxyLinkStatusUpdateIntoAction(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                                BfdPortFsmContext context) {
-        if (event == BfdPortFsmEvent.PORT_UP) {
-            linkStatus = LinkStatus.UP;
-        } else if (event == BfdPortFsmEvent.PORT_DOWN) {
-            linkStatus = LinkStatus.DOWN;
-        } else {
-            throw new IllegalArgumentException(String.format(
-                    "Invalid call %s.proxyLinkStatusUpdateIntoAction(...) - can't process event %s",
-                    getClass().getCanonicalName(), event));
-        }
-        action.updateLinkStatus(linkStatus)
-                .ifPresent(result -> handleActionResult(result, context));
-    }
-
-    public void updateLinkStatus(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                 BfdPortFsmContext context) {
-        if (event == BfdPortFsmEvent.PORT_UP) {
-            linkStatus = LinkStatus.UP;
-        } else if (event == BfdPortFsmEvent.PORT_DOWN) {
-            linkStatus = LinkStatus.DOWN;
-        } else {
-            throw new IllegalArgumentException(String.format(
-                    "Invalid call %s.updateLinkStatus(...) - can't process event %s",
-                    getClass().getCanonicalName(), event));
-        }
-    }
-
     public void reportSetupSuccess(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                    BfdPortFsmContext context) {
         logInfo("BFD session setup is successfully completed");
-    }
-
-    public void conflictEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                              BfdPortFsmContext context) {
-        reportConflict();
-        context.getOutput().bfdFailNotification(physicalEndpoint);
-    }
-
-    public void reportConflict(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                               BfdPortFsmContext context) {
-        reportConflict();
-    }
-
-    private void reportConflict() {
-        logError("BFD session created outside OpenKilda have been detected (ignore all request involving this port)");
     }
 
     public void reportMalfunction(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
@@ -380,18 +340,17 @@ public final class BfdPortFsm extends
     }
 
     public static class BfdPortFsmFactory {
+        public static final FsmExecutor<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> EXECUTOR
+                = new FsmExecutor<>(BfdPortFsmEvent.NEXT);
+
         private final StateMachineBuilder<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> builder;
 
         BfdPortFsmFactory() {
             final String doReleaseResourcesMethod = "doReleaseResources";
             final String saveIslReferenceMethod = "saveIslReference";
-            final String reportConflictMethod = "reportConflict";
             final String reportMalfunctionMethod = "reportMalfunction";
-            final String makeBfdSetupActionMethod = "makeBfdSetupAction";
             final String makeBfdRemoveActionMethod = "makeBfdRemoveAction";
             final String proxySpeakerResponseIntoActionMethod = "proxySpeakerResponseIntoAction";
-            final String proxyLinkStatusUpdateIntoActionMethod = "proxyLinkStatusUpdateIntoAction";
-            final String updateLinkStatusMethod = "updateLinkStatus";
 
             builder = StateMachineBuilderFactory.create(
                     BfdPortFsm.class, BfdPortFsmState.class, BfdPortFsmEvent.class, BfdPortFsmContext.class,
@@ -417,8 +376,6 @@ public final class BfdPortFsm extends
                     .from(BfdPortFsmState.IDLE).to(BfdPortFsmState.INIT_SETUP).on(BfdPortFsmEvent.ENABLE)
                     .callMethod(saveIslReferenceMethod);
             builder.transition()
-                    .from(BfdPortFsmState.IDLE).to(BfdPortFsmState.CONFLICT).on(BfdPortFsmEvent.PORT_UP);
-            builder.transition()
                     .from(BfdPortFsmState.IDLE).to(BfdPortFsmState.UNOPERATIONAL).on(BfdPortFsmEvent.OFFLINE);
             builder.onEntry(BfdPortFsmState.IDLE)
                     .callMethod("idleEnter");
@@ -429,25 +386,11 @@ public final class BfdPortFsm extends
             builder.transition()
                     .from(BfdPortFsmState.UNOPERATIONAL).to(BfdPortFsmState.PENDING).on(BfdPortFsmEvent.ENABLE);
 
-            // CONFLICT
-            builder.transition()
-                    .from(BfdPortFsmState.CONFLICT).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.PORT_DOWN);
-            builder.transition()
-                    .from(BfdPortFsmState.CONFLICT).to(BfdPortFsmState.UNOPERATIONAL).on(BfdPortFsmEvent.OFFLINE);
-            builder.internalTransition().within(BfdPortFsmState.CONFLICT).on(BfdPortFsmEvent.ENABLE)
-                    .callMethod(reportConflictMethod);
-            builder.internalTransition().within(BfdPortFsmState.CONFLICT).on(BfdPortFsmEvent.DISABLE)
-                    .callMethod(reportConflictMethod);
-            builder.onEntry(BfdPortFsmState.CONFLICT)
-                    .callMethod("conflictEnter");
-
             // PENDING
             builder.transition()
                     .from(BfdPortFsmState.PENDING).to(BfdPortFsmState.UNOPERATIONAL).on(BfdPortFsmEvent.DISABLE);
             builder.transition()
-                    .from(BfdPortFsmState.PENDING).to(BfdPortFsmState.INIT_SETUP).on(BfdPortFsmEvent.PORT_DOWN);
-            builder.transition()
-                    .from(BfdPortFsmState.PENDING).to(BfdPortFsmState.CONFLICT).on(BfdPortFsmEvent.PORT_UP);
+                    .from(BfdPortFsmState.PENDING).to(BfdPortFsmState.INIT_SETUP).on(BfdPortFsmEvent.ONLINE);
             builder.onEntry(BfdPortFsmState.PENDING)
                     .callMethod(saveIslReferenceMethod);
 
@@ -473,12 +416,8 @@ public final class BfdPortFsm extends
                     .from(BfdPortFsmState.DO_SETUP).to(BfdPortFsmState.INIT_CLEANUP).on(BfdPortFsmEvent.KILL);
             builder.internalTransition().within(BfdPortFsmState.DO_SETUP).on(BfdPortFsmEvent.SPEAKER_RESPONSE)
                     .callMethod(proxySpeakerResponseIntoActionMethod);
-            builder.internalTransition().within(BfdPortFsmState.DO_SETUP).on(BfdPortFsmEvent.PORT_UP)
-                    .callMethod(proxyLinkStatusUpdateIntoActionMethod);
-            builder.internalTransition().within(BfdPortFsmState.DO_SETUP).on(BfdPortFsmEvent.PORT_DOWN)
-                    .callMethod(proxyLinkStatusUpdateIntoActionMethod);
             builder.onEntry(BfdPortFsmState.DO_SETUP)
-                    .callMethod(makeBfdSetupActionMethod);
+                    .callMethod("doSetupEnter");
 
             // SETUP_FAIL
             builder.transition()
@@ -496,12 +435,7 @@ public final class BfdPortFsm extends
             // SETUP_INTERRUPT
             builder.transition()
                     .from(BfdPortFsmState.SETUP_INTERRUPT).to(BfdPortFsmState.SETUP_RECOVERY)
-                    .on(BfdPortFsmEvent.PORT_UP)
-                    .callMethod(updateLinkStatusMethod);
-            builder.transition()
-                    .from(BfdPortFsmState.SETUP_INTERRUPT).to(BfdPortFsmState.SETUP_RECOVERY)
-                    .on(BfdPortFsmEvent.PORT_DOWN)
-                    .callMethod(updateLinkStatusMethod);
+                    .on(BfdPortFsmEvent.ONLINE);
             builder.transition()
                     .from(BfdPortFsmState.SETUP_INTERRUPT).to(BfdPortFsmState.REMOVE_INTERRUPT)
                     .on(BfdPortFsmEvent.DISABLE);
@@ -523,12 +457,6 @@ public final class BfdPortFsm extends
             builder.internalTransition()
                     .within(BfdPortFsmState.SETUP_RECOVERY).on(BfdPortFsmEvent.SPEAKER_RESPONSE)
                     .callMethod(proxySpeakerResponseIntoActionMethod);
-            builder.internalTransition()
-                    .within(BfdPortFsmState.SETUP_RECOVERY).on(BfdPortFsmEvent.PORT_UP)
-                    .callMethod(proxyLinkStatusUpdateIntoActionMethod);
-            builder.internalTransition()
-                    .within(BfdPortFsmState.SETUP_RECOVERY).on(BfdPortFsmEvent.PORT_DOWN)
-                    .callMethod(proxyLinkStatusUpdateIntoActionMethod);
             builder.onEntry(BfdPortFsmState.SETUP_RECOVERY)
                     .callMethod(makeBfdRemoveActionMethod);
 
@@ -543,17 +471,15 @@ public final class BfdPortFsm extends
                     .callMethod("activeExit");
             builder.defineSequentialStatesOn(
                     BfdPortFsmState.ACTIVE,
-                    BfdPortFsmState.UP, BfdPortFsmState.DOWN);
+                    BfdPortFsmState.WAIT_STATUS, BfdPortFsmState.UP, BfdPortFsmState.DOWN);
 
-            // ACTIVE_RECOVERY
+            // WAIT_STATUS
             builder.transition()
-                    .from(BfdPortFsmState.ACTIVE_RECOVERY).to(BfdPortFsmState.OFFLINE).on(BfdPortFsmEvent.OFFLINE);
+                    .from(BfdPortFsmState.WAIT_STATUS).to(BfdPortFsmState.UP).on(BfdPortFsmEvent.PORT_UP);
             builder.transition()
-                    .from(BfdPortFsmState.ACTIVE_RECOVERY).to(BfdPortFsmState.ACTIVE).on(BfdPortFsmEvent.PORT_UP);
-            builder.transition()
-                    .from(BfdPortFsmState.ACTIVE_RECOVERY).to(BfdPortFsmState.INIT_REMOVE).on(BfdPortFsmEvent.DISABLE);
-            builder.transition()
-                    .from(BfdPortFsmState.ACTIVE_RECOVERY).to(BfdPortFsmState.INIT_CLEANUP).on(BfdPortFsmEvent.KILL);
+                    .from(BfdPortFsmState.WAIT_STATUS).to(BfdPortFsmState.DOWN).on(BfdPortFsmEvent.PORT_DOWN);
+            builder.onEntry(BfdPortFsmState.WAIT_STATUS)
+                    .callMethod("waitStatusEnter");
 
             // UP
             builder.transition()
@@ -569,7 +495,7 @@ public final class BfdPortFsm extends
 
             // OFFLINE
             builder.transition()
-                    .from(BfdPortFsmState.OFFLINE).to(BfdPortFsmState.ACTIVE_RECOVERY).on(BfdPortFsmEvent.ONLINE);
+                    .from(BfdPortFsmState.OFFLINE).to(BfdPortFsmState.ACTIVE).on(BfdPortFsmEvent.ONLINE);
             builder.transition()
                     .from(BfdPortFsmState.OFFLINE).to(BfdPortFsmState.REMOVE_INTERRUPT).on(BfdPortFsmEvent.DISABLE);
 
@@ -594,10 +520,6 @@ public final class BfdPortFsm extends
                     .callMethod(saveIslReferenceMethod);
             builder.internalTransition().within(BfdPortFsmState.DO_REMOVE).on(BfdPortFsmEvent.SPEAKER_RESPONSE)
                     .callMethod(proxySpeakerResponseIntoActionMethod);
-            builder.internalTransition().within(BfdPortFsmState.DO_REMOVE).on(BfdPortFsmEvent.PORT_UP)
-                    .callMethod(proxyLinkStatusUpdateIntoActionMethod);
-            builder.internalTransition().within(BfdPortFsmState.DO_REMOVE).on(BfdPortFsmEvent.PORT_DOWN)
-                    .callMethod(proxyLinkStatusUpdateIntoActionMethod);
 
             // REMOVE_FAIL
             builder.transition()
@@ -613,12 +535,8 @@ public final class BfdPortFsm extends
 
             // REMOVE_INTERRUPT
             builder.transition()
-                    .from(BfdPortFsmState.REMOVE_INTERRUPT).to(BfdPortFsmState.INIT_REMOVE).on(BfdPortFsmEvent.PORT_UP)
-                    .callMethod(updateLinkStatusMethod);
-            builder.transition()
                     .from(BfdPortFsmState.REMOVE_INTERRUPT).to(BfdPortFsmState.INIT_REMOVE)
-                    .on(BfdPortFsmEvent.PORT_DOWN)
-                    .callMethod(updateLinkStatusMethod);
+                    .on(BfdPortFsmEvent.ONLINE);
             builder.transition()
                     .from(BfdPortFsmState.REMOVE_INTERRUPT).to(BfdPortFsmState.CHARGED_INTERRUPT)
                     .on(BfdPortFsmEvent.ENABLE)
@@ -639,12 +557,6 @@ public final class BfdPortFsm extends
             builder.internalTransition()
                     .within(BfdPortFsmState.CHARGED).on(BfdPortFsmEvent.SPEAKER_RESPONSE)
                     .callMethod(proxySpeakerResponseIntoActionMethod);
-            builder.internalTransition()
-                    .within(BfdPortFsmState.CHARGED).on(BfdPortFsmEvent.PORT_UP)
-                    .callMethod(proxyLinkStatusUpdateIntoActionMethod);
-            builder.internalTransition()
-                    .within(BfdPortFsmState.CHARGED).on(BfdPortFsmEvent.PORT_DOWN)
-                    .callMethod(proxyLinkStatusUpdateIntoActionMethod);
 
             // CHARGED_FAIL
             builder.transition()
@@ -658,12 +570,7 @@ public final class BfdPortFsm extends
             // CHARGED_INTERRUPT
             builder.transition()
                     .from(BfdPortFsmState.CHARGED_INTERRUPT).to(BfdPortFsmState.CHARGED_RECOVERY)
-                    .on(BfdPortFsmEvent.PORT_UP)
-                    .callMethod(updateLinkStatusMethod);
-            builder.transition()
-                    .from(BfdPortFsmState.CHARGED_INTERRUPT).to(BfdPortFsmState.CHARGED_RECOVERY)
-                    .on(BfdPortFsmEvent.PORT_DOWN)
-                    .callMethod(updateLinkStatusMethod);
+                    .on(BfdPortFsmEvent.ONLINE);
             builder.transition()
                     .from(BfdPortFsmState.CHARGED_INTERRUPT).to(BfdPortFsmState.REMOVE_INTERRUPT)
                     .on(BfdPortFsmEvent.DISABLE);
@@ -689,15 +596,9 @@ public final class BfdPortFsm extends
             builder.internalTransition()
                     .within(BfdPortFsmState.DO_CLEANUP).on(BfdPortFsmEvent.SPEAKER_RESPONSE)
                     .callMethod(proxySpeakerResponseIntoActionMethod);
-            builder.onEntry(BfdPortFsmState.DO_CLEANUP)
-                    .callMethod("doCleanupEnter");
 
             // STOP
             builder.defineFinalState(BfdPortFsmState.STOP);
-        }
-
-        public FsmExecutor<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> produceExecutor() {
-            return new FsmExecutor<>(BfdPortFsmEvent.NEXT);
         }
 
         public BfdPortFsm produce(PersistenceManager persistenceManager, Endpoint endpoint,
@@ -741,10 +642,10 @@ public final class BfdPortFsm extends
 
     public enum BfdPortFsmState {
         INIT, INIT_CHOICE,
-        IDLE, UNOPERATIONAL, CONFLICT, PENDING,
+        IDLE, UNOPERATIONAL, PENDING,
 
         INIT_SETUP, DO_SETUP, SETUP_FAIL, SETUP_INTERRUPT, SETUP_RECOVERY,
-        ACTIVE, ACTIVE_RECOVERY, UP, DOWN, OFFLINE,
+        ACTIVE, WAIT_STATUS, UP, DOWN, OFFLINE,
         INIT_REMOVE, DO_REMOVE, REMOVE_FAIL, REMOVE_INTERRUPT,
         CHARGED, CHARGED_FAIL, CHARGED_INTERRUPT, CHARGED_RECOVERY,
         INIT_CLEANUP, DO_CLEANUP,
