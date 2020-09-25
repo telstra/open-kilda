@@ -16,8 +16,7 @@
 
 set -eu ${DEBUG:+-x}
 
-PATH=${PATH}:/opt/storm/bin
-
+STORM="${STORM:-/opt/storm/bin/storm}"
 
 cd /app
 
@@ -38,12 +37,11 @@ for TOPOLOGY in $(find . -name "*-topology" -type d); do
 
     MAIN_CLASS=$(grep 'Main-Class' /app/${TOPOLOGY_NAME}-storm-topology/build.gradle  | awk -F ':' '{ print $2}' | awk -F "'" '{ print $2 }')
 
-
     # Kill all topologies bvefore deploy
      /app/kill-topology.sh ${TOPOLOGY_NAME} || true
 
     # now ignoring all errors during deployment (for tests only)
-    storm \
+    "${STORM}" \
         jar /app/${TOPOLOGY_NAME}-storm-topology/libs/${TOPOLOGY_JAR} \
         ${MAIN_CLASS} \
         --jars \
