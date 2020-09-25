@@ -15,6 +15,7 @@
 
 package org.openkilda.northbound.dto.v1.switches;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -25,17 +26,38 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class RulesValidationDto {
+public class RulesValidationDto implements HexView {
 
     @JsonProperty("missing")
-    private List<Long> missing;
+    protected List<Long> missing;
 
     @JsonProperty("misconfigured")
-    private List<Long> misconfigured;
+    protected List<Long> misconfigured;
 
     @JsonProperty("proper")
-    private List<Long> proper;
+    protected List<Long> proper;
 
     @JsonProperty("excess")
-    private List<Long> excess;
+    protected List<Long> excess;
+
+    @JsonGetter("missing-hex")
+    public List<String> getMissingHex() {
+        return toHex(missing);
+    }
+
+    @JsonGetter("misconfigured-hex")
+    public List<String> getMisconfiguredHex() {
+        return toHex(misconfigured);
+    }
+
+    @JsonGetter("proper-hex")
+    public List<String> getProperHex() {
+        return toHex(proper);
+    }
+
+    @JsonGetter("excess-hex")
+    public List<String> getExcessHex() {
+        return toHex(excess);
+    }
+
 }

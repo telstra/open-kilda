@@ -92,21 +92,42 @@ public interface SwitchMapper {
     @Mapping(source = "rules.missing", target = "missingRules")
     @Mapping(source = "rules.proper", target = "properRules")
     @Mapping(source = "rules.installed", target = "installedRules")
+    @Mapping(target = "missingRulesHex", ignore = true)
+    @Mapping(target = "properRulesHex", ignore = true)
+    @Mapping(target = "excessHex", ignore = true)
+    @Mapping(target = "installedHex", ignore = true)
     RulesSyncResult toRulesSyncResult(SwitchSyncResponse response);
 
     SwitchSyncResult toSwitchSyncResult(SwitchSyncResponse response);
 
+    @Mapping(target = "missingHex", ignore = true)
+    @Mapping(target = "misconfiguredHex", ignore = true)
+    @Mapping(target = "properHex", ignore = true)
+    @Mapping(target = "excessHex", ignore = true)
+    @Mapping(target = "installedHex", ignore = true)
+    @Mapping(target = "removedHex", ignore = true)
     RulesSyncDto toRulesSyncDto(RulesSyncEntry data);
 
     MetersSyncDto toMetersSyncDto(MetersSyncEntry data);
 
+    @Mapping(target = "rules.missingHex", ignore = true)
+    @Mapping(target = "rules.misconfiguredHex", ignore = true)
+    @Mapping(target = "rules.properHex", ignore = true)
+    @Mapping(target = "rules.excessHex", ignore = true)
     SwitchValidationResult toSwitchValidationResult(SwitchValidationResponse response);
 
     @Mapping(source = "rules.excess", target = "excessRules")
     @Mapping(source = "rules.missing", target = "missingRules")
     @Mapping(source = "rules.proper", target = "properRules")
+    @Mapping(target = "missingRulesHex", ignore = true)
+    @Mapping(target = "properRulesHex", ignore = true)
+    @Mapping(target = "excessHex", ignore = true)
     RulesValidationResult toRulesValidationResult(SwitchValidationResponse response);
 
+    @Mapping(target = "missingHex", ignore = true)
+    @Mapping(target = "misconfiguredHex", ignore = true)
+    @Mapping(target = "properHex", ignore = true)
+    @Mapping(target = "excessHex", ignore = true)
     RulesValidationDto toRulesValidationDto(RulesValidationEntry data);
 
     MetersValidationDto toMetersValidationDto(MetersValidationEntry data);
