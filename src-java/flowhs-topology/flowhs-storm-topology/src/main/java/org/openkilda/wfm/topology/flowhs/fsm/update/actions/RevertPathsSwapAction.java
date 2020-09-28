@@ -39,6 +39,11 @@ public class RevertPathsSwapAction extends FlowProcessingAction<FlowUpdateFsm, S
 
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
+        if (stateMachine.getEndpointUpdate().isPartialUpdate()) {
+            stateMachine.saveActionToHistory("Skip paths swap");
+            return;
+        }
+
         persistenceManager.getTransactionManager().doInTransaction(() -> {
             Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
 
