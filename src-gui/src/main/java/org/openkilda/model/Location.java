@@ -31,10 +31,10 @@ public class Location implements Serializable {
     private static final long serialVersionUID = -8871669129332462289L;
 
     @JsonProperty("latitude")
-    private long latitude;
+    private double latitude;
 
     @JsonProperty("longitude")
-    private long longitude;
+    private double longitude;
 
     @JsonProperty("street")
     private String street;

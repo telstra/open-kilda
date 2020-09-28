@@ -113,10 +113,23 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 		   return acc;
 		}, {});
 	 }
+	 checkIfAlreadyAdded(popLinks,linkObj){
+		 var flag = false;
+		 for(var i =0; i < popLinks.length; i++){
+			 var src_dst_id = popLinks[i].src + "_"+popLinks[i].trgt;
+			 var dst_src_id = popLinks[i].trgt + "_"+popLinks[i].src;
+			 var linkSrc_dst_id = linkObj.src+"_"+linkObj.trgt;
+			 if(src_dst_id == linkSrc_dst_id || dst_src_id == linkSrc_dst_id){
+				 flag = true;
+				 break;
+			 }
+		 }
+		 return flag;
+	 }
 	ngOnChanges(change:SimpleChanges){
 		if( typeof(change.data)!='undefined' && change.data){
 			if(typeof(change.data)!=='undefined' && change.data.currentValue){
-			  this.data  = change.data.currentValue;
+			  this.data  = JSON.parse(JSON.stringify(change.data.currentValue));
 			  if(this.data && this.data.switch && this.data.switch.length){
 				this.links = this.data.isl;
 				this.switches = this.data.switch;
@@ -148,7 +161,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 						if(i!=j){
 							var targetPop = this.pops[j];
 							var lnkObj = this.getLinkObjInPops(sourcePop,targetPop);
-							if(lnkObj && lnkObj.hasOwnProperty('source')){
+							if(lnkObj && lnkObj.hasOwnProperty('source') && !this.checkIfAlreadyAdded(this.popLinks,lnkObj)){
 								this.popLinks.push(lnkObj);
 							}
 						}
@@ -223,6 +236,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 
 	if(this.popinfocloser){
 		this.popinfocloser.onclick= (()=>{
+			this.content.innerHTML = "";
 			this.popInfoOverlay.setPosition(undefined);
 			this.popinfocloser.blur();
 			return false;	
@@ -277,6 +291,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 	this.map.on('click',(evt)=>{
 		this.mouseCoordinates = evt.coordinate;
 		if(this.overlay.getPosition()){
+			this.content.innerHTML = "";
 			this.overlay.setPosition(undefined);
 			this.closer.blur();
 		}
@@ -309,7 +324,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 						 self.content.innerHTML = "";
 						 self.graph_loader.style.display="block";
 						self.overlay.setPosition(coordinate);
-						this.getPopupHtml(coordinate,featuresValues.switches,featuresValues.links);
+						this.getPopupHtml(featuresValues.switches,featuresValues.links);
 					}
 				}else if(features[0].values_ && typeof(features[0].values_.type)!='undefined' && (features[0].values_.type == 'line' || features[0].values_.type == 'cluster_line')){
 					var featuresValues = features[0].values_;
@@ -323,19 +338,42 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 		 }
 	  });
   }
-
+  getPopLinksStatus(features){
+	var featuresIds = [];
+	  if(features && features.length && features.length > 1){
+		  features.forEach((f)=>{
+			var values = f.values_;
+			var id = values.id;
+			featuresIds.push(id);
+		  })
+	  }
+	  var status = "DISCOVERED";
+	  for(var i = 0; i < this.popLinks.length; i++){
+		  var link = this.popLinks[i];
+		   if(featuresIds.indexOf(link.src) > -1 && featuresIds.indexOf(link.trgt) > -1){
+				status = link.status;
+				if(status == "FAILED")
+				break;
+		  }
+	  }
+	  return status;
+  }
   getStatusOfPops(features){
 	  var status = "DISCOVERED";
 	  if(features && features.length){
 		  features.forEach((f)=>{
 			var values = f.values_;
+			var id = values.id;
 			if(values.status == "FAILED"){
 				status = "FAILED";
 			}
+			
+			
 		  })
 	  }
 	  return status;
   }
+
   getPopStatus(switches,links){
 	  var state = "DISCOVERED";
 	  switches.forEach(s=>{
@@ -381,10 +419,17 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 		source: this.clusterSource,
 		style: function (feature) {
 			var size = feature.get('features').length;
-			var status = self.getStatusOfPops(feature.get('features'));
+			var status  ="DISCOVERED";
+			var statusPop = self.getStatusOfPops(feature.get('features'));
+			if(size > 1){
+				status = self.getPopLinksStatus(feature.get('features'));
+			}
+			if(statusPop == "FAILED"){
+				status = "FAILED";
+			}
 			if(size > 1){
 				var icon =new Icon({
-					src: environment.assetsPath+'/images/yellow.png',
+					src: environment.assetsPath+'/images/green.png',
 				   	scale: 0.4
 				  });
 				if(status == "FAILED"){
@@ -440,25 +485,19 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 		});
 	  }else if(values.clusterLinkData && values.clusterLinkData.length){
 		  var links = values.clusterLinkData;
-		for(var i=0; i < links.length; i++){ 
-			var valuesData = links[i].values_.linksData;
-			if(valuesData && valuesData.length){
-				valuesData.forEach(link=>{
+		  links.forEach(link=>{
 					var url = "isl/switch/isl/" + link.source_switch+"/"+link.src_port+"/"+link.target_switch+"/"+link.dst_port;
-	
 					html+= "<tr class='cursor-pointer islLink'><td><a href='"+url+"' target='_blank'>"+link.source_switch_name+"</a></td><td><a href='"+url+"' target='_blank'>"+link.src_port+"</a></td><td><a href='"+url+"' target='_blank'>"+link.target_switch_name+"</a></td><td><a href='"+url+"' target='_blank'>"+link.dst_port+"</a></td><td><a href='"+url+"'  target='_blank'>"+link.state+"</a></td></tr>";
 				});
-			}
-		}
 	  }
 	  html+="</tbody></table></div>";
 	  return html;
   }
-  getPopupHtml(coordinate,switches,links){	
+  getPopupHtml(switches,links){	
 	  this.graphdata = {nodes:switches,links:links};
-      var margin = {top: 10, right: 30, bottom: 30, left: 40},
+      var margin = {top: 10, right: 30, bottom: 60, left: 40},
  	  width = this.content.offsetWidth || 400 - margin.left - margin.right,
-	  height = this.content.clientHeight  || 400 - margin.top - margin.bottom;
+	  height = this.content.offsetHeight  || 400 - margin.top - margin.bottom;
 	  this.topologyGraphService.loadworldMapGraph(this.graphdata,'popup-content',width,height,this.graph_loader);	
   }  
 
@@ -490,6 +529,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 		
 	  }
   }
+  
   loadCLusterLinks(){
 	  if(this.clusterSource && this.clusterSource.features && this.clusterSource.features.length){
 		var clusterFeatures = this.clusterSource.features;
@@ -519,20 +559,35 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 					var no_of_links = 0;
 					var link_status_failed = false;
 					var linksData = [];
-					Object.keys(this.linkSource.uidIndex_).forEach((l)=>{
-						var src = this.linkSource.uidIndex_[l].values_.source;
-						var dst = this.linkSource.uidIndex_[l].values_.target;
-						var linkStatus = this.linkSource.uidIndex_[l].values_.status;
-						if((linkArr.indexOf(src) >= 0 && linkArr.indexOf(dst) >= 0) || (linkTargetArr.indexOf(src) >= 0 && linkTargetArr.indexOf(dst) >= 0) ){
+					this.popLinks.forEach((link)=>{
+						var src = link.src;
+						var dst = link.trgt;
+						var linkStatus = link.status;
+						if(linkArr.indexOf(src) > -1 && linkTargetArr.indexOf(dst) > -1){
 							hasLink = true;
-							linksData.push(this.linkSource.uidIndex_[l]);
-							var values = this.linkSource.uidIndex_[l].values_;
-							no_of_links=no_of_links+parseInt(values.links);
+							var links = link.links;
+							if(links.length){
+								links.forEach((l) => {
+										linksData.push(l);									
+								});
+							}
+							if(linkStatus == 'FAILED'){
+								link_status_failed = true;
+							}
+						}else if(linkTargetArr.indexOf(src) > -1 && linkArr.indexOf(dst) > -1){
+							hasLink = true;
+							var links = link.links;
+							if(links.length){
+								links.forEach((l) => {
+										linksData.push(l);									
+								});
+							}
 							if(linkStatus == 'FAILED'){
 								link_status_failed = true;
 							}
 						}
-					})
+					});
+					no_of_links=linksData.length;
 					if(hasLink){
 						var start_point = source.getGeometry().getCoordinates();
 							var end_point = target.getGeometry().getCoordinates();

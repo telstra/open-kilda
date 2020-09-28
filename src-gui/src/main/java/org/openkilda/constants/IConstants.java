@@ -291,6 +291,9 @@ public abstract class IConstants {
         
         public static final String SW_SWITCH_METERS = "sw_switch_meters";
         
+        
+        public static final String TOPOLOGY_WORLD_MAP_VIEW = "topology_world_map_view";
+        
     }
 
     public final class Settings {
