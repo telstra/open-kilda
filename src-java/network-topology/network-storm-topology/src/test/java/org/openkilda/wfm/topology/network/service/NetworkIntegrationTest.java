@@ -76,12 +76,6 @@ public class NetworkIntegrationTest {
                                                           switchDescription.getManufacturer(),
                                                           switchDescription.getSoftware());
 
-    private NetworkSwitchService switchService;
-    private NetworkPortService portService;
-    private NetworkBfdSessionService bfdPortService;
-    private NetworkUniIslService uniIslService;
-    private NetworkIslService islService;
-
     private NetworkIntegrationCarrier integrationCarrier;
 
     public NetworkIntegrationTest() throws UnknownHostException {
@@ -96,18 +90,7 @@ public class NetworkIntegrationTest {
 
     @Before
     public void setUp() throws Exception {
-        persistenceManager.purgeData();
-
-        switchService = new NetworkSwitchService(null, persistenceManager, options);
-        portService = new NetworkPortService(null, persistenceManager);
-        bfdPortService = new NetworkBfdSessionService(integrationCarrier, persistenceManager);
-        uniIslService = new NetworkUniIslService(null);
-        islService = new NetworkIslService(null, persistenceManager, options);
-
-        integrationCarrier = new NetworkIntegrationCarrier(
-                switchService,
-                portService, bfdPortService,
-                uniIslService, islService);
+        integrationCarrier = new NetworkIntegrationCarrier(options, persistenceManager);
     }
 
     @Test
@@ -125,6 +108,7 @@ public class NetworkIntegrationTest {
         SpeakerSwitchView speakerSwitchView = new SpeakerSwitchView(
                 alphaDatapath, alphaInetAddress, speakerInetAddress, "OF_13", switchDescription, features, ports);
 
+        NetworkSwitchService switchService = integrationCarrier.getSwitchService();
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ADDED,
                 alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,

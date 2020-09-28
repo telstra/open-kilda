@@ -19,6 +19,7 @@ dependencies {
     implementation project(':flowhs-messaging')
     implementation project(':ping-messaging')
     implementation project(':floodlight-api')
+    implementation project(':grpc-api')
     runtimeClasspath project(':kilda-persistence-orientdb')
     aspect project(':kilda-persistence-api')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
