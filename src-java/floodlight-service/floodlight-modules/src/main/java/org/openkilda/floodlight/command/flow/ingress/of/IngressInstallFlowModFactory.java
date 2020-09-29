@@ -20,6 +20,7 @@ import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
 import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchFeature;
 
@@ -31,6 +32,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -58,6 +60,22 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
             instructions.addAll(makeMetadataInstructions());
         }
 
+        return instructions;
+    }
+
+    @Override
+    protected List<OFInstruction> makeIngressFlowLoopInstructions(FlowEndpoint endpoint) {
+        List<OFAction> actions = new ArrayList<>();
+        if (endpoint.getInnerVlanId() != 0) {
+            actions.addAll(OfAdapter.INSTANCE.makeVlanReplaceActions(of,
+                    Collections.singletonList(endpoint.getInnerVlanId()),
+                    endpoint.getVlanStack()));
+        }
+        actions.add(of.actions().buildOutput()
+                .setPort(OFPort.IN_PORT)
+                .build());
+        List<OFInstruction> instructions = new ArrayList<>();
+        instructions.add(of.instructions().applyActions(actions));
         return instructions;
     }
 

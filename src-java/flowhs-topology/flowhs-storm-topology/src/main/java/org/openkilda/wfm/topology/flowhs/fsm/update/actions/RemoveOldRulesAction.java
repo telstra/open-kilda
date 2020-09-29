@@ -16,6 +16,8 @@
 package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
+import org.openkilda.floodlight.api.request.factory.IngressFlowLoopSegmentRequestFactory;
+import org.openkilda.floodlight.api.request.factory.TransitFlowLoopSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -37,6 +39,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
@@ -54,23 +59,37 @@ public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
 
         Flow flow = RequestedFlowMapper.INSTANCE.toFlow(stateMachine.getOriginalFlow());
 
-
         if (stateMachine.getEndpointUpdate().isPartialUpdate()) {
             SpeakerRequestBuildContext speakerContext = getSpeakerRequestBuildContext(stateMachine, false);
             FlowPath forward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
             FlowPath reverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
             switch (stateMachine.getEndpointUpdate()) {
                 case SOURCE:
-                    factories.addAll(commandBuilder.buildIngressOnlyOneDirection(stateMachine.getCommandContext(),
-                            flow, forward, reverse, speakerContext.getForward()));
+                    factories.addAll(buildCommandsForSourceUpdate(commandBuilder, stateMachine, flow,
+                            forward, reverse, speakerContext));
                     break;
                 case DESTINATION:
-                    factories.addAll(commandBuilder.buildIngressOnlyOneDirection(stateMachine.getCommandContext(),
-                            flow, reverse, forward, speakerContext.getReverse()));
+                    factories.addAll(buildCommandsForDestinationUpdate(commandBuilder, stateMachine, flow,
+                            forward, reverse, speakerContext));
                     break;
+                case BOTH:
                 default:
-                    factories.addAll(commandBuilder.buildIngressOnly(stateMachine.getCommandContext(), flow, forward,
-                            reverse, speakerContext));
+                    switch (stateMachine.getFlowLoopOperation()) {
+                        case DELETE:
+                            factories.addAll(commandBuilder.buildIngressOnly(stateMachine.getCommandContext(), flow,
+                                    forward, reverse, speakerContext).stream()
+                                    .filter(f -> f instanceof IngressFlowLoopSegmentRequestFactory)
+                                    .collect(Collectors.toList()));
+                            break;
+                        case CREATE:
+                            // No rules removing required
+                            break;
+                        case NONE:
+                        default:
+                            factories.addAll(commandBuilder.buildIngressOnly(stateMachine.getCommandContext(), flow,
+                                    forward, reverse, speakerContext));
+                            break;
+                    }
                     break;
             }
         } else {
@@ -127,6 +146,48 @@ public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
             stateMachine.fire(Event.RULES_REMOVED);
         } else {
             stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
+        }
+    }
+
+    private List<FlowSegmentRequestFactory> buildCommandsForSourceUpdate(
+            FlowCommandBuilder commandBuilder, FlowUpdateFsm stateMachine, Flow flow,
+            FlowPath forward, FlowPath reverse, SpeakerRequestBuildContext speakerContext) {
+        switch (stateMachine.getFlowLoopOperation()) {
+            case NONE:
+                return commandBuilder.buildIngressOnlyOneDirection(
+                        stateMachine.getCommandContext(),
+                        flow, forward, reverse, speakerContext.getForward());
+            case DELETE:
+                return commandBuilder.buildAll(stateMachine.getCommandContext(),
+                        flow, forward, reverse, speakerContext).stream()
+                        .filter(f -> f instanceof IngressFlowLoopSegmentRequestFactory
+                                || f instanceof TransitFlowLoopSegmentRequestFactory)
+                        .collect(Collectors.toList());
+            case CREATE:
+            default:
+                // No rules removing required
+                return Collections.emptyList();
+        }
+    }
+
+    private List<FlowSegmentRequestFactory> buildCommandsForDestinationUpdate(
+            FlowCommandBuilder commandBuilder, FlowUpdateFsm stateMachine, Flow flow,
+            FlowPath forward, FlowPath reverse, SpeakerRequestBuildContext speakerContext) {
+        switch (stateMachine.getFlowLoopOperation()) {
+            case NONE:
+                return commandBuilder.buildIngressOnlyOneDirection(
+                        stateMachine.getCommandContext(),
+                        flow, reverse, forward, speakerContext.getReverse());
+            case DELETE:
+                return commandBuilder.buildAll(stateMachine.getCommandContext(),
+                        flow, forward, reverse, speakerContext).stream()
+                        .filter(f -> f instanceof IngressFlowLoopSegmentRequestFactory
+                                || f instanceof TransitFlowLoopSegmentRequestFactory)
+                        .collect(Collectors.toList());
+            case CREATE:
+            default:
+                // No rules removing required
+                return Collections.emptyList();
         }
     }
 

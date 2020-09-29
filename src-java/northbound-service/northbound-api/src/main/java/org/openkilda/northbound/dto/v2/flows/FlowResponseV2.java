@@ -15,6 +15,8 @@
 
 package org.openkilda.northbound.dto.v2.flows;
 
+import org.openkilda.model.SwitchId;
+
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
@@ -54,6 +56,7 @@ public class FlowResponseV2 {
     private String encapsulationType;
     private String pathComputationStrategy;
     private String targetPathComputationStrategy;
+    private SwitchId loopSwitchId;
 
     private String created;
     private String lastUpdated;

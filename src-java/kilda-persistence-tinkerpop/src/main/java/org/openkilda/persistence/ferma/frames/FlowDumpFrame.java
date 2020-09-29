@@ -280,4 +280,14 @@ public abstract class FlowDumpFrame extends KildaBaseVertexFrame implements Flow
     @Override
     @Property("max_latency")
     public abstract void setMaxLatency(Long maxLatency);
+
+    @Override
+    @Property("loop_switch_id")
+    @Convert(SwitchIdConverter.class)
+    public abstract SwitchId getLoopSwitchId();
+
+    @Override
+    @Property("loop_switch_id")
+    @Convert(SwitchIdConverter.class)
+    public abstract void setLoopSwitchId(SwitchId switchId);
 }

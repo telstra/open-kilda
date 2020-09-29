@@ -29,6 +29,7 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import org.mapstruct.Mapper;
@@ -244,5 +245,12 @@ public abstract class FlowMapper {
                 .destPort(flow.getDestinationPort())
                 .destVlan(flow.getDestinationVlan())
                 .build();
+    }
+
+    /**
+     * Convert String to SwitchId.
+     */
+    public SwitchId convertSwitchId(String value) {
+        return value == null ? null : new SwitchId(value);
     }
 }

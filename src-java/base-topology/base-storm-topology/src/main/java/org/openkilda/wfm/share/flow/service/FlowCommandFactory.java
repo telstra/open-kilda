@@ -22,9 +22,11 @@ import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
+import org.openkilda.messaging.command.flow.InstallIngressLoopFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallServer42IngressFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
+import org.openkilda.messaging.command.flow.InstallTransitLoopFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RuleType;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
@@ -221,6 +223,29 @@ public class FlowCommandFactory {
                 multiTable, ingressEndpoint);
     }
 
+    /**
+     * Generate install transit flow loop command.
+     *
+     * @param flowPath flow path with segments to be used for building of install rules.
+     * @param inputPortNo the number of input port.
+     * @param encapsulationResources the encapsulation resources.
+     * @param multiTable use multi table.
+     * @return install egress flow command
+     */
+    public InstallEgressFlow buildInstallTransitLoopFlow(Flow flow, FlowPath flowPath, int inputPortNo,
+                                                         EncapsulationResources encapsulationResources,
+                                                         boolean multiTable) {
+        FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
+        FlowEndpoint egressEndpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
+
+        return new InstallTransitLoopFlow(transactionIdGenerator.generate(), flow.getFlowId(),
+                flowPath.getCookie().toBuilder().looped(true).build().getValue(),
+                egressEndpoint.getSwitchId(), inputPortNo, egressEndpoint.getPortNumber(),
+                encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
+                egressEndpoint.getOuterVlanId(), egressEndpoint.getInnerVlanId(), getOutputVlanType(flow, flowPath),
+                multiTable, ingressEndpoint);
+    }
+
     private RemoveFlow buildRemoveEgressFlow(Flow flow, FlowPath flowPath, int inputPortNo,
                                              EncapsulationResources encapsulationResources, boolean multiTable) {
         boolean isForward = flow.isForward(flowPath);
@@ -311,6 +336,29 @@ public class FlowCommandFactory {
                 encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
                 getOutputVlanType(flow, flowPath), flow.getBandwidth(), meterId,
                 egressEndpoint.getSwitchId(), multiTable, enableLldp, enableArp);
+    }
+
+    /**
+     * Generate install ingress flow loop command.
+     *
+     * @param flow the flow.
+     * @param flowPath flow path with segments to be used for building of install rules.
+     * @param encapsulationResources the encapsulation resources.
+     * @param multiTable  \
+     * @return install ingress flow command
+     */
+    public InstallIngressLoopFlow buildInstallIngressLoopFlow(Flow flow, FlowPath flowPath,
+                                                              EncapsulationResources encapsulationResources,
+                                                              boolean multiTable) {
+        FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
+        FlowEndpoint egressEndpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
+
+        return new InstallIngressLoopFlow(transactionIdGenerator.generate(), flow.getFlowId(),
+                flowPath.getCookie().toBuilder().looped(true).build().getValue(),
+                ingressEndpoint.getSwitchId(), ingressEndpoint.getPortNumber(), 0,
+                encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
+                egressEndpoint.getOuterVlanId(), egressEndpoint.getInnerVlanId(), getOutputVlanType(flow, flowPath),
+                multiTable, ingressEndpoint);
     }
 
     /**

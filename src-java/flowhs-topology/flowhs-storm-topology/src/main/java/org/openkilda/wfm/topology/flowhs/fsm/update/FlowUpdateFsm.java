@@ -91,6 +91,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
     private boolean doNotRevert;
 
     private EndpointUpdate endpointUpdate = EndpointUpdate.NONE;
+    private FlowLoopOperation flowLoopOperation = FlowLoopOperation.NONE;
 
     public FlowUpdateFsm(CommandContext commandContext, FlowUpdateHubCarrier carrier, String flowId) {
         super(commandContext, flowId);
@@ -415,6 +416,12 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
         public boolean isPartialUpdate() {
             return partialUpdate;
         }
+    }
+
+    public enum FlowLoopOperation {
+        NONE,
+        CREATE,
+        DELETE
     }
 
     public enum State {

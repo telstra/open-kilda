@@ -501,6 +501,46 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
     }
 
     @Override
+    public Collection<Flow> findLoopedByFlowIdAndLoopSwitchId(String flowId, SwitchId switchId) {
+        String switchIdAsStr = SwitchIdConverter.INSTANCE.toGraphProperty(switchId);
+
+        return framedGraph().traverse(g -> {
+            GraphTraversal<Vertex, Vertex> traversal = g.V()
+                    .hasLabel(FlowFrame.FRAME_LABEL)
+                    .has(FlowFrame.FLOW_ID_PROPERTY, flowId);
+            if (switchId != null) {
+                traversal.has(FlowFrame.LOOP_SWITCH_ID_PROPERTY, P.eq(switchIdAsStr));
+            } else {
+                traversal.has(FlowFrame.LOOP_SWITCH_ID_PROPERTY, P.neq(null));
+            }
+            return traversal;
+        }).toListExplicit(FlowFrame.class).stream()
+                .map(Flow::new)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Collection<Flow> findLoopedByLoopSwitchId(SwitchId switchId) {
+        if (switchId == null) {
+            return framedGraph().traverse(g -> g.V()
+                    .hasLabel(FlowFrame.FRAME_LABEL)
+                    .has(FlowFrame.LOOP_SWITCH_ID_PROPERTY, P.neq(null)))
+                    .toListExplicit(FlowFrame.class).stream()
+                    .map(Flow::new)
+                    .collect(Collectors.toList());
+        }
+
+        String switchIdAsStr = SwitchIdConverter.INSTANCE.toGraphProperty(switchId);
+
+        return framedGraph().traverse(g -> g.V()
+                .hasLabel(FlowFrame.FRAME_LABEL)
+                .has(FlowFrame.LOOP_SWITCH_ID_PROPERTY, switchIdAsStr))
+                .toListExplicit(FlowFrame.class).stream()
+                .map(Flow::new)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     protected FlowFrame doAdd(FlowData data) {
         FlowFrame frame = KildaBaseVertexFrame.addNewFramedVertex(framedGraph(), FlowFrame.FRAME_LABEL,
                 FlowFrame.class);

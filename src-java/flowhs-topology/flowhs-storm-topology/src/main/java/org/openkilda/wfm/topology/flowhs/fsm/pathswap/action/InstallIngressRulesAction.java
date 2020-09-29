@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.fsm.pathswap.action;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
+import org.openkilda.floodlight.api.request.factory.TransitFlowLoopSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
@@ -34,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class InstallIngressRulesAction extends FlowProcessingAction<FlowPathSwapFsm, State,
@@ -62,6 +64,10 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowPathSwap
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(
                 commandBuilder.buildIngressOnly(
                         stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse, speakerContext));
+        commands.addAll(commandBuilder.buildEgressOnly(stateMachine.getCommandContext(),
+                flow, newPrimaryForward, newPrimaryReverse).stream()
+                .filter(f -> f instanceof TransitFlowLoopSegmentRequestFactory)
+                .collect(Collectors.toList()));
 
         // Installation of ingress rules for protected paths is skipped. These paths are activated on swap.
 

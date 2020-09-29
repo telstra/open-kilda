@@ -19,6 +19,8 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload;
+import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
@@ -156,6 +158,50 @@ public class FlowControllerV2 extends BaseController {
                                                                + "equal to the empty string.")
                                                        @RequestBody FlowPatchV2 flowPatchDto) {
         return flowService.patchFlow(flowId, flowPatchDto);
+    }
+
+    /**
+     * Get existing flow loops.
+     *
+     * @param flowId filter by flow id
+     * @param switchId filter by switch id
+     * @return list of flow loops
+     */
+    @ApiOperation(value = "Get flow loops", response = FlowLoopResponse.class, responseContainer = "List")
+    @GetMapping(value = "/loops")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<List<FlowLoopResponse>> getFlowLoops(
+            @RequestParam(value = "flow_id", required = false) String flowId,
+            @RequestParam(value = "switch_id", required = false) String switchId) {
+        return flowService.getFlowLoops(flowId, switchId);
+    }
+
+    /**
+     * Create flow loop.
+     *
+     * @param flowId flow id
+     * @param flowLoopPayload parameters for flow loop
+     * @return created flow loop
+     */
+    @ApiOperation(value = "Create flow loop", response = FlowLoopResponse.class)
+    @PostMapping(value = "/{flow_id}/loops")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowLoopResponse> createFlowLoop(@PathVariable(name = "flow_id") String flowId,
+                                                              @RequestBody FlowLoopPayload flowLoopPayload) {
+        return flowService.createFlowLoop(flowId, flowLoopPayload.getSwitchId());
+    }
+
+    /**
+     * Delete flow loop.
+     *
+     * @param flowId flow id
+     * @return deleted flow loop
+     */
+    @ApiOperation(value = "Delete flow loop", response = FlowLoopResponse.class)
+    @DeleteMapping(value = "/{flow_id}/loops")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowLoopResponse> deleteFlowLoop(@PathVariable(name = "flow_id") String flowId) {
+        return flowService.deleteFlowLoop(flowId);
     }
 
     private void verifyRequest(FlowRequestV2 request) {

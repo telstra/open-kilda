@@ -55,4 +55,9 @@ public class FlowSourceAdapter extends FlowSideAdapter {
     public boolean isPrimaryEgressPath(@NonNull PathId pathId) {
         return pathId.equals(flow.getForwardPathId());
     }
+
+    @Override
+    public boolean isLooped() {
+        return flow.getSrcSwitchId().equals(flow.getLoopSwitchId());
+    }
 }

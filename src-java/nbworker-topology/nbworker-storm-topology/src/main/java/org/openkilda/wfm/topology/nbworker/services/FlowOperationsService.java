@@ -397,7 +397,7 @@ public class FlowOperationsService {
             return false;
         }
 
-        boolean updateRequired =  flowPatch.getSource().getSwitchId() != null
+        boolean updateRequired = flowPatch.getSource().getSwitchId() != null
                 && !flow.getSrcSwitchId().equals(flowPatch.getSource().getSwitchId());
         updateRequired |= flowPatch.getSource().getPortNumber() != null
                 && flow.getSrcPort() != flowPatch.getSource().getPortNumber();
@@ -419,7 +419,7 @@ public class FlowOperationsService {
             return false;
         }
 
-        boolean updateRequired =  flowPatch.getDestination().getSwitchId() != null
+        boolean updateRequired = flowPatch.getDestination().getSwitchId() != null
                 && !flow.getDestSwitchId().equals(flowPatch.getDestination().getSwitchId());
         updateRequired |= flowPatch.getDestination().getPortNumber() != null
                 && flow.getDestPort() != flowPatch.getDestination().getPortNumber();
@@ -530,6 +530,16 @@ public class FlowOperationsService {
         }
 
         return results;
+    }
+
+    /**
+     * Get flow loops.
+     */
+    public Collection<Flow> getLoopedFlows(String flowId, SwitchId switchId) {
+        if (flowId == null) {
+            return flowRepository.findLoopedByLoopSwitchId(switchId);
+        }
+        return flowRepository.findLoopedByFlowIdAndLoopSwitchId(flowId, switchId);
     }
 
     @Data

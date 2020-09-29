@@ -18,12 +18,18 @@ package org.openkilda.floodlight.command;
 import org.openkilda.floodlight.command.flow.egress.EgressFlowSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.egress.EgressFlowSegmentRemoveCommand;
 import org.openkilda.floodlight.command.flow.egress.EgressFlowSegmentVerifyCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressFlowLoopSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressFlowLoopSegmentRemoveCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressFlowLoopSegmentVerifyCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentRemoveCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentVerifyCommand;
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowRemoveCommand;
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowVerifyCommand;
+import org.openkilda.floodlight.command.flow.transit.TransitFlowLoopSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.transit.TransitFlowLoopSegmentRemoveCommand;
+import org.openkilda.floodlight.command.flow.transit.TransitFlowLoopSegmentVerifyCommand;
 import org.openkilda.floodlight.command.flow.transit.TransitFlowSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.transit.TransitFlowSegmentRemoveCommand;
 import org.openkilda.floodlight.command.flow.transit.TransitFlowSegmentVerifyCommand;
@@ -79,7 +85,20 @@ import java.util.concurrent.CompletionException;
         @Type(value = EgressFlowSegmentRemoveCommand.class,
                 name = "org.openkilda.floodlight.api.request.EgressFlowSegmentRemoveRequest"),
         @Type(value = EgressFlowSegmentVerifyCommand.class,
-                name = "org.openkilda.floodlight.api.request.EgressFlowSegmentVerifyRequest")
+                name = "org.openkilda.floodlight.api.request.EgressFlowSegmentVerifyRequest"),
+
+        @Type(value = IngressFlowLoopSegmentInstallCommand.class,
+                name = "org.openkilda.floodlight.api.request.IngressFlowLoopSegmentInstallRequest"),
+        @Type(value = IngressFlowLoopSegmentRemoveCommand.class,
+                name = "org.openkilda.floodlight.api.request.IngressFlowLoopSegmentRemoveRequest"),
+        @Type(value = IngressFlowLoopSegmentVerifyCommand.class,
+                name = "org.openkilda.floodlight.api.request.IngressFlowLoopSegmentVerifyRequest"),
+        @Type(value = TransitFlowLoopSegmentInstallCommand.class,
+                name = "org.openkilda.floodlight.api.request.TransitFlowLoopSegmentInstallRequest"),
+        @Type(value = TransitFlowLoopSegmentRemoveCommand.class,
+                name = "org.openkilda.floodlight.api.request.TransitFlowLoopSegmentRemoveRequest"),
+        @Type(value = TransitFlowLoopSegmentVerifyCommand.class,
+                name = "org.openkilda.floodlight.api.request.TransitFlowLoopSegmentVerifyRequest")
 })
 @Getter
 public abstract class SpeakerCommand<T extends SpeakerCommandReport> {

@@ -16,6 +16,8 @@
 package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
+import org.openkilda.floodlight.api.request.factory.IngressFlowLoopSegmentRequestFactory;
+import org.openkilda.floodlight.api.request.factory.TransitFlowLoopSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
@@ -25,6 +27,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.FlowLoopOperation;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
@@ -35,6 +38,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class InstallIngressRulesAction extends FlowProcessingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
@@ -62,21 +67,26 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowUpdateFs
         switch (stateMachine.getEndpointUpdate()) {
             case SOURCE:
                 speakerContext.getForward().setUpdateMeter(false);
-                commands.addAll(commandBuilder.buildIngressOnlyOneDirection(
-                        stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse,
-                        speakerContext.getForward()));
+                commands.addAll(getCommandsForSourceUpdate(commandBuilder, stateMachine, flow,
+                        newPrimaryForward, newPrimaryReverse, speakerContext));
                 break;
             case DESTINATION:
                 speakerContext.getReverse().setUpdateMeter(false);
-                commands.addAll(commandBuilder.buildIngressOnlyOneDirection(
-                        stateMachine.getCommandContext(), flow, newPrimaryReverse, newPrimaryForward,
-                        speakerContext.getReverse()));
+                commands.addAll(getCommandsForDestinationUpdate(commandBuilder, stateMachine, flow,
+                        newPrimaryForward, newPrimaryReverse, speakerContext));
                 break;
             case BOTH:
                 speakerContext.getForward().setUpdateMeter(false);
                 speakerContext.getReverse().setUpdateMeter(false);
-                commands.addAll(commandBuilder.buildIngressOnly(
-                        stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse, speakerContext));
+                if (stateMachine.getFlowLoopOperation() == FlowLoopOperation.NONE) {
+                    commands.addAll(commandBuilder.buildIngressOnly(stateMachine.getCommandContext(), flow,
+                            newPrimaryForward, newPrimaryReverse, speakerContext));
+                } else {
+                    commands.addAll(commandBuilder.buildIngressOnly(stateMachine.getCommandContext(), flow,
+                            newPrimaryForward, newPrimaryReverse, speakerContext).stream()
+                            .filter(f -> f instanceof IngressFlowLoopSegmentRequestFactory)
+                            .collect(Collectors.toList()));
+                }
                 break;
             default:
                 commands.addAll(commandBuilder.buildIngressOnly(
@@ -97,6 +107,50 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowUpdateFs
             stateMachine.fire(Event.INGRESS_IS_SKIPPED);
         } else {
             stateMachine.saveActionToHistory("Commands for installing ingress rules have been sent");
+        }
+    }
+
+    private Collection<FlowSegmentRequestFactory> getCommandsForSourceUpdate(
+            FlowCommandBuilder commandBuilder, FlowUpdateFsm stateMachine, Flow flow,
+            FlowPath newPrimaryForward, FlowPath newPrimaryReverse, SpeakerRequestBuildContext speakerContext) {
+        switch (stateMachine.getFlowLoopOperation()) {
+            case NONE:
+                return commandBuilder.buildIngressOnlyOneDirection(
+                        stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse,
+                        speakerContext.getForward());
+            case CREATE:
+                return commandBuilder.buildIngressOnlyOneDirection(
+                        stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse,
+                        speakerContext.getForward()).stream()
+                        .filter(f -> f instanceof IngressFlowLoopSegmentRequestFactory
+                                || f instanceof TransitFlowLoopSegmentRequestFactory)
+                        .collect(Collectors.toList());
+            case DELETE:
+            default:
+                // No rules installation required
+                return Collections.emptyList();
+        }
+    }
+
+    private Collection<FlowSegmentRequestFactory> getCommandsForDestinationUpdate(
+            FlowCommandBuilder commandBuilder, FlowUpdateFsm stateMachine, Flow flow,
+            FlowPath newPrimaryForward, FlowPath newPrimaryReverse, SpeakerRequestBuildContext speakerContext) {
+        switch (stateMachine.getFlowLoopOperation()) {
+            case NONE:
+                return commandBuilder.buildIngressOnlyOneDirection(
+                        stateMachine.getCommandContext(), flow, newPrimaryReverse, newPrimaryForward,
+                        speakerContext.getReverse());
+            case CREATE:
+                return commandBuilder.buildIngressOnlyOneDirection(
+                        stateMachine.getCommandContext(), flow, newPrimaryReverse, newPrimaryForward,
+                        speakerContext.getReverse()).stream()
+                        .filter(f -> f instanceof IngressFlowLoopSegmentRequestFactory
+                                || f instanceof TransitFlowLoopSegmentRequestFactory)
+                        .collect(Collectors.toList());
+            case DELETE:
+            default:
+                // No rules installation required
+                return Collections.emptyList();
         }
     }
 }

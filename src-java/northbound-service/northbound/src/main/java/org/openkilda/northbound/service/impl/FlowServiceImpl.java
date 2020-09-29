@@ -21,6 +21,8 @@ import static org.openkilda.northbound.utils.async.AsyncUtils.collectResponses;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.CreateFlowLoopRequest;
+import org.openkilda.messaging.command.flow.DeleteFlowLoopRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
@@ -44,8 +46,10 @@ import org.openkilda.messaging.nbtopology.request.FlowReadRequest;
 import org.openkilda.messaging.nbtopology.request.FlowValidationRequest;
 import org.openkilda.messaging.nbtopology.request.FlowsDumpRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowLoopsRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.request.MeterModifyRequest;
+import org.openkilda.messaging.nbtopology.response.FlowLoopsResponse;
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.payload.flow.DiverseGroupPayload;
@@ -59,6 +63,7 @@ import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.PathMapper;
@@ -68,6 +73,7 @@ import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
+import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
@@ -86,7 +92,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -698,5 +706,51 @@ public class FlowServiceImpl implements FlowService {
         return messagingChannel.sendAndGet(nbworkerTopic, message)
                 .thenApply(org.openkilda.messaging.nbtopology.response.FlowConnectedDevicesResponse.class::cast)
                 .thenApply(connectedDeviceMapper::toResponse);
+    }
+
+    @Override
+    public CompletableFuture<List<FlowLoopResponse>> getFlowLoops(String flowId, String switchId) {
+        logger.info("Get flow loops for flow {} and switch {}", flowId, switchId);
+
+        GetFlowLoopsRequest request = new GetFlowLoopsRequest(flowId, switchId);
+
+        CommandMessage message = new CommandMessage(
+                request, System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
+
+        return messagingChannel.sendAndGet(nbworkerTopic, message)
+                .thenApply(result -> Optional.of(result).map(FlowLoopsResponse.class::cast)
+                        .map(FlowLoopsResponse::getPayload)
+                        .orElse(Collections.emptyList())
+                        .stream()
+                        .map(flowMapper::toFlowLoopResponse)
+                        .collect(Collectors.toList()));
+    }
+
+    @Override
+    public CompletableFuture<FlowLoopResponse> createFlowLoop(String flowId, SwitchId switchId) {
+        logger.info("Create flow loop for flow {} and switch {}", flowId, switchId);
+
+        CreateFlowLoopRequest request = new CreateFlowLoopRequest(flowId, switchId);
+
+        CommandMessage message = new CommandMessage(
+                request, System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
+
+        return messagingChannel.sendAndGet(flowHsTopic, message)
+                .thenApply(org.openkilda.messaging.info.flow.FlowResponse.class::cast)
+                .thenApply(flowMapper::toFlowLoopResponse);
+    }
+
+    @Override
+    public CompletableFuture<FlowLoopResponse> deleteFlowLoop(String flowId) {
+        logger.info("Delete flow loop for flow {}", flowId);
+
+        DeleteFlowLoopRequest request = new DeleteFlowLoopRequest(flowId);
+
+        CommandMessage message = new CommandMessage(
+                request, System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
+
+        return messagingChannel.sendAndGet(flowHsTopic, message)
+                .thenApply(org.openkilda.messaging.info.flow.FlowResponse.class::cast)
+                .thenApply(flowMapper::toFlowLoopResponse);
     }
 }

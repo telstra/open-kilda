@@ -297,6 +297,9 @@ public class ValidationServiceImpl implements ValidationService {
                         .vlanId(endpoint.getOuterVlanId())
                         .build().getValue());
             }
+            if (switchId.equals(flow.getLoopSwitchId()) && !path.isProtected()) {
+                result.add(path.getCookie().toBuilder().looped(true).build().getValue());
+            }
         }
 
         result.addAll(getExpectedServer42IngressCookies(switchId, affectedPaths));

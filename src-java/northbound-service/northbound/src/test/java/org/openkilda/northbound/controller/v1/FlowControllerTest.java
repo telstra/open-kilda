@@ -35,7 +35,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
-import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.northbound.controller.TestConfig;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
@@ -98,8 +98,9 @@ public class FlowControllerTest {
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
         System.out.println("RESPONSE: " + result.getResponse().getContentAsString());
-        FlowPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
-        assertEquals(TestMessageMock.flow, response);
+        FlowResponsePayload response = MAPPER.readValue(result.getResponse().getContentAsString(),
+                FlowResponsePayload.class);
+        assertEquals(TestMessageMock.flowResponsePayload, response);
     }
 
     @Test
@@ -115,8 +116,9 @@ public class FlowControllerTest {
 
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
-        FlowPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
-        assertEquals(TestMessageMock.flow, response);
+        FlowResponsePayload response = MAPPER.readValue(result.getResponse().getContentAsString(),
+                FlowResponsePayload.class);
+        assertEquals(TestMessageMock.flowResponsePayload, response);
     }
 
     @Test
@@ -131,8 +133,9 @@ public class FlowControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
-        FlowPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
-        assertEquals(TestMessageMock.flow, response);
+        FlowResponsePayload response = MAPPER.readValue(result.getResponse().getContentAsString(),
+                FlowResponsePayload.class);
+        assertEquals(TestMessageMock.flowResponsePayload, response);
     }
 
     @Test
@@ -148,8 +151,9 @@ public class FlowControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
-        FlowPayload[] response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPayload[].class);
-        assertEquals(TestMessageMock.flow, response[0]);
+        FlowResponsePayload[] response = MAPPER.readValue(result.getResponse().getContentAsString(),
+                FlowResponsePayload[].class);
+        assertEquals(TestMessageMock.flowResponsePayload, response[0]);
     }
 
     @Test
@@ -174,8 +178,9 @@ public class FlowControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
-        FlowPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPayload.class);
-        assertEquals(TestMessageMock.flow, response);
+        FlowResponsePayload response = MAPPER.readValue(result.getResponse().getContentAsString(),
+                FlowResponsePayload.class);
+        assertEquals(TestMessageMock.flowResponsePayload, response);
     }
 
     @Test
@@ -190,10 +195,10 @@ public class FlowControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
                 .andReturn();
-        List<FlowPayload> response = MAPPER.readValue(
+        List<FlowResponsePayload> response = MAPPER.readValue(
                 result.getResponse().getContentAsString(),
-                new TypeReference<List<FlowPayload>>() {});
-        assertEquals(Collections.singletonList(TestMessageMock.flow), response);
+                new TypeReference<List<FlowResponsePayload>>() {});
+        assertEquals(Collections.singletonList(TestMessageMock.flowResponsePayload), response);
     }
 
     @Test
