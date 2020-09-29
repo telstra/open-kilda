@@ -9,14 +9,16 @@ import { CommonService } from './common.service';
 })
 export class TopologyGraphService {
 
-  size: any;
+    size: any;
     simulation: any;
     force: any;
     g: any;
   	drag: any;
 	  min_zoom = 0.25;
-  	scaleLimit = 0.05;
-  	max_zoom = 3;
+    scaleLimit = 0.05;
+    linksSourceArr:any=[];
+    max_zoom = 3;
+    mLinkNum: any = {};
   	zoom:any;
 	  svgElement: any;
 	  graphlink:any;
@@ -81,8 +83,61 @@ export class TopologyGraphService {
       .force("charge_force",d3.forceManyBody().strength(-1000))
       .force("xPos", d3.forceX(width /2))
       .force("yPos", d3.forceY(height / 2)) ; 
-    this.simulation.nodes(data.nodes);
-    this.simulation.force("link", d3.forceLink().links(data.links).distance((d:any)=>{
+      if (data.links.length > 0) {
+        try {
+          var result = this.commonService.groupBy(this.graph_data.links, function(item) {
+            return [item.source_switch, item.target_switch];
+          });
+          for (var i = 0, len = result.length; i < len; i++) {
+            var row = result[i];
+            if (row.length >= 1) {
+              for (var j = 0, len1 = row.length; j < len1; j++) {
+                var key = row[j].source_switch + "_" + row[j].target_switch;
+                var key1 = row[j].target_switch + "_" + row[j].source_switch;
+                var prcessKey = ( this.linksSourceArr && typeof this.linksSourceArr[key] !== "undefined") ? key:key1;
+                if (typeof this.linksSourceArr[prcessKey] !== "undefined") {
+                  this.linksSourceArr[prcessKey].push(row[j]);
+                } else {
+                  this.linksSourceArr[key] = [];
+                  this.linksSourceArr[key].push(row[j]);
+                }
+              }
+            }
+          }
+          
+        } catch (e) {}
+      }
+      var nodelength = this.graph_data.nodes.length;
+      var linklength = this.graph_data.links.length;
+      for (var i = 0; i < nodelength; i++) {
+        for (var j = 0; j < linklength; j++) {
+          if (
+            this.graph_data.nodes[i].switch_id == this.graph_data.links[j]["source_switch"] &&
+            this.graph_data.nodes[i].switch_id == this.graph_data.links[j]["target_switch"]
+          ) {
+            this.graph_data.links[j].source = i;
+            this.graph_data.links[j].target = i;
+          } else {
+            var key = this.graph_data.links[j]["source_switch"] +"_"+this.graph_data.links[j]["target_switch"]; 
+            var key1 = this.graph_data.links[j]["target_switch"] +"_"+this.graph_data.links[j]["source_switch"]; 
+            var processKey = this.linksSourceArr && typeof this.linksSourceArr[key] !='undefined' ? key: key1;
+            var sourceObj = processKey.split("_")[0];
+            var targetObj = processKey.split("_")[1];
+            if (this.graph_data.nodes[i].switch_id == sourceObj) {
+              this.graph_data.links[j].source = i;
+            } else if (
+              this.graph_data.nodes[i].switch_id == targetObj
+            ) {
+              this.graph_data.links[j].target = i;
+            }
+          }
+        }
+      }
+
+
+
+    this.simulation.nodes(this.graph_data.nodes);
+    this.simulation.force("link", d3.forceLink().links(this.graph_data.links).distance((d:any)=>{
       let distance = 150;
        try{
       if(!d.flow_count){
@@ -110,8 +165,8 @@ export class TopologyGraphService {
       .scalePow()
       .exponent(1)
       .domain(d3.range(1));
-	  this.insertNodes(data.nodes,true);
-	  this.insertLinks(data.links,true);
+	  this.insertNodes(this.graph_data.nodes,true);
+	  this.insertLinks(this.graph_data.links,true);
 	  this.svgElement.call(this.zoom);  
 	  this.svgElement.on("dblclick.zoom", null);
 	  this.simulation.restart();
@@ -215,7 +270,7 @@ export class TopologyGraphService {
       .append("text")
       .attr("dy", ".35em")
       .style("font-size", this.graphOptions.nominal_text_size + "px")
-      .attr("class", "switchname hide");
+      .attr("class", "switchname");
     if (this.graphOptions.text_center) {
       text
         .text(function(d) {
@@ -753,21 +808,245 @@ export class TopologyGraphService {
     var win = window.open(url,'_blank');
     win.focus();
   };
-  
+  isObjEquivalent(a, b) {
+    // Create arrays of property names
+    var aProps = Object.getOwnPropertyNames(a);
+    var bProps = Object.getOwnPropertyNames(b);
+    if (aProps.length != bProps.length) {
+      return false;
+    }
+
+    for (var i = 0; i < aProps.length; i++) {
+      var propName = aProps[i];
+      if (a[propName] !== b[propName]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+  private sortLinks() {
+    this.graph_data.links.sort(function(a, b) {
+      if (a.source > b.source) {
+        return 1;
+      } else if (a.source < b.source) {
+        return -1;
+      } else {
+        if (a.target > b.target) {
+          return 1;
+        }
+        if (a.target < b.target) {
+          return -1;
+        } else {
+          return 0;
+        }
+      }
+    });
+  }
+
+  private setLinkIndexAndNum() {
+    for (var i = 0; i < this.graph_data.links.length; i++) {
+      if (
+        i != 0 &&
+        this.graph_data.links[i].source == this.graph_data.links[i - 1].source &&
+        this.graph_data.links[i].target == this.graph_data.links[i - 1].target
+      ) {
+        this.graph_data.links[i].linkindex = this.graph_data.links[i - 1].linkindex + 1;
+      } else {
+        this.graph_data.links[i].linkindex = 1;
+      }
+      // save the total number of links between two nodes
+      if (
+        this.mLinkNum[this.graph_data.links[i].target + "," + this.graph_data.links[i].source] !==
+        undefined
+      ) {
+        this.mLinkNum[
+          this.graph_data.links[i].target + "," + this.graph_data.links[i].source
+        ] = this.graph_data.links[i].linkindex;
+      } else {
+        this.mLinkNum[
+          this.graph_data.links[i].source + "," + this.graph_data.links[i].target
+        ] = this.graph_data.links[i].linkindex;
+      }
+    }
+  }
   ticked() {
 	  let ref = this;
     var lookup = {};
     this.graphlink.attr("d", d => {
-	  return (
-		"M" +
-		d.source.x +
-		"," +
-		d.source.y +
-		"L" +
-		d.target.x +
-		"," +
-		d.target.y
-	  );
+      var islCount = 0;
+      var matchedIndex = 1;
+      var key = d.source_switch + "_" + d.target_switch;
+      var key1 =  d.target_switch + "_" + d.source_switch;
+      var processKey = ( this.linksSourceArr && typeof this.linksSourceArr[key] !== "undefined") ? key:key1;
+      if (
+        this.linksSourceArr &&
+        typeof this.linksSourceArr[processKey] !== "undefined"
+      ) {
+        islCount = this.linksSourceArr[processKey].length;
+      }
+      if (islCount > 1) {
+        this.linksSourceArr[processKey].map(function(o, i) {
+          if (ref.isObjEquivalent(o, d)) {
+            matchedIndex = i + 1;
+            return;
+          }
+        });
+      }
+    
+      var x1 = d.source.x,
+        y1 = d.source.y,
+        x2 = d.target.x,
+        y2 = d.target.y,
+        dx = x2 - x1,
+        dy = y2 - y1,
+        dr = Math.sqrt(dx * dx + dy * dy),
+        // Defaults for normal edge.
+        drx = dr,
+        dry = dr,
+        xRotation = 0, // degrees
+        largeArc = 0, // 1 or 0
+        sweep = 1; // 1 or 0
+      var lTotalLinkNum =
+        this.mLinkNum[d.source.index + "," + d.target.index] ||
+        this.mLinkNum[d.target.index + "," + d.source.index];
+
+      if (lTotalLinkNum > 1) {
+        dr = dr / (1 + (1 / lTotalLinkNum) * (d.linkindex - 1));
+      }
+
+      // generate svg path
+
+      lookup[d.key] = d.flow_count;
+      if (lookup[d.Key] == undefined) {
+        if (islCount == 1) {
+          return (
+            "M" +
+            d.source.x +
+            "," +
+            d.source.y +
+            "L" +
+            d.target.x +
+            "," +
+            d.target.y
+          );
+        } else {
+          if (islCount % 2 != 0 && matchedIndex == 1) {
+            return (
+              "M" +
+              d.source.x +
+              "," +
+              d.source.y +
+              "L" +
+              d.target.x +
+              "," +
+              d.target.y
+            );
+          } else if (matchedIndex % 2 == 0) { 
+            return (
+              "M" +
+              d.source.x +
+              "," +
+              d.source.y +
+              "A" +
+              dr +
+              "," +
+              dr +
+              " 0 0 1," +
+              d.target.x +
+              "," +
+              d.target.y +
+              "A" +
+              dr +
+              "," +
+              dr +
+              " 0 0 0," +
+              d.source.x +
+              "," +
+              d.source.y
+            );
+          } else {  
+            return (
+              "M" +
+              d.source.x +
+              "," +
+              d.source.y +
+              "A" +
+              dr +
+              "," +
+              dr +
+              " 0 0 0," +
+              d.target.x +
+              "," +
+              d.target.y +
+              "A" +
+              dr +
+              "," +
+              dr +
+              " 0 0 1," +
+              d.source.x +
+              "," +
+              d.source.y
+            );
+          }
+        }
+      } else {
+        if (d.source_switch == d.target_switch) {
+          // Self edge.
+          if (x1 === x2 && y1 === y2) {
+            // Fiddle with this angle to get loop oriented.
+            xRotation = -45;
+
+            // Needs to be 1.
+            largeArc = 1;
+
+            // Change sweep to change orientation of loop.
+            //sweep = 0;
+
+            // Make drx and dry different to get an ellipse
+            // instead of a circle.
+            drx = 50;
+            dry = 20;
+
+            // For whatever reason the arc collapses to a point if the beginning
+            // and ending points of the arc are the same, so kludge it.
+            x2 = x2 + 1;
+            y2 = y2 + 1;
+          }
+
+          return (
+            "M" +
+            x1 +
+            "," +
+            y1 +
+            "A" +
+            drx +
+            "," +
+            dry +
+            " " +
+            xRotation +
+            "," +
+            largeArc +
+            "," +
+            sweep +
+            " " +
+            x2 +
+            "," +
+            y2
+          );
+        } else {
+          return (
+            "M" +
+            d.source.x +
+            "," +
+            d.source.y +
+            "L" +
+            d.target.x +
+            "," +
+            d.target.y
+          );
+        }
+      }
     });
 
     this.graphNodes.attr("transform", function(d) {
