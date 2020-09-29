@@ -259,6 +259,7 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Src switch is only left with 1 management controller (no stats controllers)"
         def regionToStay = srcSwitch.regions.find { flHelper.getFlByRegion(it).mode == RW }
         def blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
+        switchHelper.waitForSwitchFlConnection(srcSwitch, false, flHelper.getFlsByRegions(srcSwitch.regions - regionToStay))
 
         and: "Generate traffic on the given flow"
         Date startTime = new Date()
@@ -283,6 +284,7 @@ class MflStatSpec extends HealthCheckSpecification {
         lockKeeper.reviveSwitch(srcSwitch, blockData)
         regionToStay = srcSwitch.regions.find { flHelper.getFlByRegion(it).mode == RW && it != regionToStay }
         blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
+        switchHelper.waitForSwitchFlConnection(srcSwitch, false, flHelper.getFlsByRegions(srcSwitch.regions - regionToStay))
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -302,6 +304,7 @@ class MflStatSpec extends HealthCheckSpecification {
         lockKeeper.reviveSwitch(srcSwitch, blockData)
         regionToStay = srcSwitch.regions.find { flHelper.getFlByRegion(it).mode == RO }
         blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
+        switchHelper.waitForSwitchFlConnection(srcSwitch, false, flHelper.getFlsByRegions(srcSwitch.regions - regionToStay))
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -319,6 +322,7 @@ class MflStatSpec extends HealthCheckSpecification {
         lockKeeper.reviveSwitch(srcSwitch, blockData)
         regionToStay = srcSwitch.regions.find { flHelper.getFlByRegion(it).mode == RO && it != regionToStay }
         blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
+        switchHelper.waitForSwitchFlConnection(srcSwitch, false, flHelper.getFlsByRegions(srcSwitch.regions - regionToStay))
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))

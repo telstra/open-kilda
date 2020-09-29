@@ -1,14 +1,14 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.junit.Assume.assumeFalse
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_COMPLETE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -74,31 +74,34 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(SMOKE)
-    def "Flow is set to Degraded state when there is no available bandwidth on alternative paths"() {
+    def "Flow is rerouted even if there is no available bandwidth on alternative path, sets status to Degraded"() {
         given: "A flow with one alternative path at least"
-        def (FlowRequestV2 flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
+        def (FlowRequestV2 flow, List<List<PathNode>> allFlowPaths) = noIntermediateSwitchFlow(1, true)
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
-        def bwIsChanged = false
         def isls = topology.islsForActiveSwitches
 
-        and: "Not enough bandwidth on isls to host the flow"
-        isls.each {
+        and: "Alt path ISLs have not enough bandwidth to host the flow"
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def altPaths = allFlowPaths.findAll { it != currentPath }
+        def involvedIsls = pathHelper.getInvolvedIsls(currentPath)
+        def altIsls = altPaths.collectMany { pathHelper.getInvolvedIsls(it).findAll { !(it in involvedIsls || it.reversed in involvedIsls) } }
+                .unique { a, b -> (a == b || a == b.reversed) ? 0 : 1 }
+        altIsls.each {
             database.updateIslAvailableBandwidth(it, flow.maximumBandwidth - 1)
             database.updateIslAvailableBandwidth(it.reversed, flow.maximumBandwidth - 1)
         }
-        bwIsChanged = true
+        def bwIsChanged = true
 
         when: "Fail a flow ISL (bring switch port down)"
         Set<Isl> altFlowIsls = []
         def flowIsls = pathHelper.getInvolvedIsls(flowPath)
         allFlowPaths.findAll { it != flowPath }.each { altFlowIsls.addAll(pathHelper.getInvolvedIsls(it)) }
         def islToFail = flowIsls.find { !(it in altFlowIsls) && !(it.reversed in altFlowIsls) }
-        def portDown = false
-        antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        portDown = true
+        def portDown = antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
+
         then: "The flow was rerouted after reroute delay"
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+        wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
             assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
             def newIsls = pathHelper.getInvolvedIsls(flow.flowId)
@@ -108,31 +111,40 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
             }
         }
 
+        and: "Flow history shows two reroute attempts, second one succeeds with ignore bw"
+        def history = northbound.getFlowHistory(flow.flowId)
+        history[-2].payload.last().action == REROUTE_FAIL
+        history[-2].payload.last().details.startsWith("Not enough bandwidth or no path found. "+
+            "Failed to find path with requested bandwidth=$flow.maximumBandwidth:")
+        history[-1].payload.last().action == REROUTE_COMPLETE
+
         when: "Bandwidth is restored"
         isls.each {
             database.resetIslBandwidth(it)
             database.resetIslBandwidth(it.reversed)
         }
         bwIsChanged = false
+
         and: "isl is back online"
-        antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        portDown = false
-        then: "Flow is back to up state"
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+        def portUp = antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
+
+        then: "Flow is rerouted and back to up state"
+        wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
         cleanup: "Revive the ISL back (bring switch port up) and delete the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
         if (bwIsChanged) {
             isls.each {
                 database.resetIslBandwidth(it)
                 database.resetIslBandwidth(it.reversed)
             }
         }
-        if (portDown) {
+        if (portDown && !portUp) {
             antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         }
-        flowHelperV2.deleteFlow(flow.flowId)
+        database.resetCosts()
     }
 
     @Tidy
@@ -410,82 +422,6 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         and: "Bring flow ports up and delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
         ["source", "destination"].each { antiflap.portUp(flow."$it".switchId, flow."$it".portNumber) }
-        database.resetCosts()
-    }
-
-    def "System doesn't reroute flow to a path with not enough bandwidth available"() {
-        given: "A flow with alt path available"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
-                assumeTrue("No suiting switches found", false)
-
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
-
-        and: "Bring all ports down on the source switch that are not involved in the current and alternative paths"
-        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
-        def altPath = switchPair.paths.find { it != currentPath }
-        List<PathNode> broughtDownPorts = []
-        switchPair.paths.findAll { it != currentPath }
-                .unique { it.first() }
-                .each { path ->
-                    def src = path.first()
-                    broughtDownPorts.add(src)
-                    antiflap.portDown(src.switchId, src.portNo)
-                }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
-
-        when: "Make alt path ISLs to have not enough bandwidth to handle the flow"
-        def altIsls = pathHelper.getInvolvedIsls(altPath)
-        altIsls.each {
-            database.updateIslAvailableBandwidth(it, flow.maximumBandwidth - 1)
-            database.updateIslAvailableBandwidth(it.reversed, flow.maximumBandwidth - 1)
-        }
-
-        and: "Break isl on the main path(bring port down on the source switch) to init auto reroute"
-        def islToBreak = pathHelper.getInvolvedIsls(currentPath).first()
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(antiflapMin + 2) {
-            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.FAILED
-        }
-
-        then: "Flow state is changed to DOWN"
-        Wrappers.wait(WAIT_OFFSET) {
-            def flowInfo = northboundV2.getFlow(flow.flowId)
-            assert flowInfo.status == FlowState.DOWN.toString()
-            assert flowInfo.statusInfo == "Not enough bandwidth or no path found. Failed to\
- find path with requested bandwidth=$flow.maximumBandwidth: Switch $flow.source.switchId doesn't have links with enough bandwidth"
-            assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
-        }
-
-        and: "System retries to reroute the flow with ignored bandwidth"
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlow(flow.flowId).statusInfo == "No path found. Failed to find path with requested \
-bandwidth= ignored: Switch $flow.source.switchId doesn't have links with enough bandwidth"
-            assert northbound.getFlowHistory(flow.flowId).find {
-                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
-            }?.payload?.last()?.action == REROUTE_FAIL
-        }
-
-        and: "Flow is not rerouted"
-        Wrappers.timedLoop(rerouteDelay) {
-            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
-        }
-
-        and: "Cleanup: Restore topology, delete flow and reset costs/bandwidth"
-        flowHelperV2.deleteFlow(flow.flowId)
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
-        altIsls.each {
-            database.resetIslBandwidth(it)
-            database.resetIslBandwidth(it.reversed)
-        }
         database.resetCosts()
     }
 

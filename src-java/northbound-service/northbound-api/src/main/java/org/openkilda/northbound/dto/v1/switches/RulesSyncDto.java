@@ -15,6 +15,7 @@
 
 package org.openkilda.northbound.dto.v1.switches;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -46,4 +47,14 @@ public class RulesSyncDto extends RulesValidationDto {
 
     @JsonProperty("removed")
     private List<Long> removed;
+
+    @JsonGetter("installed-hex")
+    public List<String> getInstalledHex() {
+        return toHex(installed);
+    }
+
+    @JsonGetter("removed-hex")
+    public List<String> getRemovedHex() {
+        return toHex(removed);
+    }
 }

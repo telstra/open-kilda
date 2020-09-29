@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.72.0 (28/09/2020)
+
+### Features:
+-  [#3728](https://github.com/telstra/open-kilda/pull/3728) update port/vlan should not cause reroute [**floodlight**][**tests**]
+-  [#3730](https://github.com/telstra/open-kilda/pull/3730) Added encapsulation_type and path_computation_strategy to /v1/network/paths API [**api**][**northbound**][**storm-topologies**]
+
+
+### Improvements:
+-  [#3709](https://github.com/telstra/open-kilda/pull/3709) Cleanup outdated kafka-topic references 
+-  [#3726](https://github.com/telstra/open-kilda/pull/3726) add template functional-tests.log4j2.toml [**tests**]
+-  [#3698](https://github.com/telstra/open-kilda/pull/3698) Fix gui build 
+-  [#3699](https://github.com/telstra/open-kilda/pull/3699) Debug logging toggle for storm topologies 
+-  [#3741](https://github.com/telstra/open-kilda/pull/3741) Hex view for switch field representing cookies [**api**][**northbound**]
+
+### Other changes:
+-  [#3713](https://github.com/telstra/open-kilda/pull/3713) Update functional tests. minor improvements [**tests**]
+-  [#3460](https://github.com/telstra/open-kilda/pull/3460) Document solutions for migration to another data storage (Issue: [#940](https://github.com/telstra/open-kilda/issues/940)) [**docs**]
+-  [#3705](https://github.com/telstra/open-kilda/pull/3705) Add design for flow loop feature [**docs**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.71.1...v1.72.0).
+
+### Affected Components:
+gui, fl, flow-hs, nb, nbworker
+
+---
+
 ## v1.71.1 (23/09/2020)
 
 ### Bug Fixes:
