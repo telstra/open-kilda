@@ -2387,6 +2387,7 @@ width:100%;
   display: inline-block;
   width: 100%;
   cursor: pointer;
+  z-index:1;  
 }
 
 .sidebar-toggle:hover .icon-group .fa {
