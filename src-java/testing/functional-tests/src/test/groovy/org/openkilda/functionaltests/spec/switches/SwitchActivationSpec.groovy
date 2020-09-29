@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.messaging.info.event.SwitchChangeType.ACTIVATED
@@ -43,7 +44,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
     @Autowired
     SwitchHelper switchHelper
 
-    @Tags([SMOKE, SMOKE_SWITCHES])
+    @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER])
     def "Missing flow rules/meters are installed on a new switch before connecting to the controller"() {
         given: "A switch with missing flow rules/meters and not connected to the controller"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -131,7 +132,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tags([SMOKE, SMOKE_SWITCHES])
+    @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER])
     def "New connected switch is properly discovered with related ISLs in a reasonable time"() {
         setup: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
         def sw = topology.activeSwitches.first()
