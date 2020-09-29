@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.72.1 (29/09/2020)
+
+### Bug Fixes:
+-  [#3746](https://github.com/telstra/open-kilda/pull/3746) Hotfix/world map issues (Issue: [#3742](https://github.com/telstra/open-kilda/issues/3742)) [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.72.0...v1.72.1).
+
+### Affected Components:
+gui
+
+---
+
 ## v1.72.0 (28/09/2020)
 
 ### Features:
