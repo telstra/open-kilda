@@ -17,5 +17,6 @@ ARG base_image=kilda/base-ubuntu
 FROM ${base_image}
 
 ADD BUILD/grpc-service/libs/grpc-service.jar /app/
+ADD BUILD/grpc-service/resources/log4j2.xml /app
 WORKDIR /app
 CMD ["java", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", "-jar", "grpc-service.jar"]
