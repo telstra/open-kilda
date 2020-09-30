@@ -4,6 +4,7 @@
 #include <chrono>
 #include <map>
 #include <random>
+#include <thread>
 
 #include <netinet/in.h>
 
@@ -28,6 +29,7 @@
 #include "Config.h"
 #include "Payload.h"
 
+using namespace std::literals::chrono_literals;
 
 namespace org::openkilda {
 
@@ -174,6 +176,9 @@ namespace org::openkilda {
                         rte_ring_mc_dequeue_bulk(rx_ring.get(), mbuf_table_prt, Config::chunk_size, nullptr);
 
                 if (unlikely(table_size == 0)) {
+                    BOOST_LOG_TRIVIAL(debug) << "process_thread table_size 0";
+                    socket.send(zmq::str_buffer(""), zmq::send_flags::dontwait);
+                    std::this_thread::sleep_for(100ms);
                     continue;
                 }
 
@@ -247,7 +252,7 @@ namespace org::openkilda {
                      * the socket shall block until the mute state ends or at least one downstream node becomes available
                      * for sending; messages are not discarded.
                      */
-                    while (!socket.send(message, ZMQ_DONTWAIT) && alive) {}
+                    while (!socket.send(message, zmq::send_flags::dontwait) && alive) {}
 
                 } else {
                     BOOST_LOG_TRIVIAL(info) << "flow_bucket packet_size==0 " << bucket.DebugString() << "\n" << std::flush;
