@@ -54,7 +54,7 @@ public class StatsServer extends Thread {
     private static final int MIN_DELTA_LATENCY = 10;
     private static final int MAX_DELTA_LATENCY = 100;
 
-    private Map<String, FlowStats> flows = new HashMap<>();
+    private Map<FlowKey, FlowStats> flows = new HashMap<>();
     private long tickSize = 500;
 
     @org.springframework.beans.factory.annotation.Value("${openkilda.server42.control.zeromq.stats.server.endpoint}")
@@ -120,11 +120,11 @@ public class StatsServer extends Thread {
                 .baseLatency(generatedLatency)
                 .build();
 
-        flows.put(flow.getFlowId(), flowStats);
+        flows.put(FlowKey.fromFlow(flow), flowStats);
     }
 
-    public synchronized void removeFlow(String flowId) {
-        flows.remove(flowId);
+    public synchronized void removeFlow(FlowKey flowKey) {
+        flows.remove(flowKey);
     }
 
     public synchronized void clearFlows() {

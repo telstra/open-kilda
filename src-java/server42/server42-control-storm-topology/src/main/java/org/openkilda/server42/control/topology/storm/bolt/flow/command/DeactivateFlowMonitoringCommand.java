@@ -21,14 +21,16 @@ import org.openkilda.server42.control.topology.storm.bolt.flow.FlowHandler;
 
 public class DeactivateFlowMonitoringCommand extends FlowCommand {
     private final String flowId;
+    private final boolean isForward;
 
-    public DeactivateFlowMonitoringCommand(SwitchId switchId, String flowId) {
+    public DeactivateFlowMonitoringCommand(SwitchId switchId, String flowId, boolean isForward) {
         super(switchId);
         this.flowId = flowId;
+        this.isForward = isForward;
     }
 
     @Override
     public void apply(FlowHandler handler) {
-        handler.processDeactivateFlowMonitoring(getSwitchId(), flowId);
+        handler.processDeactivateFlowMonitoring(getSwitchId(), flowId, isForward);
     }
 }

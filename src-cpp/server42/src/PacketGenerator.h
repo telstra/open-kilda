@@ -26,7 +26,9 @@ namespace org::openkilda {
         }
     };
 
-    typedef FlowPool<MBufAllocator> flow_pool_t;
+    enum class flow_id_members { flow_id, direction };
+    using flow_id_t = std::tuple<std::string, bool>;
+    using flow_pool_t = FlowPool<MBufAllocator, flow_id_t>;
 
     struct FlowCreateArgument{
         flow_pool_t& flow_pool;
@@ -40,6 +42,16 @@ namespace org::openkilda {
     };
 
     void generate_and_add_packet_for_flow(const FlowCreateArgument& arg);
+
+    inline flow_id_t get_flow_id(const std::string& flow_id, bool direction)
+    {
+        return std::make_tuple(flow_id, direction);
+    }
+
+    inline flow_id_t get_flow_id(const FlowCreateArgument& flow)
+    {
+        return get_flow_id(flow.flow_id, flow.direction);
+    }
 }
 
 #endif //SERVER42_PACKETGENERATOR_H
