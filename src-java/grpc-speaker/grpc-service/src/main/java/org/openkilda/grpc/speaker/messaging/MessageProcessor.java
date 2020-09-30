@@ -131,7 +131,7 @@ public class MessageProcessor {
             GetPacketInOutStatsRequest request, PacketInOutStatsResponse stats, String correlationId, String key) {
         GetPacketInOutStatsResponse data = new GetPacketInOutStatsResponse(
                 request.getSwitchId(), responseMapper.map(stats));
-        sendResponse(data, correlationId, key);
+        sendResponse(data, correlationId, key, statsTopic);
     }
 
     private void handleDeleteLogicalPortRequest(DeleteLogicalPortRequest command, String correlationId, String key) {
@@ -147,8 +147,12 @@ public class MessageProcessor {
     }
 
     private void sendResponse(InfoData data, String correlationId, String key) {
+        sendResponse(data, correlationId, key, grpcResponseTopic);
+    }
+
+    private void sendResponse(InfoData data, String correlationId, String key, String topic) {
         InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), correlationId);
-        messageProducer.send(grpcResponseTopic, key, message);
+        messageProducer.send(topic, key, message);
     }
 
     private void sendErrorResponse(GrpcRequestFailureException ex, String correlationId, String key) {
