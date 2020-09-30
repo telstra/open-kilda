@@ -47,7 +47,7 @@ export class TopologyGraphService {
     this.svgElement = d3.select("#"+svgElement)
 	.append("svg")
 	.attr("width", width)
-	.attr("height", height);
+  .attr("height", height)
 	this.g =this.svgElement.append("g");
 
 	this.graphLinkGroup = this.g
@@ -83,7 +83,7 @@ export class TopologyGraphService {
       .force("charge_force",d3.forceManyBody().strength(-1000))
       .force("xPos", d3.forceX(width /2))
       .force("yPos", d3.forceY(height / 2)) ; 
-      if (data.links.length > 0) {
+      if (this.graph_data.links.length > 0) {
         try {
           var result = this.commonService.groupBy(this.graph_data.links, function(item) {
             return [item.source_switch, item.target_switch];
@@ -307,7 +307,6 @@ export class TopologyGraphService {
   if(!forMap){
     graphNodeElement.on("mouseover", function(d, index) {
       $("#isl_hover").css("display", "none");
-
       var element = document.getElementById("circle_" + d.switch_id);
 
       var classes = "circle blue hover";

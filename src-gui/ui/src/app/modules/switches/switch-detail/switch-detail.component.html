@@ -4,6 +4,8 @@
     <div id="switchdetails_div">
       <h5 class="modal-title mb-2">SWITCH DETAILS
         <span  class="btn btn-dark btn-sm pull-right" *ngIf="commonService.hasPermission('sw_switch_delete')" (click)="deleteSwitch()">Delete</span> 
+        <span  class="btn btn-dark btn-sm pull-right mr-3" *ngIf="commonService.hasPermission('sw_switch_location_update')"  (click)="editSwitchLocation()">Edit</span> 
+       
         <div class="clear clearfix"></div>    
 
       </h5>
@@ -52,62 +54,44 @@
               </div>
             </div>
           </div>
-          <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Pop Location :</label>
-          <p *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['pop-location'] && switchDetail['pop-location']['pop-code'] ? switchDetail['pop-location']['pop-code'] : '-'}}</p>
-        
-        </div>
-        <div class="row">
           <label class="col-sm-2 col-form-label">Hostname:</label>
           <p class="col-sm-4 copy_to_clipBoard switchdetails_div_hostname col-form-label" [contextMenu]="copyTrgSwitchName">{{ switchDetail['hostname'] || '-' }}</p>
-          <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Rack Number:</label>
-          <p *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['rack-number'] || '-' }}</p>
+         
+         
         </div>
+       
         <div class="row">
           <label class="col-sm-2 col-form-label">Address:</label>
           <p class="col-sm-4 switchdetails_div_address col-form-label">{{ switchDetail['address'] || '-' }}</p>
-          <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Rack Location:</label>
-          <p *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['rack-location'] || '-' }}</p>
-        
-        </div>
-        <div class="row">
           <label class="col-sm-2 col-form-label">Description:</label>
           <p class="col-sm-4 switchdetails_div_desc col-form-label">{{ switchDetail['description'] || '-' }}</p>
-          <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Model:</label>
-          <p  *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['model'] || '-' }}</p>
-        
+         
         </div>
+       
         <div class="row">
           <label class="col-sm-2 col-form-label">State:</label>
           <p class="col-sm-4 switchdetails_div_state col-form-label">{{ switchDetail['state'] || '-' }}
             <i title="Controller : {{descrepancyData.status.controller}}, Inventory : {{descrepancyData.status.inventory}}" *ngIf="hasStoreSetting && statusDescrepancy" class="fa fa-exclamation-triangle text-orange"></i>
           </p>
-          <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Serial:</label>
-          <p *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['serial-number'] || '-' }}</p>
-        
-         </div>
-        <div class="row" *ngIf="hasStoreSetting">
           <label class="col-sm-2 col-form-label">Manufacturer:</label>
           <p class="col-sm-4 switchdetails_div_address col-form-label">{{ switchDetail['manufacturer'] || '-' }}</p>
-          <label class="col-sm-2 col-form-label">Software Version:</label>
-          <p class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['software'] || switchDetail['software-version'] || '-' }}</p>
-        </div>
-        
-        <div class="row">
+         </div>
+         <div class="row">
           <label class="col-sm-2 col-form-label">Hardware:</label>
           <p class="col-sm-4 switchdetails_div_address col-form-label">{{ switchDetail['hardware'] || '-' }}</p>
           <label class="col-sm-2 col-form-label">Of Version:</label>
           <p class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['of_version'] || '-' }}</p>
         </div>
+        
+<!--         
+        
         <div class="row" *ngIf="!hasStoreSetting">
           <label class="col-sm-2 col-form-label">Software Version:</label>
            <p class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['software'] || switchDetail['software-version'] || '-' }}</p>
-        </div>
-        <div class="row" *ngIf="hasStoreSetting">
-          <label class="col-sm-2 col-form-label">Ref URL:</label>
-          <p class="col-sm-4 switchdetails_div_address col-form-label">
-            <a *ngIf="!switchDetail['reference-url']">-</a>
-            <a *ngIf="switchDetail['reference-url']" href="{{ switchDetail['reference-url'] }}" target="blank">{{ switchDetail['reference-url'] }}</a>
-          </p>
+        </div> -->
+        <div class="row">
+          <label class="col-sm-2 col-form-label">Software Version:</label>
+          <p class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['software'] || switchDetail['software-version'] || '-' }}</p>
         </div>
         <div class="row" *ngIf="commonService.hasPermission('sw_switch_maintenance') &&  !switchDetail['inventory-switch']">
             <label class="col-sm-2 col-form-label">Evacuate:</label>
@@ -134,11 +118,52 @@
         <div class="row">
           <label class="col-sm-2 col-form-label">Sum(Bandwidth) Of Flows(Mbps):</label>
           <p class="col-sm-4 switchdetails_div_no_of_flows col-form-label" >{{ (!flowBandwidthFlag) ?  flowBandwidthSum : 'loading..'  }}</p>
-       </div>
-       <div class="row">
-        <label class="col-sm-2 col-form-label">Number of Flows:</label>
-        <p class="col-sm-4 switchdetails_div_no_of_flows col-form-label" >{{ (switchFlows && (switchFlows.length || switchFlows.length == 0)) ?  switchFlows.length : 'loading..'  }}</p>
+          <label class="col-sm-2 col-form-label">Number of Flows:</label>
+          <p class="col-sm-4 switchdetails_div_no_of_flows col-form-label" >{{ (switchFlows && (switchFlows.length || switchFlows.length == 0)) ?  switchFlows.length : 'loading..'  }}</p>
+     </div> 
+     <div class="row">
+      <label class="col-sm-2 col-form-label">Pop:</label>
+      <p *ngIf="!isSwitchLocationEdit" class="col-sm-4  col-form-label" >{{ (switchDetail.pop) ? switchDetail.pop : "-" }}</p>
+      <input *ngIf="isSwitchLocationEdit" type="text" name="pop" formControlName="pop"  class="col-sm-4  col-form-label">
+       <label class="col-sm-2 col-form-label">Latitude:</label>
+        <p *ngIf="!isSwitchLocationEdit" class="col-sm-4  col-form-label" >{{ (switchDetail['location'] && switchDetail['location'].latitude) ? switchDetail['location'].latitude : 0 }}</p>
+    </div>
+    <div class="row">
+        <label class="col-sm-2 col-form-label">Longitude:</label>
+        <p *ngIf="!isSwitchLocationEdit" class="col-sm-4  col-form-label" >{{ (switchDetail['location'] && switchDetail['location'].longitude) ? switchDetail['location'].longitude : 0 }}</p>
+     <label class="col-sm-2 col-form-label">Street:</label>
+      <p *ngIf="!isSwitchLocationEdit" class="col-sm-4  col-form-label" >{{ (switchDetail['location'] && (switchDetail['location'].street) !='undefined' && switchDetail['location'].street != '') ? switchDetail['location'].street || "-" : "-" }}</p>
+    </div>
+    <div class="row">
+      <label class="col-sm-2 col-form-label">City:</label>
+      <p *ngIf="!isSwitchLocationEdit" class="col-sm-4  col-form-label" >{{ (switchDetail['location'] && (switchDetail['location'].city) != 'undefined' && switchDetail['location'].city != '') ? switchDetail['location'].city || "-" : "-"  }}</p>
+       <label class="col-sm-2 col-form-label">Country:</label>
+      <p *ngIf="!isSwitchLocationEdit" class="col-sm-4  col-form-label" >{{ (switchDetail['location'] && (switchDetail['location'].country) !='undefined' && switchDetail['location'].country != '') ? switchDetail['location'].country || "-" : "-"  }}</p>
+    </div>
+     <div class="row" *ngIf="hasStoreSetting">
+      <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Serial:</label>
+      <p *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['serial-number'] || '-' }}</p>
+      
+      <label class="col-sm-2 col-form-label">Ref URL:</label>
+      <p class="col-sm-4 switchdetails_div_address col-form-label">
+        <a *ngIf="!switchDetail['reference-url']">-</a>
+        <a *ngIf="switchDetail['reference-url']" href="{{ switchDetail['reference-url'] }}" target="blank">{{ switchDetail['reference-url'] }}</a>
+      </p>
+   </div>
+     <div class="row">
+      <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Rack Location:</label>
+      <p *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['rack-location'] || '-' }}</p>
+    
+      <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Model:</label>
+      <p  *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['model'] || '-' }}</p>
      </div>
+     <div class="row">
+      <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Pop Location :</label>
+      <p *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['pop-location'] && switchDetail['pop-location']['pop-code'] ? switchDetail['pop-location']['pop-code'] : '-'}}</p>
+    
+      <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Rack Number:</label>
+      <p *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['rack-number'] || '-' }}</p>
+    </div>
       </div>
     </div>
     <!-- HERE -->

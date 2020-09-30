@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, NgModuleRef } from '@angular/core';
 import { SwitchService } from '../../../common/services/switch.service';
 import { SwitchidmaskPipe } from "../../../common/pipes/switchidmask.pipe";
 import { ToastrService } from 'ngx-toastr';
@@ -17,6 +17,7 @@ import { IslmaintenancemodalComponent } from 'src/app/common/components/islmaint
 import { ModalComponent } from '../../../common/components/modal/modal.component';
 import { OtpComponent } from "../../../common/components/otp/otp.component"
 import { MessageObj } from 'src/app/common/constants/constants';
+import { SwitchupdatemodalComponent } from 'src/app/common/components/switchupdatemodal/switchupdatemodal.component';
 
 @Component({
   selector: 'app-switch-detail',
@@ -367,7 +368,37 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
     this.storeSwitchService.checkSwitchStoreDetails(query);  
     
   }
-  
+
+  editSwitchLocation(){
+    var self = this;
+    var locationData = this.switchDetail.location;
+    locationData['pop'] = this.switchDetail.pop;
+    const modalRef = this.modalService.open(SwitchupdatemodalComponent);
+    modalRef.componentInstance.title = "Update Switch";
+    modalRef.componentInstance.data =locationData ;
+    modalRef.result.then((response) =>{
+     },error => {
+    })
+    modalRef.componentInstance.emitService.subscribe(
+      data => {
+          this.loaderService.show(MessageObj.apply_changes);
+          this.switchService.updateSwitch(data,this.switchId).subscribe((response)=>{
+            this.toastr.success(MessageObj.switch_updated_success,'Success');
+            this.loaderService.hide();
+            modalRef.componentInstance.activeModal.close(true);
+            this.switchDetail.pop = response.pop;
+            this.switchDetail.location = response.location;
+            
+          },error => {
+            this.loaderService.hide();
+            var message = (error && error.error && typeof error.error["error-auxiliary-message"] !='undefined') ? error.error["error-auxiliary-message"]: MessageObj.switch_updated_error;
+            this.toastr.error(message,'Error');
+          });
+      },
+      error => {
+      } 
+    );
+  }
   switchMaintenance(e){
     const modalRef = this.modalService.open(IslmaintenancemodalComponent);
     modalRef.componentInstance.title = "Confirmation";
