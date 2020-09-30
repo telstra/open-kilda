@@ -30,6 +30,7 @@ import org.openkilda.model.LinkParametersDto;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.SwitchInfo;
+import org.openkilda.model.SwitchLocation;
 import org.openkilda.model.SwitchMeter;
 import org.openkilda.model.SwitchProperty;
 import org.openkilda.service.SwitchService;
@@ -389,5 +390,22 @@ public class SwitchController {
     public @ResponseBody SwitchProperty getSwitchPortProperty(@PathVariable final String switchId, 
             @PathVariable final String port) {
         return serviceSwitch.getSwitchPortProperty(switchId, port);
+    }
+    
+
+    /**
+     * Updates switch location.
+     *
+     * @param switchId the switch id
+     * @param switchLocation the switch location
+     * @return the SwitchInfo
+     */
+    @RequestMapping(path = "/location/{switchId}", method = RequestMethod.PATCH)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = {IConstants.Permission.SW_SWITCH_LOCATION_UPDATE})
+    public @ResponseBody SwitchInfo updateSwitchLocation(@PathVariable final String switchId,
+            @RequestBody final SwitchLocation switchLocation) {
+        activityLogger.log(ActivityType.UPDATE_SWITCH_LOCATION, switchId);
+        return serviceSwitch.updateSwitchLocation(switchId, switchLocation);
     }
 }
