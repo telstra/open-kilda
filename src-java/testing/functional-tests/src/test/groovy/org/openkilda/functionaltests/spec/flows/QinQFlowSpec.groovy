@@ -6,6 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -17,6 +18,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -884,5 +886,80 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    def "System doesn't rebuild flow path to more preferable path while updating innerVlanId"() {
+        given: "Two active switches connected to traffgens with two possible paths at least"
+        def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected*.dpId ?:
+                assumeTrue("Should be at least two active traffgens connected to switches", false)
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            [it.src, it.dst].every { sw ->
+                sw.dpId in allTraffgenSwitchIds && northbound.getSwitchProperties(sw.dpId).multiTable
+            } && it.paths.size() > 2
+        } ?: assumeTrue("Not able to find enough switches with traffgens and in multi-table mode", false)
+
+        and: "A flow"
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flow.source.innerVlanId = flow.source.vlanId
+        flow.destination.innerVlanId = flow.destination.vlanId
+        flowHelperV2.addFlow(flow)
+
+        when: "Make the current path less preferable than alternatives"
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def alternativePaths = switchPair.paths.findAll { it != currentPath }
+        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
+
+        and: "Update the flow: port number and vlanId on the src/dst endpoints"
+        def updatedFlow = flow.jacksonCopy().tap {
+            it.source.innerVlanId = flow.destination.vlanId
+            it.destination.innerVlanId = flow.source.vlanId
+        }
+        flowHelperV2.updateFlow(flow.flowId, updatedFlow)
+
+        then: "Flow is really updated"
+        with(northboundV2.getFlow(flow.flowId)) {
+            it.source.innerVlanId == updatedFlow.source.innerVlanId
+            it.destination.innerVlanId == updatedFlow.destination.innerVlanId
+        }
+
+        and: "Flow is not rerouted"
+        Wrappers.timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
+            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
+        }
+
+        and: "System allows traffic on the flow"
+        def traffExam = traffExamProvider.get()
+        def examFlow = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
+                flowHelperV2.toV1(updatedFlow), 100, 5
+        )
+        withPool {
+            [examFlow.forward, examFlow.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
+            }
+        }
+
+        and: "Flow is valid"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
+        and: "All involved switches pass switch validation"
+        withPool {
+            currentPath*.switchId.eachParallel { SwitchId swId ->
+                with(northbound.validateSwitch(swId)) { validation ->
+                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                }
+            }
+        }
+        def involvedSwitchesPassSwValidation = true
+
+        cleanup: "Revert system to original state"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        !involvedSwitchesPassSwValidation && currentPath*.switchId.each { SwitchId swId ->
+            northbound.synchronizeSwitch(swId, true)
+        }
     }
 }

@@ -172,7 +172,10 @@ public class Gate {
     @KafkaHandler
     void listen(RemoveFlow data) {
         Builder builder = CommandPacket.newBuilder();
-        Flow flow = Flow.newBuilder().setFlowId(data.getFlowId()).build();
+        Flow flow = Flow.newBuilder()
+                .setFlowId(data.getFlowId())
+                .setDirection(FlowDirection.toBoolean(data.getDirection()))
+                .build();
         Control.RemoveFlow removeFlow = Control.RemoveFlow.newBuilder().setFlow(flow).build();
         builder.setType(Type.REMOVE_FLOW);
         builder.addCommand(Any.pack(removeFlow));

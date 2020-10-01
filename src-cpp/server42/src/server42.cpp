@@ -296,10 +296,10 @@ int main(int argc, char *argv[]) {
         std::this_thread::sleep_for(1ms);
         try {
             zmq::message_t request;
-            if (socket.recv(&request, ZMQ_DONTWAIT)) {
+            if (socket.recv(request, zmq::recv_flags::dontwait)) {
                 buffer_t data = handle_command_request(request.data(), request.size(), shared_context);
                 zmq::message_t message(data.data(), data.size());
-                socket.send(message);
+                socket.send(message, zmq::send_flags::none);
             }
         } catch (zmq::error_t &exception) {
             BOOST_LOG_TRIVIAL(info) << "ZMQ Exception on main loop" << exception.what();

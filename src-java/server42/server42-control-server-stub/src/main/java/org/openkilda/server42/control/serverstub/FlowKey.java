@@ -13,13 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.server42.control.topology.service;
+package org.openkilda.server42.control.serverstub;
 
-import org.openkilda.model.SwitchId;
+import org.openkilda.server42.control.messaging.flowrtt.Control.Flow;
 
-public interface IFlowCarrier {
+import lombok.Builder;
+import lombok.Value;
 
-    void notifyActivateFlowMonitoring(String id,  SwitchId switchId, Integer port, Integer vlan, boolean isForward);
+/**
+ * Key for hashmaps from flow_id and direction. Both ends of flow can be connected to the same server42 instance.
+ * https://github.com/telstra/open-kilda/issues/3695
+ */
+@Value
+@Builder
+class FlowKey {
+    String flowId;
+    boolean direction;
 
-    void notifyDeactivateFlowMonitoring(SwitchId switchId, String flowId, boolean isForward);
+    static FlowKey fromFlow(Flow flow) {
+        return FlowKey.builder().flowId(flow.getFlowId()).direction(flow.getDirection()).build();
+    }
 }

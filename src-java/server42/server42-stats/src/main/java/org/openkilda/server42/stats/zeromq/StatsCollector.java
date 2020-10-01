@@ -31,8 +31,10 @@ import org.springframework.stereotype.Service;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMQ.Socket;
+import zmq.ZError;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 
 
 @Service
@@ -45,12 +47,23 @@ public class StatsCollector extends Thread {
 
     @Value("${openkilda.server42.stats.kafka.topic.flowrtt.to_storm}")
     private String toStorm;
+    private String sessionId;
+    private ZContext context;
 
     public StatsCollector(KafkaTemplate<String, Object> template) {
         this.template = template;
     }
 
-    private String sessionId;
+    @PostConstruct
+    private void init() {
+        context = new ZContext();
+        this.start();
+    }
+
+    @PreDestroy
+    private void clear() {
+        context.close();
+    }
 
     /**
      * Connect to server42 and get statistics.
@@ -60,24 +73,32 @@ public class StatsCollector extends Thread {
         sessionId = RandomStringUtils.randomAlphanumeric(8);
         log.info("started with session id {}", sessionId);
         while (!isInterrupted()) {
-            try (ZContext context = new ZContext()) {
-                Socket server = context.createSocket(ZMQ.PULL);
-                try {
-                    server.connect(connectEndpoint);
-                    while (!isInterrupted()) {
-                        byte[] recv = server.recv();
-                        log.debug("stats recived");
-                        handleInput(recv);
+            try (Socket server = context.createSocket(ZMQ.PULL)) {
+                server.setReceiveTimeOut(1000);
+                server.connect(connectEndpoint);
+                log.info("connect to {}", connectEndpoint);
+                while (!isInterrupted()) {
+                    byte[] recv = server.recv();
+                    log.debug("recv {}", recv);
+                    if (recv == null && server.errno() == ZError.EAGAIN) {
+                        log.debug("EAGAIN received");
+                        break;
+                    } else if (recv != null && recv.length == 0) {
+                        log.debug("ping received");
+                        continue;
                     }
-                } finally {
-                    server.close();
+                    log.debug("stats received");
+                    handleInput(recv);
                 }
 
             } catch (org.zeromq.ZMQException ex) {
                 log.error(ex.toString());
+            } finally {
+                log.info("disconnected");
             }
         }
     }
+
 
     private void handleInput(byte[] recv) {
         try {
@@ -91,9 +112,7 @@ public class StatsCollector extends Thread {
         }
     }
 
-
     void sendStats(FlowLatencyPacketBucket flowLatencyPacketBucket) throws InvalidProtocolBufferException {
-
 
         long currentTimeMillis = System.currentTimeMillis();
         for (FlowLatencyPacket packet : flowLatencyPacketBucket.getPacketList()) {
@@ -109,10 +128,5 @@ public class StatsCollector extends Thread {
             log.debug("InfoMessage {}", message);
             template.send(toStorm, packet.getFlowId(), message);
         }
-    }
-
-    @PostConstruct
-    void init() {
-        this.start();
     }
 }

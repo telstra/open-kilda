@@ -1,7 +1,7 @@
 Internal data
 * ISL reference
 * BFD descriptor
-* linkStatus (initial false)
+* port status monitor
 * action
 
 Internal signals
@@ -35,23 +35,14 @@ initChoice --> IDLE : [else]
 initChoice --> INIT_REMOVE : [BFD-discriminator is set]
 
 IDLE --> INIT_SETUP : enable / save ISL reference
-IDLE --> CONFLICT : port-up
 IDLE --> UNOPERATIONAL : offline
 IDLE : enter / report ready to setup
 
 UNOPERATIONAL --> IDLE : online
 UNOPERATIONAL --> PENDING : enable
 
-CONFLICT --> IDLE : port-down
-CONFLICT --> UNOPERATIONAL : offline
-CONFLICT : enter / report conflict
-CONFLICT : enter / emit bfd-fail
-CONFLICT : enable / report conflict
-CONFLICT : disable / report conflict
-
 PENDING --> UNOPERATIONAL : disable
-PENDING --> INIT_SETUP : port-down
-PENDING --> CONFLICT : port-up
+PENDING --> INIT_SETUP : online
 PENDING : enter / save ISL reference
 
 INIT_SETUP --> IDLE : fail
@@ -63,10 +54,9 @@ DO_SETUP --> INIT_REMOVE : disable
 DO_SETUP --> SETUP_FAIL : action-fail / report error
 DO_SETUP --> SETUP_INTERRUPT : offline
 DO_SETUP --> INIT_CLEANUP : kill
+DO_SETUP : enter / clean port status transitions
 DO_SETUP : enter / make BFD-setup action
 DO_SETUP : speaker-response / proxy to action
-DO_SETUP : port-up / proxy to action
-DO_SETUP : port-down / proxy to action
 
 SETUP_FAIL --> INIT_REMOVE : disable
 SETUP_FAIL --> SETUP_INTERRUPT : offline
@@ -75,7 +65,7 @@ SETUP_FAIL : enter / report fail
 SETUP_FAIL : enter / emit bfd-fail
 SETUP_FAIL : enable / report malfunction
 
-SETUP_INTERRUPT --> SETUP_RECOVERY : port-up / set linkStatus = UP\nport-down / set linkStatus DOWN
+SETUP_INTERRUPT --> SETUP_RECOVERY : online
 SETUP_INTERRUPT --> REMOVE_INTERRUPT : disable
 
 SETUP_RECOVERY --> DO_SETUP : action-success
@@ -85,31 +75,27 @@ SETUP_RECOVERY --> DO_REMOVE : disable
 SETUP_RECOVERY --> DO_CLEANUP : kill
 SETUP_RECOVERY : enter / make BFD-remove action
 SETUP_RECOVERY : speaker-response / proxy to action
-SETUP_RECOVERY : port-up / proxy to action
-SETUP_RECOVERY : port-down / proxy to action
 
 state ACTIVE {
-    [*] --> UP
+    [*] --> WAIT_STATUS
+
+    WAIT_STATUS --> UP : port-up
+    WAIT_STATUS --> DOWN : port-down
+    WAIT_STATUS : enter / pull port status transition
 
     UP -r-> DOWN : port-down
     UP : enter / emit bfd-up
-    UP : enter / set linkStatus = UP
 
     DOWN -l-> UP : port-up
     DOWN : enter / emit bfd-down
-    DOWN : enter / set linkStatus = DOWN
 }
 ACTIVE --> OFFLINE : offline
 ACTIVE --> INIT_REMOVE : disable
 ACTIVE --> INIT_CLEANUP : kill
+ACTIVE : exit / clean port status transitions
 ACTIVE : exit / emit bfd-kill
 
-ACTIVE_RECOVERY --> OFFLINE : offline
-ACTIVE_RECOVERY --> ACTIVE : port-up
-ACTIVE_RECOVERY --> INIT_REMOVE : disable
-ACTIVE_RECOVERY --> INIT_CLEANUP : kill
-
-OFFLINE --> ACTIVE_RECOVERY : online
+OFFLINE --> ACTIVE : online
 OFFLINE --> REMOVE_INTERRUPT : disable
 
 INIT_REMOVE --> DO_REMOVE : next
@@ -121,8 +107,6 @@ DO_REMOVE --> REMOVE_INTERRUPT : offline
 DO_REMOVE --> DO_CLEANUP : kill
 DO_REMOVE --> CHARGED : enable / save ISL reference
 DO_REMOVE : speaker-response / proxy to action
-DO_REMOVE : port-up / proxy to action
-DO_REMOVE : port-down / proxy to action
 
 REMOVE_FAIL --> CHARGED_FAIL: enable / save ISL reference
 REMOVE_FAIL --> REMOVE_INTERRUPT : offline
@@ -130,7 +114,7 @@ REMOVE_FAIL : enter / report fail
 REMOVE_FAIL : enter / emit bfd-fail
 REMOVE_FAIL : disable / report malfunction
 
-REMOVE_INTERRUPT --> INIT_REMOVE : port-up / set linkStatus = UP\nport-down / set linkStatus DOWN
+REMOVE_INTERRUPT --> INIT_REMOVE : online
 REMOVE_INTERRUPT --> CHARGED_INTERRUPT : enable / save ISL reference
 
 CHARGED --> INIT_SETUP : action-success / release BFD-descriptor
@@ -139,14 +123,12 @@ CHARGED --> DO_REMOVE : disable
 CHARGED --> CHARGED_INTERRUPT : offline
 CHARGED --> DO_CLEANUP : kill
 CHARGED : speaker-response / proxy to action
-CHARGED : port-up / proxy to action
-CHARGED : port-down / proxy to action
 
 CHARGED_FAIL --> CHARGED_INTERRUPT : offline
 CHARGED_FAIL --> REMOVE_FAIL : disable
 CHARGED_FAIL : enable / report malfunction
 
-CHARGED_INTERRUPT --> CHARGED_RECOVERY : port-up / set linkStatus = UP\nport-down / set linkStatus DOWN
+CHARGED_INTERRUPT --> CHARGED_RECOVERY : online
 CHARGED_INTERRUPT --> REMOVE_INTERRUPT : disable
 
 CHARGED_RECOVERY --> CHARGED : next
@@ -156,7 +138,6 @@ INIT_CLEANUP --> DO_CLEANUP : next
 INIT_CLEANUP : enter / make BFD-remove action
 
 DO_CLEANUP --> [*] : action-success / release BFD-descriptor\naction-fail / report error
-DO_CLEANUP : enter / action.updateLinkStatus(DOWN)
 DO_CLEANUP : speaker-response / proxy to action
 
 @enduml

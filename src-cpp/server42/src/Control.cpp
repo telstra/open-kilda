@@ -65,7 +65,7 @@ namespace org::openkilda {
 
     void remove_flow(org::openkilda::server42::control::messaging::flowrtt::RemoveFlow &remove_flow,
                      org::openkilda::flow_pool_t &flow_pool) {
-        flow_pool.remove_flow(remove_flow.flow().flow_id());
+        flow_pool.remove_flow(get_flow_id(remove_flow.flow().flow_id(), remove_flow.flow().direction()));
     }
 
 
@@ -73,9 +73,10 @@ namespace org::openkilda {
         CommandPacketResponse response;
         response.set_communication_id(communication_id);
 
-        for (const std::string &flow_id : pool.get_flowid_table()) {
+        for (const flow_pool_t::flow_id_t &flow_id : pool.get_flowid_table()) {
             Flow flow;
-            flow.set_flow_id(flow_id);
+            flow.set_flow_id(std::get<int(flow_id_members::flow_id)>(flow_id));
+            flow.set_direction(std::get<int(flow_id_members::direction)>(flow_id));
             response.add_response()->PackFrom(flow);
         }
 

@@ -16,11 +16,16 @@
 package org.openkilda.grpc.speaker.messaging;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.Utils;
 
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
+import org.slf4j.MDC.MDCCloseable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 /**
@@ -40,8 +45,12 @@ public class KafkaMessageListener {
      * @param message received  message.
      */
     @KafkaHandler
-    public void onMessage(Message message) {
-        log.debug("Message received: {} - {}", Thread.currentThread().getId(), message);
-        messageProcessor.processRequest(message);
+    public void onMessage(
+            @Header(name = KafkaHeaders.RECEIVED_MESSAGE_KEY, required = false) String key,
+            Message message) {
+        try (MDCCloseable closable = MDC.putCloseable(Utils.CORRELATION_ID, message.getCorrelationId())) {
+            log.debug("Message received: {} - {}", Thread.currentThread().getId(), message);
+            messageProcessor.processRequest(message, key);
+        }
     }
 }

@@ -15,16 +15,21 @@
 
 package org.openkilda.grpc.speaker.exception;
 
+import org.openkilda.messaging.error.ErrorType;
+
 public class GrpcRequestFailureException extends RuntimeException {
 
     private final String message;
 
     private final Integer code;
 
-    public GrpcRequestFailureException(Integer code, String message) {
+    private final ErrorType errorType;
+
+    public GrpcRequestFailureException(Integer code, String message, ErrorType errorType) {
         super(message);
         this.message = message;
         this.code = code;
+        this.errorType = errorType;
     }
 
     @Override
@@ -34,5 +39,9 @@ public class GrpcRequestFailureException extends RuntimeException {
 
     public Integer getCode() {
         return code;
+    }
+
+    public ErrorType getErrorType() {
+        return errorType;
     }
 }

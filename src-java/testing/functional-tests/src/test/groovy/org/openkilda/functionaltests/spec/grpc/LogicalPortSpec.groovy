@@ -6,6 +6,8 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.grpc.speaker.model.LogicalPortDto
 import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.info.event.SwitchInfoData
+import org.openkilda.messaging.model.grpc.LogicalPortType
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
@@ -30,7 +32,8 @@ class LogicalPortSpec extends GrpcBaseSpecification {
         when: "Create logical port"
         def switchPort = northbound.getPorts(switches.switchId).find { it.state[0] == "LINK_DOWN" }.portNumber
         def switchLogicalPort = 1100 + switchPort
-        def responseAfterCreating = grpc.createLogicalPort(switches.address, new LogicalPortDto([switchPort], switchLogicalPort))
+        def request = new LogicalPortDto(LogicalPortType.BFD, [switchPort], switchLogicalPort)
+        def responseAfterCreating = grpc.createLogicalPort(switches.address, request)
         assert responseAfterCreating.logicalPortNumber.value == switchLogicalPort
 
         then: "Able to get the created logical port"
@@ -38,6 +41,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
         responseAfterGetting.logicalPortNumber == switchLogicalPort
         responseAfterGetting.name == "novi_lport" + switchLogicalPort.toString()
         responseAfterGetting.portNumbers[0] == switchPort
+        responseAfterCreating.type == LogicalPortType.BFD
 
         and: "The created port is exist in a list of all logical port"
         grpc.getSwitchLogicalPorts(switches.address).contains(responseAfterGetting)
@@ -79,7 +83,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
         def switchLogicalPort = 1100 + switchPort
         def pNumber = data.portNumber ? data.portNumber : switchPort
         def lPortNumber = data.logicalPortNumber ? data.logicalPortNumber : switchLogicalPort
-        grpc.createLogicalPort(sw.address, new LogicalPortDto([pNumber], lPortNumber))
+        grpc.createLogicalPort(sw.address, new LogicalPortDto(LogicalPortType.LAG, [pNumber], lPortNumber))
 
         then: "Human readable error is returned."
         def exc = thrown(HttpClientErrorException)
@@ -116,6 +120,6 @@ class LogicalPortSpec extends GrpcBaseSpecification {
         exc.responseBodyAsString.to(MessageError).errorMessage == "Provided logical port does not exist."
 
         where:
-        switches << getNoviflowSwitches()
+        sw << getNoviflowSwitches("6.4")
     }
 }

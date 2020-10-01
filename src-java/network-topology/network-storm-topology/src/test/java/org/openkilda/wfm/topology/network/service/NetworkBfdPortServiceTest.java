@@ -313,6 +313,7 @@ public class NetworkBfdPortServiceTest {
         // online (down)
         service.updateOnlineMode(alphaLogicalEndpoint, true);
         service.updateLinkStatus(alphaLogicalEndpoint, LinkStatus.DOWN);
+        verify(carrier).bfdDownNotification(alphaEndpoint);
         verifyNoMoreInteractions(carrier);
 
         // up

@@ -13,20 +13,23 @@ namespace org::openkilda {
         size_t index;
     };
 
-    template<class A>
+    template<typename A, typename F = std::string>
     class FlowPool {
         typedef typename A::value_t value_t;
-        typedef std::map<std::string, Location> locator_t;
-        typedef std::vector<value_t> table_t;
-        typedef std::vector<std::string> flowid_table_t;
 
+        typedef std::map<F, Location> locator_t;
+        typedef std::vector<value_t> table_t;
+        typedef std::vector<F> flowid_table_t;
     private:
+
         locator_t locator;
         flowid_table_t flowid_table;
-
         FlowPool ( const FlowPool & ) = delete;
 
     public:
+        typedef F flow_id_t;
+        typedef A allocator_t;
+
         table_t table;
 
         explicit FlowPool() {
@@ -38,16 +41,17 @@ namespace org::openkilda {
             }
         }
 
-        void add_flow(const std::string &flow_id, const value_t &raw_packet) {
+        bool add_flow(const F &flow_id, const value_t &raw_packet) {
             if (locator.find(flow_id) != locator.end()) {
-                return;
+                return false;
             }
             locator[flow_id] = Location{table.size()};
             table.push_back(raw_packet);
             flowid_table.push_back(flow_id);
+            return true;
         }
 
-        void remove_flow(const std::string &flow_id) {
+        void remove_flow(const F &flow_id) {
             auto location_it = locator.find(flow_id);
             if (location_it == locator.end()) {
                 return;

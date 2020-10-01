@@ -15,16 +15,13 @@
 
 package org.openkilda.wfm.topology.network.controller.bfd;
 
+import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.messaging.model.NoviBfdSession;
-import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.service.IBfdPortCarrier;
-
-import java.util.Optional;
 
 class BfdSessionSetupAction extends BfdAction {
     BfdSessionSetupAction(IBfdPortCarrier carrier, NoviBfdSession requestPayload) {
-        super(LinkStatus.DOWN);
-        speakerRequestKey = carrier.setupBfdSession(requestPayload);
+        super(carrier.setupBfdSession(requestPayload));
     }
 
     @Override
@@ -33,13 +30,7 @@ class BfdSessionSetupAction extends BfdAction {
     }
 
     @Override
-    protected Optional<ActionResult> evaluateResult() {
-        if (haveSpeakerResponse) {
-            ActionResult result = ActionResult.of(speakerResponse);
-            if (linkStatus == LinkStatus.UP || !result.isSuccess(false)) {
-                return Optional.of(result);
-            }
-        }
-        return Optional.empty();
+    protected ActionResult makeResult(BfdSessionResponse response) {
+        return ActionResult.of(response, false);
     }
 }

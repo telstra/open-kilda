@@ -15,6 +15,8 @@
 
 package org.openkilda.server42.control.stormstub.api;
 
+import org.openkilda.server42.messaging.FlowDirection;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
@@ -24,4 +26,7 @@ import lombok.Value;
 public class RemoveFlowPayload {
     @JsonProperty("flow_id")
     String flowId;
+
+    @JsonProperty("direction")
+    FlowDirection direction;
 }

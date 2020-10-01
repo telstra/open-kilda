@@ -21,15 +21,16 @@ import org.openkilda.messaging.model.NoviBfdSession.Errors;
 import org.openkilda.messaging.model.SwitchReference;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.network.controller.bfd.BfdAction.ActionResult;
-import org.openkilda.wfm.topology.network.model.LinkStatus;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
-import java.util.Optional;
 
+@RunWith(MockitoJUnitRunner.class)
 public class ActionTest {
     private NoviBfdSession payload = NoviBfdSession.builder()
             .target(new SwitchReference(new SwitchId(1), Inet4Address.getByName("192.168.1.1")))
@@ -47,31 +48,9 @@ public class ActionTest {
     }
 
     @Test
-    public void updateLinkStatus() {
-        BfdAction action = new BfdActionImpl("dummy", LinkStatus.DOWN);
-        Assert.assertEquals(LinkStatus.DOWN, action.linkStatus);
-
-        action.updateLinkStatus(LinkStatus.UP);
-        Assert.assertEquals(LinkStatus.UP, action.linkStatus);
-
-        action.updateLinkStatus(LinkStatus.DOWN);
-        Assert.assertEquals(LinkStatus.DOWN, action.linkStatus);
-    }
-
-    @Test
-    public void validResponse() {
+    public void mustFilterResponsesByRequestKey() {
         String requestKey = "request-key";
-        BfdAction action = new BfdActionImpl(requestKey, LinkStatus.DOWN);
-
-        ActionResult result = action.consumeSpeakerResponse(requestKey, new BfdSessionResponse(payload, null))
-                .orElseThrow(() -> new AssertionError("Action must produce result"));
-        Assert.assertTrue(result.isSuccess());
-    }
-
-    @Test
-    public void invalidResponse() {
-        String requestKey = "request-key";
-        BfdAction action = new BfdActionImpl(requestKey, LinkStatus.DOWN);
+        BfdAction action = new BfdActionImpl(requestKey, false);
 
         // invalid
         BfdSessionResponse response = new BfdSessionResponse(payload, null);
@@ -81,22 +60,12 @@ public class ActionTest {
         ActionResult result = action.consumeSpeakerResponse(requestKey, new BfdSessionResponse(payload, null))
                 .orElseThrow(() -> new AssertionError("Action must produce result"));
         Assert.assertTrue(result.isSuccess());
-    }
 
-    @Test
-    public void extraResult() {
-        String requestKey = "request-key";
-        BfdAction action = new BfdActionImpl(requestKey, LinkStatus.DOWN);
-
-        // actual result
-        ActionResult result = action.consumeSpeakerResponse(requestKey, new BfdSessionResponse(payload, null))
+        // extra result
+        ActionResult result2 = action
+                .consumeSpeakerResponse(requestKey, new BfdSessionResponse(payload, Errors.NOVI_BFD_UNKNOWN_ERROR))
                 .orElseThrow(() -> new AssertionError("Action must produce result"));
-        Assert.assertTrue(result.isSuccess());
-
-        // extra invalid(timeout) result
-        ActionResult result2 = action.consumeSpeakerResponse(requestKey, null)
-                .orElseThrow(() -> new AssertionError("Action must produce result"));
-        Assert.assertTrue(result.isSuccess());
+        Assert.assertTrue(result2.isSuccess()); // because extra result was ignored
     }
 
     @Test
@@ -105,8 +74,6 @@ public class ActionTest {
 
         Assert.assertEquals(Errors.SWITCH_RESPONSE_ERROR, result.getErrorCode());
         Assert.assertFalse(result.isSuccess());
-        Assert.assertFalse(result.isSuccess(true));
-        Assert.assertFalse(result.isSuccess(false));
     }
 
     @Test
@@ -115,32 +82,39 @@ public class ActionTest {
 
         Assert.assertNull(result.getErrorCode());
         Assert.assertFalse(result.isSuccess());
-        Assert.assertFalse(result.isSuccess(true));
-        Assert.assertFalse(result.isSuccess(false));
     }
 
     @Test
     public void missingSessionErrorResponse() {
-        ActionResult result = makeWithResponse(
-                new BfdSessionResponse(payload, Errors.NOVI_BFD_DISCRIMINATOR_NOT_FOUND_ERROR));
+        ActionResult result;
 
+        result = makeWithResponse(
+                new BfdSessionResponse(payload, Errors.NOVI_BFD_DISCRIMINATOR_NOT_FOUND_ERROR), false);
+        Assert.assertFalse(result.isSuccess());
+
+        result = makeWithResponse(
+                new BfdSessionResponse(payload, Errors.NOVI_BFD_DISCRIMINATOR_NOT_FOUND_ERROR), true);
         Assert.assertTrue(result.isSuccess());
-        Assert.assertTrue(result.isSuccess(true));
-        Assert.assertFalse(result.isSuccess(false));
     }
 
     private ActionResult makeWithResponse(BfdSessionResponse response) {
+        return makeWithResponse(response, false);
+    }
+
+    private ActionResult makeWithResponse(BfdSessionResponse response, boolean allowMissing) {
         String requestKey = "request-key";
-        BfdAction action = new BfdActionImpl(requestKey, LinkStatus.DOWN);
+        BfdAction action = new BfdActionImpl(requestKey, allowMissing);
 
         return action.consumeSpeakerResponse(requestKey, response)
                 .orElseThrow(() -> new AssertionError("Action must produce result"));
     }
 
     private static class BfdActionImpl extends BfdAction {
-        BfdActionImpl(String requestKey, LinkStatus linkStatus) {
-            super(linkStatus);
-            this.speakerRequestKey = requestKey;
+        private final boolean allowMissing;
+
+        BfdActionImpl(String requestKey, boolean allowMissing) {
+            super(requestKey);
+            this.allowMissing = allowMissing;
         }
 
         @Override
@@ -149,12 +123,8 @@ public class ActionTest {
         }
 
         @Override
-        protected Optional<ActionResult> evaluateResult() {
-            ActionResult result = null;
-            if (haveSpeakerResponse) {
-                result = ActionResult.of(speakerResponse);
-            }
-            return Optional.ofNullable(result);
+        protected ActionResult makeResult(BfdSessionResponse response) {
+            return ActionResult.of(response, allowMissing);
         }
     }
 }
