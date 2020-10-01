@@ -78,12 +78,17 @@ export class SamlSettingComponent implements OnInit,OnChanges {
     
     modalReff.result.then((response) => {
       if(response && response == true){
+        this.loaderService.show(MessageObj.deleting_provider);
         this.samlSettingService.deleteAuthProvider(row.uuid).subscribe((res:any)=>{
           modalReff.close();
+          this.loaderService.hide();
+          this.toastr.success(MessageObj.provider_deleted_success,'Success');
           this.authProviders = [];
           this.getAuthProviders();
         },(error)=>{
-    
+          this.loaderService.hide();
+          var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']:MessageObj.error_loading_data;
+          this.toastr.error(errorMsg,'Error');
         })
         
       }
