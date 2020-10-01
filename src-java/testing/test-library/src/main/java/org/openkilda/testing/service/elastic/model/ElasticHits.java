@@ -29,7 +29,8 @@ import java.util.ArrayList;
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 class ElasticHits {
-    int total;
+    @JsonProperty("total")
+    Object total;
     @JsonProperty("max_score")
     Object maxScore;
     ArrayList<ElasticHit> hits;
