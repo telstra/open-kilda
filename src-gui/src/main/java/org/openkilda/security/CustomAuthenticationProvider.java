@@ -24,7 +24,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.core.Authentication;
-
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.dao.repository.UserRepository;
 
@@ -48,23 +48,25 @@ public class CustomAuthenticationProvider extends DaoAuthenticationProvider {
         String verificationCode = customWebAuthenticationDetails.getVerificationCode();
         UserEntity user = userRepository.findByUsernameIgnoreCase(auth.getName());
         if (user == null || !user.getActiveFlag()) {
-            throw new BadCredentialsException("Invalid username or password");
+            throw new UsernameNotFoundException("User '" + auth.getName() + "' does not exist");
         }
-
-        Authentication result = super.authenticate(auth);
-
-        if (user.getIs2FaEnabled()) {
-            if (!user.getIs2FaConfigured() && !customWebAuthenticationDetails.isConfigure2Fa()) {
-                throw new TwoFaKeyNotSetException();
-            } else {
-                if (verificationCode == null || verificationCode.isEmpty()) {
-                    throw new OtpRequiredException();
-                } else if (!TwoFactorUtility.validateOtp(verificationCode, user.getTwoFaKey())) {
-                    throw new InvalidOtpException("Invalid verfication code");
+        try {
+            Authentication result = super.authenticate(auth);
+            if (user.getIs2FaEnabled()) {
+                if (!user.getIs2FaConfigured() && !customWebAuthenticationDetails.isConfigure2Fa()) {
+                    throw new TwoFaKeyNotSetException();
+                } else {
+                    if (verificationCode == null || verificationCode.isEmpty()) {
+                        throw new OtpRequiredException();
+                    } else if (!TwoFactorUtility.validateOtp(verificationCode, user.getTwoFaKey())) {
+                        throw new InvalidOtpException("Invalid verfication code");
+                    }
                 }
             }
+            return new UsernamePasswordAuthenticationToken(user, result.getCredentials(), result.getAuthorities());
+        } catch (BadCredentialsException e) {
+            throw new BadCredentialsException(e.getMessage());
         }
-        return new UsernamePasswordAuthenticationToken(user, result.getCredentials(), result.getAuthorities());
     }
 
     /*

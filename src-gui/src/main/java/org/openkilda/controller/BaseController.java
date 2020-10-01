@@ -155,11 +155,9 @@ public abstract class BaseController implements ErrorController {
                 if (authentication.getCredentials() instanceof SAMLCredential) {
                     NameID nameId = (NameID) authentication.getPrincipal();
                     userEntity = userRepository.findByUsernameIgnoreCase(nameId.getValue());
-                    LOGGER.info("logged in via SAML : " + nameId.getValue());
                 } else {
                     userEntity = (UserEntity) authentication.getPrincipal();
                     userEntity = userRepository.findByUserId(userEntity.getUserId());
-                    LOGGER.info("logged in via normal : ", userEntity.getEmail());
                 }
                 if (userEntity != null
                         && userEntity.getStatusEntity().getStatusCode().equalsIgnoreCase(Status.ACTIVE.getCode())) {

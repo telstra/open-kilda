@@ -18,9 +18,15 @@ package org.openkilda.dao.repository;
 import org.openkilda.dao.entity.VersionEntity;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 @Repository
 public interface VersionRepository extends JpaRepository<VersionEntity, Long> {
+ 
+    @Query("SELECT v.versionNumber FROM VersionEntity v") 
+    List<Long> findAllVersionNumber();
 
 }
