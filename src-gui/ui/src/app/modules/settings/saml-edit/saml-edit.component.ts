@@ -78,6 +78,7 @@ export class SamlEditComponent implements OnInit,OnChanges {
     this.submitted = false;
     this.fileUploaded = '';
     this.samlEditForm.controls['file'].setValue(null);
+    this.enableField('url');
   }
   disableFields(field){
     this.samlEditForm.controls[field].disable();
@@ -93,10 +94,10 @@ export class SamlEditComponent implements OnInit,OnChanges {
         let self = this;
         reader.onloadend = function(x){
           self.disableFields('url');
+          self.fileUploaded = self.files[0].name;
         }
         reader.readAsText(this.files[0]); 
-    }
-    
+    }    
   }
 
   /* Add provider form submit function */
@@ -160,6 +161,7 @@ export class SamlEditComponent implements OnInit,OnChanges {
       this.providerData = res;
       if(res.type =='FILE'){
         this.fileUploaded = 'file.xml';
+        this.disableFields('url');
       } 
       this.samlEditForm.controls['name'].setValue(res.name);
       this.samlEditForm.controls['entity_id'].setValue(res.entity_id);

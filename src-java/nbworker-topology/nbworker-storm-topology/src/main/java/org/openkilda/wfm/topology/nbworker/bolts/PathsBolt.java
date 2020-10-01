@@ -66,7 +66,8 @@ public class PathsBolt extends PersistenceOperationsBolt {
 
     private List<PathsInfoData> getPaths(GetPathsRequest request) {
         try {
-            return pathService.getPaths(request.getSrcSwitchId(), request.getDstSwitchId());
+            return pathService.getPaths(request.getSrcSwitchId(), request.getDstSwitchId(),
+                    request.getEncapsulationType(), request.getPathComputationStrategy());
         } catch (IllegalArgumentException e) {
             throw new MessageException(ErrorType.DATA_INVALID, e.getMessage(), "Bad request.");
         } catch (RecoverableException e) {

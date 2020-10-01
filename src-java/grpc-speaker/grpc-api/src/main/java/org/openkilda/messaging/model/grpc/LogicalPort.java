@@ -30,4 +30,7 @@ public class LogicalPort {
 
     @JsonProperty("name")
     private String name;
+
+    @JsonProperty("type")
+    private LogicalPortType type;
 }

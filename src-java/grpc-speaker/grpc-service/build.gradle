@@ -69,6 +69,12 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 }
 
+compileJava {
+    options.compilerArgs = [
+            "-Amapstruct.defaultComponentModel=spring"
+    ]
+}
+
 bootJar {
     mainClassName = 'org.openkilda.grpc.speaker.GrpcSpeaker'
     archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"

@@ -37,8 +37,8 @@ public class KafkaMessageProducer {
     /**
      * Sends message to kafka topic.
      */
-    public ListenableFuture<SendResult<String, Message>> send(String topic, Message message) {
-        ListenableFuture<SendResult<String, Message>> future = kafkaTemplate.send(topic, message);
+    public ListenableFuture<SendResult<String, Message>> send(String topic, String key, Message message) {
+        ListenableFuture<SendResult<String, Message>> future = kafkaTemplate.send(topic, key, message);
         future.addCallback(
                 success -> log.debug("Response has been sent: topic={}, message={}", topic, message),
                 error -> log.error("Unable to send message: topic={}, message={}", topic, message, error)

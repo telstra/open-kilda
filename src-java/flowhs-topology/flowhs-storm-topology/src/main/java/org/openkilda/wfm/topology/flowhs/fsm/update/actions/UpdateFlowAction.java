@@ -23,13 +23,16 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
-import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.share.history.model.FlowDumpData;
+import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
+import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.EndpointUpdate;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
@@ -37,6 +40,7 @@ import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.RetryPolicy;
+import org.apache.storm.shade.com.google.common.base.Objects;
 import org.neo4j.driver.v1.exceptions.ClientException;
 
 import java.util.Optional;
@@ -45,14 +49,12 @@ import java.util.Optional;
 public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final int transactionRetriesLimit;
     private final SwitchRepository switchRepository;
-    private final IslRepository islRepository;
 
     public UpdateFlowAction(PersistenceManager persistenceManager, int transactionRetriesLimit) {
         super(persistenceManager);
         this.transactionRetriesLimit = transactionRetriesLimit;
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
-        islRepository = repositoryFactory.createIslRepository();
     }
 
     @Override
@@ -71,22 +73,46 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
 
             log.debug("Updating the flow {} with properties: {}", flowId, targetFlow);
 
+            RequestedFlow originalFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(flow);
+            stateMachine.setOldTargetPathComputationStrategy(flow.getTargetPathComputationStrategy());
+            stateMachine.setOriginalFlow(originalFlow);
+
+            stateMachine.setOriginalFlowGroup(flow.getGroupId());
+
             // Complete target flow in FSM with values from original flow
-            stateMachine.setTargetFlow(updateFlow(flow, targetFlow, stateMachine));
+            stateMachine.setTargetFlow(updateFlow(flow, targetFlow));
+
+            EndpointUpdate endpointUpdate = updateEndpointRulesOnly(originalFlow, targetFlow,
+                    stateMachine.getOriginalFlowGroup(), flow.getGroupId());
+            stateMachine.setEndpointUpdate(endpointUpdate);
+
+            if (endpointUpdate.isPartialUpdate()) {
+                stateMachine.setNewPrimaryForwardPath(flow.getForwardPathId());
+                stateMachine.setNewPrimaryReversePath(flow.getReversePathId());
+                stateMachine.setNewProtectedForwardPath(flow.getProtectedForwardPathId());
+                stateMachine.setNewProtectedReversePath(flow.getProtectedReversePathId());
+                FlowDumpData dumpData = HistoryMapper.INSTANCE.map(flow, flow.getForwardPath(), flow.getReversePath(),
+                        DumpType.STATE_AFTER);
+                stateMachine.saveActionWithDumpToHistory("New endpoints were stored for flow",
+                        format("The flow endpoints were updated for: %s / %s",
+                                flow.getSrcSwitch(), flow.getDestSwitch()),
+                        dumpData);
+            }
+
             flowRepository.createOrUpdate(flow);
         });
 
         stateMachine.saveActionToHistory("The flow properties were updated");
 
+        if (stateMachine.getEndpointUpdate().isPartialUpdate()) {
+            stateMachine.saveActionToHistory("Skip paths and resources allocation");
+            stateMachine.fire(Event.UPDATE_ENDPOINT_RULES_ONLY);
+        }
+
         return Optional.empty();
     }
 
-    private RequestedFlow updateFlow(Flow flow, RequestedFlow targetFlow, FlowUpdateFsm stateMachine) {
-        RequestedFlow originalFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(flow);
-        stateMachine.setOldTargetPathComputationStrategy(flow.getTargetPathComputationStrategy());
-        stateMachine.setOriginalFlow(originalFlow);
-
-        stateMachine.setOriginalFlowGroup(flow.getGroupId());
+    private RequestedFlow updateFlow(Flow flow, RequestedFlow targetFlow) {
         if (targetFlow.getDiverseFlowId() != null) {
             if (targetFlow.getDiverseFlowId().isEmpty()) {
                 flow.setGroupId(null);
@@ -159,6 +185,46 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
                         format("Flow %s not found", flowId)));
     }
 
+    private FlowUpdateFsm.EndpointUpdate updateEndpointRulesOnly(RequestedFlow originalFlow, RequestedFlow targetFlow,
+                                                                 String originalGroupId, String targetGroupId) {
+        boolean updateEndpointOnly = originalFlow.getSrcSwitch().equals(targetFlow.getSrcSwitch());
+        updateEndpointOnly &= originalFlow.getDestSwitch().equals(targetFlow.getDestSwitch());
+
+        updateEndpointOnly &= originalFlow.isAllocateProtectedPath() == targetFlow.isAllocateProtectedPath();
+        updateEndpointOnly &= originalFlow.getBandwidth() == targetFlow.getBandwidth();
+        updateEndpointOnly &= originalFlow.isIgnoreBandwidth() == targetFlow.isIgnoreBandwidth();
+
+        updateEndpointOnly &= Objects.equal(originalFlow.getMaxLatency(), targetFlow.getMaxLatency());
+        updateEndpointOnly &= Objects.equal(originalFlow.getFlowEncapsulationType(),
+                targetFlow.getFlowEncapsulationType());
+        updateEndpointOnly &= Objects.equal(originalFlow.getPathComputationStrategy(),
+                targetFlow.getPathComputationStrategy());
+
+        updateEndpointOnly &= Objects.equal(originalGroupId, targetGroupId);
+
+        // TODO(tdurakov): check connected devices as well
+        boolean srcEndpointChanged = originalFlow.getSrcPort() != targetFlow.getSrcPort();
+        srcEndpointChanged |= originalFlow.getSrcVlan() != targetFlow.getSrcVlan();
+        srcEndpointChanged |= originalFlow.getSrcInnerVlan() != targetFlow.getSrcInnerVlan();
+
+        // TODO(tdurakov): check connected devices as well
+        boolean dstEndpointChanged = originalFlow.getDestPort() != targetFlow.getDestPort();
+        dstEndpointChanged |= originalFlow.getDestVlan() != targetFlow.getDestVlan();
+        dstEndpointChanged |= originalFlow.getDestInnerVlan() != targetFlow.getDestInnerVlan();
+
+        if (updateEndpointOnly) {
+            if (srcEndpointChanged && dstEndpointChanged) {
+                return EndpointUpdate.BOTH;
+            } else if (srcEndpointChanged) {
+                return EndpointUpdate.SOURCE;
+            } else if (dstEndpointChanged) {
+                return EndpointUpdate.DESTINATION;
+            } else {
+                return EndpointUpdate.NONE;
+            }
+        }
+        return EndpointUpdate.NONE;
+    }
 
     @Override
     protected String getGenericErrorMessage() {

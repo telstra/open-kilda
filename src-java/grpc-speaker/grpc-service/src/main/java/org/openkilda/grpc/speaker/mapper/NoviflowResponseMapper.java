@@ -16,47 +16,94 @@
 package org.openkilda.grpc.speaker.mapper;
 
 import org.openkilda.grpc.speaker.model.PacketInOutStatsResponse;
+import org.openkilda.messaging.model.grpc.LogicalPort;
+import org.openkilda.messaging.model.grpc.LogicalPortType;
 import org.openkilda.messaging.model.grpc.PacketInOutStatsDto;
+import org.openkilda.messaging.model.grpc.RemoteLogServer;
 import org.openkilda.messaging.model.grpc.SwitchInfoStatus;
-import org.openkilda.messaging.model.grpc.SwitchInfoStatus.SwitchBuildInfoStatus;
-import org.openkilda.messaging.model.grpc.SwitchInfoStatus.SwitchEthLinkInfoStatus;
 
-import io.grpc.noviflow.LogicalPort;
 import io.grpc.noviflow.PacketInOutStats;
-import io.grpc.noviflow.RemoteLogServer;
 import io.grpc.noviflow.StatusSwitch;
-import io.grpc.noviflow.StatusSwitchBuild;
-import io.grpc.noviflow.StatusSwitchEthLink;
 import io.grpc.noviflow.YesNo;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
-public interface NoviflowResponseMapper {
+@Mapper(componentModel = "spring", imports = {LogicalPortType.class})
+public abstract class NoviflowResponseMapper {
 
     @Mapping(source = "logicalportno", target = "logicalPortNumber")
     @Mapping(source = "portnoList", target = "portNumbers")
-    org.openkilda.messaging.model.grpc.LogicalPort toLogicalPort(LogicalPort port);
+    @Mapping(source = "logicalporttype", target = "type")
+    public abstract LogicalPort map(io.grpc.noviflow.LogicalPort port);
 
     @Mapping(source = "ethLinksList", target = "ethLinks")
     @Mapping(source = "buildsList", target = "builds")
-    SwitchInfoStatus toSwitchInfo(StatusSwitch statusSwitch);
+    public abstract SwitchInfoStatus map(StatusSwitch statusSwitch);
 
     @Mapping(source = "ipaddr", target = "ipAddress")
-    org.openkilda.messaging.model.grpc.RemoteLogServer toRemoteLogServer(RemoteLogServer remoteLogServer);
+    public abstract RemoteLogServer map(io.grpc.noviflow.RemoteLogServer remoteLogServer);
 
-    SwitchEthLinkInfoStatus toSwitchEthLink(StatusSwitchEthLink statusSwitchEthLink);
+    public abstract PacketInOutStatsDto map(PacketInOutStatsResponse stats);
 
-    SwitchBuildInfoStatus toSwitchBuildInfo(StatusSwitchBuild statusSwitchBuild);
+    public abstract PacketInOutStatsResponse map(PacketInOutStats stats);
 
-    PacketInOutStatsResponse toPacketInOutStatsResponse(PacketInOutStats stats);
+    /**
+     * Convert known values of {@link io.grpc.noviflow.LogicalPortType} into {@link LogicalPortType}.
+     */
+    public LogicalPortType map(io.grpc.noviflow.LogicalPortType type) {
+        if (type == null) {
+            return null;
+        }
 
-    PacketInOutStatsDto toPacketInOutStatsDto(PacketInOutStatsResponse stats);
+        LogicalPortType result;
+        switch (type) {
+            case LOGICAL_PORT_TYPE_RESERVED:
+                result = LogicalPortType.RESERVED;
+                break;
+            case LOGICAL_PORT_TYPE_LAG:
+                result = LogicalPortType.LAG;
+                break;
+            case LOGICAL_PORT_TYPE_BFD:
+                result = LogicalPortType.BFD;
+                break;
+
+            default:
+                throw new IllegalArgumentException(
+                        makeInvalidEnumValueMappingMessage(type, LogicalPortType.class));
+        }
+        return result;
+    }
+
+    /**
+     * Convert values of {@link LogicalPortType} into {@link io.grpc.noviflow.LogicalPortType}.
+     */
+    public io.grpc.noviflow.LogicalPortType map(LogicalPortType type) {
+        if (type == null) {
+            return null;
+        }
+
+        io.grpc.noviflow.LogicalPortType result;
+        switch (type) {
+            case LAG:
+                result = io.grpc.noviflow.LogicalPortType.LOGICAL_PORT_TYPE_LAG;
+                break;
+            case BFD:
+                result = io.grpc.noviflow.LogicalPortType.LOGICAL_PORT_TYPE_BFD;
+                break;
+            case RESERVED:
+                result = io.grpc.noviflow.LogicalPortType.LOGICAL_PORT_TYPE_RESERVED;
+                break;
+            default:
+                throw new IllegalArgumentException(
+                        makeInvalidEnumValueMappingMessage(type, io.grpc.noviflow.LogicalPortType.class));
+        }
+        return result;
+    }
 
     /**
      * Maps YesNo enum to Boolean value.
      */
-    default Boolean toBoolean(YesNo yesNo) {
+    public Boolean toBoolean(YesNo yesNo) {
         if (yesNo == null) {
             return null;
         }
@@ -68,5 +115,10 @@ public interface NoviflowResponseMapper {
             default:
                 return null;
         }
+    }
+
+    private String makeInvalidEnumValueMappingMessage(Object value, Class<?> targetClass) {
+        return String.format("There is no mapping of %s.%s into %s",
+                value.getClass().getName(), value, targetClass.getName());
     }
 }

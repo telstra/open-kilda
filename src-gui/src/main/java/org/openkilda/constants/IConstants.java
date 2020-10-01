@@ -296,8 +296,10 @@ public abstract class IConstants {
         public static final String SW_UPDATE_PORT_PROPERTIES = "sw_update_port_properties";
         
         public static final String SW_SWITCH_METERS = "sw_switch_meters";
-        
+		
         public static final String SAML_SETTING = "saml_setting";
+        
+        public static final String TOPOLOGY_WORLD_MAP_VIEW = "topology_world_map_view";
         
     }
 

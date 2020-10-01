@@ -16,11 +16,7 @@
 
 set -eu ${DEBUG:+-x}
 
-PATH=${PATH}:/opt/storm/bin
-
-
-cd /app
-
+STORM="${STORM:-/opt/storm/bin/storm}"
 
 TOPOLOGY_NAME=${1}
 TOPOLOGY_CONFIG=${2}
@@ -36,8 +32,7 @@ done
 
 MAIN_CLASS=$(grep 'Main-Class' /app/${TOPOLOGY_NAME}-storm-topology/build.gradle  | awk -F ':' '{ print $2}' | awk -F "'" '{ print $2 }')
 
-
-storm \
+"${STORM}" \
     jar /app/${TOPOLOGY_NAME}-storm-topology/libs/${TOPOLOGY_JAR} \
     ${MAIN_CLASS} \
     --jars \

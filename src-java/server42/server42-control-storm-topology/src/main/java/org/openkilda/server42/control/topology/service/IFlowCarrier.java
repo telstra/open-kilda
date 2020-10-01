@@ -21,5 +21,5 @@ public interface IFlowCarrier {
 
     void notifyActivateFlowMonitoring(String id,  SwitchId switchId, Integer port, Integer vlan, boolean isForward);
 
-    void notifyDeactivateFlowMonitoring(SwitchId switchId, String flowId);
+    void notifyDeactivateFlowMonitoring(SwitchId switchId, String flowId, boolean isForward);
 }

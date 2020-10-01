@@ -93,7 +93,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
 
     protected CompletableFuture<FlowSegmentReport> makeInstallPlan(SpeakerCommandProcessor commandProcessor) {
         CompletableFuture<MeterId> future = CompletableFuture.completedFuture(null);
-        if (meterConfig != null) {
+        if (meterConfig != null && rulesContext.isUpdateMeter()) {
             future = planMeterInstall(commandProcessor)
                     .thenApply(this::handleMeterReport);
         }
@@ -128,7 +128,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
 
     private CompletableFuture<Void> planMeterRemove(
             SpeakerCommandProcessor commandProcessor, MeterId effectiveMeterId) {
-        if (effectiveMeterId == null) {
+        if (effectiveMeterId == null || !getRulesContext().isUpdateMeter()) {
             if (meterConfig != null) {
                 log.info(
                         "Do not remove meter {} on {} - switch do not support meters (i.e. it was not installed "
@@ -154,6 +154,9 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     }
 
     private CompletableFuture<FlowSegmentReport> planOfFlowsInstall(MeterId effectiveMeterId) {
+        if (effectiveMeterId == null && !rulesContext.isUpdateMeter()) {
+            effectiveMeterId = getMeterConfig().getId();
+        }
         List<OFFlowMod> ofMessages = makeFlowModMessages(effectiveMeterId);
         List<CompletableFuture<Optional<OFMessage>>> writeResults = new ArrayList<>(ofMessages.size());
         try (Session session = getSessionService().open(messageContext, getSw())) {

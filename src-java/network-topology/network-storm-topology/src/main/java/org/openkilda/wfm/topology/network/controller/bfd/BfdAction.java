@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.network.controller.bfd;
 import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.messaging.model.NoviBfdSession.Errors;
-import org.openkilda.wfm.topology.network.model.LinkStatus;
 
 import lombok.Value;
 import org.slf4j.Logger;
@@ -29,53 +28,48 @@ import java.util.Optional;
 abstract class BfdAction {
     protected Logger log = LoggerFactory.getLogger(getClass());
 
-    protected LinkStatus linkStatus;
+    protected final String speakerRequestKey;
 
-    protected String speakerRequestKey = null;
-    protected BfdSessionResponse speakerResponse = null;
     protected boolean haveSpeakerResponse = false;
+    private ActionResult result;
 
-    BfdAction(LinkStatus linkStatus) {
-        this.linkStatus = linkStatus;
-    }
-
-    public Optional<ActionResult> updateLinkStatus(LinkStatus status) {
-        linkStatus = status;
-        return evaluateResult();
+    BfdAction(String requestKey) {
+        this.speakerRequestKey = requestKey;
     }
 
     public final Optional<ActionResult> consumeSpeakerResponse(String requestKey, BfdSessionResponse response) {
-        if (speakerRequestKey != null && speakerRequestKey.equals(requestKey)) {
+        if (! haveSpeakerResponse && speakerRequestKey.equals(requestKey)) {
             haveSpeakerResponse = true;
-            speakerRequestKey = null;
-
-            speakerResponse = response;
+            result = makeResult(response);
         }
 
-        return evaluateResult();
+        return Optional.ofNullable(result);
     }
 
     public abstract String getLogIdentifier();
 
-    protected abstract Optional<ActionResult> evaluateResult();
+    protected abstract ActionResult makeResult(BfdSessionResponse response);
 
     @Value
     static class ActionResult {
-        private boolean success;
+        boolean success;
 
         /**
-         * Error core (null in case of timeout).
+         * Error code (null in case of timeout).
          */
-        private NoviBfdSession.Errors errorCode;
+        NoviBfdSession.Errors errorCode;
 
-        static ActionResult of(BfdSessionResponse response) {
+        static ActionResult of(BfdSessionResponse response, boolean allowMissing) {
             if (response == null) {
                 return timeout();
             }
-            if (response.getErrorCode() != null) {
-                return error(response.getErrorCode());
+            if (response.getErrorCode() == null) {
+                return success();
             }
-            return success();
+            if (allowMissing && response.getErrorCode() == Errors.NOVI_BFD_DISCRIMINATOR_NOT_FOUND_ERROR) {
+                return success();
+            }
+            return error(response.getErrorCode());
         }
 
         static ActionResult success() {
@@ -88,22 +82,6 @@ abstract class BfdAction {
 
         static ActionResult timeout() {
             return new ActionResult(false, null);
-        }
-
-        public boolean isSuccess() {
-            return isSuccess(true);
-        }
-
-        public boolean isSuccess(boolean allowMissing) {
-            if (success) {
-                return true;
-            }
-
-            if (allowMissing) {
-                return Errors.NOVI_BFD_DISCRIMINATOR_NOT_FOUND_ERROR == errorCode;
-            }
-
-            return false;
         }
     }
 }
