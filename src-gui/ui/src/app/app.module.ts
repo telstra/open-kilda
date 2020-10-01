@@ -95,6 +95,7 @@ import { ConnectedDevicesComponent } from './modules/flows/connected-devices/con
 import { AffectedFlowsReportComponent } from './modules/reports/affected-flows-report/affected-flows-report.component';
 import { AffectedFlowListComponent } from './modules/reports/affected-flow-list/affected-flow-list.component';
 import { WorldMapViewComponent } from './modules/topology/world-map-view/world-map-view.component';
+import { SwitchupdatemodalComponent } from './common/components/switchupdatemodal/switchupdatemodal.component';
 
 @NgModule({
   declarations: [
@@ -176,6 +177,7 @@ import { WorldMapViewComponent } from './modules/topology/world-map-view/world-m
     AffectedFlowsReportComponent,
     AffectedFlowListComponent,
     WorldMapViewComponent,
+    SwitchupdatemodalComponent,
   ],
   imports: [
     HttpClientModule,
@@ -218,6 +220,7 @@ import { WorldMapViewComponent } from './modules/topology/world-map-view/world-m
     ImportTopologySettingComponent,    
     ExportTopologySettingComponent,
     IslmaintenancemodalComponent,
+    SwitchupdatemodalComponent,
   ]
 })
 export class AppModule { }
