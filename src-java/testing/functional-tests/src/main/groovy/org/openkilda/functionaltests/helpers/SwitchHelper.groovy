@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.hamcrest.MatcherAssert.assertThat
 import static org.hamcrest.Matchers.containsInAnyOrder
 import static org.openkilda.model.cookie.Cookie.ARP_INGRESS_COOKIE
@@ -44,6 +45,7 @@ import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
+import org.openkilda.testing.service.floodlight.model.Floodlight
 import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress
@@ -56,6 +58,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
 import java.math.RoundingMode
+
 /**
  * Provides helper operations for some Switch-related content.
  * This helper is also injected as a Groovy Extension Module, so methods can be called in two ways:
@@ -350,6 +353,18 @@ class SwitchHelper {
         } else {
             assert Math.abs(expected - actual) <= 1
         }
+    }
+
+    /**
+     * Waits for certain switch to appear/disappear from switch list in certain floodlights.
+     * Useful when knocking out switches
+     */
+    static void waitForSwitchFlConnection(Switch sw, boolean shouldBePresent, List<Floodlight> floodlights) {
+        Wrappers.wait(WAIT_OFFSET) { withPool {
+                floodlights.eachParallel {
+                    assert it.getFloodlightService().getSwitches()*.switchId.contains(sw.dpId) == shouldBePresent
+                }
+            } }
     }
 
     /**

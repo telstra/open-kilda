@@ -44,6 +44,8 @@ public class SpeakerRequestBuildContext {
         private boolean removeCustomerPortLldpRule;
         private boolean removeCustomerPortArpRule;
         private boolean removeOuterVlanMatchSharedRule;
+        @Builder.Default
+        private boolean updateMeter = true;
 
         private boolean removeServer42InputRule;
         private boolean removeServer42IngressRule;

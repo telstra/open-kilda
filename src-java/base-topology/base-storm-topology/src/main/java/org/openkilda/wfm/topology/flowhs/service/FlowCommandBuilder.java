@@ -20,6 +20,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 
 import java.util.List;
 
@@ -62,4 +63,23 @@ public interface FlowCommandBuilder {
     List<FlowSegmentRequestFactory> buildIngressOnly(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath,
             SpeakerRequestBuildContext speakerRequestBuildContext);
+
+    /**
+     * Build install commands for ingress rules for provided paths.
+     */
+    List<FlowSegmentRequestFactory> buildIngressOnlyOneDirection(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath,
+            PathContext pathContext);
+
+    /**
+     * Build install commands for egress rules for provided paths.
+     */
+    List<FlowSegmentRequestFactory> buildEgressOnly(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath);
+
+    /**
+     * Build install commands for egress rules for provided paths.
+     */
+    List<FlowSegmentRequestFactory> buildEgressOnlyOneDirection(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath);
 }

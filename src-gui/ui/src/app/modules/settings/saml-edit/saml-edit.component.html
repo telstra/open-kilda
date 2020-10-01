@@ -32,16 +32,13 @@
       <div class="col-md-12">
         <input type="file" style="visibility:hidden;position: relative;float: left;width: 10px;margin-left: -27px;" (change)="getFile($event)" formControlName="file" #file>
         <button  style="margin-left:-15px" type="button" class="btn btn-dark " (click)="file.click()" [disabled]="samlEditForm.controls['url'].value" >Upload file</button>
-        <span *ngIf="samlEditForm.controls['file'].value" class="ml-2" >{{(files && files.length) ?  files[0].name: ''}} <i (click)="emptyFile()" style="position: absolute;" class="close" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-       </i></span>
-       <span *ngIf="fileUploaded" class="ml-2" >{{fileUploaded}} <i (click)="emptyFile()" style="position: absolute;" class="close" aria-label="Close">
+       <span *ngIf="fileUploaded!=''" class="ml-2" >{{fileUploaded}} <i (click)="emptyFile()" style="position: absolute;" class="close" aria-label="Close">
         <span aria-hidden="true">&times;</span>
      </i></span>
       </div>
        <div class="col-md-12" style="margin: 10px 25px;float: left;">OR</div>
       <div class="col-md-12" style="margin-left: -15px">
-        <input class="form-control" type="text" [disabled]="samlEditForm.controls['file'].value || fileUploaded" formControlName="url"  placeholder="Metadata URL">
+        <input class="form-control" type="text" [disabled]="fileUploaded != ''" formControlName="url"  placeholder="Metadata URL">
       </div>
       
       <div *ngIf="metadata_required && samlForm.submitted" class="invalid-feedback" >

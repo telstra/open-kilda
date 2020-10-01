@@ -36,6 +36,9 @@ public class RulesContext implements Serializable {
     private boolean removeCustomerLldpRule;
     private boolean removeCustomerArpRule;
     private boolean removeOuterVlanMatchSharedRule;
+    @Builder.Default
+    private boolean updateMeter = true;
+
 
     private boolean removeServer42InputRule;
     private boolean removeServer42IngressRule;

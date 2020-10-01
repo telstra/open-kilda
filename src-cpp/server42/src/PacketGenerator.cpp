@@ -54,8 +54,12 @@ namespace org::openkilda {
         newPacket.addLayer(&payloadLayer);
         newPacket.computeCalculateFields();
 
-        arg.flow_pool.add_flow(arg.flow_id,
-                           org::openkilda::MBufAllocator::allocate(newPacket.getRawPacket(),
-                                                                   arg.device));
+        auto packet = flow_pool_t::allocator_t::allocate(newPacket.getRawPacket(), arg.device);
+
+        bool success = arg.flow_pool.add_flow(get_flow_id(arg), packet);
+
+        if (!success) {
+            flow_pool_t::allocator_t::dealocate(packet);
+        }
     }
 }

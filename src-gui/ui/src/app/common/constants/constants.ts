@@ -139,5 +139,7 @@ export const MessageObj = {
     updating_provider:'Updating Provider..',
     provider_added_success:'Provider added Successfully.',
     provider_updated_success:'Provider updated Successfully.',
+    deleting_provider:"Deleting provider",
+    provider_deleted_success:"Provider deleted successfully",
 
 }

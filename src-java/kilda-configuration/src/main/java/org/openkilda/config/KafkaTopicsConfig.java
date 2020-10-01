@@ -70,35 +70,6 @@ public interface KafkaTopicsConfig {
     @Default("kilda.speaker")
     String getSpeakerRegionTopic();
 
-    // removed
-    @Key("stats.request.priv")
-    @Default("kilda.stats.request.priv")
-    String getStatsRequestPrivTopic();
-
-    @Key("stats.request.priv.region")
-    @Default("kilda.stats.request.priv.region")
-    String getStatsRequestPrivRegionTopic();
-
-    // removed
-    @Key("stats.stats-request.priv")
-    @Default("kilda.stats.stats-request.priv")
-    String getStatsStatsRequestPrivTopic();
-
-    // removed
-    @Key("stats.stats-request.priv.region")
-    @Default("kilda.stats.stats-request.priv.region")
-    String getStatsStatsRequestPrivRegionTopic();
-
-    // removed
-    @Key("fl-stats.switches.priv")
-    @Default("kilda.fl-stats.switches.priv")
-    String getFlStatsSwitchesPrivTopic();
-
-    // removed
-    @Key("fl-stats.switches.priv.region")
-    @Default("kilda.fl-stats.switches.priv.region")
-    String getFlStatsSwitchesPrivRegionTopic();
-
     @Key("speaker.disco")
     @FallbackKey("kafka.speaker.disco")
     @Default("kilda.speaker.disco.storm")
@@ -218,6 +189,7 @@ public interface KafkaTopicsConfig {
     @Default("kilda.floodlight.connected.devices.priv")
     String getTopoConnectedDevicesRegionTopic();
 
+    // TODO(surabujin): check usage
     @Key("grpc.response")
     @Default("kilda.grpc.response.priv")
     String getGrpcResponseTopic();

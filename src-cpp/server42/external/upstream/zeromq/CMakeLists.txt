@@ -12,8 +12,8 @@ ExternalProject_Add(zeromq_external
         )
 
 ExternalProject_Add(cppzmq_external
-        URL https://github.com/zeromq/cppzmq/archive/v4.3.0.tar.gz
-        URL_HASH SHA1=afc87286b15b035dbabcb99ef410143c3a24685c
+        URL https://github.com/zeromq/cppzmq/archive/v4.6.0.tar.gz
+        URL_HASH SHA1=4acd8eb109c1a0a0f7cea3aa34c3585e555ca929
         DEPENDS zeromq_external
         CONFIGURE_COMMAND ""
         BUILD_COMMAND ""

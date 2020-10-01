@@ -1,5 +1,91 @@
 # Changelog
 
+## v1.72.2 (01/10/2020)
+
+### Features:
+-  [#3724](https://github.com/telstra/open-kilda/pull/3724) [Server42] Stats app reconnecting 
+-  [#3694](https://github.com/telstra/open-kilda/pull/3694) Add logical port type field for logical port create request (Issues: [#2461](https://github.com/telstra/open-kilda/issues/2461) [#2468](https://github.com/telstra/open-kilda/issues/2468)) 
+
+### Bug Fixes:
+-  [#3751](https://github.com/telstra/open-kilda/pull/3751) Allow processing grpc requests without kafka-key 
+-  [#3752](https://github.com/telstra/open-kilda/pull/3752) Fix GRPC stats response kafka topic 
+-  [#3721](https://github.com/telstra/open-kilda/pull/3721) [Server42] Add the ability to monitor flow connected to the same server42 instance (Issue: [#3695](https://github.com/telstra/open-kilda/issues/3695)) 
+
+### Improvements:
+-  [#3750](https://github.com/telstra/open-kilda/pull/3750) update log template for func_test [**tests**]
+-  [#3738](https://github.com/telstra/open-kilda/pull/3738) Simplify BFD session management [**storm-topologies**]
+-  [#3739](https://github.com/telstra/open-kilda/pull/3739) add tests for #3728 [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.72.1...v1.72.2).
+
+### Affected Components:
+network, grpc
+
+---
+
+## v1.72.1 (29/09/2020)
+
+### Bug Fixes:
+-  [#3746](https://github.com/telstra/open-kilda/pull/3746) Hotfix/world map issues (Issue: [#3742](https://github.com/telstra/open-kilda/issues/3742)) [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.72.0...v1.72.1).
+
+### Affected Components:
+gui
+
+---
+
+## v1.72.0 (28/09/2020)
+
+### Features:
+-  [#3728](https://github.com/telstra/open-kilda/pull/3728) update port/vlan should not cause reroute [**floodlight**][**tests**]
+-  [#3730](https://github.com/telstra/open-kilda/pull/3730) Added encapsulation_type and path_computation_strategy to /v1/network/paths API [**api**][**northbound**][**storm-topologies**]
+
+
+### Improvements:
+-  [#3709](https://github.com/telstra/open-kilda/pull/3709) Cleanup outdated kafka-topic references 
+-  [#3726](https://github.com/telstra/open-kilda/pull/3726) add template functional-tests.log4j2.toml [**tests**]
+-  [#3698](https://github.com/telstra/open-kilda/pull/3698) Fix gui build 
+-  [#3699](https://github.com/telstra/open-kilda/pull/3699) Debug logging toggle for storm topologies 
+-  [#3741](https://github.com/telstra/open-kilda/pull/3741) Hex view for switch field representing cookies [**api**][**northbound**]
+
+### Other changes:
+-  [#3713](https://github.com/telstra/open-kilda/pull/3713) Update functional tests. minor improvements [**tests**]
+-  [#3460](https://github.com/telstra/open-kilda/pull/3460) Document solutions for migration to another data storage (Issue: [#940](https://github.com/telstra/open-kilda/issues/940)) [**docs**]
+-  [#3705](https://github.com/telstra/open-kilda/pull/3705) Add design for flow loop feature [**docs**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.71.1...v1.72.0).
+
+### Affected Components:
+gui, fl, flow-hs, nb, nbworker
+
+---
+
+## v1.71.1 (23/09/2020)
+
+### Bug Fixes:
+-  [#3737](https://github.com/telstra/open-kilda/pull/3737) Hotfix/world map cluster cache issue (Issue: [#3736](https://github.com/telstra/open-kilda/issues/3736)) [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.71.0...v1.71.1).
+
+### Affected Components:
+gui
+
+---
+
+## v1.71.0 (23/09/2020)
+
+### Features:
+-  [#3723](https://github.com/telstra/open-kilda/pull/3723) Feature to display topology on a world map (Issue: [#2372](https://github.com/telstra/open-kilda/issues/2372)) [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.70.2...v1.71.0).
+
+### Affected Components:
+gui
+
+---
+
 ## v1.70.2 (10/09/2020)
 
 ### Bug Fixes:
@@ -308,7 +394,6 @@ network, nb, swmanager, flow-hs, nbworker, gui, reroute
 ---
 
 ## v1.63.0 (24/06/2020)
-
 
 ### Bug Fixes:
 -  [#3555](https://github.com/telstra/open-kilda/pull/3555) Raise moved discovery state priority [**storm-topologies**]

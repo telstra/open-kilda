@@ -15,6 +15,7 @@
 
 package org.openkilda.northbound.dto.v1.switches;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -38,5 +39,10 @@ public class RulesSyncResult extends RulesValidationResult {
         super(missingRules, properRules, excessRules);
 
         this.installedRules = installedRules;
+    }
+
+    @JsonGetter("installed-rules-hex")
+    public List<String> getInstalledHex() {
+        return toHex(installedRules);
     }
 }

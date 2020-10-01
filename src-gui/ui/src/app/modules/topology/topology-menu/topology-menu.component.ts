@@ -6,6 +6,7 @@ import { NgbModal } from "@ng-bootstrap/ng-bootstrap";
 import { AffectedIslComponent } from "../affected-isl/affected-isl.component";
 import {ImportTopologySettingComponent} from "../import-topology-setting/import-topology-setting.component";
 import {ExportTopologySettingComponent} from "../export-topology-setting/export-topology-setting.component";
+import { CommonService } from 'src/app/common/services/common.service';
 declare var jQuery: any;
 
 @Component({
@@ -58,6 +59,7 @@ export class TopologyMenuComponent implements OnInit {
   constructor(
     private topologyService:TopologyService,
     private modalService: NgbModal,
+    public commonService:CommonService
   ) {}
 
   defaultSetting: TopologyView;
@@ -65,6 +67,9 @@ export class TopologyMenuComponent implements OnInit {
   
   ngOnInit() {
     this.defaultSetting = this.topologyService.getViewOptions();
+    if(!this.commonService.hasPermission('topology_world_map_view')){
+      this.defaultSetting.WORLDMAP = 0;
+    }
     if(this.defaultSetting.WORLDMAP){
       this.worldMapText = "Topology View";
     }else{

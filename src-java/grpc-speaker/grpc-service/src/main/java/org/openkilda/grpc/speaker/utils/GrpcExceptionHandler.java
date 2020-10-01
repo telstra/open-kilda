@@ -29,6 +29,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import java.net.SocketException;
+import java.util.concurrent.CompletionException;
+
 @ControllerAdvice
 public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
 
@@ -37,31 +40,41 @@ public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
                                                                WebRequest request) {
         HttpStatus status;
 
-        switch (ex.getCode()) {
-            case 57:
+        switch (ex.getErrorType()) {
+            case AUTH_FAILED:
                 status = HttpStatus.UNAUTHORIZED;
                 break;
-            case 191:
+            case NOT_FOUND:
                 status = HttpStatus.NOT_FOUND;
+                break;
+            case ALREADY_EXISTS:
+                status = HttpStatus.CONFLICT;
                 break;
             default:
                 status = HttpStatus.BAD_REQUEST;
                 break;
         }
 
-        GrpcMessageError error = new GrpcMessageError(System.currentTimeMillis(), ex.getCode(), ex.getMessage());
-        logger.warn(format("Error %s caught.", error), ex);
-
-        return super.handleExceptionInternal(ex, error, new HttpHeaders(), status, request);
+        return makeExceptionalResponse(ex, makeErrorPayload(ex.getCode(), ex.getMessage()), status, request);
     }
 
-    @ExceptionHandler(NullPointerException.class)
-    protected ResponseEntity<Object> handleGrpcRequestExeption(NullPointerException ex,
-                                                               WebRequest request) {
-        HttpStatus status = HttpStatus.BAD_REQUEST;
-        GrpcMessageError error = new GrpcMessageError(System.currentTimeMillis(), -1L, ex.getMessage(),
-                ErrorType.REQUEST_INVALID.toString());
-        return super.handleExceptionInternal(ex, error, new HttpHeaders(), status, request);
+    @ExceptionHandler(CompletionException.class)
+    protected ResponseEntity<Object> handleCompletionExceptions(CompletionException wrapper, WebRequest request) {
+        ResponseEntity<Object> response;
+        try {
+            throw wrapper.getCause();
+        } catch (SocketException e) {
+            GrpcMessageError body = makeErrorPayload(-1, format("Communication failure - %s", e.getMessage()));
+            response = makeExceptionalResponse(e, body, HttpStatus.INTERNAL_SERVER_ERROR, request);
+        } catch (Exception e) {
+            GrpcMessageError body = makeErrorPayload(-1, ErrorType.INTERNAL_ERROR.toString());
+            response = makeExceptionalResponse(
+                    e, body, HttpStatus.INTERNAL_SERVER_ERROR, request);
+        } catch (Throwable e) {
+            GrpcMessageError body = makeErrorPayload(-1, ErrorType.INTERNAL_ERROR.toString());
+            response = new ResponseEntity<>(body, new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return response;
     }
 
     /**
@@ -72,9 +85,16 @@ public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
                                                              HttpStatus status, WebRequest request) {
         GrpcMessageError error = new GrpcMessageError(System.currentTimeMillis(), -1L, exception.getMessage(),
                 ErrorType.REQUEST_INVALID.toString());
+        return makeExceptionalResponse(exception, error, status, request);
+    }
 
-        logger.error(format("Unknown error %s caught.", error), exception);
+    private ResponseEntity<Object> makeExceptionalResponse(
+            Exception ex, GrpcMessageError body, HttpStatus status, WebRequest request) {
+        logger.error(format("Produce error response: %s", body), ex);
+        return super.handleExceptionInternal(ex, body, new HttpHeaders(), status, request);
+    }
 
-        return super.handleExceptionInternal(exception, error, headers, status, request);
+    private GrpcMessageError makeErrorPayload(Integer code, String message) {
+        return new GrpcMessageError(System.currentTimeMillis(), code, message);
     }
 }

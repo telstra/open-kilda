@@ -97,7 +97,9 @@ public class Router extends AbstractBolt
             DeactivateFlowMonitoringInfoData data = (DeactivateFlowMonitoringInfoData) payload;
             for (SwitchId switchId : data.getSwitchIds()) {
                 emit(STREAM_FLOW_ID, input, makeFlowTuple(
-                        new DeactivateFlowMonitoringCommand(switchId, data.getFlowId())));
+                        new DeactivateFlowMonitoringCommand(switchId, data.getFlowId(), true)));
+                emit(STREAM_FLOW_ID, input, makeFlowTuple(
+                        new DeactivateFlowMonitoringCommand(switchId, data.getFlowId(), false)));
             }
         } else if (payload instanceof ActivateFlowMonitoringOnSwitchInfoData) {
             ActivateFlowMonitoringOnSwitchInfoData data = (ActivateFlowMonitoringOnSwitchInfoData) payload;

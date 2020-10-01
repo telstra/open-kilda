@@ -85,9 +85,9 @@ public class FlowHandler extends AbstractBolt
                 flow.getVlanId(), isForward);
     }
 
-    public void processDeactivateFlowMonitoring(SwitchId switchId, String flowId) {
+    public void processDeactivateFlowMonitoring(SwitchId switchId, String flowId, boolean isForward) {
         // no logic just repack
-        notifyDeactivateFlowMonitoring(switchId, flowId);
+        notifyDeactivateFlowMonitoring(switchId, flowId, isForward);
     }
 
     public void processActivateFlowMonitoringOnSwitch(SwitchId switchId) {
@@ -114,10 +114,11 @@ public class FlowHandler extends AbstractBolt
     }
 
     @Override
-    public void notifyDeactivateFlowMonitoring(SwitchId switchId, String flowId) {
+    public void notifyDeactivateFlowMonitoring(SwitchId switchId, String flowId, boolean isForward) {
         RemoveFlow removeFlow = RemoveFlow.builder()
                 .flowId(flowId)
                 .headers(buildHeader())
+                .direction(isForward ? FlowDirection.FORWARD : FlowDirection.REVERSE)
                 .build();
         emit(STREAM_CONTROL_COMMANDS_ID, getCurrentTuple(), new Values(switchId.toString(), removeFlow));
     }
