@@ -77,11 +77,9 @@ public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
             SpeakerRequestBuildContext speakerContext = getSpeakerRequestBuildContext(stateMachine, true);
             if (stateMachine.getOldPrimaryForwardPath() != null) {
                 FlowPath oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
-                oldForward.setFlow(flow);
 
                 if (stateMachine.getOldPrimaryReversePath() != null) {
                     FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
-                    oldReverse.setFlow(flow);
                     factories.addAll(commandBuilder.buildAll(
                             stateMachine.getCommandContext(), flow, oldForward, oldReverse,
                             speakerContext));
@@ -92,7 +90,6 @@ public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
                 }
             } else if (stateMachine.getOldPrimaryReversePath() != null) {
                 FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
-                oldReverse.setFlow(flow);
                 // swap contexts
                 speakerContext.setForward(speakerContext.getReverse());
                 speakerContext.setReverse(PathContext.builder().build());
@@ -103,11 +100,9 @@ public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
 
             if (stateMachine.getOldProtectedForwardPath() != null) {
                 FlowPath oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
-                oldForward.setFlow(flow);
 
                 if (stateMachine.getOldProtectedReversePath() != null) {
                     FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
-                    oldReverse.setFlow(flow);
                     factories.addAll(commandBuilder.buildAllExceptIngress(
                             stateMachine.getCommandContext(), flow, oldForward, oldReverse));
                 } else {
@@ -116,7 +111,6 @@ public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
                 }
             } else if (stateMachine.getOldProtectedReversePath() != null) {
                 FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
-                oldReverse.setFlow(flow);
                 factories.addAll(commandBuilder.buildAllExceptIngress(
                         stateMachine.getCommandContext(), flow, oldReverse));
             }

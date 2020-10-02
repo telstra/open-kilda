@@ -19,7 +19,6 @@ import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
@@ -44,23 +43,17 @@ public class FlowPathSwapService {
     private final FlowPathSwapFsm.Factory fsmFactory;
     private final FsmExecutor<FlowPathSwapFsm, State, Event, FlowPathSwapContext> fsmExecutor
             = new FsmExecutor<>(Event.NEXT);
-    private final PersistenceManager persistenceManager;
     private final FlowPathSwapHubCarrier carrier;
     private final FlowEventRepository flowEventRepository;
-    private final KildaConfigurationRepository kildaConfigurationRepository;
-    private final FlowResourcesManager flowResourcesManager;
 
     public FlowPathSwapService(FlowPathSwapHubCarrier carrier,
-                               PersistenceManager persistenceManager, int transactionRetriesLimit,
+                               PersistenceManager persistenceManager,
                                int speakerCommandRetriesLimit, FlowResourcesManager flowResourcesManager) {
         fsmFactory = new FlowPathSwapFsm.Factory(carrier,
-                persistenceManager, flowResourcesManager, transactionRetriesLimit, speakerCommandRetriesLimit);
-        this.persistenceManager = persistenceManager;
+                persistenceManager, flowResourcesManager, speakerCommandRetriesLimit);
         this.carrier = carrier;
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.flowEventRepository = repositoryFactory.createFlowEventRepository();
-        this.kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
-        this.flowResourcesManager = flowResourcesManager;
     }
 
     /**

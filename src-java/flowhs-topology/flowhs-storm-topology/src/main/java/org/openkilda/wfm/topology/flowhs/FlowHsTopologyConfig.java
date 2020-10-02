@@ -50,10 +50,6 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     }
 
 
-    @Key("flow.hub.transaction.retries")
-    @Default("3")
-    int getHubTransactionRetries();
-
     @Key("flow.path.allocation.retries")
     @Default("10")
     int getPathAllocationRetriesLimit();

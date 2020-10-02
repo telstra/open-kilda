@@ -36,7 +36,6 @@ import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.northbound.controller.NorthboundBaseTest;
 import org.openkilda.northbound.controller.TestConfig;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
@@ -64,7 +63,7 @@ import java.util.concurrent.TimeUnit;
 @WebAppConfiguration
 @ContextConfiguration(classes = TestConfig.class)
 @TestPropertySource("classpath:northbound.properties")
-public class FlowControllerTest extends NorthboundBaseTest {
+public class FlowControllerTest {
     private static final String USERNAME = "kilda";
     private static final String PASSWORD = "kilda";
     private static final String ROLE = "ADMIN";

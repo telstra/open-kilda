@@ -71,7 +71,7 @@ public class BaseResourceAllocationActionTest {
 
         BaseResourceAllocationAction action = Mockito.mock(BaseResourceAllocationAction.class,
                 Mockito.withSettings()
-                        .useConstructor(persistenceManager, 3, 3, 3, pathComputer, resourcesManager, dashboardLogger)
+                        .useConstructor(persistenceManager, 3, 3, pathComputer, resourcesManager, dashboardLogger)
                         .defaultAnswer(Mockito.CALLS_REAL_METHODS));
 
         action.updateAvailableBandwidth(new SwitchId(1000), 10, new SwitchId(1000), 10,
@@ -90,7 +90,7 @@ public class BaseResourceAllocationActionTest {
 
         BaseResourceAllocationAction action = Mockito.mock(BaseResourceAllocationAction.class,
                 Mockito.withSettings()
-                        .useConstructor(persistenceManager, 3, 3, 3, pathComputer, resourcesManager, dashboardLogger)
+                        .useConstructor(persistenceManager, 3, 3, pathComputer, resourcesManager, dashboardLogger)
                         .defaultAnswer(Mockito.CALLS_REAL_METHODS));
 
         action.updateAvailableBandwidth(new SwitchId(1000), 10, new SwitchId(1000), 10,

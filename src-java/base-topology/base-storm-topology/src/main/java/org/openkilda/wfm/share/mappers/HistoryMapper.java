@@ -70,8 +70,8 @@ public abstract class HistoryMapper {
     public abstract FlowDumpPayload map(FlowDump flowDump);
 
     @Mapping(target = "type", expression = "java(dumpData.getDumpType().getType())")
-    @Mapping(target = "entityId", ignore = true)
     @Mapping(target = "taskId", ignore = true)
+    @Mapping(target = "data", ignore = true)
     public abstract FlowDump map(FlowDumpData dumpData);
 
     /**
@@ -123,22 +123,24 @@ public abstract class HistoryMapper {
 
     @Mapping(source = "time", target = "timestamp")
     @Mapping(source = "description", target = "details")
-    @Mapping(target = "entityId", ignore = true)
     @Mapping(target = "taskId", ignore = true)
+    @Mapping(target = "data", ignore = true)
     public abstract FlowHistory map(FlowHistoryData historyData);
 
     @Mapping(source = "eventData.initiator", target = "actor")
     @Mapping(source = "eventData.event.description", target = "action")
     @Mapping(source = "time", target = "timestamp")
-    @Mapping(target = "entityId", ignore = true)
     @Mapping(target = "taskId", ignore = true)
     public abstract FlowEvent map(FlowEventData eventData);
 
     @Mapping(target = "switchId", expression = "java(data.getEndpoint().getDatapath())")
     @Mapping(target = "portNumber", expression = "java(data.getEndpoint().getPortNumber())")
+    @Mapping(target = "recordId", ignore = true)
+    @Mapping(target = "data", ignore = true)
     public abstract PortHistory map(PortHistoryData data);
 
     @Mapping(target = "timestamp", ignore = true)
+    @Mapping(target = "id", source = "recordId")
     public abstract PortHistoryPayload map(PortHistory portHistory);
 
     public String map(SwitchId switchId) {

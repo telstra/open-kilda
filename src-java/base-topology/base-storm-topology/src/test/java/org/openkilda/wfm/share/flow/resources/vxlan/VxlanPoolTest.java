@@ -24,8 +24,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.Vxlan;
-import org.openkilda.persistence.Neo4jBasedTest;
-import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.VxlanRepository;
 import org.openkilda.wfm.share.flow.resources.ResourceNotAvailableException;
 
@@ -36,7 +35,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
-public class VxlanPoolTest extends Neo4jBasedTest {
+public class VxlanPoolTest extends InMemoryGraphBasedTest {
     private static final Switch SWITCH_A = Switch.builder().switchId(new SwitchId("ff:00")).build();
     private static final Switch SWITCH_B = Switch.builder().switchId(new SwitchId("ff:01")).build();
     private static final Flow FLOW_1 = Flow.builder().flowId("flow_1").srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
@@ -53,48 +52,52 @@ public class VxlanPoolTest extends Neo4jBasedTest {
 
     @Before
     public void setUp() {
-        vxlanPool = new VxlanPool(persistenceManager, MIN_VXLAN, MAX_VXLAN);
+        vxlanPool = new VxlanPool(persistenceManager, MIN_VXLAN, MAX_VXLAN, 1);
         vxlanRepository = persistenceManager.getRepositoryFactory().createVxlanRepository();
-
-        SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
-        switchRepository.createOrUpdate(SWITCH_A);
-        switchRepository.createOrUpdate(SWITCH_B);
     }
 
     @Test
     public void vxlanIdPool() {
-        Set<Integer> vxlans = new HashSet<>();
-        for (int i = MIN_VXLAN; i <= MAX_VXLAN; i++) {
-            Flow flow = Flow.builder().flowId(format("flow_%d", i)).srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
-            vxlans.add(vxlanPool.allocate(
-                    flow,
-                    new PathId(format("path_%d", i)),
-                    new PathId(format("opposite_dummy_%d", i))).getVxlan().getVni());
-        }
-        assertEquals(MAX_VXLAN - MIN_VXLAN + 1, vxlans.size());
-        vxlans.forEach(vni -> assertTrue(vni >= MIN_VXLAN && vni <= MAX_VXLAN));
+        transactionManager.doInTransaction(() -> {
+            Set<Integer> vxlans = new HashSet<>();
+            for (int i = MIN_VXLAN; i <= MAX_VXLAN; i++) {
+                Flow flow = Flow.builder()
+                        .flowId(format("flow_%d", i)).srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
+                vxlans.add(vxlanPool.allocate(
+                        flow,
+                        new PathId(format("path_%d", i)),
+                        new PathId(format("opposite_dummy_%d", i))).getVxlan().getVni());
+            }
+            assertEquals(MAX_VXLAN - MIN_VXLAN + 1, vxlans.size());
+            vxlans.forEach(vni -> assertTrue(vni >= MIN_VXLAN && vni <= MAX_VXLAN));
+        });
     }
 
 
     @Test(expected = ResourceNotAvailableException.class)
     public void vxlanPoolFullTest() {
-        for (int i = MIN_VXLAN; i <= MAX_VXLAN + 1; i++) {
-            Flow flow = Flow.builder().flowId(format("flow_%d", i)).srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
-            assertTrue(vxlanPool.allocate(flow, new PathId(format("path_%d", i)),
-                    new PathId(format("op_path_%d", i))).getVxlan().getVni() > 0);
-        }
+        transactionManager.doInTransaction(() -> {
+            for (int i = MIN_VXLAN; i <= MAX_VXLAN + 1; i++) {
+                Flow flow = Flow.builder()
+                        .flowId(format("flow_%d", i)).srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
+                assertTrue(vxlanPool.allocate(flow, new PathId(format("path_%d", i)),
+                        new PathId(format("op_path_%d", i))).getVxlan().getVni() > 0);
+            }
+        });
     }
 
     @Test
     public void deallocateVxlanTest() {
-        vxlanPool.allocate(FLOW_1, PATH_ID_1, PATH_ID_2);
-        vxlanPool.allocate(FLOW_2, PATH_ID_2, PATH_ID_1);
-        int vni = vxlanPool.allocate(FLOW_3, PATH_ID_3, PATH_ID_3).getVxlan().getVni();
-        assertEquals(2, vxlanRepository.findAll().size());
+        transactionManager.doInTransaction(() -> {
+            vxlanPool.allocate(FLOW_1, PATH_ID_1, PATH_ID_2);
+            vxlanPool.allocate(FLOW_2, PATH_ID_2, PATH_ID_1);
+            int vni = vxlanPool.allocate(FLOW_3, PATH_ID_3, PATH_ID_3).getVxlan().getVni();
+            assertEquals(2, vxlanRepository.findAll().size());
 
-        vxlanPool.deallocate(PATH_ID_1);
-        Collection<Vxlan> transitVlans = vxlanRepository.findAll();
-        assertEquals(1, transitVlans.size());
-        assertEquals(vni, transitVlans.iterator().next().getVni());
+            vxlanPool.deallocate(PATH_ID_1);
+            Collection<Vxlan> vxlans = vxlanRepository.findAll();
+            assertEquals(1, vxlans.size());
+            assertEquals(vni, vxlans.iterator().next().getVni());
+        });
     }
 }

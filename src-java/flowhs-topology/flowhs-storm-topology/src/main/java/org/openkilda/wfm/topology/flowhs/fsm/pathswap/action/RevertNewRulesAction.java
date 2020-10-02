@@ -53,7 +53,7 @@ public class RevertNewRulesAction
         Collection<FlowSegmentRequestFactory> installCommands = new ArrayList<>();
         // Reinstall old ingress rules that may be overridden by new ingress.
         SpeakerRequestBuildContext installContext = buildBaseSpeakerContextForInstall(
-                flow.getSrcSwitch().getSwitchId(), flow.getDestSwitch().getSwitchId());
+                flow.getSrcSwitchId(), flow.getDestSwitchId());
         installCommands.addAll(commandBuilder.buildIngressOnly(
                 stateMachine.getCommandContext(), flow, flow.getForwardPath(), flow.getReversePath(), installContext));
 
@@ -66,7 +66,7 @@ public class RevertNewRulesAction
         // Remove possible installed segments
         Collection<FlowSegmentRequestFactory> removeCommands = new ArrayList<>();
         SpeakerRequestBuildContext removeContext = buildSpeakerContextForRemovalIngressOnly(
-                flow.getSrcSwitch().getSwitchId(), flow.getDestSwitch().getSwitchId());
+                flow.getSrcSwitchId(), flow.getDestSwitchId());
 
         removeCommands.addAll(commandBuilder.buildIngressOnly(
                 stateMachine.getCommandContext(), flow, flow.getProtectedForwardPath(),

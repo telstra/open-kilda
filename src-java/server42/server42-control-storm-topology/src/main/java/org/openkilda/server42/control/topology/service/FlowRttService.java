@@ -76,7 +76,7 @@ public class FlowRttService {
                 flowRepository.findByEndpointSwitch(switchId).stream()
                         .filter(f -> !f.isOneSwitchFlow())
                         .collect(Collectors.partitioningBy(
-                                f -> f.getSrcSwitch().getSwitchId().equals(switchId)));
+                                f -> f.getSrcSwitchId().equals(switchId)));
 
 
         flowByDirection.getOrDefault(true, Collections.emptyList())

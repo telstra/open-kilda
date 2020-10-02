@@ -255,7 +255,7 @@ public class SwitchController extends BaseController {
     }
 
     /**
-     * Validate the rules installed on the switch against the flows in Neo4J.
+     * Validate the rules installed on the switch against the flows in the database.
      *
      * @return the validation details.
      */
@@ -267,7 +267,7 @@ public class SwitchController extends BaseController {
     }
 
     /**
-     * Validate the rules and the meters installed on the switch against the flows in Neo4J.
+     * Validate the rules and the meters installed on the switch against the flows in the database.
      *
      * @return the validation details.
      */
@@ -281,7 +281,7 @@ public class SwitchController extends BaseController {
     }
 
     /**
-     * Synchronize (install) missing flows that should be on the switch but exist only in neo4j.
+     * Synchronize (install) missing flows that should be on the switch but exist only in the database.
      *
      * @return the synchronization result.
      */
@@ -293,7 +293,7 @@ public class SwitchController extends BaseController {
     }
 
     /**
-     * Synchronize (install) missing flows that should be on the switch but exist only in neo4j.
+     * Synchronize (install) missing flows that should be on the switch but exist only in the database.
      * Optionally removes excess rules from the switch.
      *
      * @return the synchronization result.

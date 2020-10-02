@@ -21,7 +21,6 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -51,15 +50,12 @@ public class FlowRerouteService {
 
     public FlowRerouteService(FlowRerouteHubCarrier carrier, PersistenceManager persistenceManager,
                               PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
-                              int transactionRetriesLimit, int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
+                              int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                               int speakerCommandRetriesLimit) {
         this.carrier = carrier;
-
-        final RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        this.flowEventRepository = repositoryFactory.createFlowEventRepository();
-
+        this.flowEventRepository = persistenceManager.getRepositoryFactory().createFlowEventRepository();
         fsmFactory = new FlowRerouteFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
-                transactionRetriesLimit, pathAllocationRetriesLimit, pathAllocationRetryDelay,
+                pathAllocationRetriesLimit, pathAllocationRetryDelay,
                 speakerCommandRetriesLimit);
     }
 

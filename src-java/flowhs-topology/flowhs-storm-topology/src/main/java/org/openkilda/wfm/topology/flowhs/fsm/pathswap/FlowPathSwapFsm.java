@@ -111,7 +111,7 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
 
 
         public Factory(FlowPathSwapHubCarrier carrier, PersistenceManager persistenceManager,
-                       FlowResourcesManager resourcesManager, int transactionRetriesLimit,
+                       FlowResourcesManager resourcesManager,
                        int speakerCommandRetriesLimit) {
             this.carrier = carrier;
             this.resourcesManager = resourcesManager;
@@ -131,7 +131,7 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
             builder.transition().from(State.FLOW_VALIDATED).to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
 
             builder.transition().from(State.FLOW_VALIDATED).to(State.FLOW_UPDATED).on(Event.NEXT)
-                    .perform(new UpdateFlowPathsAction(persistenceManager, transactionRetriesLimit));
+                    .perform(new UpdateFlowPathsAction(persistenceManager));
             builder.transition().from(State.FLOW_UPDATED).to(State.INSTALLING_INGRESS_RULES).on(Event.NEXT)
                     .perform(new InstallIngressRulesAction(persistenceManager, resourcesManager));
 
@@ -174,12 +174,12 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
             builder.transition().from(State.OLD_RULES_REMOVED).to(State.UPDATING_FLOW_STATUS)
                     .on(Event.NEXT);
             builder.transition().from(State.UPDATING_FLOW_STATUS).to(State.FLOW_STATUS_UPDATED).on(Event.NEXT)
-                    .perform(new UpdateFlowStatusAction(persistenceManager, dashboardLogger, transactionRetriesLimit));
+                    .perform(new UpdateFlowStatusAction(persistenceManager, dashboardLogger));
 
             builder.onEntry(State.REVERTING_PATHS_SWAP).perform(reportErrorAction);
             builder.transition().from(State.REVERTING_PATHS_SWAP).to(State.PATHS_SWAP_REVERTED)
                     .on(Event.NEXT)
-                    .perform(new RevertPathsSwapAction(persistenceManager, transactionRetriesLimit));
+                    .perform(new RevertPathsSwapAction(persistenceManager));
 
             builder.transitions().from(State.PATHS_SWAP_REVERTED)
                     .toAmong(State.REVERTING_NEW_RULES, State.REVERTING_NEW_RULES)
@@ -199,7 +199,7 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
             builder.transitions().from(State.NEW_RULES_REVERTED)
                     .toAmong(State.REVERTING_FLOW_STATUS, State.REVERTING_FLOW_STATUS)
                     .onEach(Event.NEXT, Event.ERROR)
-                    .perform(new RecalculateFlowStatusAction(persistenceManager, transactionRetriesLimit,
+                    .perform(new RecalculateFlowStatusAction(persistenceManager,
                             dashboardLogger));
 
             builder.transitions().from(State.REVERTING_FLOW_STATUS)

@@ -22,7 +22,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.FlowCookie;
-import org.openkilda.persistence.Neo4jBasedTest;
+import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 
 import org.junit.Before;
@@ -33,7 +33,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class CookiePoolTest extends Neo4jBasedTest {
+public class CookiePoolTest extends InMemoryGraphBasedTest {
     private static final long MIN_COOKIE = 5L;
     private static final long MAX_COOKIE = 25L;
 
@@ -42,49 +42,57 @@ public class CookiePoolTest extends Neo4jBasedTest {
 
     @Before
     public void setUp() {
-        cookiePool = new CookiePool(persistenceManager, MIN_COOKIE, MAX_COOKIE);
+        cookiePool = new CookiePool(persistenceManager, MIN_COOKIE, MAX_COOKIE, 1);
         flowCookieRepository = persistenceManager.getRepositoryFactory().createFlowCookieRepository();
     }
 
     @Test
     public void cookiePool() {
-        Set<Long> cookies = new HashSet<>();
-        for (long i = MIN_COOKIE; i <= MAX_COOKIE; i++) {
-            cookies.add(cookiePool.allocate(format("flow_%d", i)));
-        }
-        assertEquals(MAX_COOKIE - MIN_COOKIE + 1, cookies.size());
-        cookies.forEach(cookie -> assertTrue(cookie >= MIN_COOKIE && cookie <= MAX_COOKIE));
+        transactionManager.doInTransaction(() -> {
+            Set<Long> cookies = new HashSet<>();
+            for (long i = MIN_COOKIE; i <= MAX_COOKIE; i++) {
+                cookies.add(cookiePool.allocate(format("flow_%d", i)));
+            }
+            assertEquals(MAX_COOKIE - MIN_COOKIE + 1, cookies.size());
+            cookies.forEach(cookie -> assertTrue(cookie >= MIN_COOKIE && cookie <= MAX_COOKIE));
+        });
     }
 
     @Test(expected = ResourceNotAvailableException.class)
     public void cookiePoolFullTest() {
-        for (long i = MIN_COOKIE; i <= MAX_COOKIE + 1; i++) {
-            assertTrue(cookiePool.allocate(format("flow_%d", i)) > 0);
-        }
+        transactionManager.doInTransaction(() -> {
+            for (long i = MIN_COOKIE; i <= MAX_COOKIE + 1; i++) {
+                assertTrue(cookiePool.allocate(format("flow_%d", i)) > 0);
+            }
+        });
     }
 
     @Test
     public void cookieLldp() {
-        // checks that we able to create two cookies for one flow
-        String flowId = "flow_1";
-        long flowCookie = cookiePool.allocate(flowId);
-        long lldpCookie = cookiePool.allocate(flowId);
-        assertNotEquals(flowCookie, lldpCookie);
+        transactionManager.doInTransaction(() -> {
+            // checks that we able to create two cookies for one flow
+            String flowId = "flow_1";
+            long flowCookie = cookiePool.allocate(flowId);
+            long lldpCookie = cookiePool.allocate(flowId);
+            assertNotEquals(flowCookie, lldpCookie);
+        });
     }
 
     @Test
     public void deallocateCookiesTest() {
-        cookiePool.allocate("flow_1");
-        cookiePool.allocate("flow_2");
-        long cookie = cookiePool.allocate("flow_3");
-        assertEquals(3, flowCookieRepository.findAll().size());
+        transactionManager.doInTransaction(() -> {
+            cookiePool.allocate("flow_1");
+            cookiePool.allocate("flow_2");
+            long cookie = cookiePool.allocate("flow_3");
+            assertEquals(3, flowCookieRepository.findAll().size());
 
-        cookiePool.deallocate(cookie);
-        Collection<FlowCookie> flowCookies = flowCookieRepository.findAll();
-        assertEquals(2, flowCookies.size());
-        assertFalse(flowCookies.stream()
-                .map(FlowCookie::getUnmaskedCookie)
-                .collect(Collectors.toList())
-                .contains(cookie));
+            cookiePool.deallocate(cookie);
+            Collection<FlowCookie> flowCookies = flowCookieRepository.findAll();
+            assertEquals(2, flowCookies.size());
+            assertFalse(flowCookies.stream()
+                    .map(FlowCookie::getUnmaskedCookie)
+                    .collect(Collectors.toList())
+                    .contains(cookie));
+        });
     }
 }

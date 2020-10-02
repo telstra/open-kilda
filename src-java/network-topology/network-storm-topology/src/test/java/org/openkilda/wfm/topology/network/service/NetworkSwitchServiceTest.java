@@ -49,12 +49,12 @@ import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.TransactionCallbackWithoutResult;
-import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.tx.TransactionCallbackWithoutResult;
+import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
@@ -154,7 +154,7 @@ public class NetworkSwitchServiceTest {
 
         reset(transactionManager);
 
-        when(transactionManager.makeRetryPolicyBlank())
+        when(transactionManager.getDefaultRetryPolicy())
                 .thenReturn(new RetryPolicy().withMaxRetries(2));
         doAnswer(invocation -> {
             RetryPolicy retryPolicy = invocation.getArgument(0);
@@ -167,7 +167,9 @@ public class NetworkSwitchServiceTest {
 
         reset(switchRepository, switchPropertiesRepository);
 
-        when(kildaConfigurationRepository.get()).thenReturn(KildaConfiguration.DEFAULTS);
+        doAnswer(invocation -> invocation.getArgument(0)).when(switchRepository).add(any());
+
+        when(kildaConfigurationRepository.getOrDefault()).thenReturn(KildaConfiguration.DEFAULTS);
 
         reset(repositoryFactory);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
@@ -239,9 +241,6 @@ public class NetworkSwitchServiceTest {
         verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, ports.get(1).getNumber()), false);
         verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(2).getNumber()), OnlineStatus.OFFLINE);
         verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, ports.get(3).getNumber()), false);
-
-        verify(switchRepository).createOrUpdate(argThat(sw ->
-                sw.getStatus() == SwitchStatus.INACTIVE && sw.getSwitchId() == alphaDatapath));
     }
 
     @Test
@@ -281,9 +280,6 @@ public class NetworkSwitchServiceTest {
         verify(carrier).setupPortHandler(Endpoint.of(alphaDatapath, 2), islAtoB2);
         verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, 1), OnlineStatus.OFFLINE);
         verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, 2), OnlineStatus.OFFLINE);
-
-        verify(switchRepository).createOrUpdate(argThat(sw ->
-                sw.getStatus() == SwitchStatus.INACTIVE && sw.getSwitchId() == alphaDatapath));
     }
 
     @Test
@@ -907,10 +903,8 @@ public class NetworkSwitchServiceTest {
                 LinkStatus.of(ports.get(0).getState()));
         verify(carrier).sendAffectedFlowRerouteRequest(alphaDatapath);
 
-        verify(switchRepository).createOrUpdate(argThat(sw ->
-                sw.getStatus() == SwitchStatus.INACTIVE && sw.getSwitchId() == alphaDatapath));
-        verify(switchPropertiesRepository).createOrUpdate(argThat(sf ->
-                sf.getSupportedTransitEncapsulation().equals(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)));
+        verify(switchPropertiesRepository).add(argThat(s ->
+                s.getSupportedTransitEncapsulation().equals(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)));
     }
 
     private List<SpeakerSwitchPortView> doSpeakerOnline(NetworkSwitchService service, Set<SwitchFeature> features) {

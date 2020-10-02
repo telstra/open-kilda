@@ -69,7 +69,7 @@ public class FlowPathSwapHubBolt extends HubBolt implements FlowPathSwapHubCarri
     protected void init() {
 
         FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
-        service = new FlowPathSwapService(this, persistenceManager, config.getTransactionRetriesLimit(),
+        service = new FlowPathSwapService(this, persistenceManager,
                 config.getSpeakerCommandRetriesLimit(), resourcesManager);
     }
 
@@ -137,14 +137,12 @@ public class FlowPathSwapHubBolt extends HubBolt implements FlowPathSwapHubCarri
 
     @Getter
     public static class FlowPathSwapConfig extends Config {
-        private int transactionRetriesLimit;
         private int speakerCommandRetriesLimit;
 
         @Builder(builderMethodName = "flowPathSwapBuilder", builderClassName = "flowPathSwapBuild")
         public FlowPathSwapConfig(String requestSenderComponent, String workerComponent, int timeoutMs, boolean autoAck,
-                                int transactionRetriesLimit, int speakerCommandRetriesLimit) {
+                                int speakerCommandRetriesLimit) {
             super(requestSenderComponent, workerComponent, timeoutMs, autoAck);
-            this.transactionRetriesLimit = transactionRetriesLimit;
             this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
         }
     }

@@ -73,7 +73,7 @@ public class SimpleSwitchRuleConverter {
         int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
 
         SimpleSwitchRule rule = SimpleSwitchRule.builder()
-                .switchId(flowPath.getSrcSwitch().getSwitchId())
+                .switchId(flowPath.getSrcSwitchId())
                 .cookie(flowPath.getCookie().getValue())
                 .inPort(inPort)
                 .meterId(flowPath.getMeterId() != null ? flowPath.getMeterId().getValue() : null)
@@ -100,8 +100,8 @@ public class SimpleSwitchRuleConverter {
             rule.setOutVlan(calcVlanSetSequence(ingress, egressEndpoint.getVlanStack()));
         } else {
             PathSegment ingressSegment = flowPath.getSegments().stream()
-                    .filter(segment -> segment.getSrcSwitch().getSwitchId()
-                            .equals(flowPath.getSrcSwitch().getSwitchId()))
+                    .filter(segment -> segment.getSrcSwitchId()
+                            .equals(flowPath.getSrcSwitchId()))
                     .findAny()
                     .orElseThrow(() -> new IllegalStateException(
                             String.format("PathSegment was not found for ingress flow rule, flowId: %s",
@@ -134,7 +134,7 @@ public class SimpleSwitchRuleConverter {
         }
 
         PathSegment egressSegment = orderedSegments.get(orderedSegments.size() - 1);
-        if (!egressSegment.getDestSwitch().getSwitchId().equals(flowPath.getDestSwitch().getSwitchId())) {
+        if (!egressSegment.getDestSwitchId().equals(flowPath.getDestSwitchId())) {
             throw new IllegalStateException(
                     String.format("PathSegment was not found for egress flow rule, flowId: %s", flow.getFlowId()));
         }
@@ -148,7 +148,7 @@ public class SimpleSwitchRuleConverter {
                                                           EncapsulationId encapsulationId) {
 
         SimpleSwitchRule rule = SimpleSwitchRule.builder()
-                .switchId(srcPathSegment.getDestSwitch().getSwitchId())
+                .switchId(srcPathSegment.getDestSwitchId())
                 .inPort(srcPathSegment.getDestPort())
                 .outPort(dstPathSegment.getSrcPort())
                 .cookie(flowPath.getCookie().getValue())
@@ -167,7 +167,7 @@ public class SimpleSwitchRuleConverter {
                                                          EncapsulationId encapsulationId) {
         FlowEndpoint endpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
         SimpleSwitchRule rule = SimpleSwitchRule.builder()
-                .switchId(flowPath.getDestSwitch().getSwitchId())
+                .switchId(flowPath.getDestSwitchId())
                 .outPort(endpoint.getPortNumber())
                 .inPort(egressSegment.getDestPort())
                 .cookie(flowPath.getCookie().getValue())

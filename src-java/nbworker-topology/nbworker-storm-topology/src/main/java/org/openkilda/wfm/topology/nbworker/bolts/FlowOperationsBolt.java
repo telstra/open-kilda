@@ -205,8 +205,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         for (SwitchConnectedDevice device : devices) {
             ConnectedDeviceDto deviceDto = ConnectedDeviceMapper.INSTANCE.mapSwitchDeviceToFlowDeviceDto(device);
             if (device.getSource() == null) {
-                log.warn("Switch Connected Device with unique index {} has Flow ID {} but has no 'source' property.",
-                        device.getUniqueIndex(), device.getFlowId());
+                log.warn("Switch Connected Device {} has Flow ID {} but has no 'source' property.",
+                        device, device.getFlowId());
             } else if (device.getSource()) {
                 if (device.getType() == LLDP) {
                     response.getSource().getLldp().add(deviceDto);

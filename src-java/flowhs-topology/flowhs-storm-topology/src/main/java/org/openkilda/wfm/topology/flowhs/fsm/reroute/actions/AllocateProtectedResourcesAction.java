@@ -46,11 +46,11 @@ import java.util.stream.Stream;
 @Slf4j
 public class AllocateProtectedResourcesAction extends
         BaseResourceAllocationAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-    public AllocateProtectedResourcesAction(PersistenceManager persistenceManager, int transactionRetriesLimit,
+    public AllocateProtectedResourcesAction(PersistenceManager persistenceManager,
                                             int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                                             PathComputer pathComputer, FlowResourcesManager resourcesManager,
                                             FlowOperationsDashboardLogger dashboardLogger) {
-        super(persistenceManager, transactionRetriesLimit, pathAllocationRetriesLimit, pathAllocationRetryDelay,
+        super(persistenceManager, pathAllocationRetriesLimit, pathAllocationRetryDelay,
                 pathComputer, resourcesManager, dashboardLogger);
     }
 
@@ -63,43 +63,44 @@ public class AllocateProtectedResourcesAction extends
     protected void allocate(FlowRerouteFsm stateMachine)
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         String flowId = stateMachine.getFlowId();
-        Flow flow = getFlow(flowId);
 
+        Flow tmpFlowCopy = getFlow(flowId);
+        // Detach the entity to avoid propagation to the database.
+        flowRepository.detach(tmpFlowCopy);
         if (stateMachine.getNewEncapsulationType() != null) {
             // This is for PCE to use proper (updated) encapsulation type.
-            flow.setEncapsulationType(stateMachine.getNewEncapsulationType());
+            tmpFlowCopy.setEncapsulationType(stateMachine.getNewEncapsulationType());
         }
 
         log.debug("Finding a new protected path for flow {}", flowId);
-        GetPathsResult potentialPath = pathComputer.getPath(flow,
-                Stream.of(flow.getProtectedForwardPathId(), flow.getProtectedReversePathId())
+        GetPathsResult potentialPath = pathComputer.getPath(tmpFlowCopy,
+                Stream.of(tmpFlowCopy.getProtectedForwardPathId(), tmpFlowCopy.getProtectedReversePathId())
                         .filter(Objects::nonNull).collect(Collectors.toList()),
-                getBackUpStrategies(flow.getPathComputationStrategy()));
+                getBackUpStrategies(tmpFlowCopy.getPathComputationStrategy()));
         stateMachine.setNewProtectedPathComputationStrategy(potentialPath.getUsedStrategy());
 
-        FlowPath primaryForwardPath = flow.getPath(stateMachine.getNewPrimaryForwardPath())
-                .orElse(flow.getForwardPath());
-        FlowPath primaryReversePath = flow.getPath(stateMachine.getNewPrimaryReversePath())
-                .orElse(flow.getReversePath());
-
+        FlowPath primaryForwardPath = tmpFlowCopy.getPath(stateMachine.getNewPrimaryForwardPath())
+                .orElse(tmpFlowCopy.getForwardPath());
+        FlowPath primaryReversePath = tmpFlowCopy.getPath(stateMachine.getNewPrimaryReversePath())
+                .orElse(tmpFlowCopy.getReversePath());
         boolean overlappingProtectedPathFound = primaryForwardPath != null
                 && flowPathBuilder.arePathsOverlapped(potentialPath.getForward(), primaryForwardPath)
                 || primaryReversePath != null
                 && flowPathBuilder.arePathsOverlapped(potentialPath.getReverse(), primaryReversePath);
         if (overlappingProtectedPathFound) {
             // Update the status here as no reroute is going to be performed for the protected.
-            FlowPath protectedForwardPath = flow.getProtectedForwardPath();
+            FlowPath protectedForwardPath = tmpFlowCopy.getProtectedForwardPath();
             if (protectedForwardPath != null) {
-                flowPathRepository.updateStatus(protectedForwardPath.getPathId(), FlowPathStatus.INACTIVE);
+                protectedForwardPath.setStatus(FlowPathStatus.INACTIVE);
             }
 
-            FlowPath protectedReversePath = flow.getProtectedReversePath();
+            FlowPath protectedReversePath = tmpFlowCopy.getProtectedReversePath();
             if (protectedReversePath != null) {
-                flowPathRepository.updateStatus(protectedReversePath.getPathId(), FlowPathStatus.INACTIVE);
+                protectedReversePath.setStatus(FlowPathStatus.INACTIVE);
             }
 
-            FlowStatus flowStatus = flow.computeFlowStatus();
-            if (flowStatus != flow.getStatus()) {
+            FlowStatus flowStatus = tmpFlowCopy.computeFlowStatus();
+            if (flowStatus != tmpFlowCopy.getStatus()) {
                 dashboardLogger.onFlowStatusUpdate(flowId, flowStatus);
                 flowRepository.updateStatus(flowId, flowStatus);
             }
@@ -109,8 +110,8 @@ public class AllocateProtectedResourcesAction extends
             stateMachine.saveActionToHistory("Couldn't find non overlapping protected path. Skipped creating it");
         } else {
             FlowPathPair oldPaths = FlowPathPair.builder()
-                    .forward(flow.getProtectedForwardPath())
-                    .reverse(flow.getProtectedReversePath())
+                    .forward(tmpFlowCopy.getProtectedForwardPath())
+                    .reverse(tmpFlowCopy.getProtectedReversePath())
                     .build();
 
             boolean newPathFound = isNotSamePath(potentialPath, oldPaths);
@@ -119,23 +120,27 @@ public class AllocateProtectedResourcesAction extends
                     log.debug("Found the same protected path for flow {}. Proceed with recreating it", flowId);
                 }
 
-                log.debug("Allocating resources for a new protected path of flow {}", flowId);
-                FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
-                log.debug("Resources have been allocated: {}", flowResources);
-                stateMachine.setNewProtectedResources(flowResources);
+                FlowPathPair createdPaths = transactionManager.doInTransaction(() -> {
+                    log.debug("Allocating resources for a new protected path of flow {}", flowId);
+                    Flow flow = getFlow(flowId);
+                    FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
+                    log.debug("Resources have been allocated: {}", flowResources);
+                    stateMachine.setNewProtectedResources(flowResources);
 
-                List<FlowPath> pathsToReuse
-                        = Lists.newArrayList(flow.getProtectedForwardPath(), flow.getProtectedReversePath());
-                pathsToReuse.addAll(stateMachine.getRejectedPaths().stream()
-                        .map(flow::getPath)
-                        .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty))
-                        .collect(Collectors.toList()));
-                FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources, false);
-                log.debug("New protected path has been created: {}", newPaths);
-                stateMachine.setNewProtectedForwardPath(newPaths.getForward().getPathId());
-                stateMachine.setNewProtectedReversePath(newPaths.getReverse().getPathId());
+                    List<FlowPath> pathsToReuse
+                            = Lists.newArrayList(flow.getProtectedForwardPath(), flow.getProtectedReversePath());
+                    pathsToReuse.addAll(stateMachine.getRejectedPaths().stream()
+                            .map(flow::getPath)
+                            .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty))
+                            .collect(Collectors.toList()));
+                    FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources, false);
+                    log.debug("New protected path has been created: {}", newPaths);
+                    stateMachine.setNewProtectedForwardPath(newPaths.getForward().getPathId());
+                    stateMachine.setNewProtectedReversePath(newPaths.getReverse().getPathId());
+                    return newPaths;
+                });
 
-                saveAllocationActionWithDumpsToHistory(stateMachine, flow, "protected", newPaths);
+                saveAllocationActionWithDumpsToHistory(stateMachine, tmpFlowCopy, "protected", createdPaths);
             } else {
                 stateMachine.saveActionToHistory("Found the same protected path. Skipped creating of it");
             }

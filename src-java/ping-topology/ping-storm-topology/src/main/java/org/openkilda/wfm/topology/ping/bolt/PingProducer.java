@@ -99,7 +99,7 @@ public class PingProducer extends Abstract {
         }
 
         PathSegment ingressSegment = segments.get(0);
-        if (!ingressSegment.getSrcSwitch().getSwitchId().equals(flowPath.getSrcSwitch().getSwitchId())) {
+        if (!ingressSegment.getSrcSwitchId().equals(flowPath.getSrcSwitchId())) {
             throw new IllegalStateException(
                     format("FlowSegment was not found for ingress flow rule, flow_id: %s", flow.getFlowId()));
         }

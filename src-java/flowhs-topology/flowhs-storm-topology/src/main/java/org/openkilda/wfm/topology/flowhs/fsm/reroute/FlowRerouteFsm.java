@@ -184,7 +184,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
         public Factory(FlowRerouteHubCarrier carrier, PersistenceManager persistenceManager,
                        PathComputer pathComputer, FlowResourcesManager resourcesManager,
-                       int transactionRetriesLimit, int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
+                       int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                        int speakerCommandRetriesLimit) {
             this.carrier = carrier;
 
@@ -200,7 +200,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
             builder.transition().from(State.INITIALIZED).to(State.FINISHED_WITH_ERROR).on(Event.TIMEOUT);
 
             builder.transition().from(State.FLOW_VALIDATED).to(State.PRIMARY_RESOURCES_ALLOCATED).on(Event.NEXT)
-                    .perform(new AllocatePrimaryResourcesAction(persistenceManager, transactionRetriesLimit,
+                    .perform(new AllocatePrimaryResourcesAction(persistenceManager,
                             pathAllocationRetriesLimit, pathAllocationRetryDelay,
                             pathComputer, resourcesManager, dashboardLogger));
             builder.transitions().from(State.FLOW_VALIDATED)
@@ -209,7 +209,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
             builder.transition().from(State.PRIMARY_RESOURCES_ALLOCATED).to(State.PROTECTED_RESOURCES_ALLOCATED)
                     .on(Event.NEXT)
-                    .perform(new AllocateProtectedResourcesAction(persistenceManager, transactionRetriesLimit,
+                    .perform(new AllocateProtectedResourcesAction(persistenceManager,
                             pathAllocationRetriesLimit, pathAllocationRetryDelay,
                             pathComputer, resourcesManager, dashboardLogger));
             builder.transition().from(State.PRIMARY_RESOURCES_ALLOCATED).to(State.MARKING_FLOW_DOWN_OR_DEGRADED)
@@ -333,7 +333,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .perform(new HandleNotCompletedCommandsAction());
 
             builder.transition().from(State.OLD_RULES_REMOVED).to(State.OLD_PATHS_REMOVAL_COMPLETED).on(Event.NEXT)
-                    .perform(new CompleteFlowPathRemovalAction(persistenceManager, transactionRetriesLimit));
+                    .perform(new CompleteFlowPathRemovalAction(persistenceManager));
 
             builder.transition().from(State.OLD_PATHS_REMOVAL_COMPLETED).to(State.DEALLOCATING_OLD_RESOURCES)
                     .on(Event.NEXT);

@@ -164,8 +164,8 @@ public class RequestedFlowMapperTest {
 
         assertEquals(FLOW_ID, result.getFlowId());
 
-        assertEquals(SRC_SWITCH_ID, result.getSrcSwitch().getSwitchId());
-        assertEquals(DST_SWITCH_ID, result.getDestSwitch().getSwitchId());
+        assertEquals(SRC_SWITCH_ID, result.getSrcSwitchId());
+        assertEquals(DST_SWITCH_ID, result.getDestSwitchId());
 
         assertEquals(SRC_PORT, result.getSrcPort());
         assertEquals(SRC_VLAN, result.getSrcVlan());

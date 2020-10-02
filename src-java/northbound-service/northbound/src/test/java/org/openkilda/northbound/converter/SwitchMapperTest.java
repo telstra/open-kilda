@@ -133,24 +133,24 @@ public class SwitchMapperTest {
     }
 
     private Switch getSwitch() {
-        Switch sw = new Switch();
-        sw.setSwitchId(new SwitchId(1));
-        sw.setSocketAddress(new InetSocketAddress("localhost", 5050));
-        sw.setHostname("hostname");
-        sw.setDescription("description");
-        sw.setStatus(SwitchStatus.ACTIVE);
-        sw.setUnderMaintenance(true);
-        sw.setOfVersion("OF_13");
-        sw.setOfDescriptionManufacturer("manufacturer");
-        sw.setOfDescriptionHardware("hardware");
-        sw.setOfDescriptionSoftware("software");
-        sw.setOfDescriptionSerialNumber("serialNumber");
-        sw.setPop("pop");
-        sw.setLatitude(48.860611);
-        sw.setLongitude(2.337633);
-        sw.setStreet("Rue de Rivoli");
-        sw.setCity("Paris");
-        sw.setCountry("France");
-        return sw;
+        return Switch.builder()
+                .switchId(new SwitchId(1))
+                .socketAddress(new InetSocketAddress("localhost", 5050))
+                .hostname("hostname")
+                .description("description")
+                .status(SwitchStatus.ACTIVE)
+                .underMaintenance(true)
+                .ofVersion("OF_13")
+                .ofDescriptionManufacturer("manufacturer")
+                .ofDescriptionHardware("hardware")
+                .ofDescriptionSoftware("software")
+                .ofDescriptionSerialNumber("serialNumber")
+                .pop("pop")
+                .latitude(48.860611)
+                .longitude(2.337633)
+                .street("Rue de Rivoli")
+                .city("Paris")
+                .country("France")
+                .build();
     }
 }

@@ -161,26 +161,26 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
 
     private boolean isRemoveCustomerPortSharedCatchRule(Flow flow, FlowPath path) {
         boolean isForward = flow.isForward(path);
-        return isRemoveCustomerPortSharedCatchRule(flow.getFlowId(), path.getSrcSwitch().getSwitchId(),
+        return isRemoveCustomerPortSharedCatchRule(flow.getFlowId(), path.getSrcSwitchId(),
                 isForward ? flow.getSrcPort() : flow.getDestPort());
     }
 
     private boolean isRemoveServer42InputSharedRule(Flow flow, FlowPath path, boolean server42Rtt) {
         boolean isForward = flow.isForward(path);
         return server42Rtt && isFlowTheLastUserOfServer42InputSharedRule(
-                flow.getFlowId(), path.getSrcSwitch().getSwitchId(),
+                flow.getFlowId(), path.getSrcSwitchId(),
                 isForward ? flow.getSrcPort() : flow.getDestPort());
     }
 
     private boolean isRemoveCustomerPortSharedLldpCatchRule(Flow flow, FlowPath path) {
         boolean isForward = flow.isForward(path);
-        return isFlowTheLastUserOfSharedLldpPortRule(flow.getFlowId(), path.getSrcSwitch().getSwitchId(),
+        return isFlowTheLastUserOfSharedLldpPortRule(flow.getFlowId(), path.getSrcSwitchId(),
                 isForward ? flow.getSrcPort() : flow.getDestPort());
     }
 
     private boolean isRemoveCustomerPortSharedArpCatchRule(Flow flow, FlowPath path) {
         boolean isForward = flow.isForward(path);
-        return isFlowTheLastUserOfSharedArpPortRule(flow.getFlowId(), path.getSrcSwitch().getSwitchId(),
+        return isFlowTheLastUserOfSharedArpPortRule(flow.getFlowId(), path.getSrcSwitchId(),
                 isForward ? flow.getSrcPort() : flow.getDestPort());
     }
 
@@ -191,7 +191,7 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
     }
 
     private PathContext buildPathContext(Flow flow, FlowPath path) {
-        SwitchProperties properties = getSwitchProperties(path.getSrcSwitch().getSwitchId());
+        SwitchProperties properties = getSwitchProperties(path.getSrcSwitchId());
         boolean server42FlowRtt = isServer42FlowRttFeatureToggle() && properties.isServer42FlowRtt();
 
         return PathContext.builder()

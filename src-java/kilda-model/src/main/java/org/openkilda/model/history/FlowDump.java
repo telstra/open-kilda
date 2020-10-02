@@ -181,13 +181,13 @@ public class FlowDump implements CompositeDataEntity<FlowDump.FlowDumpData> {
 
         void setDestinationVlan(int destinationVlan);
 
-        int getSourceInnerVlan();
+        Integer getSourceInnerVlan();
 
-        void setSourceInnerVlan(int sourceInnerVlan);
+        void setSourceInnerVlan(Integer sourceInnerVlan);
 
-        int getDestinationInnerVlan();
+        Integer getDestinationInnerVlan();
 
-        void setDestinationInnerVlan(int destinationInnerVlan);
+        void setDestinationInnerVlan(Integer destinationInnerVlan);
 
         MeterId getForwardMeterId();
 
@@ -217,17 +217,17 @@ public class FlowDump implements CompositeDataEntity<FlowDump.FlowDumpData> {
 
         void setReverseStatus(FlowPathStatus reverseStatus);
 
-        boolean isAllocateProtectedPath();
+        Boolean isAllocateProtectedPath();
 
-        void setAllocateProtectedPath(boolean allocateProtectedPath);
+        void setAllocateProtectedPath(Boolean allocateProtectedPath);
 
-        boolean isPinned();
+        Boolean isPinned();
 
-        void setPinned(boolean pinned);
+        void setPinned(Boolean pinned);
 
-        boolean isPeriodicPings();
+        Boolean isPeriodicPings();
 
-        void setPeriodicPings(boolean periodicPings);
+        void setPeriodicPings(Boolean periodicPings);
 
         FlowEncapsulationType getEncapsulationType();
 
@@ -237,9 +237,9 @@ public class FlowDump implements CompositeDataEntity<FlowDump.FlowDumpData> {
 
         void setPathComputationStrategy(PathComputationStrategy pathComputationStrategy);
 
-        long getMaxLatency();
+        Long getMaxLatency();
 
-        void setMaxLatency(long maxLatency);
+        void setMaxLatency(Long maxLatency);
     }
 
     /**
@@ -262,8 +262,8 @@ public class FlowDump implements CompositeDataEntity<FlowDump.FlowDumpData> {
         int destinationPort;
         int sourceVlan;
         int destinationVlan;
-        int sourceInnerVlan;
-        int destinationInnerVlan;
+        Integer sourceInnerVlan;
+        Integer destinationInnerVlan;
         MeterId forwardMeterId;
         MeterId reverseMeterId;
         String groupId;
@@ -271,12 +271,27 @@ public class FlowDump implements CompositeDataEntity<FlowDump.FlowDumpData> {
         String reversePath;
         FlowPathStatus forwardStatus;
         FlowPathStatus reverseStatus;
-        boolean allocateProtectedPath;
-        boolean pinned;
-        boolean periodicPings;
+        Boolean allocateProtectedPath;
+        Boolean pinned;
+        Boolean periodicPings;
         FlowEncapsulationType encapsulationType;
         PathComputationStrategy pathComputationStrategy;
-        long maxLatency;
+        Long maxLatency;
+
+        @Override
+        public Boolean isAllocateProtectedPath() {
+            return getAllocateProtectedPath();
+        }
+
+        @Override
+        public Boolean isPinned() {
+            return getPinned();
+        }
+
+        @Override
+        public Boolean isPeriodicPings() {
+            return getPeriodicPings();
+        }
     }
 
     @Mapper

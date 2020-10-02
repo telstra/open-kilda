@@ -37,29 +37,31 @@ public class CompleteFlowPathInstallationAction extends
 
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        persistenceManager.getTransactionManager().doInTransaction(() -> {
-            PathId newPrimaryForward = stateMachine.getNewPrimaryForwardPath();
-            PathId newPrimaryReverse = stateMachine.getNewPrimaryReversePath();
+        PathId newPrimaryForward = stateMachine.getNewPrimaryForwardPath();
+        PathId newPrimaryReverse = stateMachine.getNewPrimaryReversePath();
 
-            log.debug("Completing installation of the flow primary path {} / {}", newPrimaryForward, newPrimaryReverse);
+        log.debug("Completing installation of the flow primary path {} / {}", newPrimaryForward, newPrimaryReverse);
+        transactionManager.doInTransaction(() -> {
             flowPathRepository.updateStatus(newPrimaryForward, FlowPathStatus.ACTIVE);
             flowPathRepository.updateStatus(newPrimaryReverse, FlowPathStatus.ACTIVE);
+        });
 
-            stateMachine.saveActionToHistory("Flow paths were installed",
-                    format("The flow paths %s / %s were installed", newPrimaryForward, newPrimaryReverse));
+        stateMachine.saveActionToHistory("Flow paths were installed",
+                format("The flow paths %s / %s were installed", newPrimaryForward, newPrimaryReverse));
 
-            if (stateMachine.getNewProtectedForwardPath() != null
-                    && stateMachine.getNewProtectedReversePath() != null) {
-                PathId newForward = stateMachine.getNewProtectedForwardPath();
-                PathId newReverse = stateMachine.getNewProtectedReversePath();
+        if (stateMachine.getNewProtectedForwardPath() != null
+                && stateMachine.getNewProtectedReversePath() != null) {
+            PathId newForward = stateMachine.getNewProtectedForwardPath();
+            PathId newReverse = stateMachine.getNewProtectedReversePath();
 
-                log.debug("Completing installation of the flow protected path {} / {}", newForward, newReverse);
+            log.debug("Completing installation of the flow protected path {} / {}", newForward, newReverse);
+            transactionManager.doInTransaction(() -> {
                 flowPathRepository.updateStatus(newForward, FlowPathStatus.ACTIVE);
                 flowPathRepository.updateStatus(newReverse, FlowPathStatus.ACTIVE);
+            });
 
-                stateMachine.saveActionToHistory("Flow paths were installed",
-                        format("The flow paths %s / %s were installed", newForward, newReverse));
-            }
-        });
+            stateMachine.saveActionToHistory("Flow paths were installed",
+                    format("The flow paths %s / %s were installed", newForward, newReverse));
+        }
     }
 }

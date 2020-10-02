@@ -90,8 +90,8 @@ public class AvailableNetwork {
      */
     public void processDiversitySegments(List<PathSegment> segments) {
         for (PathSegment segment : segments) {
-            Node srcNode = getSwitch(segment.getSrcSwitch().getSwitchId());
-            Node dstNode = getSwitch(segment.getDestSwitch().getSwitchId());
+            Node srcNode = getSwitch(segment.getSrcSwitchId());
+            Node dstNode = getSwitch(segment.getDestSwitchId());
 
             if (dstNode != null) {
                 dstNode.increaseDiversityGroupUseCounter();
