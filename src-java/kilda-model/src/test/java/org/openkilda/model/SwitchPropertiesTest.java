@@ -26,49 +26,50 @@ public class SwitchPropertiesTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void validatePropRaiseTest() {
-        Switch sw = new Switch();
-        sw.setSwitchId(new SwitchId(1));
-        sw.setFeatures(new HashSet<>());
-        SwitchProperties sp = new SwitchProperties();
-        sp.setSwitchObj(sw);
+        Switch sw = Switch.builder()
+                .switchId(new SwitchId(1))
+                .build();
+        SwitchProperties sp = SwitchProperties.builder()
+                .switchObj(sw)
+                .build();
         sp.validateProp(SwitchFeature.BFD);
     }
 
     @Test
     public void validatePropPassesTest() {
-        Switch sw = new Switch();
-        sw.setSwitchId(new SwitchId(1));
         Set<SwitchFeature> features = new HashSet<>();
         features.add(SwitchFeature.MULTI_TABLE);
-        sw.setFeatures(features);
-        SwitchProperties sp = new SwitchProperties();
-        sp.setSwitchObj(sw);
+        Switch sw = Switch.builder()
+                .switchId(new SwitchId(1))
+                .features(features)
+                .build();
+        SwitchProperties sp = SwitchProperties.builder()
+                .switchObj(sw)
+                .build();
         assertTrue(sp.validateProp(SwitchFeature.MULTI_TABLE));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void setUnsupportedMultiTableFlagTest() {
-        Switch sw = new Switch();
-        sw.setSwitchId(new SwitchId(1));
-        sw.setFeatures(new HashSet<>());
-        SwitchProperties sp = new SwitchProperties();
-        sp.setSwitchObj(sw);
+        Switch sw = Switch.builder()
+                .switchId(new SwitchId(1))
+                .build();
+        SwitchProperties sp = SwitchProperties.builder()
+                .switchObj(sw)
+                .build();
         sp.setMultiTable(true);
-
-
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void setUnsupportedTransitEncapsulationTest() {
-        Switch sw = new Switch();
-        sw.setSwitchId(new SwitchId(1));
-        sw.setFeatures(new HashSet<>());
-        SwitchProperties sp = new SwitchProperties();
-        sp.setSwitchObj(sw);
+        Switch sw = Switch.builder()
+                .switchId(new SwitchId(1))
+                .build();
+        SwitchProperties sp = SwitchProperties.builder()
+                .switchObj(sw)
+                .build();
         Set<FlowEncapsulationType> flowEncapsulationTypes = new HashSet<>();
         flowEncapsulationTypes.add(FlowEncapsulationType.VXLAN);
         sp.setSupportedTransitEncapsulation(flowEncapsulationTypes);
-
-
     }
 }

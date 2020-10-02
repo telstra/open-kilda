@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,129 +15,162 @@
 
 package org.openkilda.model;
 
-import static java.lang.String.format;
-
-import lombok.AccessLevel;
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.BeanSerializer;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.Index;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
+import lombok.ToString;
+import lombok.experimental.Delegate;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * Represents a group allocated for a flow.
  */
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId", "uniqueIndex"})
-@NodeEntity(label = "mirror_group")
-public class MirrorGroup implements Serializable {
-    private static final long serialVersionUID = 1L;
+@DefaultSerializer(BeanSerializer.class)
+@ToString
+public class MirrorGroup implements CompositeDataEntity<MirrorGroup.MirrorGroupData> {
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private MirrorGroupData data;
 
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
+    /**
+     * No args constructor for deserialization purpose.
+     */
+    private MirrorGroup() {
+        data = new MirrorGroupDataImpl();
+    }
 
-    @NonNull
-    @Property(name = "switch_id")
-    @Index
-    @Convert(graphPropertyType = String.class)
-    private SwitchId switchId;
+    /**
+     * Cloning constructor which performs deep copy of the entity.
+     *
+     * @param entityToClone the entity to copy entity data from.
+     */
+    public MirrorGroup(@NonNull MirrorGroup entityToClone) {
+        data = MirrorGroupCloner.INSTANCE.copy(entityToClone.getData());
+    }
 
-    @NonNull
-    @Property(name = "group_id")
-    @Convert(graphPropertyType = Long.class)
-    private GroupId groupId;
-
-    @NonNull
-    @Property(name = "flow_id")
-    @Index
-    private String flowId;
-
-    @NonNull
-    @Property(name = "mirror_group_type")
-    @Convert(graphPropertyType = String.class)
-    private MirrorGroupType mirrorGroupType;
-
-    @NonNull
-    @Property(name = "mirror_direction")
-    @Convert(graphPropertyType = String.class)
-    private MirrorDirection mirrorDirection;
-
-    @NonNull
-    @Property(name = "path_id")
-    @Index
-    @Convert(graphPropertyType = String.class)
-    private PathId pathId;
-
-    // Hidden as used to imitate unique composite index for non-enterprise Neo4j versions.
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    @Property(name = "unique_index")
-    @Index(unique = true)
-    private String uniqueIndex;
-
-    @Builder(toBuilder = true)
+    @Builder
     public MirrorGroup(@NonNull SwitchId switchId, @NonNull GroupId groupId,
                        @NonNull String flowId, @NonNull PathId pathId,
                        @NonNull MirrorGroupType mirrorGroupType,
                        @NonNull MirrorDirection mirrorDirection) {
-        this.switchId = switchId;
-        this.groupId = groupId;
-        this.flowId = flowId;
-        this.pathId = pathId;
-        this.mirrorGroupType = mirrorGroupType;
-        this.mirrorDirection = mirrorDirection;
-        calculateUniqueIndex();
+        data = MirrorGroupDataImpl.builder()
+                .switchId(switchId).groupId(groupId).flowId(flowId)
+                .pathId(pathId).mirrorGroupType(mirrorGroupType).mirrorDirection(mirrorDirection).build();
+    }
+
+    public MirrorGroup(@NonNull MirrorGroupData data) {
+        this.data = data;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        MirrorGroup that = (MirrorGroup) o;
+        return new EqualsBuilder()
+                .append(getSwitchId(), that.getSwitchId())
+                .append(getGroupId(), that.getGroupId())
+                .append(getFlowId(), that.getFlowId())
+                .append(getMirrorGroupType(), that.getMirrorGroupType())
+                .append(getMirrorDirection(), that.getMirrorDirection())
+                .append(getPathId(), that.getPathId())
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getSwitchId(), getGroupId(), getFlowId(), getMirrorGroupType(),
+                getMirrorDirection(), getPathId());
     }
 
     /**
-     * Set the switch and update related index(es).
+     * Defines persistable data of the MirrorGroup.
      */
-    public final void setSwitchId(@NonNull SwitchId switchId) {
-        this.switchId = switchId;
-        calculateUniqueIndex();
+    public interface MirrorGroupData {
+        SwitchId getSwitchId();
+
+        void setSwitchId(SwitchId switchId);
+
+        GroupId getGroupId();
+
+        void setGroupId(GroupId groupId);
+
+        String getFlowId();
+
+        void setFlowId(String flowId);
+
+        MirrorGroupType getMirrorGroupType();
+
+        void setMirrorGroupType(MirrorGroupType mirrorGroupType);
+
+        MirrorDirection getMirrorDirection();
+
+        void setMirrorDirection(MirrorDirection mirrorDirection);
+
+        PathId getPathId();
+
+        void setPathId(PathId pathId);
     }
 
     /**
-     * Set the group and update related index(es).
+     * POJO implementation of MirrorGroupData.
      */
-    public final void setGroupId(@NonNull GroupId groupId) {
-        this.groupId = groupId;
-        calculateUniqueIndex();
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    static final class MirrorGroupDataImpl implements MirrorGroupData, Serializable {
+        private static final long serialVersionUID = 1L;
+
+        @NonNull
+        SwitchId switchId;
+        @NonNull
+        GroupId groupId;
+        @NonNull
+        String flowId;
+        @NonNull
+        MirrorGroupType mirrorGroupType;
+        @NonNull
+        MirrorDirection mirrorDirection;
+        @NonNull
+        PathId pathId;
     }
 
     /**
-     * Set mirror type and update related index(es).
+     * A cloner for MirrorGroup entity.
      */
-    public void setMirrorType(@NonNull MirrorGroupType mirrorGroupType) {
-        this.mirrorGroupType = mirrorGroupType;
-        calculateUniqueIndex();
-    }
+    @Mapper
+    public interface MirrorGroupCloner {
+        MirrorGroupCloner INSTANCE = Mappers.getMapper(MirrorGroupCloner.class);
 
-    /**
-     * Set mirror direction and update related index(es).
-     */
-    public void setMirrorDirection(@NonNull MirrorDirection mirrorDirection) {
-        this.mirrorDirection = mirrorDirection;
-        calculateUniqueIndex();
-    }
+        void copy(MirrorGroupData source, @MappingTarget MirrorGroupData target);
 
-    private void calculateUniqueIndex() {
-        uniqueIndex = format("%s_%d_%s_%s", switchId, groupId != null ? groupId.getValue() : null,
-                mirrorGroupType.toString().toLowerCase(), mirrorDirection.toString().toLowerCase());
+        /**
+         * Performs deep copy of entity data.
+         */
+        default MirrorGroupData copy(MirrorGroupData source) {
+            MirrorGroupData result = new MirrorGroupDataImpl();
+            copy(source, result);
+            return result;
+        }
     }
 }

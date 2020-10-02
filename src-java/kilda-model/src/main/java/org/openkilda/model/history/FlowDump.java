@@ -15,6 +15,7 @@
 
 package org.openkilda.model.history;
 
+import org.openkilda.model.CompositeDataEntity;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.MeterId;
@@ -22,130 +23,275 @@ import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.BeanSerializer;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 import lombok.Setter;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.Index;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
+import lombok.ToString;
+import lombok.experimental.Delegate;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
+
+import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * Represents information about the flow state.
- * Contains all Flow state.
  */
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = "entityId")
-@NodeEntity(label = "flow_dump")
-@Builder
-@AllArgsConstructor
-public class FlowDump {
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
+@DefaultSerializer(BeanSerializer.class)
+@ToString
+public class FlowDump implements CompositeDataEntity<FlowDump.FlowDumpData> {
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private FlowDumpData data;
 
-    @Index
-    @Property(name = "task_id")
-    private String taskId;
+    /**
+     * No args constructor for deserialization purpose.
+     */
+    public FlowDump() {
+        data = new FlowDumpDataImpl();
+    }
 
-    @Index
-    @Property(name = "flow_id")
-    private String flowId;
+    /**
+     * Cloning constructor which performs deep copy of the entity.
+     *
+     * @param entityToClone the entity to copy entity data from.
+     */
+    public FlowDump(@NonNull FlowDump entityToClone) {
+        data = FlowDumpCloner.INSTANCE.copy(entityToClone.getData());
+    }
 
-    private String type;
+    public FlowDump(@NonNull FlowDumpData data) {
+        this.data = data;
+    }
 
-    private long bandwidth;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        FlowDump that = (FlowDump) o;
+        return new EqualsBuilder()
+                .append(getTaskId(), that.getTaskId())
+                .append(getFlowId(), that.getFlowId())
+                .append(getType(), that.getType())
+                .append(getBandwidth(), that.getBandwidth())
+                .append(isIgnoreBandwidth(), that.isIgnoreBandwidth())
+                .append(getForwardCookie(), that.getForwardCookie())
+                .append(getReverseCookie(), that.getReverseCookie())
+                .append(getSourceSwitch(), that.getSourceSwitch())
+                .append(getDestinationSwitch(), that.getDestinationSwitch())
+                .append(getSourcePort(), that.getSourcePort())
+                .append(getDestinationPort(), that.getDestinationPort())
+                .append(getSourceVlan(), that.getSourceVlan())
+                .append(getDestinationVlan(), that.getDestinationVlan())
+                .append(getSourceInnerVlan(), that.getSourceInnerVlan())
+                .append(getDestinationInnerVlan(), that.getDestinationInnerVlan())
+                .append(getForwardMeterId(), that.getForwardMeterId())
+                .append(getReverseMeterId(), that.getReverseMeterId())
+                .append(getGroupId(), that.getGroupId())
+                .append(getForwardPath(), that.getForwardPath())
+                .append(getReversePath(), that.getReversePath())
+                .append(getForwardStatus(), that.getForwardStatus())
+                .append(getReverseStatus(), that.getReverseStatus())
+                .append(isAllocateProtectedPath(), that.isAllocateProtectedPath())
+                .append(isPinned(), that.isPinned())
+                .append(isPeriodicPings(), that.isPeriodicPings())
+                .append(getEncapsulationType(), that.getEncapsulationType())
+                .append(getPathComputationStrategy(), that.getPathComputationStrategy())
+                .append(getMaxLatency(), that.getMaxLatency())
+                .isEquals();
+    }
 
-    @Property(name = "ignoreBandwidth")
-    private boolean ignoreBandwidth;
+    @Override
+    public int hashCode() {
+        return Objects.hash(getTaskId(), getFlowId(), getType(), getBandwidth(), isIgnoreBandwidth(),
+                getForwardCookie(), getReverseCookie(), getSourceSwitch(), getDestinationSwitch(),
+                getSourcePort(), getDestinationPort(), getSourceVlan(), getDestinationVlan(),
+                getSourceInnerVlan(), getDestinationInnerVlan(), getForwardMeterId(), getReverseMeterId(),
+                getGroupId(), getForwardPath(), getReversePath(), getForwardStatus(), getReverseStatus(),
+                isAllocateProtectedPath(), isPinned(), isPeriodicPings(), getEncapsulationType(),
+                getPathComputationStrategy(), getMaxLatency());
+    }
 
-    @Property(name = "forward_cookie")
-    @Convert(graphPropertyType = Long.class)
-    private Cookie forwardCookie;
+    /**
+     * Defines persistable data of the FlowDump.
+     */
+    public interface FlowDumpData {
+        String getTaskId();
 
-    @Property(name = "reverse_cookie")
-    @Convert(graphPropertyType = Long.class)
-    private Cookie reverseCookie;
+        void setTaskId(String taskId);
 
-    @Property(name = "src_switch")
-    @Convert(graphPropertyType = String.class)
-    private SwitchId sourceSwitch;
+        String getFlowId();
 
-    @Property(name = "dst_switch")
-    @Convert(graphPropertyType = String.class)
-    private SwitchId destinationSwitch;
+        void setFlowId(String flowId);
 
-    @Property(name = "src_port")
-    private int sourcePort;
+        String getType();
 
-    @Property(name = "dst_port")
-    private int destinationPort;
+        void setType(String type);
 
-    @Property(name = "src_vlan")
-    private int sourceVlan;
+        long getBandwidth();
 
-    @Property(name = "dst_vlan")
-    private int destinationVlan;
+        void setBandwidth(long bandwidth);
 
-    @Property(name = "src_inner_vlan")
-    private int sourceInnerVlan;
+        boolean isIgnoreBandwidth();
 
-    @Property(name = "dst_inner_vlan")
-    private int destinationInnerVlan;
+        void setIgnoreBandwidth(boolean ignoreBandwidth);
 
-    @Property(name = "forward_meter_id")
-    @Convert(graphPropertyType = Long.class)
-    private MeterId forwardMeterId;
+        Cookie getForwardCookie();
 
-    @Property(name = "reverse_meter_id")
-    @Convert(graphPropertyType = Long.class)
-    private MeterId reverseMeterId;
+        void setForwardCookie(Cookie forwardCookie);
 
-    @Property(name = "group_id")
-    private String groupId;
+        Cookie getReverseCookie();
 
-    @Property(name = "forward_path")
-    private String forwardPath;
+        void setReverseCookie(Cookie reverseCookie);
 
-    @Property(name = "reverse_path")
-    private String reversePath;
+        SwitchId getSourceSwitch();
 
-    @Property(name = "forward_status")
-    @Convert(graphPropertyType = String.class)
-    private FlowPathStatus forwardStatus;
+        void setSourceSwitch(SwitchId sourceSwitch);
 
-    @Property(name = "reverse_status")
-    @Convert(graphPropertyType = String.class)
-    private FlowPathStatus reverseStatus;
+        SwitchId getDestinationSwitch();
 
-    @Property(name = "allocate_protected_path")
-    private boolean allocateProtectedPath;
+        void setDestinationSwitch(SwitchId destinationSwitch);
 
-    @Property(name = "pinned")
-    private boolean pinned;
+        int getSourcePort();
 
-    @Property(name = "periodic_pings")
-    private boolean periodicPings;
+        void setSourcePort(int sourcePort);
 
-    @Property(name = "encapsulation_type")
-    @Convert(graphPropertyType = String.class)
-    private FlowEncapsulationType encapsulationType;
+        int getDestinationPort();
 
-    @Property(name = "path_computation_strategy")
-    @Convert(graphPropertyType = String.class)
-    private PathComputationStrategy pathComputationStrategy;
+        void setDestinationPort(int destinationPort);
 
-    @Property(name = "max_latency")
-    private long maxLatency;
+        int getSourceVlan();
+
+        void setSourceVlan(int sourceVlan);
+
+        int getDestinationVlan();
+
+        void setDestinationVlan(int destinationVlan);
+
+        int getSourceInnerVlan();
+
+        void setSourceInnerVlan(int sourceInnerVlan);
+
+        int getDestinationInnerVlan();
+
+        void setDestinationInnerVlan(int destinationInnerVlan);
+
+        MeterId getForwardMeterId();
+
+        void setForwardMeterId(MeterId forwardMeterId);
+
+        MeterId getReverseMeterId();
+
+        void setReverseMeterId(MeterId reverseMeterId);
+
+        String getGroupId();
+
+        void setGroupId(String groupId);
+
+        String getForwardPath();
+
+        void setForwardPath(String forwardPath);
+
+        String getReversePath();
+
+        void setReversePath(String reversePath);
+
+        FlowPathStatus getForwardStatus();
+
+        void setForwardStatus(FlowPathStatus forwardStatus);
+
+        FlowPathStatus getReverseStatus();
+
+        void setReverseStatus(FlowPathStatus reverseStatus);
+
+        boolean isAllocateProtectedPath();
+
+        void setAllocateProtectedPath(boolean allocateProtectedPath);
+
+        boolean isPinned();
+
+        void setPinned(boolean pinned);
+
+        boolean isPeriodicPings();
+
+        void setPeriodicPings(boolean periodicPings);
+
+        FlowEncapsulationType getEncapsulationType();
+
+        void setEncapsulationType(FlowEncapsulationType encapsulationType);
+
+        PathComputationStrategy getPathComputationStrategy();
+
+        void setPathComputationStrategy(PathComputationStrategy pathComputationStrategy);
+
+        long getMaxLatency();
+
+        void setMaxLatency(long maxLatency);
+    }
+
+    /**
+     * POJO implementation of FlowDumpData.
+     */
+    @Data
+    @NoArgsConstructor
+    static final class FlowDumpDataImpl implements FlowDumpData, Serializable {
+        private static final long serialVersionUID = 1L;
+        String taskId;
+        String flowId;
+        String type;
+        long bandwidth;
+        boolean ignoreBandwidth;
+        Cookie forwardCookie;
+        Cookie reverseCookie;
+        SwitchId sourceSwitch;
+        SwitchId destinationSwitch;
+        int sourcePort;
+        int destinationPort;
+        int sourceVlan;
+        int destinationVlan;
+        int sourceInnerVlan;
+        int destinationInnerVlan;
+        MeterId forwardMeterId;
+        MeterId reverseMeterId;
+        String groupId;
+        String forwardPath;
+        String reversePath;
+        FlowPathStatus forwardStatus;
+        FlowPathStatus reverseStatus;
+        boolean allocateProtectedPath;
+        boolean pinned;
+        boolean periodicPings;
+        FlowEncapsulationType encapsulationType;
+        PathComputationStrategy pathComputationStrategy;
+        long maxLatency;
+    }
+
+    @Mapper
+    public interface FlowDumpCloner {
+        FlowDumpCloner INSTANCE = Mappers.getMapper(FlowDumpCloner.class);
+
+        void copy(FlowDumpData source, @MappingTarget FlowDumpData target);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default FlowDumpData copy(FlowDumpData source) {
+            FlowDumpData result = new FlowDumpDataImpl();
+            copy(source, result);
+            return result;
+        }
+    }
 }

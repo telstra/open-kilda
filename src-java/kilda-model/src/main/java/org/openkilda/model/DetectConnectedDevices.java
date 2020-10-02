@@ -16,24 +16,24 @@
 package org.openkilda.model;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Builder;
+import lombok.Value;
 
 import java.io.Serializable;
 
-@Data
-@NoArgsConstructor
+@Value
+@Builder(toBuilder = true)
 @AllArgsConstructor
 public class DetectConnectedDevices implements Serializable {
-    private static final long serialVersionUID = 1260347183633947083L;
+    private static final long serialVersionUID = 1L;
 
-    private boolean srcLldp;
-    private boolean srcArp;
-    private boolean dstLldp;
-    private boolean dstArp;
+    boolean srcLldp;
+    boolean srcArp;
+    boolean dstLldp;
+    boolean dstArp;
 
-    private boolean srcSwitchLldp;
-    private boolean srcSwitchArp;
-    private boolean dstSwitchLldp;
-    private boolean dstSwitchArp;
+    boolean srcSwitchLldp;
+    boolean srcSwitchArp;
+    boolean dstSwitchLldp;
+    boolean dstSwitchArp;
 }

@@ -32,7 +32,7 @@ public class MeterConfig implements Serializable {
 
     @JsonCreator
     public MeterConfig(
-            @NonNull  @JsonProperty("meter_id") MeterId id,
+            @NonNull @JsonProperty("meter_id") MeterId id,
             @JsonProperty("bandwidth") long bandwidth) {
 
         this.id = id;

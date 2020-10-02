@@ -16,12 +16,16 @@
 package org.openkilda.model;
 
 import static java.lang.String.format;
-import static org.neo4j.ogm.annotation.Relationship.INCOMING;
-import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
 
+import org.openkilda.model.PathSegment.PathSegmentData;
+import org.openkilda.model.PathSegment.PathSegmentDataImpl;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.BeanSerializer;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -30,122 +34,77 @@ import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.ToString;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.Index;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.PostLoad;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.Relationship;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
-import org.neo4j.ogm.typeconversion.InstantStringConverter;
+import lombok.experimental.Delegate;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.mapstruct.CollectionMappingStrategy;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * Represents a flow path.
  */
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId", "segments", "flow"})
-@ToString(exclude = {"flow"})
-@NodeEntity(label = "flow_path")
-public class FlowPath implements Serializable {
-    private static final long serialVersionUID = 1L;
+@DefaultSerializer(BeanSerializer.class)
+@ToString
+public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private FlowPathData data;
 
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
+    /**
+     * No args constructor for deserialization purpose.
+     */
+    private FlowPath() {
+        data = new FlowPathDataImpl();
+        // The reference is used to link path segments back to the path. See {@link #setSegments(List)}.
+        ((FlowPathDataImpl) data).flowPath = this;
+    }
 
-    @NonNull
-    @Property(name = "path_id")
-    @Index(unique = true)
-    @Convert(graphPropertyType = String.class)
-    private PathId pathId;
+    /**
+     * Cloning constructor which performs deep copy of the entity.
+     *
+     * @param entityToClone the path entity to copy data from.
+     * @param flow the flow to be referred ({@code FlowPath.getFlow()}) by the new path.
+     */
+    public FlowPath(@NonNull FlowPath entityToClone, Flow flow) {
+        this();
+        ((FlowPathDataImpl) data).flow = flow;
+        FlowPathCloner.INSTANCE.copy(entityToClone.getData(), data, this);
+    }
 
-    @NonNull
-    @Relationship(type = "source", direction = OUTGOING)
-    private Switch srcSwitch;
-
-    @NonNull
-    @Relationship(type = "destination", direction = OUTGOING)
-    private Switch destSwitch;
-
-    @NonNull
-    @Relationship(type = "owns", direction = INCOMING)
-    private Flow flow;
-
-    @Convert(graphPropertyType = Long.class)
-    private FlowSegmentCookie cookie;
-
-    @Property(name = "meter_id")
-    @Convert(graphPropertyType = Long.class)
-    private MeterId meterId;
-
-    @Property(name = "ingress_mirror_group_id")
-    @Convert(graphPropertyType = Long.class)
-    private GroupId ingressMirrorGroupId;
-
-    private long latency;
-
-    private long bandwidth;
-
-    @Property(name = "ignore_bandwidth")
-    private boolean ignoreBandwidth;
-
-    @Property(name = "time_create")
-    @Convert(InstantStringConverter.class)
-    private Instant timeCreate;
-
-    @Property(name = "time_modify")
-    @Convert(InstantStringConverter.class)
-    private Instant timeModify;
-
-    @NonNull
-    @Property(name = "status")
-    // Enforce usage of custom converters.
-    @Convert(graphPropertyType = String.class)
-    private FlowPathStatus status;
-
-    @Relationship(type = "owns", direction = OUTGOING)
-    @Getter(AccessLevel.NONE)
-    @Setter(AccessLevel.NONE)
-    private List<PathSegment> segments = new ArrayList<>();
-
-    @Property(name = "applications")
-    private Set<FlowApplication> applications;
-
-    @Builder(toBuilder = true)
+    @Builder
     public FlowPath(@NonNull PathId pathId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
-                    @NonNull Flow flow, FlowSegmentCookie cookie, MeterId meterId,
-                    long latency, long bandwidth, boolean ignoreBandwidth,
-                    Instant timeCreate, Instant timeModify,
-                    FlowPathStatus status, List<PathSegment> segments,
+                    FlowSegmentCookie cookie, MeterId meterId, GroupId ingressMirrorGroupId,
+                    long latency, long bandwidth,
+                    boolean ignoreBandwidth, FlowPathStatus status, List<PathSegment> segments,
                     Set<FlowApplication> applications) {
-        this.pathId = pathId;
-        this.srcSwitch = srcSwitch;
-        this.destSwitch = destSwitch;
-        this.flow = flow;
-        this.cookie = cookie;
-        this.meterId = meterId;
-        this.latency = latency;
-        this.bandwidth = bandwidth;
-        this.ignoreBandwidth = ignoreBandwidth;
-        this.timeCreate = timeCreate;
-        this.timeModify = timeModify;
-        this.status = status;
-        setSegments(segments != null ? segments : new ArrayList<>());
-        this.applications = applications;
+        data = FlowPathDataImpl.builder().pathId(pathId).srcSwitch(srcSwitch).destSwitch(destSwitch)
+                .cookie(cookie).meterId(meterId).ingressMirrorGroupId(ingressMirrorGroupId)
+                .latency(latency).bandwidth(bandwidth)
+                .ignoreBandwidth(ignoreBandwidth).status(status)
+                .applications(applications).build();
+        // The reference is used to link path segments back to the path. See {@link #setSegments(List)}.
+        ((FlowPathDataImpl) data).flowPath = this;
+
+        if (segments != null && !segments.isEmpty()) {
+            data.setSegments(segments);
+        }
+    }
+
+    public FlowPath(@NonNull FlowPathData data) {
+        this.data = data;
     }
 
     /**
@@ -173,41 +132,254 @@ public class FlowPath implements Serializable {
      * @return true if source and destination switches are the same, otherwise false
      */
     public boolean isOneSwitchFlow() {
-        return srcSwitch.getSwitchId().equals(destSwitch.getSwitchId());
-    }
-
-    public List<PathSegment> getSegments() {
-        return Collections.unmodifiableList(segments);
-    }
-
-    /**
-     * Set the segments.
-     */
-    public final void setSegments(List<PathSegment> segments) {
-        for (int idx = 0; idx < segments.size(); idx++) {
-            PathSegment segment = segments.get(idx);
-            segment.setSeqId(idx);
-            segment.setPath(this);
-        }
-
-        this.segments = new ArrayList<>(segments);
+        return getSrcSwitchId().equals(getDestSwitchId());
     }
 
     public boolean isForward() {
-        return cookie.getDirection() == FlowPathDirection.FORWARD;
+        return getCookie().getDirection() == FlowPathDirection.FORWARD;
     }
 
+    /**
+     * Check whether the path is protected for the flow.
+     */
     public boolean isProtected() {
-        return pathId.equals(flow.getProtectedForwardPathId()) || pathId.equals(flow.getProtectedReversePathId());
+        Flow flow = getFlow();
+        return flow != null && (getPathId().equals(flow.getProtectedForwardPathId())
+                || getPathId().equals(flow.getProtectedReversePathId()));
     }
 
-    @PostLoad
-    private void sortSegmentsOnLoad() {
-        if (segments != null) {
-            segments = segments.stream()
-                    .sorted(Comparator.comparingInt(PathSegment::getSeqId))
-                    .peek(segment -> segment.setPath(this))
-                    .collect(Collectors.toList());
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
         }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        FlowPath that = (FlowPath) o;
+        return new EqualsBuilder()
+                .append(getLatency(), that.getLatency())
+                .append(getBandwidth(), that.getBandwidth())
+                .append(isIgnoreBandwidth(), that.isIgnoreBandwidth())
+                .append(getPathId(), that.getPathId())
+                .append(getSrcSwitchId(), that.getSrcSwitchId())
+                .append(getDestSwitchId(), that.getDestSwitchId())
+                .append(getFlowId(), that.getFlowId())
+                .append(getCookie(), that.getCookie())
+                .append(getMeterId(), that.getMeterId())
+                .append(getIngressMirrorGroupId(), that.getIngressMirrorGroupId())
+                .append(getTimeCreate(), that.getTimeCreate())
+                .append(getTimeModify(), that.getTimeModify())
+                .append(getStatus(), that.getStatus())
+                .append(getSegments(), that.getSegments())
+                .append(getApplications(), that.getApplications())
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getPathId(), getSrcSwitchId(), getDestSwitchId(), getFlowId(), getCookie(), getMeterId(),
+                getLatency(), getBandwidth(), isIgnoreBandwidth(), getTimeCreate(), getTimeModify(), getStatus(),
+                getSegments());
+    }
+
+    /**
+     * Defines persistable data of the FlowPath.
+     */
+    public interface FlowPathData {
+        PathId getPathId();
+
+        void setPathId(PathId pathId);
+
+        SwitchId getSrcSwitchId();
+
+        Switch getSrcSwitch();
+
+        void setSrcSwitch(Switch srcSwitch);
+
+        SwitchId getDestSwitchId();
+
+        Switch getDestSwitch();
+
+        void setDestSwitch(Switch destSwitch);
+
+        String getFlowId();
+
+        Flow getFlow();
+
+        FlowSegmentCookie getCookie();
+
+        void setCookie(FlowSegmentCookie cookie);
+
+        MeterId getMeterId();
+
+        void setIngressMirrorGroupId(GroupId meterId);
+
+        GroupId getIngressMirrorGroupId();
+
+        void setMeterId(MeterId meterId);
+
+        long getLatency();
+
+        void setLatency(long latency);
+
+        long getBandwidth();
+
+        void setBandwidth(long bandwidth);
+
+        boolean isIgnoreBandwidth();
+
+        void setIgnoreBandwidth(boolean ignoreBandwidth);
+
+        Instant getTimeCreate();
+
+        void setTimeCreate(Instant timeCreate);
+
+        Instant getTimeModify();
+
+        void setTimeModify(Instant timeModify);
+
+        FlowPathStatus getStatus();
+
+        void setStatus(FlowPathStatus status);
+
+        List<PathSegment> getSegments();
+
+        void setSegments(List<PathSegment> segments);
+
+        Set<FlowApplication> getApplications();
+
+        void setApplications(Set<FlowApplication> applications);
+    }
+
+    /**
+     * POJO implementation of FlowPathData.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    static final class FlowPathDataImpl implements FlowPathData, Serializable {
+        private static final long serialVersionUID = 1L;
+        @NonNull PathId pathId;
+        @NonNull Switch srcSwitch;
+        @NonNull Switch destSwitch;
+        @Setter(AccessLevel.NONE)
+        @ToString.Exclude
+        @EqualsAndHashCode.Exclude
+        Flow flow;
+        FlowSegmentCookie cookie;
+        MeterId meterId;
+        GroupId ingressMirrorGroupId;
+        long latency;
+        long bandwidth;
+        boolean ignoreBandwidth;
+        Instant timeCreate;
+        Instant timeModify;
+        FlowPathStatus status;
+        @Builder.Default
+        @ToString.Exclude
+        @EqualsAndHashCode.Exclude
+        @NonNull List<PathSegment> segments = new ArrayList<>();
+        Set<FlowApplication> applications;
+        // The reference is used to link path segments back to the path. See {@link #setSegments(List)}.
+        @Setter(AccessLevel.NONE)
+        @Getter(AccessLevel.NONE)
+        @ToString.Exclude
+        @EqualsAndHashCode.Exclude
+        FlowPath flowPath;
+
+        @Override
+        public String getFlowId() {
+            return flow != null ? flow.getFlowId() : null;
+        }
+
+        @Override
+        public SwitchId getSrcSwitchId() {
+            return srcSwitch.getSwitchId();
+        }
+
+        @Override
+        public SwitchId getDestSwitchId() {
+            return destSwitch.getSwitchId();
+        }
+
+        public void setBandwidth(long bandwidth) {
+            this.bandwidth = bandwidth;
+
+            if (segments != null) {
+                segments.forEach(segment -> segment.setBandwidth(bandwidth));
+            }
+        }
+
+        public void setIgnoreBandwidth(boolean ignoreBandwidth) {
+            this.ignoreBandwidth = ignoreBandwidth;
+
+            if (segments != null) {
+                segments.forEach(segment -> segment.setIgnoreBandwidth(ignoreBandwidth));
+            }
+        }
+
+        @Override
+        public List<PathSegment> getSegments() {
+            return Collections.unmodifiableList(segments);
+        }
+
+        /**
+         * Set the segments.
+         */
+        @Override
+        public void setSegments(List<PathSegment> segments) {
+            for (int idx = 0; idx < segments.size(); idx++) {
+                PathSegment segment = segments.get(idx);
+                segment.setSeqId(idx);
+                segment.setIgnoreBandwidth(ignoreBandwidth);
+                segment.setBandwidth(bandwidth);
+                PathSegmentData data = segment.getData();
+                if (data instanceof PathSegmentDataImpl) {
+                    ((PathSegmentDataImpl) data).path = flowPath;
+                }
+            }
+
+            this.segments = new ArrayList<>(segments);
+        }
+    }
+
+    /**
+     * A cloner for FlowPath entity.
+     */
+    @Mapper(collectionMappingStrategy = CollectionMappingStrategy.TARGET_IMMUTABLE)
+    public interface FlowPathCloner {
+        FlowPathCloner INSTANCE = Mappers.getMapper(FlowPathCloner.class);
+
+        void copy(FlowPathData source, @MappingTarget FlowPathData target);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default FlowPathData copy(FlowPathData source, FlowPath targetPath, Flow targetFlow) {
+            FlowPathDataImpl result = new FlowPathDataImpl();
+            result.flowPath = targetPath;
+            result.flow = targetFlow;
+            copy(source, result, targetPath);
+            return result;
+        }
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default void copy(FlowPathData source, FlowPathData target, FlowPath targetPath) {
+            copyWithoutSwitchesAndSegments(source, target);
+            target.setSrcSwitch(new Switch(source.getSrcSwitch()));
+            target.setDestSwitch(new Switch(source.getDestSwitch()));
+            target.setSegments(source.getSegments().stream()
+                    .map(segment -> new PathSegment(segment, targetPath))
+                    .collect(Collectors.toList()));
+        }
+
+        @Mapping(target = "srcSwitch", ignore = true)
+        @Mapping(target = "destSwitch", ignore = true)
+        @Mapping(target = "segments", ignore = true)
+        void copyWithoutSwitchesAndSegments(FlowPathData source, @MappingTarget FlowPathData target);
     }
 }

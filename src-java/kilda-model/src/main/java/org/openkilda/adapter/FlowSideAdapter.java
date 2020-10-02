@@ -57,9 +57,9 @@ public abstract class FlowSideAdapter {
     public static FlowSideAdapter makeAdapter(SwitchId switchId, Flow flow) {
         if (flow.isOneSwitchFlow()) {
             throw new IllegalArgumentException("Unable to determine flow side for one-switch-flow by switch endpoint");
-        } else if (switchId.equals(flow.getSrcSwitch().getSwitchId())) {
+        } else if (switchId.equals(flow.getSrcSwitchId())) {
             return new FlowSourceAdapter(flow);
-        } else if (switchId.equals(flow.getDestSwitch().getSwitchId())) {
+        } else if (switchId.equals(flow.getDestSwitchId())) {
             return new FlowDestAdapter(flow);
         } else {
             throw new IllegalArgumentException(String.format(
