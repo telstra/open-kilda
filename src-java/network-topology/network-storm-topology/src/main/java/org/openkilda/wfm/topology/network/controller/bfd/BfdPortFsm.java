@@ -248,33 +248,37 @@ public final class BfdPortFsm extends
     }
 
     private BfdDescriptor allocateDiscriminator(BfdDescriptor descriptor) {
-        BfdSession dbView = loadBfdSession().orElseGet(() -> {
-            BfdSession bfdSession = BfdSession.builder()
-                    .switchId(logicalEndpoint.getDatapath())
-                    .port(logicalEndpoint.getPortNumber())
-                    .build();
-            bfdSessionRepository.add(bfdSession);
-            return bfdSession;
-        });
-
-        Integer discriminator = dbView.getDiscriminator();
-        descriptor.fill(dbView);
-
-        if (discriminator == null) {
-            while (true) {
-                // FIXME(surabujin): loop will never end if all possible discriminators are allocated
-                discriminator = random.nextInt();
-                try {
-                    dbView.setDiscriminator(discriminator);
-                    break;
-                } catch (ConstraintViolationException ex) {
-                    log.warn("ConstraintViolationException on allocate bfd discriminator");
-                }
+        BfdSession dbView;
+        while (true) {
+            try {
+                dbView = transactionManager.doInTransaction(() -> {
+                    BfdSession bfdSession = loadBfdSession().orElse(null);
+                    if (bfdSession == null || bfdSession.getDiscriminator() == null) {
+                        // FIXME(surabujin): loop will never end if all possible discriminators are allocated
+                        int discriminator = random.nextInt();
+                        if (bfdSession != null) {
+                            bfdSession.setDiscriminator(discriminator);
+                            descriptor.fill(bfdSession);
+                        } else {
+                            bfdSession = BfdSession.builder()
+                                    .switchId(logicalEndpoint.getDatapath())
+                                    .port(logicalEndpoint.getPortNumber())
+                                    .discriminator(discriminator)
+                                    .build();
+                            descriptor.fill(bfdSession);
+                            bfdSessionRepository.add(bfdSession);
+                        }
+                    }
+                    return bfdSession;
+                });
+                break;
+            } catch (ConstraintViolationException ex) {
+                log.warn("ConstraintViolationException on allocate bfd discriminator");
             }
         }
 
         return descriptor.toBuilder()
-                .discriminator(discriminator)
+                .discriminator(dbView.getDiscriminator())
                 .build();
     }
 
@@ -299,6 +303,10 @@ public final class BfdPortFsm extends
 
     private SwitchReference makeSwitchReference(SwitchId datapath, String ipAddress)
             throws SwitchReferenceLookupException {
+        if (ipAddress == null) {
+            throw new SwitchReferenceLookupException(datapath, "null switch address is provided");
+        }
+
         InetAddress address;
         try {
             address = InetAddress.getByName(ipAddress);

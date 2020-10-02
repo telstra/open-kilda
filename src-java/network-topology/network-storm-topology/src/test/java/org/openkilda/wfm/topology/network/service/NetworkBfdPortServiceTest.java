@@ -32,6 +32,9 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.tx.TransactionCallback;
+import org.openkilda.persistence.tx.TransactionCallbackWithoutResult;
+import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.error.BfdPortControllerNotFoundException;
@@ -90,6 +93,9 @@ public class NetworkBfdPortServiceTest {
     private PersistenceManager persistenceManager;
 
     @Mock
+    private TransactionManager transactionManager;
+
+    @Mock
     private SwitchRepository switchRepository;
 
     @Mock
@@ -106,6 +112,16 @@ public class NetworkBfdPortServiceTest {
 
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(repositoryFactory.createBfdSessionRepository()).thenReturn(bfdSessionRepository);
+        when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
+        doAnswer(invocation -> {
+            TransactionCallbackWithoutResult<?> tr = invocation.getArgument(0);
+            tr.doInTransaction();
+            return null;
+        }).when(transactionManager).doInTransaction(Mockito.any(TransactionCallbackWithoutResult.class));
+        doAnswer(invocation -> {
+            TransactionCallback<?, ?> tr = invocation.getArgument(0);
+            return tr.doInTransaction();
+        }).when(transactionManager).doInTransaction(Mockito.any(TransactionCallback.class));
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
         service = new NetworkBfdPortService(carrier, persistenceManager);
