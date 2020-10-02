@@ -356,6 +356,39 @@ class SwitchHelper {
         }
     }
 
+    /**
+     * Verifies that specified hexRule sections in the validation response are empty.
+     * NOTE: will filter out default rules, except default flow rules(multiTable flow)
+     * Default flow rules for the system looks like as a simple default rule.
+     * Based on that you have to use extra filter to detect these rules in
+     * missingHex/excessHex/misconfiguredHex sections.
+     */
+    static void verifyHexRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
+                                           List<String> sections = ["properHex", "excessHex", "missingHex",
+                                                                    "misconfiguredHex"]) {
+        sections.each { String section ->
+            if (section == "properHex") {
+                def defaultCookies = switchValidateInfo.rules.proper.findAll {
+                    def cookie = new Cookie(it)
+                    cookie.serviceFlag || cookie.type == CookieType.SHARED_OF_FLOW
+                }
+
+                def defaultHexCookies = []
+                defaultCookies.each { defaultHexCookies.add(Long.toHexString(it)) }
+                assert switchValidateInfo.rules.properHex.findAll { !(it in defaultHexCookies) }.empty
+            } else {
+                def defaultCookies = switchValidateInfo.rules."$section".findAll {
+                    def cookie = new Cookie(it)
+                    cookie.serviceFlag || cookie.type != CookieType.MULTI_TABLE_INGRESS_RULES
+                }
+
+                def defaultHexCookies = []
+                defaultCookies.each { defaultHexCookies.add(Long.toHexString(it)) }
+                assert switchValidateInfo.rules."$section".findAll { !(it in defaultHexCookies) }.empty
+            }
+        }
+    }
+
     static boolean isDefaultMeter(MeterInfoDto dto) {
         return MeterId.isMeterIdOfDefaultRule(dto.getMeterId())
     }
