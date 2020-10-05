@@ -73,8 +73,8 @@ public class DiscoveryPortStatusMonitor extends DiscoveryMonitor<LinkStatus> {
     public void actualFlush(Endpoint endpoint, Isl persistentView) {
         if (evaluateStatus().orElse(IslStatus.ACTIVE) == IslStatus.INACTIVE) {
             log.info("Set ISL {} ===> {} unstable time due to physical port down",
-                    Endpoint.of(persistentView.getSrcSwitch().getSwitchId(), persistentView.getSrcPort()),
-                    Endpoint.of(persistentView.getDestSwitch().getSwitchId(), persistentView.getDestPort()));
+                    Endpoint.of(persistentView.getSrcSwitchId(), persistentView.getSrcPort()),
+                    Endpoint.of(persistentView.getDestSwitchId(), persistentView.getDestPort()));
             persistentView.setTimeUnstable(persistentView.getTimeModify());
         }
     }

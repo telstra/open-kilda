@@ -14,6 +14,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.model.SwitchFeature
 
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 
 import java.time.Instant
 
@@ -90,6 +91,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
 
     }
 
+    @Ignore("FIXME - Unstable")
     def "ISL is marked as 'unstable' after port down and system takes it into account during flow creation"() {
         given: "Two active neighboring switches with two parallel links"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {

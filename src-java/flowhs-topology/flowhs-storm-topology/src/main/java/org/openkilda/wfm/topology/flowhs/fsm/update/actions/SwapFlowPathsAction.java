@@ -22,7 +22,6 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
-import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
@@ -36,8 +35,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Optional;
-
 @Slf4j
 public class SwapFlowPathsAction extends FlowProcessingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final FlowResourcesManager resourcesManager;
@@ -49,84 +46,93 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowUpdateFsm, Sta
 
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        persistenceManager.getTransactionManager().doInTransaction(() -> {
-            Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
+        swapPrimaryPaths(stateMachine);
+        swapProtectedPaths(stateMachine);
+    }
 
-            Optional<FlowPath> oldPrimaryForward = flow.getPath(flow.getForwardPathId());
-            oldPrimaryForward.ifPresent(path -> {
-                stateMachine.setOldPrimaryForwardPath(path.getPathId());
-                stateMachine.setOldPrimaryForwardPathStatus(path.getStatus());
-                flowPathRepository.updateStatus(path.getPathId(), FlowPathStatus.IN_PROGRESS);
+    private void swapPrimaryPaths(FlowUpdateFsm stateMachine) {
+        PathId newForward = stateMachine.getNewPrimaryForwardPath();
+        PathId newReverse = stateMachine.getNewPrimaryReversePath();
+        if (newForward != null && newReverse != null) {
+            transactionManager.doInTransaction(() -> {
+                Flow flow = getFlow(stateMachine.getFlowId());
+
+                FlowPath oldForward = flow.getForwardPath();
+                if (oldForward != null) {
+                    stateMachine.setOldPrimaryForwardPath(oldForward.getPathId());
+                    stateMachine.setOldPrimaryForwardPathStatus(oldForward.getStatus());
+                    oldForward.setStatus(FlowPathStatus.IN_PROGRESS);
+                }
+
+                FlowPath oldReverse = flow.getReversePath();
+                if (oldReverse != null) {
+                    stateMachine.setOldPrimaryReversePath(oldReverse.getPathId());
+                    stateMachine.setOldPrimaryReversePathStatus(oldReverse.getStatus());
+                    oldReverse.setStatus(FlowPathStatus.IN_PROGRESS);
+                }
+
+                if (oldForward != null || oldReverse != null) {
+                    FlowEncapsulationType oldFlowEncapsulationType =
+                            stateMachine.getOriginalFlow().getFlowEncapsulationType();
+                    FlowResources oldResources = getResources(
+                            oldForward != null ? oldForward : oldReverse,
+                            oldReverse != null ? oldReverse : oldForward,
+                            oldFlowEncapsulationType);
+                    stateMachine.getOldResources().add(oldResources);
+                }
+
+                flow.setForwardPathId(newForward);
+                flow.setReversePathId(newReverse);
+
+                log.debug("Swapping the primary paths {}/{} with {}/{}",
+                        oldForward != null ? oldForward.getPathId() : null,
+                        oldReverse != null ? oldReverse.getPathId() : null,
+                        newForward, newReverse);
             });
+            saveHistory(stateMachine, stateMachine.getFlowId(), newForward, newReverse);
+        }
+    }
 
-            Optional<FlowPath> oldPrimaryReverse = flow.getPath(flow.getReversePathId());
-            oldPrimaryReverse.ifPresent(path -> {
-                stateMachine.setOldPrimaryReversePath(path.getPathId());
-                stateMachine.setOldPrimaryReversePathStatus(path.getStatus());
-                flowPathRepository.updateStatus(path.getPathId(), FlowPathStatus.IN_PROGRESS);
-            });
-
-            FlowEncapsulationType oldFlowEncapsulationType = stateMachine.getOriginalFlow().getFlowEncapsulationType();
-
-            if (oldPrimaryForward.isPresent() || oldPrimaryReverse.isPresent()) {
-                FlowResources oldPrimaryResources = getResources(
-                        oldPrimaryForward.orElseGet(oldPrimaryReverse::get),
-                        oldPrimaryReverse.orElseGet(oldPrimaryForward::get),
-                        oldFlowEncapsulationType);
-                stateMachine.getOldResources().add(oldPrimaryResources);
+    private void swapProtectedPaths(FlowUpdateFsm stateMachine) {
+        transactionManager.doInTransaction(() -> {
+            Flow flow = getFlow(stateMachine.getFlowId());
+            FlowPath oldForward = flow.getProtectedForwardPath();
+            if (oldForward != null) {
+                stateMachine.setOldProtectedForwardPath(oldForward.getPathId());
+                stateMachine.setOldProtectedForwardPathStatus(oldForward.getStatus());
+                oldForward.setStatus(FlowPathStatus.IN_PROGRESS);
             }
 
-            PathId newPrimaryForward = stateMachine.getNewPrimaryForwardPath();
-            flow.setForwardPath(newPrimaryForward);
-            PathId newPrimaryReverse = stateMachine.getNewPrimaryReversePath();
-            flow.setReversePath(newPrimaryReverse);
+            FlowPath oldReverse = flow.getProtectedReversePath();
+            if (oldReverse != null) {
+                stateMachine.setOldProtectedReversePath(oldReverse.getPathId());
+                stateMachine.setOldProtectedReversePathStatus(oldReverse.getStatus());
+                oldReverse.setStatus(FlowPathStatus.IN_PROGRESS);
+            }
 
-            log.debug("Swapping the primary paths {}/{} with {}/{}",
-                    oldPrimaryForward.map(FlowPath::getPathId).orElse(null),
-                    oldPrimaryReverse.map(FlowPath::getPathId).orElse(null),
-                    newPrimaryForward, newPrimaryReverse);
-
-            saveHistory(stateMachine, flow.getFlowId(), newPrimaryForward, newPrimaryReverse);
-
-            Optional<FlowPath> oldProtectedForward = flow.getPath(flow.getProtectedForwardPathId());
-            oldProtectedForward.ifPresent(path -> {
-                stateMachine.setOldProtectedForwardPath(path.getPathId());
-                stateMachine.setOldProtectedForwardPathStatus(path.getStatus());
-                flowPathRepository.updateStatus(path.getPathId(), FlowPathStatus.IN_PROGRESS);
-            });
-
-            Optional<FlowPath> oldProtectedReverse = flow.getPath(flow.getProtectedReversePathId());
-            oldProtectedReverse.ifPresent(path -> {
-                stateMachine.setOldProtectedReversePath(path.getPathId());
-                stateMachine.setOldProtectedReversePathStatus(path.getStatus());
-                flowPathRepository.updateStatus(path.getPathId(), FlowPathStatus.IN_PROGRESS);
-            });
-
-            if (oldProtectedForward.isPresent() || oldProtectedReverse.isPresent()) {
+            if (oldForward != null || oldReverse != null) {
+                FlowEncapsulationType oldFlowEncapsulationType =
+                        stateMachine.getOriginalFlow().getFlowEncapsulationType();
                 FlowResources oldProtectedResources = getResources(
-                        oldProtectedForward.orElseGet(oldProtectedReverse::get),
-                        oldProtectedReverse.orElseGet(oldProtectedForward::get),
+                        oldForward != null ? oldForward : oldReverse,
+                        oldReverse != null ? oldReverse : oldForward,
                         oldFlowEncapsulationType);
                 stateMachine.getOldResources().add(oldProtectedResources);
             }
 
-            PathId newProtectedForward = stateMachine.getNewProtectedForwardPath();
-            PathId newProtectedReverse = stateMachine.getNewProtectedReversePath();
-            if (newProtectedForward != null && newProtectedReverse != null) {
-                flow.setProtectedForwardPath(newProtectedForward);
-                flow.setProtectedReversePath(newProtectedReverse);
+            PathId newForward = stateMachine.getNewProtectedForwardPath();
+            PathId newReverse = stateMachine.getNewProtectedReversePath();
+            flow.setProtectedForwardPathId(newForward);
+            flow.setProtectedReversePathId(newReverse);
 
+            if (newForward != null && newReverse != null) {
                 log.debug("Swapping the protected paths {}/{} with {}/{}",
-                        flow.getProtectedForwardPathId(), flow.getProtectedReversePathId(),
-                        newProtectedForward, newProtectedReverse);
+                        oldForward != null ? oldForward.getPathId() : null,
+                        oldReverse != null ? oldReverse.getPathId() : null,
+                        newForward, newReverse);
 
-                saveHistory(stateMachine, flow.getFlowId(), newProtectedForward, newProtectedReverse);
-            } else {
-                flow.setProtectedForwardPath((FlowPath) null);
-                flow.setProtectedReversePath((FlowPath) null);
+                saveHistory(stateMachine, stateMachine.getFlowId(), newForward, newReverse);
             }
-
-            flowRepository.createOrUpdate(flow);
         });
     }
 

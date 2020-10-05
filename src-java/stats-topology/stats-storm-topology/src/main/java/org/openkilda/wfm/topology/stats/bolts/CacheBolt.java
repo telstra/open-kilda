@@ -35,8 +35,8 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.context.PersistenceContextRequired;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
@@ -92,13 +92,13 @@ public class CacheBolt extends AbstractBolt {
 
     private void initFlowCache(FlowRepository flowRepository) {
         try {
-            flowRepository.findAll(FetchStrategy.ALL_RELATIONS).stream()
+            flowRepository.findAll().stream()
                     .flatMap(this::extractAllFlowPaths)
                     .forEach(path -> {
                         long cookie = path.getCookie().getValue();
                         String flowId = path.getFlow().getFlowId();
-                        SwitchId srcSwitchId = path.getSrcSwitch().getSwitchId();
-                        SwitchId dstSwitchId = path.getDestSwitch().getSwitchId();
+                        SwitchId srcSwitchId = path.getSrcSwitchId();
+                        SwitchId dstSwitchId = path.getDestSwitchId();
 
                         path.getSegments().stream()
                                 .skip(1) // src switch of first segment is path ingress switch
@@ -145,6 +145,7 @@ public class CacheBolt extends AbstractBolt {
      * {@inheritDoc}
      */
     @Override
+    @PersistenceContextRequired(requiresNew = true)
     public void init() {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         initFlowCache(repositoryFactory.createFlowRepository());

@@ -21,6 +21,7 @@ import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.PortHistoryRequest;
 import org.openkilda.messaging.payload.history.FlowDumpPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryPayload;
+import org.openkilda.model.history.FlowEvent;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.history.service.HistoryService;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
@@ -61,8 +62,8 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
         return historyService.listFlowEvents(
                 request.getFlowId(), timeFrom, timeTo, request.getMaxCount()).stream()
                 .map(entry -> {
-                    List<FlowHistoryPayload> payload = listFlowHistories(entry.getTaskId());
-                    List<FlowDumpPayload> dumps = listFlowDumps(entry.getTaskId());
+                    List<FlowHistoryPayload> payload = listFlowHistories(entry);
+                    List<FlowDumpPayload> dumps = listFlowDumps(entry);
                     return HistoryMapper.INSTANCE.map(entry, payload, dumps);
                 })
                 .collect(Collectors.toList());
@@ -70,21 +71,20 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
 
     private List<InfoData> getPortHistory(PortHistoryRequest request) {
         return historyService.listPortHistory(request.getSwitchId(), request.getPortNumber(),
-               request.getStart(), request.getEnd())
+                request.getStart(), request.getEnd())
                 .stream()
                 .map(HistoryMapper.INSTANCE::map)
                 .collect(Collectors.toList());
     }
 
-    private List<FlowHistoryPayload> listFlowHistories(String taskId) {
-        return historyService.listFlowHistory(taskId)
-                .stream()
+    private List<FlowHistoryPayload> listFlowHistories(FlowEvent flowEvent) {
+        return flowEvent.getHistoryRecords().stream()
                 .map(HistoryMapper.INSTANCE::map)
                 .collect(Collectors.toList());
     }
 
-    private List<FlowDumpPayload> listFlowDumps(String taskId) {
-        return historyService.listFlowDump(taskId)
+    private List<FlowDumpPayload> listFlowDumps(FlowEvent flowEvent) {
+        return flowEvent.getFlowDumps()
                 .stream()
                 .map(HistoryMapper.INSTANCE::map)
                 .collect(Collectors.toList());

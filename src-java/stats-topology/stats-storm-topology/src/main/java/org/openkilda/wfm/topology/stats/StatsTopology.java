@@ -106,9 +106,9 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         inputSpeakerRequests(builder, parallelism);
         cacheSyncFilter(builder, parallelism);
 
-        // Cache bolt get data from NEO4J on start
+        // Cache bolt get data from the database on start
         PersistenceManager persistenceManager =
-                PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+                PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
         builder.setBolt(STATS_CACHE_BOLT.name(), new CacheBolt(persistenceManager), parallelism)
                 .allGrouping(STATS_CACHE_FILTER_BOLT.name(), CACHE_UPDATE.name())
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.CACHE_DATA.toString(), statsFields);

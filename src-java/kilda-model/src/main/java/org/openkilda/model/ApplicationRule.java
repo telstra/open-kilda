@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,93 +17,186 @@ package org.openkilda.model;
 
 import org.openkilda.model.cookie.ExclusionCookie;
 
-import lombok.AccessLevel;
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.BeanSerializer;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
-import org.neo4j.ogm.typeconversion.InstantStringConverter;
+import lombok.ToString;
+import lombok.experimental.Delegate;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
-import java.time.Instant;
+import java.io.Serializable;
+import java.util.Objects;
 
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId", "timeCreate"})
-@NodeEntity(label = "application_rule")
-public class ApplicationRule {
+@DefaultSerializer(BeanSerializer.class)
+@ToString
+public class ApplicationRule implements CompositeDataEntity<ApplicationRule.ApplicationRuleData> {
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private ApplicationRuleData data;
 
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
+    /**
+     * No args constructor for deserialization purpose.
+     */
+    private ApplicationRule() {
+        data = new ApplicationRuleDataImpl();
+    }
 
-    @NonNull
-    @Property("flow_id")
-    private String flowId;
+    /**
+     * Cloning constructor which performs deep copy of the entity.
+     *
+     * @param entityToClone the entity to copy entity data from.
+     */
+    public ApplicationRule(@NonNull ApplicationRule entityToClone) {
+        data = ApplicationRuleCloner.INSTANCE.copy(entityToClone.getData());
+    }
 
-    @NonNull
-    @Convert(graphPropertyType = String.class)
-    @Property(name = "switch_id")
-    private SwitchId switchId;
-
-    @NonNull
-    @Convert(graphPropertyType = Long.class)
-    private ExclusionCookie cookie;
-
-    @Property("src_ip")
-    private String srcIp;
-
-    @Property("src_port")
-    private int srcPort;
-
-    @Property("dst_ip")
-    private String dstIp;
-
-    @Property("dst_port")
-    private int dstPort;
-
-    @Property("proto")
-    private String proto;
-
-    @Property("eth_type")
-    private String ethType;
-
-    @Property("metadata")
-    private long metadata;
-
-    @Property(name = "time_create")
-    @Convert(InstantStringConverter.class)
-    private Instant timeCreate;
-
-    @Property("expiration_timeout")
-    private int expirationTimeout;
-
-    @Builder(toBuilder = true)
+    @Builder
     public ApplicationRule(String flowId, SwitchId switchId, ExclusionCookie cookie, String srcIp,
                            int srcPort, String dstIp, int dstPort, String proto, String ethType,
-                           long metadata, Instant timeCreate,
-                           int expirationTimeout) {
-        this.flowId = flowId;
-        this.switchId = switchId;
-        this.cookie = cookie;
-        this.srcIp = srcIp;
-        this.srcPort = srcPort;
-        this.dstIp = dstIp;
-        this.dstPort = dstPort;
-        this.proto = proto;
-        this.ethType = ethType;
-        this.metadata = metadata;
-        this.timeCreate = timeCreate;
-        this.expirationTimeout = expirationTimeout;
+                           long metadata, int expirationTimeout) {
+        data = ApplicationRuleDataImpl.builder()
+                .flowId(flowId).switchId(switchId).cookie(cookie).srcIp(srcIp).srcPort(srcPort)
+                .dstIp(dstIp).dstPort(dstPort).proto(proto).ethType(ethType).metadata(metadata)
+                .expirationTimeout(expirationTimeout).build();
+    }
+
+    public ApplicationRule(@NonNull ApplicationRuleData data) {
+        this.data = data;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        ApplicationRule that = (ApplicationRule) o;
+        return new EqualsBuilder()
+                .append(getFlowId(), that.getFlowId())
+                .append(getSwitchId(), that.getSwitchId())
+                .append(getCookie(), that.getCookie())
+                .append(getSrcIp(), that.getSrcIp())
+                .append(getSrcPort(), that.getSrcPort())
+                .append(getDstIp(), that.getDstIp())
+                .append(getDstPort(), that.getDstPort())
+                .append(getProto(), that.getProto())
+                .append(getEthType(), that.getEthType())
+                .append(getMetadata(), that.getMetadata())
+                .append(getExpirationTimeout(), that.getExpirationTimeout())
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getFlowId(), getSwitchId(), getCookie(), getSrcIp(),
+                getSrcPort(), getDstIp(), getDstPort(), getProto(), getEthType(),
+                getMetadata(), getExpirationTimeout());
+    }
+
+    /**
+     * Defines persistable data of the ApplicationRule.
+     */
+    public interface ApplicationRuleData {
+        String getFlowId();
+
+        void setFlowId(String flowId);
+
+        SwitchId getSwitchId();
+
+        void setSwitchId(SwitchId switchId);
+
+        ExclusionCookie getCookie();
+
+        void setCookie(ExclusionCookie cookie);
+
+        String getSrcIp();
+
+        void setSrcIp(String srcIp);
+
+        int getSrcPort();
+
+        void setSrcPort(int srcPort);
+
+        String getDstIp();
+
+        void setDstIp(String dstIp);
+
+        int getDstPort();
+
+        void setDstPort(int dstPort);
+
+        String getProto();
+
+        void setProto(String proto);
+
+        String getEthType();
+
+        void setEthType(String ethType);
+
+        long getMetadata();
+
+        void setMetadata(long metadata);
+
+        int getExpirationTimeout();
+
+        void setExpirationTimeout(int expirationTimeout);
+    }
+
+    /**
+     * POJO implementation of ApplicationRuleData.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    static final class ApplicationRuleDataImpl implements ApplicationRuleData, Serializable {
+        private static final long serialVersionUID = 1L;
+        @NonNull
+        String flowId;
+        @NonNull
+        SwitchId switchId;
+        @NonNull
+        ExclusionCookie cookie;
+        String srcIp;
+        int srcPort;
+        String dstIp;
+        int dstPort;
+        String proto;
+        String ethType;
+        long metadata;
+        int expirationTimeout;
+    }
+
+    /**
+     * A cloner for ApplicationRule entity.
+     */
+    @Mapper
+    public interface ApplicationRuleCloner {
+        ApplicationRuleCloner INSTANCE = Mappers.getMapper(ApplicationRuleCloner.class);
+
+        void copy(ApplicationRuleData source, @MappingTarget ApplicationRuleData target);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default ApplicationRuleData copy(ApplicationRuleData source) {
+            ApplicationRuleData result = new ApplicationRuleDataImpl();
+            copy(source, result);
+            return result;
+        }
     }
 }

@@ -22,6 +22,7 @@ import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.context.PersistenceContextRequired;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
@@ -39,10 +40,11 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class FlowFetcher extends Abstract {
     public static final String BOLT_ID = ComponentId.FLOW_FETCHER.toString();
@@ -96,10 +98,10 @@ public class FlowFetcher extends Abstract {
     private void updatePeriodicPingHeap(Tuple input) throws PipelineException {
         PeriodicPingCommand periodicPingCommand = pullPeriodicPingRequest(input);
         if (periodicPingCommand.isEnable()) {
-            persistenceManager.getTransactionManager().doInTransaction(() ->
-                    flowRepository.findById(periodicPingCommand.getFlowId())
-                            .flatMap(this::getFlowWithTransitEncapsulation)
-                            .ifPresent(flowsSet::add));
+            flowRepository.findById(periodicPingCommand.getFlowId())
+                    .flatMap(this::getFlowWithTransitEncapsulation)
+                    .map(v -> new FlowWithTransitEncapsulation(new Flow(v.flow), v.transitEncapsulation))
+                    .ifPresent(flowsSet::add);
         } else {
             flowsSet.removeIf(flowWithTransitEncapsulation ->
                     flowWithTransitEncapsulation.getFlow().getFlowId().equals(periodicPingCommand.getFlowId()));
@@ -108,11 +110,11 @@ public class FlowFetcher extends Abstract {
 
     private void refreshHeap(Tuple input, boolean emitCacheExpiry) throws PipelineException {
         log.debug("Handle periodic ping request");
-        Set<FlowWithTransitEncapsulation> flowsWithTransitEncapsulation = new HashSet<>();
-        persistenceManager.getTransactionManager().doInTransaction(() ->
-                flowRepository.findWithPeriodicPingsEnabled()
-                        .forEach(flow -> getFlowWithTransitEncapsulation(flow)
-                                .ifPresent(flowsWithTransitEncapsulation::add)));
+        Set<FlowWithTransitEncapsulation> flowsWithTransitEncapsulation =
+                flowRepository.findWithPeriodicPingsEnabled().stream()
+                        .map(this::getFlowWithTransitEncapsulation)
+                        .flatMap(o -> o.isPresent() ? Stream.of(o.get()) : Stream.empty())
+                        .collect(Collectors.toSet());
         if (emitCacheExpiry) {
             final CommandContext commandContext = pullContext(input);
             emitCacheExpire(input, commandContext, flowsWithTransitEncapsulation);
@@ -147,6 +149,7 @@ public class FlowFetcher extends Abstract {
 
         if (optionalFlow.isPresent()) {
             Flow flow = optionalFlow.get();
+            flowRepository.detach(flow);
 
             if (!flow.isOneSwitchFlow()) {
                 Optional<FlowTransitEncapsulation> transitEncapsulation = getTransitEncapsulation(flow);
@@ -225,6 +228,7 @@ public class FlowFetcher extends Abstract {
     }
 
     @Override
+    @PersistenceContextRequired(requiresNew = true)
     public void init() {
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);

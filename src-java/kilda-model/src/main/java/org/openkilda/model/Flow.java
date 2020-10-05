@@ -17,12 +17,16 @@ package org.openkilda.model;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
-import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
 
-import org.openkilda.converters.DetectConnectedDevicesConverter;
+import org.openkilda.model.FlowPath.FlowPathData;
+import org.openkilda.model.FlowPath.FlowPathDataImpl;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.BeanSerializer;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -30,21 +34,19 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.Index;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.Relationship;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
-import org.neo4j.ogm.typeconversion.InstantStringConverter;
+import lombok.ToString;
+import lombok.experimental.Delegate;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.Collections;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -55,183 +57,65 @@ import java.util.stream.Stream;
  * Represents a bi-directional flow. This includes the source and destination, flow status,
  * bandwidth and description, associated paths, encapsulation type.
  */
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId", "paths"})
-@NodeEntity(label = "flow")
-public class Flow implements Serializable {
-    private static final long serialVersionUID = 1L;
+@DefaultSerializer(BeanSerializer.class)
+@ToString
+public class Flow implements CompositeDataEntity<Flow.FlowData> {
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private FlowData data;
 
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
+    /**
+     * No args constructor for deserialization purpose.
+     */
+    private Flow() {
+        data = new FlowDataImpl();
+        // The reference is used to link flow paths back to the flow. See {@link FlowDataImpl#addPaths(FlowPath...)}.
+        ((FlowDataImpl) data).flow = this;
+    }
 
-    @NonNull
-    @Property(name = "flow_id")
-    @Index(unique = true)
-    private String flowId;
+    /**
+     * Cloning constructor which performs deep copy of the entity.
+     *
+     * @param entityToClone the flow entity to copy entity data from.
+     */
+    public Flow(@NonNull Flow entityToClone) {
+        this();
+        FlowCloner.INSTANCE.copy(entityToClone.getData(), data, this);
+    }
 
-    @NonNull
-    @Relationship(type = "source", direction = OUTGOING)
-    private Switch srcSwitch;
-
-    @NonNull
-    @Relationship(type = "destination", direction = OUTGOING)
-    private Switch destSwitch;
-
-    @Property(name = "src_port")
-    private int srcPort;
-
-    @Property(name = "src_vlan")
-    private int srcVlan;
-
-    @Property(name = "src_inner_vlan")
-    private int srcInnerVlan;
-
-    @Property(name = "dst_port")
-    private int destPort;
-
-    @Property(name = "dst_vlan")
-    private int destVlan;
-
-    @Property(name = "dst_inner_vlan")
-    private int destInnerVlan;
-
-    // No setter as forwardPath must be used for this.
-    @Property(name = "forward_path_id")
-    @Convert(graphPropertyType = String.class)
-    @Setter(AccessLevel.NONE)
-    private PathId forwardPathId;
-
-    // No setter as reversePath must be used for this.
-    @Property(name = "reverse_path_id")
-    @Convert(graphPropertyType = String.class)
-    @Setter(AccessLevel.NONE)
-    private PathId reversePathId;
-
-    @Relationship(type = "owns", direction = OUTGOING)
-    @Getter(AccessLevel.NONE)
-    @Setter(AccessLevel.NONE)
-    private Set<FlowPath> paths = new HashSet<>();
-
-    @Property(name = "allocate_protected_path")
-    private boolean allocateProtectedPath;
-
-    // No setter as protectedForwardPath must be used for this.
-    @Property(name = "protected_forward_path_id")
-    @Convert(graphPropertyType = String.class)
-    @Setter(AccessLevel.NONE)
-    private PathId protectedForwardPathId;
-
-    // No setter as protectedReversePath must be used for this.
-    @Property(name = "protected_reverse_path_id")
-    @Convert(graphPropertyType = String.class)
-    @Setter(AccessLevel.NONE)
-    private PathId protectedReversePathId;
-
-    @Property(name = "group_id")
-    private String groupId;
-
-    private long bandwidth;
-
-    @Property(name = "ignore_bandwidth")
-    private boolean ignoreBandwidth;
-
-    private String description;
-
-    @Property(name = "periodic_pings")
-    private boolean periodicPings;
-
-    @NonNull
-    @Property(name = "encapsulation_type")
-    @Convert(graphPropertyType = String.class)
-    private FlowEncapsulationType encapsulationType;
-
-    @NonNull
-    // Enforce usage of custom converters.
-    @Convert(graphPropertyType = String.class)
-    private FlowStatus status;
-
-    @Property(name = "status_info")
-    private String statusInfo;
-
-    @Property(name = "max_latency")
-    private Long maxLatency;
-
-    @Property(name = "priority")
-    private Integer priority;
-
-    @Property(name = "time_create")
-    @Convert(InstantStringConverter.class)
-    private Instant timeCreate;
-
-    @Property(name = "time_modify")
-    @Convert(InstantStringConverter.class)
-    private Instant timeModify;
-
-    @Property(name = "pinned")
-    private boolean pinned;
-
-    @Convert(DetectConnectedDevicesConverter.class)
-    private DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices();
-
-    @Property(name = "src_with_multi_table")
-    private boolean srcWithMultiTable;
-
-    @Property(name = "dst_with_multi_table")
-    private boolean destWithMultiTable;
-
-    @NonNull
-    @Property(name = "path_computation_strategy")
-    @Convert(graphPropertyType = String.class)
-    private PathComputationStrategy pathComputationStrategy;
-
-    @Property(name = "target_path_computation_strategy")
-    @Convert(graphPropertyType = String.class)
-    private PathComputationStrategy targetPathComputationStrategy;
-
-    @Builder(toBuilder = true)
+    @Builder
     public Flow(@NonNull String flowId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
-                int srcPort, int srcVlan, int srcInnerVlan,
-                int destPort, int destVlan, int destInnerVlan,
-                String groupId, long bandwidth, boolean ignoreBandwidth, String description, boolean periodicPings,
-                boolean allocateProtectedPath, FlowEncapsulationType encapsulationType, FlowStatus status,
-                String statusInfo, Long maxLatency, Integer priority,
-                Instant timeCreate, Instant timeModify, boolean pinned,
-                boolean srcWithMultiTable, boolean destWithMultiTable, DetectConnectedDevices detectConnectedDevices,
+                int srcPort, int srcVlan, int srcInnerVlan, int destPort, int destVlan, int destInnerVlan,
+                boolean allocateProtectedPath, String groupId, long bandwidth, boolean ignoreBandwidth,
+                String description, boolean periodicPings, FlowEncapsulationType encapsulationType,
+                FlowStatus status, String statusInfo, Long maxLatency, Integer priority, boolean pinned,
+                DetectConnectedDevices detectConnectedDevices, boolean srcWithMultiTable, boolean destWithMultiTable,
                 PathComputationStrategy pathComputationStrategy,
                 PathComputationStrategy targetPathComputationStrategy) {
-        this.flowId = flowId;
-        this.srcSwitch = srcSwitch;
-        this.destSwitch = destSwitch;
-        this.srcPort = srcPort;
-        this.srcVlan = srcVlan;
-        this.srcInnerVlan = srcInnerVlan;
-        this.destPort = destPort;
-        this.destVlan = destVlan;
-        this.destInnerVlan = destInnerVlan;
-        this.groupId = groupId;
-        this.bandwidth = bandwidth;
-        this.ignoreBandwidth = ignoreBandwidth;
-        this.description = description;
-        this.periodicPings = periodicPings;
-        this.allocateProtectedPath = allocateProtectedPath;
-        this.encapsulationType = encapsulationType;
-        this.status = status;
-        this.statusInfo = statusInfo;
-        this.maxLatency = maxLatency;
-        this.priority = priority;
-        this.timeCreate = timeCreate;
-        this.timeModify = timeModify;
-        this.pinned = pinned;
-        setDetectConnectedDevices(detectConnectedDevices);
-        this.srcWithMultiTable = srcWithMultiTable;
-        this.destWithMultiTable = destWithMultiTable;
-        this.pathComputationStrategy = pathComputationStrategy;
-        this.targetPathComputationStrategy = targetPathComputationStrategy;
+        FlowDataImpl.FlowDataImplBuilder builder = FlowDataImpl.builder()
+                .flowId(flowId).srcSwitch(srcSwitch).destSwitch(destSwitch)
+                .srcPort(srcPort).srcVlan(srcVlan).srcInnerVlan(srcInnerVlan)
+                .destPort(destPort).destVlan(destVlan).destInnerVlan(destInnerVlan)
+                .allocateProtectedPath(allocateProtectedPath).groupId(groupId)
+                .bandwidth(bandwidth).ignoreBandwidth(ignoreBandwidth)
+                .description(description).periodicPings(periodicPings).encapsulationType(encapsulationType)
+                .status(status).maxLatency(maxLatency).priority(priority).pinned(pinned)
+                .srcWithMultiTable(srcWithMultiTable).destWithMultiTable(destWithMultiTable)
+                .pathComputationStrategy(pathComputationStrategy)
+                .targetPathComputationStrategy(targetPathComputationStrategy);
+        if (detectConnectedDevices != null) {
+            builder.detectConnectedDevices(detectConnectedDevices);
+        }
+        data = builder.build();
+
+        // The reference is used to link flow paths back to the flow. See {@link FlowDataImpl#addPaths(FlowPath...)}.
+        ((FlowDataImpl) data).flow = this;
+    }
+
+    public Flow(@NonNull FlowData data) {
+        this.data = data;
     }
 
     /**
@@ -240,80 +124,17 @@ public class Flow implements Serializable {
      * @return true if source and destination switches are the same, otherwise false
      */
     public boolean isOneSwitchFlow() {
-        return srcSwitch.getSwitchId().equals(destSwitch.getSwitchId());
+        return getSrcSwitchId().equals(getDestSwitchId());
     }
-
 
     public boolean isActive() {
-        return status == FlowStatus.UP;
-    }
-
-    public Set<FlowPath> getPaths() {
-        return Collections.unmodifiableSet(paths);
-    }
-
-    /**
-     * Add and associate flow path(s) with the flow.
-     */
-    public final void addPaths(FlowPath... paths) {
-        for (FlowPath pathToAdd : paths) {
-            boolean toBeAdded = true;
-            Iterator<FlowPath> it = this.paths.iterator();
-            while (it.hasNext()) {
-                FlowPath each = it.next();
-                if (pathToAdd == each) {
-                    toBeAdded = false;
-                    break;
-                }
-                if (pathToAdd.getPathId().equals(each.getPathId())) {
-                    it.remove();
-                    // Quit as no duplicates expected.
-                    break;
-                }
-            }
-            if (toBeAdded) {
-                this.paths.add(pathToAdd);
-                pathToAdd.setFlow(this);
-            }
-        }
-    }
-
-    /**
-     * Get an associated path by id.
-     */
-    public final Optional<FlowPath> getPath(PathId pathId) {
-        return paths.stream()
-                .filter(path -> path.getPathId().equals(pathId))
-                .findAny();
-    }
-
-    /**
-     * Add a path and set it as the forward.
-     */
-    public final void setForwardPath(FlowPath forwardPath) {
-        if (forwardPath != null) {
-            addPaths(validateForwardPath(forwardPath));
-            this.forwardPathId = forwardPath.getPathId();
-        } else {
-            this.forwardPathId = null;
-        }
-    }
-
-    /**
-     * Set already associated path as the forward.
-     */
-    public final void setForwardPath(PathId pathId) {
-        if (!getPath(pathId).isPresent()) {
-            throw new IllegalArgumentException(format("The path %s is not associated with flow %s", pathId, flowId));
-        }
-
-        this.forwardPathId = pathId;
+        return getStatus() == FlowStatus.UP;
     }
 
     /**
      * Get the forward path.
      */
-    public final FlowPath getForwardPath() {
+    public FlowPath getForwardPath() {
         if (getForwardPathId() == null) {
             return null;
         }
@@ -322,26 +143,17 @@ public class Flow implements Serializable {
     }
 
     /**
-     * Add a path and set it as the protected forward.
+     * Add a path and set it as the forward path.
      */
-    public final void setProtectedForwardPath(FlowPath forwardPath) {
+    public void setForwardPath(FlowPath forwardPath) {
         if (forwardPath != null) {
-            addPaths(validateForwardPath(forwardPath));
-            this.protectedForwardPathId = forwardPath.getPathId();
+            if (!hasPath(forwardPath)) {
+                addPaths(validateForwardPath(forwardPath));
+            }
+            setForwardPathId(forwardPath.getPathId());
         } else {
-            this.protectedForwardPathId = null;
+            setForwardPathId(null);
         }
-    }
-
-    /**
-     * Set already associated path as protected forward.
-     */
-    public final void setProtectedForwardPath(PathId pathId) {
-        if (!getPath(pathId).isPresent()) {
-            throw new IllegalArgumentException(format("The path %s is not associated with flow %s", pathId, flowId));
-        }
-
-        this.protectedForwardPathId = pathId;
     }
 
     /**
@@ -356,62 +168,23 @@ public class Flow implements Serializable {
     }
 
     /**
-     * Check whether the path corresponds to the forward flow.
+     * Add a path and set it as the protected forward path.
      */
-    public boolean isForward(FlowPath path) {
-        return Objects.equals(path.getFlow().getFlowId(), this.getFlowId())
-                && Objects.equals(path.getSrcSwitch().getSwitchId(), getSrcSwitch().getSwitchId())
-                && Objects.equals(path.getDestSwitch().getSwitchId(), getDestSwitch().getSwitchId())
-                && (!isOneSwitchFlow() || path.getCookie() != null
-                && path.getCookie().getDirection() == FlowPathDirection.FORWARD);
-    }
-
-    /**
-     * Check whether the path corresponds to the reverse flow.
-     */
-    public boolean isReverse(FlowPath path) {
-        return Objects.equals(path.getFlow().getFlowId(), this.getFlowId())
-                && Objects.equals(path.getSrcSwitch().getSwitchId(), getDestSwitch().getSwitchId())
-                && Objects.equals(path.getDestSwitch().getSwitchId(), getSrcSwitch().getSwitchId())
-                && (!isOneSwitchFlow() || path.getCookie() != null
-                && path.getCookie().getDirection() == FlowPathDirection.REVERSE);
-    }
-
-    private FlowPath validateForwardPath(FlowPath path) {
-        checkArgument(isForward(path),
-                "Forward path %s and the flow have different endpoints, but expected the same.",
-                path.getPathId());
-
-        return path;
-    }
-
-    /**
-     * Add a path and set it as the reverse path.
-     */
-    public final void setReversePath(FlowPath reversePath) {
-        if (reversePath != null) {
-            addPaths(validateReversePath(reversePath));
-            this.reversePathId = reversePath.getPathId();
+    public void setProtectedForwardPath(FlowPath forwardPath) {
+        if (forwardPath != null) {
+            if (!hasPath(forwardPath)) {
+                addPaths(validateForwardPath(forwardPath));
+            }
+            setProtectedForwardPathId(forwardPath.getPathId());
         } else {
-            this.reversePathId = null;
+            setProtectedForwardPathId(null);
         }
-    }
-
-    /**
-     * Set already associated path as the reverse.
-     */
-    public final void setReversePath(PathId pathId) {
-        if (!getPath(pathId).isPresent()) {
-            throw new IllegalArgumentException(format("The path %s is not associated with flow %s", pathId, flowId));
-        }
-
-        this.reversePathId = pathId;
     }
 
     /**
      * Get the reverse path.
      */
-    public final FlowPath getReversePath() {
+    public FlowPath getReversePath() {
         if (getReversePathId() == null) {
             return null;
         }
@@ -419,33 +192,25 @@ public class Flow implements Serializable {
         return getPath(getReversePathId()).orElse(null);
     }
 
+
     /**
-     * Add a path and set it as the protected reverse.
+     * Add a path and set it as the reverse path.
      */
-    public final void setProtectedReversePath(FlowPath reversePath) {
+    public void setReversePath(FlowPath reversePath) {
         if (reversePath != null) {
-            addPaths(validateReversePath(reversePath));
-            this.protectedReversePathId = reversePath.getPathId();
+            if (!hasPath(reversePath)) {
+                addPaths(validateReversePath(reversePath));
+            }
+            setReversePathId(reversePath.getPathId());
         } else {
-            this.protectedReversePathId = null;
+            setReversePathId(null);
         }
-    }
-
-    /**
-     * Set already associated path as the protected reverse.
-     */
-    public final void setProtectedReversePath(PathId pathId) {
-        if (!getPath(pathId).isPresent()) {
-            throw new IllegalArgumentException(format("The path %s is not associated with flow %s", pathId, flowId));
-        }
-
-        this.protectedReversePathId = pathId;
     }
 
     /**
      * Get the protected reverse path.
      */
-    public final FlowPath getProtectedReversePath() {
+    public FlowPath getProtectedReversePath() {
         if (getProtectedReversePathId() == null) {
             return null;
         }
@@ -454,59 +219,57 @@ public class Flow implements Serializable {
     }
 
     /**
-     * Sets null to all flow paths.
+     * Add a path and set it as the protected reverse.
      */
-    public final void resetPaths() {
-        this.forwardPathId = null;
-        this.reversePathId = null;
-
-        this.protectedForwardPathId = null;
-        this.protectedReversePathId = null;
+    public void setProtectedReversePath(FlowPath reversePath) {
+        if (reversePath != null) {
+            if (!hasPath(reversePath)) {
+                addPaths(validateReversePath(reversePath));
+            }
+            setProtectedReversePathId(reversePath.getPathId());
+        } else {
+            setProtectedReversePathId(null);
+        }
     }
 
-    private FlowPath validateReversePath(FlowPath path) {
-        checkArgument(isReverse(path),
-                "Reverse path %s and the flow have different endpoints, but expected the same.",
-                path.getPathId());
-
-        return path;
+    /**
+     * Sets null to all flow paths.
+     */
+    public void resetPaths() {
+        setForwardPathId(null);
+        setReversePathId(null);
+        setProtectedForwardPathId(null);
+        setProtectedReversePathId(null);
     }
 
     /**
      * Return opposite pathId to passed pathId.
      */
     public Optional<PathId> getOppositePathId(@NonNull PathId pathId) {
-        if (pathId.equals(forwardPathId) && reversePathId != null) {
-            return Optional.of(reversePathId);
-        } else if (pathId.equals(reversePathId) && forwardPathId != null) {
-            return Optional.of(forwardPathId);
-        } else if (pathId.equals(protectedForwardPathId) && protectedReversePathId != null) {
-            return Optional.of(protectedReversePathId);
-        } else if (pathId.equals(protectedReversePathId) && protectedForwardPathId != null) {
-            return Optional.of(protectedForwardPathId);
+        if (pathId.equals(getForwardPathId()) && getReversePathId() != null) {
+            return Optional.of(getReversePathId());
+        } else if (pathId.equals(getReversePathId()) && getForwardPathId() != null) {
+            return Optional.of(getForwardPathId());
+        } else if (pathId.equals(getProtectedForwardPathId()) && getProtectedReversePathId() != null) {
+            return Optional.of(getProtectedReversePathId());
+        } else if (pathId.equals(getProtectedReversePathId()) && getProtectedForwardPathId() != null) {
+            return Optional.of(getProtectedForwardPathId());
         } else {
             // Handling the case of non-active paths.
-            Optional<Long> requestedPathCookie = paths.stream()
-                    .filter(path -> path.getPathId().equals(pathId))
-                    .findAny()
+            Optional<Long> requestedPathCookie = getPath(pathId)
                     .map(FlowPath::getCookie)
                     .map(FlowSegmentCookie::getFlowEffectiveId);
             if (requestedPathCookie.isPresent()) {
-                return paths.stream()
+                return getPaths().stream()
                         .filter(path -> !path.getPathId().equals(pathId))
                         .filter(path -> path.getCookie().getFlowEffectiveId() == requestedPathCookie.get())
                         .findAny()
                         .map(FlowPath::getPathId);
             } else {
-                throw new IllegalArgumentException(format("Flow %s does not have path %s", flowId, pathId));
+                throw new IllegalArgumentException(format("Flow %s does not have path %s", getFlowId(), pathId));
             }
         }
     }
-
-    public List<PathId> getFlowPathIds() {
-        return paths.stream().map(FlowPath::getPathId).collect(Collectors.toList());
-    }
-
 
     /**
      * Return main flow prioritized paths status.
@@ -520,7 +283,7 @@ public class Flow implements Serializable {
      */
     public FlowPathStatus getProtectedFlowPrioritizedPathsStatus() {
         FlowPathStatus pathStatus = getFlowPrioritizedPathStatus(getProtectedForwardPath(), getProtectedReversePath());
-        return this.allocateProtectedPath && pathStatus == null ? FlowPathStatus.INACTIVE : pathStatus;
+        return isAllocateProtectedPath() && pathStatus == null ? FlowPathStatus.INACTIVE : pathStatus;
     }
 
     private FlowPathStatus getFlowPrioritizedPathStatus(FlowPath... flowPaths) {
@@ -532,14 +295,39 @@ public class Flow implements Serializable {
     }
 
     /**
-     * Return detect connected devices flags.
+     * Check whether the path corresponds to the forward flow.
      */
-    public void setDetectConnectedDevices(DetectConnectedDevices detectConnectedDevices) {
-        if (detectConnectedDevices == null) {
-            this.detectConnectedDevices = new DetectConnectedDevices();
-        } else {
-            this.detectConnectedDevices = detectConnectedDevices;
-        }
+    public boolean isForward(FlowPath path) {
+        return Objects.equals(path.getSrcSwitchId(), getSrcSwitchId())
+                && Objects.equals(path.getDestSwitchId(), getDestSwitchId())
+                && (!isOneSwitchFlow() || path.getCookie() != null
+                && path.getCookie().getDirection() == FlowPathDirection.FORWARD);
+    }
+
+    /**
+     * Check whether the path corresponds to the reverse flow.
+     */
+    public boolean isReverse(FlowPath path) {
+        return Objects.equals(path.getSrcSwitchId(), getDestSwitchId())
+                && Objects.equals(path.getDestSwitchId(), getSrcSwitchId())
+                && (!isOneSwitchFlow() || path.getCookie() != null
+                && path.getCookie().getDirection() == FlowPathDirection.REVERSE);
+    }
+
+    private FlowPath validateForwardPath(FlowPath path) {
+        checkArgument(isForward(path),
+                "Forward path %s and the flow have different endpoints, but expected the same.",
+                path.getPathId());
+
+        return path;
+    }
+
+    private FlowPath validateReversePath(FlowPath path) {
+        checkArgument(isReverse(path),
+                "Reverse path %s and the flow have different endpoints, but expected the same.",
+                path.getPathId());
+
+        return path;
     }
 
     /**
@@ -580,8 +368,377 @@ public class Flow implements Serializable {
      * Checks if pathId belongs to the current flow.
      */
     public boolean isActualPathId(PathId pathId) {
-        return pathId != null && (pathId.equals(this.getForwardPathId()) || pathId.equals(this.getReversePathId())
-                || pathId.equals(this.getProtectedForwardPathId()) || pathId.equals(this.getProtectedReversePathId()));
+        return pathId != null && (pathId.equals(getForwardPathId()) || pathId.equals(getReversePathId())
+                || pathId.equals(getProtectedForwardPathId()) || pathId.equals(getProtectedReversePathId()));
+    }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        Flow that = (Flow) o;
+        return new EqualsBuilder()
+                .append(getSrcPort(), that.getSrcPort())
+                .append(getSrcVlan(), that.getSrcVlan())
+                .append(getSrcInnerVlan(), that.getSrcInnerVlan())
+                .append(getDestPort(), that.getDestPort())
+                .append(getDestVlan(), that.getDestVlan())
+                .append(getDestInnerVlan(), that.getDestInnerVlan())
+                .append(isAllocateProtectedPath(), that.isAllocateProtectedPath())
+                .append(getBandwidth(), that.getBandwidth())
+                .append(isIgnoreBandwidth(), that.isIgnoreBandwidth())
+                .append(isPeriodicPings(), that.isPeriodicPings())
+                .append(isPinned(), that.isPinned())
+                .append(isSrcWithMultiTable(), that.isSrcWithMultiTable())
+                .append(isDestWithMultiTable(), that.isDestWithMultiTable())
+                .append(getFlowId(), that.getFlowId())
+                .append(getSrcSwitchId(), that.getSrcSwitchId())
+                .append(getDestSwitchId(), that.getDestSwitchId())
+                .append(getForwardPathId(), that.getForwardPathId())
+                .append(getReversePathId(), that.getReversePathId())
+                .append(getProtectedForwardPathId(), that.getProtectedForwardPathId())
+                .append(getProtectedReversePathId(), that.getProtectedReversePathId())
+                .append(getGroupId(), that.getGroupId())
+                .append(getDescription(), that.getDescription())
+                .append(getEncapsulationType(), that.getEncapsulationType())
+                .append(getStatus(), that.getStatus())
+                .append(getStatusInfo(), that.getStatusInfo())
+                .append(getMaxLatency(), that.getMaxLatency())
+                .append(getPriority(), that.getPriority())
+                .append(getTimeCreate(), that.getTimeCreate())
+                .append(getTimeModify(), that.getTimeModify())
+                .append(getDetectConnectedDevices(), that.getDetectConnectedDevices())
+                .append(getPathComputationStrategy(), that.getPathComputationStrategy())
+                .append(getPaths(), that.getPaths())
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getFlowId(), getSrcSwitchId(), getDestSwitchId(), getSrcPort(), getSrcVlan(),
+                getSrcInnerVlan(), getDestPort(), getDestVlan(), getDestInnerVlan(),
+                getForwardPathId(), getReversePathId(),
+                isAllocateProtectedPath(), getProtectedForwardPathId(), getProtectedReversePathId(),
+                getGroupId(), getBandwidth(), isIgnoreBandwidth(), getDescription(), isPeriodicPings(),
+                getEncapsulationType(), getStatus(), getStatusInfo(), getMaxLatency(), getPriority(), getTimeCreate(),
+                getTimeModify(), isPinned(), getDetectConnectedDevices(), isSrcWithMultiTable(),
+                isDestWithMultiTable(), getPathComputationStrategy(), getPaths());
+    }
+
+    /**
+     * Defines persistable data of the Flow.
+     */
+    public interface FlowData {
+        String getFlowId();
+
+        void setFlowId(String flowId);
+
+        SwitchId getSrcSwitchId();
+
+        Switch getSrcSwitch();
+
+        void setSrcSwitch(Switch srcSwitch);
+
+        SwitchId getDestSwitchId();
+
+        Switch getDestSwitch();
+
+        void setDestSwitch(Switch destSwitch);
+
+        int getSrcPort();
+
+        void setSrcPort(int srcPort);
+
+        int getSrcVlan();
+
+        void setSrcVlan(int srcVlan);
+
+        int getSrcInnerVlan();
+
+        void setSrcInnerVlan(int srcInnerVlan);
+
+        int getDestPort();
+
+        void setDestPort(int destPort);
+
+        int getDestVlan();
+
+        void setDestVlan(int destVlan);
+
+        int getDestInnerVlan();
+
+        void setDestInnerVlan(int destVlan);
+
+        PathId getForwardPathId();
+
+        void setForwardPathId(PathId forwardPathId);
+
+        PathId getReversePathId();
+
+        void setReversePathId(PathId reversePathId);
+
+        Collection<FlowPath> getPaths();
+
+        Set<PathId> getPathIds();
+
+        Optional<FlowPath> getPath(PathId pathId);
+
+        boolean hasPath(FlowPath path);
+
+        void addPaths(FlowPath... paths);
+
+        boolean isAllocateProtectedPath();
+
+        void setAllocateProtectedPath(boolean allocateProtectedPath);
+
+        PathId getProtectedForwardPathId();
+
+        void setProtectedForwardPathId(PathId protectedForwardPathId);
+
+        PathId getProtectedReversePathId();
+
+        void setProtectedReversePathId(PathId protectedReversePathId);
+
+        String getGroupId();
+
+        void setGroupId(String groupId);
+
+        long getBandwidth();
+
+        void setBandwidth(long bandwidth);
+
+        boolean isIgnoreBandwidth();
+
+        void setIgnoreBandwidth(boolean ignoreBandwidth);
+
+        String getDescription();
+
+        void setDescription(String description);
+
+        boolean isPeriodicPings();
+
+        void setPeriodicPings(boolean periodicPings);
+
+        FlowEncapsulationType getEncapsulationType();
+
+        void setEncapsulationType(FlowEncapsulationType encapsulationType);
+
+        FlowStatus getStatus();
+
+        void setStatus(FlowStatus status);
+
+        String getStatusInfo();
+
+        void setStatusInfo(String statusInfo);
+
+        Long getMaxLatency();
+
+        void setMaxLatency(Long maxLatency);
+
+        Integer getPriority();
+
+        void setPriority(Integer priority);
+
+        Instant getTimeCreate();
+
+        void setTimeCreate(Instant timeCreate);
+
+        Instant getTimeModify();
+
+        void setTimeModify(Instant timeModify);
+
+        boolean isPinned();
+
+        void setPinned(boolean pinned);
+
+        DetectConnectedDevices getDetectConnectedDevices();
+
+        void setDetectConnectedDevices(DetectConnectedDevices detectConnectedDevices);
+
+        boolean isSrcWithMultiTable();
+
+        void setSrcWithMultiTable(boolean srcWithMultiTable);
+
+        boolean isDestWithMultiTable();
+
+        void setDestWithMultiTable(boolean destWithMultiTable);
+
+        PathComputationStrategy getPathComputationStrategy();
+
+        void setPathComputationStrategy(PathComputationStrategy pathComputationStrategy);
+
+        PathComputationStrategy getTargetPathComputationStrategy();
+
+        void setTargetPathComputationStrategy(PathComputationStrategy pathComputationStrategy);
+    }
+
+    /**
+     * POJO implementation of FlowData.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    static final class FlowDataImpl implements FlowData, Serializable {
+        private static final long serialVersionUID = 1L;
+        @NonNull String flowId;
+        @NonNull Switch srcSwitch;
+        @NonNull Switch destSwitch;
+        int srcPort;
+        int srcVlan;
+        int srcInnerVlan;
+        int destPort;
+        int destVlan;
+        int destInnerVlan;
+        PathId forwardPathId;
+        PathId reversePathId;
+        boolean allocateProtectedPath;
+        PathId protectedForwardPathId;
+        PathId protectedReversePathId;
+        String groupId;
+        long bandwidth;
+        boolean ignoreBandwidth;
+        String description;
+        boolean periodicPings;
+        FlowEncapsulationType encapsulationType;
+        FlowStatus status;
+        String statusInfo;
+        Long maxLatency;
+        Integer priority;
+        Instant timeCreate;
+        Instant timeModify;
+        boolean pinned;
+        @Builder.Default
+        @NonNull DetectConnectedDevices detectConnectedDevices = DetectConnectedDevices.builder().build();
+        boolean srcWithMultiTable;
+        boolean destWithMultiTable;
+        PathComputationStrategy pathComputationStrategy;
+        PathComputationStrategy targetPathComputationStrategy;
+        @ToString.Exclude
+        @EqualsAndHashCode.Exclude
+        final Set<FlowPath> paths = new HashSet<>();
+        // The reference is used to link flow paths back to the flow. See {@link FlowDataImpl#addPaths(FlowPath...)}.
+        @Setter(AccessLevel.NONE)
+        @Getter(AccessLevel.NONE)
+        @ToString.Exclude
+        @EqualsAndHashCode.Exclude
+        Flow flow;
+
+        @Override
+        public SwitchId getSrcSwitchId() {
+            return srcSwitch.getSwitchId();
+        }
+
+        @Override
+        public SwitchId getDestSwitchId() {
+            return destSwitch.getSwitchId();
+        }
+
+        @Override
+        public Set<PathId> getPathIds() {
+            return paths.stream().map(FlowPath::getPathId).collect(Collectors.toSet());
+        }
+
+        @Override
+        public boolean hasPath(FlowPath path) {
+            return paths.contains(path);
+        }
+
+        /**
+         * Add and associate flow path(s) with the flow.
+         */
+        @Override
+        public final void addPaths(FlowPath... paths) {
+            for (FlowPath pathToAdd : paths) {
+                boolean toBeAdded = true;
+                Iterator<FlowPath> it = this.paths.iterator();
+                while (it.hasNext()) {
+                    FlowPath each = it.next();
+                    if (pathToAdd == each) {
+                        toBeAdded = false;
+                        break;
+                    }
+                    if (pathToAdd.getPathId().equals(each.getPathId())) {
+                        it.remove();
+                        // Quit as no duplicates expected.
+                        break;
+                    }
+                }
+                if (toBeAdded) {
+                    this.paths.add(pathToAdd);
+                    FlowPathData data = pathToAdd.getData();
+                    if (data instanceof FlowPathDataImpl) {
+                        ((FlowPathDataImpl) data).flow = flow;
+                    }
+                }
+            }
+        }
+
+        /**
+         * Get an associated path by id.
+         */
+        @Override
+        public Optional<FlowPath> getPath(PathId pathId) {
+            return paths.stream()
+                    .filter(path -> path.getPathId().equals(pathId))
+                    .findAny();
+        }
+
+        /**
+         * Return detect connected devices flags.
+         */
+        @Override
+        public void setDetectConnectedDevices(DetectConnectedDevices detectConnectedDevices) {
+            if (detectConnectedDevices == null) {
+                this.detectConnectedDevices = DetectConnectedDevices.builder().build();
+            } else {
+                this.detectConnectedDevices = detectConnectedDevices;
+            }
+        }
+    }
+
+    /**
+     * A cloner for Flow entity.
+     */
+    @Mapper
+    public interface FlowCloner {
+        FlowCloner INSTANCE = Mappers.getMapper(FlowCloner.class);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default void copy(FlowData source, FlowData target, Flow targetFlow) {
+            copyWithoutSwitchesAndPaths(source, target);
+            target.setSrcSwitch(new Switch(source.getSrcSwitch()));
+            target.setDestSwitch(new Switch(source.getDestSwitch()));
+            target.addPaths(source.getPaths().stream()
+                    .map(path -> new FlowPath(path, targetFlow))
+                    .toArray(FlowPath[]::new));
+        }
+
+        @Mapping(target = "paths", ignore = true)
+        void copyWithoutPaths(FlowData source, @MappingTarget FlowData target);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default FlowData copyWithoutPaths(FlowData source, Flow targetFlow) {
+            FlowDataImpl result = new FlowDataImpl();
+            // The reference is used to link flow paths back to the flow.See {@link FlowDataImpl#addPaths(FlowPath...)}.
+            result.flow = targetFlow;
+            copyWithoutSwitchesAndPaths(source, result);
+            result.setSrcSwitch(new Switch(source.getSrcSwitch()));
+            result.setDestSwitch(new Switch(source.getDestSwitch()));
+            return result;
+        }
+
+        @Mapping(target = "srcSwitch", ignore = true)
+        @Mapping(target = "destSwitch", ignore = true)
+        @Mapping(target = "paths", ignore = true)
+        void copyWithoutSwitchesAndPaths(FlowData source, @MappingTarget FlowData target);
     }
 }

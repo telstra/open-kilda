@@ -15,9 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
-import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
@@ -25,36 +23,19 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.RetryPolicy;
-import org.neo4j.driver.v1.exceptions.ClientException;
 
 @Slf4j
 public class RemoveFlowAction extends FlowProcessingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
-    private final int transactionRetriesLimit;
-
-    public RemoveFlowAction(PersistenceManager persistenceManager, int transactionRetriesLimit) {
+    public RemoveFlowAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        this.transactionRetriesLimit = transactionRetriesLimit;
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
-        RetryPolicy retryPolicy = new RetryPolicy()
-                .retryOn(RecoverablePersistenceException.class)
-                .retryOn(ClientException.class)
-                .withMaxRetries(transactionRetriesLimit);
+        String flowId = stateMachine.getFlowId();
+        log.debug("Removing the flow {}", flowId);
+        flowRepository.remove(flowId);
 
-        persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> {
-            Flow flow = getFlow(stateMachine.getFlowId());
-            log.debug("Removing the flow {}", flow);
-
-            stateMachine.setDstSwitchId(flow.getDestSwitch().getSwitchId());
-            stateMachine.setSrcSwitchId(flow.getSrcSwitch().getSwitchId());
-
-            flowRepository.delete(flow);
-
-            stateMachine.saveActionToHistory("Flow was removed",
-                    String.format("The flow %s was removed", stateMachine.getFlowId()));
-        });
+        stateMachine.saveActionToHistory("Flow was removed", String.format("The flow %s was removed", flowId));
     }
 }

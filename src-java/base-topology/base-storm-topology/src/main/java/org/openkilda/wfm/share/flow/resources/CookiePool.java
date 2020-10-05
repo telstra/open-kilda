@@ -17,11 +17,15 @@ package org.openkilda.wfm.share.flow.resources;
 
 import org.openkilda.model.FlowCookie;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.tx.TransactionManager;
+import org.openkilda.persistence.tx.TransactionRequired;
 
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Optional;
+import java.util.Random;
 
 /**
  * The resource pool is responsible for cookie de-/allocation.
@@ -33,14 +37,18 @@ public class CookiePool {
 
     private final long minCookie;
     private final long maxCookie;
+    private final int poolSize;
 
-    public CookiePool(PersistenceManager persistenceManager, long minCookie, long maxCookie) {
+    private long nextCookie = 0;
+
+    public CookiePool(PersistenceManager persistenceManager, long minCookie, long maxCookie, int poolSize) {
         transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowCookieRepository = repositoryFactory.createFlowCookieRepository();
 
         this.minCookie = minCookie;
         this.maxCookie = maxCookie;
+        this.poolSize = poolSize;
     }
 
     /**
@@ -48,24 +56,50 @@ public class CookiePool {
      *
      * @return unmasked allocated cookie.
      */
+    @TransactionRequired
     public long allocate(String flowId) {
-        return transactionManager.doInTransaction(() -> {
-            long startCookie = ResourceUtils.computeStartValue(minCookie, maxCookie);
-            long availableCookie = flowCookieRepository.findUnassignedCookie(startCookie, maxCookie)
-                    .orElse(flowCookieRepository.findUnassignedCookie(minCookie, maxCookie)
-                            .orElseThrow(() -> new ResourceNotAvailableException("No cookie available")));
-            if (availableCookie > maxCookie) {
-                throw new ResourceNotAvailableException("No cookie available");
+        if (nextCookie > 0) {
+            if (nextCookie <= maxCookie && !flowCookieRepository.exists(nextCookie)) {
+                addCookie(flowId, nextCookie);
+                return nextCookie++;
+            } else {
+                nextCookie = 0;
             }
+        }
+        // The pool requires (re-)initialization.
+        if (nextCookie == 0) {
+            long numOfPools = (maxCookie - minCookie) / poolSize;
+            if (numOfPools > 1) {
+                long poolToTake = Math.abs(new Random().nextInt()) % numOfPools;
+                Optional<Long> availableCookie = flowCookieRepository.findFirstUnassignedCookie(
+                        minCookie + poolToTake * poolSize,
+                        minCookie + (poolToTake + 1) * poolSize - 1);
+                if (availableCookie.isPresent()) {
+                    nextCookie = availableCookie.get();
+                    addCookie(flowId, nextCookie);
+                    return nextCookie++;
+                }
+            }
+            // The pool requires full scan.
+            nextCookie = -1;
+        }
+        if (nextCookie == -1) {
+            Optional<Long> availableCookie = flowCookieRepository.findFirstUnassignedCookie(minCookie, maxCookie);
+            if (availableCookie.isPresent()) {
+                nextCookie = availableCookie.get();
+                addCookie(flowId, nextCookie);
+                return nextCookie++;
+            }
+        }
+        throw new ResourceNotAvailableException("No cookie available");
+    }
 
-            FlowCookie flowCookie = FlowCookie.builder()
-                    .unmaskedCookie(availableCookie)
-                    .flowId(flowId)
-                    .build();
-            flowCookieRepository.createOrUpdate(flowCookie);
-
-            return availableCookie;
-        });
+    private void addCookie(String flowId, long cookie) {
+        FlowCookie flowCookie = FlowCookie.builder()
+                .unmaskedCookie(cookie)
+                .flowId(flowId)
+                .build();
+        flowCookieRepository.add(flowCookie);
     }
 
     /**
@@ -74,7 +108,7 @@ public class CookiePool {
     public void deallocate(long unmaskedCookie) {
         transactionManager.doInTransaction(() ->
                 flowCookieRepository.findByCookie(unmaskedCookie)
-                        .ifPresent(flowCookieRepository::delete)
+                        .ifPresent(flowCookieRepository::remove)
         );
     }
 }

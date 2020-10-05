@@ -61,7 +61,7 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
             FlowPath oldReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
 
             SpeakerRequestBuildContext speakerContext = buildBaseSpeakerContextForInstall(
-                    oldForward.getSrcSwitch().getSwitchId(), oldReverse.getSrcSwitch().getSwitchId());
+                    oldForward.getSrcSwitchId(), oldReverse.getSrcSwitchId());
             installCommands.addAll(commandBuilder.buildIngressOnly(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse, speakerContext));
         }

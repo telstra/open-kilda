@@ -22,19 +22,22 @@ import java.util.Collection;
 import java.util.Optional;
 
 public interface TransitVlanRepository extends Repository<TransitVlan> {
+    Collection<TransitVlan> findAll();
+
     Collection<TransitVlan> findByPathId(PathId pathId, PathId oppositePathId);
 
     Optional<TransitVlan> findByPathId(PathId pathId);
 
+    boolean exists(int vlan);
+
     Optional<TransitVlan> findByVlan(int vlan);
 
     /**
-     * Find a transit vlan which is not assigned to any flow.
-     * Use the provided minVlan as the first candidate.
+     * Find the first (lowest by value) transit vlan which is not assigned to any flow.
      *
-     * @param minVlan the potential vlan to be checked first.
-     * @param maxVlan the max value of vlan.
-     * @return a transit vlan or {@link Optional#empty()} if no vlan available.
+     * @param lowestTransitVlan the lowest value for a potential transit vlan.
+     * @param highestTransitVlan the highest value for a potential transit vlan.
+     * @return the found transit vlan
      */
-    Optional<Integer> findUnassignedTransitVlan(int minVlan, int maxVlan);
+    Optional<Integer> findFirstUnassignedVlan(int lowestTransitVlan, int highestTransitVlan);
 }

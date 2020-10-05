@@ -15,98 +15,129 @@
 
 package org.openkilda.model;
 
-import static java.lang.String.format;
-
-import lombok.AccessLevel;
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.BeanSerializer;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.Index;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
+import lombok.ToString;
+import lombok.experimental.Delegate;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * Represents a meter allocated for a flow path.
  */
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId", "uniqueIndex"})
-@NodeEntity(label = "flow_meter")
-public class FlowMeter implements Serializable {
-    private static final long serialVersionUID = 1L;
+@DefaultSerializer(BeanSerializer.class)
+@ToString
+public class FlowMeter implements CompositeDataEntity<FlowMeter.FlowMeterData> {
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private FlowMeterData data;
 
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
+    /**
+     * No args constructor for deserialization purpose.
+     */
+    private FlowMeter() {
+        data = new FlowMeterDataImpl();
+    }
 
-    @NonNull
-    @Property(name = "switch_id")
-    @Index
-    @Convert(graphPropertyType = String.class)
-    private SwitchId switchId;
+    @Builder
+    public FlowMeter(@NonNull SwitchId switchId, @NonNull MeterId meterId, @NonNull String flowId,
+                     @NonNull PathId pathId) {
+        data = FlowMeterDataImpl.builder().switchId(switchId).meterId(meterId).flowId(flowId).pathId(pathId).build();
+    }
 
-    @NonNull
-    @Property(name = "meter_id")
-    @Convert(graphPropertyType = Long.class)
-    private MeterId meterId;
+    public FlowMeter(@NonNull FlowMeterData data) {
+        this.data = data;
+    }
 
-    @NonNull
-    @Property(name = "flow_id")
-    @Index
-    private String flowId;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        FlowMeter that = (FlowMeter) o;
+        return new EqualsBuilder()
+                .append(getSwitchId(), that.getSwitchId())
+                .append(getMeterId(), that.getMeterId())
+                .append(getFlowId(), that.getFlowId())
+                .append(getPathId(), that.getPathId())
+                .isEquals();
+    }
 
-    @NonNull
-    @Property(name = "path_id")
-    @Index
-    @Convert(graphPropertyType = String.class)
-    private PathId pathId;
-
-    // Hidden as used to imitate unique composite index for non-enterprise Neo4j versions.
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    @Property(name = "unique_index")
-    @Index(unique = true)
-    private String uniqueIndex;
-
-    @Builder(toBuilder = true)
-    public FlowMeter(@NonNull SwitchId switchId, @NonNull MeterId meterId,
-                     @NonNull String flowId, @NonNull PathId pathId) {
-        this.switchId = switchId;
-        this.meterId = meterId;
-        this.flowId = flowId;
-        this.pathId = pathId;
-        calculateUniqueIndex();
+    @Override
+    public int hashCode() {
+        return Objects.hash(getSwitchId(), getMeterId(), getFlowId(), getPathId());
     }
 
     /**
-     * Set the switch and update related index(es).
+     * Defines persistable data of the FlowMeter.
      */
-    public final void setSwitchId(@NonNull SwitchId switchId) {
-        this.switchId = switchId;
-        calculateUniqueIndex();
+    public interface FlowMeterData {
+        SwitchId getSwitchId();
+
+        void setSwitchId(SwitchId switchId);
+
+        MeterId getMeterId();
+
+        void setMeterId(MeterId meterId);
+
+        String getFlowId();
+
+        void setFlowId(String flowId);
+
+        PathId getPathId();
+
+        void setPathId(PathId pathId);
     }
 
     /**
-     * Set the meter and update related index(es).
+     * POJO implementation of FlowMeterData.
      */
-    public final void setMeterId(@NonNull MeterId meterId) {
-        this.meterId = meterId;
-        calculateUniqueIndex();
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    static final class FlowMeterDataImpl implements FlowMeterData, Serializable {
+        private static final long serialVersionUID = 1L;
+        @NonNull SwitchId switchId;
+        @NonNull MeterId meterId;
+        @NonNull String flowId;
+        @NonNull PathId pathId;
     }
 
-    private void calculateUniqueIndex() {
-        uniqueIndex = format("%s_%d", switchId, meterId != null ? meterId.getValue() : null);
+    /**
+     * A cloner for FlowMeter entity.
+     */
+    @Mapper
+    public interface FlowMeterCloner {
+        FlowMeterCloner INSTANCE = Mappers.getMapper(FlowMeterCloner.class);
+
+        void copy(FlowMeterData source, @MappingTarget FlowMeterData target);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default FlowMeterData copy(FlowMeterData source) {
+            FlowMeterData result = new FlowMeterDataImpl();
+            copy(source, result);
+            return result;
+        }
     }
 }

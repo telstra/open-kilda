@@ -46,7 +46,7 @@ public class RouterService {
             switchPropertiesRepository.findAll()
                     .stream()
                     .filter(SwitchProperties::isServer42FlowRtt)
-                    .forEach(s -> carrier.activateFlowMonitoringOnSwitch(s.getSwitchObj().getSwitchId()));
+                    .forEach(s -> carrier.activateFlowMonitoringOnSwitch(s.getSwitchId()));
         } else {
             switchRepository.findAll()
                     .forEach(s -> carrier.deactivateFlowMonitoringOnSwitch(s.getSwitchId()));

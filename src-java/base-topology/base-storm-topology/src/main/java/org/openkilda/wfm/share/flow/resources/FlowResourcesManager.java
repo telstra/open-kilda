@@ -22,9 +22,8 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
-import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanPool;
 import org.openkilda.wfm.share.flow.resources.vxlan.VxlanPool;
@@ -32,8 +31,6 @@ import org.openkilda.wfm.share.flow.resources.vxlan.VxlanPool;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
 
 import java.util.Map;
 import java.util.Optional;
@@ -42,10 +39,10 @@ import java.util.stream.Stream;
 
 @Slf4j
 public class FlowResourcesManager {
+    private static final int POOL_SIZE = 100;
     private static final int MAX_ALLOCATION_ATTEMPTS = 5;
 
     private final TransactionManager transactionManager;
-    private final SwitchRepository switchRepository;
 
     private final CookiePool cookiePool;
     private final MeterPool meterPool;
@@ -53,22 +50,23 @@ public class FlowResourcesManager {
 
     public FlowResourcesManager(PersistenceManager persistenceManager, FlowResourcesConfig config) {
         transactionManager = persistenceManager.getTransactionManager();
-        switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
 
-        this.cookiePool = new CookiePool(persistenceManager, config.getMinFlowCookie(), config.getMaxFlowCookie());
+        this.cookiePool = new CookiePool(persistenceManager, config.getMinFlowCookie(), config.getMaxFlowCookie(),
+                POOL_SIZE);
         this.meterPool = new MeterPool(persistenceManager,
-                new MeterId(config.getMinFlowMeterId()), new MeterId(config.getMaxFlowMeterId()));
+                new MeterId(config.getMinFlowMeterId()), new MeterId(config.getMaxFlowMeterId()), POOL_SIZE);
 
         encapsulationResourcesProviders = ImmutableMap.<FlowEncapsulationType, EncapsulationResourcesProvider>builder()
                 .put(FlowEncapsulationType.TRANSIT_VLAN, new TransitVlanPool(persistenceManager,
-                        config.getMinFlowTransitVlan(), config.getMaxFlowTransitVlan()))
+                        config.getMinFlowTransitVlan(), config.getMaxFlowTransitVlan(), POOL_SIZE))
                 .put(FlowEncapsulationType.VXLAN, new VxlanPool(persistenceManager,
-                        config.getMinFlowVxlan(), config.getMaxFlowVxlan()))
+                        config.getMinFlowVxlan(), config.getMaxFlowVxlan(), POOL_SIZE))
                 .build();
     }
 
     /**
-     * Allocate resources for the flow paths.
+     * Try to allocate resources for the flow paths. The method doesn't initialize a transaction.
+     * So it requires external transaction to cover allocation failures.
      * <p/>
      * Provided two flows are considered as paired (forward and reverse),
      * so some resources can be shared among them.
@@ -86,31 +84,6 @@ public class FlowResourcesManager {
         }
     }
 
-    /**
-     * Allocate resources for the flow paths. Performs retries on internal transaction.
-     * <p/>
-     * Provided two flows are considered as paired (forward and reverse),
-     * so some resources can be shared among them.
-     */
-    public FlowResources allocateFlowResourcesInTransaction(Flow flow) throws ResourceAllocationException {
-        log.debug("Allocate flow resources for {}.", flow);
-
-        PathId forwardPathId = generatePathId(flow.getFlowId());
-        PathId reversePathId = generatePathId(flow.getFlowId());
-
-        try {
-            return Failsafe.with(new RetryPolicy()
-                    .retryOn(ConstraintViolationException.class)
-                    .retryOn(ResourceNotAvailableException.class)
-                    .withMaxRetries(MAX_ALLOCATION_ATTEMPTS))
-                    .onRetry(e -> log.info("Retrying resource allocation transaction finished with exception", e))
-                    .get(() -> transactionManager.doInTransaction(
-                            () -> allocateResources(flow, forwardPathId, reversePathId)));
-        } catch (ConstraintViolationException | ResourceNotAvailableException ex) {
-            throw new ResourceAllocationException("Unable to allocate resources", ex);
-        }
-    }
-
     @VisibleForTesting
     FlowResources allocateResources(Flow flow, PathId forwardPathId, PathId reversePathId) {
         PathResources.PathResourcesBuilder forward = PathResources.builder()
@@ -119,11 +92,9 @@ public class FlowResourcesManager {
                 .pathId(reversePathId);
 
         if (flow.getBandwidth() > 0L) {
-            forward.meterId(meterPool.allocate(flow.getSrcSwitch(), flow.getFlowId(), forwardPathId));
-            reverse.meterId(meterPool.allocate(flow.getDestSwitch(), flow.getFlowId(), reversePathId));
+            forward.meterId(meterPool.allocate(flow.getSrcSwitchId(), flow.getFlowId(), forwardPathId));
+            reverse.meterId(meterPool.allocate(flow.getDestSwitchId(), flow.getFlowId(), reversePathId));
         }
-
-
 
         if (!flow.isOneSwitchFlow()) {
             EncapsulationResourcesProvider encapsulationResourcesProvider =

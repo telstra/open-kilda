@@ -81,7 +81,7 @@ public class RerouteQueueServiceTest {
     @Before
     public void setup() throws Throwable {
         flow = Flow.builder().flowId(FLOW_ID).srcSwitch(SWITCH_A)
-                .destSwitch(SWITCH_B).priority(2).timeCreate(Instant.now())
+                .destSwitch(SWITCH_B).priority(2)
                 .build();
         when(flowRepository.findById(FLOW_ID)).thenReturn(Optional.of(flow));
 
@@ -183,7 +183,7 @@ public class RerouteQueueServiceTest {
     public void shouldSendCorrectErrorMessageForManualRerouteRequestForPinnedFlow() {
         String flowId = "test flow";
         when(flowRepository.findById(flowId)).thenReturn(Optional.of(Flow.builder().flowId(flowId).srcSwitch(SWITCH_A)
-                .destSwitch(SWITCH_B).priority(2).timeCreate(Instant.now()).pinned(true)
+                .destSwitch(SWITCH_B).priority(2).pinned(true)
                 .build()));
 
         FlowThrottlingData actual = getFlowThrottlingData(flow, CORRELATION_ID).build();

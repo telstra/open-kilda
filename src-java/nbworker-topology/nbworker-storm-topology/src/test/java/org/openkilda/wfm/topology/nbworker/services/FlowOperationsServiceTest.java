@@ -36,7 +36,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.cookie.FlowSegmentCookie;
-import org.openkilda.persistence.Neo4jBasedTest;
+import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
@@ -55,7 +55,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.stream.Collectors;
 
-public class FlowOperationsServiceTest extends Neo4jBasedTest {
+public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     public static final String FLOW_ID_1 = "flow_1";
     public static final String FLOW_ID_2 = "flow_2";
     public static final String FLOW_ID_3 = "flow_3";
@@ -106,9 +106,9 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .pathComputationStrategy(PathComputationStrategy.COST)
                 .description("description")
+                .status(FlowStatus.UP)
                 .build();
-        flow.setStatus(FlowStatus.UP);
-        flowRepository.createOrUpdate(flow);
+        flowRepository.add(flow);
 
         FlowPatch receivedFlow = FlowPatch.builder()
                 .flowId(testFlowId)
@@ -376,8 +376,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         Switch switchD = createSwitch(SWITCH_ID_4);
         Flow flow = createFlow(FLOW_ID_1, switchA, 1, switchC, 2, FORWARD_PATH_1, REVERSE_PATH_1, switchB);
         createOrphanFlowPaths(flow, switchA, 1, switchC, 2, FORWARD_PATH_3, REVERSE_PATH_3, switchD);
-        assertEquals(0, flowOperationsService.getFlowsForEndpoint(SWITCH_ID_2, null).size());
-
+        assertEquals(0, flowOperationsService.getFlowsForEndpoint(switchD.getSwitchId(), null).size());
     }
 
     @Test
@@ -478,17 +477,14 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
     }
 
     private Switch createSwitch(SwitchId switchId) {
-        Switch sw = new Switch();
-        sw.setSwitchId(switchId);
-        sw.setStatus(SwitchStatus.ACTIVE);
-        switchRepository.createOrUpdate(sw);
+        Switch sw = Switch.builder().switchId(switchId).status(SwitchStatus.ACTIVE).build();
+        switchRepository.add(sw);
         return sw;
     }
 
     private void createOrphanFlowPaths(Flow flow, Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort,
                                        PathId forwardPartId, PathId reversePathId, Switch transitSwitch) {
         FlowPath forwardPath = FlowPath.builder()
-                .flow(flow)
                 .pathId(forwardPartId)
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
@@ -496,7 +492,6 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .build();
 
         FlowPath reversePath = FlowPath.builder()
-                .flow(flow)
                 .pathId(reversePathId)
                 .srcSwitch(dstSwitch)
                 .destSwitch(srcSwitch)
@@ -520,11 +515,10 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
             }
         }
 
-        flow.setForwardPath(forwardPath);
-        flow.setReversePath(reversePath);
-        flowPathRepository.createOrUpdate(forwardPath);
-        flowPathRepository.createOrUpdate(reversePath);
+        flowPathRepository.add(forwardPath);
+        flowPathRepository.add(reversePath);
 
+        flow.addPaths(forwardPath, reversePath);
     }
 
     private Flow createFlow(String flowId, Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort,
@@ -541,7 +535,6 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
 
 
         FlowPath forwardPath = FlowPath.builder()
-                .flow(flow)
                 .pathId(forwardPartId)
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
@@ -549,7 +542,6 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .build();
 
         FlowPath reversePath = FlowPath.builder()
-                .flow(flow)
                 .pathId(reversePathId)
                 .srcSwitch(dstSwitch)
                 .destSwitch(srcSwitch)
@@ -575,10 +567,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
 
         flow.setForwardPath(forwardPath);
         flow.setReversePath(reversePath);
-        flowRepository.createOrUpdate(flow);
-        flowPathRepository.createOrUpdate(forwardPath);
-        flowPathRepository.createOrUpdate(reversePath);
-
+        flowRepository.add(flow);
         return flow;
     }
 
@@ -589,7 +578,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .destSwitch(dstSwitch)
                 .destPort(dstPort)
                 .build();
-        pathSegmentRepository.createOrUpdate(pathSegment);
+        pathSegmentRepository.add(pathSegment);
         return pathSegment;
     }
 

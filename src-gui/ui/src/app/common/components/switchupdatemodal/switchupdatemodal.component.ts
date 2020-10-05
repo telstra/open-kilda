@@ -1,6 +1,8 @@
 import { Component, OnInit,Output, EventEmitter } from '@angular/core';
 import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { FormGroup, FormBuilder } from '@angular/forms';
+import { CommonService } from '../../services/common.service';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-switchupdatemodal',
@@ -13,13 +15,16 @@ export class SwitchupdatemodalComponent implements OnInit {
   content: any;
   data:any;
   updateData:any;
+  errorsObj:any;
   switchLocationForm:FormGroup;
   @Output()
   emitService = new EventEmitter();
+  submitted = false;
 
-  constructor(public activeModal: NgbActiveModal,public formBuilder:FormBuilder) { }
+  constructor(public activeModal: NgbActiveModal,public formBuilder:FormBuilder,private commonService:CommonService,private toaster:ToastrService) { }
 
   ngOnInit() {
+    this.errorsObj = {};
     this.switchLocationForm = this.formBuilder.group({
       pop: [""],
       latitude:[""],
@@ -28,6 +33,7 @@ export class SwitchupdatemodalComponent implements OnInit {
       city:[""],
       country:[""]
     });  
+     
     if(this.data && this.data.pop){     
        this.switchLocationForm.controls['pop'].setValue(this.data.pop || '');
        this.switchLocationForm.controls['latitude'].setValue(this.data.latitude || 0);
@@ -40,6 +46,8 @@ export class SwitchupdatemodalComponent implements OnInit {
 
   
   submitUpdate(){
+    this.errorsObj = {};
+    this.submitted = true;
     this.updateData={
       pop:this.switchLocationForm.controls['pop'].value,
       location:{
@@ -50,8 +58,23 @@ export class SwitchupdatemodalComponent implements OnInit {
         country:this.switchLocationForm.controls['country'].value,
       }
     }
-    //this.activeModal.close(true);
+    
+    var errorFlag = false;
+    if(!this.commonService.isInt(this.updateData.location.latitude) && !this.commonService.isFloat(this.updateData.location.latitude)){
+      errorFlag = true;
+      this.errorsObj['latitude'] = true;
+    }
+
+    if(!this.commonService.isInt(this.updateData.location.longitude) && !this.commonService.isFloat(this.updateData.location.longitude)){
+      errorFlag = true;
+      this.errorsObj['longitude'] = true;
+    }
+     if(errorFlag){
+      return false;
+    }else{
+    this.submitted = false;
     this.emitService.emit(this.updateData);
+    }
   }
 
 }

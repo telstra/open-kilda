@@ -20,7 +20,6 @@ import static java.lang.String.format;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.Switch;
-import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -44,12 +43,10 @@ public class RevertFlowAction extends FlowProcessingAction<FlowUpdateFsm, State,
 
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        persistenceManager.getTransactionManager().doInTransaction(() -> {
-            Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
+        transactionManager.doInTransaction(() -> {
+            Flow flow = getFlow(stateMachine.getFlowId());
 
             revertFlow(flow, stateMachine);
-
-            flowRepository.createOrUpdate(flow);
 
             stateMachine.saveActionToHistory("The flow was reverted");
         });

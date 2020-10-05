@@ -32,9 +32,9 @@ public abstract class RequestedFlowMapper {
      * Convert {@link Flow} to {@link FlowRequest}.
      */
     @Mapping(target = "flowId", source = "flowId")
-    @Mapping(target = "source", expression = "java(new FlowEndpoint(flow.getSrcSwitch().getSwitchId(), "
+    @Mapping(target = "source", expression = "java(new FlowEndpoint(flow.getSrcSwitchId(), "
             + "flow.getSrcPort(), flow.getSrcVlan()))")
-    @Mapping(target = "destination", expression = "java(new FlowEndpoint(flow.getDestSwitch().getSwitchId(), "
+    @Mapping(target = "destination", expression = "java(new FlowEndpoint(flow.getDestSwitchId(), "
             + "flow.getDestPort(), flow.getDestVlan()))")
     @Mapping(target = "encapsulationType", source = "encapsulationType")
     @Mapping(target = "pathComputationStrategy",

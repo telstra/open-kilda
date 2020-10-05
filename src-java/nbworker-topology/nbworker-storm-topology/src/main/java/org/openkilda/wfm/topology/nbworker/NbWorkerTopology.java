@@ -123,7 +123,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(NB_SPOUT_ID);
 
         PersistenceManager persistenceManager =
-                PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+                PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
 
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);

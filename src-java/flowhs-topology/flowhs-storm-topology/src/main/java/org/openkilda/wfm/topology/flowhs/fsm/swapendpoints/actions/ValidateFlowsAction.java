@@ -83,15 +83,15 @@ public class ValidateFlowsAction
         }
 
         try {
-            persistenceManager.getTransactionManager().doInTransaction(() -> {
+            transactionManager.doInTransaction(() -> {
                 Flow foundFirstFlow = checkAndGetFlow(stateMachine.getFirstFlowId());
                 Flow foundSecondFlow = checkAndGetFlow(stateMachine.getSecondFlowId());
 
                 stateMachine.setFirstOriginalFlow(foundFirstFlow);
                 stateMachine.setSecondOriginalFlow(foundSecondFlow);
 
-                flowRepository.updateStatus(stateMachine.getFirstFlowId(), FlowStatus.IN_PROGRESS);
-                flowRepository.updateStatus(stateMachine.getSecondFlowId(), FlowStatus.IN_PROGRESS);
+                foundFirstFlow.setStatus(FlowStatus.IN_PROGRESS);
+                foundSecondFlow.setStatus(FlowStatus.IN_PROGRESS);
             });
         } catch (FlowProcessingException e) {
             stateMachine.fireValidationError(

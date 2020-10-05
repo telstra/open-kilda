@@ -47,7 +47,6 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
@@ -1100,6 +1099,117 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         !involvedSwitchesPassSwValidation && involvedSwitchIds.each { SwitchId swId ->
+            northbound.synchronizeSwitch(swId, true)
+        }
+    }
+
+    @Tidy
+    def "System doesn't rebuild path for a flow to more preferable path while updating portNumber/vlanId"() {
+        given: "Two active switches connected to traffgens with two possible paths at least"
+        def activeTraffGens = topology.activeTraffGens
+        def allTraffgenSwitches = activeTraffGens*.switchConnected ?:
+                assumeTrue("Should be at least two active traffgens connected to switches", false)
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
+            allTraffgenSwitches*.dpId.contains(swP.src.dpId) && allTraffgenSwitches*.dpId.contains(swP.dst.dpId) &&
+                    swP.paths.size() >= 2
+        } ?: assumeTrue("Unable to find required switches/paths in topology",false)
+
+        and: "A flow"
+        def flow = flowHelperV2.randomFlow(switchPair, false)
+        flowHelperV2.addFlow(flow)
+
+        when: "Make the current path less preferable than alternatives"
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def alternativePaths = switchPair.paths.findAll { it != currentPath }
+        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
+
+        and: "Update the flow: vlanId on the src endpoint"
+        def updatedFlowSrcEndpoint = flow.jacksonCopy().tap {
+            it.source.vlanId = flow.destination.vlanId + 1
+        }
+        flowHelperV2.updateFlow(flow.flowId, updatedFlowSrcEndpoint)
+
+        then: "Flow is really updated"
+        with(northboundV2.getFlow(flow.flowId)) {
+            it.source.portNumber == updatedFlowSrcEndpoint.source.portNumber
+            it.source.vlanId == updatedFlowSrcEndpoint.source.vlanId
+        }
+
+        and: "Flow path is not rebuild"
+        Wrappers.timedLoop(rerouteDelay) {
+            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
+        }
+
+        when: "Update the flow: vlanId on the dst endpoint"
+        def updatedFlowDstEndpoint = flow.jacksonCopy().tap {
+            it.destination.vlanId = flow.source.vlanId + 1
+        }
+        flowHelperV2.updateFlow(flow.flowId, updatedFlowDstEndpoint)
+
+        then: "Flow is really updated"
+        with(northboundV2.getFlow(flow.flowId)) {
+            it.destination.portNumber == updatedFlowDstEndpoint.destination.portNumber
+            it.destination.vlanId == updatedFlowDstEndpoint.destination.vlanId
+        }
+
+        and: "Flow path is not rebuild"
+        Wrappers.timedLoop(rerouteDelay) {
+            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
+        }
+
+        then: "Update the flow: port number and vlanId on the src/dst endpoints"
+        def updatedFlow = flow.jacksonCopy().tap {
+            it.source.portNumber = activeTraffGens.find { it.switchConnected.dpId == switchPair.src.dpId}.switchPort
+            it.source.vlanId = updatedFlowDstEndpoint.source.vlanId + 1
+            it.destination.portNumber = activeTraffGens.find { it.switchConnected.dpId == switchPair.dst.dpId}.switchPort
+            it.destination.vlanId = updatedFlowDstEndpoint.destination.vlanId + 1
+        }
+        flowHelperV2.updateFlow(flow.flowId, updatedFlow)
+
+        then: "Flow is really updated"
+        with(northboundV2.getFlow(flow.flowId)) {
+            it.source.portNumber == updatedFlow.source.portNumber
+            it.source.vlanId == updatedFlow.source.vlanId
+            it.destination.portNumber == updatedFlow.destination.portNumber
+            it.destination.vlanId == updatedFlow.destination.vlanId
+        }
+
+        and: "Flow path is not rebuild"
+        Wrappers.timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
+            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
+        }
+
+        and: "Flow is valid"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
+        and: "System allows traffic on the flow"
+        def traffExam = traffExamProvider.get()
+        def examFlow = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
+                flowHelperV2.toV1(updatedFlow), 100, 5
+        )
+        withPool {
+            [examFlow.forward, examFlow.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
+            }
+        }
+
+        and: "All involved switches pass switch validation"
+        withPool {
+            currentPath*.switchId.eachParallel { SwitchId swId ->
+                with(northbound.validateSwitch(swId)) { validation ->
+                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                }
+            }
+        }
+        def involvedSwitchesPassSwValidation = true
+
+        cleanup: "Revert system to original state"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        !involvedSwitchesPassSwValidation && currentPath*.switchId.each { SwitchId swId ->
             northbound.synchronizeSwitch(swId, true)
         }
     }

@@ -106,7 +106,7 @@ public class ValidationServiceImpl implements ValidationService {
         if (switchProperties.isServer42FlowRtt()
                 && featureTogglesRepository.find().map(FeatureToggles::getServer42FlowRtt).orElse(false)) {
             return paths.stream()
-                    .filter(path -> switchId.equals(path.getSrcSwitch().getSwitchId()))
+                    .filter(path -> switchId.equals(path.getSrcSwitchId()))
                     .filter(path -> !path.isOneSwitchFlow())
                     .map(FlowPath::getCookie)
                     .map(FlowSegmentCookie::toBuilder)

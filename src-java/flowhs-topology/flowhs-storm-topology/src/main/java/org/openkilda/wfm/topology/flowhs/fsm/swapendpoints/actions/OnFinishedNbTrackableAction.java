@@ -19,7 +19,6 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -46,8 +45,7 @@ abstract class OnFinishedNbTrackableAction
 
     protected void updateFlowsStatuses(FlowSwapEndpointsFsm stateMachine) {
         try {
-            UpdateFlowsStatusesResult updateFlowsStatusesResult = persistenceManager.getTransactionManager()
-                    .doInTransaction(() ->
+            UpdateFlowsStatusesResult updateFlowsStatusesResult = transactionManager.doInTransaction(() ->
                             UpdateFlowsStatusesResult.builder()
                                     .firstFlowStatus(updateFlowStatus(stateMachine.getFirstFlowId()))
                                     .secondFlowStatus(updateFlowStatus(stateMachine.getSecondFlowId()))
@@ -64,11 +62,11 @@ abstract class OnFinishedNbTrackableAction
     }
 
     private FlowStatus updateFlowStatus(String flowId) {
-        Flow flow = getFlow(flowId, FetchStrategy.DIRECT_RELATIONS);
+        Flow flow = getFlow(flowId);
         FlowStatus flowStatus = flow.computeFlowStatus();
         if (flowStatus != flow.getStatus()) {
             dashboardLogger.onFlowStatusUpdate(flowId, flowStatus);
-            flowRepository.updateStatus(flowId, flowStatus);
+            flow.setStatus(flowStatus);
         }
         return flowStatus;
     }

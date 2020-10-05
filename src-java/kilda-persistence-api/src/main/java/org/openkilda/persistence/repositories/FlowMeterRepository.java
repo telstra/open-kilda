@@ -20,9 +20,11 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 
+import java.util.Collection;
 import java.util.Optional;
 
 public interface FlowMeterRepository extends Repository<FlowMeter> {
+    Collection<FlowMeter> findAll();
 
     /**
      * Find meters by Path Id.
@@ -32,14 +34,15 @@ public interface FlowMeterRepository extends Repository<FlowMeter> {
      */
     Optional<FlowMeter> findByPathId(PathId pathId);
 
+    boolean exists(SwitchId switchId, MeterId meterId);
+
     /**
-     * Find a meter id which is not assigned to any flow.
-     * Use the provided {@code minMeterId} as the first candidate.
+     * Find the first (lowest by value) meter ID which is not assigned to any flow.
      *
-     * @param switchId       the switch defines where the meter is applied on.
-     * @param minMeterId the potential meter to be checked first.
-     * @param maxMeterId the max value of meter.
-     * @return a meter id or {@link Optional#empty()} if no meter available.
+     * @param switchId the switch defines where the meter is applied on.
+     * @param lowestMeterId the lowest value for a potential meter.
+     * @param highestMeterId the highest value for a potential meter.
+     * @return the found meter ID
      */
-    Optional<MeterId> findUnassignedMeterId(SwitchId switchId, MeterId minMeterId, MeterId maxMeterId);
+    Optional<MeterId> findFirstUnassignedMeter(SwitchId switchId, MeterId lowestMeterId, MeterId highestMeterId);
 }
