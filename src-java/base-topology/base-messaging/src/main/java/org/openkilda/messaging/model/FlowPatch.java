@@ -33,6 +33,7 @@ public class FlowPatch {
     private Long bandwidth;
     private Boolean allocateProtectedPath;
     private Long maxLatency;
+    private Long maxLatencyTier2;
     private Integer priority;
     private Boolean periodicPings;
     private PathComputationStrategy pathComputationStrategy;

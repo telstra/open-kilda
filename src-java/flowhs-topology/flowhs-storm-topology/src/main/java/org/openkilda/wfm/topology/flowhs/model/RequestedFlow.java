@@ -47,6 +47,7 @@ public class RequestedFlow {
     private boolean ignoreBandwidth;
     private boolean periodicPings;
     private Long maxLatency;
+    private Long maxLatencyTier2;
     private FlowEncapsulationType flowEncapsulationType;
     private PathComputationStrategy pathComputationStrategy;
     private DetectConnectedDevices detectConnectedDevices;

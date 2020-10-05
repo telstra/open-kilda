@@ -122,6 +122,7 @@ public abstract class FlowMapper {
     @Mapping(target = "ignoreBandwidth", ignore = true)
     @Mapping(target = "description", ignore = true)
     @Mapping(target = "encapsulationType", ignore = true)
+    @Mapping(target = "maxLatencyTier2", ignore = true)
     public abstract FlowPatch toFlowPatch(FlowPatchDto flowPatchDto);
 
     @Mapping(target = "flowId", ignore = true)
@@ -129,6 +130,9 @@ public abstract class FlowMapper {
     @Mapping(target = "allocateProtectedPath", source = "allocateProtectedPath")
     @Mapping(target = "maxLatency",
             expression = "java(flowPatchDto.getMaxLatency() != null ? flowPatchDto.getMaxLatency() * 1000000L : null)")
+    @Mapping(target = "maxLatencyTier2",
+            expression = "java(flowPatchDto.getMaxLatencyTier2() != null ? "
+                    + "flowPatchDto.getMaxLatencyTier2() * 1000000L : null)")
     @Mapping(target = "priority", source = "priority")
     @Mapping(target = "periodicPings", source = "periodicPings")
     @Mapping(target = "diverseFlowId", source = "diverseFlowId")
@@ -154,6 +158,8 @@ public abstract class FlowMapper {
     @Mapping(target = "doNotRevert", ignore = true)
     @Mapping(target = "maxLatency",
             expression = "java(request.getMaxLatency() != null ? request.getMaxLatency() * 1000000L : null)")
+    @Mapping(target = "maxLatencyTier2",
+            expression = "java(request.getMaxLatencyTier2() != null ? request.getMaxLatencyTier2() * 1000000L : null)")
     public abstract FlowRequest toFlowRequest(FlowRequestV2 request);
 
     @Mapping(target = "flowId", source = "id")
@@ -166,6 +172,7 @@ public abstract class FlowMapper {
     @Mapping(target = "diverseFlowId", ignore = true)
     @Mapping(target = "maxLatency",
             expression = "java(payload.getMaxLatency() != null ? payload.getMaxLatency() * 1000000L : null)")
+    @Mapping(target = "maxLatencyTier2", ignore = true)
     public abstract FlowRequest toFlowRequest(FlowPayload payload);
 
     @Mapping(target = "outerVlanId", source = "vlanId")
@@ -291,6 +298,8 @@ public abstract class FlowMapper {
     @Mapping(target = "destination", source = "destination")
     @Mapping(target = "maxLatency",
             expression = "java(f.getMaxLatency() != null ? f.getMaxLatency() / 1000000L : null)")
+    @Mapping(target = "maxLatencyTier2",
+            expression = "java(f.getMaxLatencyTier2() != null ? f.getMaxLatencyTier2() / 1000000L : null)")
     protected abstract FlowResponseV2 generatedMap(FlowDto f, FlowEndpointV2 source, FlowEndpointV2 destination);
 
     @Mapping(target = "id", source = "flowId")
