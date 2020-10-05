@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.72.2 (01/10/2020)
+
+### Features:
+-  [#3724](https://github.com/telstra/open-kilda/pull/3724) [Server42] Stats app reconnecting 
+-  [#3694](https://github.com/telstra/open-kilda/pull/3694) Add logical port type field for logical port create request (Issues: [#2461](https://github.com/telstra/open-kilda/issues/2461) [#2468](https://github.com/telstra/open-kilda/issues/2468)) 
+
+### Bug Fixes:
+-  [#3751](https://github.com/telstra/open-kilda/pull/3751) Allow processing grpc requests without kafka-key 
+-  [#3752](https://github.com/telstra/open-kilda/pull/3752) Fix GRPC stats response kafka topic 
+-  [#3721](https://github.com/telstra/open-kilda/pull/3721) [Server42] Add the ability to monitor flow connected to the same server42 instance (Issue: [#3695](https://github.com/telstra/open-kilda/issues/3695)) 
+
+### Improvements:
+-  [#3750](https://github.com/telstra/open-kilda/pull/3750) update log template for func_test [**tests**]
+-  [#3738](https://github.com/telstra/open-kilda/pull/3738) Simplify BFD session management [**storm-topologies**]
+-  [#3739](https://github.com/telstra/open-kilda/pull/3739) add tests for #3728 [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.72.1...v1.72.2).
+
+### Affected Components:
+network, grpc
+
+---
+
 ## v1.72.1 (29/09/2020)
 
 ### Bug Fixes:

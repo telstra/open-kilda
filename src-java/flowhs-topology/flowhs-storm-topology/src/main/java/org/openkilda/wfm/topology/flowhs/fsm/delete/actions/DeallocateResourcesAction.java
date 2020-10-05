@@ -43,13 +43,12 @@ public class DeallocateResourcesAction extends FlowProcessingAction<FlowDeleteFs
     @Override
     public void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
         Collection<FlowResources> flowResources = stateMachine.getFlowResources();
-        persistenceManager.getTransactionManager().doInTransaction(() ->
-                flowResources.forEach(resources -> {
-                    resourcesManager.deallocatePathResources(resources);
-
-                    stateMachine.saveActionToHistory("Flow resources were deallocated",
-                            format("The flow resources for %s / %s were deallocated",
-                                    resources.getForward().getPathId(), resources.getReverse().getPathId()));
-                }));
+        flowResources.forEach(resources -> {
+            transactionManager.doInTransaction(() ->
+                    resourcesManager.deallocatePathResources(resources));
+            stateMachine.saveActionToHistory("Flow resources were deallocated",
+                    format("The flow resources for %s / %s were deallocated",
+                            resources.getForward().getPathId(), resources.getReverse().getPathId()));
+        });
     }
 }

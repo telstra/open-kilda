@@ -19,7 +19,6 @@ import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Isl.IslBuilder;
 import org.openkilda.model.IslDownReason;
@@ -30,7 +29,6 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -39,6 +37,7 @@ import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
@@ -126,7 +125,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
 
         transactionManager = persistenceManager.getTransactionManager();
-        transactionRetryPolicy = transactionManager.makeRetryPolicyBlank()
+        transactionRetryPolicy = transactionManager.getDefaultRetryPolicy()
                 .withMaxDuration(options.getDbRepeatMaxDurationSeconds(), TimeUnit.SECONDS);
     }
 
@@ -440,7 +439,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         }
 
         log.debug("Write ISL object: {}", link);
-        islRepository.createOrUpdate(link);
     }
 
     private boolean evaluateStatus() {
@@ -496,7 +494,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private Socket prepareSocket() {
         Anchor source = loadSwitchCreateIfMissing(reference.getSource());
         Anchor dest = loadSwitchCreateIfMissing(reference.getDest());
-        switchRepository.lockSwitches(source.getSw(), dest.getSw());
 
         return new Socket(source, dest);
     }
@@ -505,8 +502,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         final Endpoint sourceEndpoint = source.getEndpoint();
         final Endpoint destEndpoint = dest.getEndpoint();
         IslBuilder islBuilder = Isl.builder()
-                .timeCreate(timeNow)
-                .timeModify(timeNow)
                 .srcSwitch(source.getSw())
                 .srcPort(sourceEndpoint.getPortNumber())
                 .destSwitch(dest.getSw())
@@ -516,6 +511,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         Isl link = islBuilder.build();
 
         log.info("Create new DB object (prefilled): {}", link);
+        islRepository.add(link);
         return link;
     }
 
@@ -535,9 +531,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 .status(SwitchStatus.INACTIVE)
                 .description(String.format("auto created as part of ISL %s discovery", reference))
                 .build();
-
-        switchRepository.createOrUpdate(sw);
-
+        switchRepository.add(sw);
         return sw;
     }
 
@@ -622,9 +616,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     // TODO(surabujin): should this check been moved into reroute topology?
     private boolean shouldEmitDownFlowReroute() {
-        return featureTogglesRepository.find()
-                .map(FeatureToggles::getFlowsRerouteOnIslDiscoveryEnabled)
-                .orElse(FeatureToggles.DEFAULTS.getFlowsRerouteOnIslDiscoveryEnabled());
+        return featureTogglesRepository.getOrDefault().getFlowsRerouteOnIslDiscoveryEnabled();
     }
 
     private String makeRerouteAffectedReason(Endpoint endpoint) {

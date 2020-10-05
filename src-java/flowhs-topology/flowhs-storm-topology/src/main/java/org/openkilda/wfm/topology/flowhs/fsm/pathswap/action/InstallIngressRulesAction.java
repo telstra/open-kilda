@@ -57,7 +57,7 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowPathSwap
         FlowPath newPrimaryReverse = flow.getReversePath();
 
         SpeakerRequestBuildContext speakerContext = buildBaseSpeakerContextForInstall(
-                flow.getSrcSwitch().getSwitchId(), flow.getDestSwitch().getSwitchId());
+                flow.getSrcSwitchId(), flow.getDestSwitchId());
 
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(
                 commandBuilder.buildIngressOnly(

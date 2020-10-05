@@ -30,7 +30,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 public interface Database {
@@ -90,7 +89,7 @@ public interface Database {
 
     List<Object> dumpAllNodes();
 
-    List<Map<String, Object>> dumpAllRelations();
+    List<Object> dumpAllRelations();
 
     List<Object> dumpAllSwitches();
 

@@ -29,8 +29,8 @@ import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
+import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -47,7 +47,7 @@ import java.util.Properties;
 import java.util.stream.Stream;
 
 @RunWith(JUnitParamsRunner.class)
-public class FlowResourcesManagerTest extends Neo4jBasedTest {
+public class FlowResourcesManagerTest extends InMemoryGraphBasedTest {
 
     private final FlowDto firstFlow = FlowDto.builder()
             .flowId("first-flow")
@@ -135,109 +135,116 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
         flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
         resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
 
-        flowMeterRepository = persistenceManager.getRepositoryFactory().createFlowMeterRepository();
-        flowCookieRepository = persistenceManager.getRepositoryFactory().createFlowCookieRepository();
-        switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
-        switchRepository.findAll().forEach(switchRepository::delete);
-        Stream.of(switch1, switch3, switch4, switch5).forEach(switchRepository::createOrUpdate);
+        flowMeterRepository = repositoryFactory.createFlowMeterRepository();
+        flowCookieRepository = repositoryFactory.createFlowCookieRepository();
+        switchRepository = repositoryFactory.createSwitchRepository();
+        switchRepository.findAll().forEach(switchRepository::remove);
+        Stream.of(switch1, switch3, switch4, switch5).forEach(switchRepository::add);
     }
 
     @Test
     public void shouldAllocateForFlow() throws ResourceAllocationException {
-        Flow flow = convertFlow(firstFlow);
-        verifyAllocation(resourcesManager.allocateFlowResources(flow));
+        transactionManager.doInTransaction(() -> {
+            Flow flow = convertFlow(firstFlow);
+            verifyAllocation(resourcesManager.allocateFlowResources(flow));
+        });
     }
 
     @Test
     public void shouldNotImmediatelyReuseResources() throws ResourceAllocationException {
-        Flow flow = convertFlow(firstFlow);
-        FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
-        resourcesManager.deallocatePathResources(flowResources.getForward().getPathId(),
-                flowResources.getUnmaskedCookie(), flow.getEncapsulationType());
-        resourcesManager.deallocatePathResources(flowResources.getReverse().getPathId(),
-                flowResources.getUnmaskedCookie(), flow.getEncapsulationType());
+        transactionManager.doInTransaction(() -> {
+            Flow flow = convertFlow(firstFlow);
+            FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
+            resourcesManager.deallocatePathResources(flowResources.getForward().getPathId(),
+                    flowResources.getUnmaskedCookie(), flow.getEncapsulationType());
+            resourcesManager.deallocatePathResources(flowResources.getReverse().getPathId(),
+                    flowResources.getUnmaskedCookie(), flow.getEncapsulationType());
 
-        verifyAllocation(resourcesManager.allocateFlowResources(flow));
+            verifyAllocation(resourcesManager.allocateFlowResources(flow));
+        });
     }
 
     @Test
     public void shouldAllocateForNoBandwidthFlow() throws ResourceAllocationException {
-        Flow flow = convertFlow(fourthFlow);
-        verifyMeterLessAllocation(resourcesManager.allocateFlowResources(flow));
+        transactionManager.doInTransaction(() -> {
+            Flow flow = convertFlow(fourthFlow);
+            verifyMeterLessAllocation(resourcesManager.allocateFlowResources(flow));
+        });
     }
 
     @Test
     public void shouldNotConsumeVlansForSingleSwitchFlows() throws ResourceAllocationException {
-        /*
-         * This is to validate that single switch flows don't consume transit vlans.
-         */
+        transactionManager.doInTransaction(() -> {
+            /*
+             * This is to validate that single switch flows don't consume transit vlans.
+             */
 
-        // for forward and reverse flows 2 t-vlans are allocated, so just try max / 2 + 1 attempts
-        final int attemps =
-                (flowResourcesConfig.getMaxFlowTransitVlan() - flowResourcesConfig.getMinFlowTransitVlan()) / 2 + 1;
+            // for forward and reverse flows 2 t-vlans are allocated, so just try max / 2 + 1 attempts
+            final int attemps =
+                    (flowResourcesConfig.getMaxFlowTransitVlan() - flowResourcesConfig.getMinFlowTransitVlan()) / 2 + 1;
 
-        for (int i = 0; i < attemps; i++) {
-            thirdFlow.setFlowId(format("third-flow-%d", i));
+            for (int i = 0; i < attemps; i++) {
+                thirdFlow.setFlowId(format("third-flow-%d", i));
 
-            Flow flow3 = convertFlow(thirdFlow);
-            resourcesManager.allocateFlowResources(flow3);
-        }
+                Flow flow3 = convertFlow(thirdFlow);
+                resourcesManager.allocateFlowResources(flow3);
+            }
+        });
     }
 
     @Test
     public void shouldNotConsumeMetersForUnmeteredFlows() throws ResourceAllocationException {
-        // for forward and reverse flows 2 meters are allocated, so just try max / 2 + 1 attempts
-        final int attemps = (flowResourcesConfig.getMaxFlowMeterId() - flowResourcesConfig.getMinFlowMeterId()) / 2 + 1;
+        transactionManager.doInTransaction(() -> {
+            // for forward and reverse flows 2 meters are allocated, so just try max / 2 + 1 attempts
+            final int attemps = (flowResourcesConfig.getMaxFlowMeterId()
+                    - flowResourcesConfig.getMinFlowMeterId()) / 2 + 1;
 
-        for (int i = 0; i < attemps; i++) {
-            fourthFlow.setFlowId(format("fourth-flow-%d", i));
+            for (int i = 0; i < attemps; i++) {
+                fourthFlow.setFlowId(format("fourth-flow-%d", i));
 
-            Flow flow4 = convertFlow(fourthFlow);
-            resourcesManager.allocateFlowResources(flow4);
-        }
+                Flow flow4 = convertFlow(fourthFlow);
+                resourcesManager.allocateFlowResources(flow4);
+            }
+        });
     }
 
     @Test
     public void deallocateFlowResourcesTest() throws Exception {
-        Flow flow = convertFlow(firstFlow);
+        transactionManager.doInTransaction(() -> {
+            Flow flow = convertFlow(firstFlow);
 
-        FlowResources resources = resourcesManager.allocateFlowResources(flow);
-        resourcesManager.deallocatePathResources(resources);
+            FlowResources resources = resourcesManager.allocateFlowResources(flow);
+            resourcesManager.deallocatePathResources(resources);
 
-        verifyResourcesDeallocation();
+            verifyResourcesDeallocation();
+        });
     }
 
     @Test
     public void deallocatePathResourcesTest() throws Exception {
-        Flow flow = convertFlow(firstFlow);
+        transactionManager.doInTransaction(() -> {
+            Flow flow = convertFlow(firstFlow);
 
-        FlowResources resources = resourcesManager.allocateFlowResources(flow);
-        resourcesManager.deallocatePathResources(resources.getForward().getPathId(), resources.getUnmaskedCookie(),
-                flow.getEncapsulationType());
-        resourcesManager.deallocatePathResources(resources.getReverse().getPathId(), resources.getUnmaskedCookie(),
-                flow.getEncapsulationType());
+            FlowResources resources = resourcesManager.allocateFlowResources(flow);
+            resourcesManager.deallocatePathResources(resources.getForward().getPathId(), resources.getUnmaskedCookie(),
+                    flow.getEncapsulationType());
+            resourcesManager.deallocatePathResources(resources.getReverse().getPathId(), resources.getUnmaskedCookie(),
+                    flow.getEncapsulationType());
 
-        verifyResourcesDeallocation();
+            verifyResourcesDeallocation();
+        });
     }
 
     @Test(expected = ResourceAllocationException.class)
     public void shouldThrowExceptionOnAllocationFailed() throws ResourceAllocationException {
-        FlowResourcesManager spy = Mockito.spy(resourcesManager);
-        Mockito.doThrow(ConstraintViolationException.class)
-                .when(spy).allocateResources(any(), any(), any());
+        transactionManager.doInTransaction(() -> {
+            FlowResourcesManager spy = Mockito.spy(resourcesManager);
+            Mockito.doThrow(ConstraintViolationException.class)
+                    .when(spy).allocateResources(any(), any(), any());
 
-        Flow flow = convertFlow(firstFlow);
-        spy.allocateFlowResources(flow);
-    }
-
-    @Test
-    public void shouldSurviveConstraintViolation() throws ResourceAllocationException {
-        FlowResourcesManager spy = Mockito.spy(resourcesManager);
-        Mockito.doThrow(ConstraintViolationException.class).doCallRealMethod()
-                .when(spy).allocateResources(any(), any(), any());
-
-        Flow flow = convertFlow(firstFlow);
-        verifyAllocation(spy.allocateFlowResourcesInTransaction(flow));
+            Flow flow = convertFlow(firstFlow);
+            spy.allocateFlowResources(flow);
+        });
     }
 
     private void verifyAllocation(FlowResources resources) {
@@ -280,19 +287,19 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
 
     private Flow convertFlow(FlowDto flowDto) {
         Flow flow = FlowMapper.INSTANCE.map(flowDto, () -> KildaConfiguration.DEFAULTS);
-        flow.setSrcSwitch(switchRepository.reload(flow.getSrcSwitch()));
-        flow.setDestSwitch(switchRepository.reload(flow.getDestSwitch()));
+        flow.setSrcSwitch(flow.getSrcSwitch());
+        flow.setDestSwitch(flow.getDestSwitch());
 
         FlowPath forwardPath = flow.getForwardPath();
         if (forwardPath != null) {
-            forwardPath.setSrcSwitch(switchRepository.reload(forwardPath.getSrcSwitch()));
-            forwardPath.setDestSwitch(switchRepository.reload(forwardPath.getDestSwitch()));
+            forwardPath.setSrcSwitch(forwardPath.getSrcSwitch());
+            forwardPath.setDestSwitch(forwardPath.getDestSwitch());
         }
 
         FlowPath reversePath = flow.getReversePath();
         if (reversePath != null) {
-            reversePath.setSrcSwitch(switchRepository.reload(reversePath.getSrcSwitch()));
-            reversePath.setDestSwitch(switchRepository.reload(reversePath.getDestSwitch()));
+            reversePath.setSrcSwitch(reversePath.getSrcSwitch());
+            reversePath.setDestSwitch(reversePath.getDestSwitch());
         }
 
         return flow;

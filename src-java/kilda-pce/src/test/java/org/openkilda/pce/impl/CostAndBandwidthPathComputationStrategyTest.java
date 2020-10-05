@@ -252,7 +252,6 @@ public class CostAndBandwidthPathComputationStrategyTest extends InMemoryPathCom
                 .pathId(new PathId(UUID.randomUUID().toString()))
                 .srcSwitch(flow.getSrcSwitch())
                 .destSwitch(flow.getDestSwitch())
-                .flow(flow)
                 .bandwidth(flow.getBandwidth())
                 .segments(new ArrayList<>())
                 .build();
@@ -263,16 +262,15 @@ public class CostAndBandwidthPathComputationStrategyTest extends InMemoryPathCom
                 .pathId(new PathId(UUID.randomUUID().toString()))
                 .srcSwitch(flow.getDestSwitch())
                 .destSwitch(flow.getSrcSwitch())
-                .flow(flow)
                 .bandwidth(flow.getBandwidth())
                 .segments(new ArrayList<>())
                 .build();
         addPathSegments(reversePath, diversePath.getReverse());
         flow.setReversePath(reversePath);
 
-        flowRepository.createOrUpdate(flow);
+        flowRepository.add(flow);
 
-        GetPathsResult path2 = pathComputer.getPath(flow, flow.getFlowPathIds());
+        GetPathsResult path2 = pathComputer.getPath(flow, flow.getPathIds());
         assertEquals(diversePath, path2);
     }
 

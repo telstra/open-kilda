@@ -43,23 +43,23 @@ public class CompleteFlowCreateAction extends FlowProcessingAction<FlowCreateFsm
 
     @Override
     protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        persistenceManager.getTransactionManager().doInTransaction(() -> {
-            String flowId = stateMachine.getFlowId();
-            if (!flowRepository.exists(flowId)) {
-                throw new FlowProcessingException(ErrorType.NOT_FOUND,
-                        "Couldn't complete flow creation. The flow was deleted");
-            }
+        String flowId = stateMachine.getFlowId();
+        if (!flowRepository.exists(flowId)) {
+            throw new FlowProcessingException(ErrorType.NOT_FOUND,
+                    "Couldn't complete flow creation. The flow was deleted");
+        }
 
+        transactionManager.doInTransaction(() -> {
             flowPathRepository.updateStatus(stateMachine.getForwardPathId(), FlowPathStatus.ACTIVE);
             flowPathRepository.updateStatus(stateMachine.getReversePathId(), FlowPathStatus.ACTIVE);
-            if (stateMachine.getProtectedForwardPathId() != null && stateMachine.getProtectedReversePathId() != null) {
+            if (stateMachine.getProtectedForwardPathId() != null
+                    && stateMachine.getProtectedReversePathId() != null) {
                 flowPathRepository.updateStatus(stateMachine.getProtectedForwardPathId(), FlowPathStatus.ACTIVE);
                 flowPathRepository.updateStatus(stateMachine.getProtectedReversePathId(), FlowPathStatus.ACTIVE);
             }
-
             flowRepository.updateStatus(flowId, FlowStatus.UP);
-            dashboardLogger.onFlowStatusUpdate(flowId, FlowStatus.UP);
-            stateMachine.saveActionToHistory(format("The flow status was set to %s", FlowStatus.UP));
         });
+        dashboardLogger.onFlowStatusUpdate(flowId, FlowStatus.UP);
+        stateMachine.saveActionToHistory(format("The flow status was set to %s", FlowStatus.UP));
     }
 }

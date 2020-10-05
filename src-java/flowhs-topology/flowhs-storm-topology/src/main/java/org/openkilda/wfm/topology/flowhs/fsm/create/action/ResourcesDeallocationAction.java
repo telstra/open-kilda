@@ -18,11 +18,9 @@ package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -35,29 +33,30 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 
 @Slf4j
 public class ResourcesDeallocationAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
-    private final TransactionManager transactionManager;
     private final FlowResourcesManager resourcesManager;
     private final IslRepository islRepository;
 
     public ResourcesDeallocationAction(FlowResourcesManager resourcesManager, PersistenceManager persistenceManager) {
         super(persistenceManager);
 
-        this.transactionManager = persistenceManager.getTransactionManager();
         this.resourcesManager = resourcesManager;
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        Flow flow;
         try {
-            flow = getFlow(stateMachine.getFlowId());
+            transactionManager.doInTransaction(() -> {
+                Flow flow = getFlow(stateMachine.getFlowId());
+                flow.resetPaths();
+            });
         } catch (FlowProcessingException e) {
             stateMachine.saveActionToHistory("Skip resources deallocation",
                     format("Skip resources deallocation. Flow %s has already been deleted: %s",
@@ -66,37 +65,40 @@ public class ResourcesDeallocationAction extends FlowProcessingAction<FlowCreate
         }
 
         Collection<FlowResources> flowResources = stateMachine.getFlowResources();
-        transactionManager.doInTransaction(() -> {
-            for (FlowResources resources : flowResources) {
-                resourcesManager.deallocatePathResources(resources);
-                FlowPath forward = getFlowPath(resources.getForward().getPathId());
-                FlowPath reverse = getFlowPath(resources.getReverse().getPathId());
-                Stream.of(forward, reverse)
-                        .peek(flowPathRepository::delete)
-                        .map(FlowPath::getSegments)
-                        .flatMap(List::stream)
-                        .forEach(segment -> updateIslAvailableBandwidth(stateMachine.getFlowId(), segment));
+        for (FlowResources resources : flowResources) {
+            List<PathSegment> removedSegments = new ArrayList<>();
 
-                flow.resetPaths();
-                flowRepository.createOrUpdate(flow);
-            }
-        });
+            Stream.of(resources.getForward().getPathId(), resources.getReverse().getPathId())
+                    .forEach(pathId ->
+                            flowPathRepository.remove(pathId)
+                                    .ifPresent(path -> removedSegments.addAll(path.getSegments())));
+
+            updateIslsForSegments(removedSegments);
+
+            transactionManager.doInTransaction(() ->
+                    resourcesManager.deallocatePathResources(resources));
+        }
+
+        if (!stateMachine.isPathsBeenAllocated()) {
+            flowRepository.remove(stateMachine.getFlowId());
+        }
 
         stateMachine.saveActionToHistory("The resources have been deallocated");
     }
 
-    private void updateIslAvailableBandwidth(String flowId, PathSegment pathSegment) {
-        SwitchId srcSwitch = pathSegment.getSrcSwitch().getSwitchId();
-        SwitchId destSwitch = pathSegment.getDestSwitch().getSwitchId();
-        long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(
-                srcSwitch, pathSegment.getSrcPort(), destSwitch, pathSegment.getDestPort());
+    private void updateIslsForSegments(List<PathSegment> pathSegments) {
+        pathSegments.forEach(pathSegment ->
+                transactionManager.doInTransaction(() -> {
+                    updateAvailableBandwidth(pathSegment.getSrcSwitchId(), pathSegment.getSrcPort(),
+                            pathSegment.getDestSwitchId(), pathSegment.getDestPort());
+                }));
+    }
 
-        islRepository.findByEndpoints(srcSwitch, pathSegment.getSrcPort(), destSwitch, pathSegment.getDestPort())
-                .ifPresent(isl -> {
-                    isl.setAvailableBandwidth(isl.getMaxBandwidth() - usedBandwidth);
-
-                    islRepository.createOrUpdate(isl);
-                    log.debug("Released used bandwidth from flow {} on the link {}", flowId, isl);
-                });
+    private void updateAvailableBandwidth(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort) {
+        long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(srcSwitch, srcPort,
+                dstSwitch, dstPort);
+        log.debug("Updating ISL {}_{} - {}_{} with used bandwidth {}", srcSwitch, srcPort, dstSwitch, dstPort,
+                usedBandwidth);
+        islRepository.updateAvailableBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth);
     }
 }

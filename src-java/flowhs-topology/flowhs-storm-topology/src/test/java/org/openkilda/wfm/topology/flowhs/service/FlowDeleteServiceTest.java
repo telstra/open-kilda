@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
@@ -30,7 +31,6 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -47,7 +47,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
 public class FlowDeleteServiceTest extends AbstractFlowTest {
-    private static final int TRANSACTION_RETRIES_LIMIT = 3;
     private static final int SPEAKER_COMMAND_RETRIES_LIMIT = 3;
 
     @Mock
@@ -79,8 +78,8 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
     @Test
     public void shouldFailDeleteFlowOnLockedFlow() {
         Flow flow = makeFlow();
-        flow.setStatus(FlowStatus.IN_PROGRESS);
-        flushFlowChanges(flow);
+        setupFlowRepositorySpy().findById(flow.getFlowId())
+                .ifPresent(foundFlow -> foundFlow.setStatus(FlowStatus.IN_PROGRESS));
 
         makeService().handleRequest(dummyRequestKey, commandContext, flow.getFlowId());
 
@@ -92,10 +91,6 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
     @Test
     public void shouldCompleteDeleteOnLockedSwitches() {
         String flowId = makeFlow().getFlowId();
-
-        FlowPathRepository repository = setupFlowPathRepositorySpy();
-        doThrow(new RecoverablePersistenceException(injectedErrorMessage))
-                .when(repository).lockInvolvedSwitches(any(), any());
 
         FlowDeleteService service = makeService();
         service.handleRequest(dummyRequestKey, commandContext, flowId);
@@ -187,8 +182,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
         FlowPathRepository repository = setupFlowPathRepositorySpy();
         doThrow(new RuntimeException(injectedErrorMessage))
                 .when(repository)
-                .delete(MockitoHamcrest.argThat(
-                        Matchers.hasProperty("pathId", is(forwardPath.getPathId()))));
+                .remove(eq(forwardPath.getPathId()));
 
         FlowDeleteService service = makeService();
         service.handleRequest(dummyRequestKey, commandContext, target.getFlowId());
@@ -233,8 +227,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
         FlowRepository repository = setupFlowRepositorySpy();
         doThrow(new RuntimeException(injectedErrorMessage))
                 .when(repository)
-                .delete(MockitoHamcrest.argThat(
-                        Matchers.hasProperty("flowId", is(target.getFlowId()))));
+                .remove(eq(target.getFlowId()));
 
         FlowDeleteService service = makeService();
 
@@ -299,6 +292,6 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
     private FlowDeleteService makeService() {
         return new FlowDeleteService(
                 carrier, persistenceManager, flowResourcesManager,
-                TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
+                SPEAKER_COMMAND_RETRIES_LIMIT);
     }
 }

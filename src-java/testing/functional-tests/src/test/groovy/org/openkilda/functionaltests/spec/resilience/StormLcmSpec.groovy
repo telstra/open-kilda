@@ -67,8 +67,8 @@ class StormLcmSpec extends HealthCheckSpecification {
         then: "Database nodes and relations are unchanged"
         def newRelation = database.dumpAllRelations()
         def newSwitches = database.dumpAllSwitches()
-        expect newSwitches, sameBeanAs(switchesDump)
-        expect newRelation, sameBeanAs(relationsDump).ignoring("time_modify").ignoring("latency")
+        expect newSwitches, sameBeanAs(switchesDump).ignoring("data.timeModify")
+        expect newRelation, sameBeanAs(relationsDump).ignoring("properties.time_modify").ignoring("properties.latency")
 
         and: "Flows remain valid in terms of installed rules and meters"
         flows.each { flow ->

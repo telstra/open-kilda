@@ -47,7 +47,6 @@ import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -217,21 +216,16 @@ public class SimpleSwitchRuleConverterTest {
                 .encapsulationType(flowEncapsulationType)
                 .bandwidth(FLOW_A_BANDWIDTH)
                 .status(FlowStatus.UP)
-                .timeCreate(Instant.now())
-                .timeModify(Instant.now())
                 .build();
 
         FlowPath forwardFlowPath = FlowPath.builder()
                 .pathId(FLOW_A_FORWARD_PATH_ID)
-                .flow(flow)
                 .cookie(new FlowSegmentCookie(FLOW_A_FORWARD_COOKIE))
                 .meterId(new MeterId(FLOW_A_FORWARD_METER_ID))
                 .srcSwitch(switchA)
                 .destSwitch(switchC)
                 .status(FlowPathStatus.ACTIVE)
                 .bandwidth(FLOW_A_BANDWIDTH)
-                .timeCreate(Instant.now())
-                .timeModify(Instant.now())
                 .build();
         flow.setForwardPath(forwardFlowPath);
 
@@ -267,22 +261,16 @@ public class SimpleSwitchRuleConverterTest {
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .bandwidth(FLOW_B_BANDWIDTH)
                 .status(FlowStatus.UP)
-                .timeCreate(Instant.now())
-                .timeModify(Instant.now())
                 .build();
 
         FlowPath forwardFlowPath = FlowPath.builder()
                 .pathId(new PathId(TEST_FLOW_ID_B + "_forward_path"))
-                .flow(flow)
                 .cookie(new FlowSegmentCookie(FLOW_B_FORWARD_COOKIE))
                 .meterId(new MeterId(FLOW_B_FORWARD_METER_ID))
                 .srcSwitch(switchD)
                 .destSwitch(switchD)
                 .status(FlowPathStatus.ACTIVE)
                 .bandwidth(FLOW_B_BANDWIDTH)
-                .segments(Collections.emptyList())
-                .timeCreate(Instant.now())
-                .timeModify(Instant.now())
                 .build();
         flow.setForwardPath(forwardFlowPath);
 

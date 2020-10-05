@@ -46,11 +46,11 @@ import java.util.stream.Stream;
 @Slf4j
 public class AllocatePrimaryResourcesAction extends
         BaseResourceAllocationAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
-    public AllocatePrimaryResourcesAction(PersistenceManager persistenceManager, int transactionRetriesLimit,
+    public AllocatePrimaryResourcesAction(PersistenceManager persistenceManager,
                                           int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                                           PathComputer pathComputer, FlowResourcesManager resourcesManager,
                                           FlowOperationsDashboardLogger dashboardLogger) {
-        super(persistenceManager, transactionRetriesLimit, pathAllocationRetriesLimit, pathAllocationRetryDelay,
+        super(persistenceManager, pathAllocationRetriesLimit, pathAllocationRetryDelay,
                 pathComputer, resourcesManager, dashboardLogger);
     }
 
@@ -71,30 +71,34 @@ public class AllocatePrimaryResourcesAction extends
         }
 
         log.debug("Finding paths for flows {}", flowIds);
-        List<FlowPath> pathsToReuse = new ArrayList<>(flowPathRepository.findByFlowIds(flowIds));
+        List<FlowPath> pathsToReuse = new ArrayList<>(flowPathRepository.findActualByFlowIds(flowIds));
 
-        Flow flow = getFlow(flowId);
+        Flow tmpFlow = getFlow(flowId);
         log.debug("Finding a new primary path for flow {}", flowId);
         List<PathId> pathIdsToReuse = pathsToReuse.stream().map(FlowPath::getPathId).collect(Collectors.toList());
-        final GetPathsResult potentialPath = pathComputer.getPath(flow, pathIdsToReuse);
+        final GetPathsResult potentialPath = pathComputer.getPath(tmpFlow, pathIdsToReuse);
 
-        log.debug("Allocating resources for a new primary path of flow {}", flowId);
-        FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
-        log.debug("Resources have been allocated: {}", flowResources);
-        stateMachine.setNewPrimaryResources(flowResources);
+        FlowPathPair createdPaths = transactionManager.doInTransaction(() -> {
+            log.debug("Allocating resources for a new primary path of flow {}", flowId);
+            Flow flow = getFlow(flowId);
+            FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
+            log.debug("Resources have been allocated: {}", flowResources);
+            stateMachine.setNewPrimaryResources(flowResources);
 
-        pathsToReuse.add(flow.getForwardPath());
-        pathsToReuse.add(flow.getReversePath());
-        pathsToReuse.addAll(stateMachine.getRejectedPaths().stream()
-                .map(flow::getPath)
-                .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty))
-                .collect(Collectors.toList()));
-        FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources, false);
-        log.debug("New primary path has been created: {}", newPaths);
-        stateMachine.setNewPrimaryForwardPath(newPaths.getForward().getPathId());
-        stateMachine.setNewPrimaryReversePath(newPaths.getReverse().getPathId());
+            pathsToReuse.add(flow.getForwardPath());
+            pathsToReuse.add(flow.getReversePath());
+            pathsToReuse.addAll(stateMachine.getRejectedPaths().stream()
+                    .map(flow::getPath)
+                    .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty))
+                    .collect(Collectors.toList()));
+            FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources, false);
+            log.debug("New primary path has been created: {}", newPaths);
+            stateMachine.setNewPrimaryForwardPath(newPaths.getForward().getPathId());
+            stateMachine.setNewPrimaryReversePath(newPaths.getReverse().getPathId());
+            return newPaths;
+        });
 
-        saveAllocationActionWithDumpsToHistory(stateMachine, flow, "primary", newPaths);
+        saveAllocationActionWithDumpsToHistory(stateMachine, tmpFlow, "primary", createdPaths);
     }
 
     @Override

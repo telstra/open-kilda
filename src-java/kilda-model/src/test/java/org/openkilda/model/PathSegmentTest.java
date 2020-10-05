@@ -44,7 +44,7 @@ public class PathSegmentTest {
         flow = Flow.builder().flowId(FLOW_ID).srcSwitch(SWITCH_A)
                 .destSwitch(SWITCH_B).pinned(true).build();
         FlowPath flowForwardPath = FlowPath.builder().pathId(new PathId("1"))
-                .flow(flow).srcSwitch(SWITCH_A).destSwitch(SWITCH_B)
+                .srcSwitch(SWITCH_A).destSwitch(SWITCH_B)
                 .cookie(new FlowSegmentCookie(FlowPathDirection.FORWARD, 1))
                 .build();
         List<PathSegment> flowForwardSegments = new ArrayList<>();
@@ -57,7 +57,7 @@ public class PathSegmentTest {
         flowForwardPath.setSegments(flowForwardSegments);
 
         FlowPath flowReversePath = FlowPath.builder().pathId(new PathId("2"))
-                .flow(flow).srcSwitch(SWITCH_B).destSwitch(SWITCH_A)
+                .srcSwitch(SWITCH_B).destSwitch(SWITCH_A)
                 .cookie(new FlowSegmentCookie(FlowPathDirection.REVERSE, 2)).build();
         List<PathSegment> flowReverseSegments = new ArrayList<>();
 

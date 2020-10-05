@@ -36,7 +36,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Instant;
 import java.util.Optional;
 
 @Slf4j
@@ -56,7 +55,7 @@ public class FlowValidateAction extends NbTrackableAction<FlowPathSwapFsm, State
     @Override
     protected Optional<Message> performWithResponse(State from, State to, Event event, FlowPathSwapContext context,
                                                     FlowPathSwapFsm stateMachine) throws FlowProcessingException {
-        persistenceManager.getTransactionManager().doInTransaction(() -> {
+        transactionManager.doInTransaction(() -> {
             String flowId = stateMachine.getFlowId();
             Flow flow = flowRepository.findById(flowId)
                     .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
@@ -86,13 +85,11 @@ public class FlowValidateAction extends NbTrackableAction<FlowPathSwapFsm, State
 
 
             flow.setStatus(FlowStatus.IN_PROGRESS);
-            flow.setTimeModify(Instant.now());
 
-            flowRepository.createOrUpdate(flow);
-            flowPathRepository.updateStatus(flow.getForwardPathId(), FlowPathStatus.IN_PROGRESS);
-            flowPathRepository.updateStatus(flow.getReversePathId(), FlowPathStatus.IN_PROGRESS);
-            flowPathRepository.updateStatus(flow.getProtectedForwardPathId(), FlowPathStatus.IN_PROGRESS);
-            flowPathRepository.updateStatus(flow.getProtectedReversePathId(), FlowPathStatus.IN_PROGRESS);
+            flow.getForwardPath().setStatus(FlowPathStatus.IN_PROGRESS);
+            flow.getReversePath().setStatus(FlowPathStatus.IN_PROGRESS);
+            flow.getProtectedForwardPath().setStatus(FlowPathStatus.IN_PROGRESS);
+            flow.getProtectedReversePath().setStatus(FlowPathStatus.IN_PROGRESS);
 
         });
         stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.PATH_SWAP);

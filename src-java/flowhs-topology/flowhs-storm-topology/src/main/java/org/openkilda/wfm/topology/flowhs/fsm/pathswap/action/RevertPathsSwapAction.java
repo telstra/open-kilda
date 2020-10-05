@@ -21,7 +21,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
+import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapContext;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm;
@@ -29,27 +29,17 @@ import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.RetryPolicy;
-import org.neo4j.driver.v1.exceptions.ClientException;
 
 @Slf4j
 public class RevertPathsSwapAction extends FlowProcessingAction<FlowPathSwapFsm, State, Event, FlowPathSwapContext> {
-    private final int transactionRetriesLimit;
-
-    public RevertPathsSwapAction(PersistenceManager persistenceManager, int transactionRetriesLimit) {
+    public RevertPathsSwapAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        this.transactionRetriesLimit = transactionRetriesLimit;
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowPathSwapContext context,
                            FlowPathSwapFsm stateMachine) {
-        RetryPolicy retryPolicy = new RetryPolicy()
-                .retryOn(RecoverablePersistenceException.class)
-                .retryOn(ClientException.class)
-                .withMaxRetries(transactionRetriesLimit);
-
-        Flow f = persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> {
+        FlowPathPair pathPair = transactionManager.doInTransaction(() -> {
             String flowId = stateMachine.getFlowId();
             Flow flow = getFlow(flowId);
 
@@ -61,11 +51,10 @@ public class RevertPathsSwapAction extends FlowProcessingAction<FlowPathSwapFsm,
             flow.setReversePath(flow.getProtectedReversePath());
             flow.setProtectedForwardPath(oldPrimaryForward);
             flow.setProtectedReversePath(oldPrimaryReverse);
-            saveHistory(stateMachine, flow.getFlowId(), oldPrimaryForward.getPathId(), oldPrimaryReverse.getPathId());
-
-            flowRepository.createOrUpdate(flow);
-            return flow;
+            return new FlowPathPair(oldPrimaryForward, oldPrimaryReverse);
         });
+
+        saveHistory(stateMachine, stateMachine.getFlowId(), pathPair.getForwardPathId(), pathPair.getReversePathId());
     }
 
     private void saveHistory(FlowPathSwapFsm stateMachine, String flowId, PathId forwardPath, PathId reversePath) {

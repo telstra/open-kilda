@@ -21,7 +21,6 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.model.FeatureToggles;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.AbstractBolt;
@@ -209,9 +208,7 @@ public class RegionTrackerBolt extends AbstractBolt implements RegionMonitorCarr
     }
 
     private boolean queryPeriodicSyncFeatureToggle() {
-        return featureTogglesRepository.find()
-                .map(FeatureToggles::getFloodlightRoutePeriodicSync)
-                .orElse(FeatureToggles.DEFAULTS.getFloodlightRoutePeriodicSync());
+        return featureTogglesRepository.getOrDefault().getFloodlightRoutePeriodicSync();
     }
 
     private String pullSpeakerRegion(Tuple tuple) throws PipelineException {

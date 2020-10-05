@@ -33,7 +33,6 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
-import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -80,7 +79,7 @@ public class CacheBoltTest {
     @Test
     public void cacheBoltInitCookieTest() {
         Flow flow = getFlow();
-        when(flowRepository.findAll(FetchStrategy.ALL_RELATIONS)).thenReturn(Collections.singletonList(flow));
+        when(flowRepository.findAll()).thenReturn(Collections.singletonList(flow));
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
@@ -113,7 +112,7 @@ public class CacheBoltTest {
     @Test
     public void cacheBoltInitMeterTest() {
         Flow flow = getFlow();
-        when(flowRepository.findAll(FetchStrategy.ALL_RELATIONS)).thenReturn(Collections.singletonList(flow));
+        when(flowRepository.findAll()).thenReturn(Collections.singletonList(flow));
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
@@ -185,7 +184,6 @@ public class CacheBoltTest {
 
         return FlowPath.builder()
                 .pathId(new PathId(uuid()))
-                .flow(flow)
                 .srcSwitch(src)
                 .destSwitch(dest)
                 .cookie(new FlowSegmentCookie(cookie))

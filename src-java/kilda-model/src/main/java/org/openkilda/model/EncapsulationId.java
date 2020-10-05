@@ -22,7 +22,8 @@ public interface EncapsulationId {
 
     /**
      * Get encapsulation resource id.
+     *
      * @return encapsulation id
      */
-    public int getEncapsulationId();
+    int getEncapsulationId();
 }

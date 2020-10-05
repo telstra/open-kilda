@@ -67,6 +67,10 @@ neo4j.uri = bolt://{{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_por
 neo4j.user = {{ getv "/kilda_neo4j_user" }}
 neo4j.password = {{ getv "/kilda_neo4j_password" }}
 
+orientdb.url = remote:{{ getv "/kilda_orientdb_hosts" }}/{{ getv "/kilda_orientdb_database" }}
+orientdb.user = {{ getv "/kilda_orientdb_user" }}
+orientdb.password = {{ getv "/kilda_orientdb_password" }}
+
 logger.level = INFO
 
 #######
@@ -134,7 +138,6 @@ latency.update.time.range = {{ getv "/kilda_latency_update_time_range" }}
 latency.discovery.interval.multiplier = {{ getv "/kilda_latency_discovery_interval_multiplier" }}
 
 # flow(H&S) topology
-flow.hub.transaction.retries = 3
 flow.path.allocation.retries = 10
 flow.path.allocation.retry.delay = 50
 flow.create.hub.timeout.seconds = 30

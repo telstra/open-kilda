@@ -391,6 +391,6 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
 
     private FlowCreateService makeService(int retriesLimit) {
         return new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager,
-                0, 3, retriesLimit);
+                0, 3, 0, retriesLimit);
     }
 }

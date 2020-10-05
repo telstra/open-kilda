@@ -22,10 +22,6 @@ import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
-import org.openkilda.persistence.repositories.IslRepository;
-import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
@@ -35,35 +31,20 @@ import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.RetryPolicy;
-import org.neo4j.driver.v1.exceptions.ClientException;
 
 import java.util.Optional;
 
 @Slf4j
 public class UpdateFlowPathsAction extends NbTrackableAction<FlowPathSwapFsm, State, Event, FlowPathSwapContext> {
-    private final int transactionRetriesLimit;
-    private final SwitchRepository switchRepository;
-    private final IslRepository islRepository;
-
-    public UpdateFlowPathsAction(PersistenceManager persistenceManager, int transactionRetriesLimit) {
+    public UpdateFlowPathsAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        this.transactionRetriesLimit = transactionRetriesLimit;
-        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        switchRepository = repositoryFactory.createSwitchRepository();
-        islRepository = repositoryFactory.createIslRepository();
     }
 
     @Override
     protected Optional<Message> performWithResponse(State from, State to, Event event, FlowPathSwapContext context,
                                                     FlowPathSwapFsm stateMachine) {
 
-        RetryPolicy retryPolicy = new RetryPolicy()
-                .retryOn(RecoverablePersistenceException.class)
-                .retryOn(ClientException.class)
-                .withMaxRetries(transactionRetriesLimit);
-
-        Flow f = persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> {
+        Flow f = transactionManager.doInTransaction(() -> {
             String flowId = stateMachine.getFlowId();
             Flow flow = getFlow(flowId);
 
@@ -75,7 +56,6 @@ public class UpdateFlowPathsAction extends NbTrackableAction<FlowPathSwapFsm, St
             flow.setReversePath(flow.getProtectedReversePath());
             flow.setProtectedForwardPath(oldPrimaryForward);
             flow.setProtectedReversePath(oldPrimaryReverse);
-            flowRepository.createOrUpdate(flow);
             return flow;
         });
 

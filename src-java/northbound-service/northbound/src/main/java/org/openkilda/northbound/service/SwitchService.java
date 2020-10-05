@@ -118,7 +118,7 @@ public interface SwitchService {
     CompletableFuture<ConnectModeRequest.Mode> connectMode(ConnectModeRequest.Mode mode);
 
     /**
-     * Validate the rules installed on the switch against the flows in Neo4J.
+     * Validate the rules installed on the switch against the flows in the database.
      *
      * @param switchId switch to validate rules on.
      * @return the validation details.
@@ -126,7 +126,7 @@ public interface SwitchService {
     CompletableFuture<RulesValidationResult> validateRules(SwitchId switchId);
 
     /**
-     * Validate the rules and the meters installed on the switch against the flows in Neo4J.
+     * Validate the rules and the meters installed on the switch against the flows in the database.
      *
      * @param switchId switch to validate.
      * @return the validation details.
@@ -134,7 +134,7 @@ public interface SwitchService {
     CompletableFuture<SwitchValidationResult> validateSwitch(SwitchId switchId);
 
     /**
-     * Synchronize (install) missing rules that should be on the switch but exist only in Neo4J.
+     * Synchronize (install) missing rules that should be on the switch but exist only in the database.
      *
      * @param switchId switch to synchronize rules on.
      * @return the synchronization result.

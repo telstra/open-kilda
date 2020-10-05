@@ -15,63 +15,136 @@
 
 package org.openkilda.model;
 
-import lombok.AccessLevel;
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.BeanSerializer;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.Index;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
+import lombok.ToString;
+import lombok.experimental.Delegate;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * Represents a transit vlan allocated for a flow path.
  */
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId"})
-@NodeEntity(label = "transit_vlan")
-public class TransitVlan implements Serializable, EncapsulationId {
-    private static final long serialVersionUID = 1L;
+@DefaultSerializer(BeanSerializer.class)
+@ToString
+public class TransitVlan implements EncapsulationId, CompositeDataEntity<TransitVlan.TransitVlanData> {
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private TransitVlanData data;
 
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
+    /**
+     * No args constructor for deserialization purpose.
+     */
+    private TransitVlan() {
+        data = new TransitVlanDataImpl();
+    }
 
-    @NonNull
-    @Property(name = "flow_id")
-    private String flowId;
+    /**
+     * Cloning constructor which performs deep copy of the entity.
+     *
+     * @param entityToClone the entity to copy entity data from.
+     */
+    public TransitVlan(@NonNull TransitVlan entityToClone) {
+        data = TransitVlanCloner.INSTANCE.copy(entityToClone.getData());
+    }
 
-    @NonNull
-    @Property(name = "path_id")
-    @Index
-    @Convert(graphPropertyType = String.class)
-    private PathId pathId;
-
-    @Property(name = "vlan")
-    @Index(unique = true)
-    private int vlan;
-
-    @Builder(toBuilder = true)
+    @Builder
     public TransitVlan(@NonNull String flowId, @NonNull PathId pathId, int vlan) {
-        this.flowId = flowId;
-        this.pathId = pathId;
-        this.vlan = vlan;
+        data = TransitVlanDataImpl.builder().flowId(flowId).pathId(pathId).vlan(vlan).build();
+    }
+
+    public TransitVlan(@NonNull TransitVlanData data) {
+        this.data = data;
+    }
+
+    /**
+     * Defines persistable data of the TransitVlan.
+     */
+    public interface TransitVlanData {
+        String getFlowId();
+
+        void setFlowId(String flowId);
+
+        PathId getPathId();
+
+        void setPathId(PathId pathId);
+
+        int getVlan();
+
+        void setVlan(int vlan);
     }
 
     @Override
     public int getEncapsulationId() {
-        return vlan;
+        return getVlan();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        TransitVlan that = (TransitVlan) o;
+        return new EqualsBuilder()
+                .append(getVlan(), that.getVlan())
+                .append(getFlowId(), that.getFlowId())
+                .append(getPathId(), that.getPathId())
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getFlowId(), getPathId(), getVlan());
+    }
+
+    /**
+     * POJO implementation of TransitVlanData.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    static final class TransitVlanDataImpl implements TransitVlanData, Serializable {
+        private static final long serialVersionUID = 1L;
+        @NonNull String flowId;
+        @NonNull PathId pathId;
+        int vlan;
+    }
+
+    /**
+     * A cloner for TransitVlan entity.
+     */
+    @Mapper
+    public interface TransitVlanCloner {
+        TransitVlanCloner INSTANCE = Mappers.getMapper(TransitVlanCloner.class);
+
+        void copy(TransitVlanData source, @MappingTarget TransitVlanData target);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default TransitVlanData copy(TransitVlanData source) {
+            TransitVlanData result = new TransitVlanDataImpl();
+            copy(source, result);
+            return result;
+        }
     }
 }
