@@ -33,15 +33,25 @@ export class SwitchupdatemodalComponent implements OnInit {
       city:[""],
       country:[""]
     });  
-     
-    if(this.data && this.data.pop){     
-       this.switchLocationForm.controls['pop'].setValue(this.data.pop || '');
-       this.switchLocationForm.controls['latitude'].setValue(this.data.latitude || 0);
-       this.switchLocationForm.controls['longitude'].setValue(this.data.longitude || 0);
-       this.switchLocationForm.controls['street'].setValue(this.data.street || '');
-       this.switchLocationForm.controls['city'].setValue(this.data.city || '');
-       this.switchLocationForm.controls['country'].setValue(this.data.country || '');
+     if(this.data && this.data.pop){
+      this.switchLocationForm.controls['pop'].setValue(this.data.pop || '');
+     }
+     if(this.data && (this.data.latitude || this.data.latitude == 0)){
+      this.switchLocationForm.controls['latitude'].setValue(this.data.latitude || 0);
     }
+    if(this.data && (this.data.longitude || this.data.longitude == 0)){
+      this.switchLocationForm.controls['longitude'].setValue(this.data.longitude || 0);
+    }
+    if(this.data && this.data.street){
+      this.switchLocationForm.controls['street'].setValue(this.data.street || '');
+    }
+    if(this.data && this.data.city){
+      this.switchLocationForm.controls['city'].setValue(this.data.city || ''); 
+    }    
+    if(this.data && this.data.country){
+      this.switchLocationForm.controls['country'].setValue(this.data.country || '');
+    }
+    
   }
 
   
@@ -69,6 +79,7 @@ export class SwitchupdatemodalComponent implements OnInit {
       errorFlag = true;
       this.errorsObj['longitude'] = true;
     }
+    console.log('errorFlag',errorFlag,this.errorsObj);
      if(errorFlag){
       return false;
     }else{
