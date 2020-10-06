@@ -13,8 +13,8 @@ floodlight.alive.timeout=10
 floodlight.alive.interval=2
 
 orientdb.url = remote:localhost:2424,localhost:2425,localhost:2426/kilda
-orientdb.user = root
-orientdb.password = root
+orientdb.user = kilda
+orientdb.password = kilda
 
 elasticsearch.endpoint=http://localhost:9200
 elasticsearch.username=kilda

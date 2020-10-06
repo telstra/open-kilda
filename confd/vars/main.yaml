@@ -12,8 +12,8 @@ kilda_neo4j_password: "temppass"
 kilda_neo4j_cypher_path: "/db/data/cypher"
 
 kilda_orientdb_hosts: "odb1.pendev,odb2.pendev,odb3.pendev"
-kilda_orientdb_user: "root"
-kilda_orientdb_password: "root"
+kilda_orientdb_user: "kilda"
+kilda_orientdb_password: "kilda"
 kilda_orientdb_database: "kilda"
 
 kilda_kafka_hosts: "kafka.pendev:9092"
