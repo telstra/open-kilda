@@ -79,7 +79,6 @@ export class SwitchupdatemodalComponent implements OnInit {
       errorFlag = true;
       this.errorsObj['longitude'] = true;
     }
-    console.log('errorFlag',errorFlag,this.errorsObj);
      if(errorFlag){
       return false;
     }else{
