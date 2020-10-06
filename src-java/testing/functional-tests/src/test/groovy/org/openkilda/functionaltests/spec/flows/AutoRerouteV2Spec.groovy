@@ -143,6 +143,9 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         }
         if (portDown && !portUp) {
             antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
+            wait(discoveryInterval + WAIT_OFFSET) {
+                assert islUtils.getIslInfo(islToFail).get().state == IslChangeType.DISCOVERED
+            }
         }
         database.resetCosts()
     }

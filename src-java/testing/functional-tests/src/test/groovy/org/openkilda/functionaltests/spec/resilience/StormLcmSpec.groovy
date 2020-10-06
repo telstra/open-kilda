@@ -57,6 +57,11 @@ class StormLcmSpec extends HealthCheckSpecification {
             flows << flow
         }
 
+        and: "All created flows are valid"
+        flows.each { flow ->
+            northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
+        }
+
         and: "Database dump"
         def relationsDump = database.dumpAllRelations()
         def switchesDump = database.dumpAllSwitches()
