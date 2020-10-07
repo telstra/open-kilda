@@ -14,3 +14,4 @@
 #no_server42_stats: true
 #no_server42_server_stub: true
 #no_server42_storm_stub: true
+#single_orientdb: true

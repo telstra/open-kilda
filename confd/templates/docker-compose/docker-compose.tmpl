@@ -40,6 +40,7 @@ services:
         - lab-api.pendev
     mem_limit: ${LAB_API_MEM_LIMIT:-256741824}
 
+{{if not (exists "/single_orientdb")}}
   odb1:
     container_name: odb1
     hostname: odb1.pendev
@@ -94,6 +95,7 @@ services:
       default:
         aliases:
           - odb2.pendev
+{{end}}
 
   odb3:
     container_name: odb3
@@ -108,11 +110,13 @@ services:
     environment:
       ORIENTDB_ROOT_PASSWORD: root
       ORIENTDB_NODE_NAME: odb3.pendev
+{{if not (exists "/single_orientdb")}}
     depends_on:
       odb1:
         condition: service_healthy
       odb2:
         condition: service_healthy
+{{end}}
     ports:
       - 2426:2424
       - 2482:2480
@@ -125,7 +129,6 @@ services:
       default:
         aliases:
           - odb3.pendev
-
 
   zookeeper:
     container_name: zookeeper
@@ -189,10 +192,12 @@ services:
         condition: service_healthy
       storm-supervisor:
         condition: service_healthy
+        {{if not (exists "/single_orientdb")}}
       odb1:
         condition: service_healthy
       odb2:
         condition: service_healthy
+        {{end}}
       odb3:
         condition: service_healthy
 
@@ -628,6 +633,8 @@ volumes:
   kafka_data:
   app_server_data:
   hbase_data:
+  {{if not (exists "/single_orientdb")}}
   odb1_data:
   odb2_data:
+{{end}}
   odb3_data:
