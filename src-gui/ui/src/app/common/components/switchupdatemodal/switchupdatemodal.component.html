@@ -16,8 +16,8 @@
     <div class="form-group col-md-6" >
         <label class=" col-md-2 col-form-label">Latitude:</label>
         <div class="col-md-12">
-          <input class="form-control" formControlName="latitude" name="latitude"  />
-          <div *ngIf="submitted && errorsObj['latitude']" class="invalid-feedback">
+          <input class="form-control" (keyup)="validateLatLong('latitude')" formControlName="latitude" name="latitude"  />
+          <div *ngIf="errorsObj && errorsObj['latitude']" class="invalid-feedback">
             <div >Latitude should only be in number or decimal</div>
           </div>
         </div>
@@ -25,8 +25,8 @@
     <div class="form-group col-md-6 " >
         <label class=" col-md-2  col-form-label">Longitude:</label>
         <div class="col-md-12">
-          <input class="form-control" formControlName="longitude" name="longitude"  />
-          <div *ngIf="submitted && errorsObj['longitude']" class="invalid-feedback">
+          <input class="form-control" (keyup)="validateLatLong('longitude')" formControlName="longitude" name="longitude"  />
+          <div *ngIf="errorsObj && errorsObj['longitude']" class="invalid-feedback">
             <div>Longitude should only be in number or decimal</div>
           </div>
         </div>

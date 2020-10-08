@@ -53,7 +53,23 @@ export class SwitchupdatemodalComponent implements OnInit {
     }
     
   }
-
+  
+  validateLatLong(field){
+    if(field == 'latitude'){
+      if(!this.commonService.isInt(this.switchLocationForm.controls['latitude'].value) && !this.commonService.isFloat(this.switchLocationForm.controls['latitude'].value)){
+        this.errorsObj['latitude'] = true;
+      }else{
+        this.errorsObj['latitude'] = false;
+      }
+    }
+    if(field == 'longitude'){
+      if(!this.commonService.isInt(this.switchLocationForm.controls['longitude'].value) && !this.commonService.isFloat(this.switchLocationForm.controls['longitude'].value)){
+        this.errorsObj['longitude'] = true;
+      }else{
+        this.errorsObj['longitude'] = false;
+      }
+    }
+  }
   
   submitUpdate(){
     this.errorsObj = {};

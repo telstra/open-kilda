@@ -374,7 +374,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
     var locationData = this.switchDetail.location;
     locationData['pop'] = this.switchDetail.pop;
     const modalRef = this.modalService.open(SwitchupdatemodalComponent);
-    modalRef.componentInstance.title = "Update Switch";
+    modalRef.componentInstance.title = "Update Switch Location";
     modalRef.componentInstance.data =locationData ;
     modalRef.result.then((response) =>{
      },error => {
