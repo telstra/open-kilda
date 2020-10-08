@@ -123,22 +123,21 @@
      </div> 
      <div class="row">
       <label class="col-sm-2 col-form-label">Pop:</label>
-      <p *ngIf="!isSwitchLocationEdit" class="col-sm-4  col-form-label" >{{ (switchDetail.pop) ? switchDetail.pop : "-" }}</p>
-      <input *ngIf="isSwitchLocationEdit" type="text" name="pop" formControlName="pop"  class="col-sm-4  col-form-label">
+       <p  class="col-sm-4  col-form-label break-word" >{{ (switchDetail.pop) ? switchDetail.pop : "-" }}</p>
        <label class="col-sm-2 col-form-label">Latitude:</label>
-        <p *ngIf="!isSwitchLocationEdit" class="col-sm-4  col-form-label" >{{ (switchDetail['location'] && switchDetail['location'].latitude) ? switchDetail['location'].latitude : 0 }}</p>
+        <p  class="col-sm-4  col-form-label break-word" >{{ (switchDetail['location'] && switchDetail['location'].latitude) ? switchDetail['location'].latitude : 0 }}</p>
     </div>
     <div class="row">
         <label class="col-sm-2 col-form-label">Longitude:</label>
-        <p *ngIf="!isSwitchLocationEdit" class="col-sm-4  col-form-label" >{{ (switchDetail['location'] && switchDetail['location'].longitude) ? switchDetail['location'].longitude : 0 }}</p>
+        <p  class="col-sm-4  col-form-label break-word" >{{ (switchDetail['location'] && switchDetail['location'].longitude) ? switchDetail['location'].longitude : 0 }}</p>
      <label class="col-sm-2 col-form-label">Street:</label>
-      <p *ngIf="!isSwitchLocationEdit" class="col-sm-4  col-form-label" >{{ (switchDetail['location'] && (switchDetail['location'].street) !='undefined' && switchDetail['location'].street != '') ? switchDetail['location'].street || "-" : "-" }}</p>
+      <p  class="col-sm-4  col-form-label break-word" >{{ (switchDetail['location'] && (switchDetail['location'].street) !='undefined' && switchDetail['location'].street != '') ? switchDetail['location'].street || "-" : "-" }}</p>
     </div>
     <div class="row">
       <label class="col-sm-2 col-form-label">City:</label>
-      <p *ngIf="!isSwitchLocationEdit" class="col-sm-4  col-form-label" >{{ (switchDetail['location'] && (switchDetail['location'].city) != 'undefined' && switchDetail['location'].city != '') ? switchDetail['location'].city || "-" : "-"  }}</p>
+      <p  class="col-sm-4  col-form-label break-word" >{{ (switchDetail['location'] && (switchDetail['location'].city) != 'undefined' && switchDetail['location'].city != '') ? switchDetail['location'].city || "-" : "-"  }}</p>
        <label class="col-sm-2 col-form-label">Country:</label>
-      <p *ngIf="!isSwitchLocationEdit" class="col-sm-4  col-form-label" >{{ (switchDetail['location'] && (switchDetail['location'].country) !='undefined' && switchDetail['location'].country != '') ? switchDetail['location'].country || "-" : "-"  }}</p>
+      <p  class="col-sm-4  col-form-label break-word" >{{ (switchDetail['location'] && (switchDetail['location'].country) !='undefined' && switchDetail['location'].country != '') ? switchDetail['location'].country || "-" : "-"  }}</p>
     </div>
      <div class="row" *ngIf="hasStoreSetting">
       <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Serial:</label>

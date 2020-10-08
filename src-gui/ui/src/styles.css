@@ -3063,3 +3063,7 @@ left: calc(100% - 16px);
   color: #212529!important;
   text-decoration: none!important;
 }
+.break-word{
+  word-break: break-word;
+}
+
