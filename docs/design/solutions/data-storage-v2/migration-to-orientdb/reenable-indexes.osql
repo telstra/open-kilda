@@ -1,0 +1,5 @@
+CREATE INDEX switch_properties.switch_id UNIQUE_HASH_INDEX;
+CREATE INDEX port_properties_endpoint on port_properties (switch_id, port_no) UNIQUE_HASH_INDEX;
+CREATE INDEX isl_endpoints on isl (src_switch_id, dst_switch_id, src_port, dst_port) UNIQUE_HASH_INDEX;
+CREATE INDEX link_props_endpoints on link_props (src_switch, src_port, dst_switch, dst_port) UNIQUE_HASH_INDEX;
+CREATE INDEX bfd_session.discriminator UNIQUE_HASH_INDEX;

@@ -1,0 +1,5 @@
+DROP INDEX switch_properties.switch_id;
+DROP INDEX port_properties_endpoint;
+DROP INDEX isl_endpoints;
+DROP INDEX link_props_endpoints;
+DROP INDEX bfd_session.discriminator;
