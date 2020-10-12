@@ -20,7 +20,7 @@ import { MessageObj } from 'src/app/common/constants/constants';
 })
 export class UseractivityComponent implements OnInit {
 	moment = (_moment as any).default ? (_moment as any).default : _moment;
-	userActivityData: any;
+	userActivityData: any = [];
 	startDate: any;
 	endDate: any;
 	currentDate:any = this.moment().format('YYYY/MM/DD HH:mm');
@@ -38,6 +38,7 @@ export class UseractivityComponent implements OnInit {
 	userId = [];
 	typeValue:any;
 	usernameValue:string;
+	loadActivityData=false;
 
   constructor( private userActivityService:UserActivityService,
 		private toastr: ToastrService,
@@ -56,47 +57,45 @@ export class UseractivityComponent implements OnInit {
 		}
 
   ngOnInit() {
-		this.titleService.setTitle('OPEN KILDA - User Activity');
-    this.loaderService.show(MessageObj.loading_user_activity);
-    this.callActivityService();
-    this.callUserDropdownService();
-    this.callTypeDropdownService();
+	this.titleService.setTitle('OPEN KILDA - User Activity');
+	this.loaderService.show(MessageObj.loading_user_activity);
+	this.startDate =  this.moment().subtract(15,'days').format('YYYY/MM/DD HH:mm');
+	this.endDate = this.moment().format('YYYY/MM/DD HH:mm');
+    this.callDropdownService();
   	this.userActivityForm = this.formBuilder.group({
       typeControl: [''],
       usernameControl: [''],
       toDateControl: [''],
       fromDateControl: ['']
-    });
+	});
+	this.userActivityForm.controls["fromDateControl"].setValue(this.startDate);
+	this.userActivityForm.controls["toDateControl"].setValue(this.endDate);
+	this.showStartDateFilter = true;
+	this.showEndDateFilter = true;
+	this.getFilteredDetails();
   }
 
-  callActivityService(){
-    
-    this.userActivityService.getUserActivityList().subscribe((data : any) =>{
-    data = data.sort(function(a,b){
-    return b.activityTime - a.activityTime
-    });
-    this.userActivityData = data;
-    this.loaderService.hide();
-     },error=>{
-       this.loaderService.hide();
-       this.toastr.error(MessageObj.no_user_activity,'Error');
-     });
-  }
+//   callActivityService(){
+//     this.loadActivityData = true;
+//     this.userActivityService.getUserActivityList().subscribe((data : any) =>{
+//     data = data.sort(function(a,b){
+//     return b.activityTime - a.activityTime
+//     });
+//     this.userActivityData = data;
+// 	this.loaderService.hide();
+// 	this.loadActivityData = false;
+//      },error=>{
+// 	   this.loaderService.hide();
+// 	   this.loadActivityData = false;
+//        this.toastr.error(MessageObj.no_user_activity,'Error');
+//      });
+//   }
 
-  callUserDropdownService(){
-    
-    this.userActivityService.getUserDropdownList().subscribe((data : Array<object>) =>{
-    this.userDrowdonList = data;
-     },error=>{
-       this.toastr.error("No user dropdown data",'Error');
-     });
-  }
-
-  callTypeDropdownService(){
-    
-    this.userActivityService.getTypeDropdownList().subscribe((data : Array<object>) =>{
-    this.typeDropdownList = data;
-     },error=>{
+callDropdownService(){    
+    this.userActivityService.getDropdownList().subscribe((data : any) =>{
+		this.typeDropdownList = data.activity_types;
+		this.userDrowdonList = data.activity_users;
+	 },error=>{
        this.toastr.error("No type dropdown data",'Error');
      });
   }
@@ -186,16 +185,20 @@ export class UseractivityComponent implements OnInit {
   }
 
   getFilteredDetails(){
+	this.loadActivityData = true;
     this.loaderService.show(MessageObj.loading_user_activity);
   	this.userActivityService.getFilteredUserActivityList(this.userId, this.type, this.startDate, this.endDate).subscribe((data : any) =>{
     data = data.sort(function(a,b){
     return b.activityTime - a.activityTime
     })  
     this.loaderService.hide();
-   this.userActivityData = data;
+	this.userActivityData = data;
+	this.loadActivityData = false;
      },error=>{
        this.loaderService.hide();
-       this.toastr.error(MessageObj.no_user_activity,'Error');
+	   this.toastr.error(MessageObj.no_user_activity,'Error');
+	   this.userActivityData = [];
+	   this.loadActivityData = false;
 
      });
   }

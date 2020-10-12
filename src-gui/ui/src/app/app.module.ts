@@ -95,6 +95,7 @@ import { ConnectedDevicesComponent } from './modules/flows/connected-devices/con
 import { AffectedFlowsReportComponent } from './modules/reports/affected-flows-report/affected-flows-report.component';
 import { AffectedFlowListComponent } from './modules/reports/affected-flow-list/affected-flow-list.component';
 import { WorldMapViewComponent } from './modules/topology/world-map-view/world-map-view.component';
+import { UseractivityListComponent } from './modules/useractivity/useractivity-list/useractivity-list.component';
 
 @NgModule({
   declarations: [
@@ -176,6 +177,7 @@ import { WorldMapViewComponent } from './modules/topology/world-map-view/world-m
     AffectedFlowsReportComponent,
     AffectedFlowListComponent,
     WorldMapViewComponent,
+    UseractivityListComponent,
   ],
   imports: [
     HttpClientModule,
