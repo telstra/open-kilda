@@ -40,12 +40,11 @@ services:
         - lab-api.pendev
     mem_limit: ${LAB_API_MEM_LIMIT:-256741824}
 
-{{if not (exists "/single_orientdb")}}
   odb1:
     container_name: odb1
     hostname: odb1.pendev
     image: orientdb:3.0.34
-    command: dserver.sh
+    command: /orientdb/init/run_and_init.sh
     volumes:
       - ./docker/orientdb/config/odb1:/orientdb/config
       - ./docker/orientdb/config/shared:/orientdb/config-shared
@@ -54,6 +53,13 @@ services:
     environment:
       ORIENTDB_ROOT_PASSWORD: root
       ORIENTDB_NODE_NAME: odb1.pendev
+{{if not (exists "/single_orientdb")}}
+    depends_on:
+      odb2:
+        condition: service_healthy
+      odb3:
+        condition: service_healthy
+{{end}}
     ports:
       - 2424:2424
       - 2480:2480
@@ -67,6 +73,7 @@ services:
         aliases:
           - odb1.pendev
 
+{{if not (exists "/single_orientdb")}}
   odb2:
     container_name: odb2
     hostname: odb2.pendev
@@ -81,7 +88,7 @@ services:
       ORIENTDB_ROOT_PASSWORD: root
       ORIENTDB_NODE_NAME: odb2.pendev
     depends_on:
-      odb1:
+      odb3:
         condition: service_healthy
     ports:
       - 2425:2424
@@ -95,13 +102,12 @@ services:
       default:
         aliases:
           - odb2.pendev
-{{end}}
 
   odb3:
     container_name: odb3
     hostname: odb3.pendev
     image: orientdb:3.0.34
-    command: /orientdb/init/run_and_init.sh
+    command: dserver.sh
     volumes:
       - ./docker/orientdb/config/odb3:/orientdb/config
       - ./docker/orientdb/config/shared:/orientdb/config-shared
@@ -110,13 +116,6 @@ services:
     environment:
       ORIENTDB_ROOT_PASSWORD: root
       ORIENTDB_NODE_NAME: odb3.pendev
-{{if not (exists "/single_orientdb")}}
-    depends_on:
-      odb1:
-        condition: service_healthy
-      odb2:
-        condition: service_healthy
-{{end}}
     ports:
       - 2426:2424
       - 2482:2480
@@ -129,6 +128,7 @@ services:
       default:
         aliases:
           - odb3.pendev
+{{end}}
 
   zookeeper:
     container_name: zookeeper
@@ -192,14 +192,14 @@ services:
         condition: service_healthy
       storm-supervisor:
         condition: service_healthy
-        {{if not (exists "/single_orientdb")}}
       odb1:
         condition: service_healthy
+{{if not (exists "/single_orientdb")}}
       odb2:
         condition: service_healthy
-        {{end}}
       odb3:
         condition: service_healthy
+{{end}}
 
   hbase:
     container_name: hbase
@@ -416,7 +416,7 @@ services:
         condition: service_healthy
 {{if not (exists "/no_logstash")}}      logstash:
         condition: service_started
-{{end}}      odb3:
+{{end}}      odb1:
         condition: service_healthy
     networks:
       default:
@@ -633,8 +633,8 @@ volumes:
   kafka_data:
   app_server_data:
   hbase_data:
-  {{if not (exists "/single_orientdb")}}
   odb1_data:
+{{if not (exists "/single_orientdb")}}
   odb2_data:
-{{end}}
   odb3_data:
+{{end}}
