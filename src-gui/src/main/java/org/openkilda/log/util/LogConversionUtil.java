@@ -17,7 +17,14 @@ package org.openkilda.log.util;
 
 import org.openkilda.log.constants.ActivityType;
 import org.openkilda.log.dao.entity.UserActivityEntity;
+import org.openkilda.log.model.ActivityTypeInfo;
 import org.openkilda.log.model.LogInfo;
+
+import org.usermanagement.dao.entity.UserEntity;
+import org.usermanagement.model.UserInfo;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class LogConversionUtil {
 
@@ -55,5 +62,44 @@ public final class LogConversionUtil {
         info.setActivityTime(userActivity.getActivityTime());
         info.setClientIpAddress(userActivity.getClientIp());
         return info;
+    }
+
+    /**
+     * Gets the user list.
+     *
+     * @param userEntities the user entities
+     * @return the user list
+     */
+    public static List<UserInfo> getUserInfo(List<UserEntity> userEntities) {
+        List<UserInfo> userList = new ArrayList<>();
+        for (UserEntity userEntity : userEntities) {
+            if (userEntity.getUserId() != 1) {
+                userList.add(toUserInfo(userEntity));
+            }
+        }
+        return userList;
+    }
+
+    private static UserInfo toUserInfo(UserEntity userEntity) {
+        UserInfo userInfo = new UserInfo();
+        userInfo.setEmail(userEntity.getEmail().toLowerCase());
+        userInfo.setUsername(userEntity.getUsername().toLowerCase());
+        userInfo.setStatus(userEntity.getStatusEntity().getStatus());
+        userInfo.setUserId(userEntity.getUserId());
+        return userInfo;
+    }
+
+    /**
+     * Gets the activity types.
+     *
+     * @return the activity types
+     */
+    public static List<ActivityTypeInfo> getActivityTypeInfo() {
+        List<ActivityTypeInfo> activityTypeInfos = new ArrayList<>();
+        for (ActivityType activityType : ActivityType.values()) {
+            activityTypeInfos.add(
+                    new ActivityTypeInfo(activityType.getId(), activityType.getActivityTypeEntity().getActivityName()));
+        }
+        return activityTypeInfos;
     }
 }

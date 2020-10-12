@@ -16,14 +16,17 @@
 package org.openkilda.service;
 
 import org.openkilda.auth.context.ServerContext;
+import org.openkilda.log.model.ActivityInfo;
+import org.openkilda.log.model.ActivityTypeInfo;
 import org.openkilda.log.model.LogInfo;
 import org.openkilda.log.service.UserActivityService;
+import org.openkilda.log.util.LogConversionUtil;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.dao.repository.UserRepository;
+import org.usermanagement.model.UserInfo;
 import org.usermanagement.util.ValidatorUtil;
 
 import java.util.ArrayList;
@@ -93,5 +96,24 @@ public class UserActivityLogService {
             }
         }
         return null;
+    }
+
+    /**
+     * Gets the activity types and users info.
+     *
+     * @return the ActivityInfo
+    */
+    public ActivityInfo getActivityInfo() {
+        ActivityInfo activityInfo = new ActivityInfo();
+        List<ActivityTypeInfo> activityTypeInfos = LogConversionUtil.getActivityTypeInfo();
+        List<UserInfo> userInfos = getAllUsers();
+        activityInfo.setActivityTypeInfo(activityTypeInfos);
+        activityInfo.setUserInfo(userInfos);
+        return activityInfo;
+    }
+    
+    public List<UserInfo> getAllUsers() {
+        List<UserEntity> userEntities = userRepository.findAll();
+        return LogConversionUtil.getUserInfo(userEntities);
     }
 }
