@@ -1,0 +1,9 @@
+---
+# First entry into DATABASECHANGELOG must have filled tag field or liquibase will not find tags on any other entry
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: UNKNOWN
+      changes:
+        - tagDatabase:
+            tag: big-bang
