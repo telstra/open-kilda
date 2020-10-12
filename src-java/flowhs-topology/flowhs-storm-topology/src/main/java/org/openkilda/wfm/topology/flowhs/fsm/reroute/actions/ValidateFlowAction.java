@@ -27,7 +27,6 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
-import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
@@ -71,8 +70,8 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
                 new HashSet<>(Optional.ofNullable(context.getAffectedIsl()).orElse(emptySet()));
         dashboardLogger.onFlowPathReroute(flowId, affectedIsl, context.isForceReroute());
 
-        Flow flow = persistenceManager.getTransactionManager().doInTransaction(() -> {
-            Flow foundFlow = getFlow(flowId, FetchStrategy.DIRECT_RELATIONS);
+        Flow flow = transactionManager.doInTransaction(() -> {
+            Flow foundFlow = getFlow(flowId);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
                 String message = format("Flow %s is in progress now", flowId);
                 stateMachine.setRerouteError(new RerouteError(message));
@@ -106,7 +105,6 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
                 stateMachine.setTargetPathComputationStrategy(foundFlow.getPathComputationStrategy());
             }
             foundFlow.setStatus(FlowStatus.IN_PROGRESS);
-            flowRepository.createOrUpdate(foundFlow);
             return foundFlow;
         });
 
@@ -114,7 +112,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
                 Optional.ofNullable(featureToggles.getFlowsRerouteUsingDefaultEncapType()).ifPresent(toggle -> {
                     if (toggle) {
                         stateMachine.setNewEncapsulationType(
-                                kildaConfigurationRepository.get().getFlowEncapsulationType());
+                                kildaConfigurationRepository.getOrDefault().getFlowEncapsulationType());
                     }
                 }));
 
@@ -199,10 +197,10 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
     }
 
     private IslEndpoint getSegmentSourceEndpoint(PathSegment segment) {
-        return new IslEndpoint(segment.getSrcSwitch().getSwitchId(), segment.getSrcPort());
+        return new IslEndpoint(segment.getSrcSwitchId(), segment.getSrcPort());
     }
 
     private IslEndpoint getSegmentDestEndpoint(PathSegment segment) {
-        return new IslEndpoint(segment.getDestSwitch().getSwitchId(), segment.getDestPort());
+        return new IslEndpoint(segment.getDestSwitchId(), segment.getDestPort());
     }
 }

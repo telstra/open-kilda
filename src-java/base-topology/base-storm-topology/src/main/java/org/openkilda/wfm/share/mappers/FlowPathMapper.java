@@ -50,9 +50,9 @@ public abstract class FlowPathMapper {
             int seqId = 0;
             List<PathNode> nodes = new ArrayList<>();
             for (PathSegment pathSegment : path.getSegments()) {
-                nodes.add(new PathNode(pathSegment.getSrcSwitch().getSwitchId(), pathSegment.getSrcPort(),
+                nodes.add(new PathNode(pathSegment.getSrcSwitchId(), pathSegment.getSrcPort(),
                         seqId++, pathSegment.getLatency()));
-                nodes.add(new PathNode(pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort(),
+                nodes.add(new PathNode(pathSegment.getDestSwitchId(), pathSegment.getDestPort(),
                         seqId++));
             }
 
@@ -76,7 +76,7 @@ public abstract class FlowPathMapper {
         Iterator<PathSegment> rightIter = pathSegments.iterator();
         if (! rightIter.hasNext()) {
             resultList.add(new PathNodePayload(
-                    flowPath.getSrcSwitch().getSwitchId(), ingress.getPortNumber(), egress.getPortNumber()));
+                    flowPath.getSrcSwitchId(), ingress.getPortNumber(), egress.getPortNumber()));
         } else {
             PathSegment left;
             PathSegment right = rightIter.next();
@@ -86,7 +86,7 @@ public abstract class FlowPathMapper {
                 left = leftIter.next();
                 right = rightIter.next();
                 resultList.add(new PathNodePayload(
-                        left.getDestSwitch().getSwitchId(), left.getDestPort(), right.getSrcPort()));
+                        left.getDestSwitchId(), left.getDestPort(), right.getSrcPort()));
             }
             resultList.add(new PathNodePayload(egress.getSwitchId(), right.getDestPort(), egress.getPortNumber()));
         }
@@ -113,22 +113,22 @@ public abstract class FlowPathMapper {
 
         if (flowPath.getSegments().isEmpty()) {
             resultList.add(
-                    new PathNodePayload(flowPath.getSrcSwitch().getSwitchId(), inPort, outPort));
+                    new PathNodePayload(flowPath.getSrcSwitchId(), inPort, outPort));
         } else {
             List<PathSegment> pathSegments = flowPath.getSegments();
 
-            resultList.add(new PathNodePayload(flowPath.getSrcSwitch().getSwitchId(), inPort,
+            resultList.add(new PathNodePayload(flowPath.getSrcSwitchId(), inPort,
                     pathSegments.get(0).getSrcPort()));
 
             for (int i = 1; i < pathSegments.size(); i++) {
                 PathSegment inputNode = pathSegments.get(i - 1);
                 PathSegment outputNode = pathSegments.get(i);
 
-                resultList.add(new PathNodePayload(inputNode.getDestSwitch().getSwitchId(), inputNode.getDestPort(),
+                resultList.add(new PathNodePayload(inputNode.getDestSwitchId(), inputNode.getDestPort(),
                         outputNode.getSrcPort()));
             }
 
-            resultList.add(new PathNodePayload(flowPath.getDestSwitch().getSwitchId(),
+            resultList.add(new PathNodePayload(flowPath.getDestSwitchId(),
                     pathSegments.get(pathSegments.size() - 1).getDestPort(), outPort));
         }
 

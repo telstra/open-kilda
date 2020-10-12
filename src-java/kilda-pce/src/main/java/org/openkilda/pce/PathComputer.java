@@ -23,6 +23,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -51,7 +52,8 @@ public interface PathComputer {
      *                               be reused in new path computation.
      * @return {@link PathPair} instances
      */
-    GetPathsResult getPath(Flow flow, List<PathId> reusePathsResources, PathComputationStrategy... backUpStrategies)
+    GetPathsResult getPath(Flow flow, Collection<PathId> reusePathsResources,
+                           PathComputationStrategy... backUpStrategies)
             throws UnroutableFlowException, RecoverableException;
 
     /**

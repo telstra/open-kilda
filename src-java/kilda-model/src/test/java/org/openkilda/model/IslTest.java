@@ -30,7 +30,10 @@ public class IslTest {
 
     @Test
     public void shouldComputeIsUnstable() {
-        Isl isl = new Isl();
+        Isl isl = Isl.builder()
+                .srcSwitch(Switch.builder().switchId(new SwitchId(1)).build())
+                .destSwitch(Switch.builder().switchId(new SwitchId(2)).build())
+                .build();
         isl.setIslConfig(islConfig);
 
         isl.setTimeUnstable(Instant.now().minus(islConfig.getUnstableIslTimeout()));

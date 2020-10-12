@@ -47,13 +47,13 @@ public abstract class IslMapper {
         }
 
         PathNode src = new PathNode();
-        src.setSwitchId(isl.getSrcSwitch().getSwitchId());
+        src.setSwitchId(isl.getSrcSwitchId());
         src.setPortNo(isl.getSrcPort());
         src.setSegLatency(isl.getLatency());
         src.setSeqId(0);
 
         PathNode dst = new PathNode();
-        dst.setSwitchId(isl.getDestSwitch().getSwitchId());
+        dst.setSwitchId(isl.getDestSwitchId());
         dst.setPortNo(isl.getDestPort());
         dst.setSegLatency(isl.getLatency());
         dst.setSeqId(1);
@@ -74,29 +74,29 @@ public abstract class IslMapper {
             return null;
         }
 
-        Isl isl = new Isl();
-
+        Isl.IslBuilder isl = Isl.builder();
         PathNode sourcePathNode = islInfoData.getSource();
         if (sourcePathNode != null) {
-            isl.setSrcSwitch(Switch.builder().switchId(sourcePathNode.getSwitchId()).build());
-            isl.setSrcPort(sourcePathNode.getPortNo());
+            isl.srcSwitch(Switch.builder().switchId(sourcePathNode.getSwitchId()).build())
+                    .srcPort(sourcePathNode.getPortNo());
         }
 
         PathNode destinationPathNode = islInfoData.getDestination();
         if (destinationPathNode != null) {
-            isl.setDestSwitch(Switch.builder().switchId(destinationPathNode.getSwitchId()).build());
-            isl.setDestPort(destinationPathNode.getPortNo());
+            isl.destSwitch(Switch.builder().switchId(destinationPathNode.getSwitchId()).build())
+                    .destPort(destinationPathNode.getPortNo());
         }
-        isl.setLatency((int) islInfoData.getLatency());
-        isl.setSpeed(islInfoData.getSpeed());
-        isl.setAvailableBandwidth(islInfoData.getAvailableBandwidth());
-        isl.setStatus(map(islInfoData.getState()));
-        isl.setCost(islInfoData.getCost());
-        isl.setUnderMaintenance(islInfoData.isUnderMaintenance());
-        isl.setEnableBfd(islInfoData.isEnableBfd());
-        isl.setBfdSessionStatus(map(islInfoData.getBfdSessionStatus()));
 
-        return isl;
+        isl.latency((int) islInfoData.getLatency())
+                .speed(islInfoData.getSpeed())
+                .availableBandwidth(islInfoData.getAvailableBandwidth())
+                .status(map(islInfoData.getState()))
+                .cost(islInfoData.getCost())
+                .underMaintenance(islInfoData.isUnderMaintenance())
+                .enableBfd(islInfoData.isEnableBfd())
+                .bfdSessionStatus(map(islInfoData.getBfdSessionStatus()));
+
+        return isl.build();
     }
 
     /**

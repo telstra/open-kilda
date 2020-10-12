@@ -73,7 +73,7 @@ public class PathsService {
             throw new SwitchNotFoundException(dstSwitchId);
         }
 
-        KildaConfiguration kildaConfiguration = kildaConfigurationRepository.get();
+        KildaConfiguration kildaConfiguration = kildaConfigurationRepository.getOrDefault();
         FlowEncapsulationType flowEncapsulationType = Optional.ofNullable(requestEncapsulationType)
                 .orElse(kildaConfiguration.getFlowEncapsulationType());
         PathComputationStrategy pathComputationStrategy = Optional.ofNullable(requestPathComputationStrategy)

@@ -36,13 +36,14 @@ import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
@@ -60,7 +61,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import net.jodah.failsafe.SyncFailsafe;
-import org.neo4j.driver.v1.exceptions.ClientException;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -99,7 +99,7 @@ public class FlowOperationsService {
 
     private SyncFailsafe getReadOperationFailsafe() {
         return Failsafe.with(new RetryPolicy()
-                .retryOn(ClientException.class)
+                .retryOn(PersistenceException.class)
                 .withDelay(RETRY_DELAY, TimeUnit.MILLISECONDS)
                 .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT))
                 .onRetry(e -> log.warn("Retrying transaction finished with exception", e))
@@ -164,7 +164,9 @@ public class FlowOperationsService {
             throw new IslNotFoundException(srcSwitchId, srcPort, dstSwitchId, dstPort);
         }
 
-        return flowPathRepository.findWithPathSegment(srcSwitchId, srcPort, dstSwitchId, dstPort);
+        Collection<FlowPath> paths = flowPathRepository.findWithPathSegment(srcSwitchId, srcPort, dstSwitchId, dstPort);
+        paths.forEach(path -> flowPathRepository.detach(path));
+        return paths;
     }
 
     /**
@@ -216,7 +218,9 @@ public class FlowOperationsService {
     public Collection<FlowPath> getFlowPathsForSwitch(SwitchId switchId) {
         flowDashboardLogger.onFlowPathsDumpBySwitch(switchId);
 
-        return flowPathRepository.findBySegmentSwitch(switchId);
+        Collection<FlowPath> paths = flowPathRepository.findBySegmentSwitch(switchId);
+        paths.forEach(path -> flowPathRepository.detach(path));
+        return paths;
     }
 
     /**
@@ -337,8 +341,6 @@ public class FlowOperationsService {
 
             flowDashboardLogger.onFlowPatchUpdate(currentFlow);
 
-            flowRepository.createOrUpdate(currentFlow);
-
             return Optional.of(result.updatedFlow(currentFlow).build());
 
         }).orElseThrow(() -> new FlowNotFoundException(flowPatch.getFlowId()));
@@ -395,7 +397,7 @@ public class FlowOperationsService {
         }
 
         boolean updateRequired =  flowPatch.getSource().getSwitchId() != null
-                && !flow.getSrcSwitch().getSwitchId().equals(flowPatch.getSource().getSwitchId());
+                && !flow.getSrcSwitchId().equals(flowPatch.getSource().getSwitchId());
         updateRequired |= flowPatch.getSource().getPortNumber() != null
                 && flow.getSrcPort() != flowPatch.getSource().getPortNumber();
         updateRequired |= flowPatch.getSource().getVlanId() != null
@@ -417,7 +419,7 @@ public class FlowOperationsService {
         }
 
         boolean updateRequired =  flowPatch.getDestination().getSwitchId() != null
-                && !flow.getDestSwitch().getSwitchId().equals(flowPatch.getDestination().getSwitchId());
+                && !flow.getDestSwitchId().equals(flowPatch.getDestination().getSwitchId());
         updateRequired |= flowPatch.getDestination().getPortNumber() != null
                 && flow.getDestPort() != flowPatch.getDestination().getPortNumber();
         updateRequired |= flowPatch.getDestination().getVlanId() != null

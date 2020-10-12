@@ -49,10 +49,10 @@ public abstract class RequestedFlowMapper {
      * Convert {@link Flow} to {@link RequestedFlow}.
      */
     @Mapping(source = "flowId", target = "flowId")
-    @Mapping(target = "srcSwitch", expression = "java(flow.getSrcSwitch().getSwitchId())")
+    @Mapping(target = "srcSwitch", expression = "java(flow.getSrcSwitchId())")
     @Mapping(source = "srcPort", target = "srcPort")
     @Mapping(source = "srcVlan", target = "srcVlan")
-    @Mapping(target = "destSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
+    @Mapping(target = "destSwitch", expression = "java(flow.getDestSwitchId())")
     @Mapping(source = "destPort", target = "destPort")
     @Mapping(source = "destVlan", target = "destVlan")
     @Mapping(source = "encapsulationType", target = "flowEncapsulationType")
@@ -103,8 +103,6 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "groupId", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "statusInfo", ignore = true)
-    @Mapping(target = "timeCreate", ignore = true)
-    @Mapping(target = "timeModify", ignore = true)
     @Mapping(target = "targetPathComputationStrategy", ignore = true)
     public abstract Flow toFlow(RequestedFlow requestedFlow);
 
@@ -145,9 +143,9 @@ public abstract class RequestedFlowMapper {
      * Convert {@link Flow} to {@link FlowRequest}.
      */
     @Mapping(target = "flowId", source = "flowId")
-    @Mapping(target = "source", expression = "java(new FlowEndpoint(flow.getSrcSwitch().getSwitchId(), "
+    @Mapping(target = "source", expression = "java(new FlowEndpoint(flow.getSrcSwitchId(), "
             + "flow.getSrcPort(), flow.getSrcVlan()))")
-    @Mapping(target = "destination", expression = "java(new FlowEndpoint(flow.getDestSwitch().getSwitchId(), "
+    @Mapping(target = "destination", expression = "java(new FlowEndpoint(flow.getDestSwitchId(), "
             + "flow.getDestPort(), flow.getDestVlan()))")
     @Mapping(target = "encapsulationType", source = "encapsulationType")
     @Mapping(target = "pathComputationStrategy",

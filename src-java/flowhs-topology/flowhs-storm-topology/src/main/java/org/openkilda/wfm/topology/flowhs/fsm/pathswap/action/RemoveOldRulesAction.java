@@ -52,7 +52,7 @@ public class RemoveOldRulesAction
         FlowPath oldPrimaryReverse = flow.getProtectedReversePath();
 
         SpeakerRequestBuildContext speakerContext = buildSpeakerContextForRemovalIngressOnly(
-                flow.getSrcSwitch().getSwitchId(), flow.getDestSwitch().getSwitchId());
+                flow.getSrcSwitchId(), flow.getDestSwitchId());
 
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(commandBuilder.buildIngressOnly(
                 stateMachine.getCommandContext(), flow, oldPrimaryForward, oldPrimaryReverse, speakerContext));

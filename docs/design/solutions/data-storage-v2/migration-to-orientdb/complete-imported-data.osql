@@ -1,0 +1,12 @@
+DELETE VERTEX switch_properties WHERE first(in("has")) is null;
+DELETE VERTEX link_props WHERE cost is null AND max_bandwidth is null;
+
+UPDATE switch_properties SET switch_id = in("has").name, switch_lldp = coalesce(switch_lldp, false), switch_arp = coalesce(switch_arp, false), server42_flow_rtt = coalesce(server42_flow_rtt, false);
+UPDATE switch_connected_device SET switch_id = in("has").name;
+UPDATE port_properties SET switch_id = in("owns").name;
+UPDATE path_segment SET src_switch_id = out("source").name, dst_switch_id = out("destination").name, path_id = in("owns").path_id, ignore_bandwidth = first(in("owns").ignore_bandwidth), bandwidth = first(in("owns").bandwidth);
+UPDATE flow_path SET src_switch_id = out("source").name, dst_switch_id = out("destination").name, flow_id = in("owns").flow_id;
+UPDATE flow SET src_switch_id = out("source").name, dst_switch_id = out("destination").name;
+UPDATE flow SET src_inner_vlan = 0 WHERE src_inner_vlan IS null;
+UPDATE flow SET dst_inner_vlan = 0 WHERE dst_inner_vlan IS null;
+UPDATE isl SET src_switch_id = outV().name, dst_switch_id = inV().name;

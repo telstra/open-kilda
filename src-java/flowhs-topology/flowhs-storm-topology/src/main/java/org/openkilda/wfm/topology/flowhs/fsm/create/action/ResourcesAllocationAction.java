@@ -25,7 +25,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.model.Isl;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.FlowSegmentCookie.FlowSegmentCookieBuilder;
@@ -35,6 +35,7 @@ import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -60,20 +61,23 @@ import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathBuilder;
 
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeException;
 import net.jodah.failsafe.RetryPolicy;
+import net.jodah.failsafe.SyncFailsafe;
 import org.apache.commons.lang3.StringUtils;
-import org.neo4j.driver.v1.exceptions.TransientException;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, State, Event, FlowCreateContext> {
     private final PathComputer pathComputer;
-    private final int transactionRetriesLimit;
+    protected final int pathAllocationRetriesLimit;
+    protected final int pathAllocationRetryDelay;
     private final FlowResourcesManager resourcesManager;
     private final SwitchRepository switchRepository;
     private final IslRepository islRepository;
@@ -83,11 +87,13 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
     private final FlowCommandBuilderFactory commandBuilderFactory;
 
     public ResourcesAllocationAction(PathComputer pathComputer, PersistenceManager persistenceManager,
-                                     int transactionRetriesLimit, FlowResourcesManager resourcesManager) {
+                                     int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
+                                     FlowResourcesManager resourcesManager) {
         super(persistenceManager);
 
         this.pathComputer = pathComputer;
-        this.transactionRetriesLimit = transactionRetriesLimit;
+        this.pathAllocationRetriesLimit = pathAllocationRetriesLimit;
+        this.pathAllocationRetryDelay = pathAllocationRetryDelay;
         this.resourcesManager = resourcesManager;
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
@@ -100,20 +106,33 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
     @Override
     protected Optional<Message> performWithResponse(State from, State to, Event event, FlowCreateContext context,
                                                     FlowCreateFsm stateMachine) throws FlowProcessingException {
-        log.debug("Allocation resources has been started");
-
-        Optional<Flow> optionalFlow = getFlow(context, stateMachine.getFlowId());
-        if (!optionalFlow.isPresent()) {
-            log.warn("Flow {} has been deleted while creation was in progress", stateMachine.getFlowId());
-            return Optional.empty();
-        }
-
-        Flow flow = optionalFlow.get();
         try {
-            getFlowGroupFromContext(context).ifPresent(flow::setGroupId);
-            createFlowWithPaths(stateMachine, flow);
-            createSpeakerRequestFactories(stateMachine, flow);
-        } catch (UnroutableFlowException e) {
+            String flowId = stateMachine.getFlowId();
+            log.debug("Allocation resources has been started");
+            stateMachine.setPathsBeenAllocated(false);
+
+            if (context != null && context.getTargetFlow() != null) {
+                createFlow(context.getTargetFlow());
+            } else if (!flowRepository.exists(flowId)) {
+                log.warn("Flow {} has been deleted while creation was in progress", flowId);
+                return Optional.empty();
+            }
+
+            createPaths(stateMachine);
+
+            log.debug("Resources allocated successfully for the flow {}", flowId);
+            stateMachine.setPathsBeenAllocated(true);
+
+            Flow resultFlow = getFlow(flowId);
+            createSpeakerRequestFactories(stateMachine, resultFlow);
+            saveHistory(stateMachine, resultFlow);
+            if (resultFlow.isOneSwitchFlow()) {
+                stateMachine.fire(Event.SKIP_NON_INGRESS_RULES_INSTALL);
+            } else {
+                stateMachine.fireNext(context);
+            }
+            return Optional.of(buildResponseMessage(resultFlow, stateMachine.getCommandContext()));
+        } catch (UnroutableFlowException | RecoverableException e) {
             throw new FlowProcessingException(ErrorType.NOT_FOUND,
                     "Not enough bandwidth or no path found. " + e.getMessage(), e);
         } catch (ResourceAllocationException e) {
@@ -131,76 +150,52 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
                 return Optional.empty();
             }
         }
-
-        saveHistory(stateMachine, flow);
-        if (flow.isOneSwitchFlow()) {
-            stateMachine.fire(Event.SKIP_NON_INGRESS_RULES_INSTALL);
-        } else {
-            stateMachine.fireNext(context);
-        }
-
-        return Optional.of(buildResponseMessage(flow, stateMachine.getCommandContext()));
     }
 
-    private Optional<Flow> getFlow(FlowCreateContext context, String flowId) {
-        Optional<RequestedFlow> targetFlow = Optional.ofNullable(context)
-                .map(FlowCreateContext::getTargetFlow);
-        if (targetFlow.isPresent()) {
-            Flow flow = RequestedFlowMapper.INSTANCE.toFlow(targetFlow.get());
-            flow.setStatus(FlowStatus.IN_PROGRESS);
-            flow.setSrcSwitch(switchRepository.reload(flow.getSrcSwitch()));
-            flow.setDestSwitch(switchRepository.reload(flow.getDestSwitch()));
-
-            return Optional.of(flow);
-        } else {
-            // if flow is not in the context - it means that we are in progress of the retry, so flow should exist in DB
-            return flowRepository.findById(flowId);
+    private void createFlow(RequestedFlow targetFlow) throws FlowNotFoundException, FlowAlreadyExistException {
+        try {
+            transactionManager.doInTransaction(() -> {
+                Flow flow = RequestedFlowMapper.INSTANCE.toFlow(targetFlow);
+                flow.setStatus(FlowStatus.IN_PROGRESS);
+                getFlowGroupFromContext(targetFlow.getDiverseFlowId())
+                        .ifPresent(flow::setGroupId);
+                flowRepository.add(flow);
+            });
+        } catch (ConstraintViolationException e) {
+            throw new FlowAlreadyExistException(format("Failed to save flow with id %s", targetFlow.getFlowId()), e);
         }
     }
 
-    private Optional<String> getFlowGroupFromContext(FlowCreateContext context) throws FlowNotFoundException {
-        if (context != null) {
-            String diverseFlowId = context.getTargetFlow().getDiverseFlowId();
-            if (StringUtils.isNotBlank(diverseFlowId)) {
-                return flowRepository.getOrCreateFlowGroupId(diverseFlowId)
-                        .map(Optional::of)
-                        .orElseThrow(() -> new FlowNotFoundException(diverseFlowId));
-            }
+    private Optional<String> getFlowGroupFromContext(String diverseFlowId) throws FlowNotFoundException {
+        if (StringUtils.isNotBlank(diverseFlowId)) {
+            return flowRepository.getOrCreateFlowGroupId(diverseFlowId)
+                    .map(Optional::of)
+                    .orElseThrow(() -> new FlowNotFoundException(diverseFlowId));
         }
         return Optional.empty();
     }
 
-    private void createFlowWithPaths(FlowCreateFsm fsm, Flow flow) throws UnroutableFlowException,
-            ResourceAllocationException, FlowNotFoundException, FlowAlreadyExistException {
-        try {
-            Failsafe.with(new RetryPolicy()
-                    .retryOn(RecoverableException.class)
-                    .retryOn(ResourceAllocationException.class)
-                    .retryOn(TransientException.class)
-                    .withMaxRetries(transactionRetriesLimit))
-                    .onRetry(e -> log.warn("Retrying transaction for resource allocation finished with exception", e))
-                    .onRetriesExceeded(e -> log.warn("TX retry attempts exceed with error", e))
-                    .run(() -> persistenceManager.getTransactionManager().doInTransaction(() -> {
-                        allocateMainPath(fsm, flow);
-                        if (flow.isAllocateProtectedPath()) {
-                            allocateProtectedPath(fsm, flow);
-                        }
-                    }));
-        } catch (FailsafeException ex) {
-            Throwable cause = ex.getCause();
-            if (cause instanceof UnroutableFlowException) {
-                throw (UnroutableFlowException) cause;
-            } else if (cause instanceof ResourceAllocationException) {
-                throw (ResourceAllocationException) cause;
-            } else if (cause instanceof FlowNotFoundException) {
-                throw (FlowNotFoundException) cause;
-            } else {
-                throw ex;
-            }
-        } catch (ConstraintViolationException e) {
-            throw new FlowAlreadyExistException(format("Failed to save flow with id %s", flow.getFlowId()), e);
+    @SneakyThrows
+    private void createPaths(FlowCreateFsm stateMachine) throws UnroutableFlowException,
+            RecoverableException, ResourceAllocationException, FlowNotFoundException, FlowAlreadyExistException {
+        RetryPolicy pathAllocationRetryPolicy = new RetryPolicy()
+                .retryOn(RecoverableException.class)
+                .retryOn(ResourceAllocationException.class)
+                .retryOn(UnroutableFlowException.class)
+                .retryOn(PersistenceException.class)
+                .withMaxRetries(pathAllocationRetriesLimit);
+        if (pathAllocationRetryDelay > 0) {
+            pathAllocationRetryPolicy.withDelay(pathAllocationRetryDelay, TimeUnit.MILLISECONDS);
         }
-        log.debug("Resources allocated successfully for the flow {}", flow.getFlowId());
+        SyncFailsafe failsafe = Failsafe.with(pathAllocationRetryPolicy)
+                .onRetry(e -> log.warn("Failure in resource allocation. Retrying...", e))
+                .onRetriesExceeded(e -> log.warn("Failure in resource allocation. No more retries", e));
+        try {
+            failsafe.run(() -> allocateMainPath(stateMachine));
+            failsafe.run(() -> allocateProtectedPath(stateMachine));
+        } catch (FailsafeException ex) {
+            throw ex.getCause();
+        }
     }
 
     private void createSpeakerRequestFactories(FlowCreateFsm stateMachine, Flow flow) {
@@ -212,7 +207,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         // ingress
         requestFactories = stateMachine.getIngressCommands();
         SpeakerRequestBuildContext buildContext = buildBaseSpeakerContextForInstall(
-                flow.getSrcSwitch().getSwitchId(), flow.getDestSwitch().getSwitchId());
+                flow.getSrcSwitchId(), flow.getDestSwitchId());
         requestFactories.addAll(commandBuilder.buildIngressOnly(stateMachine.getCommandContext(), flow, buildContext));
 
         // non ingress
@@ -225,102 +220,115 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         }
     }
 
-    private void allocateMainPath(FlowCreateFsm fsm, Flow flow) throws UnroutableFlowException,
+    private void allocateMainPath(FlowCreateFsm stateMachine) throws UnroutableFlowException,
             RecoverableException, ResourceAllocationException {
-        GetPathsResult paths = pathComputer.getPath(flow);
-        FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
-        final FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
-                .flowEffectiveId(flowResources.getUnmaskedCookie());
+        GetPathsResult paths = pathComputer.getPath(getFlow(stateMachine.getFlowId()));
 
-        FlowPath forward = flowPathBuilder.buildFlowPath(
-                flow, flowResources.getForward(), paths.getForward(),
-                cookieBuilder.direction(FlowPathDirection.FORWARD).build(), false);
-        forward.setStatus(FlowPathStatus.IN_PROGRESS);
-        flow.setForwardPath(forward);
+        log.debug("Creating the primary path {} for flow {}", paths, stateMachine.getFlowId());
 
-        FlowPath reverse = flowPathBuilder.buildFlowPath(
-                flow, flowResources.getReverse(), paths.getReverse(),
-                cookieBuilder.direction(FlowPathDirection.REVERSE).build(), false);
-        reverse.setStatus(FlowPathStatus.IN_PROGRESS);
-        flow.setReversePath(reverse);
+        transactionManager.doInTransaction(() -> {
+            Flow flow = getFlow(stateMachine.getFlowId());
+            FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
+            final FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
+                    .flowEffectiveId(flowResources.getUnmaskedCookie());
 
-        flowPathRepository.lockInvolvedSwitches(forward, reverse);
-        flowRepository.createOrUpdate(flow);
+            FlowPath forward = flowPathBuilder.buildFlowPath(
+                    flow, flowResources.getForward(), paths.getForward(),
+                    cookieBuilder.direction(FlowPathDirection.FORWARD).build(), false);
+            forward.setStatus(FlowPathStatus.IN_PROGRESS);
+            flowPathRepository.add(forward);
+            flow.setForwardPath(forward);
 
-        updateIslsForFlowPath(forward);
-        updateIslsForFlowPath(reverse);
+            FlowPath reverse = flowPathBuilder.buildFlowPath(
+                    flow, flowResources.getReverse(), paths.getReverse(),
+                    cookieBuilder.direction(FlowPathDirection.REVERSE).build(), false);
+            reverse.setStatus(FlowPathStatus.IN_PROGRESS);
+            flowPathRepository.add(reverse);
+            flow.setReversePath(reverse);
 
-        fsm.setForwardPathId(forward.getPathId());
-        fsm.setReversePathId(reverse.getPathId());
-        log.debug("Allocated resources for the flow {}: {}", flow.getFlowId(), flowResources);
+            updateIslsForFlowPath(forward);
+            updateIslsForFlowPath(reverse);
 
-        fsm.getFlowResources().add(flowResources);
+            stateMachine.setForwardPathId(forward.getPathId());
+            stateMachine.setReversePathId(reverse.getPathId());
+            log.debug("Allocated resources for the flow {}: {}", flow.getFlowId(), flowResources);
+            stateMachine.getFlowResources().add(flowResources);
+        });
     }
 
-    private void allocateProtectedPath(FlowCreateFsm fsm, Flow flow) throws UnroutableFlowException,
+    private void allocateProtectedPath(FlowCreateFsm stateMachine) throws UnroutableFlowException,
             RecoverableException, ResourceAllocationException, FlowNotFoundException {
-        flow.setGroupId(getGroupId(flow.getFlowId()));
-        GetPathsResult protectedPath = pathComputer.getPath(flow);
+        String flowId = stateMachine.getFlowId();
+        Flow tmpFlow = getFlow(flowId);
+        if (!tmpFlow.isAllocateProtectedPath()) {
+            return;
+        }
+        tmpFlow.setGroupId(flowRepository.getOrCreateFlowGroupId(flowId)
+                .orElseThrow(() -> new FlowNotFoundException(flowId)));
+        GetPathsResult protectedPath = pathComputer.getPath(tmpFlow);
 
         boolean overlappingProtectedPathFound =
-                flowPathBuilder.arePathsOverlapped(protectedPath.getForward(), flow.getForwardPath())
-                        || flowPathBuilder.arePathsOverlapped(protectedPath.getReverse(), flow.getReversePath());
+                flowPathBuilder.arePathsOverlapped(protectedPath.getForward(), tmpFlow.getForwardPath())
+                        || flowPathBuilder.arePathsOverlapped(protectedPath.getReverse(), tmpFlow.getReversePath());
         if (overlappingProtectedPathFound) {
-            log.info("Couldn't find non overlapping protected path. Result flow state: {}", flow);
-            throw new UnroutableFlowException("Couldn't find non overlapping protected path", flow.getFlowId());
+            log.info("Couldn't find non overlapping protected path. Result flow state: {}", tmpFlow);
+            throw new UnroutableFlowException("Couldn't find non overlapping protected path", tmpFlow.getFlowId());
         }
 
-        log.debug("Creating the protected path {} for flow {}", protectedPath, flow);
+        log.debug("Creating the protected path {} for flow {}", protectedPath, tmpFlow);
 
-        FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
-        final FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
-                .flowEffectiveId(flowResources.getUnmaskedCookie());
+        transactionManager.doInTransaction(() -> {
+            Flow flow = getFlow(flowId);
 
-        FlowPath forward = flowPathBuilder.buildFlowPath(
-                flow, flowResources.getForward(), protectedPath.getForward(),
-                cookieBuilder.direction(FlowPathDirection.FORWARD).build(), false);
-        forward.setStatus(FlowPathStatus.IN_PROGRESS);
-        flow.setProtectedForwardPath(forward);
-        fsm.setProtectedForwardPathId(forward.getPathId());
+            FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
+            final FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
+                    .flowEffectiveId(flowResources.getUnmaskedCookie());
 
-        FlowPath reverse = flowPathBuilder.buildFlowPath(
-                flow, flowResources.getReverse(), protectedPath.getReverse(),
-                cookieBuilder.direction(FlowPathDirection.REVERSE).build(), false);
-        reverse.setStatus(FlowPathStatus.IN_PROGRESS);
-        flow.setProtectedReversePath(reverse);
-        fsm.setProtectedReversePathId(reverse.getPathId());
+            FlowPath forward = flowPathBuilder.buildFlowPath(
+                    flow, flowResources.getForward(), protectedPath.getForward(),
+                    cookieBuilder.direction(FlowPathDirection.FORWARD).build(), false);
+            forward.setStatus(FlowPathStatus.IN_PROGRESS);
+            flowPathRepository.add(forward);
+            flow.setProtectedForwardPath(forward);
 
-        flowPathRepository.lockInvolvedSwitches(forward, reverse);
-        flowRepository.createOrUpdate(flow);
+            FlowPath reverse = flowPathBuilder.buildFlowPath(
+                    flow, flowResources.getReverse(), protectedPath.getReverse(),
+                    cookieBuilder.direction(FlowPathDirection.REVERSE).build(), false);
+            reverse.setStatus(FlowPathStatus.IN_PROGRESS);
+            flowPathRepository.add(reverse);
+            flow.setProtectedReversePath(reverse);
 
-        updateIslsForFlowPath(forward);
-        updateIslsForFlowPath(reverse);
-        fsm.getFlowResources().add(flowResources);
+            updateIslsForFlowPath(forward);
+            updateIslsForFlowPath(reverse);
+
+            stateMachine.setProtectedForwardPathId(forward.getPathId());
+            stateMachine.setProtectedReversePathId(reverse.getPathId());
+            log.debug("Allocated resources for the flow {}: {}", flow.getFlowId(), flowResources);
+            stateMachine.getFlowResources().add(flowResources);
+        });
     }
 
-    private void updateIslsForFlowPath(FlowPath path) {
-        path.getSegments().forEach(pathSegment -> {
+    private void updateIslsForFlowPath(FlowPath flowPath) throws ResourceAllocationException {
+        for (PathSegment pathSegment : flowPath.getSegments()) {
             log.debug("Updating ISL for the path segment: {}", pathSegment);
 
-            updateAvailableBandwidth(pathSegment.getSrcSwitch().getSwitchId(), pathSegment.getSrcPort(),
-                    pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort());
-        });
+            updateAvailableBandwidth(pathSegment.getSrcSwitchId(), pathSegment.getSrcPort(),
+                    pathSegment.getDestSwitchId(), pathSegment.getDestPort());
+        }
     }
 
-    private void updateAvailableBandwidth(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort) {
+    private void updateAvailableBandwidth(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort)
+            throws ResourceAllocationException {
         long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(srcSwitch, srcPort,
                 dstSwitch, dstPort);
-
-        Optional<Isl> matchedIsl = islRepository.findByEndpoints(srcSwitch, srcPort, dstSwitch, dstPort);
-        matchedIsl.ifPresent(isl -> {
-            isl.setAvailableBandwidth(isl.getMaxBandwidth() - usedBandwidth);
-            islRepository.createOrUpdate(isl);
-        });
-    }
-
-    private String getGroupId(String flowId) throws FlowNotFoundException {
-        return flowRepository.getOrCreateFlowGroupId(flowId)
-                .orElseThrow(() -> new FlowNotFoundException(flowId));
+        log.debug("Updating ISL {}_{}-{}_{} with used bandwidth {}", srcSwitch, srcPort, dstSwitch, dstPort,
+                usedBandwidth);
+        long islAvailableBandwidth =
+                islRepository.updateAvailableBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth);
+        if (islAvailableBandwidth < 0) {
+            throw new ResourceAllocationException(format("ISL %s_%d-%s_%d was overprovisioned",
+                    srcSwitch, srcPort, dstSwitch, dstPort));
+        }
     }
 
     private void saveHistory(FlowCreateFsm stateMachine, Flow flow) {

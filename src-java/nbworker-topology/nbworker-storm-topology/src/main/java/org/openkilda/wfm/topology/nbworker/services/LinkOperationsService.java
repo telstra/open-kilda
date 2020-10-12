@@ -19,10 +19,10 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.error.IllegalIslStateException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.share.model.Endpoint;
@@ -83,9 +83,6 @@ public class LinkOperationsService {
             isl.setUnderMaintenance(underMaintenance);
             reverceIsl.setUnderMaintenance(underMaintenance);
 
-            islRepository.createOrUpdate(isl);
-            islRepository.createOrUpdate(reverceIsl);
-
             return Optional.of(Arrays.asList(isl, reverceIsl));
         }).orElseThrow(() -> new IslNotFoundException(srcSwitchId, srcPort, dstSwitchId, dstPort));
     }
@@ -120,34 +117,37 @@ public class LinkOperationsService {
                         + "force '{}'",
                 sourceSwitch, sourcePort, destinationSwitch, destinationPort, force);
 
-        List<Isl> isls = new ArrayList<>();
+        return transactionManager.doInTransaction(() -> {
+            List<Isl> isls = new ArrayList<>();
 
-        islRepository.findByEndpoints(sourceSwitch, sourcePort,
-                destinationSwitch, destinationPort).ifPresent(isls::add);
-        islRepository.findByEndpoints(destinationSwitch, destinationPort,
-                sourceSwitch, sourcePort).ifPresent(isls::add);
+            islRepository.findByEndpoints(sourceSwitch, sourcePort,
+                    destinationSwitch, destinationPort).ifPresent(isls::add);
+            islRepository.findByEndpoints(destinationSwitch, destinationPort,
+                    sourceSwitch, sourcePort).ifPresent(isls::add);
 
-        if (isls.isEmpty()) {
-            throw new IslNotFoundException(sourceSwitch, sourcePort, destinationSwitch, destinationPort);
-        }
-
-        if (!force) {
-            if (isls.stream().anyMatch(x -> x.getStatus() == IslStatus.ACTIVE)) {
-                throw new IllegalIslStateException(sourceSwitch, sourcePort, destinationSwitch, destinationPort,
-                        "ISL must NOT be in active state.");
+            if (isls.isEmpty()) {
+                throw new IslNotFoundException(sourceSwitch, sourcePort, destinationSwitch, destinationPort);
             }
 
-            Collection<FlowPath> flowPaths = flowPathRepository.findWithPathSegment(sourceSwitch, sourcePort,
-                    destinationSwitch, destinationPort);
-            if (!flowPaths.isEmpty()) {
-                throw new IllegalIslStateException(sourceSwitch, sourcePort, destinationSwitch, destinationPort,
-                        "This ISL is busy by flow paths.");
+            if (!force) {
+                if (isls.stream().anyMatch(x -> x.getStatus() == IslStatus.ACTIVE)) {
+                    throw new IllegalIslStateException(sourceSwitch, sourcePort, destinationSwitch, destinationPort,
+                            "ISL must NOT be in active state.");
+                }
+
+                Collection<FlowPath> flowPaths = flowPathRepository.findWithPathSegment(sourceSwitch, sourcePort,
+                        destinationSwitch, destinationPort);
+                if (!flowPaths.isEmpty()) {
+                    throw new IllegalIslStateException(sourceSwitch, sourcePort, destinationSwitch, destinationPort,
+                            "This ISL is busy by flow paths.");
+                }
             }
-        }
 
-        isls.forEach(islRepository::delete);
+            isls.forEach(islRepository::remove);
+            log.info("ISLs {} have been removed from the database", isls);
 
-        return isls;
+            return isls;
+        });
     }
 
     /**
@@ -184,7 +184,6 @@ public class LinkOperationsService {
             madeChange = target.isEnableBfd() != flagValue;
 
             target.setEnableBfd(flagValue);
-            islRepository.createOrUpdate(target);
 
             processed.add(target);
         }

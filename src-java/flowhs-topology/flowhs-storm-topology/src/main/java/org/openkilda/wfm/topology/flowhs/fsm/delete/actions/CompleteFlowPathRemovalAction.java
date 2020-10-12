@@ -17,9 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
@@ -28,63 +26,27 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.RetryPolicy;
-import org.neo4j.driver.v1.exceptions.ClientException;
 
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.Optional;
 
 @Slf4j
 public class CompleteFlowPathRemovalAction extends
         BaseFlowPathRemovalAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
-    private final int transactionRetriesLimit;
 
-    public CompleteFlowPathRemovalAction(PersistenceManager persistenceManager, int transactionRetriesLimit) {
+    public CompleteFlowPathRemovalAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        this.transactionRetriesLimit = transactionRetriesLimit;
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
-        RetryPolicy retryPolicy = new RetryPolicy()
-                .retryOn(RecoverablePersistenceException.class)
-                .retryOn(ClientException.class)
-                .withMaxRetries(transactionRetriesLimit);
-
-        persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> removeFlowPaths(stateMachine));
-    }
-
-    private void removeFlowPaths(FlowDeleteFsm stateMachine) {
         Flow flow = getFlow(stateMachine.getFlowId());
-        FlowPath[] paths = flow.getPaths().stream().filter(Objects::nonNull).toArray(FlowPath[]::new);
-
-        flowPathRepository.lockInvolvedSwitches(paths);
-
-        Set<PathId> processed = new HashSet<>();
-        for (FlowPath path : paths) {
-            PathId pathId = path.getPathId();
-            if (processed.add(pathId)) {
-                FlowPath oppositePath = flow.getOppositePathId(pathId)
-                        .filter(oppPathId -> !pathId.equals(oppPathId)).flatMap(flow::getPath).orElse(null);
-                if (oppositePath != null && processed.add(oppositePath.getPathId())) {
-                    log.debug("Removing the flow paths {} / {}", pathId, oppositePath.getPathId());
-                    FlowPath forward = path.isForward() ? path : oppositePath;
-                    FlowPath reverse = path.isForward() ? oppositePath : path;
-                    FlowPathPair pathsToDelete =
-                            FlowPathPair.builder().forward(forward).reverse(reverse).build();
-                    deleteFlowPaths(pathsToDelete);
-
-                    saveRemovalActionWithDumpToHistory(stateMachine, flow, pathsToDelete);
-                } else {
-                    log.debug("Removing the flow path {}", pathId);
-                    flowPathRepository.delete(path);
-                    updateIslsForFlowPath(path);
-                    // TODO: History dumps require paired paths, fix it to support any (without opposite one).
-                    FlowPathPair pathsToDelete = FlowPathPair.builder().forward(path).reverse(path).build();
-                    saveRemovalActionWithDumpToHistory(stateMachine, flow, pathsToDelete);
-                }
-            }
-        }
+        // Iterate to remove each path in a dedicated transaction.
+        flow.getPathIds().forEach(pathId -> {
+            Optional<FlowPath> deletedPath = flowPathRepository.remove(pathId);
+            deletedPath.ifPresent(path -> {
+                updateIslsForFlowPath(path);
+                saveRemovalActionWithDumpToHistory(stateMachine, flow, new FlowPathPair(path, path));
+            });
+        });
     }
 }

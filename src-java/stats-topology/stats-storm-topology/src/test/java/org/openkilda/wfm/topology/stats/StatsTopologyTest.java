@@ -64,13 +64,11 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.FlowSegmentCookie;
-import org.openkilda.persistence.EmbeddedNeo4jDatabase;
-import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.NetworkConfig;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
@@ -111,8 +109,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     private static final int ENCAPSULATION_ID = 123;
     private static final UUID TRANSACTION_ID = UUID.randomUUID();
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static EmbeddedNeo4jDatabase embeddedNeo4jDb;
-    private static PersistenceManager persistenceManager;
+    private static InMemoryGraphPersistenceManager persistenceManager;
     private static StatsTopologyConfig statsTopologyConfig;
     private static TestKafkaConsumer otsdbConsumer;
     private static FlowRepository flowRepository;
@@ -135,19 +132,15 @@ public class StatsTopologyTest extends AbstractStormTest {
     public static void setupOnce() throws Exception {
         AbstractStormTest.startZooKafkaAndStorm();
 
-        embeddedNeo4jDb = new EmbeddedNeo4jDatabase(fsData.getRoot());
-
         LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
         Properties configOverlay = new Properties();
-        configOverlay.setProperty("neo4j.uri", embeddedNeo4jDb.getConnectionUri());
         configOverlay.setProperty("opentsdb.metric.prefix", METRIC_PREFIX);
-        configOverlay.setProperty("neo4j.indexes.auto", "update"); // ask to create indexes/constraints if needed
 
         launchEnvironment.setupOverlay(configOverlay);
 
         MultiPrefixConfigurationProvider configurationProvider = launchEnvironment.getConfigurationProvider();
-        persistenceManager =
-                PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+        persistenceManager = new InMemoryGraphPersistenceManager(
+                configurationProvider.getConfiguration(NetworkConfig.class));
 
         StatsTopology statsTopology = new StatsTopology(launchEnvironment);
         statsTopologyConfig = statsTopology.getConfig();
@@ -172,7 +165,6 @@ public class StatsTopologyTest extends AbstractStormTest {
         otsdbConsumer.wakeup();
         otsdbConsumer.join();
 
-        embeddedNeo4jDb.stop();
         AbstractStormTest.stopZooKafkaAndStorm();
     }
 
@@ -183,13 +175,9 @@ public class StatsTopologyTest extends AbstractStormTest {
         // need clear data in CacheBolt
         for (Flow flow : flowRepository.findAll()) {
             sendRemoveFlowCommand(flow, flow.getForwardPath());
-            flowRepository.delete(flow);
         }
 
-        for (Switch sw : switchRepository.findAll()) {
-            switchRepository.delete(sw);
-        }
-        ((Neo4jSessionFactory) persistenceManager.getTransactionManager()).getSession().purgeDatabase();
+        persistenceManager.purgeData();
     }
 
     @Test
@@ -676,7 +664,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
 
         Switch sw = Switch.builder().switchId(switchId).build();
-        switchRepository.createOrUpdate(sw);
+        switchRepository.add(sw);
 
         Flow flow = new TestFlowBuilder(flowId)
                 .srcSwitch(sw)
@@ -692,7 +680,7 @@ public class StatsTopologyTest extends AbstractStormTest {
                 .build();
 
         FlowRepository flowRepository = repositoryFactory.createFlowRepository();
-        flowRepository.createOrUpdate(flow);
+        flowRepository.add(flow);
         return flow;
     }
 
@@ -707,7 +695,7 @@ public class StatsTopologyTest extends AbstractStormTest {
                 .transactionId(TRANSACTION_ID)
                 .flowId(flow.getFlowId())
                 .cookie(flowPath.getCookie().getValue())
-                .switchId(flow.getSrcSwitch().getSwitchId())
+                .switchId(flow.getSrcSwitchId())
                 .meterId(flowPath.getMeterId().getValue())
                 .build();
         sendFlowCommand(removeFlow);
@@ -719,7 +707,7 @@ public class StatsTopologyTest extends AbstractStormTest {
                 TRANSACTION_ID,
                 flow.getFlowId(),
                 flowPath.getCookie().getValue(),
-                flow.getSrcSwitch().getSwitchId(),
+                flow.getSrcSwitchId(),
                 flow.getSrcPort(),
                 flow.getDestPort(),
                 flow.getSrcVlan(), 0,

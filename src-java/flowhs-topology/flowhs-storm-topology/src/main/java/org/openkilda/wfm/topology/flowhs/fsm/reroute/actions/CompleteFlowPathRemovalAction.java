@@ -17,8 +17,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
@@ -26,94 +26,94 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
-import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.RetryPolicy;
-import org.neo4j.driver.v1.exceptions.ClientException;
-
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class CompleteFlowPathRemovalAction extends
         BaseFlowPathRemovalAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-    private final int transactionRetriesLimit;
-
-    public CompleteFlowPathRemovalAction(PersistenceManager persistenceManager, int transactionRetriesLimit) {
+    public CompleteFlowPathRemovalAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        this.transactionRetriesLimit = transactionRetriesLimit;
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        RetryPolicy retryPolicy = new RetryPolicy()
-                .retryOn(RecoverablePersistenceException.class)
-                .retryOn(ClientException.class)
-                .withMaxRetries(transactionRetriesLimit);
-
-        persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> removeFlowPaths(stateMachine));
+        Flow flow = getFlow(stateMachine.getFlowId());
+        removeOldPrimaryFlowPaths(flow, stateMachine);
+        removeOldProtectedFlowPaths(flow, stateMachine);
+        removeRejectedFlowPaths(flow, stateMachine);
     }
 
-    private void removeFlowPaths(FlowRerouteFsm stateMachine) {
-        Flow flow = getFlow(stateMachine.getFlowId());
+    private void removeOldPrimaryFlowPaths(Flow flow, FlowRerouteFsm stateMachine) {
+        PathId oldPrimaryForwardPathId = stateMachine.getOldPrimaryForwardPath();
+        PathId oldPrimaryReversePathId = stateMachine.getOldPrimaryReversePath();
 
-        FlowPath oldPrimaryForward = flow.getPath(stateMachine.getOldPrimaryForwardPath()).orElse(null);
-        FlowPath oldPrimaryReverse = flow.getPath(stateMachine.getOldPrimaryReversePath()).orElse(null);
-        FlowPath oldProtectedForward = flow.getPath(stateMachine.getOldProtectedForwardPath()).orElse(null);
-        FlowPath oldProtectedReverse = flow.getPath(stateMachine.getOldProtectedReversePath()).orElse(null);
+        if (oldPrimaryForwardPathId != null || oldPrimaryReversePathId != null) {
+            FlowPath oldPrimaryForward = flowPathRepository.remove(oldPrimaryForwardPathId).orElse(null);
+            FlowPath oldPrimaryReverse = flowPathRepository.remove(oldPrimaryReversePathId).orElse(null);
 
-        List<FlowPath> flowPaths = Lists.newArrayList(oldPrimaryForward, oldPrimaryReverse,
-                oldProtectedForward, oldProtectedReverse);
-        List<FlowPath> rejectedFlowPaths = stateMachine.getRejectedPaths().stream()
-                .map(this::getFlowPath)
-                .collect(Collectors.toList());
-        flowPaths.addAll(rejectedFlowPaths);
-
-        flowPathRepository.lockInvolvedSwitches(flowPaths.stream().filter(Objects::nonNull).toArray(FlowPath[]::new));
-
-        if (oldPrimaryForward != null) {
-            if (oldPrimaryReverse != null) {
-                log.debug("Completing removal of the flow paths {} / {}", oldPrimaryForward, oldPrimaryReverse);
-                FlowPathPair pathsToDelete =
-                        FlowPathPair.builder().forward(oldPrimaryForward).reverse(oldPrimaryReverse).build();
-                deleteFlowPaths(pathsToDelete);
-                saveRemovalActionWithDumpToHistory(stateMachine, flow, pathsToDelete);
-            } else {
-                log.debug("Completing removal of the flow path {} (no reverse pair)", oldPrimaryForward);
-                deleteFlowPath(oldPrimaryForward);
-                saveRemovalActionWithDumpToHistory(stateMachine, flow, oldPrimaryForward);
+            FlowPathPair removedPaths = null;
+            if (oldPrimaryForward != null) {
+                if (oldPrimaryReverse != null) {
+                    log.debug("Removed the flow paths {} / {}", oldPrimaryForward, oldPrimaryReverse);
+                    removedPaths = new FlowPathPair(oldPrimaryForward, oldPrimaryReverse);
+                    updateIslsForFlowPath(removedPaths.getForward(), removedPaths.getReverse());
+                } else {
+                    log.debug("Removed the flow path {} (no reverse pair)", oldPrimaryForward);
+                    // TODO: History dumps require paired paths, fix it to support any (without opposite one).
+                    removedPaths = new FlowPathPair(oldPrimaryForward, oldPrimaryForward);
+                    updateIslsForFlowPath(removedPaths.getForward());
+                }
+            } else if (oldPrimaryReverse != null) {
+                log.debug("Removed the flow path {} (no forward pair)", oldPrimaryReverse);
+                // TODO: History dumps require paired paths, fix it to support any (without opposite one).
+                removedPaths = new FlowPathPair(oldPrimaryReverse, oldPrimaryReverse);
+                updateIslsForFlowPath(removedPaths.getReverse());
             }
-        } else if (oldPrimaryReverse != null) {
-            log.debug("Completing removal of the flow path {} (no forward pair)", oldPrimaryReverse);
-            deleteFlowPath(oldPrimaryReverse);
-            saveRemovalActionWithDumpToHistory(stateMachine, flow, oldPrimaryReverse);
-        }
-
-        if (oldProtectedForward != null) {
-            if (oldProtectedReverse != null) {
-                log.debug("Completing removal of the flow paths {} / {}", oldProtectedForward, oldProtectedReverse);
-                FlowPathPair pathsToDelete =
-                        FlowPathPair.builder().forward(oldProtectedForward).reverse(oldProtectedReverse).build();
-                deleteFlowPaths(pathsToDelete);
-                saveRemovalActionWithDumpToHistory(stateMachine, flow, pathsToDelete);
-            } else {
-                log.debug("Completing removal of the flow path {} (no reverse pair)", oldProtectedForward);
-                deleteFlowPath(oldProtectedForward);
-                saveRemovalActionWithDumpToHistory(stateMachine, flow, oldProtectedForward);
+            if (removedPaths != null) {
+                saveRemovalActionWithDumpToHistory(stateMachine, flow, removedPaths);
             }
-        } else if (oldProtectedReverse != null) {
-            log.debug("Completing removal of the flow path {} (no forward pair)", oldProtectedReverse);
-            deleteFlowPath(oldProtectedReverse);
-            saveRemovalActionWithDumpToHistory(stateMachine, flow, oldProtectedReverse);
         }
+    }
 
-        rejectedFlowPaths.forEach(flowPath -> {
-            log.debug("Removing the rejected path {}", flowPath);
-            deleteFlowPath(flowPath);
+    private void removeOldProtectedFlowPaths(Flow flow, FlowRerouteFsm stateMachine) {
+        PathId oldProtectedForwardPathId = stateMachine.getOldProtectedForwardPath();
+        PathId oldProtectedReversePathId = stateMachine.getOldProtectedReversePath();
 
-            saveRemovalActionWithDumpToHistory(stateMachine, flow, flowPath);
-        });
+        if (oldProtectedForwardPathId != null || oldProtectedReversePathId != null) {
+            FlowPath oldProtectedForward = flowPathRepository.remove(oldProtectedForwardPathId).orElse(null);
+            FlowPath oldProtectedReverse = flowPathRepository.remove(oldProtectedReversePathId).orElse(null);
+
+            FlowPathPair removedPaths = null;
+            if (oldProtectedForward != null) {
+                if (oldProtectedReverse != null) {
+                    log.debug("Removed the flow paths {} / {}", oldProtectedForward, oldProtectedReverse);
+                    removedPaths = new FlowPathPair(oldProtectedForward, oldProtectedReverse);
+                    updateIslsForFlowPath(removedPaths.getForward(), removedPaths.getReverse());
+                } else {
+                    log.debug("Removed the flow path {} (no reverse pair)", oldProtectedForward);
+                    // TODO: History dumps require paired paths, fix it to support any (without opposite one).
+                    removedPaths = new FlowPathPair(oldProtectedForward, oldProtectedForward);
+                    updateIslsForFlowPath(removedPaths.getForward());
+                }
+            } else if (oldProtectedReverse != null) {
+                log.debug("Removed the flow path {} (no forward pair)", oldProtectedReverse);
+                // TODO: History dumps require paired paths, fix it to support any (without opposite one).
+                removedPaths = new FlowPathPair(oldProtectedReverse, oldProtectedReverse);
+                updateIslsForFlowPath(removedPaths.getReverse());
+            }
+            if (removedPaths != null) {
+                saveRemovalActionWithDumpToHistory(stateMachine, flow, removedPaths);
+            }
+        }
+    }
+
+    private void removeRejectedFlowPaths(Flow flow, FlowRerouteFsm stateMachine) {
+        stateMachine.getRejectedPaths().stream()
+                .forEach(pathId ->
+                        flowPathRepository.remove(pathId)
+                                .ifPresent(flowPath -> {
+                                    updateIslsForFlowPath(flowPath);
+                                    saveRemovalActionWithDumpToHistory(stateMachine, flow, flowPath);
+                                }));
     }
 }
-

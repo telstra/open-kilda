@@ -16,11 +16,12 @@
 package org.openkilda.persistence;
 
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.tx.TransactionManager;
 
 import java.io.Serializable;
 
 /**
- * Manager of persistence context and related APIs.
+ * A manager of persistence related APIs.
  * <p/>
  * The implementation must be serializable, see {@link Serializable}.
  */

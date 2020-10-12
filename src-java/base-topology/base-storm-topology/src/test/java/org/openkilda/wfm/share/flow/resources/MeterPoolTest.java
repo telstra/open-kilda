@@ -17,7 +17,6 @@ package org.openkilda.wfm.share.flow.resources;
 
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.FlowMeter;
@@ -25,18 +24,20 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.Neo4jBasedTest;
+import org.openkilda.persistence.exceptions.ConstraintViolationException;
+import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
-public class MeterPoolTest extends Neo4jBasedTest {
+public class MeterPoolTest extends InMemoryGraphBasedTest {
     private static final SwitchId SWITCH_ID = new SwitchId("ff:00");
     private static final String FLOW_1 = "flow_1";
     private static final String FLOW_2 = "flow_2";
@@ -52,50 +53,58 @@ public class MeterPoolTest extends Neo4jBasedTest {
 
     @Before
     public void setUp() {
-        meterPool = new MeterPool(persistenceManager, MIN_METER_ID, MAX_METER_ID);
+        meterPool = new MeterPool(persistenceManager, MIN_METER_ID, MAX_METER_ID, 1);
 
         SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
-        switchRepository.createOrUpdate(Switch.builder().switchId(SWITCH_ID).build());
+        switchRepository.add(Switch.builder().switchId(SWITCH_ID).build());
         flowMeterRepository = persistenceManager.getRepositoryFactory().createFlowMeterRepository();
     }
 
     @Test
     public void meterPoolTest() {
-        long minMeterId = MIN_METER_ID.getValue();
-        long maxMeterId = MAX_METER_ID.getValue();
-        Set<MeterId> meterIds = new HashSet<>();
-        for (long i = minMeterId; i <= maxMeterId; i++) {
-            meterIds.add(meterPool.allocate(SWITCH_ID, format("flow_%d", i), new PathId(format("path_%d", i))));
-        }
-        assertEquals(maxMeterId - minMeterId + 1, meterIds.size());
-        meterIds.forEach(meterId -> assertTrue(meterId.getValue() >= minMeterId && meterId.getValue() <= maxMeterId));
+        transactionManager.doInTransaction(() -> {
+            long minMeterId = MIN_METER_ID.getValue();
+            long maxMeterId = MAX_METER_ID.getValue();
+            Set<MeterId> meterIds = new HashSet<>();
+            for (long i = minMeterId; i <= maxMeterId; i++) {
+                meterIds.add(meterPool.allocate(SWITCH_ID, format("flow_%d", i), new PathId(format("path_%d", i))));
+            }
+            assertEquals(maxMeterId - minMeterId + 1, meterIds.size());
+            meterIds.forEach(meterId ->
+                    assertTrue(meterId.getValue() >= minMeterId && meterId.getValue() <= maxMeterId));
+        });
     }
 
     @Test(expected = ResourceNotAvailableException.class)
     public void meterPoolFullTest() {
-        for (long i = MIN_METER_ID.getValue(); i <= MAX_METER_ID.getValue() + 1; i++) {
-            meterPool.allocate(SWITCH_ID, format("flow_%d", i), new PathId(format("path_%d", i)));
-        }
+        transactionManager.doInTransaction(() -> {
+            for (long i = MIN_METER_ID.getValue(); i <= MAX_METER_ID.getValue() + 1; i++) {
+                meterPool.allocate(SWITCH_ID, format("flow_%d", i), new PathId(format("path_%d", i)));
+            }
+        });
     }
 
-    @Test
+    @Ignore("InMemoryGraph doesn't enforce constraint")
+    @Test(expected = ConstraintViolationException.class)
     public void createTwoMeterForOnePathTest() {
-        long first = meterPool.allocate(SWITCH_ID, FLOW_1, PATH_ID_1).getValue();
-        long second = meterPool.allocate(SWITCH_ID, FLOW_1, PATH_ID_1).getValue();
-        assertNotEquals(first, second);
-        assertEquals(2, flowMeterRepository.findAll().size());
+        transactionManager.doInTransaction(() -> {
+            long first = meterPool.allocate(SWITCH_ID, FLOW_1, PATH_ID_1).getValue();
+            long second = meterPool.allocate(SWITCH_ID, FLOW_1, PATH_ID_1).getValue();
+        });
     }
 
     @Test
     public void deallocateMetersByPathTest() {
-        meterPool.allocate(SWITCH_ID, FLOW_1, PATH_ID_1);
-        meterPool.allocate(SWITCH_ID, FLOW_2, PATH_ID_2);
-        long meterId = meterPool.allocate(SWITCH_ID, FLOW_3, PATH_ID_3).getValue();
-        assertEquals(3, flowMeterRepository.findAll().size());
+        transactionManager.doInTransaction(() -> {
+            meterPool.allocate(SWITCH_ID, FLOW_1, PATH_ID_1);
+            meterPool.allocate(SWITCH_ID, FLOW_2, PATH_ID_2);
+            long meterId = meterPool.allocate(SWITCH_ID, FLOW_3, PATH_ID_3).getValue();
+            assertEquals(3, flowMeterRepository.findAll().size());
 
-        meterPool.deallocate(PATH_ID_1, PATH_ID_2);
-        Collection<FlowMeter> flowMeters = flowMeterRepository.findAll();
-        assertEquals(1, flowMeters.size());
-        assertEquals(meterId, flowMeters.iterator().next().getMeterId().getValue());
+            meterPool.deallocate(PATH_ID_1, PATH_ID_2);
+            Collection<FlowMeter> flowMeters = flowMeterRepository.findAll();
+            assertEquals(1, flowMeters.size());
+            assertEquals(meterId, flowMeters.iterator().next().getMeterId().getValue());
+        });
     }
 }

@@ -62,9 +62,9 @@ opentsdb.workers = 1
 opentsdb.client.chunked-requests.enabled = true
 opentsdb.metric.prefix = kilda.
 
-neo4j.uri = bolt://neo4j.pendev:7687
-neo4j.user = neo4j
-neo4j.password = temppass
+orientdb.url = remote:odb1.pendev,odb2.pendev,odb3.pendev/kilda
+orientdb.user = kilda
+orientdb.password = kilda
 
 logger.level = INFO
 
@@ -125,7 +125,6 @@ latency.update.time.range = 600
 latency.discovery.interval.multiplier = 3
 
 # flow(H&S) topology
-flow.hub.transaction.retries = 3
 flow.path.allocation.retries = 10
 flow.path.allocation.retry.delay = 50
 flow.create.hub.timeout.seconds = 30

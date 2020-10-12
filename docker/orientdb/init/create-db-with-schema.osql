@@ -1,0 +1,241 @@
+CREATE DATABASE remote:localhost/kilda root root PLOCAL GRAPH;
+
+INSERT INTO ORole SET name = 'kilda-role', mode = 0, inheritedRole = (SELECT FROM ORole WHERE name = 'writer');
+GRANT READ ON database.cluster.internal TO `kilda-role`;
+GRANT CREATE ON database.cluster.internal TO `kilda-role`;
+GRANT UPDATE ON database.cluster.internal TO `kilda-role`;
+GRANT ALL ON database.schema TO `kilda-role`;
+GRANT READ ON database.systemclusters TO `kilda-role`;
+
+CREATE USER kilda IDENTIFIED BY kilda ROLE `kilda-role`;
+
+CREATE CLASS kilda_configuration IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY kilda_configuration.unique IF NOT EXISTS STRING;
+CREATE INDEX kilda_configuration.unique UNIQUE_HASH_INDEX;
+
+CREATE CLASS config IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY config.unique IF NOT EXISTS STRING;
+CREATE INDEX config.unique UNIQUE_HASH_INDEX;
+
+CREATE CLASS switch IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY switch.name IF NOT EXISTS STRING;
+CREATE PROPERTY switch.state IF NOT EXISTS STRING;
+CREATE PROPERTY switch.features IF NOT EXISTS EMBEDDEDSET STRING;
+CREATE INDEX switch.name UNIQUE_HASH_INDEX;
+CREATE INDEX switch.state NOTUNIQUE_HASH_INDEX;
+
+CREATE CLASS switch_connected_device IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY switch_connected_device.flow_id IF NOT EXISTS STRING;
+CREATE PROPERTY switch_connected_device.switch_id IF NOT EXISTS STRING;
+CREATE PROPERTY switch_connected_device.port_number IF NOT EXISTS INTEGER;
+CREATE PROPERTY switch_connected_device.vlan IF NOT EXISTS INTEGER;
+CREATE PROPERTY switch_connected_device.mac_address IF NOT EXISTS STRING;
+CREATE PROPERTY switch_connected_device.type IF NOT EXISTS STRING;
+CREATE PROPERTY switch_connected_device.chassis_id IF NOT EXISTS STRING;
+CREATE PROPERTY switch_connected_device.port_id IF NOT EXISTS STRING;
+CREATE PROPERTY switch_connected_device.ip_address IF NOT EXISTS STRING;
+CREATE INDEX switch_connected_device.flow_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX switch_connected_device.switch_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX switch_connected_device.port_number NOTUNIQUE_HASH_INDEX;
+CREATE INDEX switch_connected_device.vlan NOTUNIQUE_HASH_INDEX;
+CREATE INDEX switch_connected_device.mac_address NOTUNIQUE_HASH_INDEX;
+CREATE INDEX switch_connected_device.type NOTUNIQUE_HASH_INDEX;
+CREATE INDEX switch_connected_device.chassis_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX switch_connected_device.port_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX switch_connected_device.ip_address NOTUNIQUE_HASH_INDEX;
+
+CREATE CLASS has IF NOT EXISTS EXTENDS E;
+
+CREATE CLASS switch_properties IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY switch_properties.switch_id IF NOT EXISTS STRING;
+CREATE PROPERTY switch_properties.supported_transit_encapsulation IF NOT EXISTS EMBEDDEDSET STRING;
+CREATE INDEX switch_properties.switch_id UNIQUE_HASH_INDEX;
+
+CREATE CLASS bfd_session IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY bfd_session.discriminator IF NOT EXISTS INTEGER;
+CREATE PROPERTY bfd_session.switch IF NOT EXISTS STRING;
+CREATE PROPERTY bfd_session.port IF NOT EXISTS INTEGER;
+CREATE INDEX bfd_session_endpoint on bfd_session (switch, port) NOTUNIQUE_HASH_INDEX;
+CREATE INDEX bfd_session.discriminator UNIQUE_HASH_INDEX;
+CREATE INDEX bfd_session.switch NOTUNIQUE_HASH_INDEX;
+CREATE INDEX bfd_session.port NOTUNIQUE_HASH_INDEX;
+
+CREATE CLASS port_properties IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY port_properties.switch_id IF NOT EXISTS STRING;
+CREATE PROPERTY port_properties.port_no IF NOT EXISTS INTEGER;
+CREATE INDEX port_properties_endpoint on port_properties (switch_id, port_no) UNIQUE_HASH_INDEX;
+CREATE INDEX port_properties.switch_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX port_properties.port_no NOTUNIQUE_HASH_INDEX;
+
+CREATE CLASS isl IF NOT EXISTS EXTENDS E;
+CREATE PROPERTY isl.src_switch_id IF NOT EXISTS STRING;
+CREATE PROPERTY isl.dst_switch_id IF NOT EXISTS STRING;
+CREATE PROPERTY isl.src_port IF NOT EXISTS INTEGER;
+CREATE PROPERTY isl.dst_port IF NOT EXISTS INTEGER;
+CREATE PROPERTY isl.status IF NOT EXISTS STRING;
+CREATE PROPERTY isl.available_bandwidth IF NOT EXISTS LONG;
+CREATE INDEX isl_endpoints on isl (src_switch_id, dst_switch_id, src_port, dst_port) UNIQUE_HASH_INDEX;
+CREATE INDEX isl.src_switch_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX isl.dst_switch_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX isl.src_port NOTUNIQUE_HASH_INDEX;
+CREATE INDEX isl.dst_port NOTUNIQUE_HASH_INDEX;
+CREATE INDEX isl.status NOTUNIQUE_HASH_INDEX;
+CREATE INDEX isl.available_bandwidth NOTUNIQUE;
+
+CREATE CLASS link_props IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY link_props.src_switch IF NOT EXISTS STRING;
+CREATE PROPERTY link_props.src_port IF NOT EXISTS INTEGER;
+CREATE PROPERTY link_props.dst_switch IF NOT EXISTS STRING;
+CREATE PROPERTY link_props.dst_port IF NOT EXISTS INTEGER;
+CREATE INDEX link_props_endpoints on link_props (src_switch, src_port, dst_switch, dst_port) UNIQUE_HASH_INDEX;
+CREATE INDEX link_props.src_switch NOTUNIQUE_HASH_INDEX;
+CREATE INDEX link_props.src_port NOTUNIQUE_HASH_INDEX;
+CREATE INDEX link_props.dst_switch NOTUNIQUE_HASH_INDEX;
+CREATE INDEX link_props.dst_port NOTUNIQUE_HASH_INDEX;
+
+CREATE CLASS flow IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY flow.flow_id IF NOT EXISTS STRING;
+CREATE PROPERTY flow.group_id IF NOT EXISTS STRING;
+CREATE PROPERTY flow.src_switch_id IF NOT EXISTS STRING;
+CREATE PROPERTY flow.dst_switch_id IF NOT EXISTS STRING;
+CREATE PROPERTY flow.src_port IF NOT EXISTS INTEGER;
+CREATE PROPERTY flow.dst_port IF NOT EXISTS INTEGER;
+CREATE PROPERTY flow.src_vlan IF NOT EXISTS INTEGER;
+CREATE PROPERTY flow.dst_vlan IF NOT EXISTS INTEGER;
+CREATE PROPERTY flow.status IF NOT EXISTS STRING;
+CREATE PROPERTY flow.src_with_multi_table IF NOT EXISTS BOOLEAN;
+CREATE PROPERTY flow.dst_with_multi_table IF NOT EXISTS BOOLEAN;
+CREATE PROPERTY flow.detect_src_lldp_connected_devices IF NOT EXISTS BOOLEAN;
+CREATE PROPERTY flow.detect_dst_lldp_connected_devices IF NOT EXISTS BOOLEAN;
+CREATE PROPERTY flow.detect_src_arp_connected_devices IF NOT EXISTS BOOLEAN;
+CREATE PROPERTY flow.detect_dst_arp_connected_devices IF NOT EXISTS BOOLEAN;
+CREATE PROPERTY flow.periodic_pings IF NOT EXISTS BOOLEAN;
+CREATE PROPERTY flow.bandwidth IF NOT EXISTS LONG;
+CREATE INDEX flow.flow_id UNIQUE_HASH_INDEX;
+CREATE INDEX flow.group_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow.src_switch_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow.dst_switch_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow.src_port NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow.dst_port NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow.src_vlan NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow.dst_vlan NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow.status NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow.src_with_multi_table NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow.dst_with_multi_table NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow.detect_src_lldp_connected_devices NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow.detect_dst_lldp_connected_devices NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow.detect_src_arp_connected_devices NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow.detect_dst_arp_connected_devices NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow.periodic_pings NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow.bandwidth NOTUNIQUE;
+
+CREATE CLASS source IF NOT EXISTS EXTENDS E;
+
+CREATE CLASS destination IF NOT EXISTS EXTENDS E;
+
+CREATE CLASS owns IF NOT EXISTS EXTENDS E;
+
+CREATE CLASS flow_path IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY flow_path.path_id IF NOT EXISTS STRING;
+CREATE PROPERTY flow_path.flow_id IF NOT EXISTS STRING;
+CREATE PROPERTY flow_path.src_switch_id IF NOT EXISTS STRING;
+CREATE PROPERTY flow_path.dst_switch_id IF NOT EXISTS STRING;
+CREATE PROPERTY flow_path.cookie IF NOT EXISTS LONG;
+CREATE INDEX flow_path.path_id UNIQUE_HASH_INDEX;
+CREATE INDEX flow_path.flow_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow_path.src_switch_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow_path.dst_switch_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow_path.cookie UNIQUE_HASH_INDEX;
+CREATE INDEX flow_path_unique on flow_path (flow_id, cookie) UNIQUE_HASH_INDEX;
+
+CREATE CLASS path_segment IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY path_segment.path_id IF NOT EXISTS STRING;
+CREATE PROPERTY path_segment.src_switch_id IF NOT EXISTS STRING;
+CREATE PROPERTY path_segment.dst_switch_id IF NOT EXISTS STRING;
+CREATE PROPERTY path_segment.src_port IF NOT EXISTS INTEGER;
+CREATE PROPERTY path_segment.dst_port IF NOT EXISTS INTEGER;
+CREATE INDEX path_segment_endpoints on path_segment (src_switch_id, dst_switch_id, src_port, dst_port) NOTUNIQUE_HASH_INDEX;
+CREATE INDEX path_segment.path_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX path_segment.src_switch_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX path_segment.dst_switch_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX path_segment.src_port NOTUNIQUE_HASH_INDEX;
+CREATE INDEX path_segment.dst_port NOTUNIQUE_HASH_INDEX;
+
+CREATE CLASS flow_cookie IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY flow_cookie.unmasked_cookie IF NOT EXISTS LONG;
+CREATE INDEX flow_cookie.unmasked_cookie UNIQUE;
+
+CREATE CLASS flow_meter IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY flow_meter.path_id IF NOT EXISTS STRING;
+CREATE PROPERTY flow_meter.switch_id IF NOT EXISTS STRING;
+CREATE PROPERTY flow_meter.meter_id IF NOT EXISTS LONG;
+CREATE PROPERTY flow_meter.flow_id IF NOT EXISTS STRING;
+CREATE INDEX flow_meter.path_id UNIQUE_HASH_INDEX;
+CREATE INDEX flow_meter.switch_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow_meter.meter_id NOTUNIQUE;
+CREATE INDEX flow_meter.flow_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow_meter_unique on flow_meter (switch_id, meter_id) UNIQUE;
+
+CREATE CLASS transit_vlan IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY transit_vlan.vlan IF NOT EXISTS INTEGER;
+CREATE PROPERTY transit_vlan.path_id IF NOT EXISTS STRING;
+CREATE INDEX transit_vlan.vlan UNIQUE;
+CREATE INDEX transit_vlan.path_id UNIQUE_HASH_INDEX;
+
+CREATE CLASS vxlan IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY vxlan.vni IF NOT EXISTS INTEGER;
+CREATE PROPERTY vxlan.path_id IF NOT EXISTS STRING;
+CREATE INDEX vxlan.vni UNIQUE;
+CREATE INDEX vxlan.path_id UNIQUE_HASH_INDEX;
+
+CREATE CLASS flow_event IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY flow_event.task_id IF NOT EXISTS STRING;
+CREATE PROPERTY flow_event.flow_id IF NOT EXISTS STRING;
+CREATE PROPERTY flow_event.timestamp IF NOT EXISTS LONG;
+CREATE INDEX flow_event.task_id UNIQUE_HASH_INDEX;
+CREATE INDEX flow_event.flow_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow_event.timestamp NOTUNIQUE;
+
+CREATE CLASS flow_history IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY flow_history.task_id IF NOT EXISTS STRING;
+CREATE INDEX flow_history.task_id NOTUNIQUE_HASH_INDEX;
+
+CREATE CLASS flow_dump IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY flow_dump.task_id IF NOT EXISTS STRING;
+CREATE PROPERTY flow_dump.flow_id IF NOT EXISTS STRING;
+CREATE INDEX flow_dump.task_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX flow_dump.flow_id NOTUNIQUE_HASH_INDEX;
+
+CREATE CLASS port_history IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY port_history.switch_id IF NOT EXISTS STRING;
+CREATE PROPERTY port_history.port_number IF NOT EXISTS INTEGER;
+CREATE PROPERTY port_history.time IF NOT EXISTS LONG;
+CREATE INDEX port_history.switch_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX port_history.port_number NOTUNIQUE_HASH_INDEX;
+CREATE INDEX port_history.time NOTUNIQUE;
+
+CREATE CLASS application_rule IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY application_rule.switch_id IF NOT EXISTS STRING;
+CREATE PROPERTY application_rule.flow_id IF NOT EXISTS STRING;
+CREATE PROPERTY application_rule.cookie IF NOT EXISTS LONG;
+CREATE INDEX application_rule.switch_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX application_rule.flow_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX application_rule.cookie NOTUNIQUE;
+
+CREATE CLASS exclusion_id IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY exclusion_id.flow_id IF NOT EXISTS STRING;
+CREATE PROPERTY exclusion_id.id IF NOT EXISTS INTEGER;
+CREATE INDEX exclusion_id.flow_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX exclusion_id.id NOTUNIQUE;
+CREATE INDEX exclusion_id_unique on exclusion_id (flow_id, id) UNIQUE;
+
+CREATE CLASS mirror_group IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY mirror_group.switch_id IF NOT EXISTS STRING;
+CREATE PROPERTY mirror_group.path_id IF NOT EXISTS STRING;
+CREATE PROPERTY mirror_group.group_id IF NOT EXISTS LONG;
+CREATE PROPERTY mirror_group.mirror_group_type IF NOT EXISTS STRING;
+CREATE PROPERTY mirror_group.mirror_direction IF NOT EXISTS STRING;
+CREATE INDEX mirror_group.switch_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX mirror_group.path_id NOTUNIQUE_HASH_INDEX;
+CREATE INDEX mirror_group.group_id NOTUNIQUE;
+CREATE INDEX mirror_group_unique on mirror_group (switch_id, group_id, mirror_group_type, mirror_direction) UNIQUE;

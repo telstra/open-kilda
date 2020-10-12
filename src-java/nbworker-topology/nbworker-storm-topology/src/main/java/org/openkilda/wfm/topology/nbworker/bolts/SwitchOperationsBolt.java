@@ -43,6 +43,7 @@ import org.openkilda.messaging.nbtopology.response.SwitchConnectedDevicesRespons
 import org.openkilda.messaging.nbtopology.response.SwitchPortConnectedDevicesDto;
 import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
 import org.openkilda.messaging.payload.switches.PortPropertiesPayload;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
@@ -159,11 +160,13 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
         }
 
         if (underMaintenance && evacuate) {
+            Collection<FlowPath> paths = flowOperationsService.getFlowPathsForSwitch(switchId);
+
             Set<IslEndpoint> affectedIslEndpoint = new HashSet<>(
                     switchOperationsService.getSwitchIslEndpoints(switchId));
             String reason = format("evacuated due to switch maintenance %s", switchId);
             for (FlowRerouteRequest reroute : flowOperationsService.makeRerouteRequests(
-                    flowOperationsService.getFlowPathsForSwitch(switchId), affectedIslEndpoint, reason)) {
+                    paths, affectedIslEndpoint, reason)) {
                 CommandContext forkedContext = getCommandContext().fork(reroute.getFlowId());
                 getOutput().emit(StreamType.REROUTE.toString(), tuple,
                         new Values(reroute, forkedContext.getCorrelationId()));

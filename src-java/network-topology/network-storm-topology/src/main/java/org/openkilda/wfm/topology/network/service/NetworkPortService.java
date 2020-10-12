@@ -24,10 +24,10 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
@@ -226,12 +226,15 @@ public class NetworkPortService {
                 .orElseThrow(() -> new PersistenceException(format("Switch %s not found.", endpoint.getDatapath())));
         PortProperties portProperties = portPropertiesRepository
                 .getBySwitchIdAndPort(endpoint.getDatapath(), endpoint.getPortNumber())
-                .orElse(PortProperties.builder()
-                        .switchObj(sw)
-                        .port(endpoint.getPortNumber())
-                        .build());
+                .orElseGet(() -> {
+                    PortProperties newProps = PortProperties.builder()
+                            .switchObj(sw)
+                            .port(endpoint.getPortNumber())
+                            .build();
+                    portPropertiesRepository.add(newProps);
+                    return newProps;
+                });
         portProperties.setDiscoveryEnabled(discoveryEnabled);
-        portPropertiesRepository.createOrUpdate(portProperties);
         return portProperties;
     }
 }

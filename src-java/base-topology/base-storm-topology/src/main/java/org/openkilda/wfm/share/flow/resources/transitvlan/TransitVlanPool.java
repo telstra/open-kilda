@@ -19,17 +19,18 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.PathId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
+import org.openkilda.persistence.tx.TransactionManager;
+import org.openkilda.persistence.tx.TransactionRequired;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResourcesProvider;
 import org.openkilda.wfm.share.flow.resources.ResourceNotAvailableException;
-import org.openkilda.wfm.share.flow.resources.ResourceUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
 import java.util.Optional;
+import java.util.Random;
 
 /**
  * The resource pool is responsible for transit vlan de-/allocation.
@@ -41,14 +42,19 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
 
     private final int minTransitVlan;
     private final int maxTransitVlan;
+    private final int poolSize;
 
-    public TransitVlanPool(PersistenceManager persistenceManager, int minTransitVlan, int maxTransitVlan) {
+    private int nextVlan = 0;
+
+    public TransitVlanPool(PersistenceManager persistenceManager, int minTransitVlan, int maxTransitVlan,
+                           int poolSize) {
         transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         transitVlanRepository = repositoryFactory.createTransitVlanRepository();
 
         this.minTransitVlan = minTransitVlan;
         this.maxTransitVlan = maxTransitVlan;
+        this.poolSize = poolSize;
     }
 
     /**
@@ -60,27 +66,53 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
                 .orElseGet(() -> allocate(flow, pathId));
     }
 
+    @TransactionRequired
     private TransitVlanEncapsulation allocate(Flow flow, PathId pathId) {
-        return transactionManager.doInTransaction(() -> {
-            int startValue = ResourceUtils.computeStartValue(minTransitVlan, maxTransitVlan);
-            int availableVlan = transitVlanRepository.findUnassignedTransitVlan(startValue, maxTransitVlan)
-                    .orElse(transitVlanRepository.findUnassignedTransitVlan(minTransitVlan, maxTransitVlan)
-                            .orElseThrow(() -> new ResourceNotAvailableException("No vlan available")));
-            if (availableVlan > maxTransitVlan) {
-                throw new ResourceNotAvailableException("No vlan available");
+        if (nextVlan > 0) {
+            if (nextVlan <= maxTransitVlan && !transitVlanRepository.exists(nextVlan)) {
+                return addVlan(flow, pathId, nextVlan++);
+            } else {
+                nextVlan = 0;
             }
+        }
+        // The pool requires (re-)initialization.
+        if (nextVlan == 0) {
+            long numOfPools = (maxTransitVlan - minTransitVlan) / poolSize;
+            if (numOfPools > 1) {
+                long poolToTake = Math.abs(new Random().nextInt()) % numOfPools;
+                Optional<Integer> availableVlan = transitVlanRepository.findFirstUnassignedVlan(
+                        minTransitVlan + (int) poolToTake * poolSize,
+                        minTransitVlan + (int) (poolToTake + 1) * poolSize - 1);
+                if (availableVlan.isPresent()) {
+                    nextVlan = availableVlan.get();
+                    return addVlan(flow, pathId, nextVlan++);
+                }
+            }
+            // The pool requires full scan.
+            nextVlan = -1;
+        }
+        if (nextVlan == -1) {
+            Optional<Integer> availableVlan = transitVlanRepository.findFirstUnassignedVlan(minTransitVlan,
+                    minTransitVlan);
+            if (availableVlan.isPresent()) {
+                nextVlan = availableVlan.get();
+                return addVlan(flow, pathId, nextVlan++);
+            }
+        }
+        throw new ResourceNotAvailableException("No vlan available");
+    }
 
-            TransitVlan transitVlan = TransitVlan.builder()
-                    .vlan(availableVlan)
-                    .flowId(flow.getFlowId())
-                    .pathId(pathId)
-                    .build();
-            transitVlanRepository.createOrUpdate(transitVlan);
+    private TransitVlanEncapsulation addVlan(Flow flow, PathId pathId, int vlan) {
+        TransitVlan transitVlanEntity = TransitVlan.builder()
+                .vlan(vlan)
+                .flowId(flow.getFlowId())
+                .pathId(pathId)
+                .build();
+        transitVlanRepository.add(transitVlanEntity);
 
-            return TransitVlanEncapsulation.builder()
-                    .transitVlan(transitVlan)
-                    .build();
-        });
+        return TransitVlanEncapsulation.builder()
+                .transitVlan(new TransitVlan(transitVlanEntity))
+                .build();
     }
 
     /**
@@ -90,7 +122,7 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
     public void deallocate(PathId pathId) {
         transactionManager.doInTransaction(() ->
                 transitVlanRepository.findByPathId(pathId, null)
-                        .forEach(transitVlanRepository::delete));
+                        .forEach(transitVlanRepository::remove));
     }
 
     /**
@@ -101,6 +133,8 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
         Collection<TransitVlan> transitVlans = transitVlanRepository.findByPathId(pathId, oppositePathId);
         return transitVlans.stream()
                 .findAny()
-                .map(transitVlan -> TransitVlanEncapsulation.builder().transitVlan(transitVlan).build());
+                .map(transitVlan -> TransitVlanEncapsulation.builder()
+                        .transitVlan(new TransitVlan(transitVlan))
+                        .build());
     }
 }

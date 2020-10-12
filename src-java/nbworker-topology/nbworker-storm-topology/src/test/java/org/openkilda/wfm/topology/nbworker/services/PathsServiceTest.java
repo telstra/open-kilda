@@ -37,7 +37,7 @@ import org.openkilda.model.SwitchStatus;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
-import org.openkilda.persistence.Neo4jBasedTest;
+import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -52,7 +52,7 @@ import org.junit.Test;
 
 import java.util.List;
 
-public class PathsServiceTest extends Neo4jBasedTest {
+public class PathsServiceTest extends InMemoryGraphBasedTest {
     private static final int SWITCH_COUNT = MAX_PATH_COUNT + 50;
     private static final int VXLAN_SWITCH_COUNT = MAX_PATH_COUNT / 2;
 
@@ -97,15 +97,15 @@ public class PathsServiceTest extends Neo4jBasedTest {
         Switch switchA = Switch.builder().switchId(SWITCH_ID_1).status(SwitchStatus.ACTIVE).build();
         Switch switchB = Switch.builder().switchId(SWITCH_ID_2).status(SwitchStatus.ACTIVE).build();
 
-        switchRepository.createOrUpdate(switchA);
-        switchRepository.createOrUpdate(switchB);
+        switchRepository.add(switchA);
+        switchRepository.add(switchB);
 
         createSwitchProperties(switchA, TRANSIT_VLAN, VXLAN);
         createSwitchProperties(switchB, TRANSIT_VLAN, VXLAN);
 
         for (int i = 3; i <= SWITCH_COUNT; i++) {
             Switch transitSwitch = Switch.builder().switchId(new SwitchId(i)).status(SwitchStatus.ACTIVE).build();
-            switchRepository.createOrUpdate(transitSwitch);
+            switchRepository.add(transitSwitch);
 
             // first half of switches supports only TRANSIT_FLAN,
             // last half of switches supports TRANSIT_VLAN and VXLAN
@@ -119,7 +119,7 @@ public class PathsServiceTest extends Neo4jBasedTest {
             createIsl(transitSwitch, i * 2 + 1, switchB, i * 2 + 1, i, 10000 - i, 1000 + i);
         }
 
-        kildaConfigurationRepository.createOrUpdate(KildaConfiguration.builder()
+        kildaConfigurationRepository.add(KildaConfiguration.builder()
                 .flowEncapsulationType(TRANSIT_VLAN)
                 .pathComputationStrategy(PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH)
                 .build());
@@ -168,9 +168,9 @@ public class PathsServiceTest extends Neo4jBasedTest {
     public void findNPathsByTransitVlanAndDefaultStrategy()
             throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
         // set LATENCY as default path computations strategy
-        kildaConfigurationRepository.createOrUpdate(KildaConfiguration.builder()
-                .pathComputationStrategy(LATENCY)
-                .build());
+        kildaConfigurationRepository.find().ifPresent(config -> {
+            config.setPathComputationStrategy(LATENCY);
+        });
         // find N paths without strategy
         List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, null);
         assertTransitVlanAndLatencyPaths(paths);
@@ -180,9 +180,9 @@ public class PathsServiceTest extends Neo4jBasedTest {
     public void findNPathsByDefaultEncapsulationAndCost()
             throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
         // set VXLAN as default flow encapsulation type
-        kildaConfigurationRepository.createOrUpdate(KildaConfiguration.builder()
-                .flowEncapsulationType(VXLAN)
-                .build());
+        kildaConfigurationRepository.find().ifPresent(config -> {
+            config.setFlowEncapsulationType(VXLAN);
+        });
         // find N paths without encapsulation type
         List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, null, COST);
         assertVxlanAndCostPathes(paths);
@@ -242,7 +242,7 @@ public class PathsServiceTest extends Neo4jBasedTest {
 
     private void createOneWayIsl(Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort, int cost, int latency,
                                  int bandwidth) {
-        islRepository.createOrUpdate(Isl.builder()
+        islRepository.add(Isl.builder()
                 .srcSwitch(srcSwitch)
                 .srcPort(srcPort)
                 .destSwitch(dstSwitch)
@@ -257,7 +257,7 @@ public class PathsServiceTest extends Neo4jBasedTest {
     }
 
     private void createSwitchProperties(Switch sw, FlowEncapsulationType... encapsulation) {
-        switchPropertiesRepository.createOrUpdate(SwitchProperties.builder()
+        switchPropertiesRepository.add(SwitchProperties.builder()
                 .switchObj(sw)
                 .supportedTransitEncapsulation(Sets.newHashSet(encapsulation))
                 .build());

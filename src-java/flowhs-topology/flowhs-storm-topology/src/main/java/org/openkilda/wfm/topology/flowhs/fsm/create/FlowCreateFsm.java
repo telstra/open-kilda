@@ -84,6 +84,7 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
     private PathId reversePathId;
     private PathId protectedForwardPathId;
     private PathId protectedReversePathId;
+    private boolean pathsBeenAllocated;
 
     private List<FlowSegmentRequestFactory> sentCommands = new ArrayList<>();
     private Map<UUID, SpeakerCommandObserver> pendingCommands = new HashMap<>();
@@ -288,7 +289,8 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
                     .to(State.RESOURCES_ALLOCATED)
                     .on(Event.NEXT)
                     .perform(new ResourcesAllocationAction(pathComputer, persistenceManager,
-                            config.getTransactionRetriesLimit(), resourcesManager));
+                            config.getPathAllocationRetriesLimit(), config.getPathAllocationRetryDelay(),
+                            resourcesManager));
 
             // there is possibility that during resources allocation we have to revalidate flow again.
             // e.g. if we try to simultaneously create two flows with the same flow id then both threads can go
@@ -443,7 +445,8 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
                     .to(State.RESOURCES_ALLOCATED)
                     .on(Event.RETRY)
                     .perform(new ResourcesAllocationAction(pathComputer, persistenceManager,
-                            config.getTransactionRetriesLimit(), resourcesManager));
+                            config.getPathAllocationRetriesLimit(), config.getPathAllocationRetryDelay(),
+                            resourcesManager));
 
             builder.onEntry(State._FAILED)
                     .perform(reportErrorAction);
@@ -474,6 +477,8 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
         @Builder.Default
         int speakerCommandRetriesLimit = 3;
         @Builder.Default
-        int transactionRetriesLimit = 3;
+        int pathAllocationRetriesLimit = 10;
+        @Builder.Default
+        int pathAllocationRetryDelay = 50;
     }
 }

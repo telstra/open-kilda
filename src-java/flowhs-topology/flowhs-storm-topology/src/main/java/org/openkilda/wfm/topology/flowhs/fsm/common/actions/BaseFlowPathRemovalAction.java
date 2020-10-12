@@ -21,7 +21,6 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
@@ -45,27 +44,13 @@ public abstract class BaseFlowPathRemovalAction<T extends FlowProcessingFsm<T, S
         islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
     }
 
-    protected void deleteFlowPath(FlowPath flowPath) {
-        flowPathRepository.delete(flowPath);
-
-        updateIslsForFlowPath(flowPath);
-    }
-
-    protected void deleteFlowPaths(FlowPathPair pathPair) {
-        flowPathRepository.delete(pathPair.getForward());
-        flowPathRepository.delete(pathPair.getReverse());
-
-        updateIslsForFlowPath(pathPair.getForward(), pathPair.getReverse());
-    }
-
     protected void updateIslsForFlowPath(FlowPath... paths) {
         for (FlowPath path : paths) {
-            path.getSegments().forEach(pathSegment -> {
-                log.debug("Updating ISL for the path segment: {}", pathSegment);
-
-                updateAvailableBandwidth(pathSegment.getSrcSwitch().getSwitchId(), pathSegment.getSrcPort(),
-                        pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort());
-            });
+            path.getSegments().forEach(pathSegment ->
+                    transactionManager.doInTransaction(() -> {
+                        updateAvailableBandwidth(pathSegment.getSrcSwitchId(), pathSegment.getSrcPort(),
+                                pathSegment.getDestSwitchId(), pathSegment.getDestPort());
+                    }));
         }
     }
 
@@ -74,12 +59,7 @@ public abstract class BaseFlowPathRemovalAction<T extends FlowProcessingFsm<T, S
                 dstSwitch, dstPort);
         log.debug("Updating ISL {}_{} - {}_{} with used bandwidth {}", srcSwitch, srcPort, dstSwitch, dstPort,
                 usedBandwidth);
-        try {
-            islRepository.updateAvailableBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth);
-        } catch (PersistenceException e) {
-            log.warn(format("Couldn't update ISL %s_%d - %s_%d with used bandwidth %d. %s",
-                    srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth, e.getMessage()), e);
-        }
+        islRepository.updateAvailableBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth);
     }
 
     protected void saveRemovalActionWithDumpToHistory(T stateMachine, Flow flow, FlowPath flowPath) {

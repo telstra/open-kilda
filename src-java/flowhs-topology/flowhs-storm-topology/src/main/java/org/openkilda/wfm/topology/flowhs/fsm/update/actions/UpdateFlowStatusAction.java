@@ -19,7 +19,6 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
@@ -47,15 +46,16 @@ public class UpdateFlowStatusAction extends FlowProcessingAction<FlowUpdateFsm, 
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
 
-        FlowStatus resultStatus = persistenceManager.getTransactionManager().doInTransaction(() -> {
-            Flow flow = getFlow(flowId, FetchStrategy.DIRECT_RELATIONS);
+        FlowStatus resultStatus = transactionManager.doInTransaction(() -> {
+            Flow flow = getFlow(flowId);
             FlowStatus flowStatus = Optional.ofNullable(stateMachine.getNewFlowStatus())
                     .orElse(flow.computeFlowStatus());
             if (flowStatus != flow.getStatus() && stateMachine.getBulkUpdateFlowIds().isEmpty()) {
                 dashboardLogger.onFlowStatusUpdate(flowId, flowStatus);
-                flowRepository.updateStatus(flowId, flowStatus, getFlowStatusInfo(flowStatus, stateMachine));
+                flow.setStatus(flowStatus);
+                flow.setStatusInfo(getFlowStatusInfo(flowStatus, stateMachine));
             } else if (FlowStatus.DEGRADED.equals(flowStatus)) {
-                flowRepository.updateStatusInfo(flowId, DEGRADED_FLOW_STATUS_INFO);
+                flow.setStatusInfo(DEGRADED_FLOW_STATUS_INFO);
             }
             stateMachine.setNewFlowStatus(flowStatus);
             return flowStatus;

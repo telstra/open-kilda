@@ -220,7 +220,8 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
 
         flowValidationHubService.handleFlowValidationRequest(TEST_KEY, new FlowValidationRequest(TEST_FLOW_ID_A),
                 new FlowValidationHubCarrierImpl());
-        flowRepository.delete(flowRepository.findById(TEST_FLOW_ID_A).get());
+        transactionManager.doInTransaction(() ->
+                flowRepository.remove(flowRepository.findById(TEST_FLOW_ID_A).get()));
         getSwitchFlowEntriesWithTransitVlan().forEach(switchFlowEntries ->
                 flowValidationHubService.handleAsyncResponse(TEST_KEY, new InfoMessage(switchFlowEntries,
                         System.currentTimeMillis(), TEST_KEY)));

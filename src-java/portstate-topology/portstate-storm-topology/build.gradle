@@ -15,7 +15,7 @@ dependencies {
     implementation project(':network-messaging')
     implementation project(':nbworker-messaging')
     implementation project(':floodlight-api')
-    runtimeOnly project(':kilda-persistence-neo4j')
+    runtimeClasspath project(':kilda-persistence-orientdb')
 
     compileOnly('org.apache.storm:storm-core')
 

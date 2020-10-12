@@ -59,7 +59,6 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -177,12 +176,9 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                 if (linkPropsToSet.getMaxBandwidth() != null) {
                     linkProps.setMaxBandwidth(linkPropsToSet.getMaxBandwidth());
                 }
-                linkProps.setTimeModify(Instant.now());
             } else {
-                linkProps = linkPropsToSet;
-                Instant timestamp = Instant.now();
-                linkProps.setTimeCreate(timestamp);
-                linkProps.setTimeModify(timestamp);
+                linkProps = new LinkProps(linkPropsToSet);
+                linkPropsRepository.add(linkProps);
             }
 
             Optional<Isl> existingIsl = islRepository.findByEndpoints(
@@ -203,23 +199,19 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                     }
                     link.setAvailableBandwidth(availableBandwidth);
                 }
-                link.setTimeModify(Instant.now());
-
-                islRepository.createOrUpdate(link);
             });
 
-            linkPropsRepository.createOrUpdate(linkProps);
             return linkProps;
         });
     }
 
     private LinkProps swapLinkProps(LinkProps source) {
-        return source.toBuilder()
-                .srcSwitchId(source.getDstSwitchId())
-                .srcPort(source.getDstPort())
-                .dstSwitchId(source.getSrcSwitchId())
-                .dstPort(source.getSrcPort())
-                .build();
+        LinkProps result = new LinkProps(source);
+        result.setSrcSwitchId(source.getDstSwitchId());
+        result.setSrcPort(source.getDstPort());
+        result.setDstSwitchId(source.getSrcSwitchId());
+        result.setDstPort(source.getSrcPort());
+        return result;
     }
 
     private LinkPropsResponse dropLinkProps(LinkPropsDrop request) {
@@ -256,7 +248,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
 
                 if (!existingLinkProps.isEmpty()) {
                     linkProps = existingLinkProps.iterator().next();
-                    linkPropsRepository.delete(linkProps);
+                    linkPropsRepository.remove(linkProps);
                 }
 
                 Optional<Isl> existingIsl = islRepository.findByEndpoints(
@@ -272,7 +264,6 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                                 - (propsMaxBandwidth - link.getAvailableBandwidth());
                         link.setAvailableBandwidth(availableBandwidth);
                     }
-                    islRepository.createOrUpdate(link);
                 });
 
             }

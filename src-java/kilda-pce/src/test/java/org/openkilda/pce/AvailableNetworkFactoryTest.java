@@ -121,30 +121,20 @@ public class AvailableNetworkFactoryTest {
                 .build();
 
         FlowPath forwardPath = FlowPath.builder()
-                .flow(diverseFlow)
                 .srcSwitch(switchB)
                 .destSwitch(switchD)
                 .pathId(FORWARD_PATH_ID)
                 .segments(Collections.singletonList(PathSegment.builder()
-                        .srcSwitch(switchB)
-                        .srcPort(SRC_PORT)
-                        .destSwitch(switchD)
-                        .destPort(DEST_PORT)
-                        .build()))
+                        .srcSwitch(switchB).srcPort(SRC_PORT).destSwitch(switchD).destPort(DEST_PORT).build()))
                 .build();
         when(flowPathRepository.findById(FORWARD_PATH_ID)).thenReturn(java.util.Optional.of(forwardPath));
 
         FlowPath reversePath = FlowPath.builder()
-                .flow(diverseFlow)
                 .srcSwitch(switchD)
                 .destSwitch(switchB)
                 .pathId(REVERSE_PATH_ID)
                 .segments(Collections.singletonList(PathSegment.builder()
-                        .srcSwitch(switchD)
-                        .srcPort(DEST_PORT)
-                        .destSwitch(switchB)
-                        .destPort(SRC_PORT)
-                        .build()))
+                        .srcSwitch(switchD).srcPort(DEST_PORT).destSwitch(switchB).destPort(SRC_PORT).build()))
                 .build();
         when(flowPathRepository.findById(REVERSE_PATH_ID)).thenReturn(java.util.Optional.of(reversePath));
 
@@ -248,13 +238,13 @@ public class AvailableNetworkFactoryTest {
     }
 
     private static void assertAvailableNetworkIsCorrect(Isl isl, AvailableNetwork availableNetwork) {
-        Node src = availableNetwork.getSwitch(isl.getSrcSwitch().getSwitchId());
+        Node src = availableNetwork.getSwitch(isl.getSrcSwitchId());
         assertNotNull(src);
         assertEquals(1, src.getOutgoingLinks().size());
         Edge edge = src.getOutgoingLinks().iterator().next();
-        assertEquals(isl.getSrcSwitch().getSwitchId(), edge.getSrcSwitch().getSwitchId());
+        assertEquals(isl.getSrcSwitchId(), edge.getSrcSwitch().getSwitchId());
         assertEquals(isl.getSrcPort(), edge.getSrcPort());
-        assertEquals(isl.getDestSwitch().getSwitchId(), edge.getDestSwitch().getSwitchId());
+        assertEquals(isl.getDestSwitchId(), edge.getDestSwitch().getSwitchId());
         assertEquals(isl.getDestPort(), edge.getDestPort());
         assertEquals(isl.getCost(), edge.getCost());
         assertEquals(isl.getLatency(), edge.getLatency());

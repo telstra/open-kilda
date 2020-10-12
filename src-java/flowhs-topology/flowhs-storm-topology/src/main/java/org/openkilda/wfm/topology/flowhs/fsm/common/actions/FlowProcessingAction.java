@@ -32,7 +32,6 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
-import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -40,6 +39,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
@@ -66,6 +66,7 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
     protected final NoArgGenerator commandIdGenerator = Generators.timeBasedGenerator();
 
     protected final PersistenceManager persistenceManager;
+    protected final TransactionManager transactionManager;
     protected final FlowRepository flowRepository;
     protected final FlowPathRepository flowPathRepository;
     protected final SwitchPropertiesRepository switchPropertiesRepository;
@@ -74,6 +75,7 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
 
     public FlowProcessingAction(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
+        this.transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
@@ -97,12 +99,6 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
 
     protected Flow getFlow(String flowId) {
         return flowRepository.findById(flowId)
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
-                        format("Flow %s not found", flowId)));
-    }
-
-    protected Flow getFlow(String flowId, FetchStrategy fetchStrategy) {
-        return flowRepository.findById(flowId, fetchStrategy)
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Flow %s not found", flowId)));
     }

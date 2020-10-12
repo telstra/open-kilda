@@ -44,11 +44,11 @@ import java.util.stream.Stream;
 @Slf4j
 public class AllocatePrimaryResourcesAction extends
         BaseResourceAllocationAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-    public AllocatePrimaryResourcesAction(PersistenceManager persistenceManager, int transactionRetriesLimit,
+    public AllocatePrimaryResourcesAction(PersistenceManager persistenceManager,
                                           int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                                           PathComputer pathComputer, FlowResourcesManager resourcesManager,
                                           FlowOperationsDashboardLogger dashboardLogger) {
-        super(persistenceManager, transactionRetriesLimit, pathAllocationRetriesLimit, pathAllocationRetryDelay,
+        super(persistenceManager, pathAllocationRetriesLimit, pathAllocationRetryDelay,
                 pathComputer, resourcesManager, dashboardLogger);
     }
 
@@ -61,30 +61,32 @@ public class AllocatePrimaryResourcesAction extends
     protected void allocate(FlowRerouteFsm stateMachine)
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         String flowId = stateMachine.getFlowId();
-        Flow flow = getFlow(flowId);
 
+        Flow tmpFlowCopy = getFlow(flowId);
+        // Detach the entity to avoid propagation to the database.
+        flowRepository.detach(tmpFlowCopy);
         if (stateMachine.getNewEncapsulationType() != null) {
             // This is for PCE to use proper (updated) encapsulation type.
-            flow.setEncapsulationType(stateMachine.getNewEncapsulationType());
+            tmpFlowCopy.setEncapsulationType(stateMachine.getNewEncapsulationType());
         }
 
         log.debug("Finding a new primary path for flow {}", flowId);
-
         GetPathsResult potentialPath;
         if (stateMachine.isIgnoreBandwidth()) {
-            boolean originalIgnoreBandwidth = flow.isIgnoreBandwidth();
-            flow.setIgnoreBandwidth(true);
-            potentialPath = pathComputer.getPath(flow, getBackUpStrategies(flow.getPathComputationStrategy()));
-            flow.setIgnoreBandwidth(originalIgnoreBandwidth);
+            boolean originalIgnoreBandwidth = tmpFlowCopy.isIgnoreBandwidth();
+            tmpFlowCopy.setIgnoreBandwidth(true);
+            potentialPath = pathComputer.getPath(tmpFlowCopy,
+                    getBackUpStrategies(tmpFlowCopy.getPathComputationStrategy()));
+            tmpFlowCopy.setIgnoreBandwidth(originalIgnoreBandwidth);
         } else {
-            potentialPath = pathComputer.getPath(
-                    flow, flow.getFlowPathIds(), getBackUpStrategies(flow.getPathComputationStrategy()));
+            potentialPath = pathComputer.getPath(tmpFlowCopy, tmpFlowCopy.getPathIds(),
+                    getBackUpStrategies(tmpFlowCopy.getPathComputationStrategy()));
         }
 
         stateMachine.setNewPrimaryPathComputationStrategy(potentialPath.getUsedStrategy());
         FlowPathPair oldPaths = FlowPathPair.builder()
-                .forward(flow.getForwardPath())
-                .reverse(flow.getReversePath())
+                .forward(tmpFlowCopy.getForwardPath())
+                .reverse(tmpFlowCopy.getReversePath())
                 .build();
         boolean newPathFound = isNotSamePath(potentialPath, oldPaths);
         if (newPathFound || stateMachine.isRecreateIfSamePath()) {
@@ -92,23 +94,27 @@ public class AllocatePrimaryResourcesAction extends
                 log.debug("Found the same primary path for flow {}. Proceed with recreating it", flowId);
             }
 
-            log.debug("Allocating resources for a new primary path of flow {}", flowId);
-            FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
-            log.debug("Resources have been allocated: {}", flowResources);
-            stateMachine.setNewPrimaryResources(flowResources);
+            FlowPathPair createdPaths = transactionManager.doInTransaction(() -> {
+                log.debug("Allocating resources for a new primary path of flow {}", flowId);
+                Flow flow = getFlow(flowId);
+                FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
+                log.debug("Resources have been allocated: {}", flowResources);
+                stateMachine.setNewPrimaryResources(flowResources);
 
-            List<FlowPath> pathsToReuse = Lists.newArrayList(flow.getForwardPath(), flow.getReversePath());
-            pathsToReuse.addAll(stateMachine.getRejectedPaths().stream()
-                    .map(flow::getPath)
-                    .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty))
-                    .collect(Collectors.toList()));
-            FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources,
-                    stateMachine.isIgnoreBandwidth());
-            log.debug("New primary path has been created: {}", newPaths);
-            stateMachine.setNewPrimaryForwardPath(newPaths.getForward().getPathId());
-            stateMachine.setNewPrimaryReversePath(newPaths.getReverse().getPathId());
+                List<FlowPath> pathsToReuse = Lists.newArrayList(flow.getForwardPath(), flow.getReversePath());
+                pathsToReuse.addAll(stateMachine.getRejectedPaths().stream()
+                        .map(flow::getPath)
+                        .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty))
+                        .collect(Collectors.toList()));
+                FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources,
+                        stateMachine.isIgnoreBandwidth());
+                log.debug("New primary path has been created: {}", newPaths);
+                stateMachine.setNewPrimaryForwardPath(newPaths.getForward().getPathId());
+                stateMachine.setNewPrimaryReversePath(newPaths.getReverse().getPathId());
+                return newPaths;
+            });
 
-            saveAllocationActionWithDumpsToHistory(stateMachine, flow, "primary", newPaths);
+            saveAllocationActionWithDumpsToHistory(stateMachine, tmpFlowCopy, "primary", createdPaths);
         } else {
             stateMachine.saveActionToHistory("Found the same primary path. Skipped creating of it");
         }

@@ -21,7 +21,6 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
-import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
@@ -39,8 +38,8 @@ public class RevertPathsSwapAction extends FlowProcessingAction<FlowRerouteFsm, 
 
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        persistenceManager.getTransactionManager().doInTransaction(() -> {
-            Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
+        transactionManager.doInTransaction(() -> {
+            Flow flow = getFlow(stateMachine.getFlowId());
 
             if (stateMachine.getNewEncapsulationType() != null) {
                 flow.setEncapsulationType(stateMachine.getOriginalEncapsulationType());
@@ -50,14 +49,13 @@ public class RevertPathsSwapAction extends FlowProcessingAction<FlowRerouteFsm, 
             if (stateMachine.getOldPrimaryForwardPath() != null) {
                 FlowPath oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
                 if (oldForward.getStatus() != FlowPathStatus.ACTIVE) {
-                    flowPathRepository.updateStatus(oldForward.getPathId(),
-                            stateMachine.getOldPrimaryForwardPathStatus());
+                    oldForward.setStatus(stateMachine.getOldPrimaryForwardPathStatus());
                 }
 
                 log.debug("Swapping back the primary forward path {} with {}",
                         flow.getForwardPathId(), oldForward.getPathId());
 
-                flow.setForwardPath(oldForward.getPathId());
+                flow.setForwardPathId(oldForward.getPathId());
 
                 saveHistory(stateMachine, flow.getFlowId(), oldForward.getPathId());
             }
@@ -65,14 +63,13 @@ public class RevertPathsSwapAction extends FlowProcessingAction<FlowRerouteFsm, 
             if (stateMachine.getOldPrimaryReversePath() != null) {
                 FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
                 if (oldReverse.getStatus() != FlowPathStatus.ACTIVE) {
-                    flowPathRepository.updateStatus(oldReverse.getPathId(),
-                            stateMachine.getOldPrimaryReversePathStatus());
+                    oldReverse.setStatus(stateMachine.getOldPrimaryReversePathStatus());
                 }
 
                 log.debug("Swapping back the primary reverse path {} with {}",
                         flow.getReversePathId(), oldReverse.getPathId());
 
-                flow.setReversePath(oldReverse.getPathId());
+                flow.setReversePathId(oldReverse.getPathId());
 
                 saveHistory(stateMachine, flow.getFlowId(), oldReverse.getPathId());
             }
@@ -80,14 +77,13 @@ public class RevertPathsSwapAction extends FlowProcessingAction<FlowRerouteFsm, 
             if (stateMachine.getOldProtectedForwardPath() != null) {
                 FlowPath oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
                 if (oldForward.getStatus() != FlowPathStatus.ACTIVE) {
-                    flowPathRepository.updateStatus(oldForward.getPathId(),
-                            stateMachine.getOldProtectedForwardPathStatus());
+                    oldForward.setStatus(stateMachine.getOldProtectedForwardPathStatus());
                 }
 
                 log.debug("Swapping back the protected forward path {} with {}",
                         flow.getProtectedForwardPathId(), oldForward.getPathId());
 
-                flow.setProtectedForwardPath(oldForward.getPathId());
+                flow.setProtectedForwardPathId(oldForward.getPathId());
 
                 saveHistory(stateMachine, flow.getFlowId(), oldForward.getPathId());
             }
@@ -95,19 +91,16 @@ public class RevertPathsSwapAction extends FlowProcessingAction<FlowRerouteFsm, 
             if (stateMachine.getOldProtectedReversePath() != null) {
                 FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
                 if (oldReverse.getStatus() != FlowPathStatus.ACTIVE) {
-                    flowPathRepository.updateStatus(oldReverse.getPathId(),
-                            stateMachine.getOldProtectedReversePathStatus());
+                    oldReverse.setStatus(stateMachine.getOldProtectedReversePathStatus());
                 }
 
                 log.debug("Swapping back the protected reverse path {} with {}",
                         flow.getProtectedReversePathId(), oldReverse.getPathId());
 
-                flow.setProtectedReversePath(oldReverse.getPathId());
+                flow.setProtectedReversePathId(oldReverse.getPathId());
 
                 saveHistory(stateMachine, flow.getFlowId(), oldReverse.getPathId());
             }
-
-            flowRepository.createOrUpdate(flow);
         });
     }
 
