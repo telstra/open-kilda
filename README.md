@@ -322,5 +322,5 @@ All configurations for travis are located in .travis.yml. For adding new scripts
 ```
 script:
 - make run-test
-- new command
+- new commanddd
 ```
