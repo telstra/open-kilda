@@ -85,6 +85,10 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                         newValue: 12345
                 ],
                 [
+                        field   : "maxLatencyTier2",
+                        newValue: 23456
+                ],
+                [
                         field   : "priority",
                         newValue: 654
                 ],

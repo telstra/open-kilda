@@ -792,6 +792,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         and: "Value for each field"
         def initPriority = 100
         def initMaxLatency = 200
+        def initMaxLatencyTier2 = 300
         def initDescription = "test description"
         def initPeriodicPing = true
 
@@ -799,6 +800,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.priority = initPriority
         flow.maxLatency = initMaxLatency
+        flow.maxLatencyTier2 = initMaxLatencyTier2
         flow.description = initDescription
         flow.periodicPings = initPeriodicPing
         flowHelperV2.addFlow(flow)
@@ -807,16 +809,19 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         def flowInfo = northboundV2.getFlow(flow.flowId)
         flowInfo.priority == initPriority
         flowInfo.maxLatency == initMaxLatency
+        flowInfo.maxLatencyTier2 == initMaxLatencyTier2
         flowInfo.description == initDescription
         flowInfo.periodicPings == initPeriodicPing
 
         when: "Update predefined values"
         def newPriority = 200
         def newMaxLatency = 300
+        def newMaxLatencyTier2 = 400
         def newDescription = "test description updated"
         def newPeriodicPing = false
         flowInfo.priority = newPriority
         flowInfo.maxLatency = newMaxLatency
+        flowInfo.maxLatencyTier2 = newMaxLatencyTier2
         flowInfo.description = newDescription
         flowInfo.periodicPings = newPeriodicPing
         northboundV2.updateFlow(flowInfo.flowId, flowHelperV2.toRequest(flowInfo))
@@ -825,6 +830,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         def newFlowInfo = northboundV2.getFlow(flow.flowId)
         newFlowInfo.priority == newPriority
         newFlowInfo.maxLatency == newMaxLatency
+        newFlowInfo.maxLatencyTier2 == newMaxLatencyTier2
         newFlowInfo.description == newDescription
         newFlowInfo.periodicPings == newPeriodicPing
 
