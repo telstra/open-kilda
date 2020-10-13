@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.73.1 (13/10/2020)
+
+### Bug Fixes:
+-  [#3778](https://github.com/telstra/open-kilda/pull/3778) Fix memory leaks in OrientDB sessions. [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.73.0...v1.73.1).
+
+### Affected Components:
+isllatency, reroute, portstate, network, stats, flow-hs, swmanager, ping, connected, stats-router, nb, nbworker, router, otsdb
+
+---
+
 ## v1.73.0 (09/10/2020)
 
 ### Bug Fixes:
