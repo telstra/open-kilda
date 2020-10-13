@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.links
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -33,7 +34,7 @@ class RoundTripIslSpec extends HealthCheckSpecification {
     Integer customWaitOffset = WAIT_OFFSET * 4
 
     @Tidy
-    @Tags([SMOKE_SWITCHES])
+    @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "A round trip latency ISL doesn't go down when one switch lose connection to FL"() {
         given: "A switch with/without round trip latency ISLs"
         def roundTripIsls
@@ -88,7 +89,7 @@ for ISL alive confirmation)"
     }
 
     @Tidy
-    @Tags([SMOKE_SWITCHES])
+    @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "A round trip latency ISL goes down when both switches lose connection to FL"() {
         given: "A round trip latency ISL"
         Isl roundTripIsl
@@ -132,7 +133,7 @@ on both switches)"
     }
 
     @Tidy
-    @Tags([SMOKE_SWITCHES])
+    @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "A round trip latency ISL goes down when the src switch lose connection to FL and \
 round trip latency rule is removed on the dst switch"() {
         given: "A round trip latency ISL"
