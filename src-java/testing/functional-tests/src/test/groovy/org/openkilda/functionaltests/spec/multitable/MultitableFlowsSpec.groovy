@@ -299,8 +299,9 @@ mode with existing flows and hold flows of different table-mode types"() {
             rules.findAll { it.cookie in sharedRules*.cookie }*.tableId.unique() == [SHARED_RULE_TABLE_ID]
         }
 
-        and: "Flow is valid"
+        and: "Flow is valid and UP"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        Wrappers.wait(WAIT_OFFSET / 2) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         when: "Update the flow"
         flowHelperV2.updateFlow(flow.flowId, flow.tap { it.description = it.description + " updated" })
