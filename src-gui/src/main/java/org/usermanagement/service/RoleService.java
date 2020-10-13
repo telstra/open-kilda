@@ -295,6 +295,11 @@ public class RoleService {
         }
         return roles;
     }
+    
+    @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
+    public Set<RoleEntity> getRoleByIds(final Set<Long> roleIds) {
+        return roleRepository.findByRoleIdIn(roleIds);
+    }
 
     /**
      * Gets the user by role id.

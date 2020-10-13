@@ -1,0 +1,26 @@
+<div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
+<table id="flowDataTable" datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover dataTable no-footer">
+    <thead>
+    <tr class="tableHeading">
+        <th>Name</th>
+        <th>Entity ID</th>
+        <th>Status</th>       
+        <th class=""><span title="Action">Action</span></th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="flowDataRow "  *ngFor="let row of data; let i = index">
+        <td>{{row.name}}</td>
+        <td>{{row.entity_id}}</td>
+        <td>{{(row.status == true) ?'Active':'InActive'}}</td>
+        <td>
+        <a class="pull-left" title="Edit Provider"  (click)="editProvider(row)">
+            <i class="fa fa-edit"></i>
+            </a>
+            <a class="pull-left" title="Delete Provider"  (click)="deleteProvider(row)">
+                <i class="fa fa-trash"></i>
+                </a>
+        </td>
+    </tr>
+    </tbody>
+</table>

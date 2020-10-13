@@ -22,7 +22,6 @@ import org.openkilda.service.ContractService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -32,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 
 @Controller
@@ -50,11 +50,12 @@ public class ContractController {
      * Returns contracts exists in the system.
      *
      * @return contracts exists in the system.
+     * @throws AccessDeniedException the access denied exception
      */
     @RequestMapping(value = "/list/{linkId}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody List<Contract> getAllContracts(
-            @PathVariable(name = "linkId", required = false) String linkId) {
+            @PathVariable(name = "linkId", required = false) String linkId) throws AccessDeniedException {
         LOGGER.info("Get all contracts. Flow id: '" + linkId + "'");
         return contractService.getContracts(linkId);
     }
