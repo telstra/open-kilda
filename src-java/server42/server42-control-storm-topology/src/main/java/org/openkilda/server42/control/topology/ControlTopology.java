@@ -19,6 +19,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.server42.control.topology.storm.ComponentId;
+import org.openkilda.server42.control.topology.storm.bolt.TickBolt;
 import org.openkilda.server42.control.topology.storm.bolt.flow.FlowHandler;
 import org.openkilda.server42.control.topology.storm.bolt.router.Router;
 import org.openkilda.wfm.LaunchEnvironment;
@@ -70,6 +71,8 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
 
         outputSpeaker(topology, topologyConfig.getNewParallelism());
 
+        lcm(topology, topologyConfig);
+
         return topology.createTopology();
     }
 
@@ -98,7 +101,8 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
         Router bolt = new Router(persistenceManager);
         topology.setBolt(Router.BOLT_ID, bolt, scaleFactor)
                 .shuffleGrouping(ComponentId.INPUT_FLOW_HS.toString())
-                .shuffleGrouping(ComponentId.INPUT_NB.toString());
+                .shuffleGrouping(ComponentId.INPUT_NB.toString())
+                .shuffleGrouping(ComponentId.TICK_BOLT.toString());
     }
 
     private void flowHandler(TopologyBuilder topology, int scaleFactor) {
@@ -106,6 +110,7 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
         Fields grouping = new Fields(Router.FIELD_ID_SWITCH_ID);
         topology.setBolt(FlowHandler.BOLT_ID, bolt, scaleFactor)
                 .fieldsGrouping(Router.BOLT_ID, Router.STREAM_FLOW_ID, grouping);
+
     }
 
     private void outputSpeaker(TopologyBuilder topology, int scaleFactor) {
@@ -113,5 +118,9 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
         KafkaBolt output = buildKafkaBoltWithRawObject(topologyConfig.getKafkaTopics().getServer42StormCommandsTopic());
         topology.setBolt(ComponentId.OUTPUT_SERVER42_CONTROL.toString(), output, scaleFactor)
                 .shuffleGrouping(FlowHandler.BOLT_ID, FlowHandler.STREAM_CONTROL_COMMANDS_ID);
+    }
+
+    private void lcm(TopologyBuilder topology, ControlTopologyConfig topologyConfig) {
+        topology.setBolt(TickBolt.BOLT_ID, new TickBolt(topologyConfig.getFlowRttSyncIntervalSeconds()));
     }
 }

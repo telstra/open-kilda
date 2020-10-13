@@ -157,11 +157,21 @@ public class GateTest {
         Headers headers = Headers.builder().correlationId("some-correlation-id").build();
         ClearFlows clearFlows = ClearFlows.builder().headers(headers).build();
 
-        gate.listen(clearFlows);
+        String dpId = "00:00:1b:45:18:d6:71:5a";
+        gate.listen(clearFlows, dpId);
         CommandPacket commandPacket = getCommandPacket();
         assertThat(commandPacket.getType()).isEqualTo(Type.CLEAR_FLOWS);
-        assertThat(commandPacket.getCommandList()).isEmpty();
+
+
+        assertThat(commandPacket.getCommandList()).hasSize(1);
+        Any command = commandPacket.getCommand(0);
+        assertThat(command.is(Control.ClearFlowsFilter.class)).isTrue();
+
+        Control.ClearFlowsFilter unpack = command.unpack(Control.ClearFlowsFilter.class);
+        String dstMac = "1b:45:18:d6:71:5a";
+        assertThat(unpack.getDstMac()).isEqualTo(dstMac);
     }
+
 
 
     @Test
@@ -181,8 +191,11 @@ public class GateTest {
                 commandPacket -> commandPacket.getType() == Type.LIST_FLOWS)))
                 .thenReturn(commandPacketResponse);
 
+
+        String switchId = "00:00:1b:45:18:d6:71:5a";
+
         Headers headers = Headers.builder().correlationId("some-correlation-id").build();
-        gate.listen(new ListFlowsRequest(headers));
+        gate.listen(new ListFlowsRequest(headers), switchId);
 
         ArgumentCaptor<ListFlowsResponse> argument = ArgumentCaptor.forClass(ListFlowsResponse.class);
         verify(template).send(eq(toStorm), argument.capture());
@@ -218,4 +231,3 @@ public class GateTest {
         return argument.getValue();
     }
 }
-

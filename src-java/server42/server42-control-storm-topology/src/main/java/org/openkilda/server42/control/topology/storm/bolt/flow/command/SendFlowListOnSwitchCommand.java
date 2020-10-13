@@ -13,18 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.server42.control.topology;
+package org.openkilda.server42.control.topology.storm.bolt.flow.command;
 
-import org.openkilda.wfm.topology.AbstractTopologyConfig;
+import org.openkilda.model.SwitchId;
+import org.openkilda.server42.control.topology.storm.bolt.flow.FlowHandler;
 
-import com.sabre.oss.conf4j.annotation.Configuration;
-import com.sabre.oss.conf4j.annotation.Default;
-import com.sabre.oss.conf4j.annotation.Key;
 
-@Configuration
-public interface ControlTopologyConfig extends AbstractTopologyConfig {
+public class SendFlowListOnSwitchCommand extends FlowCommand {
 
-    @Key("server42.control.flowrtt.sync.interval.seconds")
-    @Default("60")
-    int getFlowRttSyncIntervalSeconds();
+    public SendFlowListOnSwitchCommand(SwitchId switchId) {
+        super(switchId);
+    }
+
+    @Override
+    public void apply(FlowHandler handler) {
+        handler.processSendFlowListOnSwitchCommand(getSwitchId());
+    }
 }

@@ -18,6 +18,7 @@ message Flow {
     bool direction = 6;
     string dst_mac = 7;
     int64 udp_src_port = 8;
+    int64 hash_code = 9;
 }
 
 message CommandPacket {
@@ -47,8 +48,16 @@ message RemoveFlow {
     Flow flow = 1;
 }
 
-message ListFlows {
+message ClearFlowsFilter {
+    string dst_mac = 1;
+}
+
+message ListFlows{
     repeated Flow flow = 1;
+}
+
+message ListFlowsFilter {
+    string dst_mac = 1;
 }
 
 message PushSettings {

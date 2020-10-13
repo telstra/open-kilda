@@ -13,6 +13,8 @@
 #include <pcapplusplus/DpdkDeviceList.h>
 
 #include <boost/log/trivial.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/core.hpp>
 #include <boost/stacktrace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -74,6 +76,11 @@ void init_logging(Config::cref_ptr config) {
     namespace logging = boost::log;
     if (config->is_debug()) {
         logging::core::get()->reset_filter();
+    } else {
+        logging::core::get()->set_filter
+                (
+                        logging::trivial::severity >= logging::trivial::info
+                );
     }
 }
 
@@ -166,7 +173,7 @@ worker_artefact_t build_process_thread(SharedContext &shared_context,
 
 worker_artefact_t build_echo_thread(pcpp::DpdkDevice *loopback_device) {
     auto ptr = boost::make_shared<DpdkCoreThread>(boost::bind(echo_thread, _2, loopback_device));
-    return boost::make_tuple(ptr,"echo_thread");
+    return boost::make_tuple(ptr, "echo_thread");
 }
 
 boost::tuple<int, vector_worker_ptr_t> init_workers(Config::cref_ptr config, SharedContext &shared_context) {
@@ -268,7 +275,7 @@ int main(int argc, char *argv[]) {
     vector_worker_ptr_t workers;
     boost::tie(cores, workers) = init_workers(config, shared_context);
 
-    std::vector<pcpp::DpdkWorkerThread*> pcpp_workers;
+    std::vector<pcpp::DpdkWorkerThread *> pcpp_workers;
     for (auto w: workers) {
         pcpp_workers.emplace_back(w.get());
     }
