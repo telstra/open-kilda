@@ -720,8 +720,8 @@ public class NorthboundServiceImpl implements NorthboundService {
                 .maxBandwidth(dto.getMaxBandwidth())
                 .underMaintenance(dto.isUnderMaintenance())
                 .latency(dto.getLatency())
-                .enableBfd(dto.isEnableBfd())
                 .bfdSessionStatus(dto.getBfdSessionStatus())
+                .enableBfd(dto.isEnableBfd())
                 .build();
     }
 }
