@@ -53,6 +53,7 @@ public class FlowRequest extends CommandData {
     String description;
     int transitEncapsulationId;
     Long maxLatency;
+    Long maxLatencyTier2;
     Integer priority;
     boolean pinned;
     String diverseFlowId;

@@ -24,6 +24,9 @@ import static org.openkilda.model.cookie.Cookie.MULTITABLE_POST_INGRESS_DROP_COO
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
 import static org.openkilda.model.cookie.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE
+import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VLAN_COOKIE
+import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE
+import static org.openkilda.model.cookie.Cookie.SERVER_42_TURNING_COOKIE
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_RULE_COOKIE
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
@@ -122,6 +125,7 @@ class SwitchHelper {
         def swProps = northbound.getSwitchProperties(sw.dpId)
         def multiTableRules = []
         def devicesRules = []
+        def server42Rules = []
         if (swProps.multiTable) {
             multiTableRules = [MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
                     MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
@@ -165,21 +169,30 @@ class SwitchHelper {
         if (swProps.switchArp) {
             devicesRules.addAll([ARP_INPUT_PRE_DROP_COOKIE, ARP_TRANSIT_COOKIE, ARP_INGRESS_COOKIE])
         }
+        if (swProps.server42FlowRtt) {
+            server42Rules << SERVER_42_OUTPUT_VLAN_COOKIE
+            if (sw.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST)) {
+                server42Rules << SERVER_42_TURNING_COOKIE
+            }
+            if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
+                server42Rules << SERVER_42_OUTPUT_VXLAN_COOKIE
+            }
+        }
         if (sw.noviflow && !sw.wb5164) {
             return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                      VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE,
                      CATCH_BFD_RULE_COOKIE, ROUND_TRIP_LATENCY_RULE_COOKIE,
-                     VERIFICATION_UNICAST_VXLAN_RULE_COOKIE] + multiTableRules + devicesRules)
+                     VERIFICATION_UNICAST_VXLAN_RULE_COOKIE] + multiTableRules + devicesRules + server42Rules)
         } else if((sw.noviflow || sw.nbFormat().manufacturer == "E") && sw.wb5164){
             return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                      VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE,
-                     CATCH_BFD_RULE_COOKIE] + multiTableRules + devicesRules)
+                     CATCH_BFD_RULE_COOKIE] + multiTableRules + devicesRules + server42Rules)
         } else if (sw.ofVersion == "OF_12") {
             return [VERIFICATION_BROADCAST_RULE_COOKIE]
         } else {
             return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                      VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE]
-            + multiTableRules + devicesRules)
+            + multiTableRules + devicesRules + server42Rules)
         }
     }
 

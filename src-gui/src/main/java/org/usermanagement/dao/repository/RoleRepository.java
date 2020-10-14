@@ -30,4 +30,6 @@ public interface RoleRepository extends JpaRepository<RoleEntity, Long> {
     Set<RoleEntity> findByPermissions_permissionId(Long permissionId);
 
     public List<RoleEntity> findByNameIn(Set<String> roles);
+    
+    public Set<RoleEntity> findByRoleIdIn(Set<Long> roles);
 }

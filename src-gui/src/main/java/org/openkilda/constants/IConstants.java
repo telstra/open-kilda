@@ -110,6 +110,12 @@ public abstract class IConstants {
         public static final String ADMIN = "ROLE_ADMIN";
         public static final String USER = "ROLE_USER";
     }
+    
+    public enum ProviderType {
+
+        FILE, URL;
+
+    }
 
     public final class Status {
         
@@ -290,7 +296,8 @@ public abstract class IConstants {
         public static final String SW_UPDATE_PORT_PROPERTIES = "sw_update_port_properties";
         
         public static final String SW_SWITCH_METERS = "sw_switch_meters";
-        
+
+        public static final String SAML_SETTING = "saml_setting";
         
         public static final String TOPOLOGY_WORLD_MAP_VIEW = "topology_world_map_view";
         
@@ -304,6 +311,18 @@ public abstract class IConstants {
 
         public static final String TOPOLOGY_SETTING = "topology_setting";
     }
+    
+    public interface SamlUrl {
+      
+        public static final String SAML = "/saml/";
+        public static final String SAML_METADATA = SAML + "metadata";
+        public static final String SAML_LOGIN = SAML + "login";
+        public static final String SAML_SSO = SAML + "SSO";
+        public static final String SAML_LOGOUT = SAML + "logout";
+        public static final String SAML_AUTHENTICATE = SAML + "authenticate";
+    
+    }
+    
 
     public final class View {
         

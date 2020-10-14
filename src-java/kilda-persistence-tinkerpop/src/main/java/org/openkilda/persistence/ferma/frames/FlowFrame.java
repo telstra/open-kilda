@@ -269,6 +269,14 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     public abstract void setMaxLatency(Long maxLatency);
 
     @Override
+    @Property("max_latency_tier2")
+    public abstract Long getMaxLatencyTier2();
+
+    @Override
+    @Property("max_latency_tier2")
+    public abstract void setMaxLatencyTier2(Long maxLatencyTier2);
+
+    @Override
     @Property("priority")
     public abstract Integer getPriority();
 

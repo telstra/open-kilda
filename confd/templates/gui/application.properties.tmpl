@@ -5,6 +5,12 @@
 server.port={{ getv "/kilda_gui_port" }}
 server.contextPath=/openkilda
 
+#SSL Configurations
+server.ssl.enabled = true
+server.ssl.key-alias = kilda
+server.ssl.key-store = classpath:keystore-kilda.jks
+server.ssl.key-store-password = openkilda
+
 #Derby database configuration (In Memory)
 spring.jpa.database=default
 spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.DerbyTenSevenDialect
@@ -25,7 +31,6 @@ logging.config=logback.xml
 spring.mvc.throw-exception-if-no-handler-found=true
 
 #Northbound Base URL
-#nb.base.url={{ getv "/kilda_northbound_endpoint" }}:{{ getv "/kilda_northbound_rest_port" }}/api/v1
 nb.base.url={{ getv "/kilda_northbound_endpoint" }}:{{ getv "/kilda_northbound_rest_port" }}/api
 
 #OPEN TSDB Base URL and metric prefix

@@ -56,6 +56,7 @@ public class FlowMapperTest {
     private static final boolean ALLOCATE_PROTECTED_PATH = true;
     private static final boolean PINNED = true;
     private static final Long LATENCY = 10L;
+    private static final Long LATENCY_TIER2 = 101L;
     private static final Integer PRIORITY = 15;
     private static final String DESCRIPTION = "Description";
     private static final String ENCAPSULATION_TYPE = "transit_vlan";
@@ -83,6 +84,8 @@ public class FlowMapperTest {
             IGNORE_BANDWIDTH, PERIODIC_PINGS, ALLOCATE_PROTECTED_PATH, DESCRIPTION, "created", "lastUpdated",
             DIVERSE_FLOW_ID, "status", LATENCY, PRIORITY, PINNED, ENCAPSULATION_TYPE, PATH_COMPUTATION_STRATEGY);
 
+    private static final long MS_TO_NS_MULTIPLIER = 1000000L;
+
     private FlowMapper flowMapper = Mappers.getMapper(FlowMapper.class);
 
     @Test
@@ -95,6 +98,7 @@ public class FlowMapperTest {
                 .description(DESCRIPTION)
                 .maximumBandwidth(BANDWIDTH)
                 .maxLatency(LATENCY)
+                .maxLatencyTier2(LATENCY_TIER2)
                 .priority(PRIORITY)
                 .diverseFlowId(DIVERSE_FLOW_ID)
                 .build();
@@ -110,7 +114,8 @@ public class FlowMapperTest {
         assertEquals(FlowEncapsulationType.TRANSIT_VLAN, flowRequest.getEncapsulationType());
         assertEquals(DESCRIPTION, flowRequest.getDescription());
         assertEquals(BANDWIDTH, flowRequest.getBandwidth());
-        assertEquals(LATENCY * 1000000L, (long) flowRequest.getMaxLatency()); // ms to ns
+        assertEquals(LATENCY * MS_TO_NS_MULTIPLIER, (long) flowRequest.getMaxLatency()); // ms to ns
+        assertEquals(LATENCY_TIER2 * MS_TO_NS_MULTIPLIER, (long) flowRequest.getMaxLatencyTier2());
         assertEquals(PRIORITY, flowRequest.getPriority());
         assertEquals(DIVERSE_FLOW_ID, flowRequest.getDiverseFlowId());
         assertEquals(SRC_DETECT_CONNECTED_DEVICES.isLldp(), flowRequest.getDetectConnectedDevices().isSrcLldp());
@@ -174,7 +179,7 @@ public class FlowMapperTest {
         assertEquals(expected.isPeriodicPings(), actual.isPeriodicPings());
         assertEquals(expected.isPinned(), actual.isPinned());
         assertEquals(expected.getDescription(), actual.getDescription());
-        assertEquals(expected.getMaxLatency() * 1000000L, (long) actual.getMaxLatency()); // ms to ns
+        assertEquals(expected.getMaxLatency() * MS_TO_NS_MULTIPLIER, (long) actual.getMaxLatency()); // ms to ns
         assertEquals(expected.getPriority(), actual.getPriority());
         assertEquals(expected.getEncapsulationType(), actual.getEncapsulationType().name().toLowerCase());
         assertEquals(expected.getPathComputationStrategy(), actual.getPathComputationStrategy());
@@ -203,7 +208,7 @@ public class FlowMapperTest {
         FlowPatchDto flowPatchDto = new FlowPatchDto(LATENCY, PRIORITY, PERIODIC_PINGS,
                 TARGET_PATH_COMPUTATION_STRATEGY);
         FlowPatch flowPatch = flowMapper.toFlowPatch(flowPatchDto);
-        assertEquals(flowPatchDto.getMaxLatency() * 1000000L, (long) flowPatch.getMaxLatency());
+        assertEquals(flowPatchDto.getMaxLatency() * MS_TO_NS_MULTIPLIER, (long) flowPatch.getMaxLatency());
         assertEquals(flowPatchDto.getPriority(), flowPatch.getPriority());
         assertEquals(flowPatchDto.getPeriodicPings(), flowPatch.getPeriodicPings());
         assertEquals(flowPatchDto.getTargetPathComputationStrategy(),
@@ -215,9 +220,9 @@ public class FlowMapperTest {
         FlowPatchV2 flowPatchDto = new FlowPatchV2(
                 new FlowPatchEndpoint(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, SRC_INNER_VLAN, SRC_DETECT_CONNECTED_DEVICES),
                 new FlowPatchEndpoint(DST_SWITCH_ID, DST_PORT, DST_VLAN, DST_INNER_VLAN, DST_DETECT_CONNECTED_DEVICES),
-                LATENCY, PRIORITY, PERIODIC_PINGS, TARGET_PATH_COMPUTATION_STRATEGY, DIVERSE_FLOW_ID, (long) BANDWIDTH,
-                ALLOCATE_PROTECTED_PATH, PINNED, IGNORE_BANDWIDTH, DESCRIPTION, ENCAPSULATION_TYPE,
-                PATH_COMPUTATION_STRATEGY);
+                (long) BANDWIDTH, IGNORE_BANDWIDTH, PERIODIC_PINGS, DESCRIPTION, LATENCY, LATENCY_TIER2, PRIORITY,
+                DIVERSE_FLOW_ID, PINNED, ALLOCATE_PROTECTED_PATH, ENCAPSULATION_TYPE, PATH_COMPUTATION_STRATEGY,
+                TARGET_PATH_COMPUTATION_STRATEGY);
         FlowPatch flowPatch = flowMapper.toFlowPatch(flowPatchDto);
 
         assertEquals(flowPatchDto.getSource().getSwitchId(), flowPatch.getSource().getSwitchId());
@@ -236,7 +241,8 @@ public class FlowMapperTest {
                 flowPatch.getDestination().getTrackLldpConnectedDevices());
         assertEquals(flowPatchDto.getDestination().getDetectConnectedDevices().isArp(),
                 flowPatch.getDestination().getTrackArpConnectedDevices());
-        assertEquals(flowPatchDto.getMaxLatency() * 1000000L, (long) flowPatch.getMaxLatency());
+        assertEquals(flowPatchDto.getMaxLatency() * MS_TO_NS_MULTIPLIER, (long) flowPatch.getMaxLatency());
+        assertEquals(flowPatchDto.getMaxLatencyTier2() * MS_TO_NS_MULTIPLIER, (long) flowPatch.getMaxLatencyTier2());
         assertEquals(flowPatchDto.getPriority(), flowPatch.getPriority());
         assertEquals(flowPatchDto.getPeriodicPings(), flowPatch.getPeriodicPings());
         assertEquals(flowPatchDto.getTargetPathComputationStrategy(),
