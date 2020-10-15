@@ -56,9 +56,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
-    @Value('${use.multitable}')
-    boolean useMultiTable
-
     @Shared
     Switch srcSwitch, dstSwitch
     @Shared
@@ -252,50 +249,37 @@ class FlowRulesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll("Able to delete switch rules by #data.description")
+    @Unroll("Able to delete switch rules by #data.identifier")
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Able to delete switch rules by cookie/priority"() {
         given: "A switch with some flow rules installed"
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flowHelperV2.addFlow(flow)
 
-        if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable ) {
-            def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
-                new Cookie(it.cookie).serviceFlag
-            }
-            if (ingressRule) {
-                data.defaultRules = (data.defaultRules + ingressRule)
-            }
-        }
-        when: "Delete switch rules by #data.description"
-        def deletedRules = northbound.deleteSwitchRules(
-                data.switch.dpId, getFlowRules(data.switch).first()."$data.description")
-        def amountOfDeletedRules = (data.description == "priority" &&
-                northbound.getSwitchProperties(data.switch.dpId).multiTable) ?
-                data.rulesDeleted + sharedRulesCount : data.rulesDeleted
+        when: "Delete switch rules by #data.identifier"
+        def ruleToDelete = getFlowRules(data.switch).first()
+        def expectedDeletedRules = northbound.getSwitchRules(data.switch.dpId).flowEntries
+                .findAll { it."$data.identifier" ==  ruleToDelete."$data.identifier" &&
+                !new Cookie(it.cookie).serviceFlag }
+        def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, ruleToDelete."$data.identifier")
 
         then: "The requested rules are really deleted"
-        deletedRules.size() == amountOfDeletedRules
+        deletedRules.size() == expectedDeletedRules.size()
         Wrappers.wait(RULES_DELETION_TIME) {
-            def amountOfFlowRules = northbound.getSwitchProperties(data.switch.dpId).multiTable ? flowRulesCount + sharedRulesCount : flowRulesCount
             def actualRules = northbound.getSwitchRules(data.switch.dpId).flowEntries
-            assert actualRules.size() == data.defaultRules.size() + amountOfFlowRules - amountOfDeletedRules
-            assert actualRules.findAll { it.cookie in deletedRules }.empty
+            assert actualRules.findAll { it.cookie in expectedDeletedRules*.cookie }.empty
         }
 
         cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:
-        data << [[description : "cookie",
-                  switch      : srcSwitch,
-                  defaultRules: srcSwDefaultRules,
-                  rulesDeleted: 1
+        data << [
+                [identifier : "cookie",
+                  switch      : srcSwitch
                  ],
-                 [description : "priority",
-                  switch      : dstSwitch,
-                  defaultRules: dstSwDefaultRules,
-                  rulesDeleted: 2
+                 [identifier : "priority",
+                  switch      : dstSwitch
                  ]
         ]
     }
@@ -350,27 +334,17 @@ class FlowRulesSpec extends HealthCheckSpecification {
     def "Able to delete switch rules by inPort/inVlan/outPort"() {
         given: "A switch with some flow rules installed"
         flowHelperV2.addFlow(flow)
-        def expectedRemovedRules = 1
-        if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable) {
-            def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
-                new Cookie(it.cookie).serviceFlag
-            }
-            if (ingressRule && data.removedRules == 1) {
-                data.defaultRules = (data.defaultRules + ingressRule + sharedRulesCount)
-            }
-            expectedRemovedRules = data.removedRules
-        }
+        def cookiesBefore = northbound.getSwitchRules(data.switch.dpId).flowEntries*.cookie.sort()
 
         when: "Delete switch rules by #data.description"
         def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan,
                 data.encapsulationType, data.outPort)
 
         then: "The requested rules are really deleted"
-        deletedRules.size() == expectedRemovedRules
+        deletedRules.size() == data.removedRules
         Wrappers.wait(RULES_DELETION_TIME) {
             def actualRules = northbound.getSwitchRules(data.switch.dpId).flowEntries
-            assert actualRules.size() == data.defaultRules.size() + flowRulesCount - 1
-            assert actualRules.findAll { it.cookie in deletedRules }.empty
+            assert actualRules*.cookie.sort() == cookiesBefore - deletedRules
             assert filterRules(actualRules, data.inPort, data.inVlan, data.outPort).empty
         }
 
@@ -381,16 +355,14 @@ class FlowRulesSpec extends HealthCheckSpecification {
         flow << [buildFlow()] * 4
         data << [[description      : "inPort",
                   switch           : srcSwitch,
-                  defaultRules     : srcSwDefaultRules,
                   inPort           : flow.source.portNumber,
                   inVlan           : null,
                   encapsulationType: null,
                   outPort          : null,
-                  removedRules     : 3
+                  removedRules     : 1 + (getUseMultitable() ? 2 : 0)
                  ],
                  [description      : "inVlan",
                   switch           : srcSwitch,
-                  defaultRules     : srcSwDefaultRules,
                   inPort           : null,
                   inVlan           : flow.source.vlanId,
                   encapsulationType: "TRANSIT_VLAN",
@@ -399,7 +371,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
                  ],
                  [description      : "inPort and inVlan",
                   switch           : srcSwitch,
-                  defaultRules     : srcSwDefaultRules,
                   inPort           : flow.source.portNumber,
                   inVlan           : flow.source.vlanId,
                   encapsulationType: "TRANSIT_VLAN",
@@ -408,7 +379,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
                  ],
                  [description      : "outPort",
                   switch           : dstSwitch,
-                  defaultRules     : dstSwDefaultRules,
                   inPort           : null,
                   inVlan           : null,
                   encapsulationType: null,
@@ -425,15 +395,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         given: "A switch with some flow rules installed"
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flowHelperV2.addFlow(flow)
-
-        if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable) {
-            def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
-                new Cookie(it.cookie).serviceFlag
-            }
-            if (ingressRule) {
-                data.defaultRules = (data.defaultRules + ingressRule + sharedRulesCount)
-            }
-        }
+        def originalRules = northbound.getSwitchRules(data.switch.dpId).flowEntries*.cookie.sort()
 
         when: "Delete switch rules by non-existing #data.description"
         def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan,
@@ -441,7 +403,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         then: "All rules are kept intact"
         deletedRules.size() == 0
-        northbound.getSwitchRules(data.switch.dpId).flowEntries.size() == data.defaultRules.size() + flowRulesCount
+        northbound.getSwitchRules(data.switch.dpId).flowEntries*.cookie.sort() == originalRules
 
         cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -591,28 +553,22 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def uniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
             !commonNodeIds.contains(it.switchId)
         }
+        def rulesOnCommonNodesBefore = commonNodeIds.collectEntries {
+            [it, northbound.getSwitchRules(it).flowEntries*.cookie.sort()]
+        }
 
         and: "Delete flow rules(for main and protected paths) on involved switches for creating missing rules"
-        def amountOfRules = { SwitchId switchId ->
-            if (northbound.getSwitchProperties(switchId).multiTable) {
-                4 //ingress + egress + multiTableFlowRulesCount + sharedRulesCount
-            } else {
-                (switchId == switchPair.src.dpId || switchId == switchPair.dst.dpId) ? 3 : 4
-            }
-        }
         commonNodeIds.each { northbound.deleteSwitchRules(it, DeleteRulesAction.IGNORE_DEFAULTS) }
         uniqueNodes.each { northbound.deleteSwitchRules(it.switchId, DeleteRulesAction.IGNORE_DEFAULTS) }
-
         commonNodeIds.each { switchId ->
-            assert northbound.validateSwitchRules(switchId).missingRules.size() == amountOfRules(switchId)
+            assert northbound.validateSwitchRules(switchId).missingRules.size() > 0
         }
-
         uniqueNodes.each { assert northbound.validateSwitchRules(it.switchId).missingRules.size() == 2 }
 
         when: "Synchronize rules on switches"
         commonNodeIds.each {
             def response = northbound.synchronizeSwitchRules(it)
-            assert response.missingRules.size() == amountOfRules(it)
+            assert response.missingRules.size() > 0
             assert response.installedRules.sort() == response.missingRules.sort()
             assert response.properRules.findAll { !new Cookie(it).serviceFlag }.empty
             assert response.excessRules.empty
@@ -628,12 +584,11 @@ class FlowRulesSpec extends HealthCheckSpecification {
         then: "No missing rules were found after rules synchronization"
         commonNodeIds.each { switchId ->
             verifyAll(northbound.validateSwitchRules(switchId)) {
-                properRules.findAll { !new Cookie(it).serviceFlag }.size() == amountOfRules(switchId)
+                properRules.sort() == rulesOnCommonNodesBefore[switchId]
                 missingRules.empty
                 excessRules.empty
             }
         }
-
         uniqueNodes.each {
             verifyAll(northbound.validateSwitchRules(it.switchId)) {
                 properRules.findAll { !new Cookie(it).serviceFlag }.size() == 2
@@ -650,7 +605,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Traffic counters in ingress rule are reset on flow rerouting(singleTable mode)"() {
         given: "Two active neighboring switches and two possible flow paths at least"
-        assumeTrue("This test is not ready to be run under multiTable mode", !useMultiTable)
+        assumeTrue("This test is not ready to be run under multiTable mode", !useMultitable)
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected*.dpId
         List<List<PathNode>> possibleFlowPaths = []
         def isl = topology.getIslsForActiveSwitches().find {
@@ -712,7 +667,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Traffic counters in ingress rule are reset on flow rerouting(multiTable mode)"() {
         given: "Two active neighboring switches and two possible flow paths at least"
-        assumeTrue("This test can be run in multiTable mode", useMultiTable)
+        assumeTrue("This test can be run in multiTable mode", useMultitable)
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected*.dpId
         List<List<PathNode>> possibleFlowPaths = []
         def isl = topology.getIslsForActiveSwitches().find {

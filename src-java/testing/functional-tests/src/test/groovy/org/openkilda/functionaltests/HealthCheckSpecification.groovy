@@ -7,8 +7,11 @@ import org.openkilda.functionaltests.exception.IslNotFoundException
 import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.model.SwitchFeature
 import org.openkilda.testing.model.topology.TopologyDefinition.Status
 import org.openkilda.testing.tools.SoftAssertions
+
+import org.springframework.beans.factory.annotation.Value
 
 class HealthCheckSpecification extends BaseSpecification {
 
@@ -64,5 +67,27 @@ class HealthCheckSpecification extends BaseSpecification {
             }
         }
         regionVerifications.verify()
+
+        and: "Feature toggles are in expected state"
+        verifyAll(northbound.getFeatureToggles()) {
+            flowsRerouteOnIslDiscoveryEnabled
+            createFlowEnabled
+            updateFlowEnabled
+            deleteFlowEnabled
+            useBfdForIslIntegrityCheck
+            floodlightRoutePeriodicSync
+            server42FlowRtt
+            //for below props any value allowed. dependent tests will skip themselves or adjust if feature is off
+            //flowsRerouteUsingDefaultEncapType
+            //collectGrpcStats
+        }
+
+        and: "Switches configurations are in expected state"
+        topology.switches.each { sw ->
+            verifyAll(northbound.getSwitchProperties(sw.dpId)) {
+                multiTable == useMultitable && sw.features.contains(SwitchFeature.MULTI_TABLE)
+                //server42 props can be either on or off
+            }
+        }
     }
 }

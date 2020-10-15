@@ -362,6 +362,7 @@ mode with existing flows and hold flows of different table-mode types"() {
     }
 
     @Tags([SMOKE_SWITCHES])
+    @Ignore("https://github.com/telstra/open-kilda/issues/3341")
     def "Flow rules are (re)installed according to switch property while syncing and updating"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null
@@ -487,6 +488,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/3341")
     def "Flow rules are (re)installed according to switch property while rerouting"() {
         given: "Three active switches, src and dst switches are connected to traffgen"
         List<PathNode> desiredPath = null
@@ -623,9 +625,8 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         when: "Disable protected path on the flow"
-        //unable to use v2 here due to https://github.com/telstra/open-kilda/issues/3341
-//        flowHelperV2.updateFlow(flow.flowId, flowHelperV2.toV2(northbound.getFlow(flow.flowId).tap { it.allocateProtectedPath = false }))
-        northbound.updateFlow(flow.flowId, northbound.getFlow(flow.flowId).tap { it.allocateProtectedPath = false })
+        //https://github.com/telstra/open-kilda/issues/3341
+        flowHelperV2.updateFlow(flow.flowId, flowHelperV2.toV2(northbound.getFlow(flow.flowId).tap { it.allocateProtectedPath = false }))
 
         and: "Update switch properties(multi_table: false) on the dst and (multi_table: true) on the src switches"
         northbound.updateSwitchProperties(involvedSwitches[0].dpId,
@@ -1105,7 +1106,9 @@ mode with existing flows and hold flows of different table-mode types"() {
         def sharedRuleOnDstSwitch = northbound.getSwitchRules(involvedSwitches[2].dpId).flowEntries.find {
                 new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
         }
-        northbound.deleteSwitchRules(involvedSwitches[2].dpId, DeleteRulesAction.IGNORE_DEFAULTS)
+        [flowInfoFromDb.forwardPath.cookie.value, flowInfoFromDb.reversePath.cookie.value, sharedRuleOnDstSwitch.cookie].each {
+            northbound.deleteSwitchRules(involvedSwitches[2].dpId, it)
+        }
 
         then: "Flow is not valid in both directions"
         northbound.validateFlow(flow.flowId).each { direction -> assert !direction.asExpected }

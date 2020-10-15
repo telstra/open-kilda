@@ -106,7 +106,8 @@ class SwitchSyncSpec extends BaseSpecification {
                 assert validationResultsMap[it.dpId].meters.missing.meterId.sort() == it.defaultMeters.sort()
             }
             [switchPair.src, switchPair.dst].each {
-                def amountOfSharedRules = northbound.getSwitchProperties(it.dpId).multiTable ? 1 : 0
+                def swProps = northbound.getSwitchProperties(it.dpId)
+                def amountOfSharedRules = (swProps.multiTable ? 1 : 0) + (swProps.server42FlowRtt ? 1 : 0)
                 assert validationResultsMap[it.dpId].rules.missing.size() == 2 + it.defaultCookies.size() + amountOfSharedRules
                 assert validationResultsMap[it.dpId].meters.missing.size() == 1 + it.defaultMeters.size()
             }

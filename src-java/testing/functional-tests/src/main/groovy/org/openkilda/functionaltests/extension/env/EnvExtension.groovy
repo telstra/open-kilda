@@ -133,5 +133,15 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
                 it.state == SwitchChangeType.ACTIVATED
             }.size() == topology.activeSwitches.size()
         }
+
+        //setup server42 configs according to topology description
+        topology.getActiveServer42Switches().each { sw ->
+            northbound.updateSwitchProperties(sw.dpId, northbound.getSwitchProperties(sw.dpId).tap {
+                server42FlowRtt = sw.prop.server42FlowRtt
+                server42MacAddress = sw.prop.server42MacAddress
+                server42Port = sw.prop.server42Port
+                server42Vlan = sw.prop.server42Vlan
+            })
+        }
     }
 }

@@ -18,6 +18,7 @@ package org.openkilda.testing.service.otsdb;
 import static java.util.stream.Collectors.toList;
 
 import org.openkilda.testing.service.otsdb.model.Aggregator;
+import org.openkilda.testing.service.otsdb.model.EmptyStatsResult;
 import org.openkilda.testing.service.otsdb.model.StatsResult;
 
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -52,20 +54,17 @@ public class OtsdbQueryServiceImpl implements OtsdbQueryService {
                 .collect(toList());
         String tagsString = "{" + String.join(",", tagParts) + "}";
         uriBuilder.queryParam("m", String.format("%s:%s{tags}", aggregator.toString(), metric));
-
         try {
-
-            StatsResult[] results = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+            StatsResult[] result = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
                     new HttpEntity<>(new HttpHeaders()), StatsResult[].class, tagsString).getBody();
-
-            if (results != null && results.length > 0) {
-                return results[0];
+            return result != null && result.length > 0 ? result[0] : new EmptyStatsResult();
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.BAD_REQUEST && e.getResponseBodyAsString()
+                    .contains("net.opentsdb.tsd.BadRequestException: No such name for ")) {
+                return new EmptyStatsResult();
             }
-        } catch (HttpClientErrorException ex) {
-            log.info(ex.toString());
+            throw e;
         }
-
-        return new StatsResult();
     }
 
     @Override

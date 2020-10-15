@@ -47,6 +47,7 @@ import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.model.topology.TopologyDefinition.SwitchProperties
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.model.Floodlight
 import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode
@@ -366,6 +367,10 @@ class SwitchHelper {
         } else {
             assert Math.abs(expected - actual) <= 1
         }
+    }
+
+    static SwitchProperties getDummyServer42Props() {
+        return new SwitchProperties(true, 33, "00:00:00:00:00:00", 1)
     }
 
     /**

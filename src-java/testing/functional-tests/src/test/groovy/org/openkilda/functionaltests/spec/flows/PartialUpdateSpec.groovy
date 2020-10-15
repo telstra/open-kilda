@@ -4,6 +4,7 @@ import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static spock.util.matcher.HamcrestSupport.expect
@@ -25,21 +26,16 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
-
-import javax.inject.Provider
 
 @Narrative("""
 Covers PATCH /api/v2/flows/:flowId and PATCH /api/v1/flows/:flowId
@@ -47,8 +43,7 @@ This API allows to partially update a flow, i.e. update a flow without specifyin
 Depending on changed fields flow will be either updated+rerouted or just have its values changed in database.
 """)
 class PartialUpdateSpec extends HealthCheckSpecification {
-    @Autowired
-    Provider<TraffExamService> traffExamProvider
+    def amountOfFlowRules = 2
 
     @Tidy
     @Unroll
@@ -330,9 +325,8 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "Flow rules are installed on the new dst switch"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            def amountOfFlowRules = northbound.getSwitchProperties(newDstSwitch.dpId).multiTable ? 3 : 2
-            assert northbound.getSwitchRules(newDstSwitch.dpId).flowEntries.findAll {
-                !new Cookie(it.cookie).serviceFlag
+            assert northbound.getSwitchRules(newDstSwitch.dpId).flowEntries.findAll { def cookie = new Cookie(it.cookie)
+                !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT
             }.size() == amountOfFlowRules
         }
 

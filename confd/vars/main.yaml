@@ -68,7 +68,7 @@ kilda_discovery_generic_interval: 3
 kilda_discovery_exhausted_interval: 60
 kilda_discovery_auxiliary_interval: 30
 kilda_discovery_round_trip_status_interval: 1
-kilda_discovery_packet_ttl: 5
+kilda_discovery_packet_ttl: 8
 kilda_discovery_timeout: 15
 kilda_discovery_db_write_repeats_time_frame: 30
 

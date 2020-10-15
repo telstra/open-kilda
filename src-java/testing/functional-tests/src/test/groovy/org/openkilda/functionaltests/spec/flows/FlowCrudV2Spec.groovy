@@ -9,6 +9,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDEN
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -557,7 +558,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
             validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
             validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
             def amountOfFlowRules = northbound.getSwitchProperties(it.dpId).multiTable ? 3 : 2
-            assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
+            assert validation.rules.proper.findAll { def cookie = new Cookie(it)
+                !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT }.size() == amountOfFlowRules
         }
 
         cleanup: "Remove the flow"

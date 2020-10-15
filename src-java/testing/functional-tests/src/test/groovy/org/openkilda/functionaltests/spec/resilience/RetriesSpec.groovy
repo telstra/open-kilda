@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit
 
 @Slf4j
 class RetriesSpec extends HealthCheckSpecification {
-    @Shared int globalTimeout = 30
+    @Shared int globalTimeout = 30 //global timeout for h&s operation
 
     @Tidy
     def "System retries the reroute (global retry) if it fails to install rules on one of the current target path's switches"() {
@@ -414,9 +414,7 @@ and at least 1 path must remain safe"
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         and: "Connection to src switch is slow in order to simulate a global timeout on reroute operation"
-        lockKeeper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(5000))
-        //note that for some reason 5000+ delay will also cause isls on given switch to timeout. Reason unknown
-        //failed isls have no impact on this particular scenario
+        lockKeeper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(7000))
 
         then: "After global timeout expect flow reroute to fail and flow to become DOWN"
         TimeUnit.SECONDS.sleep(globalTimeout)
