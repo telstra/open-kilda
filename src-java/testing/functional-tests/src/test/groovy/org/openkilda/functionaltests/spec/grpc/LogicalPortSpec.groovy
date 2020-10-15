@@ -107,6 +107,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
 
     @Tidy
     @Unroll
+    @Ignore("https://github.com/telstra/open-kilda/issues/3754")
     @Tags(HARDWARE)
     def "Not able to delete non-existent logical port number on the #switches.switchId switch"() {
         when: "Try to delete incorrect logicalPortNumber"
@@ -120,6 +121,6 @@ class LogicalPortSpec extends GrpcBaseSpecification {
         exc.responseBodyAsString.to(MessageError).errorMessage == "Provided logical port does not exist."
 
         where:
-        sw << getNoviflowSwitches("6.4")
+        switches << getNoviflowSwitches()
     }
 }

@@ -149,6 +149,9 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         if (targetFlow.getMaxLatency() != null) {
             flow.setMaxLatency(targetFlow.getMaxLatency());
         }
+        if (targetFlow.getMaxLatencyTier2() != null) {
+            flow.setMaxLatencyTier2(targetFlow.getMaxLatencyTier2());
+        }
         flow.setPeriodicPings(targetFlow.isPeriodicPings());
         if (targetFlow.getFlowEncapsulationType() != null) {
             flow.setEncapsulationType(targetFlow.getFlowEncapsulationType());

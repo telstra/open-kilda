@@ -39,6 +39,7 @@ public class FlowRequestV2 {
     private boolean periodicPings;
     private String description;
     private Long maxLatency;
+    private Long maxLatencyTier2;
     private Integer priority;
 
     private String diverseFlowId;

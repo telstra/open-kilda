@@ -77,20 +77,22 @@ public final class UserConversionUtil {
      * @return the user info
      */
     public static UserInfo toUserInfo(final UserEntity userEntity) {
-        UserInfo userInfo = new UserInfo();
-        userInfo.setName(userEntity.getName());
-        userInfo.setEmail(userEntity.getEmail().toLowerCase());
-        userInfo.setUsername(userEntity.getUsername().toLowerCase());
-        userInfo.setIs2FaEnabled(userEntity.getIs2FaEnabled());
-        userInfo.setStatus(userEntity.getStatusEntity().getStatus());
-        userInfo.setUserId(userEntity.getUserId());
-        Set<String> roles = new HashSet<>();
-
-        if (!ValidatorUtil.isNull(userEntity.getRoles())) {
-            for (RoleEntity roleEntity : userEntity.getRoles()) {
-                roles.add(roleEntity.getName());
+        UserInfo userInfo = null;
+        if (userEntity != null) {
+            userInfo = new UserInfo();
+            userInfo.setName(userEntity.getName());
+            userInfo.setEmail(userEntity.getEmail().toLowerCase());
+            userInfo.setUsername(userEntity.getUsername().toLowerCase());
+            userInfo.setIs2FaEnabled(userEntity.getIs2FaEnabled());
+            userInfo.setStatus(userEntity.getStatusEntity().getStatus());
+            userInfo.setUserId(userEntity.getUserId());
+            Set<String> roles = new HashSet<>();
+            if (!ValidatorUtil.isNull(userEntity.getRoles())) {
+                for (RoleEntity roleEntity : userEntity.getRoles()) {
+                    roles.add(roleEntity.getName());
+                }
+                userInfo.setRoles(roles);
             }
-            userInfo.setRoles(roles);
         }
         return userInfo;
     }

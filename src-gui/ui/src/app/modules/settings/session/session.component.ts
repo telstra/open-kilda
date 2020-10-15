@@ -53,7 +53,6 @@ export class SessionComponent implements OnInit, AfterViewInit, OnChanges,DoChec
   ngAfterViewInit(){
     this.loaderService.show(MessageObj.loading_app_setting);
     this.loadAllsettings().subscribe((responseList)=>{
-      console.log('responseList',responseList);
       var settings = responseList[0];
        this.sessionForm.setValue({"session_time":settings['SESSION_TIMEOUT']});
        this.initialVal  = settings['SESSION_TIMEOUT'];

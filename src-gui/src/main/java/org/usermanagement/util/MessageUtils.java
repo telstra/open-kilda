@@ -75,6 +75,54 @@ public class MessageUtils {
     
     @Value("${attribute.length.invalid.message}")
     private String attributeLengthInvalid;
+    
+    @Value("${attribute.user.does.not.exist.message}")
+    private String attributeUserDoesNotExist;
+    
+    @Value("${attribute.user.inactive.message}")
+    private String attributeUserInactive;
+    
+    @Value("${attribute.authentication.failure.message}")
+    private String attributeAuthenticationFailure;
+    
+    @Value("${attribute.metadata.invalid}")
+    private String attributeMetadataInvalid;
+    
+    /**
+     * Gets the attribute metadata invalid.
+     *
+     * @return the attribute metadata invalid
+     */
+    public String getAttributeMetadataInvalid(final String attribute) {
+        return attributeMetadataInvalid.replace("{{ATTRIBUTE}}", attribute);
+    }
+
+    /**
+     * Gets the attribute user does not exist.
+     *
+     * @return the attribute user does not exist
+     */
+    public String getAttributeUserDoesNotExist() {
+        return attributeUserDoesNotExist;
+    }
+
+    /**
+     * Gets the attribute user inactive.
+     *
+     * @return the attribute user inactive
+     */
+    public String getAttributeUserInactive() {
+        return attributeUserInactive;
+    }
+
+    /**
+     * Gets the attribute authentication failure.
+     *
+     * @return the attribute authentication failure
+     */
+    public String getAttributeAuthenticationFailure() {
+        return attributeAuthenticationFailure;
+    }
 
     /**
      * Gets the attribute unique.

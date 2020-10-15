@@ -78,6 +78,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "ignoreBandwidth", ignore = true)
     @Mapping(target = "periodicPings", ignore = true)
     @Mapping(target = "maxLatency", ignore = true)
+    @Mapping(target = "maxLatencyTier2", ignore = true)
     @Mapping(target = "flowEncapsulationType", ignore = true)
     @Mapping(target = "pathComputationStrategy", ignore = true)
     @Mapping(target = "detectConnectedDevices", ignore = true)

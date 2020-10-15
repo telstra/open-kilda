@@ -19,7 +19,7 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
 @Slf4j
-@Tags([SMOKE, VIRTUAL]) // is not working on stage env, different version of services
+@Tags([SMOKE])
 @Narrative("This specification ensures that all logging facilities are up and running after Kilda deployment")
 class CheckLoggingSpec extends HealthCheckSpecification {
 
@@ -38,7 +38,11 @@ class CheckLoggingSpec extends HealthCheckSpecification {
         def result = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.FLOODLIGHT)
                 .setLevel("INFO").setTimeRange(300).build())
 
-        assert result?.hits?.total > 0: "No logs could be found for Floodlight"
+        if (profile == "virtual") { //due to different version of kibana
+            assert result?.hits?.total > 0: "No logs could be found for Floodlight"
+        } else {
+            assert result?.hits?.total.value > 0: "No logs could be found for Floodlight"
+        }
 
         then: "There should be discovery messages"
         result.hits.hits.any { hit -> hit.source.message.toLowerCase().contains(discoveryMsg) }

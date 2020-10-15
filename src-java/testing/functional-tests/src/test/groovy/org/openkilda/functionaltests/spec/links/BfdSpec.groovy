@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -26,7 +27,7 @@ controller-involved discovery mechanism""")
 @Tags([HARDWARE])
 class BfdSpec extends HealthCheckSpecification {
     @Tidy
-    @Tags([SMOKE_SWITCHES])
+    @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "Able to create a valid BFD session between two Noviflow switches"() {
         given: "An a-switch ISL between two Noviflow switches with BFD and RTL"
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow &&
@@ -205,7 +206,7 @@ class BfdSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([SMOKE_SWITCHES])
+    @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "System is able to rediscover failed link after deleting BFD session"() {
         given: "An interrupted a-switch ISL with BFD session"
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow &&

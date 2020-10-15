@@ -94,6 +94,10 @@ import { PortInventoryFlowsComponent } from './modules/switches/port-inventory-f
 import { ConnectedDevicesComponent } from './modules/flows/connected-devices/connected-devices.component';
 import { AffectedFlowsReportComponent } from './modules/reports/affected-flows-report/affected-flows-report.component';
 import { AffectedFlowListComponent } from './modules/reports/affected-flow-list/affected-flow-list.component';
+import { SamlSettingComponent } from './modules/settings/saml-setting/saml-setting.component';
+import { SamlAddComponent } from './modules/settings/saml-add/saml-add.component';
+import { SamlEditComponent } from './modules/settings/saml-edit/saml-edit.component';
+import { SamlListTableComponent } from './modules/settings/saml-list-table/saml-list-table.component';
 import { WorldMapViewComponent } from './modules/topology/world-map-view/world-map-view.component';
 
 @NgModule({
@@ -175,6 +179,10 @@ import { WorldMapViewComponent } from './modules/topology/world-map-view/world-m
     ConnectedDevicesComponent,
     AffectedFlowsReportComponent,
     AffectedFlowListComponent,
+    SamlSettingComponent,
+    SamlAddComponent,
+    SamlEditComponent,
+    SamlListTableComponent,
     WorldMapViewComponent,
   ],
   imports: [

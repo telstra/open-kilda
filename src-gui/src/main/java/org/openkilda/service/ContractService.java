@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 
 @Service
@@ -43,8 +44,9 @@ public class ContractService {
      *
      * @param linkId
      *            the link id
+     * @throws AccessDeniedException the access denied exception
      */
-    public List<Contract> getContracts(String linkId) {
+    public List<Contract> getContracts(String linkId) throws AccessDeniedException {
         LOGGER.info("Inside ContractService method getContracts");
         UserInfo userInfo = userService.getLoggedInUserInfo();
         if (userInfo.getPermissions().contains(IConstants.Permission.FW_FLOW_INVENTORY)) {
