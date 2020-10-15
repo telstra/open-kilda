@@ -278,6 +278,7 @@ class FlowHelperV2 {
                             .periodicPings(flow.periodicPings)
                             .description(flow.description)
                             .maxLatency(flow.maxLatency)
+                            .maxLatencyTier2(flow.maxLatencyTier2)
                             .priority(flow.priority)
                             .pinned(flow.pinned)
                             .allocateProtectedPath(flow.allocateProtectedPath)

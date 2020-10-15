@@ -63,8 +63,8 @@ opentsdb.client.chunked-requests.enabled = true
 opentsdb.metric.prefix = kilda.
 
 orientdb.url = remote:odb1.pendev,odb2.pendev,odb3.pendev/kilda
-orientdb.user = root
-orientdb.password = root
+orientdb.user = kilda
+orientdb.password = kilda
 
 logger.level = INFO
 

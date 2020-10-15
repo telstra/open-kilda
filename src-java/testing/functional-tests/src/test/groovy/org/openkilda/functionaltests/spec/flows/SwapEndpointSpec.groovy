@@ -995,6 +995,7 @@ switches"() {
     }
 
     @Tidy
+    @Ignore("https://github.com/telstra/open-kilda/issues/3770")
     def "Unable to swap endpoints for two flows when one of them is inactive"() {
         setup: "Create two flows with different source and the same destination switches"
         List<SwitchPair> switchPairs = topologyHelper.allNeighboringSwitchPairs.inject(null) { result, switchPair ->
@@ -1010,6 +1011,11 @@ switches"() {
 
         flowHelper.addFlow(flow1)
         flowHelper.addFlow(flow2)
+        def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
+        def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
+        def involvedSwIds = (
+                pathHelper.getInvolvedSwitches(flow1Path)*.dpId + pathHelper.getInvolvedSwitches(flow2Path)*.dpId
+        ).unique()
 
         and: "Break all paths for the first flow"
         List<PathNode> broughtDownPorts = []
@@ -1041,6 +1047,20 @@ switches"() {
         def error = exc.responseBodyAsString.to(MessageError)
         error.errorMessage == "Could not swap endpoints"
         error.errorDescription.contains("Not enough bandwidth or no path found")
+
+        and: "All involved switches are valid"
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            involvedSwIds.each { swId ->
+                verifyAll(northbound.validateSwitch(swId)) {
+                    rules.missing.empty
+                    rules.excess.empty
+                    rules.misconfigured.empty
+                    meters.missing.empty
+                    meters.excess.empty
+                    meters.misconfigured.empty
+                }
+            }
+        }
         Boolean isTestCompleted = true
 
         cleanup: "Restore topology and delete flows"
@@ -1311,7 +1331,7 @@ switches"() {
         error.errorDescription == sprintf("Reverted flows: [%s, %s]", flow2.flowId, flow1.flowId)
 
         and: "First flow is reverted to Down"
-        Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
+        Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET * 2) { // sometimes it takes more time on jenkins
             assert northboundV2.getFlowStatus(flow1.flowId).status == FlowState.DOWN
             assert northbound.getFlowHistory(flow1.flowId).find {
                 it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1/)

@@ -19,5 +19,5 @@ northbound.kafka.listener.threads=10
 northbound.kafka.session.timeout=30000
 
 orientdb.url = remote:odb1.pendev,odb2.pendev,odb3.pendev/kilda
-orientdb.user = root
-orientdb.password = root
+orientdb.user = kilda
+orientdb.password = kilda

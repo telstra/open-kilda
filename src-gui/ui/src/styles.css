@@ -640,7 +640,13 @@ div.switch5 > input.switch:focus ~ label:before {
   height: 100%;
   padding: 0px;
 }
+.onoffswitch-inner-setting-status::before {
+  content: "Active";
+}
 
+.onoffswitch-inner-setting-status::after {
+  content: "Inactive";
+}
 .onoffswitch-inner-kilda-switch::before {
   content: "Legacy";
 }

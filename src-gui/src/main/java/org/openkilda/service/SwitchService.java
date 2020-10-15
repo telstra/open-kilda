@@ -54,6 +54,7 @@ import org.usermanagement.exception.RequestValidationException;
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
 
+import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -411,8 +412,10 @@ public class SwitchService {
      * @param switchId the switch id
      * @param port the port
      * @return the customers detail
+     * @throws AccessDeniedException the access denied exception
      */
-    public ResponseEntity<List<?>> getPortFlows(String switchId, String port, boolean inventory) {
+    public ResponseEntity<List<?>> getPortFlows(String switchId, String port, boolean inventory) 
+            throws AccessDeniedException {
         if (!inventory) {
             List<FlowInfo> flowList = switchIntegrationService.getSwitchFlows(switchId, port);
             return new ResponseEntity<List<?>>(flowList, HttpStatus.OK);

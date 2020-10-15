@@ -38,6 +38,7 @@ import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.RoleService;
 import org.usermanagement.service.UserService;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
@@ -257,10 +258,11 @@ public class UserController {
      * Gets the logged in user info.
      *
      * @return the logged in user info
+     * @throws AccessDeniedException the access denied exception
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/loggedInUserInfo", method = RequestMethod.GET)
-    public UserInfo getLoggedInUserInfo() {
+    public UserInfo getLoggedInUserInfo() throws AccessDeniedException {
         return userService.getLoggedInUserInfo();
     }
 }

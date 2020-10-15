@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -50,6 +50,7 @@ import org.springframework.stereotype.Service;
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
 
+import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -218,8 +219,9 @@ public class FlowService {
      * @param flowId
      *            the flow id
      * @return the flow by id
+     * @throws AccessDeniedException the access denied exception
      */
-    public FlowInfo getFlowById(String flowId, boolean controller) {
+    public FlowInfo getFlowById(String flowId, boolean controller) throws AccessDeniedException {
         FlowInfo flowInfo = new FlowInfo();
         Flow flow = null;
         try {

@@ -80,7 +80,9 @@ class MultiFloodlightsSpec extends HealthCheckSpecification {
         }
 
         and: "Switch is marked as inactive"
-        northbound.getSwitch(sw.dpId).state == DEACTIVATED
+        wait(WAIT_OFFSET) {
+            northbound.getSwitch(sw.dpId).state == DEACTIVATED
+        }
 
         when: "Broken region restores connection to kafka"
         cleanupActions.pop().call() //lockKeeper.reviveFloodlight(sw.regions[1])

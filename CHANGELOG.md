@@ -1,5 +1,47 @@
 # Changelog
 
+## v1.73.1 (13/10/2020)
+
+### Bug Fixes:
+-  [#3778](https://github.com/telstra/open-kilda/pull/3778) Fix memory leaks in OrientDB sessions. [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.73.0...v1.73.1).
+
+### Affected Components:
+isllatency, reroute, portstate, network, stats, flow-hs, swmanager, ping, connected, stats-router, nb, nbworker, router, otsdb
+
+---
+
+## v1.73.0 (09/10/2020)
+
+### Bug Fixes:
+-  [#3761](https://github.com/telstra/open-kilda/pull/3761) Wrap delete BfdSession operations (BfdPortFsm) into a transaction. [**storm-topologies**]
+-  [#3762](https://github.com/telstra/open-kilda/pull/3762) Fix creation of BfdSession without a discriminator. [**storm-topologies**]
+-  [#3767](https://github.com/telstra/open-kilda/pull/3767) Fix FeatureToggles label in OrientDB init script. 
+
+### Improvements:
+-  [#3433](https://github.com/telstra/open-kilda/pull/3433) Re-implement the data model for Tinkerpop-based persistence layer (Issues: [#940](https://github.com/telstra/open-kilda/issues/940)) 
+-  [#3434](https://github.com/telstra/open-kilda/pull/3434) Implement Tinkerpop-based persistence layer (Issues: [#940](https://github.com/telstra/open-kilda/issues/940)) 
+-  [#3508](https://github.com/telstra/open-kilda/pull/3508) Implement persistence layer for OrientDB (Issues: [#940](https://github.com/telstra/open-kilda/issues/940)) 
+
+### Other changes:
+-  [#3745](https://github.com/telstra/open-kilda/pull/3745) Add migration scripts for Neo4j to OrientDB (Issue: [#940](https://github.com/telstra/open-kilda/issues/940)) 
+-  [#3765](https://github.com/telstra/open-kilda/pull/3765) Add single orient db local env setup option [**configuration**]
+-  [#3766](https://github.com/telstra/open-kilda/pull/3766) Use custom OrientDB user (Kilda) for all-in-one configuration. 
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.72.2...v1.73.0).
+
+### Affected Components:
+grpc, nbworker, router, stats-router, swmanager, fl, otsdb, stats, ping, reroute, neo4j, connected, portstate, flow-hs, isllatency, nb, orientdb, network
+
+### Upgrade notes:
+
+This version of OpenKilda supports only [OrientDB](https://www.orientdb.org/) as the storage. Neo4j is no longer supported. 
+It's required to deploy an OrientDB cluster and move the Kilda data to it. 
+The migration procedure is defined in [neo4j-to-orientdb-migration-steps](https://github.com/telstra/open-kilda/blob/v1.73.0/docs/design/solutions/data-storage-v2/migration-to-orientdb/neo4j-to-orientdb-migration-steps.md) / [#3745](https://github.com/telstra/open-kilda/pull/3745)  
+
+---
+
 ## v1.72.2 (01/10/2020)
 
 ### Features:

@@ -325,6 +325,7 @@ public class FlowOperationsService {
             final UpdateFlowResult.UpdateFlowResultBuilder result = prepareFlowUpdateResult(flowPatch, currentFlow);
 
             Optional.ofNullable(flowPatch.getMaxLatency()).ifPresent(currentFlow::setMaxLatency);
+            Optional.ofNullable(flowPatch.getMaxLatencyTier2()).ifPresent(currentFlow::setMaxLatencyTier2);
             Optional.ofNullable(flowPatch.getPriority()).ifPresent(currentFlow::setPriority);
             Optional.ofNullable(flowPatch.getPinned()).ifPresent(currentFlow::setPinned);
             Optional.ofNullable(flowPatch.getDescription()).ifPresent(currentFlow::setDescription);

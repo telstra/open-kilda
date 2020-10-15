@@ -135,5 +135,13 @@ export const MessageObj = {
     session_expired:"Your session has been expired",
     switch_updated_success:"Switch location updated successfully.",
     switch_updated_error:"Error in updating switch location.",
+    loading_data:'Loading Data..',
+    error_loading_data:'Error Loading Data.',
+    adding_provider:'Adding Provider..',
+    updating_provider:'Updating Provider..',
+    provider_added_success:'Provider added Successfully.',
+    provider_updated_success:'Provider updated Successfully.',
+    deleting_provider:"Deleting provider",
+    provider_deleted_success:"Provider deleted successfully",
 
 }

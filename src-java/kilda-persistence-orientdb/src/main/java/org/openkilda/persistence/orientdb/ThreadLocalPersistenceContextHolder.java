@@ -21,6 +21,7 @@ import org.openkilda.persistence.exceptions.PersistenceException;
 import com.syncleus.ferma.DelegatingFramedGraph;
 import com.syncleus.ferma.tx.Tx;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tinkerpop.gremlin.orientdb.OrientGraph;
 
 import java.io.IOException;
 
@@ -65,6 +66,14 @@ public final class ThreadLocalPersistenceContextHolder implements PersistenceCon
 
         DelegatingFramedGraph currentGraph = getCurrentGraph();
         if (currentGraph != null) {
+            // Commit an implicit transaction to release graph resources.
+            try {
+                log.trace("Committing a transaction on the graph: {}", currentGraph);
+                ((OrientGraph) currentGraph.getBaseGraph()).commit();
+            } catch (Exception e) {
+                log.error("Failed to commit a transaction", e);
+            }
+
             try {
                 log.trace("Closing the framed graph: {}", currentGraph);
                 currentGraph.close();

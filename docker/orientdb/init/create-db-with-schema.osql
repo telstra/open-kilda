@@ -1,12 +1,21 @@
 CREATE DATABASE remote:localhost/kilda root root PLOCAL GRAPH;
 
+INSERT INTO ORole SET name = 'kilda-role', mode = 0, inheritedRole = (SELECT FROM ORole WHERE name = 'writer');
+GRANT READ ON database.cluster.internal TO `kilda-role`;
+GRANT CREATE ON database.cluster.internal TO `kilda-role`;
+GRANT UPDATE ON database.cluster.internal TO `kilda-role`;
+GRANT ALL ON database.schema TO `kilda-role`;
+GRANT READ ON database.systemclusters TO `kilda-role`;
+
+CREATE USER kilda IDENTIFIED BY kilda ROLE `kilda-role`;
+
 CREATE CLASS kilda_configuration IF NOT EXISTS EXTENDS V;
 CREATE PROPERTY kilda_configuration.unique IF NOT EXISTS STRING;
 CREATE INDEX kilda_configuration.unique UNIQUE_HASH_INDEX;
 
-CREATE CLASS feature_toggles IF NOT EXISTS EXTENDS V;
-CREATE PROPERTY feature_toggles.unique IF NOT EXISTS STRING;
-CREATE INDEX feature_toggles.unique UNIQUE_HASH_INDEX;
+CREATE CLASS config IF NOT EXISTS EXTENDS V;
+CREATE PROPERTY config.unique IF NOT EXISTS STRING;
+CREATE INDEX config.unique UNIQUE_HASH_INDEX;
 
 CREATE CLASS switch IF NOT EXISTS EXTENDS V;
 CREATE PROPERTY switch.name IF NOT EXISTS STRING;

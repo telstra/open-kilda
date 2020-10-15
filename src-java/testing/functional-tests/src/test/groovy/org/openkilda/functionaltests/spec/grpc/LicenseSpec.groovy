@@ -9,6 +9,7 @@ import org.openkilda.messaging.error.MessageError
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -19,6 +20,7 @@ If you want to test full functionality then you have to perform the following ma
 class LicenseSpec extends GrpcBaseSpecification {
     @Tidy
     @Unroll
+    @Ignore("https://github.com/telstra/open-kilda/issues/3754")
     @Tags(HARDWARE)
     def "Not able to set incorrect license on the #switches.switchId switch"() {
         when: "Try to set incorrect license key"
