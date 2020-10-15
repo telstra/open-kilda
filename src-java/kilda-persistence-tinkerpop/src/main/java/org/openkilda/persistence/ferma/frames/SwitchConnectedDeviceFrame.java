@@ -47,6 +47,7 @@ public abstract class SwitchConnectedDeviceFrame extends KildaBaseVertexFrame im
     public static final String CHASSIS_ID_PROPERTY = "chassis_id";
     public static final String PORT_ID_PROPERTY = "port_id";
     public static final String IP_ADDRESS_PROPERTY = "ip_address";
+    public static final String UNIQUE_INDEX_PROPERTY = "unique_index";
 
     private Switch switchObj;
 
@@ -229,4 +230,33 @@ public abstract class SwitchConnectedDeviceFrame extends KildaBaseVertexFrame im
     @Property("time_last_seen")
     @Convert(InstantStringConverter.class)
     public abstract void setTimeLastSeen(Instant timeLastSeen);
+
+    @Override
+    public void setProperty(String name, Object value) {
+        super.setProperty(name, value);
+
+        recalculateUniqueIndex();
+    }
+
+    private void recalculateUniqueIndex() {
+        if (getType() != null) {
+            String newUniqueIndex;
+            switch (getType()) {
+                case LLDP:
+                    newUniqueIndex = format("%s_%s_%s_%s_%s_%s_%s",
+                            getSwitchId(), getPortNumber(), getVlan(), getMacAddress(), getType(),
+                            getChassisId(), getPortId());
+                    break;
+                case ARP:
+                    newUniqueIndex = format("%s_%s_%s_%s_%s_%s",
+                            getSwitchId(), getPortNumber(), getVlan(), getMacAddress(), getType(), getIpAddress());
+                    break;
+                default:
+                    throw new IllegalArgumentException(format("Unknown connected device type %s", getType()));
+            }
+            if (newUniqueIndex != getProperty(UNIQUE_INDEX_PROPERTY)) {
+                super.setProperty(UNIQUE_INDEX_PROPERTY, newUniqueIndex);
+            }
+        }
+    }
 }

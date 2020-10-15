@@ -34,6 +34,7 @@ CREATE PROPERTY switch_connected_device.type IF NOT EXISTS STRING;
 CREATE PROPERTY switch_connected_device.chassis_id IF NOT EXISTS STRING;
 CREATE PROPERTY switch_connected_device.port_id IF NOT EXISTS STRING;
 CREATE PROPERTY switch_connected_device.ip_address IF NOT EXISTS STRING;
+CREATE PROPERTY switch_connected_device.unique_index IF NOT EXISTS STRING;
 CREATE INDEX switch_connected_device.flow_id NOTUNIQUE_HASH_INDEX;
 CREATE INDEX switch_connected_device.switch_id NOTUNIQUE_HASH_INDEX;
 CREATE INDEX switch_connected_device.port_number NOTUNIQUE_HASH_INDEX;
@@ -43,6 +44,7 @@ CREATE INDEX switch_connected_device.type NOTUNIQUE_HASH_INDEX;
 CREATE INDEX switch_connected_device.chassis_id NOTUNIQUE_HASH_INDEX;
 CREATE INDEX switch_connected_device.port_id NOTUNIQUE_HASH_INDEX;
 CREATE INDEX switch_connected_device.ip_address NOTUNIQUE_HASH_INDEX;
+CREATE INDEX switch_connected_device.unique_index UNIQUE_HASH_INDEX;
 
 CREATE CLASS has IF NOT EXISTS EXTENDS E;
 
