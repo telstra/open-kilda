@@ -18,6 +18,8 @@ package org.openkilda.testing.service.northbound;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload;
+import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
@@ -117,6 +119,42 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
         return restTemplate.exchange("/api/v2/flows/{flow_id}", HttpMethod.PATCH,
                 new HttpEntity<>(patch, buildHeadersWithCorrelationId()), FlowResponseV2.class, flowId)
                 .getBody();
+    }
+
+    @Override
+    public FlowLoopResponse getFlowLoop(String flowId) {
+        return getFlowLoop(flowId, null);
+    }
+
+    @Override
+    public FlowLoopResponse getFlowLoop(SwitchId switchId) {
+        return getFlowLoop(null, switchId);
+    }
+
+    @Override
+    public FlowLoopResponse getFlowLoop(String flowId, SwitchId switchId) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v2/flows/loop");
+        if (flowId != null) {
+            uriBuilder.queryParam("flow_id", flowId);
+        }
+        if (switchId != null) {
+            uriBuilder.queryParam("switch_id", switchId);
+        }
+        return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowLoopResponse.class).getBody();
+    }
+
+    @Override
+    public FlowLoopResponse createFlowLoop(String flowId, FlowLoopPayload flowLoopPayload) {
+        HttpEntity<FlowLoopPayload> httpEntity = new HttpEntity<>(flowLoopPayload, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v2/flows/{flow_id}/loop", HttpMethod.POST, httpEntity,
+                FlowLoopResponse.class, flowId).getBody();
+    }
+
+    @Override
+    public FlowLoopResponse deleteFlowLoop(String flowId) {
+        return restTemplate.exchange("/api/v2/flows/{flow_id}/loop", HttpMethod.DELETE,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowLoopResponse.class, flowId).getBody();
     }
 
     @Override
