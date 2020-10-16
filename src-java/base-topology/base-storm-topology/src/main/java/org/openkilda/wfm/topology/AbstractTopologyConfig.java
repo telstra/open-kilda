@@ -38,6 +38,9 @@ public interface AbstractTopologyConfig {
     @Key("parallelism.new")
     int getNewParallelism();
 
+    @Key("isl.latency.parallelism")
+    int getIslLatencyParallelism();
+
     @Key("workers")
     int getWorkers();
 
