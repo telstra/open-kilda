@@ -25,6 +25,10 @@ neo4j.uri = bolt://{{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_por
 neo4j.user = {{ getv "/kilda_neo4j_user" }}
 neo4j.password = {{ getv "/kilda_neo4j_password" }}
 
-orientdb.url = remote:{{ getv "/kilda_orientdb_hosts" }}/{{ getv "/kilda_orientdb_database" }}
+{{if not (exists "/single_orientdb")}}
+orientdb.url=remote:{{ getv "/kilda_orientdb_hosts" }}/{{ getv "/kilda_orientdb_database" }}
+{{else}}
+orientdb.url=remote:{{ getv "/kilda_orientdb_hosts_single" }}/{{ getv "/kilda_orientdb_database" }}
+{{end}}
 orientdb.user = {{ getv "/kilda_orientdb_user" }}
 orientdb.password = {{ getv "/kilda_orientdb_password" }}
