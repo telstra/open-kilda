@@ -15,6 +15,7 @@ enum Tag {
     //additional markers
     TOPOLOGY_DEPENDENT, //changing the environment or topology may affect the amount of iterations executed
     LOW_PRIORITY, //executed rarely and have lower chance of catching defects. Not executed for each PR
+    LOCKKEEPER, //calls lockkeeper in test. may help to exclude such tests if lockkeeper is not available
 
     //speed
     SLOW,//usually for 1minute+ tests

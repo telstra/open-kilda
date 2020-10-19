@@ -26,8 +26,6 @@
       <div class="row">
         <label class='col-sm-3 col-form-label'>Type:</label>
         <div class='col-sm-6'>
-         <!--  <input type="text" name="type" (change)="onTypeInputChange($event)"> -->
-
           <ng-select
           formControlName="typeControl"
            [items]="typeDropdownList"
@@ -47,8 +45,6 @@
       <div class="row">
         <label class='col-sm-3 col-form-label'>Username:</label>
         <div class='col-sm-6'>
-          <!-- <input type="text" name="username" (change)="onUsernameInputChange($event)"> -->
-
           <ng-select
           formControlName="usernameControl"
            [items]="userDrowdonList"
@@ -56,7 +52,7 @@
            bindValue="user_id"
            labelForId="user_id"
            [multiple]="true"
-           placeholder="Select Type"
+           placeholder="Select Username"
            clearAllText="Clear"
            (change)="onUsernameInputChange($event)">
              

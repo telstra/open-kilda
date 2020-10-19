@@ -18,6 +18,7 @@ package org.usermanagement.service;
 import org.openkilda.auth.context.ServerContext;
 import org.openkilda.auth.model.RequestContext;
 import org.openkilda.constants.IConstants;
+import org.openkilda.constants.Status;
 import org.openkilda.exception.InvalidOtpException;
 import org.openkilda.exception.OtpRequiredException;
 import org.openkilda.exception.TwoFaKeyNotSetException;
@@ -40,9 +41,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import org.usermanagement.conversion.RoleConversionUtil;
 import org.usermanagement.conversion.UserConversionUtil;
+import org.usermanagement.dao.entity.PermissionEntity;
 import org.usermanagement.dao.entity.RoleEntity;
+import org.usermanagement.dao.entity.StatusEntity;
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.dao.entity.UserSettingEntity;
+import org.usermanagement.dao.repository.PermissionRepository;
 import org.usermanagement.dao.repository.RoleRepository;
 import org.usermanagement.dao.repository.UserRepository;
 import org.usermanagement.dao.repository.UserSettingRepository;
@@ -55,6 +59,8 @@ import org.usermanagement.util.MessageUtils;
 import org.usermanagement.util.ValidatorUtil;
 import org.usermanagement.validator.UserValidator;
 
+import java.nio.file.AccessDeniedException;
+import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -106,7 +112,13 @@ public class UserService implements UserDetailsService {
     
     @Autowired
     private ServerContext serverContext;
-
+    
+    @Autowired
+    private MessageUtils messageUtils;
+    
+    @Autowired
+    private PermissionRepository permissionRepository;
+    
     /*
      * (non-Javadoc)
      *
@@ -554,10 +566,14 @@ public class UserService implements UserDetailsService {
      * Gets the logged in user info.
      *
      * @return the logged in user info
+     * @throws AccessDeniedException the access denied exception
      */
-    public UserInfo getLoggedInUserInfo() {
-        UserInfo userInfo = new UserInfo();
+    public UserInfo getLoggedInUserInfo() throws AccessDeniedException {
         RequestContext requestContext = serverContext.getRequestContext();
+        if (requestContext.getUserId() == null) {
+            throw new AccessDeniedException(messageUtils.getUnauthorizedMessage());
+        }
+        UserInfo userInfo = new UserInfo();
         userInfo.setUserId(requestContext.getUserId());
         userInfo.setUsername(requestContext.getUserName());
         userInfo.setIs2FaEnabled(requestContext.getIs2FaEnabled());
@@ -565,5 +581,73 @@ public class UserService implements UserDetailsService {
         userInfo.setName(requestContext.getFullName());
         userInfo.setPermissions(requestContext.getPermissions());
         return userInfo;
+    }
+    
+    /**
+     * Adds user information in session.
+     *
+     * @param userInfo the userInfo
+     * @param username who's information is added in session.
+     */
+    public void populateUserInfo(final UserInfo userInfo, final String username) {
+        UserEntity user = getUserByUsername(username);
+        Set<RoleEntity> roleEntities = user.getRoles();
+        Set<String> roles = new HashSet<String>();
+        Set<String> permissions = new HashSet<String>();
+        for (RoleEntity roleEntity : roleEntities) {
+            roles.add(roleEntity.getName());
+            userInfo.setRole("ROLE_ADMIN");
+            if (user.getUserId() != 1) {
+                Set<PermissionEntity> permissionEntities = roleEntity.getPermissions();
+                for (PermissionEntity permissionEntity : permissionEntities) {
+                    if (permissionEntity.getStatusEntity().getStatusCode().equalsIgnoreCase(Status.ACTIVE.getCode())
+                            && !permissionEntity.getIsAdminPermission()) {
+                        permissions.add(permissionEntity.getName());
+                    }
+                }
+            }
+        }
+        if (user.getUserId() == 1) {
+            List<PermissionEntity> permissionEntities = permissionRepository.findAll();
+            for (PermissionEntity permissionEntity : permissionEntities) {
+                permissions.add(permissionEntity.getName());
+            }
+        }
+        userInfo.setUserId(user.getUserId());
+        userInfo.setUsername(user.getUsername());
+        userInfo.setName(user.getName());
+        userInfo.setRoles(roles);
+        userInfo.setPermissions(permissions);
+        userInfo.setIs2FaEnabled(user.getIs2FaEnabled());
+    }
+    
+    /**
+     * Creates the saml user.
+     * @param username the username
+     * @param roles the user roles
+     */
+    public void createSamlUser(String username, Set<RoleEntity> roles) {
+        UserEntity userEntity = new UserEntity();
+        userEntity.setUsername(username);
+        userEntity.setEmail(username);
+        userEntity.setName(username);
+        userEntity.setRoles(roles);
+        userEntity.setActiveFlag(true);
+        userEntity.setLoginTime(new Timestamp(System.currentTimeMillis()));
+        userEntity.setLogoutTime(new Timestamp(System.currentTimeMillis()));
+        userEntity.setIsAuthorized(true);
+        userEntity.setIs2FaEnabled(false);
+        userEntity.setIs2FaConfigured(false);
+        StatusEntity statusEntity = Status.ACTIVE.getStatusEntity();
+        userEntity.setStatusEntity(statusEntity);
+        String password = ValidatorUtil.randomAlphaNumeric(16);
+        userEntity.setPassword(StringUtil.encodeString(password));
+        userRepository.save(userEntity);
+    }
+    
+    @Transactional(propagation = Propagation.REQUIRED, readOnly = true)
+    public UserInfo getUserInfoByUsername(final String userName) {
+        UserEntity userEntity = userRepository.findByUsernameIgnoreCase(userName);
+        return UserConversionUtil.toUserInfo(userEntity);
     }
 }

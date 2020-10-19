@@ -75,21 +75,6 @@ export class UseractivityComponent implements OnInit {
 	this.getFilteredDetails();
   }
 
-//   callActivityService(){
-//     this.loadActivityData = true;
-//     this.userActivityService.getUserActivityList().subscribe((data : any) =>{
-//     data = data.sort(function(a,b){
-//     return b.activityTime - a.activityTime
-//     });
-//     this.userActivityData = data;
-// 	this.loaderService.hide();
-// 	this.loadActivityData = false;
-//      },error=>{
-// 	   this.loaderService.hide();
-// 	   this.loadActivityData = false;
-//        this.toastr.error(MessageObj.no_user_activity,'Error');
-//      });
-//   }
 
 callDropdownService(){    
     this.userActivityService.getDropdownList().subscribe((data : any) =>{

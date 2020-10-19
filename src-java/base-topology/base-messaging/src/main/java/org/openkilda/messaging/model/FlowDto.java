@@ -162,6 +162,9 @@ public class FlowDto implements Serializable {
     @JsonProperty("max_latency")
     private Long maxLatency;
 
+    @JsonProperty("max_latency_tier2")
+    private Long maxLatencyTier2;
+
     @JsonProperty("priority")
     private Integer priority;
 
@@ -240,6 +243,7 @@ public class FlowDto implements Serializable {
                    @JsonProperty("status_details") FlowStatusDetails flowStatusDetails,
                    @JsonProperty("status_info") String statusInfo,
                    @JsonProperty("max_latency") Long maxLatency,
+                   @JsonProperty("max_latency_tier2") Long maxLatencyTier2,
                    @JsonProperty("priority") Integer priority,
                    @JsonProperty("pinned") boolean pinned,
                    @JsonProperty("encapsulation_type") FlowEncapsulationType encapsulationType,
@@ -271,6 +275,7 @@ public class FlowDto implements Serializable {
         this.flowStatusDetails = flowStatusDetails;
         this.statusInfo = statusInfo;
         this.maxLatency = maxLatency;
+        this.maxLatencyTier2 = maxLatencyTier2;
         this.priority = priority;
         this.pinned = pinned;
         this.encapsulationType = encapsulationType;
@@ -317,7 +322,7 @@ public class FlowDto implements Serializable {
                 destinationPort,
                 sourceVlan,
                 destinationVlan, 0, 0,
-                null, 0, null, null, null, null, null, pinned, null, detectConnectedDevices, null, null, null);
+                null, 0, null, null, null, null, null, null, pinned, null, detectConnectedDevices, null, null, null);
     }
 
     public FlowDto(FlowPayload input) {
@@ -339,6 +344,7 @@ public class FlowDto implements Serializable {
                 input.getDestination().getInnerVlanId(),
                 null, 0, null, null, null,
                 input.getMaxLatency(),
+                null,
                 input.getPriority(),
                 input.isPinned(),
                 input.getEncapsulationType() != null ? FlowEncapsulationType.valueOf(

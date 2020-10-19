@@ -14,6 +14,13 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>OpenKilda-GUI</name>
 	<packaging>jar</packaging>
+	<repositories>
+		<repository>
+			<id>spring-milestones</id>
+			<name>Spring Milestones</name>
+			<url>https://repo.spring.io/libs-milestone</url>
+		</repository>
+	</repositories>
 	<properties>
 		<mdep.analyze.skip>false</mdep.analyze.skip>
 		<maven-shade-plugin.version>2.3</maven-shade-plugin.version>
@@ -97,6 +104,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security.extensions</groupId>
+			<artifactId>spring-security-saml-dsl</artifactId>
+			<version>1.0.0.M3</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

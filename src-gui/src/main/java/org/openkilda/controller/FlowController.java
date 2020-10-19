@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -46,6 +46,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.usermanagement.model.UserInfo;
 
+import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -152,12 +153,13 @@ public class FlowController extends BaseController {
      * @param flowId
      *            id of flow requested.
      * @return flowInfo
+     * @throws AccessDeniedException the access denied exception
      */
     @RequestMapping(value = "/{flowId}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = { IConstants.Permission.MENU_FLOWS })
     public @ResponseBody FlowInfo getFlowById(@PathVariable final String flowId,
-            @RequestParam(name = "controller", required = false) boolean controller) {
+            @RequestParam(name = "controller", required = false) boolean controller) throws AccessDeniedException {
         LOGGER.info("Get flow by id. Flow id: '" + flowId + "'");
         FlowInfo flowInfo = flowService.getFlowById(flowId, controller);
         return flowInfo;

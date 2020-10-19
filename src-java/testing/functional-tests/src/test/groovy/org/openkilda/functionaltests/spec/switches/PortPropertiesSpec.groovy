@@ -15,6 +15,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
@@ -134,6 +135,8 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         def sw = topology.activeSwitches.first()
         def relatedIsls = topology.getRelatedIsls(sw)
         def islToManipulate = relatedIsls.first()
+        def isRtl = [islToManipulate.srcSwitch, islToManipulate.dstSwitch]
+                .any { it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
 
         // Bring port down on the src switch
         antiflap.portDown(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
@@ -171,7 +174,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
             def links = northbound.getAllLinks()
-            (relatedIsls - islToManipulate).each {
+            (relatedIsls - islToManipulate).forEach {
                 assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED
             }
         }
@@ -190,9 +193,9 @@ class PortPropertiesSpec extends HealthCheckSpecification {
             def allLinks = northbound.getAllLinks()
             def islInfoForward = islUtils.getIslInfo(allLinks, islToManipulate).get()
             def islInfoReverse = islUtils.getIslInfo(allLinks, islToManipulate.reversed).get()
-            assert islInfoForward.state == IslChangeType.FAILED
+            assert islInfoForward.state == (isRtl ? IslChangeType.DISCOVERED : IslChangeType.FAILED)
             assert islInfoForward.actualState == IslChangeType.DISCOVERED
-            assert islInfoReverse.state == IslChangeType.FAILED
+            assert islInfoReverse.state == (isRtl ? IslChangeType.DISCOVERED : IslChangeType.FAILED)
             assert islInfoReverse.actualState == IslChangeType.FAILED
         }
 
@@ -212,6 +215,8 @@ class PortPropertiesSpec extends HealthCheckSpecification {
     def "Link is stopped from being discovered after disabling port discovery property"() {
         given: "An active link"
         def islToManipulate = topology.islsForActiveSwitches.first()
+        def isRtl = [islToManipulate.srcSwitch, islToManipulate.dstSwitch]
+                .any { it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
 
         when: "Disable port discovery property on the dst switch"
         northboundV2.updatePortProperties(islToManipulate.dstSwitch.dpId, islToManipulate.dstPort,
@@ -222,9 +227,9 @@ class PortPropertiesSpec extends HealthCheckSpecification {
             def allLinks = northbound.getAllLinks()
             def islInfoForward = islUtils.getIslInfo(allLinks, islToManipulate).get()
             def islInfoReverse = islUtils.getIslInfo(allLinks, islToManipulate.reversed).get()
-            assert islInfoForward.state == IslChangeType.FAILED
+            assert islInfoForward.state == (isRtl ? IslChangeType.DISCOVERED : IslChangeType.FAILED)
             assert islInfoForward.actualState == IslChangeType.DISCOVERED
-            assert islInfoReverse.state == IslChangeType.FAILED
+            assert islInfoReverse.state == (isRtl ? IslChangeType.DISCOVERED : IslChangeType.FAILED)
             assert islInfoReverse.actualState == IslChangeType.FAILED
         }
 

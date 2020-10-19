@@ -90,9 +90,9 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
                 int srcPort, int srcVlan, int srcInnerVlan, int destPort, int destVlan, int destInnerVlan,
                 boolean allocateProtectedPath, String groupId, long bandwidth, boolean ignoreBandwidth,
                 String description, boolean periodicPings, FlowEncapsulationType encapsulationType,
-                FlowStatus status, String statusInfo, Long maxLatency, Integer priority, boolean pinned,
-                DetectConnectedDevices detectConnectedDevices, boolean srcWithMultiTable, boolean destWithMultiTable,
-                PathComputationStrategy pathComputationStrategy,
+                FlowStatus status, String statusInfo, Long maxLatency, Long maxLatencyTier2, Integer priority,
+                boolean pinned, DetectConnectedDevices detectConnectedDevices, boolean srcWithMultiTable,
+                boolean destWithMultiTable, PathComputationStrategy pathComputationStrategy,
                 PathComputationStrategy targetPathComputationStrategy) {
         FlowDataImpl.FlowDataImplBuilder builder = FlowDataImpl.builder()
                 .flowId(flowId).srcSwitch(srcSwitch).destSwitch(destSwitch)
@@ -101,9 +101,9 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
                 .allocateProtectedPath(allocateProtectedPath).groupId(groupId)
                 .bandwidth(bandwidth).ignoreBandwidth(ignoreBandwidth)
                 .description(description).periodicPings(periodicPings).encapsulationType(encapsulationType)
-                .status(status).maxLatency(maxLatency).priority(priority).pinned(pinned)
-                .srcWithMultiTable(srcWithMultiTable).destWithMultiTable(destWithMultiTable)
-                .pathComputationStrategy(pathComputationStrategy)
+                .status(status).statusInfo(statusInfo).maxLatency(maxLatency).maxLatencyTier2(maxLatencyTier2)
+                .priority(priority).pinned(pinned).srcWithMultiTable(srcWithMultiTable)
+                .destWithMultiTable(destWithMultiTable).pathComputationStrategy(pathComputationStrategy)
                 .targetPathComputationStrategy(targetPathComputationStrategy);
         if (detectConnectedDevices != null) {
             builder.detectConnectedDevices(detectConnectedDevices);
@@ -408,6 +408,7 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
                 .append(getStatus(), that.getStatus())
                 .append(getStatusInfo(), that.getStatusInfo())
                 .append(getMaxLatency(), that.getMaxLatency())
+                .append(getMaxLatencyTier2(), that.getMaxLatencyTier2())
                 .append(getPriority(), that.getPriority())
                 .append(getTimeCreate(), that.getTimeCreate())
                 .append(getTimeModify(), that.getTimeModify())
@@ -539,6 +540,10 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
 
         void setMaxLatency(Long maxLatency);
 
+        Long getMaxLatencyTier2();
+
+        void setMaxLatencyTier2(Long maxLatencyTier2);
+
         Integer getPriority();
 
         void setPriority(Integer priority);
@@ -608,6 +613,7 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
         FlowStatus status;
         String statusInfo;
         Long maxLatency;
+        Long maxLatencyTier2;
         Integer priority;
         Instant timeCreate;
         Instant timeModify;
