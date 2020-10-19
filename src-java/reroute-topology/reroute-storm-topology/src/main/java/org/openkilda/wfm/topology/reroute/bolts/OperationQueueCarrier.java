@@ -13,28 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
+package org.openkilda.wfm.topology.reroute.bolts;
 
 import org.openkilda.messaging.command.CommandData;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.EqualsAndHashCode;
-import lombok.NonNull;
-import lombok.Value;
-
-@Value
-@EqualsAndHashCode(callSuper = false)
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class FlowPathSwapRequest extends CommandData {
-    private static final long serialVersionUID = 1L;
-
-    @JsonProperty("flow_id")
-    protected String flowId;
-
-    @JsonCreator
-    public FlowPathSwapRequest(@NonNull @JsonProperty("flow_id") String flowId) {
-        this.flowId = flowId;
-    }
+public interface OperationQueueCarrier {
+    void emitRequest(String correlationId, CommandData commandData);
 }

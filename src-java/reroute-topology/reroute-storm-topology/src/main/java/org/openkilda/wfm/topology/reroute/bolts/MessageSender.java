@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.reroute.bolts;
 
-import org.openkilda.model.FlowPath;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 
 public interface MessageSender {
@@ -24,5 +23,5 @@ public interface MessageSender {
 
     void emitManualRerouteCommand(String flowId, FlowThrottlingData flowThrottlingData);
 
-    void emitPathSwapCommand(String correlationId, FlowPath path, String reason);
+    void emitPathSwapCommand(String correlationId, String flowId, String reason);
 }

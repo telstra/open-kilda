@@ -13,28 +13,32 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
+package org.openkilda.messaging.info.reroute;
 
-import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.info.InfoData;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
+import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.NonNull;
-import lombok.Value;
 
-@Value
+@Builder
+@Data
 @EqualsAndHashCode(callSuper = false)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class FlowPathSwapRequest extends CommandData {
-    private static final long serialVersionUID = 1L;
+public class PathSwapResult extends InfoData {
 
     @JsonProperty("flow_id")
-    protected String flowId;
+    private String flowId;
+    @JsonProperty("success")
+    private boolean success;
 
     @JsonCreator
-    public FlowPathSwapRequest(@NonNull @JsonProperty("flow_id") String flowId) {
+    public PathSwapResult(@JsonProperty("flow_id") String flowId,
+                          @JsonProperty("success") boolean success) {
         this.flowId = flowId;
+        this.success = success;
     }
 }
