@@ -62,7 +62,7 @@ public class FlowRerouteRequest extends CommandData {
      * Create Simplified request usable only for northbound API.
      */
     public FlowRerouteRequest(String flowId, boolean force, boolean ignoreBandwidth, String reason) {
-        this(flowId, force,  ignoreBandwidth, false, Collections.emptySet(), reason);
+        this(flowId, force, false, ignoreBandwidth, Collections.emptySet(), reason);
     }
 
     @JsonCreator
