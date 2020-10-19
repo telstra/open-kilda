@@ -122,38 +122,39 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     }
 
     @Override
-    public FlowLoopResponse getFlowLoop(String flowId) {
+    public List<FlowLoopResponse> getFlowLoop(String flowId) {
         return getFlowLoop(flowId, null);
     }
 
     @Override
-    public FlowLoopResponse getFlowLoop(SwitchId switchId) {
+    public List<FlowLoopResponse> getFlowLoop(SwitchId switchId) {
         return getFlowLoop(null, switchId);
     }
 
     @Override
-    public FlowLoopResponse getFlowLoop(String flowId, SwitchId switchId) {
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v2/flows/loop");
+    public List<FlowLoopResponse> getFlowLoop(String flowId, SwitchId switchId) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v2/flows/loops");
         if (flowId != null) {
             uriBuilder.queryParam("flow_id", flowId);
         }
         if (switchId != null) {
             uriBuilder.queryParam("switch_id", switchId);
         }
-        return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), FlowLoopResponse.class).getBody();
+        FlowLoopResponse[] flowLoopResponse = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowLoopResponse[].class).getBody();
+        return Arrays.asList(flowLoopResponse);
     }
 
     @Override
     public FlowLoopResponse createFlowLoop(String flowId, FlowLoopPayload flowLoopPayload) {
         HttpEntity<FlowLoopPayload> httpEntity = new HttpEntity<>(flowLoopPayload, buildHeadersWithCorrelationId());
-        return restTemplate.exchange("/api/v2/flows/{flow_id}/loop", HttpMethod.POST, httpEntity,
+        return restTemplate.exchange("/api/v2/flows/{flow_id}/loops", HttpMethod.POST, httpEntity,
                 FlowLoopResponse.class, flowId).getBody();
     }
 
     @Override
     public FlowLoopResponse deleteFlowLoop(String flowId) {
-        return restTemplate.exchange("/api/v2/flows/{flow_id}/loop", HttpMethod.DELETE,
+        return restTemplate.exchange("/api/v2/flows/{flow_id}/loops", HttpMethod.DELETE,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowLoopResponse.class, flowId).getBody();
     }
 

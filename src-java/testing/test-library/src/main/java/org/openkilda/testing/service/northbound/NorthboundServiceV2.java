@@ -56,11 +56,11 @@ public interface NorthboundServiceV2 {
 
     FlowResponseV2 partialUpdate(String flowId, FlowPatchV2 patch);
 
-    FlowLoopResponse getFlowLoop(String flowId);
+    List<FlowLoopResponse> getFlowLoop(String flowId);
 
-    FlowLoopResponse getFlowLoop(SwitchId switchId);
+    List<FlowLoopResponse> getFlowLoop(SwitchId switchId);
 
-    FlowLoopResponse getFlowLoop(String flowId, SwitchId switchId);
+    List<FlowLoopResponse> getFlowLoop(String flowId, SwitchId switchId);
 
     FlowLoopResponse createFlowLoop(String flowId, FlowLoopPayload flowLoopPayload);
 

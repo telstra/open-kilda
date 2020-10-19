@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.Assume.assumeFalse
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -28,7 +30,10 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
 import org.openkilda.model.SwitchStatus
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -36,6 +41,8 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
 import spock.lang.Ignore
@@ -47,6 +54,9 @@ class SwapEndpointSpec extends HealthCheckSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider
+
+    @Value('${use.multitable}')
+    boolean useMultitable
 
     @Tidy
     @Unroll
@@ -1374,6 +1384,89 @@ switches"() {
         !isSwitchValid && switches.each { northbound.synchronizeSwitch(it, true)}
     }
 
+    @Tidy
+    def "Unable to swap endpoints for a flow with flowLoop"() {
+        setup: "Create two flows with the same src and different dst switches"
+        assumeFalse("FlowLoop for multiTable mode is not implemented", useMultitable)
+        def tgSwitchIds = topology.getActiveTraffGens()*.switchConnected*.dpId
+        assumeTrue("Not enough traffgen switches found", tgSwitchIds.size() > 2)
+        SwitchPair flow2SwitchPair = null
+        SwitchPair flow1SwitchPair = topologyHelper.switchPairs.collectMany{ [it, it.reversed] }.find { firstPair ->
+            def firstOk = firstPair.src.dpId in tgSwitchIds && firstPair.dst.dpId in tgSwitchIds
+            flow2SwitchPair = topologyHelper.getAllNeighboringSwitchPairs().find { secondPair ->
+                secondPair.src.dpId == firstPair.src.dpId && secondPair.dst.dpId != firstPair.dst.dpId &&
+                        secondPair.dst.dpId in tgSwitchIds
+            }
+            firstOk && flow2SwitchPair
+        }
+        assumeTrue("Required switch pairs not found in given topology",
+                flow1SwitchPair.asBoolean() && flow2SwitchPair.asBoolean())
+
+        def flow1 = flowHelper.randomFlow(flow1SwitchPair, true)
+        def flow2 = flowHelper.randomFlow(flow2SwitchPair, true, [flow1])
+
+        flowHelper.addFlow(flow1)
+        flowHelper.addFlow(flow2)
+
+        and: "FlowLoop is created for the second flow on the dst switch"
+        northboundV2.createFlowLoop(flow2.id, new FlowLoopPayload(flow2SwitchPair.dst.dpId))
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getFlowStatus(flow2.id).status == FlowState.UP
+        }
+
+        when: "Try to swap dst endpoint for two flows"
+        def flow1Dst = flow2.destination
+        def flow1Src = flow1.source
+        def flow2Dst = flow1.destination
+        def flow2Src = flow2.source
+        def response = northbound.swapFlowEndpoint(
+                new SwapFlowPayload(flow1.id, flowHelper.toFlowEndpointV2(flow1Src),
+                        flowHelper.toFlowEndpointV2(flow1Dst)),
+                new SwapFlowPayload(flow2.id, flowHelper.toFlowEndpointV2(flow2Src),
+                        flowHelper.toFlowEndpointV2(flow2Dst)))
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpServerErrorException)
+        exc.statusCode == HttpStatus.NOT_IMPLEMENTED
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not swap endpoints"
+        errorDetails.errorDescription == "Swap endpoints is not implemented for looped flows"
+
+        and: "Flows validation doesn't show any discrepancies"
+        validateFlows(flow1, flow2)
+
+        and: "FlowLoop is still created for the second flow on the dst switch"
+        northbound.getFlow(flow2.id).loopSwitchId == flow2SwitchPair.dst.dpId
+
+        and: "FlowLoop rules are not created for the first flow on the dst switch"
+        getFlowLoopRules(flow1SwitchPair.dst.dpId).empty
+
+        and: "Switch validation doesn't show any missing/excess rules and meters"
+        validateSwitches([flow1SwitchPair.src, flow1SwitchPair.dst, flow2SwitchPair.src, flow2SwitchPair.dst].unique())
+        def switchesAreValid = true
+
+        when: "Send traffic via flow1"
+        def traffExam = traffExamProvider.get()
+        def exam = new FlowTrafficExamBuilder(topology, traffExam)
+                .buildBidirectionalExam(northbound.getFlow(flow1.id), 1000, 5)
+
+        then: "Flow allows traffic, because it is not grubbed by flowLoop rules"
+        withPool {
+            [exam.forward, exam.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
+            }
+        }
+
+        cleanup: "Restore topology and delete flows"
+        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        if (!switchesAreValid) {
+            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
+                    .unique().each { northbound.synchronizeSwitch(it, true) }
+        }
+    }
+
     void verifyEndpoints(response, FlowEndpointPayload flow1SrcExpected, FlowEndpointPayload flow1DstExpected,
             FlowEndpointPayload flow2SrcExpected, FlowEndpointPayload flow2DstExpected) {
         verifyEndpoints(response, flowHelper.toFlowEndpointV2(flow1SrcExpected),
@@ -1568,6 +1661,13 @@ switches"() {
         topologyHelper.getAllNeighboringSwitchPairs().find {
             it."$equalEndpoint" == switchPairToAvoid."$equalEndpoint" &&
                     it."$differentEndpoint" != switchPairToAvoid."$differentEndpoint"
+        }
+    }
+
+    def getFlowLoopRules(SwitchId switchId) {
+        northbound.getSwitchRules(switchId).flowEntries.findAll {
+            def hexCookie = Long.toHexString(it.cookie)
+            hexCookie.startsWith("20080000") || hexCookie.startsWith("40080000")
         }
     }
 }
