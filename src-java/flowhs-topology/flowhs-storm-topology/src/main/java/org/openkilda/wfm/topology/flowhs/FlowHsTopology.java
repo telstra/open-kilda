@@ -74,7 +74,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     public FlowHsTopology(LaunchEnvironment env) {
         super(env, FlowHsTopologyConfig.class);
 
-        parallelism = topologyConfig.getNewParallelism();
+        parallelism = topologyConfig.getFlowHsParallelism();
     }
 
     @Override
