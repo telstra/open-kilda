@@ -91,7 +91,6 @@ func tests for each PR on github
 
 ## Artifacts
 * Logs - ```build/logs```
-  * `request_logs` - stores all HTTP transactions being made during test run
   * `logs` - casual test log including DEBUG+ messages
 * Reports - ```build/reports```
 
