@@ -20,6 +20,7 @@ import org.openkilda.wfm.config.SecondsToMilisConverter;
 
 import com.sabre.oss.conf4j.annotation.AbstractConfiguration;
 import com.sabre.oss.conf4j.annotation.Converter;
+import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.IgnoreKey;
 import com.sabre.oss.conf4j.annotation.Key;
 
@@ -31,6 +32,10 @@ public interface AbstractTopologyConfig {
     @Key("local.execution.time")
     @Converter(SecondsToMilisConverter.class)
     int getLocalExecutionTime();
+
+    @Key("flow.hs.parallelism")
+    @Default("4")
+    int getFlowHsParallelism();
 
     @Key("parallelism")
     int getParallelism();
