@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.grpc
 
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.ConstantsGrpc.GRPC_STUB_CONTAINER_NAME
 
@@ -18,7 +19,7 @@ import org.springframework.beans.factory.annotation.Value
 import spock.lang.See
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/grpc-client")
-@Tags(SMOKE_SWITCHES)
+@Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
 class GrpcBaseSpecification extends HealthCheckSpecification {
     @Value('${spring.profiles.active}')
     String profile
