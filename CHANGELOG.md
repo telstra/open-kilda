@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.74.1 (21/10/2020)
+
+### Bug Fixes:
+-  [#3693](https://github.com/telstra/open-kilda/pull/3693) Add an operations queue to the Reroute topology. (Issues: [#3140](https://github.com/telstra/open-kilda/issues/3140) [#3703](https://github.com/telstra/open-kilda/issues/3703)) [**storm-topologies**]
+-  [#3792](https://github.com/telstra/open-kilda/pull/3792) Fixed incorrect constructor for FlowRerouteRequest (Issue: [#3598](https://github.com/telstra/open-kilda/issues/3598)) [**northbound**]
+
+### Improvements:
+-  [#3776](https://github.com/telstra/open-kilda/pull/3776) Run single orient db by default for local kilda [**tests**]
+-  [#3785](https://github.com/telstra/open-kilda/pull/3785) update doc related to func test [**tests**]
+-  [#3786](https://github.com/telstra/open-kilda/pull/3786) Added parallelism for Isl Latency Topology [**storm-topologies**]
+-  [#3725](https://github.com/telstra/open-kilda/pull/3725) configure multiTable mode on hardware env via test framework [**tests**]
+-  [#3791](https://github.com/telstra/open-kilda/pull/3791) Added storm parallelism option for Flow HS topology 
+-  [#3743](https://github.com/telstra/open-kilda/pull/3743) Reset BFD session status on start (Issue: [#3744](https://github.com/telstra/open-kilda/issues/3744)) [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.74.0...v1.74.1).
+
+### Affected Components:
+isllatency, flow-hs, nb, network, reroute
+
+---
+
 ## v1.74.0 (13/10/2020)
 
 ### Features:
