@@ -11,8 +11,10 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.model.system.KildaConfigurationDto
+import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.model.Floodlight
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
@@ -45,6 +47,9 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     LockKeeperService lockKeeper
 
     @Autowired
+    Database database
+
+    @Autowired
     List<Floodlight> floodlights
 
     @Value('${spring.profiles.active}')
@@ -72,6 +77,24 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
         } else if (profile == "hardware") {
             labService.createHwLab(topology)
             log.info("Successfully redirected to hardware topology")
+
+            log.info("Configure 'multiTable' mode according to the 'kilda.properties' file")
+            northbound.getAllSwitches().findAll { it.state == SwitchChangeType.ACTIVATED }.each { sw ->
+                if (database.getSwitch(sw.switchId).features.contains(SwitchFeature.MULTI_TABLE)) {
+                    if (useMultitable) {
+                        northbound.updateSwitchProperties(sw.switchId, northbound.getSwitchProperties(sw.switchId).tap {
+                            it.multiTable = true
+                        })
+                    } else {
+                        northbound.updateSwitchProperties(sw.switchId, northbound.getSwitchProperties(sw.switchId).tap {
+                            it.multiTable = false
+                            // arp/lldp  properties can be set to 'true' only if 'multiTable' property is 'true'.
+                            it.switchLldp = false
+                            it.switchArp = false
+                        })
+                    }
+                }
+            }
         } else {
             throw new RuntimeException("Provided profile '$profile' is unknown. Select one of the following profiles:" +
                     " hardware, virtual")

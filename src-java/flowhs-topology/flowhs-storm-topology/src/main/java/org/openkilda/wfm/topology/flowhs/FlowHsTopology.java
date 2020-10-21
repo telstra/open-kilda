@@ -74,7 +74,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     public FlowHsTopology(LaunchEnvironment env) {
         super(env, FlowHsTopologyConfig.class);
 
-        parallelism = topologyConfig.getNewParallelism();
+        parallelism = topologyConfig.getFlowHsParallelism();
     }
 
     @Override
@@ -396,7 +396,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     private void rerouteTopologyOutput(TopologyBuilder topologyBuilder) {
         KafkaBolt rerouteKafkaBolt = buildKafkaBolt(getConfig().getKafkaRerouteTopic());
         topologyBuilder.setBolt(ComponentId.REROUTE_RESPONSE_SENDER.name(), rerouteKafkaBolt, parallelism)
-                .shuffleGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_REROUTE_RESPONSE_SENDER.name());
+                .shuffleGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_REROUTE_RESPONSE_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_REROUTE_RESPONSE_SENDER.name());
     }
 
     private void pingOutput(TopologyBuilder topologyBuilder) {

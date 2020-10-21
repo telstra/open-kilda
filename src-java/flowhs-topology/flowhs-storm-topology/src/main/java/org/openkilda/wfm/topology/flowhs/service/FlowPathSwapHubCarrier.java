@@ -22,4 +22,13 @@ public interface FlowPathSwapHubCarrier extends FlowGenericCarrier {
      * @param key operation identifier.
      */
     void cancelTimeoutCallback(String key);
+
+    /**
+     * Sends path swap result status to reroute topology.
+     *
+     * @param flowId flow id.
+     * @param success the operation was successful.
+     * @param correlationId correlation id.
+     */
+    void sendPathSwapResultStatus(String flowId, boolean success, String correlationId);
 }

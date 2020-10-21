@@ -17,15 +17,15 @@ package org.openkilda.wfm.topology.reroute.bolts;
 
 import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_MANUAL_REROUTE_REQUEST_ID;
 import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_REROUTE_REQUEST_ID;
-import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_REROUTE_RESULT_ID;
 import static org.openkilda.wfm.topology.reroute.bolts.TimeWindowBolt.STREAM_TIME_WINDOW_EVENT_ID;
+import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
-import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.CoordinatedBolt;
 import org.openkilda.wfm.topology.reroute.RerouteTopology;
@@ -41,8 +41,11 @@ import org.apache.storm.tuple.Values;
 public class FlowRerouteQueueBolt extends CoordinatedBolt implements IRerouteQueueCarrier {
 
     public static final String BOLT_ID = "reroute-queue-bolt";
-    public static final String STREAM_FLOWHS_ID = "flowhs";
     public static final String STREAM_NORTHBOUND_ID = "northbound-stream";
+    public static final String FLOW_ID_FIELD = RerouteBolt.FLOW_ID_FIELD;
+
+    public static final String STREAM_OPERATION_QUEUE_ID = "operation-queue";
+    public static final Fields FIELDS_OPERATION_QUEUE = new Fields(FLOW_ID_FIELD, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     private final int defaultFlowPriority;
     private final int maxRetry;
@@ -64,6 +67,8 @@ public class FlowRerouteQueueBolt extends CoordinatedBolt implements IRerouteQue
             rerouteQueueService.flushThrottling();
         } else if (sourceComponent.equals(RerouteBolt.BOLT_ID)) {
             handleRerouteBoltMessage(tuple);
+        } else if (sourceComponent.equals(OperationQueueBolt.BOLT_ID)) {
+            handleOperationQueueBoltMessage(tuple);
         } else {
             unhandledInput(tuple);
         }
@@ -73,12 +78,6 @@ public class FlowRerouteQueueBolt extends CoordinatedBolt implements IRerouteQue
         String flowId = pullValue(tuple, RerouteBolt.FLOW_ID_FIELD, String.class);
         FlowThrottlingData throttlingData;
         switch (tuple.getSourceStreamId()) {
-            case STREAM_REROUTE_RESULT_ID:
-                RerouteResultInfoData rerouteResultInfoData =
-                        pullValue(tuple, RerouteBolt.REROUTE_RESULT_FIELD, RerouteResultInfoData.class);
-                rerouteQueueService.processRerouteResult(rerouteResultInfoData,
-                        getCommandContext().getCorrelationId());
-                break;
             case STREAM_REROUTE_REQUEST_ID:
                 throttlingData = (FlowThrottlingData) tuple.getValueByField(RerouteBolt.THROTTLING_DATA_FIELD);
                 rerouteQueueService.processAutomaticRequest(flowId, throttlingData);
@@ -90,6 +89,11 @@ public class FlowRerouteQueueBolt extends CoordinatedBolt implements IRerouteQue
             default:
                 unhandledInput(tuple);
         }
+    }
+
+    private void handleOperationQueueBoltMessage(Tuple tuple) throws PipelineException {
+        RerouteResultInfoData rerouteResultInfoData = pullValue(tuple, FIELD_ID_PAYLOAD, RerouteResultInfoData.class);
+        rerouteQueueService.processRerouteResult(rerouteResultInfoData, getCommandContext().getCorrelationId());
     }
 
     @Override
@@ -106,15 +110,15 @@ public class FlowRerouteQueueBolt extends CoordinatedBolt implements IRerouteQue
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
         declarer.declareStream(TimeWindowBolt.STREAM_TIME_WINDOW_EVENT_ID, new Fields(FIELD_ID_CONTEXT));
-        declarer.declareStream(STREAM_FLOWHS_ID, RerouteTopology.KAFKA_FIELDS);
+        declarer.declareStream(STREAM_OPERATION_QUEUE_ID, FIELDS_OPERATION_QUEUE);
         declarer.declareStream(STREAM_NORTHBOUND_ID, RerouteTopology.KAFKA_FIELDS);
     }
 
     @Override
     public void sendRerouteRequest(String correlationId, FlowRerouteRequest request) {
         log.info("Send reroute request {} with correlationId {}", request, correlationId);
-        getOutput().emit(STREAM_FLOWHS_ID, getCurrentTuple(),
-                new Values(correlationId, new CommandMessage(request, System.currentTimeMillis(), correlationId)));
+        // emit without anchor to prevent a possible loop
+        emit(STREAM_OPERATION_QUEUE_ID, new Values(request.getFlowId(), request, new CommandContext(correlationId)));
         registerCallback(correlationId);
     }
 

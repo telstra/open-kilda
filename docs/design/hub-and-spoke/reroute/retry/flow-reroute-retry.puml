@@ -6,6 +6,7 @@ box "Reroute Topology" #LightGreen
     participant RerouteBolt
     participant FlowRerouteQueueBolt
     participant TimeWindowBolt
+    participant OperationQueueBolt
 end box
 box "Flow H&S Topology" #LightBlue
     participant FlowRerouteHubBolt
@@ -27,8 +28,11 @@ deactivate FlowRerouteQueueBolt
     TimeWindowBolt -> FlowRerouteQueueBolt : flush command
 activate FlowRerouteQueueBolt
     FlowRerouteQueueBolt -> FlowRerouteQueueBolt : merge pending and throttling reroute requests
-    FlowRerouteQueueBolt -> FlowRerouteHubBolt : send reroute commands for not in progress flows
+    FlowRerouteQueueBolt -> OperationQueueBolt : send reroute commands for not in progress flows
 deactivate FlowRerouteQueueBolt
+activate OperationQueueBolt
+    OperationQueueBolt -> FlowRerouteHubBolt : send reroute commands
+deactivate OperationQueueBolt
 
 activate FlowRerouteHubBolt
     FlowRerouteHubBolt -> FlowRerouteService : start reroute
@@ -36,15 +40,26 @@ deactivate FlowRerouteHubBolt
 
 alt reroute for flow is in-progress
     FlowRerouteService -> FlowRerouteHubBolt : reroute is in-progress error
-    FlowRerouteHubBolt -> FlowRerouteQueueBolt : reroute is in-progress error
+    activate FlowRerouteHubBolt
+    FlowRerouteHubBolt -> OperationQueueBolt : reroute is in-progress error
+    deactivate FlowRerouteHubBolt
+    activate OperationQueueBolt
+    OperationQueueBolt -> FlowRerouteQueueBolt : reroute is in-progress error
+    deactivate OperationQueueBolt
 end
 
 ==Reroute response==
 alt reroute finished
     FlowRerouteService -> FlowRerouteHubBolt : send reroute result (status)
-    FlowRerouteHubBolt -> FlowRerouteQueueBolt : send reroute result (status)
+    activate FlowRerouteHubBolt
+    FlowRerouteHubBolt -> OperationQueueBolt : send reroute result (status)
+    activate OperationQueueBolt
+    OperationQueueBolt -> FlowRerouteQueueBolt : send reroute result (status)
+    deactivate OperationQueueBolt
+activate FlowRerouteQueueBolt
 else reroute already in progress error
     FlowRerouteHubBolt -> FlowRerouteQueueBolt : send reroute in progress error
+deactivate FlowRerouteHubBolt
 end
 
 FlowRerouteQueueBolt -> FlowRerouteQueueBolt : check reroute result and retry count then decide if retry is needed
@@ -52,35 +67,58 @@ alt retry required
     alt pending is not empty
         FlowRerouteQueueBolt -> FlowRerouteQueueBolt : merge retry request with pending
         FlowRerouteQueueBolt -> FlowRerouteQueueBolt : move pending to in-progress
-        FlowRerouteQueueBolt -> FlowRerouteHubBolt : send reroute command
+        FlowRerouteQueueBolt -> OperationQueueBolt : send reroute command
+        activate OperationQueueBolt
+        OperationQueueBolt -> FlowRerouteHubBolt : send reroute command
+        deactivate OperationQueueBolt
     else pending is empty
         FlowRerouteQueueBolt -> FlowRerouteQueueBolt : merge retry request with throttling
         FlowRerouteQueueBolt -> TimeWindowBolt : extend window
     end
 else retry not required and other reroute queued
-    FlowRerouteQueueBolt -> FlowRerouteHubBolt : send reroute command
+    FlowRerouteQueueBolt -> OperationQueueBolt : send reroute command
+    activate OperationQueueBolt
+    OperationQueueBolt -> FlowRerouteHubBolt : send reroute command
+    deactivate OperationQueueBolt
+deactivate FlowRerouteQueueBolt
 end
 
 ==Reroute timeout==
     FlowRerouteQueueBolt -> FlowRerouteQueueBolt : check retry count then decide if retry is needed
+activate FlowRerouteQueueBolt
 alt retry required
     FlowRerouteQueueBolt -> FlowRerouteQueueBolt : merge retry request with queued
-    FlowRerouteQueueBolt -> FlowRerouteHubBolt : send reroute command
+    FlowRerouteQueueBolt -> OperationQueueBolt : send reroute command
+    activate OperationQueueBolt
+    OperationQueueBolt -> FlowRerouteHubBolt : send reroute command
+    deactivate OperationQueueBolt
 else retry not required and other reroute queued
-    FlowRerouteQueueBolt -> FlowRerouteHubBolt : send reroute command
+    FlowRerouteQueueBolt -> OperationQueueBolt : send reroute command
+    activate OperationQueueBolt
+    OperationQueueBolt -> FlowRerouteHubBolt : send reroute command
+    deactivate OperationQueueBolt
+deactivate FlowRerouteQueueBolt
 end
 
 ==Manual reroute==
     Northbound -> FlowRerouteQueueBolt : send manual reroute commands
+activate FlowRerouteQueueBolt
 alt queue is empty
-    FlowRerouteQueueBolt -> FlowRerouteHubBolt : send reroute command
+    FlowRerouteQueueBolt -> OperationQueueBolt : send reroute command
+    activate OperationQueueBolt
+    OperationQueueBolt -> FlowRerouteHubBolt : send reroute command
+    deactivate OperationQueueBolt
 activate FlowRerouteHubBolt
-    FlowRerouteHubBolt -> FlowRerouteQueueBolt : send reroute result (status)
+    FlowRerouteHubBolt -> OperationQueueBolt : send reroute result (status)
+    activate OperationQueueBolt
+    OperationQueueBolt -> FlowRerouteQueueBolt : send reroute result (status)
+    deactivate OperationQueueBolt
     FlowRerouteQueueBolt -> FlowRerouteQueueBolt : reroute finished actions
     FlowRerouteHubBolt -> Northbound : send result
 deactivate FlowRerouteHubBolt
 else reroute is in progress
     FlowRerouteQueueBolt -> Northbound : send "reroute in progress" error
+deactivate FlowRerouteQueueBolt
 end
 
 @enduml

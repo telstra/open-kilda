@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,11 +16,12 @@
 package org.openkilda.wfm.topology.reroute;
 
 import static org.openkilda.wfm.topology.reroute.bolts.FlowRerouteQueueBolt.STREAM_NORTHBOUND_ID;
+import static org.openkilda.wfm.topology.reroute.bolts.OperationQueueBolt.REROUTE_QUEUE_STREAM;
 import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_MANUAL_REROUTE_REQUEST_ID;
 import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_REROUTE_REQUEST_ID;
-import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_REROUTE_RESULT_ID;
-import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_SWAP_ID;
 import static org.openkilda.wfm.topology.reroute.bolts.TimeWindowBolt.STREAM_TIME_WINDOW_EVENT_ID;
+import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_KEY;
+import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.persistence.PersistenceManager;
@@ -30,9 +31,9 @@ import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.reroute.bolts.FlowRerouteQueueBolt;
+import org.openkilda.wfm.topology.reroute.bolts.OperationQueueBolt;
 import org.openkilda.wfm.topology.reroute.bolts.RerouteBolt;
 import org.openkilda.wfm.topology.reroute.bolts.TimeWindowBolt;
-import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -49,8 +50,7 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
     private static final String BOLT_ID_KAFKA_FLOWHS = "kafka-flowhs-bolt";
     private static final String BOLT_ID_KAFKA_NB = "kafka-northbound-bolt";
 
-    public static final Fields KAFKA_FIELDS =
-            new Fields(MessageKafkaTranslator.KEY_FIELD, MessageKafkaTranslator.FIELD_ID_PAYLOAD);
+    public static final Fields KAFKA_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD);
 
     public RerouteTopology(LaunchEnvironment env) {
         super(env, RerouteTopologyConfig.class);
@@ -80,10 +80,11 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
         rerouteQueueBolt(topologyBuilder, parallelism, persistenceManager);
         timeWindowBolt(topologyBuilder);
 
+        operationQueue(topologyBuilder, parallelism);
+
         KafkaBolt<String, Message> kafkaFlowHsBolt = buildKafkaBolt(topologyConfig.getKafkaFlowHsTopic());
         topologyBuilder.setBolt(BOLT_ID_KAFKA_FLOWHS, kafkaFlowHsBolt, parallelism)
-                .shuffleGrouping(FlowRerouteQueueBolt.BOLT_ID, FlowRerouteQueueBolt.STREAM_FLOWHS_ID)
-                .shuffleGrouping(RerouteBolt.BOLT_ID, STREAM_SWAP_ID);
+                .shuffleGrouping(OperationQueueBolt.BOLT_ID);
 
         KafkaBolt<String, Message> kafkaNorthboundBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         topologyBuilder.setBolt(BOLT_ID_KAFKA_NB, kafkaNorthboundBolt, parallelism)
@@ -109,7 +110,8 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
                 .fieldsGrouping(RerouteBolt.BOLT_ID, STREAM_REROUTE_REQUEST_ID, new Fields(RerouteBolt.FLOW_ID_FIELD))
                 .fieldsGrouping(RerouteBolt.BOLT_ID, STREAM_MANUAL_REROUTE_REQUEST_ID,
                         new Fields(RerouteBolt.FLOW_ID_FIELD))
-                .fieldsGrouping(RerouteBolt.BOLT_ID, STREAM_REROUTE_RESULT_ID, new Fields(RerouteBolt.FLOW_ID_FIELD))
+                .fieldsGrouping(OperationQueueBolt.BOLT_ID, REROUTE_QUEUE_STREAM,
+                        new Fields(OperationQueueBolt.FLOW_ID_FIELD))
                 .allGrouping(TimeWindowBolt.BOLT_ID)
                 .directGrouping(CoordinatorBolt.ID);
     }
@@ -127,7 +129,19 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
         topologyBuilder.setSpout(CoordinatorSpout.ID, new CoordinatorSpout());
         topologyBuilder.setBolt(CoordinatorBolt.ID, new CoordinatorBolt(), parallelism)
                 .allGrouping(CoordinatorSpout.ID)
-                .fieldsGrouping(FlowRerouteQueueBolt.BOLT_ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
+                .fieldsGrouping(FlowRerouteQueueBolt.BOLT_ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
+                .fieldsGrouping(OperationQueueBolt.BOLT_ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
+    }
+
+    private void operationQueue(TopologyBuilder topologyBuilder, int parallelism) {
+        OperationQueueBolt operationQueueBolt =
+                new OperationQueueBolt((int) TimeUnit.SECONDS.toMillis(topologyConfig.getRerouteTimeoutSeconds()));
+        topologyBuilder.setBolt(OperationQueueBolt.BOLT_ID, operationQueueBolt, parallelism)
+                .fieldsGrouping(RerouteBolt.BOLT_ID, RerouteBolt.STREAM_OPERATION_QUEUE_ID,
+                        new Fields(RerouteBolt.FLOW_ID_FIELD))
+                .fieldsGrouping(FlowRerouteQueueBolt.BOLT_ID, FlowRerouteQueueBolt.STREAM_OPERATION_QUEUE_ID,
+                        new Fields(FlowRerouteQueueBolt.FLOW_ID_FIELD))
+                .directGrouping(CoordinatorBolt.ID);
     }
 
     /**

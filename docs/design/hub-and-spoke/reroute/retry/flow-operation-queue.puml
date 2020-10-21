@@ -1,0 +1,46 @@
+@startuml
+title Flow operation queue
+
+box "Reroute Topology" #LightGreen
+    participant RerouteBolt
+    participant FlowRerouteQueueBolt
+    participant OperationQueueBolt
+    participant CoordinatorBolt
+end box
+participant "Flow H&S Topology" as FlowHS
+
+== Request to OperationQueueBolt ==
+RerouteBolt -> OperationQueueBolt : Path swap command
+activate OperationQueueBolt
+RerouteBolt -> FlowRerouteQueueBolt : Reroute command
+FlowRerouteQueueBolt -> OperationQueueBolt: Reroute command
+OperationQueueBolt -> OperationQueueBolt : add command to the queue
+OperationQueueBolt -> FlowHS : command
+OperationQueueBolt -> CoordinatorBolt : register callback
+deactivate OperationQueueBolt
+
+== Flow HS response ==
+FlowHS -> OperationQueueBolt : operation result
+activate OperationQueueBolt
+OperationQueueBolt -> CoordinatorBolt : cancel callback
+alt reroute response
+    OperationQueueBolt -> FlowRerouteQueueBolt : operation result
+end
+
+alt there is an command in the queue
+    OperationQueueBolt -> FlowHS : command
+    OperationQueueBolt -> CoordinatorBolt : register callback
+    deactivate OperationQueueBolt
+end
+
+== Timeout ==
+CoordinatorBolt -> OperationQueueBolt : operation timeout
+activate OperationQueueBolt
+
+alt there is an command in the queue
+    OperationQueueBolt -> FlowHS : command
+    OperationQueueBolt -> CoordinatorBolt : register callback
+    deactivate OperationQueueBolt
+end
+
+@enduml

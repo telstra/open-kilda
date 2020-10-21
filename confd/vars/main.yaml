@@ -10,8 +10,8 @@ kilda_neo4j_rest_port: "7474"
 kilda_neo4j_user: "neo4j"
 kilda_neo4j_password: "temppass"
 kilda_neo4j_cypher_path: "/db/data/cypher"
-
 kilda_orientdb_hosts: "odb1.pendev,odb2.pendev,odb3.pendev"
+kilda_orientdb_hosts_single: "odb1.pendev"
 kilda_orientdb_user: "kilda"
 kilda_orientdb_password: "kilda"
 kilda_orientdb_database: "kilda"
@@ -154,8 +154,10 @@ kilda_latency_update_interval: 300
 kilda_latency_update_time_range: 600
 kilda_latency_discovery_interval_multiplier: 3
 
+kilda_storm_isl_latency_parallelism: 4
 kilda_storm_parallelism_level_new: 2
 kilda_storm_parallelism_level: 1
+kilda_storm_flow_hs_parallelism: 4
 kilda_storm_parallelism_workers_count: 1
 
 kilda_storm_disruptor_wait_timeout: 1000

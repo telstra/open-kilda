@@ -13,23 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.model;
+package org.openkilda.wfm.topology.reroute.bolts;
 
-import org.openkilda.model.BfdSessionStatus;
+import org.openkilda.messaging.command.CommandData;
 
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
-
-@Value
-@EqualsAndHashCode(exclude = {"enabled"})
-@AllArgsConstructor
-public class IslEndpointBfdStatus {
-    boolean enabled;
-
-    BfdSessionStatus status;
-
-    public IslEndpointBfdStatus() {
-        this(false, null);
-    }
+public interface OperationQueueCarrier {
+    void emitRequest(String correlationId, CommandData commandData);
 }
