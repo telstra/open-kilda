@@ -1338,9 +1338,12 @@ switches"() {
         and: "First flow is reverted to Down"
         Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET * 2) { // sometimes it takes more time on jenkins
             assert northboundV2.getFlowStatus(flow1.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow1.flowId).find {
+            def flowHistory = northbound.getFlowHistory(flow1.flowId)
+            assert flowHistory.find {
                 it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1/)
-            }
+            } || flowHistory.last().payload.count {
+                it.details ==~ /Failed to remove the rule.*Retrying \(attempt \d+\)/
+            } > 3
         }
         with(northboundV2.getFlow(flow1.flowId)) {
             source == flow1.source
@@ -1375,7 +1378,7 @@ switches"() {
             database.setSwitchStatus(swPair1.src.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(swPair1.src, blockData, true)
         }
-        !isSwitchValid && switches.each { northbound.synchronizeSwitch(it, true)}
+        !isSwitchValid && switches.each { northbound.synchronizeSwitch(it.dpId, true)}
     }
 
     @Tidy
