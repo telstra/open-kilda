@@ -15,6 +15,7 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.rerun.Rerun
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -1303,7 +1304,7 @@ switches"() {
     }
 
     @Tidy
-    @Ignore("fix ASAP, unstable on jenkins")
+    @Rerun(times = 10)
     def "System reverts both flows if fails during rule installation when swapping endpoints"() {
         given: "Two flows with different src switches and same dst"
         def swPair1
