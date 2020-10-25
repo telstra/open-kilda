@@ -99,6 +99,7 @@ import { SamlAddComponent } from './modules/settings/saml-add/saml-add.component
 import { SamlEditComponent } from './modules/settings/saml-edit/saml-edit.component';
 import { SamlListTableComponent } from './modules/settings/saml-list-table/saml-list-table.component';
 import { WorldMapViewComponent } from './modules/topology/world-map-view/world-map-view.component';
+import { SwitchupdatemodalComponent } from './common/components/switchupdatemodal/switchupdatemodal.component';
 
 @NgModule({
   declarations: [
@@ -184,6 +185,7 @@ import { WorldMapViewComponent } from './modules/topology/world-map-view/world-m
     SamlEditComponent,
     SamlListTableComponent,
     WorldMapViewComponent,
+    SwitchupdatemodalComponent,
   ],
   imports: [
     HttpClientModule,
@@ -226,6 +228,7 @@ import { WorldMapViewComponent } from './modules/topology/world-map-view/world-m
     ImportTopologySettingComponent,    
     ExportTopologySettingComponent,
     IslmaintenancemodalComponent,
+    SwitchupdatemodalComponent,
   ]
 })
 export class AppModule { }

@@ -172,6 +172,7 @@ public abstract class IConstants {
                 + "/switches/{switch_id}/ports/{port}/properties";
         public static final String GET_SWITCH_PORT_PROPERTY = VERSION_TWO + "/switches/{switch_id}"
                 + "/ports/{port}/properties";
+        public static final String UPDATE_SWITCH_LOCATION = VERSION_TWO + "/switches/{switch_id}";
     }
     
     public final class OpenTsDbUrl {
@@ -296,6 +297,8 @@ public abstract class IConstants {
         public static final String SW_UPDATE_PORT_PROPERTIES = "sw_update_port_properties";
         
         public static final String SW_SWITCH_METERS = "sw_switch_meters";
+        
+        public static final String SW_SWITCH_LOCATION_UPDATE = "sw_switch_location_update";
 
         public static final String SAML_SETTING = "saml_setting";
         
@@ -312,6 +315,7 @@ public abstract class IConstants {
         public static final String TOPOLOGY_SETTING = "topology_setting";
     }
     
+
     public interface SamlUrl {
       
         public static final String SAML = "/saml/";

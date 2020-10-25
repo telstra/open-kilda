@@ -73,6 +73,16 @@ export class CommonService {
       
   }
 
+  isInt(n){
+    var num = /^-?[0-9]+$/;
+	  return num.test(n);
+  }
+
+  isFloat(n){    
+    var num = /^[-+]?[0-9]+\.[0-9]+$/;
+    return num.test(n);
+  }
+
   hasPermission(permission){
     if(JSON.parse(localStorage.getItem("userPermissions"))) {
         let userPermissions = JSON.parse(localStorage.getItem("userPermissions"));

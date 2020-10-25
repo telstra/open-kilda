@@ -1,0 +1,60 @@
+<div class="modal-header">
+  <h4 class="modal-title">{{title}}</h4>
+  <button type="button" class="close" aria-label="Close" (click)="activeModal.close(false)">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+<div class="modal-body">
+
+  <div class="row" [formGroup]="switchLocationForm">
+    <div class="form-group col-md-6" >
+          <label class=" col-md-2 col-form-label">Pop:</label>
+          <div class="col-md-12">
+            <input class="form-control" formControlName="pop" name="pop"  />
+          </div>
+    </div>
+    <div class="form-group col-md-6" >
+        <label class=" col-md-2 col-form-label">Latitude:</label>
+        <div class="col-md-12">
+          <input class="form-control" (keyup)="validateLatLong('latitude')" formControlName="latitude" name="latitude"  />
+          <div *ngIf="errorsObj && errorsObj['latitude']" class="invalid-feedback">
+            <div >Latitude should only be in number or decimal</div>
+          </div>
+        </div>
+    </div>
+    <div class="form-group col-md-6 " >
+        <label class=" col-md-2  col-form-label">Longitude:</label>
+        <div class="col-md-12">
+          <input class="form-control" (keyup)="validateLatLong('longitude')" formControlName="longitude" name="longitude"  />
+          <div *ngIf="errorsObj && errorsObj['longitude']" class="invalid-feedback">
+            <div>Longitude should only be in number or decimal</div>
+          </div>
+        </div>
+     </div>
+     <div class="form-group col-md-6" >
+        <label class="col-md-2  col-form-label">Street:</label>
+        <div class="col-md-12">
+          <input class="form-control" formControlName="street" name="street"  />
+        </div>
+    </div>
+     <div class="form-group col-md-6" >
+        <label class="col-md-2 col-form-label">City:</label>
+        <div class="col-md-12">
+          <input class="form-control" formControlName="city" name="city"  />
+        </div>
+        
+     </div>
+     <div class="form-group col-md-6" >
+        <label class=" col-md-2 col-form-label">Country:</label>
+        <div class="col-md-12">
+          <input class="form-control" formControlName="country" name="country" />
+        </div>
+        
+    </div>
+   
+  </div>
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn kilda_btn" (click)="submitUpdate()">Update</button>
+  <button type="button" class="btn kilda_btn" (click)="activeModal.close(false)">Cancel</button>
+</div>

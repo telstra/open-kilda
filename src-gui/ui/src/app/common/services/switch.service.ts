@@ -86,6 +86,10 @@ getNetworkPath(source_switch,target_switch){
     return this.httpClient.get<any[]>(`${environment.apiEndPoint}/switch/${switchId}/ports/${portNumber}/properties?_=${timestamp}`);
   }
 
+  updateSwitch(data,switch_id){
+    return this.httpClient.patch<any>(`${environment.apiEndPoint}/switch/location/${switch_id}`,data);
+  }
+
   deleteSwitch(switchId,data,successCb,errorCb): void{
     var requestBody = JSON.stringify(data);
     let token = this.cookieManager.get('XSRF-TOKEN') as string;

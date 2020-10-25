@@ -37,6 +37,7 @@ import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.PopLocation;
 import org.openkilda.model.SwitchDiscrepancy;
 import org.openkilda.model.SwitchInfo;
+import org.openkilda.model.SwitchLocation;
 import org.openkilda.model.SwitchMeter;
 import org.openkilda.model.SwitchProperty;
 import org.openkilda.model.SwitchStatus;
@@ -590,6 +591,10 @@ public class SwitchService {
     public SwitchProperty getSwitchPortProperty(String switchId, String port) {
         SwitchProperty switchProperty = switchIntegrationService.getSwitchPortProperty(switchId, port);
         return switchProperty;
+    }
+
+    public SwitchInfo updateSwitchLocation(String switchId, SwitchLocation switchLocation) {
+        return switchIntegrationService.updateSwitchLocation(switchId, switchLocation);
     }
 
 }
