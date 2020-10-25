@@ -1,0 +1,11 @@
+---
+databaseChangeLog:
+  - include:
+      relativeToChangelogFile: true
+      file: tag-visibility-workaround.yaml
+  - changeSet:
+      id: root-tag
+      author: surabujin
+      changes:
+        - tagDatabase:
+            tag: history-starting-point
