@@ -16,10 +16,12 @@
 package org.openkilda.server42.control.serverstub;
 
 import org.openkilda.server42.control.messaging.flowrtt.Control.AddFlow;
+import org.openkilda.server42.control.messaging.flowrtt.Control.ClearFlowsFilter;
 import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacket;
 import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacketResponse;
 import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacketResponse.Builder;
 import org.openkilda.server42.control.messaging.flowrtt.Control.Flow;
+import org.openkilda.server42.control.messaging.flowrtt.Control.ListFlowsFilter;
 import org.openkilda.server42.control.messaging.flowrtt.Control.PushSettings;
 import org.openkilda.server42.control.messaging.flowrtt.Control.RemoveFlow;
 
@@ -34,6 +36,8 @@ import org.zeromq.ZMQ;
 import org.zeromq.ZMQ.Socket;
 
 import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 
 
@@ -93,12 +97,34 @@ public class ControlServer extends Thread {
                             }
                             break;
                         case CLEAR_FLOWS:
-                            flows.clear();
-                            statsServer.clearFlows();
+                            if (commandPacket.getCommandCount() > 0) {
+                                Any command = commandPacket.getCommand(0);
+                                ClearFlowsFilter filter = command.unpack(ClearFlowsFilter.class);
+                                List<FlowKey> keys = flows.values()
+                                        .stream()
+                                        .filter(flow -> flow.getDstMac().equals(filter.getDstMac()))
+                                        .map(FlowKey::fromFlow)
+                                        .collect(Collectors.toList());
+
+                                flows.keySet().removeAll(keys);
+                                keys.forEach(statsServer::removeFlow);
+                            } else {
+                                flows.clear();
+                                statsServer.clearFlows();
+                            }
                             break;
                         case LIST_FLOWS:
-                            for (Flow flow : flows.values()) {
-                                builder.addResponse(Any.pack(flow));
+                            if (commandPacket.getCommandCount() > 0) {
+                                Any command = commandPacket.getCommand(0);
+                                ListFlowsFilter filter = command.unpack(ListFlowsFilter.class);
+                                flows.values()
+                                        .stream()
+                                        .filter(flow -> flow.getDstMac().equals(filter.getDstMac()))
+                                        .forEach(flow -> builder.addResponse(Any.pack(flow)));
+                            } else {
+                                for (Flow flow : flows.values()) {
+                                    builder.addResponse(Any.pack(flow));
+                                }
                             }
                             break;
                         case PUSH_SETTINGS:

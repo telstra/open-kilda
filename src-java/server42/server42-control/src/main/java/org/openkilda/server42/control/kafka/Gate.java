@@ -26,6 +26,7 @@ import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacket.Ty
 import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacketResponse;
 import org.openkilda.server42.control.messaging.flowrtt.Control.Flow;
 import org.openkilda.server42.control.messaging.flowrtt.Control.Flow.EncapsulationType;
+import org.openkilda.server42.control.messaging.flowrtt.ListFlowsOnSwitch;
 import org.openkilda.server42.control.messaging.flowrtt.ListFlowsRequest;
 import org.openkilda.server42.control.messaging.flowrtt.ListFlowsResponse;
 import org.openkilda.server42.control.messaging.flowrtt.PushSettings;
@@ -103,6 +104,7 @@ public class Gate {
                 .setDirection(FlowDirection.toBoolean(data.getDirection()))
                 .setUdpSrcPort(udpSrcPortOffset + data.getPort())
                 .setDstMac(switchId.toMacAddress())
+                .setHashCode(data.hashCode())
                 .build();
 
         Control.AddFlow addFlow = Control.AddFlow.newBuilder().setFlow(flow).build();
@@ -117,9 +119,14 @@ public class Gate {
     }
 
     @KafkaHandler
-    void listen(ClearFlows data) {
+    void listen(ClearFlows data,
+                @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String switchIdKey) {
         Builder builder = CommandPacket.newBuilder();
         builder.setType(Type.CLEAR_FLOWS);
+        SwitchId switchId = new SwitchId(switchIdKey);
+        Control.ClearFlowsFilter clearFlowsFilter = Control.ClearFlowsFilter.newBuilder()
+                .setDstMac(switchId.toMacAddress()).build();
+        builder.addCommand(Any.pack(clearFlowsFilter));
         try {
             zeroMqClient.send(builder.build());
         } catch (InvalidProtocolBufferException e) {
@@ -128,11 +135,11 @@ public class Gate {
     }
 
     @KafkaHandler
-    void listen(ListFlowsRequest data) {
-        Builder builder = CommandPacket.newBuilder();
-        builder.setType(Type.LIST_FLOWS);
+    void listen(ListFlowsRequest data,
+                @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String switchIdKey) {
+        CommandPacket commandPacket = getFlowListCommandPacket(switchIdKey);
         try {
-            CommandPacketResponse serverResponse = zeroMqClient.send(builder.build());
+            CommandPacketResponse serverResponse = zeroMqClient.send(commandPacket);
 
             if (serverResponse == null) {
                 log.error("No response from server on {}", data.getHeaders().getCorrelationId());
@@ -155,6 +162,32 @@ public class Gate {
     }
 
     @KafkaHandler
+    void listen(ListFlowsOnSwitch data,
+                @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String switchIdKey) {
+
+        CommandPacket commandPacket = getFlowListCommandPacket(switchIdKey);
+
+        try {
+            CommandPacketResponse serverResponse = zeroMqClient.send(commandPacket);
+            if (serverResponse == null) {
+                log.error("No response from server on {}", data.getHeaders().getCorrelationId());
+                return;
+            }
+
+            for (Any any : serverResponse.getResponseList()) {
+                String flowId = any.unpack(Flow.class).getFlowId();
+                if (!data.getFlowIds().contains(flowId)) {
+                    removeFlow(flowId, FlowDirection.FORWARD);
+                    removeFlow(flowId, FlowDirection.REVERSE);
+                }
+            }
+
+        } catch (InvalidProtocolBufferException e) {
+            log.error("Marshalling error on {}", data);
+        }
+    }
+
+    @KafkaHandler
     void listen(PushSettings data) {
         Builder builder = CommandPacket.newBuilder();
         Control.PushSettings pushSettings = Control.PushSettings.newBuilder()
@@ -171,19 +204,34 @@ public class Gate {
 
     @KafkaHandler
     void listen(RemoveFlow data) {
+        try {
+            removeFlow(data.getFlowId(), data.getDirection());
+        } catch (InvalidProtocolBufferException e) {
+            log.error("Marshalling error on {}", data);
+        }
+    }
+
+    private void removeFlow(String flowId, FlowDirection direction) throws InvalidProtocolBufferException {
         Builder builder = CommandPacket.newBuilder();
         Flow flow = Flow.newBuilder()
-                .setFlowId(data.getFlowId())
-                .setDirection(FlowDirection.toBoolean(data.getDirection()))
+                .setFlowId(flowId)
+                .setDirection(FlowDirection.toBoolean(direction))
                 .build();
         Control.RemoveFlow removeFlow = Control.RemoveFlow.newBuilder().setFlow(flow).build();
         builder.setType(Type.REMOVE_FLOW);
         builder.addCommand(Any.pack(removeFlow));
         CommandPacket packet = builder.build();
-        try {
-            zeroMqClient.send(packet);
-        } catch (InvalidProtocolBufferException e) {
-            log.error("Marshalling error on {}", data);
-        }
+        zeroMqClient.send(packet);
+    }
+
+    private CommandPacket getFlowListCommandPacket(String switchIdKey) {
+        SwitchId switchId = new SwitchId(switchIdKey);
+        Builder builder = CommandPacket.newBuilder();
+        builder.setType(Type.LIST_FLOWS);
+
+        Control.ListFlowsFilter listFlowsFilter = Control.ListFlowsFilter.newBuilder()
+                .setDstMac(switchId.toMacAddress()).build();
+        builder.addCommand(Any.pack(listFlowsFilter));
+        return builder.build();
     }
 }

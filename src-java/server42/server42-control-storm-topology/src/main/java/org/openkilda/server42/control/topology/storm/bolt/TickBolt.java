@@ -13,18 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.server42.control.topology;
+package org.openkilda.server42.control.topology.storm.bolt;
 
-import org.openkilda.wfm.topology.AbstractTopologyConfig;
+import org.openkilda.server42.control.topology.storm.ComponentId;
+import org.openkilda.wfm.share.bolt.MonotonicClock;
 
-import com.sabre.oss.conf4j.annotation.Configuration;
-import com.sabre.oss.conf4j.annotation.Default;
-import com.sabre.oss.conf4j.annotation.Key;
+public class TickBolt extends MonotonicClock<TickBolt.TickId> {
+    public static final String BOLT_ID =  ComponentId.TICK_BOLT.toString();
 
-@Configuration
-public interface ControlTopologyConfig extends AbstractTopologyConfig {
+    public TickBolt(Integer interval) {
+        super(new MonotonicClock.ClockConfig<>(), interval);
+    }
 
-    @Key("server42.control.flowrtt.sync.interval.seconds")
-    @Default("60")
-    int getFlowRttSyncIntervalSeconds();
+    enum TickId {}
 }

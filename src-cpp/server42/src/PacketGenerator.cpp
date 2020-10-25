@@ -13,7 +13,17 @@
 
 namespace org::openkilda {
 
-    void generate_and_add_packet_for_flow(const FlowCreateArgument& arg) {
+    void generate_and_add_packet_for_flow(const FlowCreateArgument &arg) {
+
+        flow_endpoint_t flow_id_key = get_flow_id(arg);
+        auto db = arg.flow_pool.get_metadata_db();
+        auto flow_meta = db->get(flow_id_key);
+        if (flow_meta && flow_meta->get_hash() == arg.hash) {
+            BOOST_LOG_TRIVIAL(debug)
+                << "skip add_flow command for " << arg.flow_id
+                << " and direction " << arg.direction_str() << " with hash " << arg.hash << " already exists";
+            return;
+        }
 
         pcpp::Packet newPacket(64);
 
@@ -56,7 +66,18 @@ namespace org::openkilda {
 
         auto packet = flow_pool_t::allocator_t::allocate(newPacket.getRawPacket(), arg.device);
 
-        bool success = arg.flow_pool.add_flow(get_flow_id(arg), packet);
+        if (flow_meta) {
+            BOOST_LOG_TRIVIAL(debug)
+                << "update flow " << arg.flow_id
+                << " and direction " << arg.direction_str() << " with hash " << flow_meta->get_hash()
+                << " to new flow with hash " << arg.hash;
+            arg.flow_pool.remove_flow(flow_id_key);
+        }
+
+        auto meta = std::shared_ptr<FlowMetadata>(
+                new FlowMetadata(arg.flow_id, arg.direction, arg.dst_mac, arg.hash));
+
+        bool success = arg.flow_pool.add_flow(flow_id_key, packet, meta);
 
         if (!success) {
             flow_pool_t::allocator_t::dealocate(packet);

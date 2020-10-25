@@ -13,18 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.server42.control.topology;
 
-import org.openkilda.wfm.topology.AbstractTopologyConfig;
+package org.openkilda.server42.control.messaging.flowrtt;
 
-import com.sabre.oss.conf4j.annotation.Configuration;
-import com.sabre.oss.conf4j.annotation.Default;
-import com.sabre.oss.conf4j.annotation.Key;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
 
-@Configuration
-public interface ControlTopologyConfig extends AbstractTopologyConfig {
+import java.util.Set;
 
-    @Key("server42.control.flowrtt.sync.interval.seconds")
-    @Default("60")
-    int getFlowRttSyncIntervalSeconds();
+@Value
+@Builder
+@AllArgsConstructor
+@JsonNaming(value = SnakeCaseStrategy.class)
+@EqualsAndHashCode(callSuper = true)
+public class ListFlowsOnSwitch extends Message {
+    private Headers headers;
+    private Set<String> flowIds;
 }
