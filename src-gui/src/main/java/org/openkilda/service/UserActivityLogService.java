@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.dao.repository.UserRepository;
 import org.usermanagement.model.UserInfo;
+import org.usermanagement.service.UserService;
 import org.usermanagement.util.ValidatorUtil;
 
 import java.util.ArrayList;
@@ -45,6 +46,9 @@ public class UserActivityLogService {
 
     @Autowired
     private ServerContext serverContext;
+    
+    @Autowired
+    private UserService userService;
 
     /**
      * Gets the activity log.
@@ -106,14 +110,11 @@ public class UserActivityLogService {
     public ActivityInfo getActivityInfo() {
         ActivityInfo activityInfo = new ActivityInfo();
         List<ActivityTypeInfo> activityTypeInfos = LogConversionUtil.getActivityTypeInfo();
-        List<UserInfo> userInfos = getAllUsers();
+        List<UserInfo> userInfos = userService.getAllUsers();
         activityInfo.setActivityTypeInfo(activityTypeInfos);
         activityInfo.setUserInfo(userInfos);
         return activityInfo;
     }
     
-    public List<UserInfo> getAllUsers() {
-        List<UserEntity> userEntities = userRepository.findAll();
-        return LogConversionUtil.getUserInfo(userEntities);
-    }
+
 }
