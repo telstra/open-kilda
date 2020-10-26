@@ -42,15 +42,9 @@ export class UserActivityService {
 	return this.httpClient.get<UserActivityModel[]>(`${environment.apiEndPoint}/useractivity/log?${url}&_=${currentDate}`);
   }
 
-
-  getUserDropdownList() : Observable<UserActivityModel[]>{
+  getDropdownList() : Observable<UserActivityModel[]>{
     let date = new Date().getTime();
-	return this.httpClient.get<UserActivityModel[]>(`${environment.apiEndPoint}/user?_=${date}`);
-  }
-
-  getTypeDropdownList() : Observable<UserActivityModel[]>{
-    let date = new Date().getTime();
-	return this.httpClient.get<UserActivityModel[]>(`${environment.apiEndPoint}/useractivity/types?_=${date}`);
+	return this.httpClient.get<UserActivityModel[]>(`${environment.apiEndPoint}/useractivity/info?_=${date}`);
   }
 
 }
