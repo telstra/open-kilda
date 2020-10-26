@@ -2,6 +2,9 @@ package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_ACTION
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -73,8 +76,26 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
 
-        cleanup: "Delete flows"
+        and: "Flows' histories contain 'groupId' information"
+        [flow2, flow3].each {//flow1 had no diversity at the time of creation
+            assert northbound.getFlowHistory(it.flowId).find { it.action == CREATE_ACTION }.dumps
+                    .find { it.type == "stateAfter" }?.groupId
+        }
+
+        when: "Delete flows"
         [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
+        def flowsAreDeleted = true
+
+        then: "Flows' histories contain 'groupId' information in 'delete' operation"
+        [flow1, flow2, flow3].each {
+            verifyAll(northbound.getFlowHistory(it.flowId).find { it.action == DELETE_ACTION }.dumps) {
+                it.find { it.type == "stateBefore" }?.groupId
+                !it.find { it.type == "stateAfter" }?.groupId
+            }
+        }
+
+        cleanup:
+        !flowsAreDeleted && [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
     }
 
     @Tidy
@@ -96,6 +117,12 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         when: "Update the second flow to become diverse"
         FlowResponseV2 updateResponse = flowHelperV2.updateFlow(flow2.flowId,
                                                                 flow2.tap { it.diverseFlowId = flow1.flowId })
+
+        and: "Second flow's history contains 'groupId' information"
+        verifyAll(northbound.getFlowHistory(flow2.flowId).find { it.action == UPDATE_ACTION }.dumps) {
+            !it.find { it.type == "stateBefore" }?.groupId
+            it.find { it.type == "stateAfter" }?.groupId
+        }
 
         then: "Update response contains information about diverse flow"
         updateResponse.diverseWith.sort() == [flow1.flowId]
@@ -143,6 +170,10 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         def allInvolvedIsls = [flow1Path, flow2Path, flow3Path].collectMany { pathHelper.getInvolvedIsls(it) }
         assert allInvolvedIsls.unique(false) == allInvolvedIsls
 
+        and: "Flow1 path is the most preferable"
+        switchPair.paths.findAll { it != flow1Path }
+                .each { pathHelper.makePathMorePreferable(flow1Path, it) }
+
         when: "Update the second flow to become not diverse"
         flowHelperV2.updateFlow(flow2.flowId, flow2.tap { it.diverseFlowId = "" })
 
@@ -153,6 +184,13 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
 
         and: "The 'diverse_with' field is removed"
         !northboundV2.getFlow(flow2.flowId).diverseWith
+
+        and: "The flow's history reflects the change of 'groupId' field"
+        verifyAll(northbound.getFlowHistory(flow2.flowId).find { it.action == UPDATE_ACTION }.dumps) {
+            //https://github.com/telstra/open-kilda/issues/3807
+//            it.find { it.type == "stateBefore" }.groupId
+            !it.find { it.type == "stateAfter" }.groupId
+        }
 
         when: "Update the third flow to become not diverse"
         flowHelperV2.updateFlow(flow3.flowId, flow3.tap { it.diverseFlowId = "" })
@@ -166,6 +204,7 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         !northboundV2.getFlow(flow3.flowId).diverseWith
 
         cleanup: "Delete flows"
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
         [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
     }
 
