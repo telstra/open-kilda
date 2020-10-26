@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -90,6 +91,21 @@ public class FlowRttService {
                 ));
     }
 
+    /**
+     * Send list with flow ids on provided switch.
+     *
+     * @param switchId switch id
+     */
+    public void sendFlowListOnSwitchCommand(SwitchId switchId) {
+        Set<String> flowOnSwitch =
+                flowRepository.findByEndpointSwitch(switchId).stream()
+                        .filter(f -> !f.isOneSwitchFlow())
+                        .map(Flow::getFlowId)
+                        .collect(Collectors.toSet());
+
+        carrier.sendListOfFlowBySwitchId(switchId, flowOnSwitch);
+    }
+
     private boolean isFlowRttFeatureToggle() {
         return featureTogglesRepository.find().map(FeatureToggles::getServer42FlowRtt)
                 .orElse(FeatureToggles.DEFAULTS.getServer42FlowRtt());
@@ -99,4 +115,5 @@ public class FlowRttService {
         return switchPropertiesRepository.findBySwitchId(switchId).map(SwitchProperties::isServer42FlowRtt)
                 .orElse(false);
     }
+
 }

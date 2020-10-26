@@ -100,6 +100,7 @@ import { SamlEditComponent } from './modules/settings/saml-edit/saml-edit.compon
 import { SamlListTableComponent } from './modules/settings/saml-list-table/saml-list-table.component';
 import { WorldMapViewComponent } from './modules/topology/world-map-view/world-map-view.component';
 import { UseractivityListComponent } from './modules/useractivity/useractivity-list/useractivity-list.component';
+import { SwitchupdatemodalComponent } from './common/components/switchupdatemodal/switchupdatemodal.component';
 
 @NgModule({
   declarations: [
@@ -186,6 +187,7 @@ import { UseractivityListComponent } from './modules/useractivity/useractivity-l
     SamlListTableComponent,
     WorldMapViewComponent,
     UseractivityListComponent,
+    SwitchupdatemodalComponent,
   ],
   imports: [
     HttpClientModule,
@@ -228,6 +230,7 @@ import { UseractivityListComponent } from './modules/useractivity/useractivity-l
     ImportTopologySettingComponent,    
     ExportTopologySettingComponent,
     IslmaintenancemodalComponent,
+    SwitchupdatemodalComponent,
   ]
 })
 export class AppModule { }

@@ -37,6 +37,7 @@ import org.openkilda.model.LinkParametersDto;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.SwitchInfo;
+import org.openkilda.model.SwitchLocation;
 import org.openkilda.model.SwitchMeter;
 import org.openkilda.model.SwitchProperty;
 import org.openkilda.service.ApplicationService;
@@ -748,6 +749,31 @@ public class SwitchIntegrationService {
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while getting switch port property", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
+        }
+        return null;
+    }
+
+    /**
+     * Updates the switch location.
+     *
+     * @return the SwitchInfo
+     */
+    public SwitchInfo updateSwitchLocation(String switchId, SwitchLocation switchLocation) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
+                    .UPDATE_SWITCH_LOCATION.replace("{switch_id}", switchId), 
+                    HttpMethod.PATCH, objectMapper.writeValueAsString(switchLocation), "application/json", 
+                    applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, SwitchInfo.class);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while updating switch location:" + switchId, e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (JsonProcessingException e) {
+            LOGGER.warn("Error occurred while updating switch location:" + switchId, e);
+            throw new IntegrationException(e.getMessage(), e);
         }
         return null;
     }

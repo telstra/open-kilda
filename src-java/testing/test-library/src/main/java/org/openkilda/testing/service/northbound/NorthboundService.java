@@ -33,6 +33,8 @@ import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.messaging.payload.network.PathsDto;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
@@ -204,7 +206,8 @@ public interface NorthboundService {
 
     //feature network
 
-    PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch);
+    PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType flowEncapsulationType,
+                      PathComputationStrategy pathComputationStrategy);
 
     // configuration
 

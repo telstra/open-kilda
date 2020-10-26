@@ -28,11 +28,13 @@ import org.openkilda.server42.control.messaging.flowrtt.DeactivateFlowMonitoring
 import org.openkilda.server42.control.topology.service.IRouterCarrier;
 import org.openkilda.server42.control.topology.service.RouterService;
 import org.openkilda.server42.control.topology.storm.ComponentId;
+import org.openkilda.server42.control.topology.storm.bolt.TickBolt;
 import org.openkilda.server42.control.topology.storm.bolt.flow.command.ActivateFlowMonitoringCommand;
 import org.openkilda.server42.control.topology.storm.bolt.flow.command.ActivateFlowMonitoringOnSwitchCommand;
 import org.openkilda.server42.control.topology.storm.bolt.flow.command.DeactivateFlowMonitoringCommand;
 import org.openkilda.server42.control.topology.storm.bolt.flow.command.DeactivateFlowMonitoringOnSwitchCommand;
 import org.openkilda.server42.control.topology.storm.bolt.flow.command.FlowCommand;
+import org.openkilda.server42.control.topology.storm.bolt.flow.command.SendFlowListOnSwitchCommand;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -75,9 +77,15 @@ public class Router extends AbstractBolt
         if (ComponentId.INPUT_FLOW_HS.toString().equals(source) || ComponentId.INPUT_NB.toString().equals(source)) {
             Message message = pullValue(input, FIELD_ID_INPUT, Message.class);
             flowMessage(input, message);
+        } else if (TickBolt.BOLT_ID.equals(source)) {
+            handleTick(input);
         } else {
             unhandledInput(input);
         }
+    }
+
+    private void handleTick(Tuple input) {
+        service.processSync();
     }
 
     private void flowMessage(Tuple input, Message message) throws PipelineException {
@@ -134,5 +142,13 @@ public class Router extends AbstractBolt
     public void deactivateFlowMonitoringOnSwitch(SwitchId switchId) {
         emit(STREAM_FLOW_ID, getCurrentTuple(), makeFlowTuple(
                 new DeactivateFlowMonitoringOnSwitchCommand(switchId)));
+    }
+
+    @Override
+    public void syncFlowsOnSwitch(SwitchId switchId) {
+        emit(STREAM_FLOW_ID, getCurrentTuple(), makeFlowTuple(
+                new ActivateFlowMonitoringOnSwitchCommand(switchId)));
+        emit(STREAM_FLOW_ID, getCurrentTuple(), makeFlowTuple(
+                new SendFlowListOnSwitchCommand(switchId)));
     }
 }

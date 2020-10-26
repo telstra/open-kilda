@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.model.PathId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -34,13 +33,8 @@ public class FlowPathSwapRequest extends CommandData {
     @JsonProperty("flow_id")
     protected String flowId;
 
-    @JsonProperty("path_id")
-    protected PathId pathId;
-
     @JsonCreator
-    public FlowPathSwapRequest(@NonNull @JsonProperty("flow_id") String flowId,
-                               @JsonProperty("path_id") PathId pathId) {
+    public FlowPathSwapRequest(@NonNull @JsonProperty("flow_id") String flowId) {
         this.flowId = flowId;
-        this.pathId = pathId;
     }
 }

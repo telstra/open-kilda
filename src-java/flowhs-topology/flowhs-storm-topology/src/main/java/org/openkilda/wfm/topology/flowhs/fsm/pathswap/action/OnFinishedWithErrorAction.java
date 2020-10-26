@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -36,5 +36,9 @@ public class OnFinishedWithErrorAction extends AnonymousAction<FlowPathSwapFsm, 
     public void execute(State from, State to, Event event, FlowPathSwapContext context, FlowPathSwapFsm stateMachine) {
         dashboardLogger.onFailedFlowUpdate(stateMachine.getFlowId(), stateMachine.getErrorReason());
         stateMachine.saveActionToHistory("Failed to swap paths for the flow", stateMachine.getErrorReason());
+
+        log.warn("Flow {} path swap failed", stateMachine.getFlowId());
+        stateMachine.getCarrier().sendPathSwapResultStatus(stateMachine.getFlowId(), false,
+                stateMachine.getCommandContext().getCorrelationId());
     }
 }

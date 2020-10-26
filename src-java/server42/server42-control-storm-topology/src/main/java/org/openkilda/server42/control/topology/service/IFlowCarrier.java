@@ -17,9 +17,15 @@ package org.openkilda.server42.control.topology.service;
 
 import org.openkilda.model.SwitchId;
 
+import java.util.Set;
+
 public interface IFlowCarrier {
 
-    void notifyActivateFlowMonitoring(String id,  SwitchId switchId, Integer port, Integer vlan, boolean isForward);
+    void notifyActivateFlowMonitoring(String id, SwitchId switchId, Integer port, Integer vlan, boolean isForward);
 
     void notifyDeactivateFlowMonitoring(SwitchId switchId, String flowId, boolean isForward);
+
+    void processSendFlowListOnSwitchCommand(SwitchId switchId);
+
+    void sendListOfFlowBySwitchId(SwitchId switchId, Set<String> flowOnSwitch);
 }

@@ -245,20 +245,8 @@ public class RerouteQueueService {
     }
 
     private int comparePriority(FlowThrottlingData throttlingDataA, FlowThrottlingData throttlingDataB) {
-        Integer priorityA = throttlingDataA.getPriority();
-        Integer priorityB = throttlingDataB.getPriority();
-
-        if (priorityA == null) {
-            if (priorityB == null) {
-                return 0;
-            } else {
-                return -1;
-            }
-        }
-        if (priorityB == null) {
-            return 1;
-        }
-
+        Integer priorityA = Optional.ofNullable(throttlingDataA.getPriority()).orElse(defaultFlowPriority);
+        Integer priorityB = Optional.ofNullable(throttlingDataB.getPriority()).orElse(defaultFlowPriority);
         return Integer.compare(priorityA, priorityB);
     }
 

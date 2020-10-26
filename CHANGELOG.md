@@ -1,5 +1,50 @@
 # Changelog
 
+## v1.74.1 (21/10/2020)
+
+### Bug Fixes:
+-  [#3693](https://github.com/telstra/open-kilda/pull/3693) Add an operations queue to the Reroute topology. (Issues: [#3140](https://github.com/telstra/open-kilda/issues/3140) [#3703](https://github.com/telstra/open-kilda/issues/3703)) [**storm-topologies**]
+-  [#3792](https://github.com/telstra/open-kilda/pull/3792) Fixed incorrect constructor for FlowRerouteRequest (Issue: [#3598](https://github.com/telstra/open-kilda/issues/3598)) [**northbound**]
+
+### Improvements:
+-  [#3776](https://github.com/telstra/open-kilda/pull/3776) Run single orient db by default for local kilda [**tests**]
+-  [#3785](https://github.com/telstra/open-kilda/pull/3785) update doc related to func test [**tests**]
+-  [#3786](https://github.com/telstra/open-kilda/pull/3786) Added parallelism for Isl Latency Topology [**storm-topologies**]
+-  [#3725](https://github.com/telstra/open-kilda/pull/3725) configure multiTable mode on hardware env via test framework [**tests**]
+-  [#3791](https://github.com/telstra/open-kilda/pull/3791) Added storm parallelism option for Flow HS topology 
+-  [#3743](https://github.com/telstra/open-kilda/pull/3743) Reset BFD session status on start (Issue: [#3744](https://github.com/telstra/open-kilda/issues/3744)) [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.74.0...v1.74.1).
+
+### Affected Components:
+isllatency, flow-hs, nb, network, reroute
+
+---
+
+## v1.74.0 (13/10/2020)
+
+### Features:
+-  [#3731](https://github.com/telstra/open-kilda/pull/3731) Adding support to login with saml(UI will be available on https) (Issue: [#3715](https://github.com/telstra/open-kilda/issues/3715)) [**gui**]
+-  [#3764](https://github.com/telstra/open-kilda/pull/3764) Add `max_latency_tier2` field to the Flow object (Issue: [#3740](https://github.com/telstra/open-kilda/issues/3740)) [**northbound**][**storm-topologies**]
+
+### Improvements:
+-  [#3755](https://github.com/telstra/open-kilda/pull/3755) ignore grpc tests according to #3754 [**tests**]
+-  [#3756](https://github.com/telstra/open-kilda/pull/3756) fix CheckLoggingSpec [**tests**]
+-  [#3758](https://github.com/telstra/open-kilda/pull/3758) update getDefaultCookies by server42 rules [**tests**]
+-  [#3772](https://github.com/telstra/open-kilda/pull/3772) fix unstable tests [**tests**]
+-  [#3775](https://github.com/telstra/open-kilda/pull/3775) adjust functional test for maxLatencyTier2 field [**tests**]
+
+### Other changes:
+-  [#3748](https://github.com/telstra/open-kilda/pull/3748) Add 'lockkeeper' tag to some tests [**tests**]
+-  [#3769](https://github.com/telstra/open-kilda/pull/3769) Fix port props tests to respect 'rtl' ISLs [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.73.0...v1.74.0).
+
+### Affected Components:
+flow-hs, nb, gui, nbworker
+
+---
+
 ## v1.73.1 (13/10/2020)
 
 ### Bug Fixes:

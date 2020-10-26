@@ -1,7 +1,9 @@
 environment.naming.prefix = 
 
+isl.latency.parallelism = 4
 parallelism.new = 2
 parallelism = 1
+flow.hs.parallelism = 4
 workers = 1
 
 #######
@@ -140,3 +142,5 @@ flow.reroute.speaker.command.retries = 3
 flow.delete.hub.timeout.seconds = 30
 flow.delete.speaker.timeout.seconds = 10
 flow.delete.speaker.command.retries = 3
+
+server42.control.flowrtt.sync.interval.seconds = 60

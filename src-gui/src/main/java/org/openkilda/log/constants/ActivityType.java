@@ -60,7 +60,8 @@ public enum ActivityType {
     UPDATE_ISL_BANDWIDTH(39L),
     DELETE_SWITCH(40L),
     UPDATE_ISL_BFD_FLAG(41L),
-    UPDATE_SW_PORT_PROPERTIES(42L);
+    UPDATE_SW_PORT_PROPERTIES(42L),
+    UPDATE_SWITCH_LOCATION(43L);
     private Long id;
     private ActivityTypeEntity activityTypeEntity;
 
@@ -136,3 +137,4 @@ public enum ActivityType {
         return activityType;
     }
 }
+
