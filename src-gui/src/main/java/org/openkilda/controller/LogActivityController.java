@@ -17,8 +17,7 @@ package org.openkilda.controller;
 
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
-import org.openkilda.log.constants.ActivityType;
-import org.openkilda.log.model.ActivityTypeInfo;
+import org.openkilda.log.model.ActivityInfo;
 import org.openkilda.log.model.LogInfo;
 import org.openkilda.service.UserActivityLogService;
 
@@ -32,7 +31,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.ModelAndView;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
@@ -48,7 +46,7 @@ public class LogActivityController extends BaseController {
     /** The user activity log service. */
     @Autowired
     private UserActivityLogService userActivityLogService;
-
+    
     /**
      * UserManagement.
      *
@@ -81,18 +79,14 @@ public class LogActivityController extends BaseController {
     }
 
     /**
-     * Gets the activity types.
+     * Gets the activity types and users info.
      *
-     * @return the activity types
+     * @return the ActivityInfo
      */
     @ResponseStatus(HttpStatus.OK)
-    @RequestMapping(path = "/types", method = RequestMethod.GET)
-    public List<ActivityTypeInfo> getActivityTypes() {
-        List<ActivityTypeInfo> activityTypeInfos = new ArrayList<>();
-        for (ActivityType activityType : ActivityType.values()) {
-            activityTypeInfos.add(
-                    new ActivityTypeInfo(activityType.getId(), activityType.getActivityTypeEntity().getActivityName()));
-        }
-        return activityTypeInfos;
+    @RequestMapping(path = "/info", method = RequestMethod.GET)
+    @Permissions(values = { IConstants.Permission.MENU_USER_ACTIVITY })
+    public ActivityInfo getActivityInfo() {
+        return userActivityLogService.getActivityInfo();
     }
 }

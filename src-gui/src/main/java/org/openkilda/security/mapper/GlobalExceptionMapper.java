@@ -158,7 +158,7 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
             message = ex.getMessage();
         }
         return response(HttpError.UNPROCESSABLE_ENTITY.getHttpStatus(), HttpError.UNPROCESSABLE_ENTITY.getCode(),
-                HttpError.UNPROCESSABLE_ENTITY.getAuxilaryMessage(), message);
+                message, message);
     }
 
     @Override

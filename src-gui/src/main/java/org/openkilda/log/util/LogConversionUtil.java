@@ -17,7 +17,11 @@ package org.openkilda.log.util;
 
 import org.openkilda.log.constants.ActivityType;
 import org.openkilda.log.dao.entity.UserActivityEntity;
+import org.openkilda.log.model.ActivityTypeInfo;
 import org.openkilda.log.model.LogInfo;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class LogConversionUtil {
 
@@ -55,5 +59,19 @@ public final class LogConversionUtil {
         info.setActivityTime(userActivity.getActivityTime());
         info.setClientIpAddress(userActivity.getClientIp());
         return info;
+    }
+
+    /**
+     * Gets the activity types.
+     *
+     * @return the activity types
+     */
+    public static List<ActivityTypeInfo> getActivityTypeInfo() {
+        List<ActivityTypeInfo> activityTypeInfos = new ArrayList<>();
+        for (ActivityType activityType : ActivityType.values()) {
+            activityTypeInfos.add(
+                    new ActivityTypeInfo(activityType.getId(), activityType.getActivityTypeEntity().getActivityName()));
+        }
+        return activityTypeInfos;
     }
 }

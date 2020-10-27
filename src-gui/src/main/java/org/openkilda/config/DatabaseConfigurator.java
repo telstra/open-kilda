@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 
 package org.openkilda.config;
 
+import org.openkilda.dao.entity.VersionEntity;
 import org.openkilda.dao.repository.VersionRepository;
 
 import com.ibatis.common.jdbc.ScriptRunner;
@@ -27,12 +28,13 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.sql.Connection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.sql.DataSource;
 
@@ -65,35 +67,52 @@ public class DatabaseConfigurator {
     }
 
     private void loadInitialData() {
-        List<Long> versionNumberList = versionRepository.findAllVersionNumber();
-        InputStream inputStream = null;
+        List<VersionEntity> versionEntities = versionRepository.findAll();
+        long lastestScriptNumber = getLatestScriptVersion(versionEntities);
+        Map<String, InputStream> filesByName = getScriptFiles(lastestScriptNumber);
+
+        for (int i = 0; i < filesByName.size(); i++) {
+            try (InputStream inputStream = filesByName.get(lastestScriptNumber + i + 1)) {
+                runScript(inputStream);
+            } catch (IOException e) {
+                LOGGER.error("Failed to load db script", e);
+            }
+        }
+    }
+
+    private Long getLatestScriptVersion(final List<VersionEntity> versionEntities) {
+        Long lastestVersion = 0L;
+        for (VersionEntity versionEntity : versionEntities) {
+            if (lastestVersion < versionEntity.getVersionNumber()) {
+                lastestVersion = versionEntity.getVersionNumber();
+            }
+        }
+        return lastestVersion;
+    }
+
+    private Map<String, InputStream> getScriptFiles(final long scriptNumber) {
+        long lastestScriptNumber = scriptNumber;
+        Map<String, InputStream> filesByName = new LinkedHashMap<>();
+        InputStream is;
         try {
-            File scriptFolder = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION).getFile();
-            String[] scriptFiles = scriptFolder.list();
-            for (String scriptFile :  scriptFiles) {
-                String scriptFileName = scriptFile.replaceFirst("[.][^.]+$", "");
-                String[] scriptNumber = scriptFileName.split("_");
-                Long scriptVersionNumber = Long.valueOf(scriptNumber[1]);
-                inputStream = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/" 
-                        + SCRIPT_FILE_PREFIX + scriptVersionNumber + SCRIPT_FILE_SUFFIX).getInputStream();
-                if (inputStream != null) {
-                    if (!versionNumberList.isEmpty()) {
-                        if (!versionNumberList.contains(scriptVersionNumber)) {
-                            runScript(inputStream);
-                        }
-                    } else {
-                        runScript(inputStream);
-                    }
+            while (true) {
+                lastestScriptNumber++;
+                is = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/" + SCRIPT_FILE_PREFIX
+                        + lastestScriptNumber + SCRIPT_FILE_SUFFIX).getInputStream();
+                if (is != null) {
+                    runScript(is);
+                } else {
+                    break;
                 }
             }
-        } catch (IOException ex) {
-            LOGGER.error("Failed to load db scripts" + ex);
+        } catch (IOException e) {
+            LOGGER.info("Failed to load db scripts", e);
         }
+        return filesByName;
     }
 
     private void runScript(final InputStream inputStream) {
         try (Connection con = dataSource.getConnection()) {
-            //con.setAutoCommit(false);
             ScriptRunner sr = new ScriptRunner(con, false, false);
             sr.runScript(new InputStreamReader(inputStream));
         } catch (Exception e) {

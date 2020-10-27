@@ -21,6 +21,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.server42.control.messaging.flowrtt.AddFlow;
 import org.openkilda.server42.control.messaging.flowrtt.ClearFlows;
 import org.openkilda.server42.control.messaging.flowrtt.Headers;
+import org.openkilda.server42.control.messaging.flowrtt.ListFlowsOnSwitch;
 import org.openkilda.server42.control.messaging.flowrtt.RemoveFlow;
 import org.openkilda.server42.control.topology.service.FlowRttService;
 import org.openkilda.server42.control.topology.service.IFlowCarrier;
@@ -36,6 +37,8 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+
+import java.util.Set;
 
 public class FlowHandler extends AbstractBolt
         implements IFlowCarrier {
@@ -75,6 +78,7 @@ public class FlowHandler extends AbstractBolt
         handleCommand(input, Router.FIELD_ID_COMMAND);
     }
 
+
     private void handleCommand(Tuple input, String fieldName) throws PipelineException {
         FlowCommand command = pullValue(input, fieldName, FlowCommand.class);
         command.apply(this);
@@ -111,6 +115,20 @@ public class FlowHandler extends AbstractBolt
                 .build();
 
         emit(STREAM_CONTROL_COMMANDS_ID, getCurrentTuple(), new Values(switchId.toString(), addFlow));
+    }
+
+    @Override
+    public void processSendFlowListOnSwitchCommand(SwitchId switchId) {
+        flowRttService.sendFlowListOnSwitchCommand(switchId);
+    }
+
+    @Override
+    public void sendListOfFlowBySwitchId(SwitchId switchId, Set<String> flowOnSwitch) {
+        ListFlowsOnSwitch listFlowsOnSwitch = ListFlowsOnSwitch.builder()
+                .headers(buildHeader())
+                .flowIds(flowOnSwitch)
+                .build();
+        emit(STREAM_CONTROL_COMMANDS_ID, getCurrentTuple(), new Values(switchId.toString(), listFlowsOnSwitch));
     }
 
     @Override

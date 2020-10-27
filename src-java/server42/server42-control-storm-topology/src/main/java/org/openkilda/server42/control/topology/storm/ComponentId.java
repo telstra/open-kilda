@@ -24,7 +24,9 @@ public enum ComponentId {
 
     FLOW_HANDLER("flow.handler"),
 
-    ROUTER("router");
+    ROUTER("router"),
+
+    TICK_BOLT("tick.bolt");
 
     private final String value;
 

@@ -1,0 +1,21 @@
+<div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
+<table id="useractivityTable" datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover dataTable no-footer">
+  <thead>
+    <tr class="tableHeading">
+      <th><span title="ActivityTime">Date Time</span></th>
+      <th><span title="clientIpAddress">Ip Address</span></th>
+      <th><span title="userId">Username</span></th>
+      <th><span title="activityType">Type</span></th>
+      <th><span title="objectId">Object</span></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="flowDataRow "  *ngFor="let row of data; let i = index">
+      <td class="divTableCell" title="{{row.activityTime | date:'long' }}">{{row.activityTime | date:'long' }}</td>
+      <td class="divTableCell" title="{{row.clientIpAddress}}">{{row.clientIpAddress}}</td>
+      <td class="divTableCell" title="{{row.username}}">{{row.username}}</td>
+      <td class="divTableCell" title="{{row.activityType}}">{{row.activityType}}</td>
+      <td class="divTableCell" title="{{row.objectId}}">{{row.objectId}}</td>
+    </tr>
+  </tbody>
+</table>

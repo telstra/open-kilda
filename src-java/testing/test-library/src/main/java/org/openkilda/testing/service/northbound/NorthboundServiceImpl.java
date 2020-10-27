@@ -36,6 +36,8 @@ import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.messaging.payload.network.PathsDto;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
@@ -628,9 +630,23 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch) {
-        return restTemplate.exchange(
-                "/api/v1/network/paths?src_switch={src_switch}&dst_switch={dst_switch}", HttpMethod.GET,
+    public PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType flowEncapsulationType,
+                      PathComputationStrategy pathComputationStrategy) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/network/paths");
+        if (srcSwitch != null) {
+            uriBuilder.queryParam("src_switch", srcSwitch);
+        }
+        if (dstSwitch != null) {
+            uriBuilder.queryParam("dst_switch", dstSwitch);
+        }
+        if (flowEncapsulationType != null) {
+            uriBuilder.queryParam("encapsulation_type", flowEncapsulationType);
+        }
+        if (pathComputationStrategy != null) {
+            uriBuilder.queryParam("path_computation_strategy", pathComputationStrategy);
+        }
+
+        return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), PathsDto.class, srcSwitch, dstSwitch).getBody();
     }
 

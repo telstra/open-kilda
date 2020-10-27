@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 import java.io.Serializable;
@@ -29,5 +30,5 @@ import java.io.Serializable;
 @AllArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class Headers implements Serializable {
-    String correlationId;
+    @EqualsAndHashCode.Exclude String correlationId;
 }

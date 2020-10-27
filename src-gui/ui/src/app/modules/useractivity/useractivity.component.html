@@ -26,8 +26,6 @@
       <div class="row">
         <label class='col-sm-3 col-form-label'>Type:</label>
         <div class='col-sm-6'>
-         <!--  <input type="text" name="type" (change)="onTypeInputChange($event)"> -->
-
           <ng-select
           formControlName="typeControl"
            [items]="typeDropdownList"
@@ -47,8 +45,6 @@
       <div class="row">
         <label class='col-sm-3 col-form-label'>Username:</label>
         <div class='col-sm-6'>
-          <!-- <input type="text" name="username" (change)="onUsernameInputChange($event)"> -->
-
           <ng-select
           formControlName="usernameControl"
            [items]="userDrowdonList"
@@ -56,7 +52,7 @@
            bindValue="user_id"
            labelForId="user_id"
            [multiple]="true"
-           placeholder="Select Type"
+           placeholder="Select Username"
            clearAllText="Clear"
            (change)="onUsernameInputChange($event)">
              
@@ -110,24 +106,5 @@
       </div>
   
 
-  <table id="useractivityTable" class="table table-striped dataTable no-footer" cellspacing="0" width="100%">
-    <thead>
-      <tr class="tableHeading">
-        <th><span title="ActivityTime">Date Time</span></th>
-        <th><span title="clientIpAddress">Ip Address</span></th>
-        <th><span title="userId">Username</span></th>
-        <th><span title="activityType">Type</span></th>
-        <th><span title="objectId">Object</span></th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let item of userActivityData">
-        <td class="divTableCell" title="{{item.activityTime | date:'long' }}">{{item.activityTime | date:'long' }}</td>
-        <td class="divTableCell" title="{{item.clientIpAddress}}">{{item.clientIpAddress}}</td>
-        <td class="divTableCell" title="{{item.username}}">{{item.username}}</td>
-        <td class="divTableCell" title="{{item.activityType}}">{{item.activityType}}</td>
-        <td class="divTableCell" title="{{item.objectId}}">{{item.objectId}}</td>
-      </tr>
-    </tbody>
-  </table>
+ <app-useractivity-list [data]="userActivityData" *ngIf="!loadActivityData"></app-useractivity-list>
 </div>
