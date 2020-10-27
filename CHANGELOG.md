@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.75.0 (27/10/2020)
+
+### Features:
+-  [#3783](https://github.com/telstra/open-kilda/pull/3783) [Server42] LCM part 1 and 2
+-  [#3753](https://github.com/telstra/open-kilda/pull/3753) Feature/switch location update (Issue: [#3733](https://github.com/telstra/open-kilda/issues/3733)) [**gui**]
+-  [#3793](https://github.com/telstra/open-kilda/pull/3793) [Server42] stats prometheus
+
+### Bug Fixes:
+-  [#3784](https://github.com/telstra/open-kilda/pull/3784) Fix Issue in activity logs related to permissions (Issue: [#3773](https://github.com/telstra/open-kilda/issues/3773)) [**gui**]
+-  [#3798](https://github.com/telstra/open-kilda/pull/3798) Fix for issue in gui db script execution for fresh deployment [**gui**]
+
+### Improvements:
+-  [#3777](https://github.com/telstra/open-kilda/pull/3777) OrientDB schema migration toolset
+-  [#3759](https://github.com/telstra/open-kilda/pull/3759) [Snyk] Security upgrade urllib3 from 1.25.8 to 1.25.9
+-  [#3796](https://github.com/telstra/open-kilda/pull/3796) add topology_dependent tag for grpc tests [**tests**]
+-  [#3735](https://github.com/telstra/open-kilda/pull/3735) extend pathsSpec [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.74.1...v1.75.0).
+
+### Affected Components:
+gui, server42
+
+---
+
 ## v1.74.1 (21/10/2020)
 
 ### Bug Fixes:
