@@ -145,7 +145,9 @@ services:
     container_name: zookeeper
     hostname: zookeeper.pendev
     image: "kilda/zookeeper:${full_build_number:-latest}"
-    command: /opt/zookeeper/bin/zkServer.sh start-foreground
+    command: /usr/local/sbin/create-zknode-and-start.sh
+    volumes:
+      - ./docker/zookeeper/bin/create-zknode-and-start.sh:/usr/local/sbin/create-zknode-and-start.sh
     ports:
       - "2181:2181"
     healthcheck:
@@ -158,6 +160,8 @@ services:
         aliases:
          - zookeeper.pendev
     mem_limit: ${ZOOKEEPER_MEM_LIMIT:-1073741824}
+    environment:
+      KILDA_ZKNODE: kilda
 
 
   kafka:
