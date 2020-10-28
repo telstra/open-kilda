@@ -16,12 +16,16 @@
 package org.openkilda.messaging.model.grpc;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
 import lombok.Data;
+import lombok.Singular;
 
 import java.util.List;
 
 @Data
+@Builder
 public class LogicalPort {
+    @Singular
     @JsonProperty("port_number")
     private List<Integer> portNumbers;
 
