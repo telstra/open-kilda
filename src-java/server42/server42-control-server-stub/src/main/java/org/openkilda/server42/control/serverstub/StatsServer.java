@@ -87,8 +87,10 @@ public class StatsServer extends Thread {
                     }
                 }
 
-                if (!flows.isEmpty()) {
-                    server.send(flowBucketBuilder.build().toByteArray());
+                server.send(flowBucketBuilder.build().toByteArray());
+                if (flows.isEmpty()) {
+                    log.info("send ping");
+                } else {
                     log.info("send stats");
                 }
 
