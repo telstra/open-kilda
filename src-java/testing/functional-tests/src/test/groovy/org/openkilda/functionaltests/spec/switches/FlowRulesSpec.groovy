@@ -507,8 +507,12 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         def amountOfRulesMap = involvedSwitches.collectEntries { switchId ->
-            [switchId, ((switchId == switchPair.src.dpId || switchId == switchPair.dst.dpId) &&
-                    northbound.getSwitchProperties(switchId).multiTable ? 3 : 2)]
+            def swProps = northbound.getSwitchProperties(switchId)
+            def switchIdInSrcOrDst = (switchId in [switchPair.src.dpId, switchPair.dst.dpId])
+            def defaultAmountOfFlowRules = 2 // ingress + egress
+            def rulesCount = defaultAmountOfFlowRules + (switchIdInSrcOrDst && swProps.multiTable ? 1 : 0) +
+                    (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
+            [switchId, (rulesCount)]
         }
         involvedSwitches.each { switchId ->
             northbound.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
