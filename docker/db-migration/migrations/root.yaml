@@ -9,3 +9,6 @@ databaseChangeLog:
       changes:
         - tagDatabase:
             tag: history-starting-point
+  - include:
+      relativeToChangelogFile: true
+      file: 000-per-isl-bfd-properties.yaml

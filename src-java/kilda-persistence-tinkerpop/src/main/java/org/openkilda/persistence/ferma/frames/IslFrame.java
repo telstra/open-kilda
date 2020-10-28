@@ -25,6 +25,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.ferma.frames.converters.BfdSessionStatusConverter;
 import org.openkilda.persistence.ferma.frames.converters.Convert;
+import org.openkilda.persistence.ferma.frames.converters.DurationConverter;
 import org.openkilda.persistence.ferma.frames.converters.InstantStringConverter;
 import org.openkilda.persistence.ferma.frames.converters.IslDownReasonConverter;
 import org.openkilda.persistence.ferma.frames.converters.IslStatusConverter;
@@ -32,6 +33,7 @@ import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 
 import com.syncleus.ferma.annotations.Property;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -174,12 +176,22 @@ public abstract class IslFrame extends KildaBaseEdgeFrame implements IslData {
     public abstract void setUnderMaintenance(boolean underMaintenance);
 
     @Override
-    @Property("enable_bfd")
-    public abstract boolean isEnableBfd();
+    @Property("bfd_interval")
+    @Convert(DurationConverter.class)
+    public abstract Duration getBfdInterval();
 
     @Override
-    @Property("enable_bfd")
-    public abstract void setEnableBfd(boolean enableBfd);
+    @Property("bfd_interval")
+    @Convert(DurationConverter.class)
+    public abstract void setBfdInterval(Duration interval);
+
+    @Override
+    @Property("bfd_multiplier")
+    public abstract Short getBfdMultiplier();
+
+    @Override
+    @Property("bfd_multiplier")
+    public abstract void setBfdMultiplier(Short multiplier);
 
     @Override
     @Property("bfd_session_status")
