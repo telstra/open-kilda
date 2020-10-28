@@ -19,9 +19,14 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
+import org.openkilda.bluegreen.LifecycleEvent;
+import org.openkilda.bluegreen.Signal;
+import org.openkilda.bluegreen.ZkStateTracker;
 import org.openkilda.floodlight.kafka.RecordHandler.Factory;
 import org.openkilda.floodlight.service.kafka.KafkaConsumerSetup;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
+import org.openkilda.floodlight.service.zookeeper.ZooKeeperEventObserver;
+import org.openkilda.floodlight.service.zookeeper.ZooKeeperService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -35,11 +40,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public class Consumer implements Runnable {
+public class Consumer implements Runnable, ZooKeeperEventObserver {
     private static final Logger logger = LoggerFactory.getLogger(Consumer.class);
 
     private final ExecutorService handlersPool;
@@ -50,6 +59,12 @@ public class Consumer implements Runnable {
 
     private final KafkaUtilityService kafkaUtilityService;
     private final ISwitchManager switchManager; // HACK alert.. adding to facilitate safeSwitchTick()
+
+    private final Set<Future<?>> tasks = new HashSet<>();
+
+    private final ZkStateTracker zooKeeperStateTracker;
+    private LifecycleEvent deferedShutdownEvent;
+    private AtomicBoolean active = new AtomicBoolean(false);
 
     public Consumer(FloodlightModuleContext moduleContext, ExecutorService handlersPool,
                     KafkaConsumerSetup kafkaSetup, Factory handlerFactory,
@@ -65,10 +80,15 @@ public class Consumer implements Runnable {
 
         kafkaUtilityService = moduleContext.getServiceImpl(KafkaUtilityService.class);
         switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
+
+        ZooKeeperService zooKeeperService = moduleContext.getServiceImpl(ZooKeeperService.class);
+        zooKeeperService.subscribe(this);
+        zooKeeperStateTracker = zooKeeperService.getZooKeeperStateTracker();
     }
 
     @Override
     public void run() {
+
         while (!Thread.currentThread().isInterrupted()) {
             /*
              * Ensure we try to keep processing messages. It is possible that the consumer needs
@@ -88,8 +108,21 @@ public class Consumer implements Runnable {
 
                 while (true) {
                     try {
+                        if (!tasks.isEmpty()) {
+                            Set<Future<?>> toRemove = new HashSet<>();
+                            for (Future<?> task : tasks) {
+                                if (task.get() == null) {
+                                    toRemove.add(task);
+                                }
+                            }
+                            tasks.removeAll(toRemove);
+                        } else if (deferedShutdownEvent != null && !active.get()) {
+                            zooKeeperStateTracker.processLifecycleEvent(deferedShutdownEvent);
+                            deferedShutdownEvent = null;
+                        }
+
                         ConsumerRecords<String, String> batch = consumer.poll(pollTimeout);
-                        if (! batch.isEmpty()) {
+                        if (!batch.isEmpty()) {
                             handle(batch, offsetRegistry);
                         }
                         tick();
@@ -111,6 +144,19 @@ public class Consumer implements Runnable {
         }
     }
 
+    @Override
+    public void handleLifecycleEvent(LifecycleEvent event) {
+        if (Signal.START.equals(event.getSignal())) {
+            active.set(true);
+            zooKeeperStateTracker.processLifecycleEvent(event);
+        } else if (Signal.SHUTDOWN.equals(event.getSignal())) {
+            active.set(false);
+            zooKeeperStateTracker.processLifecycleEvent(event);
+        } else {
+            logger.error("Unsupported signal received: {}", event.getSignal());
+        }
+    }
+
     private void handle(ConsumerRecords<String, String> recordsBatch, KafkaOffsetRegistry offsetRegistry) {
         logger.debug("Received records batch contain {} messages", recordsBatch.count());
         for (ConsumerRecord<String, String> record : recordsBatch) {
@@ -120,8 +166,11 @@ public class Consumer implements Runnable {
     }
 
     private void handle(ConsumerRecord<String, String> record) {
+        if (!active.get()) {
+            return;
+        }
         logger.trace("received message: {} - key:{}, value:{}", record.offset(), record.key(), record.value());
-        handlersPool.execute(handlerFactory.produce(record));
+        tasks.add(handlersPool.submit(handlerFactory.produce(record)));
     }
 
     private void tick() {
