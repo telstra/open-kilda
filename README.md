@@ -15,6 +15,7 @@ The followings are required for building Kilda controller:
  - JDK8
  - Python 2.7+
  - Python 3.5+
+ - Docker 19.03.3+
  - Docker Compose 1.20.0+
  - GNU Make 4.1+
  - Open vSwitch 2.9+
