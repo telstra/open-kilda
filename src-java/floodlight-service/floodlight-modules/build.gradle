@@ -31,6 +31,7 @@ dependencies {
     implementation 'org.aspectj:aspectjrt'
     implementation 'org.mapstruct:mapstruct-jdk8'
     implementation 'org.mapstruct:mapstruct-processor'
+    implementation 'net.jodah:failsafe:1.0.5'
     annotationProcessor 'org.mapstruct:mapstruct-processor'
     testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
 

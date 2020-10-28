@@ -161,7 +161,7 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
         }
 
         InfoMessage message = createSwitchLldpMessage(switchId, cookie, input, packetData.lldpPacket, packetData.vlans);
-        producerService.sendMessageAndTrack(topic, switchId.toString(), message);
+        producerService.sendMessageAndTrackWithZk(topic, switchId.toString(), message);
     }
 
     private InfoMessage createSwitchLldpMessage(
@@ -202,7 +202,7 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
 
         InfoMessage message = new InfoMessage(
                 arpInfoData, System.currentTimeMillis(), CorrelationContext.getId(), region);
-        producerService.sendMessageAndTrack(topic, switchId.toString(), message);
+        producerService.sendMessageAndTrackWithZk(topic, switchId.toString(), message);
     }
 
     @Override

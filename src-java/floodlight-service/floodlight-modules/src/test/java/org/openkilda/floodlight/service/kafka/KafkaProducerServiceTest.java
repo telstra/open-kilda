@@ -21,6 +21,7 @@ import static org.easymock.EasyMock.getCurrentArguments;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 
+import org.openkilda.floodlight.service.zookeeper.ZooKeeperService;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
@@ -68,6 +69,7 @@ public class KafkaProducerServiceTest extends EasyMockSupport {
         KafkaUtilityService kafkaUtility = createMock(KafkaUtilityService.class);
         expect(kafkaUtility.makeProducer()).andReturn(kafkaProducer);
         moduleContext.addService(KafkaUtilityService.class, kafkaUtility);
+        moduleContext.addService(ZooKeeperService.class, createMock(ZooKeeperService.class));
 
         replay(kafkaUtility);
 
