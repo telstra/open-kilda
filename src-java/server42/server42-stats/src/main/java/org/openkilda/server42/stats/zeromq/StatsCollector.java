@@ -73,7 +73,10 @@ public class StatsCollector extends Thread {
         sessionId = RandomStringUtils.randomAlphanumeric(8);
         log.info("started with session id {}", sessionId);
         while (!isInterrupted()) {
-            try (Socket server = context.createSocket(ZMQ.PULL)) {
+
+            Socket server = null;
+            try {
+                server = context.createSocket(ZMQ.PULL);
                 server.setReceiveTimeOut(1000);
                 server.connect(connectEndpoint);
                 log.info("connect to {}", connectEndpoint);
@@ -90,11 +93,13 @@ public class StatsCollector extends Thread {
                     log.debug("stats received");
                     handleInput(recv);
                 }
-
             } catch (org.zeromq.ZMQException ex) {
                 log.error(ex.toString());
             } finally {
                 log.info("disconnected");
+                if (server != null) {
+                    context.destroySocket(server);
+                }
             }
         }
     }

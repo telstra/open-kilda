@@ -19,6 +19,7 @@ import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.model.BfdProperties;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Isl.IslBuilder;
 import org.openkilda.model.IslDownReason;
@@ -38,6 +39,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.tx.TransactionManager;
+import org.openkilda.wfm.share.mappers.IslMapper;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
@@ -51,7 +53,6 @@ import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.service.IIslCarrier;
-import org.openkilda.wfm.topology.network.storm.bolt.isl.BfdManager;
 
 import com.google.common.collect.ImmutableList;
 import lombok.Builder;
@@ -76,7 +77,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private final NetworkOptions options;
 
     private final IslReference reference;
-    private final BfdManager bfdManager;
 
     private IslStatus effectiveStatus = IslStatus.INACTIVE;
     private IslDownReason downReason;
@@ -105,12 +105,11 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     public IslFsm(Clock clock, PersistenceManager persistenceManager, NetworkTopologyDashboardLogger dashboardLogger,
-                  BfdManager bfdManager, NetworkOptions options, IslReference reference) {
+                  NetworkOptions options, IslReference reference) {
         this.clock = clock;
         this.options = options;
 
         this.reference = reference;
-        this.bfdManager = bfdManager;
 
         this.dashboardLogger = dashboardLogger;
 
@@ -148,13 +147,13 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         evaluateStatus();
 
         if (effectiveStatus == IslStatus.ACTIVE) {
-            sendBfdEnable(context.getOutput());
+            sendBfdPropertiesUpdate(context.getOutput());
         }
     }
 
     public void operationalExit(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        bfdManager.disable(context.getOutput());
-        bfdManager.disableAuxiliaryPollMode(context.getOutput());
+        sendBfdDisable(context.getOutput());
+        disableAuxiliaryPollMode(context.getOutput());
     }
 
     public void updateMonitorsAction(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -171,9 +170,9 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         }
 
         if (!isBfdOperationalNow && discoveryBfdMonitor.isOperational()) {
-            bfdManager.enableAuxiliaryPollMode(context.getOutput());
+            enableAuxiliaryPollMode(context.getOutput());
         } else if (isBfdOperationalNow && !discoveryBfdMonitor.isOperational()) {
-            bfdManager.disableAuxiliaryPollMode(context.getOutput());
+            disableAuxiliaryPollMode(context.getOutput());
         }
     }
 
@@ -185,6 +184,11 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         if (effectiveStatus != IslStatus.ACTIVE) {
             fire(IslFsmEvent._REMOVE_CONFIRMED, context);
         }
+    }
+
+    public void bfdPropertiesUpdateAction(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+        fire(IslFsmEvent.BFD_KILL, context);  // to avoid race condition during bfd session update
+        sendBfdPropertiesUpdate(context.getOutput(), false);
     }
 
     public void setUpResourcesEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -232,7 +236,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         dashboardLogger.onIslUp(reference);
 
         flushTransaction();
-        sendBfdEnable(context.getOutput());
+        sendBfdPropertiesUpdate(context.getOutput());
 
         triggerDownFlowReroute(context);
     }
@@ -249,8 +253,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         dashboardLogger.onIslMoved(reference);
         flushTransaction();
 
-        bfdManager.disable(context.getOutput());
-        bfdManager.disableAuxiliaryPollMode(context.getOutput());
+        sendBfdDisable(context.getOutput());
+        disableAuxiliaryPollMode(context.getOutput());
         sendIslStatusUpdateNotification(context, IslStatus.MOVED);
         triggerAffectedFlowReroute(context);
     }
@@ -377,10 +381,27 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         }
     }
 
-    private void sendBfdEnable(IIslCarrier carrier) {
-        if (shouldSetupBfd()) {
-            bfdManager.enable(carrier);
+    private void sendBfdPropertiesUpdate(IIslCarrier carrier) {
+        sendBfdPropertiesUpdate(carrier, true);
+    }
+
+    private void sendBfdPropertiesUpdate(IIslCarrier carrier, boolean onlyIfEnabled) {
+        if (canSetupBfd()) {
+            BfdProperties properties = loadBfdProperties();
+            if (! onlyIfEnabled || properties.isEnabled()) {
+                sendBfdPropertiesUpdate(carrier, properties);
+            }
         }
+    }
+
+    private void sendBfdPropertiesUpdate(IIslCarrier carrier, BfdProperties properties) {
+        carrier.bfdPropertiesApplyRequest(reference.getSource(), reference, properties);
+        carrier.bfdPropertiesApplyRequest(reference.getDest(), reference, properties);
+    }
+
+    private void sendBfdDisable(IIslCarrier carrier) {
+        carrier.bfdDisableRequest(reference.getSource());
+        carrier.bfdDisableRequest(reference.getDest());
     }
 
     private void sendIslStatusUpdateNotification(IslFsmContext context, IslStatus status) {
@@ -389,6 +410,22 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 reference.getDest().getDatapath(), reference.getDest().getPortNumber(),
                 status);
         context.getOutput().islStatusUpdateNotification(trigger);
+    }
+
+    /**
+     * Send enable auxiliary poll mode request in case when BFD becomes active.
+     */
+    public void enableAuxiliaryPollMode(IIslCarrier carrier) {
+        carrier.auxiliaryPollModeUpdateRequest(reference.getSource(), true);
+        carrier.auxiliaryPollModeUpdateRequest(reference.getDest(), true);
+    }
+
+    /**
+     * Send disable auxiliary poll mode request in case when BFD becomes inactive.
+     */
+    public void disableAuxiliaryPollMode(IIslCarrier carrier) {
+        carrier.auxiliaryPollModeUpdateRequest(reference.getSource(), false);
+        carrier.auxiliaryPollModeUpdateRequest(reference.getDest(), false);
     }
 
     private void triggerAffectedFlowReroute(IslFsmContext context) {
@@ -455,8 +492,10 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
             if (status.isPresent()) {
                 become = status.get();
                 reason = entry.getDownReason();
+                log.debug("Evaluate ISL {} status via {}: {}", reference, entry, become);
                 break;
             }
+            log.debug("Evaluate ISL {} status via {}: no results", reference, entry);
         }
         if (become == null) {
             become = IslStatus.INACTIVE;
@@ -490,11 +529,9 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         fire(route, context);
     }
 
-    private boolean shouldSetupBfd() {
+    private boolean canSetupBfd() {
         // TODO(surabujin): ensure the switch is BFD capable
-
-        return isPerIslBfdToggleEnabled(reference.getSource(), reference.getDest())
-                || isPerIslBfdToggleEnabled(reference.getDest(), reference.getSource());
+        return true;
     }
 
     private Socket prepareSocket() {
@@ -600,6 +637,25 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         return result;
     }
 
+    private BfdProperties loadBfdProperties() {
+        BfdProperties leftToRight = loadBfdProperties(reference.getSource(), reference.getDest());
+        BfdProperties rightToLeft = loadBfdProperties(reference.getDest(), reference.getSource());
+
+        if (! leftToRight.equals(rightToLeft)) {
+            log.error(
+                    "ISL {} records contains not equal BFD properties data {} != {} (use {})",
+                    reference, leftToRight, rightToLeft, leftToRight);
+        }
+        return leftToRight;
+    }
+
+    private BfdProperties loadBfdProperties(Endpoint source, Endpoint dest) {
+        return loadIsl(source, dest)
+                .map(IslMapper.INSTANCE::readBfdProperties)
+                .orElseThrow(() -> new PersistenceException(
+                        String.format("Isl %s ===> %s record not found in DB", source, dest)));
+    }
+
     private boolean isSwitchInMultiTableMode(SwitchId switchId) {
         return switchPropertiesRepository
                 .findBySwitchId(switchId)
@@ -611,13 +667,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         return endpointMultiTableManagementCompleteStatus.stream()
                 .filter(Objects::nonNull)
                 .allMatch(entry -> entry);
-    }
-
-    private boolean isPerIslBfdToggleEnabled(Endpoint source, Endpoint dest) {
-        return loadIsl(source, dest)
-                .map(Isl::isEnableBfd)
-                .orElseThrow(() -> new PersistenceException(
-                        String.format("Isl %s ===> %s record not found in DB", source, dest)));
     }
 
     // TODO(surabujin): should this check been moved into reroute topology?
@@ -694,7 +743,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
             builder = StateMachineBuilderFactory.create(
                     IslFsm.class, IslFsmState.class, IslFsmEvent.class, IslFsmContext.class,
                     // extra parameters
-                    Clock.class, PersistenceManager.class, NetworkTopologyDashboardLogger.class, BfdManager.class,
+                    Clock.class, PersistenceManager.class, NetworkTopologyDashboardLogger.class,
                     NetworkOptions.class, IslReference.class);
 
             // OPERATIONAL
@@ -799,10 +848,9 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         /**
          * Create and properly initialize new {@link IslFsm}.
          */
-        public IslFsm produce(
-                BfdManager bfdManager, NetworkOptions options, IslReference reference, IslFsmContext context) {
+        public IslFsm produce(NetworkOptions options, IslReference reference, IslFsmContext context) {
             IslFsm fsm = builder.newStateMachine(
-                    IslFsmState.OPERATIONAL, clock, persistenceManager, dashboardLoggerBuilder.build(log), bfdManager,
+                    IslFsmState.OPERATIONAL, clock, persistenceManager, dashboardLoggerBuilder.build(log),
                     options, reference);
             fsm.start(context);
             return fsm;
@@ -841,6 +889,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                     .callMethod("flushAction");
             builder.internalTransition().within(target).on(IslFsmEvent.ISL_REMOVE)
                     .callMethod("removeAttempt");
+            builder.internalTransition().within(target).on(IslFsmEvent.BFD_PROPERTIES_UPDATE)
+                    .callMethod("bfdPropertiesUpdateAction");
         }
     }
 
@@ -850,7 +900,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         private final IIslCarrier output;
         private final Endpoint endpoint;
 
-        private Isl history;
         private IslDataHolder islData;
 
         private IslDownReason downReason;
@@ -877,8 +926,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         _RESOURCES_DONE,
         _REMOVE_CONFIRMED,
         BFD_UP, BFD_DOWN, BFD_KILL, BFD_FAIL,
-
-        HISTORY, ROUND_TRIP_STATUS,
+        BFD_PROPERTIES_UPDATE,
+        ROUND_TRIP_STATUS,
         ISL_UP, ISL_DOWN, ISL_MOVE,
         ISL_REMOVE,
 

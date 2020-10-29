@@ -31,7 +31,8 @@ import java.util.Optional;
 
 public class FermaBfdSessionRepositoryTest extends InMemoryGraphBasedTest {
     static final SwitchId TEST_SWITCH_ID = new SwitchId(1);
-    static final Integer TEST_PORT = 100;
+    static final Integer PHYSICAL_PORT = 100;
+    static final Integer TEST_PORT = 300;
     static final int TEST_DISCRIMINATOR = 10001;
 
     BfdSessionRepository repository;
@@ -122,7 +123,8 @@ public class FermaBfdSessionRepositoryTest extends InMemoryGraphBasedTest {
 
     private BfdSession createBfdSession() {
         BfdSession bfdSession = BfdSession.builder()
-                .switchId(TEST_SWITCH_ID).port(TEST_PORT).discriminator(TEST_DISCRIMINATOR).build();
+                .switchId(TEST_SWITCH_ID).port(TEST_PORT).physicalPort(PHYSICAL_PORT).discriminator(TEST_DISCRIMINATOR)
+                .build();
         repository.add(bfdSession);
         return bfdSession;
     }

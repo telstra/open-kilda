@@ -1,0 +1,52 @@
+---
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: surabujin
+      changes:
+        - tagDatabase:
+            tag: 000-per-isl-bfd-properties
+  - changeSet:
+      id: new_bfd_session_properties
+      author: surabujin
+      changes:
+        - sql: "CREATE PROPERTY bfd_session.physical_port IF NOT EXISTS INTEGER"
+        - sql: "CREATE INDEX bfd_session.physical_port NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE PROPERTY bfd_session.interval IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY bfd_session.multiplier IF NOT EXISTS SHORT"
+      rollback:
+        - sql: "DROP INDEX bfd_session.physical_port"
+        - sql: "DROP PROPERTY bfd_session.physical_port"
+        - sql: "DROP PROPERTY bfd_session.interval"
+        - sql: "DROP PROPERTY bfd_session.multiplier"
+  - changeSet:
+      id: new_isl_properties
+      author: surabujin
+      changes:
+        - sql: "CREATE PROPERTY isl.bfd_interval IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY isl.bfd_multiplier IF NOT EXISTS SHORT"
+      rollback:
+        - sql: "DROP PROPERTY isl.bfd_interval"
+        - sql: "DROP PROPERTY isl.bfd_multiplier"
+  - changeSet:
+      id: data_update
+      author: surabujin
+      changes:
+        - sql: >
+            UPDATE bfd_session
+            SET physical_port = port - 1000,
+                interval = 350, multiplier = 3
+        - sql: >
+            UPDATE EDGE isl
+            SET bfd_interval = 350, bfd_multiplier = 3
+            WHERE enable_bfd = true
+        - sql: "UPDATE EDGE isl REMOVE enable_bfd = true"
+      rollback:
+        - sql: "UPDATE EDGE isl SET enable_bfd = true WHERE bfd_interval > 0"
+        - sql: "UPDATE EDGE isl SET enable_bfd = false WHERE bfd_interval = 0"
+        - sql: >
+            UPDATE EDGE isl
+            REMOVE bfd_interval, bfd_multiplier
+        - sql: >
+            UPDATE bfd_session
+            REMOVE physical_port, interval, multiplier

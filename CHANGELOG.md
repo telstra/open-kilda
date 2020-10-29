@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.76.0 (29/10/2020)
+
+### Features:
+-  [#3712](https://github.com/telstra/open-kilda/pull/3712) Per ISL BFD properties [**northbound**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#3812](https://github.com/telstra/open-kilda/pull/3812) [Server42] fix resources leak closes #3797
+
+### Improvements:
+-  [#3811](https://github.com/telstra/open-kilda/pull/3811) Add default zknode creation into Zookeeper
+-  [#3813](https://github.com/telstra/open-kilda/pull/3813) Docker version prerequisite
+-  [#3782](https://github.com/telstra/open-kilda/pull/3782) Bfd ports LCM [**storm-topologies**]
+
+### Other changes:
+-  [#3808](https://github.com/telstra/open-kilda/pull/3808) Add functional test for #3807 [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.75.0...v1.76.0).
+
+### Affected Components:
+nb, nbworker, network
+
+### Upgrade notes:
+
+---
+
 ## v1.75.0 (27/10/2020)
 
 ### Features:

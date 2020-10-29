@@ -33,6 +33,7 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -73,13 +74,15 @@ public class Isl implements CompositeDataEntity<Isl.IslData> {
                long latency, long speed, int cost, long maxBandwidth, long defaultMaxBandwidth,
                long availableBandwidth, IslStatus status, IslStatus actualStatus, IslStatus roundTripStatus,
                IslDownReason downReason,
-               boolean underMaintenance, boolean enableBfd, BfdSessionStatus bfdSessionStatus, Instant timeUnstable) {
+               boolean underMaintenance, Duration bfdInterval, short bfdMultiplier,
+               BfdSessionStatus bfdSessionStatus, Instant timeUnstable) {
         data = IslDataImpl.builder().srcSwitch(srcSwitch).destSwitch(destSwitch).srcPort(srcPort).destPort(destPort)
                 .latency(latency).speed(speed).cost(cost).maxBandwidth(maxBandwidth)
                 .defaultMaxBandwidth(defaultMaxBandwidth).availableBandwidth(availableBandwidth)
                 .status(status).actualStatus(actualStatus).roundTripStatus(roundTripStatus)
                 .downReason(downReason)
-                .underMaintenance(underMaintenance).enableBfd(enableBfd).bfdSessionStatus(bfdSessionStatus)
+                .underMaintenance(underMaintenance)
+                .bfdInterval(bfdInterval).bfdMultiplier(bfdMultiplier).bfdSessionStatus(bfdSessionStatus)
                 .timeUnstable(timeUnstable).build();
     }
 
@@ -118,7 +121,6 @@ public class Isl implements CompositeDataEntity<Isl.IslData> {
                 .append(getDefaultMaxBandwidth(), that.getDefaultMaxBandwidth())
                 .append(getAvailableBandwidth(), that.getAvailableBandwidth())
                 .append(isUnderMaintenance(), that.isUnderMaintenance())
-                .append(isEnableBfd(), that.isEnableBfd())
                 .append(getSrcSwitchId(), that.getSrcSwitchId())
                 .append(getDestSwitchId(), that.getDestSwitchId())
                 .append(getStatus(), that.getStatus())
@@ -127,6 +129,8 @@ public class Isl implements CompositeDataEntity<Isl.IslData> {
                 .append(getDownReason(), that.getDownReason())
                 .append(getTimeCreate(), that.getTimeCreate())
                 .append(getTimeModify(), that.getTimeModify())
+                .append(getBfdInterval(), that.getBfdInterval())
+                .append(getBfdMultiplier(), that.getBfdInterval())
                 .append(getBfdSessionStatus(), that.getBfdSessionStatus())
                 .append(getTimeUnstable(), that.getTimeUnstable())
                 .isEquals();
@@ -138,7 +142,7 @@ public class Isl implements CompositeDataEntity<Isl.IslData> {
                 getSpeed(), getCost(), getMaxBandwidth(), getDefaultMaxBandwidth(), getAvailableBandwidth(),
                 getStatus(), getActualStatus(), getRoundTripStatus(), getDownReason(),
                 getTimeCreate(), getTimeModify(),
-                isUnderMaintenance(), isEnableBfd(), getBfdSessionStatus(), getTimeUnstable());
+                isUnderMaintenance(), getBfdInterval(), getBfdMultiplier(), getBfdSessionStatus(), getTimeUnstable());
     }
 
     @Override
@@ -230,9 +234,13 @@ public class Isl implements CompositeDataEntity<Isl.IslData> {
 
         void setUnderMaintenance(boolean underMaintenance);
 
-        boolean isEnableBfd();
+        Duration getBfdInterval();
 
-        void setEnableBfd(boolean enableBfd);
+        void setBfdInterval(Duration interval);
+
+        Short getBfdMultiplier();
+
+        void setBfdMultiplier(Short multiplier);
 
         BfdSessionStatus getBfdSessionStatus();
 
@@ -269,7 +277,8 @@ public class Isl implements CompositeDataEntity<Isl.IslData> {
         Instant timeCreate;
         Instant timeModify;
         boolean underMaintenance;
-        boolean enableBfd;
+        Duration bfdInterval;
+        Short bfdMultiplier;
         BfdSessionStatus bfdSessionStatus;
         Instant timeUnstable;
 

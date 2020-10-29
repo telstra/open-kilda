@@ -48,18 +48,10 @@ services:
     volumes:
       - ./docker/orientdb/config/odb1:/orientdb/config
       - ./docker/orientdb/config/shared:/orientdb/config-shared
-      - ./docker/orientdb/init:/orientdb/init
       - odb1_data:/orientdb/databases
     environment:
       ORIENTDB_ROOT_PASSWORD: root
       ORIENTDB_NODE_NAME: odb1.pendev
-{{if not (exists "/single_orientdb")}}
-    depends_on:
-      odb2:
-        condition: service_healthy
-      odb3:
-        condition: service_healthy
-{{end}}
     ports:
       - 2424:2424
       - 2480:2480
@@ -68,12 +60,13 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
     networks:
       default:
         aliases:
           - odb1.pendev
-
 {{if not (exists "/single_orientdb")}}
+
   odb2:
     container_name: odb2
     hostname: odb2.pendev
@@ -82,7 +75,6 @@ services:
     volumes:
       - ./docker/orientdb/config/odb2:/orientdb/config
       - ./docker/orientdb/config/shared:/orientdb/config-shared
-      - ./docker/orientdb/init:/orientdb/init
       - odb2_data:/orientdb/databases
     environment:
       ORIENTDB_ROOT_PASSWORD: root
@@ -95,6 +87,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
     networks:
       default:
         aliases:
@@ -108,7 +101,6 @@ services:
     volumes:
       - ./docker/orientdb/config/odb3:/orientdb/config
       - ./docker/orientdb/config/shared:/orientdb/config-shared
-      - ./docker/orientdb/init:/orientdb/init
       - odb3_data:/orientdb/databases
     environment:
       ORIENTDB_ROOT_PASSWORD: root
@@ -121,6 +113,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 10
+      start_period: 60s
     networks:
       default:
         aliases:
@@ -134,6 +127,12 @@ services:
     depends_on:
       odb1:
         condition: service_healthy
+{{if not (exists "/single_orientdb")}}
+      odb2:
+        condition: service_healthy
+      odb3:
+        condition: service_healthy
+{{end}}
     healthcheck:
       test: ["CMD-SHELL", "test -f /kilda/flag/migration.ok || exit 1"]
       interval: 5s
@@ -145,7 +144,9 @@ services:
     container_name: zookeeper
     hostname: zookeeper.pendev
     image: "kilda/zookeeper:${full_build_number:-latest}"
-    command: /opt/zookeeper/bin/zkServer.sh start-foreground
+    command: /usr/local/sbin/create-zknode-and-start.sh
+    volumes:
+      - ./docker/zookeeper/bin/create-zknode-and-start.sh:/usr/local/sbin/create-zknode-and-start.sh
     ports:
       - "2181:2181"
     healthcheck:
@@ -158,6 +159,8 @@ services:
         aliases:
          - zookeeper.pendev
     mem_limit: ${ZOOKEEPER_MEM_LIMIT:-1073741824}
+    environment:
+      KILDA_ZKNODE: kilda
 
 
   kafka:
@@ -203,14 +206,6 @@ services:
         condition: service_healthy
       storm-supervisor:
         condition: service_healthy
-      odb1:
-        condition: service_healthy
-{{if not (exists "/single_orientdb")}}
-      odb2:
-        condition: service_healthy
-      odb3:
-        condition: service_healthy
-{{end}}
       db_migration:
         condition: service_healthy
 

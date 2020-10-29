@@ -18,9 +18,12 @@ package org.openkilda.persistence.ferma.frames;
 import org.openkilda.model.BfdSession.BfdSessionData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.ferma.frames.converters.Convert;
+import org.openkilda.persistence.ferma.frames.converters.DurationConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 
 import com.syncleus.ferma.annotations.Property;
+
+import java.time.Duration;
 
 public abstract class BfdSessionFrame extends KildaBaseVertexFrame implements BfdSessionData {
     public static final String FRAME_LABEL = "bfd_session";
@@ -29,6 +32,7 @@ public abstract class BfdSessionFrame extends KildaBaseVertexFrame implements Bf
     public static final String REMOTE_SWITCH_PROPERTY = "remote_switch";
     public static final String REMOVE_IP_ADDRESS_PROPERTY = "remote_ip_address";
     public static final String PORT_PROPERTY = "port";
+    public static final String PHYSICAL_PORT_PROPERTY = "physical_port";
     public static final String DISCRIMINATOR_PROPERTY = "discriminator";
 
     @Override
@@ -76,10 +80,36 @@ public abstract class BfdSessionFrame extends KildaBaseVertexFrame implements Bf
     public abstract void setPort(Integer port);
 
     @Override
+    @Property(PHYSICAL_PORT_PROPERTY)
+    public abstract Integer getPhysicalPort();
+
+    @Override
+    @Property(PHYSICAL_PORT_PROPERTY)
+    public abstract void setPhysicalPort(Integer port);
+
+    @Override
     @Property(DISCRIMINATOR_PROPERTY)
     public abstract Integer getDiscriminator();
 
     @Override
     @Property(DISCRIMINATOR_PROPERTY)
     public abstract void setDiscriminator(Integer discriminator);
+
+    @Override
+    @Property("interval")
+    @Convert(DurationConverter.class)
+    public abstract Duration getInterval();
+
+    @Override
+    @Property("interval")
+    @Convert(DurationConverter.class)
+    public abstract void setInterval(Duration interval);
+
+    @Override
+    @Property("multiplier")
+    public abstract Short getMultiplier();
+
+    @Override
+    @Property("multiplier")
+    public abstract void setMultiplier(Short multiplier);
 }

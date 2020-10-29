@@ -101,6 +101,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
             dump.pathComputationStrategy.toString() == flow.pathComputationStrategy
             dump.periodicPings == flow.periodicPings
             dump.maxLatency / 1000000L == flow.maxLatency
+            //groupId is tested in FlowDiversityV2Spec
         }
 
         when: "Update the created flow"
