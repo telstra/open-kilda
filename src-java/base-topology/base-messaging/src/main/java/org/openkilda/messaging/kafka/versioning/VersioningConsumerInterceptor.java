@@ -70,8 +70,8 @@ public class VersioningConsumerInterceptor<K, V> implements ConsumerInterceptor<
         }
 
         if (!version.equals(new String(headers.get(0).value()))) {
-            if (log.isDebugEnabled()) {
-                log.debug("Skip record {} with version {}. Target version is {}",
+            if (log.isTraceEnabled()) {
+                log.trace("Skip record {} with version {}. Target version is {}",
                         record, new String(headers.get(0).value()), version);
             }
             return false;

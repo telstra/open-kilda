@@ -15,6 +15,13 @@
 
 package org.openkilda.testing.service.kafka;
 
+import static org.openkilda.messaging.Utils.CONSUMER_CONFIG_VERSION_PROPERTY;
+import static org.openkilda.messaging.Utils.CURRENT_MESSAGE_VERSION;
+import static org.openkilda.messaging.Utils.PRODUCER_CONFIG_VERSION_PROPERTY;
+
+import org.openkilda.messaging.kafka.versioning.VersioningConsumerInterceptor;
+import org.openkilda.messaging.kafka.versioning.VersioningProducerInterceptor;
+
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -35,6 +42,8 @@ public class KafkaConfig {
         connectDefaults.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         connectDefaults.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         connectDefaults.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        connectDefaults.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName());
+        connectDefaults.put(CONSUMER_CONFIG_VERSION_PROPERTY, CURRENT_MESSAGE_VERSION);
         return connectDefaults;
     }
 
@@ -44,6 +53,8 @@ public class KafkaConfig {
         connectDefaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServer);
         connectDefaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         connectDefaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        connectDefaults.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningProducerInterceptor.class.getName());
+        connectDefaults.put(PRODUCER_CONFIG_VERSION_PROPERTY, CURRENT_MESSAGE_VERSION);
         return connectDefaults;
     }
 }

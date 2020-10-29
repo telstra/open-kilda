@@ -15,8 +15,8 @@
 
 package org.openkilda.grpc.speaker.config;
 
+import static org.openkilda.messaging.Utils.CONSUMER_CONFIG_VERSION_PROPERTY;
 import static org.openkilda.messaging.Utils.CURRENT_MESSAGE_VERSION;
-import static org.openkilda.messaging.Utils.PRODUCER_CONFIG_VERSION_PROPERTY;
 
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.kafka.versioning.VersioningConsumerInterceptor;
@@ -88,7 +88,7 @@ public class MessageConsumerConfig {
                 .put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
                 .put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, kafkaSessionTimeout)
                 .put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName())
-                .put(PRODUCER_CONFIG_VERSION_PROPERTY, CURRENT_MESSAGE_VERSION)
+                .put(CONSUMER_CONFIG_VERSION_PROPERTY, CURRENT_MESSAGE_VERSION)
                 .build();
     }
 

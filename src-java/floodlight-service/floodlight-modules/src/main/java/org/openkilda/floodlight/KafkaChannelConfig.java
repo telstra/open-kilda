@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight;
 
+import static org.openkilda.messaging.Utils.CONSUMER_CONFIG_VERSION_PROPERTY;
 import static org.openkilda.messaging.Utils.CURRENT_MESSAGE_VERSION;
 import static org.openkilda.messaging.Utils.PRODUCER_CONFIG_VERSION_PROPERTY;
 
@@ -63,7 +64,7 @@ public interface KafkaChannelConfig extends KafkaConsumerGroupConfig {
         properties.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
 
         properties.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName());
-        properties.put(PRODUCER_CONFIG_VERSION_PROPERTY, CURRENT_MESSAGE_VERSION);
+        properties.put(CONSUMER_CONFIG_VERSION_PROPERTY, CURRENT_MESSAGE_VERSION);
 
         return properties;
     }
