@@ -41,6 +41,8 @@ public class NetworkWatcherService {
 
     private Set<Packet> confirmedPackets = new HashSet<>();
     private SortedMap<Long, Set<Packet>> timeouts = new TreeMap<>();
+    private boolean active = true;
+
 
     public NetworkWatcherService(IWatcherCarrier carrier, long awaitTime, Integer taskId) {
         this.carrier = carrier;
@@ -81,8 +83,13 @@ public class NetworkWatcherService {
         confirmedPackets.removeIf(packet -> packet.endpoint.equals(endpoint));
     }
 
+    /**
+     * .
+     */
     public void tick() {
-        tick(now());
+        if (active) {
+            tick(now());
+        }
     }
 
     void tick(long tickTime) {
@@ -162,12 +169,22 @@ public class NetworkWatcherService {
         if (confirmedPackets.remove(packet)) {
             log.debug("Detect discovery packet lost sent via {} id:{} task:{}",
                       packet.endpoint, packet.packetNo, taskId);
-            carrier.discoveryFailed(packet.getEndpoint(), packet.packetNo, now());
+            if (active) {
+                carrier.discoveryFailed(packet.getEndpoint(), packet.packetNo, now());
+            }
         }
     }
 
     private long now() {
         return System.nanoTime();
+    }
+
+    public void deactivate() {
+        active = false;
+    }
+
+    public void activate() {
+        active = true;
     }
 
     @VisibleForTesting
