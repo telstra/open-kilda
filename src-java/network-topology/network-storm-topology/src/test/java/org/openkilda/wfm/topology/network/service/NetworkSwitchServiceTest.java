@@ -236,11 +236,9 @@ public class NetworkSwitchServiceTest {
         //System.out.println(mockingDetails(carrier).printInvocations());
         //System.out.println(mockingDetails(switchRepository).printInvocations());
 
-        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(0).getNumber()), OnlineStatus.OFFLINE);
-        verify(carrier).sendBfdSwitchStatusUpdate(Endpoint.of(alphaDatapath, ports.get(1).getNumber()), false);
-        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(2).getNumber()), OnlineStatus.OFFLINE);
-        verify(carrier).sendBfdSwitchStatusUpdate(Endpoint.of(alphaDatapath, ports.get(3).getNumber()), false);
         verify(carrier).sendSwitchStateChanged(eq(alphaDatapath), eq(SwitchStatus.INACTIVE));
+        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(0).getNumber()), OnlineStatus.OFFLINE);
+        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(2).getNumber()), OnlineStatus.OFFLINE);
         verifyNoMoreInteractions(carrier);
     }
 
@@ -393,9 +391,7 @@ public class NetworkSwitchServiceTest {
 
         verify(carrier).sendSwitchStateChanged(eq(alphaDatapath), eq(SwitchStatus.ACTIVE));
         verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(0).getNumber()), OnlineStatus.ONLINE);
-        verify(carrier).sendBfdSwitchStatusUpdate(Endpoint.of(alphaDatapath, ports.get(1).getNumber()), true);
         verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(2).getNumber()), OnlineStatus.ONLINE);
-        verify(carrier).sendBfdSwitchStatusUpdate(Endpoint.of(alphaDatapath, ports.get(3).getNumber()), true);
 
         verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports2.get(2).getNumber()),
                                         LinkStatus.of(ports2.get(2).getState()));
@@ -502,13 +498,11 @@ public class NetworkSwitchServiceTest {
 
         verify(carrier).removePortHandler(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET));
         verify(carrier).sendBfdPortAdd(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), 1);
-        verify(carrier).sendBfdSwitchStatusUpdate(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), true);
         verify(carrier).sendBfdLinkStatusUpdate(
                 Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), LinkStatus.DOWN);
 
         verify(carrier).removePortHandler(Endpoint.of(alphaDatapath, 2 + BFD_LOGICAL_PORT_OFFSET));
         verify(carrier).sendBfdPortAdd(Endpoint.of(alphaDatapath, 2 + BFD_LOGICAL_PORT_OFFSET), 2);
-        verify(carrier).sendBfdSwitchStatusUpdate(Endpoint.of(alphaDatapath, 2 + BFD_LOGICAL_PORT_OFFSET), true);
         verify(carrier).sendBfdLinkStatusUpdate(Endpoint.of(alphaDatapath, 2 + BFD_LOGICAL_PORT_OFFSET), LinkStatus.UP);
     }
 
@@ -534,7 +528,6 @@ public class NetworkSwitchServiceTest {
         verify(carrier).sendBfdPortAdd(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), 1);
 
         verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, 1), OnlineStatus.ONLINE);
-        verify(carrier).sendBfdSwitchStatusUpdate(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), true);
     }
 
     @Test
@@ -895,9 +888,7 @@ public class NetworkSwitchServiceTest {
         verify(carrier).sendBfdPortAdd(Endpoint.of(alphaDatapath, ports.get(3).getNumber()), 2);
 
         verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(0).getNumber()), OnlineStatus.ONLINE);
-        verify(carrier).sendBfdSwitchStatusUpdate(Endpoint.of(alphaDatapath, ports.get(1).getNumber()), true);
         verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(2).getNumber()), OnlineStatus.ONLINE);
-        verify(carrier).sendBfdSwitchStatusUpdate(Endpoint.of(alphaDatapath, ports.get(3).getNumber()), true);
 
         verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports.get(2).getNumber()),
                 LinkStatus.of(ports.get(2).getState()));

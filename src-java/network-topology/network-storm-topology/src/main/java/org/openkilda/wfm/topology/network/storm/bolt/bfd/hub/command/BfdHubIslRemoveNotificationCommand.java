@@ -29,6 +29,6 @@ public class BfdHubIslRemoveNotificationCommand extends BfdHubPortCommand {
 
     @Override
     public void apply(BfdHub handler) {
-        handler.processDelete(getEndpoint(), reference);
+        handler.processIslRemoveNotification(getEndpoint(), reference);
     }
 }

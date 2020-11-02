@@ -18,16 +18,15 @@ package org.openkilda.wfm.topology.network.service;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.model.BfdProperties;
-import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.controller.bfd.BfdLogicalPortFsm;
 import org.openkilda.wfm.topology.network.controller.bfd.BfdLogicalPortFsm.BfdLogicalPortFsmContext;
 import org.openkilda.wfm.topology.network.controller.bfd.BfdLogicalPortFsm.BfdLogicalPortFsmFactory;
 import org.openkilda.wfm.topology.network.controller.bfd.BfdLogicalPortFsm.Event;
-import org.openkilda.wfm.topology.network.controller.bfd.SwitchStatusMonitor;
 import org.openkilda.wfm.topology.network.error.BfdLogicalPortControllerNotFoundException;
 import org.openkilda.wfm.topology.network.model.BfdSessionData;
+import org.openkilda.wfm.topology.network.utils.SwitchOnlineStatusMonitor;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,13 +37,15 @@ import java.util.Map;
 public class NetworkBfdLogicalPortService {
     private final BfdLogicalPortFsm.BfdLogicalPortFsmFactory controllerFactory;
 
+    private final SwitchOnlineStatusMonitor switchOnlineStatusMonitor;
     private final int logicalPortNumberOffset;
 
-    private final Map<Endpoint, BfdLogicalPortFsm> controllerByPhysicalEndpoint = new HashMap<>();
-    private final Map<Endpoint, BfdLogicalPortFsm> controllerByLogicalEndpoint = new HashMap<>();
-    private final Map<SwitchId, SwitchStatusMonitor> statusMonitorMap = new HashMap<>();
+    private final Map<Endpoint, BfdLogicalPortFsm> controllerByEndpoint = new HashMap<>();
 
-    public NetworkBfdLogicalPortService(IBfdLogicalPortCarrier carrier, int logicalPortNumberOffset) {
+    public NetworkBfdLogicalPortService(
+            IBfdLogicalPortCarrier carrier, SwitchOnlineStatusMonitor switchOnlineStatusMonitor,
+            int logicalPortNumberOffset) {
+        this.switchOnlineStatusMonitor = switchOnlineStatusMonitor;
         this.logicalPortNumberOffset = logicalPortNumberOffset;
 
         controllerFactory = BfdLogicalPortFsm.factory(carrier);
@@ -56,19 +57,19 @@ public class NetworkBfdLogicalPortService {
     public void portAdd(Endpoint logical, int physicalPortNumber) {
         logServiceCall("PORT-ADD logical={}, physical-port={}", logical, physicalPortNumber);
         Endpoint physical = Endpoint.of(logical.getDatapath(), physicalPortNumber);
-        BfdLogicalPortFsm controller = lookupControllerByPhysicalEndpointCreateIfMissing(
+        BfdLogicalPortFsm controller = lookupControllerCreateIfMissing(
                 physical, logical.getPortNumber());
         handle(controller, Event.PORT_ADD);
     }
 
     public void portDel(Endpoint logical) {
         logServiceCall("PORT-DEL logical={}", logical);
-        handle(lookupControllerByLogicalEndpoint(logical), Event.PORT_DEL);
+        handle(lookupController(logical), Event.PORT_DEL);
     }
 
-    public void sessionDeleted(Endpoint physical) {
-        logServiceCall("SESSION-DELETED physical={}", physical);
-        handle(lookupControllerByPhysicalEndpoint(physical), Event.SESSION_DEL);
+    public void sessionCompleteNotification(Endpoint physical) {
+        logServiceCall("SESSION-COMPLETED notification for physical={}", physical);
+        handle(physical, Event.SESSION_COMPLETED);
     }
 
     /**
@@ -84,7 +85,7 @@ public class NetworkBfdLogicalPortService {
 
     private void enableUpdate(Endpoint physical, IslReference reference, BfdProperties properties) {
         logServiceCall("ENABLE/UPDATE physical={}, reference={}, properties={}", physical, reference, properties);
-        BfdLogicalPortFsm controller = lookupControllerByPhysicalEndpointCreateIfMissing(physical);
+        BfdLogicalPortFsm controller = lookupControllerCreateIfMissing(physical);
         BfdLogicalPortFsmContext context = BfdLogicalPortFsmContext.builder()
                 .sessionData(new BfdSessionData(reference, properties))
                 .build();
@@ -93,40 +94,15 @@ public class NetworkBfdLogicalPortService {
 
     public void disable(Endpoint physical) {
         logServiceCall("DISABLE physical={}", physical);
-        handle(lookupControllerByPhysicalEndpoint(physical), Event.DISABLE);
+        handle(lookupController(physical), Event.DISABLE);
     }
 
     /**
-     * Handle BFD delete request.
+     * Handle BFD optional disable request (reaction on ISL remove notification).
      */
-    public void delete(Endpoint physical) {
-        logServiceCall("DELETE physical={}", physical);
-        BfdLogicalPortFsm controller = controllerByPhysicalEndpoint.get(physical);
-        if (controller == null) {
-            log.info("There is no BFD logical port controller on {} - ignore remove request", physical);
-            return;
-        }
-        handle(controller, Event.DELETE);
-    }
-
-    /**
-     * Handle switch online status update.
-     */
-    public void updateOnlineStatus(SwitchId switchId, boolean isOnline) {
-        logServiceCall("UPDATE-ONLINE-STATUS switchId={}, isOnline={}", switchId, isOnline);
-        SwitchStatusMonitor monitor = lookupStatusMonitorCreateIfMissing(switchId);
-        monitor.updateStatus(isOnline);
-        removeStatusMonitorIfEmpty(monitor);
-    }
-
-    /**
-     * Handle switch(specific port) online status update.
-     */
-    public void updateOnlineStatus(Endpoint logical, boolean isOnline) {
-        logServiceCall("UPDATE-ONLINE-STATUS logical={}, isOnline={}", logical, isOnline);
-        BfdLogicalPortFsm controller = lookupControllerByLogicalEndpoint(logical);
-        lookupStatusMonitorCreateIfMissing(logical.getDatapath())
-                .updateStatus(controller.getPhysicalEndpoint(), isOnline);
+    public void disableIfExists(Endpoint physical) {
+        logServiceCall("DISABLE(if exists) physical={}", physical);
+        handle(physical, Event.DISABLE);
     }
 
     /**
@@ -134,7 +110,7 @@ public class NetworkBfdLogicalPortService {
      */
     public void workerSuccess(String requestId, Endpoint logical, InfoData response) {
         logServiceCall("WORKER-SUCCESS requestId={}, logical={}, response={}", requestId, logical, response);
-        lookupControllerByLogicalEndpoint(logical)
+        lookupController(logical)
                 .processWorkerSuccess(requestId, response);
     }
 
@@ -143,11 +119,20 @@ public class NetworkBfdLogicalPortService {
      */
     public void workerError(String requestId, Endpoint logical, ErrorData response) {
         logServiceCall("WORKER-ERROR requestId={}, logical={}, response={}", requestId, logical, response);
-        lookupControllerByLogicalEndpoint(logical)
+        lookupController(logical)
                 .processWorkerError(requestId, response);
     }
 
     // -- private methods --
+
+    private void handle(Endpoint endpoint, Event event) {
+        BfdLogicalPortFsm controller = controllerByEndpoint.get(endpoint);
+        if (controller == null) {
+            log.info("There is no BFD logical port controller on {} - ignore remove request", endpoint);
+            return;
+        }
+        handle(controller, event);
+    }
 
     private void handle(BfdLogicalPortFsm controller, Event event) {
         handle(controller, event, BfdLogicalPortFsmContext.EMPTY);
@@ -162,30 +147,21 @@ public class NetworkBfdLogicalPortService {
         }
     }
 
-    private BfdLogicalPortFsm lookupControllerByPhysicalEndpoint(Endpoint physical) {
-        BfdLogicalPortFsm controller = controllerByPhysicalEndpoint.get(physical);
+    private BfdLogicalPortFsm lookupController(Endpoint endpoint) {
+        BfdLogicalPortFsm controller = controllerByEndpoint.get(endpoint);
         if (controller == null) {
-            throw BfdLogicalPortControllerNotFoundException.ofPhysical(physical);
+            throw new BfdLogicalPortControllerNotFoundException(endpoint);
         }
         return controller;
     }
 
-    private BfdLogicalPortFsm lookupControllerByLogicalEndpoint(Endpoint logical) {
-        BfdLogicalPortFsm controller = controllerByLogicalEndpoint.get(logical);
-        if (controller == null) {
-            throw BfdLogicalPortControllerNotFoundException.ofLogical(logical);
-        }
-        return controller;
-    }
-
-    private BfdLogicalPortFsm lookupControllerByPhysicalEndpointCreateIfMissing(Endpoint physical) {
-        return lookupControllerByPhysicalEndpointCreateIfMissing(
+    private BfdLogicalPortFsm lookupControllerCreateIfMissing(Endpoint physical) {
+        return lookupControllerCreateIfMissing(
                 physical, physical.getPortNumber() + logicalPortNumberOffset);
     }
 
-    private BfdLogicalPortFsm lookupControllerByPhysicalEndpointCreateIfMissing(
-            Endpoint physical, int logicalPortNumber) {
-        BfdLogicalPortFsm controller = controllerByPhysicalEndpoint.get(physical);
+    private BfdLogicalPortFsm lookupControllerCreateIfMissing(Endpoint physical, int logicalPortNumber) {
+        BfdLogicalPortFsm controller = controllerByEndpoint.get(physical);
         if (controller == null) {
             controller = createController(physical, logicalPortNumber);
         }
@@ -194,36 +170,20 @@ public class NetworkBfdLogicalPortService {
 
     private BfdLogicalPortFsm createController(Endpoint physical, int logicalPortNumber) {
         BfdLogicalPortFsm controller = controllerFactory.produce(
-                lookupStatusMonitorCreateIfMissing(physical.getDatapath()), physical, logicalPortNumber);
-        controllerByPhysicalEndpoint.put(physical, controller);
-        controllerByLogicalEndpoint.put(controller.getLogicalEndpoint(), controller);
+                switchOnlineStatusMonitor, physical, logicalPortNumber);
+        controllerByEndpoint.put(physical, controller);
+        controllerByEndpoint.put(controller.getLogicalEndpoint(), controller);
         return controller;
     }
 
     private void removeController(BfdLogicalPortFsm controller) {
         final Endpoint logical = controller.getLogicalEndpoint();
         final Endpoint physical = controller.getPhysicalEndpoint();
-        controllerByLogicalEndpoint.remove(logical);
-        controllerByPhysicalEndpoint.remove(physical);
+        controllerByEndpoint.remove(logical);
+        controllerByEndpoint.remove(physical);
         log.debug(
                 "BFD logical port controller {} pysical-port={} have done it's jobs and been deleted",
                 logical, physical.getPortNumber());
-
-        SwitchStatusMonitor statusMonitor = lookupStatusMonitorCreateIfMissing(logical.getDatapath());
-        statusMonitor.delController(controller);
-        removeStatusMonitorIfEmpty(statusMonitor);
-    }
-
-    private SwitchStatusMonitor lookupStatusMonitorCreateIfMissing(SwitchId switchId) {
-        return statusMonitorMap.computeIfAbsent(switchId, SwitchStatusMonitor::new);
-    }
-
-    private void removeStatusMonitorIfEmpty(SwitchStatusMonitor monitor) {
-        if (monitor.isEmpty()) {
-            SwitchId switchId = monitor.getSwitchId();
-            statusMonitorMap.remove(switchId);
-            log.debug("Switch's online status monitor for {} have been deleted (not needed anymore)", switchId);
-        }
     }
 
     private void logServiceCall(String format, Object... arguments) {

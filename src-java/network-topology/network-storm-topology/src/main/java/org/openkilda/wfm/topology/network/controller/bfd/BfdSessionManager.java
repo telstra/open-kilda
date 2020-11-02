@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,21 +16,16 @@
 package org.openkilda.wfm.topology.network.controller.bfd;
 
 import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
-import org.openkilda.messaging.model.NoviBfdSession;
-import org.openkilda.wfm.topology.network.service.IBfdSessionCarrier;
+import org.openkilda.wfm.topology.network.model.BfdSessionData;
 
-class BfdSessionRemoveAction extends BfdSessionAction {
-    BfdSessionRemoveAction(IBfdSessionCarrier carrier, NoviBfdSession requestPayload) {
-        super(carrier.sendWorkerBfdSessionDeleteRequest(requestPayload));
-    }
+public interface BfdSessionManager {
+    boolean isOperationalAndEqualTo(BfdSessionData sessionData);
 
-    @Override
-    public String getLogIdentifier() {
-        return "BFD session remove";
-    }
+    void speakerResponse(String key);
 
-    @Override
-    protected ActionResult makeResult(BfdSessionResponse response) {
-        return ActionResult.of(response, true);
-    }
+    void speakerResponse(String key, BfdSessionResponse response);
+
+    boolean disable();
+
+    boolean isDummy();
 }

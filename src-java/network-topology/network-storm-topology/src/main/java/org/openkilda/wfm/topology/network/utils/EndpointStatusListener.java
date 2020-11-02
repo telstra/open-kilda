@@ -13,12 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.error;
+package org.openkilda.wfm.topology.network.utils;
 
-import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.topology.network.model.LinkStatus;
 
-public class BfdLogicalPortControllerNotFoundException extends ControllerNotFoundException {
-    public BfdLogicalPortControllerNotFoundException(Endpoint endpoint) {
-        super("BFD logical port", endpoint);
-    }
+public interface EndpointStatusListener {
+    void endpointStatusUpdate(LinkStatus status);
 }
