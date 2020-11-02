@@ -15,24 +15,17 @@
 
 package org.openkilda.wfm.topology.network.service;
 
-import org.openkilda.model.BfdProperties;
 import org.openkilda.wfm.share.model.Endpoint;
-import org.openkilda.wfm.share.model.IslReference;
+import org.openkilda.wfm.topology.network.model.BfdSessionData;
 
 public interface IBfdLogicalPortCarrier {
     String createLogicalPort(Endpoint logical, int physicalPortNumber);
 
     String deleteLogicalPort(Endpoint logical);
 
-    void createSession(Endpoint logical, int physicalPortNumber);
+    void enableUpdateSession(Endpoint logical, int physicalPortNumber, BfdSessionData sessionData);
 
-    void enableUpdateSession(Endpoint physical, IslReference reference, BfdProperties properties);
-
-    void disableSession(Endpoint physical);
-
-    void deleteSession(Endpoint logical);
-
-    void updateSessionOnlineStatus(Endpoint logical, boolean isOnline);
+    void disableSession(Endpoint logical);
 
     void bfdKillNotification(Endpoint physicalEndpoint);
 

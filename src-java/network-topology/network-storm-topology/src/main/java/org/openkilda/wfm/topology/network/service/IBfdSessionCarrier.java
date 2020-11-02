@@ -19,9 +19,11 @@ import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.wfm.share.model.Endpoint;
 
 public interface IBfdSessionCarrier {
-    String addBfdSession(NoviBfdSession bfdSession);
+    String sendWorkerBfdSessionCreateRequest(NoviBfdSession bfdSession);
 
-    String deleteBfdSession(NoviBfdSession bfdSession);
+    String sendWorkerBfdSessionDeleteRequest(NoviBfdSession bfdSession);
+
+    void sessionRotateRequest(Endpoint logical, boolean error);
 
     void sessionCompleteNotification(Endpoint physical);
 

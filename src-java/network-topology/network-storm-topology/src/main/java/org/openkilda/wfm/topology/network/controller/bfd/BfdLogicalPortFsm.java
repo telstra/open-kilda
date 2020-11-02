@@ -26,6 +26,8 @@ import org.openkilda.wfm.topology.network.controller.bfd.BfdLogicalPortFsm.Event
 import org.openkilda.wfm.topology.network.controller.bfd.BfdLogicalPortFsm.State;
 import org.openkilda.wfm.topology.network.model.BfdSessionData;
 import org.openkilda.wfm.topology.network.service.IBfdLogicalPortCarrier;
+import org.openkilda.wfm.topology.network.utils.SwitchOnlineStatusListener;
+import org.openkilda.wfm.topology.network.utils.SwitchOnlineStatusMonitor;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -38,10 +40,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Slf4j
-public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State, Event, BfdLogicalPortFsmContext> {
+public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State, Event, BfdLogicalPortFsmContext>
+        implements SwitchOnlineStatusListener {
     private final IBfdLogicalPortCarrier carrier;
-
-    private final SwitchStatusMonitor switchStatusMonitor;
 
     private final Set<String> activeRequest = new HashSet<>();
 
@@ -51,16 +52,16 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
     private final int logicalPortNumber;
 
     private BfdSessionData sessionData;
+    private boolean online;
 
     public BfdLogicalPortFsm(
-            IBfdLogicalPortCarrier carrier, SwitchStatusMonitor switchStatusMonitor,
+            IBfdLogicalPortCarrier carrier, SwitchOnlineStatusMonitor switchOnlineStatusMonitor,
             Endpoint physicalEndpoint, Integer logicalPortNumber) {
         this.carrier = carrier;
-        this.switchStatusMonitor = switchStatusMonitor;
         this.physicalEndpoint = physicalEndpoint;
         this.logicalPortNumber = logicalPortNumber;
 
-        switchStatusMonitor.addController(this);
+        online = switchOnlineStatusMonitor.subscribe(physicalEndpoint.getDatapath(), this);
         carrier.logicalPortControllerAddNotification(physicalEndpoint);
     }
 
@@ -95,6 +96,16 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
         }
     }
 
+    @Override
+    public void switchOnlineStatusUpdate(boolean isOnline) {
+        online = isOnline;
+
+        BfdLogicalPortFsmContext context = BfdLogicalPortFsmContext.builder().build();
+        if (! isTerminated()) {
+            BfdLogicalPortFsmFactory.EXECUTOR.fire(this, isOnline ? Event.ONLINE : Event.OFFLINE, context);
+        }
+    }
+
     public Endpoint getLogicalEndpoint() {
         return Endpoint.of(physicalEndpoint.getDatapath(), logicalPortNumber);
     }
@@ -119,7 +130,6 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
     }
 
     public void operationalEnterAction(State from, State to, Event event, BfdLogicalPortFsmContext context) {
-        carrier.createSession(getLogicalEndpoint(), physicalEndpoint.getPortNumber());
         if (sessionData != null) {
             sendSessionEnableUpdateRequest();
         }
@@ -158,20 +168,8 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
         sendSessionDisableRequest();
     }
 
-    public void sendSessionDeleteAction(State from, State to, Event event, BfdLogicalPortFsmContext context) {
-        sendSessionRemoveRequest();
-    }
-
     public void sendSessionFailureAction(State from, State to, Event event, BfdLogicalPortFsmContext context) {
         sendSessionFailNotification();
-    }
-
-    public void sendSessionOfflineAction(State from, State to, Event event, BfdLogicalPortFsmContext context) {
-        updateSessionOnlineStatus(false);
-    }
-
-    public void sendSessionOnlineAction(State from, State to, Event event, BfdLogicalPortFsmContext context) {
-        updateSessionOnlineStatus(true);
     }
 
     public void saveSessionDataAction(State from, State to, Event event, BfdLogicalPortFsmContext context) {
@@ -186,7 +184,7 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
 
     private void sendPortCreateRequest() {
         Endpoint logical = getLogicalEndpoint();
-        if (switchStatusMonitor.isOnline()) {
+        if (online) {
             activeRequest.add(carrier.createLogicalPort(logical, physicalEndpoint.getPortNumber()));
         } else {
             log.debug("Do not send logical port {} create request because the switch is offline now", logical);
@@ -195,7 +193,7 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
 
     private void sendPortDeleteRequest() {
         Endpoint logical = getLogicalEndpoint();
-        if (switchStatusMonitor.isOnline()) {
+        if (online) {
             activeRequest.add(carrier.deleteLogicalPort(logical));
         } else {
             log.debug("Do not send logical port {} delete request because the switch is offline now", logical);
@@ -211,19 +209,11 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
     }
 
     private void sendSessionEnableUpdateRequest(BfdSessionData data) {
-        carrier.enableUpdateSession(physicalEndpoint, data.getReference(), data.getProperties());
+        carrier.enableUpdateSession(getLogicalEndpoint(), physicalEndpoint.getPortNumber(), data);
     }
 
     private void sendSessionDisableRequest() {
-        carrier.disableSession(physicalEndpoint);
-    }
-
-    private void sendSessionRemoveRequest() {
-        carrier.deleteSession(getLogicalEndpoint());
-    }
-
-    private void updateSessionOnlineStatus(boolean isOnline) {
-        carrier.updateSessionOnlineStatus(getLogicalEndpoint(), isOnline);
+        carrier.disableSession(getLogicalEndpoint());
     }
 
     private void reportWorkerResponseIgnored(String requestId, MessageData response) {
@@ -267,13 +257,10 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
             builder = StateMachineBuilderFactory.create(
                     BfdLogicalPortFsm.class, State.class, Event.class, BfdLogicalPortFsmContext.class,
                     // extra parameters
-                    IBfdLogicalPortCarrier.class, SwitchStatusMonitor.class, Endpoint.class, Integer.class);
+                    IBfdLogicalPortCarrier.class, SwitchOnlineStatusMonitor.class, Endpoint.class, Integer.class);
 
             final String sendSessionDisableAction = "sendSessionDisableAction";
             final String sendSessionEnableUpdateAction = "sendSessionEnableUpdateAction";
-            final String sendSessionDeleteAction = "sendSessionDeleteAction";
-            final String sendSessionOfflineAction = "sendSessionOfflineAction";
-            final String sendSessionOnlineAction = "sendSessionOnlineAction";
             final String sendPortCreateAction = "sendPortCreateAction";
             final String saveSessionDataAction = "saveSessionDataAction";
             final String sendPortDeleteAction = "sendPortDeleteAction";
@@ -292,12 +279,10 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
 
             // READY
             builder.transition()
-                    .from(State.READY).to(State.OPERATIONAL).on(Event.ONLINE);
-            builder.transition()
-                    .from(State.READY).to(State.WAIT_STATUS).on(Event.ENABLE_UPDATE)
+                    .from(State.READY).to(State.OPERATIONAL).on(Event.ENABLE_UPDATE)
                     .callMethod(saveSessionDataAction);
             builder.transition()
-                    .from(State.READY).to(State.REMOVING).on(Event.DELETE);
+                    .from(State.READY).to(State.REMOVING).on(Event.DISABLE);
             builder.transition()
                     .from(State.READY).to(State.STOP).on(Event.PORT_DEL);
             builder.onEntry(State.READY)
@@ -305,11 +290,9 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
 
             // CREATING
             builder.transition()
-                    .from(State.CREATING).to(State.WAIT_STATUS).on(Event.PORT_ADD);
+                    .from(State.CREATING).to(State.OPERATIONAL).on(Event.PORT_ADD);
             builder.transition()
                     .from(State.CREATING).to(State.REMOVING).on(Event.DISABLE);
-            builder.transition()
-                    .from(State.CREATING).to(State.REMOVING).on(Event.DELETE);
             builder.onEntry(State.CREATING)
                     .callMethod("creatingEnterAction");
             builder.internalTransition()
@@ -330,22 +313,11 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
             builder.onExit(State.CREATING)
                     .callMethod("creatingExitAction");
 
-            // WAIT_STATUS
-            builder.transition()
-                    .from(State.WAIT_STATUS).to(State.CREATING).on(Event.PORT_DEL);
-            builder.transition()
-                    .from(State.WAIT_STATUS).to(State.OPERATIONAL).on(Event.ONLINE);
-            builder.transition()
-                    .from(State.WAIT_STATUS).to(State.READY).on(Event.DISABLE);
-            builder.transition()
-                    .from(State.WAIT_STATUS).to(State.REMOVING).on(Event.DELETE);
-            builder.internalTransition()
-                    .within(State.WAIT_STATUS).on(Event.ENABLE_UPDATE)
-                    .callMethod(saveSessionDataAction);
-
             // OPERATIONAL
             builder.transition()
-                    .from(State.OPERATIONAL).to(State.REMOVING).on(Event.SESSION_DEL);
+                    .from(State.OPERATIONAL).to(State.REMOVING).on(Event.SESSION_COMPLETED);
+            builder.transition()
+                    .from(State.OPERATIONAL).to(State.HOUSEKEEPING).on(Event.PORT_DEL);
             builder.onEntry(State.OPERATIONAL)
                     .callMethod("operationalEnterAction");
             builder.internalTransition()
@@ -354,19 +326,7 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
             builder.internalTransition()
                     .within(State.OPERATIONAL).on(Event.DISABLE)
                     .callMethod(sendSessionDisableAction);
-            builder.internalTransition()
-                    .within(State.OPERATIONAL).on(Event.DELETE)
-                    .callMethod(sendSessionDeleteAction);
-            builder.internalTransition()
-                    .within(State.OPERATIONAL).on(Event.PORT_DEL)
-                    .callMethod(sendSessionDeleteAction);
-            builder.internalTransition()
-                    .within(State.OPERATIONAL).on(Event.OFFLINE)
-                    .callMethod(sendSessionOfflineAction);
-            builder.internalTransition()
-                    .within(State.OPERATIONAL).on(Event.ONLINE)
-                    .callMethod(sendSessionOnlineAction);
-            
+
             // REMOVING
             builder.transition()
                     .from(State.REMOVING).to(State.PREPARE).on(Event.ENABLE_UPDATE);
@@ -381,6 +341,26 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
                     .within(State.REMOVING).on(Event.PORT_ADD)
                     .callMethod(sendPortDeleteAction);
 
+            // HOUSEKEEPING
+            builder.transition()
+                    .from(State.HOUSEKEEPING).to(State.OPERATIONAL).on(Event.PORT_ADD);
+            builder.transition()
+                    .from(State.HOUSEKEEPING).to(State.STOP).on(Event.SESSION_COMPLETED);
+            builder.transition()
+                    .from(State.HOUSEKEEPING).to(State.PREPARE).on(Event.ENABLE_UPDATE);
+            builder.transition()
+                    .from(State.HOUSEKEEPING).to(State.DEBRIS).on(Event.DISABLE);
+            builder.onEntry(State.HOUSEKEEPING)
+                    .callMethod(sendSessionDisableAction);
+
+            // DEBRIS
+            builder.transition()
+                    .from(State.DEBRIS).to(State.STOP).on(Event.SESSION_COMPLETED);
+            builder.transition()
+                    .from(State.DEBRIS).to(State.REMOVING).on(Event.PORT_ADD);
+            builder.transition()
+                    .from(State.DEBRIS).to(State.PREPARE).on(Event.ENABLE_UPDATE);
+
             // STOP
             builder.defineFinalState(State.STOP);
             builder.onEntry(State.STOP)
@@ -388,10 +368,10 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
         }
 
         public BfdLogicalPortFsm produce(
-                SwitchStatusMonitor switchStatusMonitor, Endpoint physicalEndpoint, int logicalPortNumber) {
+                SwitchOnlineStatusMonitor switchOnlineStatusMonitor, Endpoint physicalEndpoint, int logicalPortNumber) {
             BfdLogicalPortFsm fsm = builder.newStateMachine(
-                    State.ENTER, carrier, switchStatusMonitor, physicalEndpoint, logicalPortNumber);
-            fsm.start();
+                    State.ENTER, carrier, switchOnlineStatusMonitor, physicalEndpoint, logicalPortNumber);
+            fsm.start(BfdLogicalPortFsmContext.builder().build());
             return fsm;
         }
     }
@@ -412,18 +392,19 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
         PREPARE,
         READY,
         CREATING,
-        WAIT_STATUS,
         OPERATIONAL,
         REMOVING,
+        HOUSEKEEPING,
+        DEBRIS,
         STOP
     }
 
     public enum Event {
         NEXT,
-        ENABLE_UPDATE, DISABLE, DELETE,
+        ENABLE_UPDATE, DISABLE,
         PORT_ADD, PORT_DEL,
         ONLINE, OFFLINE,
         WORKER_SUCCESS, WORKER_ERROR,
-        SESSION_DEL
+        SESSION_COMPLETED
     }
 }

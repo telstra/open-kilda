@@ -44,7 +44,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.command.BfdHubLinkS
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.command.BfdHubOnlineStatusUpdateCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.command.BfdHubPortAddCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.command.BfdHubPortDeleteCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.command.BfdHubPortOnlineStatusUpdateCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.command.BfdHubSwitchRemovedNotificationCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortLinkStatusCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortOnlineModeCommand;
@@ -179,12 +179,6 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
     }
 
     @Override
-    public void sendBfdSwitchStatusUpdate(Endpoint endpoint, boolean isOnline) {
-        emit(STREAM_BFD_HUB_ID, getCurrentTuple(), makeBfdHubTuple(
-                new BfdHubPortOnlineStatusUpdateCommand(endpoint, isOnline)));
-    }
-
-    @Override
     public void sendSwitchSynchronizeRequest(String key, SwitchId switchId) {
         emit(STREAM_SWMANAGER_ID, getCurrentTuple(), makeSwitchManagerWorkerTuple(key, switchId));
     }
@@ -201,6 +195,12 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
                 new BfdHubOnlineStatusUpdateCommand(switchId, status == SwitchStatus.ACTIVE)));
         emit(STREAM_REROUTE_ID, getCurrentTuple(), makeRerouteTuple(switchId,
                 new SwitchStateChanged(switchId, status)));
+    }
+
+    @Override
+    public void switchRemovedNotification(SwitchId switchId) {
+        emit(STREAM_BFD_HUB_ID, getCurrentTuple(), makeBfdHubTuple(
+                new BfdHubSwitchRemovedNotificationCommand(switchId)));
     }
 
     private Values makePortTuple(PortCommand command) {

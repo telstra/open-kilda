@@ -1,92 +1,65 @@
 Internal data
-* ISL reference
+* BfdSessionData
 * BFD descriptor
-* port status monitor
-* BFD properties
-* BFD properties (effective)
+* effective properties
 * action
+* error flag
 
 Internal signals
-* fail
+* action-success
+* action-fail
+* ready
 
 Input signals
 * online
 * offline
 * port-up
 * port-down
-* enable_update (ISL-FSM)
+* enable (ISL-FSM)
 * disable (ISL-FSM)
 * speaker-response
-* action-success
-* action-fail
 
 Output signals
 * bfd-up
 * bfd-down
+* bfd-fail
 * bfd-kill
 
 @startuml bfd-port-FSM
 title BFD session FSM
 
-[*] --> INIT
+[*] --> ENTER
+note right of ENTER
+    The system must receive one of the events
+    that lead out of this state right after FSM was
+    created. i.e. FSM must not stay in this state.
+end note
 
-state initChoice <<choice>>
-INIT --> initChoice : next
-INIT : enter / load persistence-data
-INIT : enter / save effective-properties
+ENTER : enter / load existing session
+ENTER : enter / load existing properties
+ENTER --> PREPARE : enable
+ENTER --> REMOVING : disable
 
-initChoice --> IDLE : [else]
-initChoice --> INIT_REMOVE : [BFD-discriminator is set]
+PREPARE : enter / reset effective properties
+PREPARE : enter / allocate(lock) BFD-discriminator
+PREPARE : enter / [isOnline] make BFD-setup action and fire ready
+PREPARE --> CREATING : ready
+PREPARE --> HOUSEKEEPING : disable
+PREPARE --> ERROR : error
+PREPARE : online / make BFD-setup action and fire ready
 
-IDLE --> INIT_SETUP : enable_update / save ISL reference
-IDLE --> UNOPERATIONAL : offline
-IDLE : enter / report ready to setup
+CREATING : enter / clean port status transitions
+CREATING --> ACTIVE : action-success
+CREATING --> ERROR : action-fail
+CREATING --> REMOVING : disable
 
-UNOPERATIONAL --> IDLE : online
-UNOPERATIONAL --> PENDING : enable_update
-
-PENDING --> UNOPERATIONAL : disable
-PENDING --> INIT_SETUP : online
-PENDING : enter / save ISL reference
-PENDING : enter / save properties
-
-INIT_SETUP --> IDLE : fail
-INIT_SETUP --> DO_SETUP : next
-INIT_SETUP : enter / allocate BFD-discriminator
-
-DO_SETUP --> ACTIVE : action-success / report setup complete
-DO_SETUP --> INIT_REMOVE : disable
-DO_SETUP --> SETUP_FAIL : action-fail
-DO_SETUP --> SETUP_INTERRUPT : offline
-DO_SETUP --> INIT_CLEANUP : kill
-DO_SETUP : enter / clean port status transitions
-DO_SETUP : enter / make BFD-setup action
-DO_SETUP : speaker-response / proxy to action
-
-SETUP_FAIL --> INIT_REMOVE : disable
-SETUP_FAIL --> SETUP_INTERRUPT : offline
-SETUP_FAIL --> INIT_CLEANUP : kill
-SETUP_FAIL --> RESET : enable_update / save properties
-SETUP_FAIL : enter / report fail
-SETUP_FAIL : enter / emit bfd-fail
-
-SETUP_INTERRUPT --> RESET : online
-SETUP_INTERRUPT --> REMOVE_INTERRUPT : disable
-
-RESET --> DO_SETUP : action-success
-RESET --> SETUP_INTERRUPT : offline
-RESET --> SETUP_FAIL : action-fail
-RESET --> DO_REMOVE : disable
-RESET --> DO_CLEANUP : kill
-RESET : enter / make BFD-remove action
-RESET : speaker-response / proxy to action
-
+ACTIVE : enter / save properties into DB
 state ACTIVE {
     [*] --> WAIT_STATUS
 
+    WAIT_STATUS : enter / pull port status transition
     WAIT_STATUS --> UP : port-up
     WAIT_STATUS --> DOWN : port-down
-    WAIT_STATUS : enter / pull port status transition
 
     UP -r-> DOWN : port-down
     UP : enter / emit bfd-up
@@ -94,58 +67,25 @@ state ACTIVE {
     DOWN -l-> UP : port-up
     DOWN : enter / emit bfd-down
 }
+ACTIVE --> REMOVING : disable
 ACTIVE --> OFFLINE : offline
-ACTIVE --> INIT_REMOVE : disable
-ACTIVE --> INIT_CLEANUP : kill
-ACTIVE --> RESET : enable_update / save properties
-ACTIVE : enter / save effective-properties
-ACTIVE : enter / save properties into DB
-ACTIVE : exit / clean port status transitions
 ACTIVE : exit / emit bfd-kill
 
+OFFLINE : enter / clean port status transitions
 OFFLINE --> ACTIVE : online
-OFFLINE --> REMOVE_INTERRUPT : disable
+OFFLINE --> REMOVING : disable
 
-INIT_REMOVE --> DO_REMOVE : next
-INIT_REMOVE : enter / make BFD-remove action
+REMOVING : enter / [isOnline] make BFD-remove action
+REMOVING --> HOUSEKEEPING : action-success
+REMOVING : action-fail / emit bfd-fail
+REMOVING : online / make BFD-remove action
+REMOVING : disable / [isOnline] make BFD-remove action
 
-DO_REMOVE --> IDLE : action-success / release BFD-descriptor
-DO_REMOVE --> REMOVE_FAIL : action-fail / report error
-DO_REMOVE --> REMOVE_INTERRUPT : offline
-DO_REMOVE --> DO_CLEANUP : kill
-DO_REMOVE --> CHARGED : enable_update / save ISL reference
-DO_REMOVE : speaker-response / proxy to action
+ERROR : enter / raise error flag
+ERROR : enter / emit bfd-fail
+ERROR --> HOUSEKEEPING : next
 
-REMOVE_FAIL --> CHARGED_RESET: enable_update / save ISL reference
-REMOVE_FAIL --> REMOVE_INTERRUPT : offline
-REMOVE_FAIL --> INIT_REMOVE : disable
-REMOVE_FAIL : enter / report fail
-REMOVE_FAIL : enter / emit bfd-fail
+HOUSEKEEPING : enter / [discriminator != null] release BFD-descriptor
+HOUSEKEEPING --> [*] : next
 
-REMOVE_INTERRUPT --> INIT_REMOVE : online
-REMOVE_INTERRUPT --> CHARGED_INTERRUPT : enable_update / save ISL reference
-
-CHARGED --> INIT_SETUP : action-success / release BFD-descriptor
-CHARGED --> CHARGED_FAIL : action-fail / report error
-CHARGED --> DO_REMOVE : disable
-CHARGED --> CHARGED_INTERRUPT : offline
-CHARGED --> DO_CLEANUP : kill
-CHARGED : speaker-response / proxy to action
-CHARGED : enable_update / save ISL reference/properties
-
-CHARGED_FAIL --> CHARGED_INTERRUPT : offline
-CHARGED_FAIL --> REMOVE_FAIL : disable
-CHARGED_FAIL --> CHARGED_RESET: enable_update / save ISL reference
-
-CHARGED_INTERRUPT --> CHARGED_RESET : online
-CHARGED_INTERRUPT --> REMOVE_INTERRUPT : disable
-
-CHARGED_RESET --> CHARGED : next
-CHARGED_RESET : enter / make BFD-remove action
-
-INIT_CLEANUP --> DO_CLEANUP : next
-INIT_CLEANUP : enter / make BFD-remove action
-
-DO_CLEANUP --> [*] : action-success / release BFD-descriptor\naction-fail / report error
-DO_CLEANUP : speaker-response / proxy to action
 @enduml
