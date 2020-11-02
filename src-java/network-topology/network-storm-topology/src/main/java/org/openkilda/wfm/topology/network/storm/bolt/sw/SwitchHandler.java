@@ -45,6 +45,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.command.BfdHubOnlin
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.command.BfdHubPortAddCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.command.BfdHubPortDeleteCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.command.BfdHubSwitchRemovedNotificationCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.history.NetworkHistoryHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortLinkStatusCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortOnlineModeCommand;
@@ -54,7 +55,6 @@ import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
 import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.swmanager.SwitchManagerWorker;
 import org.openkilda.wfm.topology.network.storm.bolt.swmanager.command.SwitchManagerSynchronizeSwitchCommand;
-import org.openkilda.wfm.topology.network.storm.spout.NetworkHistory;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -104,7 +104,7 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
             handleSpeakerInput(input);
         } else if (SwitchManagerWorker.BOLT_ID.equals(source)) {
             handleSwitchManagerWorkerInput(input);
-        } else if (NetworkHistory.SPOUT_ID.equals(source)) {
+        } else if (NetworkHistoryHandler.BOLT_ID.equals(source)) {
             handleHistoryInput(input);
         } else {
             unhandledInput(input);
@@ -112,7 +112,7 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
     }
 
     private void handleHistoryInput(Tuple input) throws PipelineException {
-        handleCommand(input, NetworkHistory.FIELD_ID_PAYLOAD);
+        handleCommand(input, NetworkHistoryHandler.FIELD_ID_PAYLOAD);
     }
 
     private void handleSpeakerInput(Tuple input) throws PipelineException {

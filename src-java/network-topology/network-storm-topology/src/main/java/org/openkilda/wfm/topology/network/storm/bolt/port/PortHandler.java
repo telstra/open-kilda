@@ -30,6 +30,8 @@ import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.share.mappers.PortMapper;
 import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Config;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
@@ -86,13 +88,19 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     public static final String STREAM_NORTHBOUND_ID = "northbound";
     private static final Fields STREAM_NORTHBOUND_FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
+    public static final String STREAM_ZOOKEEPER_ID = ZkStreams.ZK.toString();
+    public static final Fields STREAM_ZOOKEEPER_FIELDS = new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+            ZooKeeperBolt.FIELD_ID_CONTEXT);
+
     private transient NetworkPortService portService;
     private transient NetworkAntiFlapService antiFlapService;
 
     private Config antiFlapConfig;
     private PersistenceManager persistenceManager;
 
-    public PortHandler(NetworkOptions options, PersistenceManager persistenceManager) {
+    public PortHandler(NetworkOptions options, PersistenceManager persistenceManager,
+                       String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
         this.antiFlapConfig = Config.builder()
                 .delayCoolingDown(options.getDelayCoolingDown())
                 .delayWarmUp(options.getDelayWarmUp())
@@ -158,11 +166,22 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     }
 
     @Override
+    protected void activate() {
+        antiFlapService.activate();
+    }
+
+    @Override
+    protected void deactivate() {
+        antiFlapService.deactivate();
+    }
+
+    @Override
     public void declareOutputFields(OutputFieldsDeclarer streamManager) {
         streamManager.declare(STREAM_FIELDS);
         streamManager.declareStream(STREAM_POLL_ID, STREAM_POLL_FIELDS);
         streamManager.declareStream(STREAM_HISTORY_ID, STREAM_HISTORY_FIELDS);
         streamManager.declareStream(STREAM_NORTHBOUND_ID, STREAM_NORTHBOUND_FIELDS);
+        streamManager.declareStream(STREAM_ZOOKEEPER_ID, STREAM_ZOOKEEPER_FIELDS);
     }
 
     // IPortCarrier

@@ -37,6 +37,8 @@ import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.mappers.FeatureTogglesMapper;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.worker.response.BfdWorkerAsyncResponse;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.worker.response.BfdWorkerSessionResponse;
@@ -97,6 +99,14 @@ public class SpeakerRouter extends AbstractBolt {
     public static final String STREAM_BFD_WORKER_ID = "worker";
     public static final Fields STREAM_BFD_WORKER_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_INPUT, FIELD_ID_CONTEXT);
 
+    public static final String STREAM_ZOOKEEPER_ID = ZkStreams.ZK.toString();
+    public static final Fields STREAM_ZOOKEEPER_FIELDS = new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+            ZooKeeperBolt.FIELD_ID_CONTEXT);
+
+    public SpeakerRouter(String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
+    }
+
     @Override
     protected void handleInput(Tuple input) throws Exception {
         String source = input.getSourceComponent();
@@ -113,10 +123,12 @@ public class SpeakerRouter extends AbstractBolt {
     }
 
     private void proxySpeaker(Tuple input, Message message) throws PipelineException {
-        if (message instanceof InfoMessage) {
-            proxySpeaker(input, ((InfoMessage) message).getData());
-        } else {
-            log.error("Do not proxy speaker message - unexpected message type \"{}\"", message.getClass());
+        if (active) {
+            if (message instanceof InfoMessage) {
+                proxySpeaker(input, ((InfoMessage) message).getData());
+            } else {
+                log.error("Do not proxy speaker message - unexpected message type \"{}\"", message.getClass());
+            }
         }
     }
 
@@ -176,6 +188,7 @@ public class SpeakerRouter extends AbstractBolt {
         streamManager.declareStream(STREAM_BFD_WORKER_ID, STREAM_BFD_WORKER_FIELDS);
         streamManager.declareStream(STREAM_BCAST_ID, STREAM_BCAST_FIELDS);
         streamManager.declareStream(STREAM_PORT_ID, STREAM_PORT_FIELDS);
+        streamManager.declareStream(STREAM_ZOOKEEPER_ID, STREAM_ZOOKEEPER_FIELDS);
     }
 
     private Values makeDefaultTuple(Tuple input, SwitchCommand command) throws PipelineException {
