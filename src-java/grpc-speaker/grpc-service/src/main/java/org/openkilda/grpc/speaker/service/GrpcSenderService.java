@@ -57,7 +57,7 @@ public class GrpcSenderService {
     @Value("${grpc.pass}")
     private String password;
 
-    private NoviflowResponseMapper mapper;
+    private final NoviflowResponseMapper mapper;
 
     public GrpcSenderService(@Autowired NoviflowResponseMapper mapper) {
         this.mapper = mapper;
@@ -70,14 +70,13 @@ public class GrpcSenderService {
      * @return {@link CompletableFuture} with the execution result.
      */
     public CompletableFuture<LogicalPort> createLogicalPort(String switchAddress, LogicalPortDto port) {
-        GrpcSession sender = new GrpcSession(mapper, switchAddress);
-        return sender.login(name, password)
-                .thenCompose(e -> sender.setLogicalPort(port))
-                .thenCompose(e -> sender.showConfigLogicalPort(port.getLogicalPortNumber()))
-                .thenApply(portOptional -> portOptional
-                        .map(mapper::map)
-                        .orElseThrow(() -> new GrpcException(format("Port %s was not created ", port))))
-                .whenComplete((e, ex) -> sender.shutdown());
+        try (GrpcSession session = makeSession(switchAddress)) {
+            session.setLogicalPort(port);
+            return session.showConfigLogicalPort(port.getLogicalPortNumber())
+                    .thenApply(portOptional -> portOptional
+                            .map(mapper::map)
+                            .orElseThrow(() -> new GrpcException(format("Port %s was not created ", port))));
+        }
     }
 
     /**
@@ -87,11 +86,10 @@ public class GrpcSenderService {
      * @return list of logical ports wrapped into {@link CompletableFuture}.
      */
     public CompletableFuture<List<LogicalPort>> dumpLogicalPorts(String switchAddress) {
-        GrpcSession sender = new GrpcSession(mapper, switchAddress);
-        return sender.login(name, password)
-                .thenCompose(e -> sender.dumpLogicalPorts())
-                .thenApply(ports -> ports.stream().map(mapper::map).collect(Collectors.toList()))
-                .whenComplete((e, ex) -> sender.shutdown());
+        try (GrpcSession session = makeSession(switchAddress)) {
+            return session.dumpLogicalPorts()
+                    .thenApply(ports -> ports.stream().map(mapper::map).collect(Collectors.toList()));
+        }
     }
 
     /**
@@ -101,14 +99,13 @@ public class GrpcSenderService {
      * @return {@link CompletableFuture} with the execution result.
      */
     public CompletableFuture<SwitchInfoStatus> getSwitchStatus(String switchAddress) {
-        GrpcSession sender = new GrpcSession(mapper, switchAddress);
-        return sender.login(name, password)
-                .thenCompose(e -> sender.showSwitchStatus())
-                .thenApply(statusOptional -> statusOptional
-                        .map(mapper::map)
-                        .orElseThrow(() ->
-                                new GrpcException(format("Couldn't get status for switch %s", switchAddress))))
-                .whenComplete((e, ex) -> sender.shutdown());
+        try (GrpcSession session = makeSession(switchAddress)) {
+            return session.showSwitchStatus()
+                    .thenApply(statusOptional -> statusOptional
+                            .map(mapper::map)
+                            .orElseThrow(() ->
+                                    new GrpcException(format("Couldn't get status for switch %s", switchAddress))));
+        }
     }
 
     /**
@@ -119,14 +116,13 @@ public class GrpcSenderService {
      * @return {@link CompletableFuture} with the execution result.
      */
     public CompletableFuture<LogicalPort> showConfigLogicalPort(String switchAddress, Integer port) {
-        GrpcSession sender = new GrpcSession(mapper, switchAddress);
-        return sender.login(name, password)
-                .thenCompose(e -> sender.showConfigLogicalPort(port))
-                .thenApply(statusOptional -> statusOptional
-                        .map(mapper::map)
-                        .orElseThrow(() -> new GrpcException(format("Couldn't get logical port %d for switch %s",
-                                port, switchAddress))))
-                .whenComplete((e, ex) -> sender.shutdown());
+        try (GrpcSession session = makeSession(switchAddress)) {
+            return session.showConfigLogicalPort(port)
+                    .thenApply(statusOptional -> statusOptional
+                            .map(mapper::map)
+                            .orElseThrow(() -> new GrpcException(format("Couldn't get logical port %d for switch %s",
+                                    port, switchAddress))));
+        }
     }
 
     /**
@@ -137,14 +133,13 @@ public class GrpcSenderService {
      * @return {@link CompletableFuture} with the execution result.
      */
     public CompletableFuture<GrpcDeleteOperationResponse> deleteConfigLogicalPort(String switchAddress, Integer port) {
-        GrpcSession sender = new GrpcSession(mapper, switchAddress);
-        return sender.login(name, password)
-                .thenCompose(e -> sender.deleteLogicalPort(port))
-                .thenApply(optional -> optional
-                        .map(value -> new GrpcDeleteOperationResponse(value.getReplyStatus() == 0))
-                        .orElseThrow(() -> new GrpcException(format("Could not delete logical port %d for switch %s",
-                                port, switchAddress))))
-                .whenComplete((e, ex) -> sender.shutdown());
+        try (GrpcSession session = makeSession(switchAddress)) {
+            return session.deleteLogicalPort(port)
+                    .thenApply(optional -> optional
+                            .map(value -> new GrpcDeleteOperationResponse(value.getReplyStatus() == 0))
+                            .orElseThrow(() -> new GrpcException(
+                                    format("Could not delete logical port %d for switch %s", port, switchAddress))));
+        }
     }
 
     /**
@@ -156,14 +151,13 @@ public class GrpcSenderService {
      */
     public CompletableFuture<EnableLogMessagesResponse> enableLogMessages(String switchAddress,
                                                                           LogMessagesDto logMessagesDto) {
-        GrpcSession sender = new GrpcSession(mapper, switchAddress);
-        return sender.login(name, password)
-                .thenCompose(e -> sender.setLogMessagesStatus(logMessagesDto))
-                .thenApply(optional -> optional
-                        .map(value -> new EnableLogMessagesResponse(logMessagesDto.getState()))
-                        .orElseThrow(() -> new GrpcException(format("Could not set log messages to status: %s",
-                                logMessagesDto.getState().toString()))))
-                .whenComplete((e, ex) -> sender.shutdown());
+        try (GrpcSession session = makeSession(switchAddress)) {
+            return session.setLogMessagesStatus(logMessagesDto)
+                    .thenApply(optional -> optional
+                            .map(value -> new EnableLogMessagesResponse(logMessagesDto.getState()))
+                            .orElseThrow(() -> new GrpcException(format("Could not set log messages to status: %s",
+                                    logMessagesDto.getState().toString()))));
+        }
     }
 
     /**
@@ -173,17 +167,15 @@ public class GrpcSenderService {
      * @param logOferrorsDto a log oferros data.
      * @return {@link CompletableFuture} with the execution result.
      */
-    public CompletableFuture<EnableLogMessagesResponse> enableLogOferror(String switchAddress,
+    public CompletableFuture<EnableLogMessagesResponse> enableLogOfError(String switchAddress,
                                                                          LogOferrorsDto logOferrorsDto) {
-        GrpcSession sender = new GrpcSession(mapper, switchAddress);
-        return sender.login(name, password)
-                .thenCompose(e -> sender.setLogOferrorsStatus(logOferrorsDto))
-                .thenApply(optional -> optional
-                        .map(value -> new EnableLogMessagesResponse(logOferrorsDto.getState()))
-                        .orElseThrow(() -> new GrpcException(format("Could not set log OF errors to status: %s",
-                                logOferrorsDto.getState().toString()))))
-                .whenComplete((e, ex) -> sender.shutdown());
-
+        try (GrpcSession session = makeSession(switchAddress)) {
+            return session.setLogOfErrorsStatus(logOferrorsDto)
+                    .thenApply(optional -> optional
+                            .map(value -> new EnableLogMessagesResponse(logOferrorsDto.getState()))
+                            .orElseThrow(() -> new GrpcException(format("Could not set log OF errors to status: %s",
+                                    logOferrorsDto.getState().toString()))));
+        }
     }
 
     /**
@@ -193,14 +185,13 @@ public class GrpcSenderService {
      * @return {@link CompletableFuture} with the execution result.
      */
     public CompletableFuture<RemoteLogServer> showConfigRemoteLogServer(String switchAddress) {
-        GrpcSession sender = new GrpcSession(mapper, switchAddress);
-        return sender.login(name, password)
-                .thenCompose(e -> sender.showConfigRemoteLogServer())
-                .thenApply(optional -> optional
-                        .map(mapper::map)
-                        .orElseThrow(() -> new GrpcException(format("Could not to get remote log server for switch: %s",
-                                switchAddress))))
-                .whenComplete((e, ex) -> sender.shutdown());
+        try (GrpcSession session = makeSession(switchAddress)) {
+            return session.showConfigRemoteLogServer()
+                    .thenApply(optional -> optional
+                            .map(mapper::map)
+                            .orElseThrow(() -> new GrpcException(
+                                    format("Could not to get remote log server for switch: %s", switchAddress))));
+        }
     }
 
     /**
@@ -212,15 +203,14 @@ public class GrpcSenderService {
      */
     public CompletableFuture<RemoteLogServer> setConfigRemoteLogServer(
             String switchAddress, RemoteLogServerDto remoteLogServerDto) {
-        GrpcSession sender = new GrpcSession(mapper, switchAddress);
-        return sender.login(name, password)
-                .thenCompose(e -> sender.setConfigRemoteLogServer(remoteLogServerDto))
-                .thenCompose(e -> sender.showConfigRemoteLogServer())
-                .thenApply(optional -> optional
-                        .map(mapper::map)
-                        .orElseThrow(() -> new GrpcException(format("Could not set remote log server for switch %s",
-                                switchAddress))))
-                .whenComplete((e, ex) -> sender.shutdown());
+        try (GrpcSession session = makeSession(switchAddress)) {
+            session.setConfigRemoteLogServer(remoteLogServerDto);
+            return session.showConfigRemoteLogServer()
+                    .thenApply(optional -> optional
+                            .map(mapper::map)
+                            .orElseThrow(() -> new GrpcException(format("Could not set remote log server for switch %s",
+                                    switchAddress))));
+        }
     }
 
     /**
@@ -231,14 +221,13 @@ public class GrpcSenderService {
      */
     public CompletableFuture<GrpcDeleteOperationResponse> deleteConfigRemoteLogServer(
             String switchAddress) {
-        GrpcSession sender = new GrpcSession(mapper, switchAddress);
-        return sender.login(name, password)
-                .thenCompose(e -> sender.deleteConfigRemoteLogServer())
-                .thenApply(optional -> optional
-                        .map(value -> new GrpcDeleteOperationResponse(value.getReplyStatus() == 0))
-                        .orElseThrow(() -> new GrpcException(format("Could not delete remote log server for switch %s",
-                                switchAddress))))
-                .whenComplete((e, ex) -> sender.shutdown());
+        try (GrpcSession session = makeSession(switchAddress)) {
+            return session.deleteConfigRemoteLogServer()
+                    .thenApply(optional -> optional
+                            .map(value -> new GrpcDeleteOperationResponse(value.getReplyStatus() == 0))
+                            .orElseThrow(() -> new GrpcException(
+                                    format("Could not delete remote log server for switch %s", switchAddress))));
+        }
     }
 
     /**
@@ -251,15 +240,14 @@ public class GrpcSenderService {
      */
     public CompletableFuture<PortConfigSetupResponse> setPortConfig(
             String switchAddress, Integer portNumber, PortConfigDto portConfigDto) {
-        GrpcSession sender = new GrpcSession(mapper, switchAddress);
-        return sender.login(name, password)
-                .thenCompose(e -> sender.setPortConfig(portNumber, portConfigDto))
-                .thenApply(optional -> optional
-                        .map(value -> new PortConfigSetupResponse(value.getReplyStatus() == 0))
-                        .orElseThrow(() ->
-                                new GrpcException(format("Could not setup port №%d configuration for switch %s",
-                                        portNumber, switchAddress))))
-                .whenComplete((e, ex) -> sender.shutdown());
+        try (GrpcSession session = makeSession(switchAddress)) {
+            return session.setPortConfig(portNumber, portConfigDto)
+                    .thenApply(optional -> optional
+                            .map(value -> new PortConfigSetupResponse(value.getReplyStatus() == 0))
+                            .orElseThrow(() ->
+                                    new GrpcException(format("Could not setup port №%d configuration for switch %s",
+                                            portNumber, switchAddress))));
+        }
     }
 
     /**
@@ -270,14 +258,13 @@ public class GrpcSenderService {
      * @return {@link CompletableFuture} with the execution result.
      */
     public CompletableFuture<LicenseResponse> setConfigLicense(String switchAddress, LicenseDto licenseDto) {
-        GrpcSession sender = new GrpcSession(mapper, switchAddress);
-        return sender.login(name, password)
-                .thenCompose(e -> sender.setConfigLicense(licenseDto))
-                .thenApply(optional -> optional
-                        .map(value -> new LicenseResponse(value.getReplyStatus() == 0))
-                        .orElseThrow(() ->
-                                new GrpcException(format("Could not setup license for switch %s", switchAddress))))
-                .whenComplete((e, ex) -> sender.shutdown());
+        try (GrpcSession session = makeSession(switchAddress)) {
+            return session.setConfigLicense(licenseDto)
+                    .thenApply(optional -> optional
+                            .map(value -> new LicenseResponse(value.getReplyStatus() == 0))
+                            .orElseThrow(() ->
+                                    new GrpcException(format("Could not setup license for switch %s", switchAddress))));
+        }
     }
 
     /**
@@ -287,14 +274,19 @@ public class GrpcSenderService {
      * @return {@link CompletableFuture} with the execution result.
      */
     public CompletableFuture<PacketInOutStatsResponse> getPacketInOutStats(String switchAddress) {
-        GrpcSession sender = new GrpcSession(mapper, switchAddress);
-        return sender.login(name, password)
-                .thenCompose(e -> sender.getPacketInOutStats())
-                .thenApply(statusOptional -> statusOptional
-                        .map(mapper::map)
-                        .orElseThrow(() ->
-                                new GrpcException(format(
-                                        "Couldn't get packet in out stats for switch %s", switchAddress))))
-                .whenComplete((e, ex) -> sender.shutdown());
+        try (GrpcSession session = makeSession(switchAddress)) {
+            return session.getPacketInOutStats()
+                    .thenApply(statusOptional -> statusOptional
+                            .map(mapper::map)
+                            .orElseThrow(() ->
+                                    new GrpcException(format(
+                                            "Couldn't get packet in out stats for switch %s", switchAddress))));
+        }
+    }
+
+    private GrpcSession makeSession(String address) {
+        GrpcSession session = new GrpcSession(mapper, address);
+        session.login(name, password);
+        return session;
     }
 }

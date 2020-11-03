@@ -17,7 +17,6 @@ server.port={{ getv "/kilda_grpc_rest_port" }}
 grpc.speaker.kafka.listener.threads={{ getv "/kilda_grpc_speaker_kafka_listener_threads" }}
 grpc.speaker.kafka.session.timeout={{ getv "/kilda_grpc_speaker_kafka_session_timeout" }}
 grpc.speaker.kafka.messages.expiration.minutes=15
-grpc.speaker.session.termination.timeout={{ getv "/kilda_grpc_speaker_session_termination_timeout" }}
 
 server.contextPath=/api/v1
 security.rest.username.env=REST_USERNAME
