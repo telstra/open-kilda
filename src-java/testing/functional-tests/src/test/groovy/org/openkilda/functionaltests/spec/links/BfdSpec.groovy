@@ -11,13 +11,18 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.model.grpc.LogicalPortType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.IslStatus
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.links.BfdProperties
+import org.openkilda.testing.service.grpc.GrpcService
 
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.HttpServerErrorException
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
@@ -31,8 +36,12 @@ Main purpose is to detect ISL failure on switch level, which is times faster tha
 controller-involved discovery mechanism""")
 @Tags([HARDWARE])
 class BfdSpec extends HealthCheckSpecification {
+    @Autowired
+    GrpcService grpc
     @Shared
     BfdProperties defaultBfdProps = new BfdProperties(350, (short)3)
+    @Value('${bfd.offset}')
+    Integer bfdOffset
 
     @Tidy
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
@@ -68,6 +77,23 @@ class BfdSpec extends HealthCheckSpecification {
                 properties == defaultBfdProps
                 effectiveSource.properties == defaultBfdProps
                 effectiveDestination.properties == defaultBfdProps
+            }
+        }
+
+        and: "BFD logical ports are created"
+        def srcSwitchAddress = northbound.getSwitch(isl.srcSwitch.dpId).address
+        def dstSwitchAddress = northbound.getSwitch(isl.dstSwitch.dpId).address
+        [isl.srcSwitch, isl.dstSwitch].each { sw ->
+            def swAddress = sw.dpId == isl.srcSwitch.dpId ? srcSwitchAddress : dstSwitchAddress
+            def swPort = sw.dpId == isl.srcSwitch.dpId ? isl.srcPort : isl.dstPort
+            def swLogPort = swPort + bfdOffset
+            Wrappers.wait(WAIT_OFFSET) {
+                with(grpc.getSwitchLogicalPortConfig(swAddress, swLogPort)) {
+                    logicalPortNumber == swLogPort
+                    name == "novi_lport" + swLogPort.toString()
+                    portNumbers[0] == swPort
+                    type == LogicalPortType.BFD
+                }
             }
         }
 
@@ -107,7 +133,7 @@ class BfdSpec extends HealthCheckSpecification {
         }
 
         when: "Remove existing BFD session"
-       northboundV2.deleteLinkBfd(isl)
+        northboundV2.deleteLinkBfd(isl)
         def bfdRemoved = true
 
         then: "Bfd field is removed from isl"
@@ -126,6 +152,21 @@ class BfdSpec extends HealthCheckSpecification {
                 effectiveDestination.properties == BfdProperties.DISABLED
             }
         }
+
+        and: "BFD logical ports are deleted"
+        when: "Get isl source port"
+        grpc.getSwitchLogicalPortConfig(srcSwitchAddress, isl.srcPort + bfdOffset)
+
+        then: "Human readable error is returned, because it was deleted while removing BFD session."
+        def e = thrown(HttpServerErrorException) // https://github.com/telstra/open-kilda/issues/3754
+        e.statusCode == HttpStatus.INTERNAL_SERVER_ERROR
+
+        when: "Get isl destination port"
+        grpc.getSwitchLogicalPortConfig(dstSwitchAddress, isl.dstPort + bfdOffset)
+
+        then: "Human readable error is returned, because it was deleted while removing BFD session."
+        def exc = thrown(HttpServerErrorException) // https://github.com/telstra/open-kilda/issues/3754
+        exc.statusCode == HttpStatus.INTERNAL_SERVER_ERROR
 
         when: "Interrupt ISL connection by breaking rule on a-switch"
         lockKeeper.removeFlows([isl.aswitch])
@@ -156,7 +197,7 @@ class BfdSpec extends HealthCheckSpecification {
                 it.aswitch?.inPort && it.aswitch?.outPort }
         assumeTrue("Require at least one a-switch BFD ISL between Noviflow switches", isl as boolean)
         northboundV2.setLinkBfd(isl)
-        Wrappers.wait(WAIT_OFFSET / 2) {
+        Wrappers.wait(WAIT_OFFSET) {
             verifyAll(northboundV2.getLinkBfd(isl)) {
                 properties == defaultBfdProps
                 effectiveSource.properties == defaultBfdProps
@@ -248,6 +289,24 @@ class BfdSpec extends HealthCheckSpecification {
             assert northbound.getLink(isl.reversed).state == IslChangeType.FAILED
         }
 
+        and: "BFD logical ports are deleted"
+        when: "Get isl source port"
+        def srcSwLogPort = isl.srcPort + bfdOffset
+        def srcSwitchAddress = northbound.getSwitch(isl.srcSwitch.dpId).address
+        grpc.getSwitchLogicalPortConfig(srcSwitchAddress, srcSwLogPort)
+
+        then: "Human readable error is returned, because it was deleted while removing BFD session."
+        def e = thrown(HttpServerErrorException)  // https://github.com/telstra/open-kilda/issues/3754
+        e.statusCode == HttpStatus.INTERNAL_SERVER_ERROR
+
+        when: "Get isl destination port"
+        def dstSwitchAddress = northbound.getSwitch(isl.dstSwitch.dpId).address
+        grpc.getSwitchLogicalPortConfig(dstSwitchAddress, isl.dstPort + bfdOffset)
+
+        then: "Human readable error is returned, because it was deleted while removing BFD session."
+        def exc = thrown(HttpServerErrorException) // https://github.com/telstra/open-kilda/issues/3754
+        exc.statusCode == HttpStatus.INTERNAL_SERVER_ERROR
+
         and: "Cleanup: restore ISL"
         lockKeeper.addFlows([isl.aswitch])
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -277,7 +336,25 @@ class BfdSpec extends HealthCheckSpecification {
         northboundV2.deleteLinkBfd(isl)
         isBfdEnabled = false
 
-        and: "Restore connection"
+        then: "BFD logical ports are deleted"
+        when: "Get isl source port"
+        def srcSwLogPort = isl.srcPort + bfdOffset
+        def srcSwitchAddress = northbound.getSwitch(isl.srcSwitch.dpId).address
+        grpc.getSwitchLogicalPortConfig(srcSwitchAddress, srcSwLogPort)
+
+        then: "Human readable error is returned, because it was deleted while removing BFD session."
+        def e = thrown(HttpServerErrorException) // https://github.com/telstra/open-kilda/issues/3754
+        e.statusCode == HttpStatus.INTERNAL_SERVER_ERROR
+
+        when: "Get isl destination port"
+        def dstSwitchAddress = northbound.getSwitch(isl.dstSwitch.dpId).address
+        grpc.getSwitchLogicalPortConfig(dstSwitchAddress, isl.dstPort + bfdOffset)
+
+        then: "Human readable error is returned, because it was deleted while removing BFD session."
+        def exc = thrown(HttpServerErrorException) // https://github.com/telstra/open-kilda/issues/3754
+        exc.statusCode == HttpStatus.INTERNAL_SERVER_ERROR
+
+        when: "Restore connection"
         lockKeeper.addFlows([isl.aswitch])
         isAswitchRuleDeleted = false
 
