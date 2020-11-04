@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.extension.env
 
 import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.model.SwitchFeature
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Value
@@ -20,6 +21,8 @@ import org.springframework.context.ApplicationContext
 class HardwareEnvCleanupExtension extends EnvCleanupExtension {
     @Value('${env.hardware.cleanup:false}')
     boolean cleanup
+    @Value('${use.multitable}')
+    boolean useMultitable
 
     @Override
     void notifyContextInitialized(ApplicationContext applicationContext) {
@@ -44,6 +47,24 @@ class HardwareEnvCleanupExtension extends EnvCleanupExtension {
             unsetSwitchMaintenance(activeSwitches)
             removeFlowRules(activeSwitches)
             removeExcessMeters(activeSwitches)
+
+            log.info("Configure 'multiTable' mode according to the 'kilda.properties' file")
+            northbound.getAllSwitches().findAll { it.state == SwitchChangeType.ACTIVATED }.each { sw ->
+                if (database.getSwitch(sw.switchId).features.contains(SwitchFeature.MULTI_TABLE)) {
+                    if (useMultitable) {
+                        northbound.updateSwitchProperties(sw.switchId, northbound.getSwitchProperties(sw.switchId).tap {
+                            it.multiTable = true
+                        })
+                    } else {
+                        northbound.updateSwitchProperties(sw.switchId, northbound.getSwitchProperties(sw.switchId).tap {
+                            it.multiTable = false
+                            // arp/lldp  properties can be set to 'true' only if 'multiTable' property is 'true'.
+                            it.switchLldp = false
+                            it.switchArp = false
+                        })
+                    }
+                }
+            }
         }
     }
 }
