@@ -25,6 +25,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.messaging.payload.history.FlowHistoryEntry
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.model.SwitchStatus
@@ -76,10 +77,10 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "Flow is rerouted even if there is no available bandwidth on alternative path, sets status to Degraded"() {
         given: "A flow with one alternative path at least"
+        List<FlowRequestV2> helperFlows = []
         def (FlowRequestV2 flow, List<List<PathNode>> allFlowPaths) = noIntermediateSwitchFlow(1, true)
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
-        def isls = topology.islsForActiveSwitches
 
         and: "Alt path ISLs have not enough bandwidth to host the flow"
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
@@ -87,11 +88,16 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         def involvedIsls = pathHelper.getInvolvedIsls(currentPath)
         def altIsls = altPaths.collectMany { pathHelper.getInvolvedIsls(it).findAll { !(it in involvedIsls || it.reversed in involvedIsls) } }
                 .unique { a, b -> (a == b || a == b.reversed) ? 0 : 1 }
-        altIsls.each {
-            database.updateIslAvailableBandwidth(it, flow.maximumBandwidth - 1)
-            database.updateIslAvailableBandwidth(it.reversed, flow.maximumBandwidth - 1)
+        altIsls.each {isl ->
+            def linkProp = islUtils.toLinkProps(isl, [cost: "1"])
+            northbound.updateLinkProps([linkProp])
+            def helperFlow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch, false, [flow, *helperFlows]).tap {
+                maximumBandwidth = northbound.getLink(isl).availableBandwidth - flow.maximumBandwidth + 1
+            }
+            flowHelperV2.addFlow(helperFlow)
+            helperFlows << helperFlow
+            northbound.deleteLinkProps([linkProp])
         }
-        def bwIsChanged = true
 
         when: "Fail a flow ISL (bring switch port down)"
         Set<Isl> altFlowIsls = []
@@ -100,47 +106,50 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         def islToFail = flowIsls.find { !(it in altFlowIsls) && !(it.reversed in altFlowIsls) }
         def portDown = antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
-        then: "The flow was rerouted after reroute delay"
+        then: "Flow history shows two reroute attempts, second one succeeds with ignore bw"
+        List<FlowHistoryEntry> history
         wait(rerouteDelay + WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
-            assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
-            def newIsls = pathHelper.getInvolvedIsls(flow.flowId)
-            newIsls.each {
-                def link = northbound.getLink(it)
-                assert link.maxBandwidth == link.availableBandwidth
+            history = northbound.getFlowHistory(flow.flowId)
+            verifyAll {
+                history[-2].payload.last().action == REROUTE_FAIL
+                history[-2].payload.last().details.startsWith("Not enough bandwidth or no path found. " +
+                        "Failed to find path with requested bandwidth=$flow.maximumBandwidth:")
+                history[-1].payload.last().action == REROUTE_COMPLETE
             }
         }
 
-        and: "Flow history shows two reroute attempts, second one succeeds with ignore bw"
-        def history = northbound.getFlowHistory(flow.flowId)
-        history[-2].payload.last().action == REROUTE_FAIL
-        history[-2].payload.last().details.startsWith("Not enough bandwidth or no path found. "+
-            "Failed to find path with requested bandwidth=$flow.maximumBandwidth:")
-        history[-1].payload.last().action == REROUTE_COMPLETE
+        and: "The flow has changed path and has DEGRADED status"
+        northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
+        List<PathNode> pathAfterReroute1 = PathHelper.convert(northbound.getFlowPath(flow.flowId))
+        pathAfterReroute1 != flowPath
+        pathHelper.getInvolvedIsls(pathAfterReroute1).each {
+            assert northbound.getLink(it).availableBandwidth == flow.maximumBandwidth - 1 }
 
-        when: "Bandwidth is restored"
-        isls.each {
-            database.resetIslBandwidth(it)
-            database.resetIslBandwidth(it.reversed)
-        }
-        bwIsChanged = false
+        //https://github.com/telstra/open-kilda/issues/3826
+//        when: "Try to manually reroute the degraded flow, while there is still not enough bandwidth"
+//        northboundV2.rerouteFlow(flow.flowId)
+//
+//        then: "Flow remains DEGRADED and on the same path"
+//        wait(rerouteDelay + WAIT_OFFSET) { //2 more reroute attempts
+//            //questionable. should it be +1 or +2? https://github.com/telstra/open-kilda/issues/3826
+//            assert northbound.getFlowHistory(flow.flowId).size() == history.size() + 2
+//        }
+//        northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
+//        PathHelper.convert(northbound.getFlowPath(flow.flowId)) == pathAfterReroute1
+//        pathHelper.getInvolvedIsls(pathAfterReroute1).each {
+//            assert northbound.getLink(it).availableBandwidth == flow.maximumBandwidth - 1 }
 
-        and: "isl is back online"
+        when: "Broken ISL on the original path is back online"
         def portUp = antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
-        then: "Flow is rerouted and back to up state"
+        then: "Flow is rerouted to the original path to UP state"
         wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
-        cleanup: "Revive the ISL back (bring switch port up) and delete the flow"
+        cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
-        if (bwIsChanged) {
-            isls.each {
-                database.resetIslBandwidth(it)
-                database.resetIslBandwidth(it.reversed)
-            }
-        }
+        helperFlows && helperFlows.each { flowHelperV2.deleteFlow(it.flowId) }
         if (portDown && !portUp) {
             antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
             wait(discoveryInterval + WAIT_OFFSET) {
