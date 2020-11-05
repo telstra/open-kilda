@@ -53,6 +53,11 @@ public class DiscoveryPortStatusMonitor extends DiscoveryMonitor<LinkStatus> {
     }
 
     @Override
+    public String getName() {
+        return "port-down";
+    }
+
+    @Override
     public void actualUpdate(IslFsmEvent event, IslFsmContext context) {
         switch (event) {
             case ISL_DOWN:
