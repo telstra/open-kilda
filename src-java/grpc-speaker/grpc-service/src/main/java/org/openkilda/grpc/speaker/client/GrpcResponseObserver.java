@@ -66,8 +66,6 @@ public class GrpcResponseObserver<V> implements StreamObserver<V> {
 
     @Override
     public void onError(Throwable throwable) {
-        log.warn(String.format("Error occurred during sending of GRPC request %s on switch %s",
-                operation, switchAddress), throwable);
         future.completeExceptionally(throwable);
     }
 
