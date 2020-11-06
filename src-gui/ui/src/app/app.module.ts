@@ -94,13 +94,13 @@ import { PortInventoryFlowsComponent } from './modules/switches/port-inventory-f
 import { ConnectedDevicesComponent } from './modules/flows/connected-devices/connected-devices.component';
 import { AffectedFlowsReportComponent } from './modules/reports/affected-flows-report/affected-flows-report.component';
 import { AffectedFlowListComponent } from './modules/reports/affected-flow-list/affected-flow-list.component';
+import { WorldMapViewComponent } from './modules/topology/world-map-view/world-map-view.component';
 import { SamlSettingComponent } from './modules/settings/saml-setting/saml-setting.component';
 import { SamlAddComponent } from './modules/settings/saml-add/saml-add.component';
 import { SamlEditComponent } from './modules/settings/saml-edit/saml-edit.component';
 import { SamlListTableComponent } from './modules/settings/saml-list-table/saml-list-table.component';
-import { WorldMapViewComponent } from './modules/topology/world-map-view/world-map-view.component';
-import { UseractivityListComponent } from './modules/useractivity/useractivity-list/useractivity-list.component';
 import { SwitchupdatemodalComponent } from './common/components/switchupdatemodal/switchupdatemodal.component';
+import { UseractivityListComponent } from './modules/useractivity/useractivity-list/useractivity-list.component';
 
 @NgModule({
   declarations: [
@@ -181,13 +181,13 @@ import { SwitchupdatemodalComponent } from './common/components/switchupdatemoda
     ConnectedDevicesComponent,
     AffectedFlowsReportComponent,
     AffectedFlowListComponent,
+    WorldMapViewComponent,
     SamlSettingComponent,
     SamlAddComponent,
     SamlEditComponent,
     SamlListTableComponent,
-    WorldMapViewComponent,
-    UseractivityListComponent,
     SwitchupdatemodalComponent,
+    UseractivityListComponent,
   ],
   imports: [
     HttpClientModule,

@@ -1105,6 +1105,12 @@ path.down {
   stroke-width: 12.5px !important;
   cursor: pointer;
 }
+.notify_animate{
+  fill: none;
+  opacity: 0.7;
+  stroke-width: 20px !important;
+  cursor: pointer;
+}
 
 
 .circle.blue {

@@ -78,6 +78,7 @@ export class TopologyMenuComponent implements OnInit {
     this.topologyService.settingReceiver.subscribe((data: TopologyView) => {
       this.defaultSetting = data;
     });
+   
 
     this.topologyService.autoRefreshReceiver.subscribe((data: TopologyView) => {
       this.defaultSetting = data;
@@ -87,6 +88,7 @@ export class TopologyMenuComponent implements OnInit {
   toggleRefreshMenu() {
     this.refreshMenu = this.refreshMenu == "hide" ? "show" : "hide";
   }
+  
 
   setAutoRefresh = (refreshInterval) => {
     let currentSettings = this.defaultSetting;
@@ -94,6 +96,7 @@ export class TopologyMenuComponent implements OnInit {
     currentSettings.REFRESH_CHECKED = 1;
     this.topologyService.setAutoRefreshSetting(currentSettings);
     this.toggleRefreshMenu();
+    this.topologyService.setViewOptinos(currentSettings);
   };
 
   stopAutoRefresh = ()=>{
@@ -102,6 +105,7 @@ export class TopologyMenuComponent implements OnInit {
     currentSettings.REFRESH_INTERVAL = 0;
     this.topologyService.setAutoRefreshSetting(currentSettings);
     this.toggleRefreshMenu();
+    this.topologyService.setViewOptinos(currentSettings);
   }
 
   showWorldMap(){
