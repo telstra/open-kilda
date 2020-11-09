@@ -1299,6 +1299,7 @@ switches"() {
     }
 
     @Tidy
+    @Ignore("fix ASAP, unstable on jenkins")
     def "System reverts both flows if fails during rule installation when swapping endpoints"() {
         given: "Two flows with different src switches and same dst"
         def swPair1
