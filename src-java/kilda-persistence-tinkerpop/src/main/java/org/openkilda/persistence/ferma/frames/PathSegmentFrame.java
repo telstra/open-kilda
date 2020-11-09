@@ -30,12 +30,14 @@ import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import com.syncleus.ferma.FramedGraph;
 import com.syncleus.ferma.VertexFrame;
 import com.syncleus.ferma.annotations.Property;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 
 import java.util.List;
 import java.util.Objects;
 
+@Slf4j
 public abstract class PathSegmentFrame extends KildaBaseVertexFrame implements PathSegmentData {
     public static final String FRAME_LABEL = "path_segment";
     public static final String SOURCE_EDGE = "source";
@@ -139,8 +141,10 @@ public abstract class PathSegmentFrame extends KildaBaseVertexFrame implements P
                             getId(), getSrcSwitchId(), srcSwitch.getSwitchId()));
                 }
             } else {
-                // Fallback to finding by the property
-                srcSwitch = SwitchFrame.load(getGraph(), getProperty(SRC_SWITCH_ID_PROPERTY))
+                String switchId = getProperty(SRC_SWITCH_ID_PROPERTY);
+                log.warn("Fallback to find the source switch by a reference instead of an edge. "
+                        + "The switch {}, the vertex {}", switchId, this);
+                srcSwitch = SwitchFrame.load(getGraph(), switchId)
                         .map(Switch::new).orElse(null);
             }
         }
@@ -177,8 +181,10 @@ public abstract class PathSegmentFrame extends KildaBaseVertexFrame implements P
                             getId(), getDestSwitchId(), destSwitch.getSwitchId()));
                 }
             } else {
-                // Fallback to finding by the property
-                destSwitch = SwitchFrame.load(getGraph(), getProperty(DST_SWITCH_ID_PROPERTY))
+                String switchId = getProperty(DST_SWITCH_ID_PROPERTY);
+                log.warn("Fallback to find the dest switch by a reference instead of an edge. "
+                        + "The switch {}, the vertex {}", switchId, this);
+                destSwitch = SwitchFrame.load(getGraph(), switchId)
                         .map(Switch::new).orElse(null);
             }
         }
