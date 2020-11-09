@@ -220,4 +220,89 @@ class IslReplugSpec extends HealthCheckSpecification {
         cleanup:
         database.resetCosts()
     }
+
+    @Ignore("https://github.com/telstra/open-kilda/issues/3780")
+    def "User is able to replug ISL with enabled BFD, receive new ISL, enable bfd on it and replug back"() {
+        given: "An ISL with BFD and ability to replug"
+        def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort &&
+            [it.srcSwitch, it.dstSwitch].every { it.features.contains(SwitchFeature.BFD) } }
+        assumeTrue("Require at least one BFD ISL", isl as boolean)
+        def notConnectedIsl = topology.notConnectedIsls.find { it.srcSwitch.features.contains(SwitchFeature.BFD) &&
+                it.srcSwitch != isl.dstSwitch }
+        assumeTrue("Require at least one 'not connected' ISL", notConnectedIsl as boolean)
+        northboundV2.setLinkBfd(isl)
+        Wrappers.wait(WAIT_OFFSET) {
+            [isl, isl.reversed].each {
+                verifyAll(northbound.getLink(it)) {
+                    it.enableBfd
+                    it.bfdSessionStatus == "up"
+                }
+            }
+        }
+
+        when: "Replug a bfd-enabled link to some other free port"
+        def newIsl = islUtils.replug(isl, true, notConnectedIsl, true, true)
+
+        then: "Old ISL becomes Moved, new ISL is discovered"
+        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
+            [isl, isl.reversed].each { assert northbound.getLink(it).state == MOVED }
+            [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }
+        }
+
+        and: "Bfd on Moved ISL reports 'down' status"
+        [isl, isl.reversed].each {
+            verifyAll(northbound.getLink(it)) {
+                enableBfd
+                bfdSessionStatus == "down"
+            }
+        }
+
+        when: "Turn on BFD for new ISL"
+        northboundV2.setLinkBfd(newIsl)
+
+        then: "BFD is turned on according to getLink API"
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            [newIsl, newIsl.reversed].each {
+                verifyAll(northbound.getLink(it)) {
+                    it.enableBfd
+                    it.bfdSessionStatus == "up"
+                }
+            }
+        }
+
+        when: "Replug a new link back where it was before"
+        def newOldIsl = islUtils.replug(newIsl, true, isl, true, true)
+        verifyAll(newOldIsl) {
+            it.srcSwitch == isl.srcSwitch
+            it.dstSwitch == isl.dstSwitch
+            it.srcPort == isl.srcPort
+            it.dstPort == isl.dstPort
+        }
+
+        then: "Initial ISL becomes Discovered again, replugged ISL becomes Moved"
+        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
+            [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == MOVED }
+            [newOldIsl, newOldIsl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }
+        }
+
+        and: "Bfd on Moved ISL reports 'down' status"
+        [newIsl, newIsl.reversed].each {
+            verifyAll(northbound.getLink(it)) {
+                enableBfd
+                bfdSessionStatus == "down"
+            }
+        }
+
+        and: "Bfd on Discovered ISL reports 'up' status"
+        [newOldIsl, newOldIsl.reversed].each {
+            verifyAll(northbound.getLink(it)) {
+                enableBfd
+                bfdSessionStatus == "up"
+            }
+        }
+
+        cleanup: "Removed Moved ISL, turn off bfd" //this cleanup is not comprehensive
+        newIsl && northbound.deleteLink(islUtils.toLinkParameters(newIsl))
+        northboundV2.deleteLinkBfd(newOldIsl)
+    }
 }

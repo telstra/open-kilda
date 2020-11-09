@@ -191,7 +191,7 @@ public class IslUtils {
             lockKeeper.removeFlows(Arrays.asList(srcASwitch, srcASwitch.getReversed()));
         }
         //create new flow
-        ASwitchFlow aswFlowForward = new ASwitchFlow(srcASwitch.getInPort(),
+        ASwitchFlow aswFlowForward = new ASwitchFlow(replugSource ? srcASwitch.getOutPort() : srcASwitch.getInPort(),
                 plugIntoSource ? dstASwitch.getInPort() : dstASwitch.getOutPort());
         lockKeeper.addFlows(Arrays.asList(aswFlowForward, aswFlowForward.getReversed()));
 
@@ -205,7 +205,7 @@ public class IslUtils {
                 replugSource ? (plugIntoSource ? dstIsl.getSrcPort() : dstIsl.getDstPort()) : srcIsl.getSrcPort(),
                 replugSource ? srcIsl.getDstSwitch() : (plugIntoSource ? dstIsl.getSrcSwitch() : dstIsl.getDstSwitch()),
                 replugSource ? srcIsl.getDstPort() : (plugIntoSource ? dstIsl.getSrcPort() : dstIsl.getDstPort()),
-                0, aswFlowForward);
+                0, plugIntoSource ? aswFlowForward.getReversed() : aswFlowForward);
     }
 
     private RetryPolicy retryPolicy() {
