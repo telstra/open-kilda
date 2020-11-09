@@ -39,7 +39,7 @@ help:
 up:
 	# NB: just specifying the minimal set .. taking advantage of embedded dependencies to bring
 	#     up the remaining containers
-	OK_TESTS="DISABLE_LOGIN" docker-compose up -d mininet floodlight storm-supervisor \
+	docker-compose up -d mininet floodlight storm-supervisor \
 	topology-engine kibana
 
 down:
