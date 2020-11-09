@@ -81,6 +81,7 @@ public class IslUtils {
 
     /**
      * Gets actual Northbound representation of the certain ISL.
+     * NOTE: prefer northbound.getLink(isl) over this if you don't need 'optional'
      *
      * @param isl ISL to search in 'getAllLinks' results
      */
