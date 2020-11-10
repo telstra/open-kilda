@@ -97,7 +97,7 @@ public class JsonSerializationTest {
     @Test
     public void linksDtoTest() throws IOException {
         LinkDto dto = new LinkDto(-1, 1, 0, 0, 0, LinkStatus.DISCOVERED,
-                LinkStatus.DISCOVERED, 0, false, false,
+                LinkStatus.DISCOVERED, LinkStatus.FAILED, 0, false, false,
                 "bfd-session-status", singletonList(new PathDto(SWITCH_ID, 1, 0, 10L)));
         assertEquals(dto, pass(dto, LinkDto.class));
     }

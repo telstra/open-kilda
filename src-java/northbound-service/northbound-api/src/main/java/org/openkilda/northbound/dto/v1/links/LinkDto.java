@@ -50,6 +50,9 @@ public class LinkDto {
     @JsonProperty("actual_state")
     private LinkStatus actualState;
 
+    @JsonProperty("round_trip_status")
+    private LinkStatus roundTripStatus;
+
     @JsonProperty("cost")
     private int cost;
 
