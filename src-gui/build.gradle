@@ -69,7 +69,6 @@ dependencies {
 }
 
 group = 'org.openkilda'
-version = '0.0.1-SNAPSHOT'
 description = 'OpenKilda-GUI'
 sourceCompatibility = '1.8'
 
