@@ -2,19 +2,6 @@
 
 TOPOLOGY := network flowhs stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control
 
-ENTRY_network := org.openkilda.wfm.topology.network.NetworkTopology
-ENTRY_flowhs := org.openkilda.wfm.topology.flowhs.FlowHsTopology
-ENTRY_stats := org.openkilda.wfm.topology.stats.StatsTopology
-ENTRY_isllatency := org.openkilda.wfm.topology.isllatency.IslLatencyTopology
-ENTRY_connecteddevices := org.openkilda.wfm.topology.connecteddevices.ConnectedDevicesTopology
-ENTRY_opentsdb := org.openkilda.wfm.topology.opentsdb.OpenTsdbTopology
-ENTRY_portstate := org.openkilda.wfm.topology.portstate.PortStateTopology
-ENTRY_nbworker := org.openkilda.wfm.topology.nbworker.NbWorkerTopology
-ENTRY_ping := org.openkilda.wfm.topology.ping.PingTopology
-ENTRY_reroute := org.openkilda.wfm.topology.reroute.RerouteTopology
-ENTRY_swmanager := org.openkilda.wfm.topology.switchmanager.SwitchManagerTopology
-ENTRY_floodlightrouter := org.openkilda.wfm.topology.floodlightrouter.FloodlightRouterTopology
-
 TOPOLOGY_JAR := target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar
 TOPOLOGY_CONFIG := topology.properties
 
@@ -25,7 +12,6 @@ status_location := topology-state
 deploy_targets := $(addprefix deploy-,$(TOPOLOGY))
 kill_targets := $(addprefix kill-,$(TOPOLOGY))
 
-entry_point = $(ENTRY_$(patsubst deploy-%,%,$@))
 deploy_topology_name = $(patsubst deploy-%,%,$@)
 kill_topology_name = $(patsubst kill-%,%,$@)
 
