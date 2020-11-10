@@ -13,12 +13,12 @@
         "build": {
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
-            "outputPath": "../src/main/resources/ui",
+            "outputPath": "../src/main/webapp/ui",
             "baseHref" : "/openkilda/",
             "deployUrl": "ui/",
             "index": "src/index.html",
-            "main": "src/main.ts",
             "polyfills": "src/polyfills.ts",
+            "main": "src/main.ts",
             "tsConfig": "src/tsconfig.app.json",
             "deleteOutputPath": false,
             "assets": [

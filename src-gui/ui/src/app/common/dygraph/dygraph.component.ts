@@ -41,10 +41,6 @@ export class DygraphComponent implements OnInit, OnDestroy {
   graphDataOptions: any;
   dateMessage:string;
 
-  
-
-  
-
   constructor(
     private islDataService: IslDataService,
     private dygraphService: DygraphService,

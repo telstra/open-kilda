@@ -171,7 +171,6 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 			}
 			this.initMap();
 		  }
-
 		
 	}
 
@@ -605,8 +604,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 							no_links:no_of_links.toString()
 							});
 							this.ClusterLinks.push(feature);
-					}
-				
+					}				
 			    }
 			}
 				

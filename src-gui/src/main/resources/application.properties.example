@@ -1,11 +1,6 @@
 #Tomcat Configurations
 server.port=1010
 server.contextPath=/openkilda
-server.ssl.enabled = true
-
-server.ssl.key-alias = kilda
-server.ssl.key-store = classpath:keystore-kilda.jks
-server.ssl.key-store-password = openkilda
 
 #Derby database configuration (In Memory)
 spring.jpa.database=default
@@ -27,8 +22,7 @@ logging.config=classpath:logback.xml
 spring.mvc.throw-exception-if-no-handler-found=true
  
 #Northbound Base URL
-#nb.base.url=http://northbound.pendev:8080/api/v1
-nb.base.url=http://northbound.pendev:8080/api
+nb.base.url=http://northbound.pendev:8080/api/v1
 
 #OPEN TSDB Base URL
 opentsdb.base.url=http://opentsdb.pendev:4242
