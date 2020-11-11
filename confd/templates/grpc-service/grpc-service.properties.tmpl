@@ -11,6 +11,8 @@ service.version=@project.version@
 service.description=@project.description@
 
 kafka.hosts={{ getv "/kilda_kafka_hosts" }}
+kafka.groupid.prefix.env=KAFKA_GROUP_ID_PREFIX
+
 server.port={{ getv "/kilda_grpc_rest_port" }}
 
 grpc.speaker.kafka.listener.threads={{ getv "/kilda_grpc_speaker_kafka_listener_threads" }}

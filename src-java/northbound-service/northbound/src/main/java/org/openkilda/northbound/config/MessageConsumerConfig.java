@@ -15,6 +15,10 @@
 
 package org.openkilda.northbound.config;
 
+import static java.lang.String.format;
+import static org.openkilda.config.KafkaConsumerGroupConfig.KAFKA_CONSUMER_GROUP_MAPPING;
+
+import org.openkilda.config.mapping.Mapping;
 import org.openkilda.messaging.Message;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageListener;
@@ -35,6 +39,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * The Kafka message consumer configuration.
@@ -61,6 +66,12 @@ public class MessageConsumerConfig {
     private String groupId;
 
     /**
+     * Kafka group id prefix.
+     */
+    @Value("${kafka.groupid.prefix.env}")
+    private String groupIdPrefixEnv;
+
+    /**
      * Kafka group id.
      */
     @Value("${northbound.kafka.listener.threads}")
@@ -80,7 +91,7 @@ public class MessageConsumerConfig {
     private Map<String, Object> consumerConfigs() {
         return ImmutableMap.<String, Object>builder()
                 .put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHosts)
-                .put(ConsumerConfig.GROUP_ID_CONFIG, groupId)
+                .put(ConsumerConfig.GROUP_ID_CONFIG, buildGroupId())
                 .put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
                 .put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, kafkaSessionTimeout)
                 .build();
@@ -128,4 +139,12 @@ public class MessageConsumerConfig {
         return new KafkaMessagingChannel();
     }
 
+    @Mapping(target = KAFKA_CONSUMER_GROUP_MAPPING)
+    private String buildGroupId() {
+        String groupIdPrefix = Optional.ofNullable(groupIdPrefixEnv).map(System::getenv).orElse(null);
+        if (groupIdPrefix == null || groupIdPrefix.isEmpty()) {
+            return groupId;
+        }
+        return format("%s-%s", groupIdPrefix, groupId);
+    }
 }

@@ -9,6 +9,7 @@ security.rest.username.default=kilda
 security.rest.password.default=kilda
 
 kafka.hosts=kafka.pendev:9092
+kafka.groupid.prefix.env=KAFKA_GROUP_ID_PREFIX
 
 server.contextPath=/api
 
