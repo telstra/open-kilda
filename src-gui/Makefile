@@ -2,9 +2,9 @@ APP := openkilda-gui
 
 rebuild: clean clean-java build
 
-build:  clean-cache target/${APP}.jar
+build:  clean-cache build/libs/${APP}.war
 
-target/${APP}.jar: .deps/node .deps/resources
+build/libs/${APP}.war: .deps/node .deps/resources
 	./gradlew build
 
 .deps/node: .deps
