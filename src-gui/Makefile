@@ -2,10 +2,10 @@ APP := openkilda-gui
 
 rebuild: clean clean-java build
 
-build:  clean-cache build/libs/${APP}.war
+build:  clean-cache target/${APP}.war
 
-build/libs/${APP}.war: .deps/node .deps/resources
-	gradle build
+target/${APP}.war: .deps/node .deps/resources
+	./gradlew build
 
 .deps/node: .deps
 	docker run --rm -e LOCAL_UID=`id -u $(USER)` -e LOCAL_GID=`id -g $(USER)` -v $(CURDIR)/src:/app/src -v $(CURDIR)/ui:/app/ui node:10-alpine \
@@ -32,6 +32,6 @@ clean:
 	rm -f .deps/resources
 
 clean-java:
-	gradle clean
+	./gradlew clean
 
 .PHONY: rebuild clean clean-java
