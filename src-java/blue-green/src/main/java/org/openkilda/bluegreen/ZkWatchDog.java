@@ -33,18 +33,24 @@ import java.util.Set;
 public class ZkWatchDog extends ZkClient implements WatchDog, DataCallback {
 
     private static final String SIGNAL = "signal";
+    private static final String BUILD_VERSION = "build-version";
 
     private String signalPath;
     private Signal signal;
 
+    private String buildVersionPath;
+    private String buildVersion = "v3r$i0n";
+
     private Set<LifeCycleObserver> observers = new HashSet<>();
+    private Set<BuildVersionObserver> buildVersionObservers = new HashSet<>();
 
     @Builder
     public ZkWatchDog(String id, String serviceName, int apiVersion, String connectionString,
                       int sessionTimeout, Signal signal) throws IOException {
         super(id, serviceName, apiVersion, connectionString, sessionTimeout);
 
-        signalPath = getPaths(serviceName, id, SIGNAL);
+        this.buildVersionPath = getPaths(serviceName, id, BUILD_VERSION);
+        this.signalPath = getPaths(serviceName, id, SIGNAL);
         if (signal == null) {
             signal = Signal.NONE;
         }
@@ -55,15 +61,25 @@ public class ZkWatchDog extends ZkClient implements WatchDog, DataCallback {
     @Override
     void validateNodes() throws KeeperException, InterruptedException {
         super.validateNodes();
-        if (zookeeper.exists(getPaths(serviceName, id, SIGNAL), false) == null) {
-            zookeeper.create(getPaths(serviceName, id, SIGNAL), signal.toString().getBytes(), Ids.OPEN_ACL_UNSAFE,
-                    CreateMode.PERSISTENT);
+        if (zookeeper.exists(signalPath, false) == null) {
+            zookeeper.create(signalPath, signal.toString().getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        }
+        if (zookeeper.exists(buildVersionPath, false) == null) {
+            zookeeper.create(buildVersionPath, buildVersion.getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
         }
     }
 
 
+    private void checkData(String path) throws KeeperException, InterruptedException {
+        zookeeper.getData(path, this, this, null);
+    }
+
     private void checkSignal() throws KeeperException, InterruptedException {
-        zookeeper.getData(signalPath, this, this, null);
+        checkData(signalPath);
+    }
+
+    private void checkBuildVersion() throws KeeperException, InterruptedException {
+        checkData(buildVersionPath);
     }
 
     @Override
@@ -71,6 +87,7 @@ public class ZkWatchDog extends ZkClient implements WatchDog, DataCallback {
         try {
             validateNodes();
             checkSignal();
+            checkBuildVersion();
         } catch (KeeperException e) {
             log.error(e.getMessage());
         } catch (InterruptedException e) {
@@ -85,10 +102,18 @@ public class ZkWatchDog extends ZkClient implements WatchDog, DataCallback {
     }
 
     @Override
+    public void subscribe(BuildVersionObserver observer) {
+        buildVersionObservers.add(observer);
+    }
+
+    @Override
     public void unsubscribe(LifeCycleObserver observer) {
-        if (observers.contains(observer)) {
-            observers.remove(observer);
-        }
+        observers.remove(observer);
+    }
+
+    @Override
+    public void unsubscribe(BuildVersionObserver observer) {
+        buildVersionObservers.remove(observer);
     }
 
     @Override
@@ -96,8 +121,13 @@ public class ZkWatchDog extends ZkClient implements WatchDog, DataCallback {
         System.out.println(event);
         log.info("Received event: %s", event);
         try {
-            if (!refreshConnection(event.getState()) && signalPath.equals(event.getPath())) {
-                checkSignal();
+            if (!refreshConnection(event.getState())) {
+                if (signalPath.equals(event.getPath())) {
+                    checkSignal();
+                }
+                if (buildVersionPath.equals(event.getPath())) {
+                    checkBuildVersion();
+                }
             }
         } catch (IOException e) {
             log.error("Failed to read zk event: %s", e.getMessage());
@@ -123,6 +153,11 @@ public class ZkWatchDog extends ZkClient implements WatchDog, DataCallback {
                 log.error("Received unknown signal: %s", signalString);
             }
         }
+
+        if (buildVersionPath.equals(path) && data != null && data.length > 0) {
+            this.buildVersion = new String(data);
+            notifyBuildVersionObservers();
+        }
     }
 
     protected void notifyObservers() {
@@ -131,6 +166,11 @@ public class ZkWatchDog extends ZkClient implements WatchDog, DataCallback {
         }
     }
 
+    protected void notifyBuildVersionObservers() {
+        for (BuildVersionObserver observer : buildVersionObservers) {
+            observer.handle(buildVersion);
+        }
+    }
 }
 
 

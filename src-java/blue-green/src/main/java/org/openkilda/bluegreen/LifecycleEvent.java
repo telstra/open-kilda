@@ -25,6 +25,7 @@ import java.util.UUID;
 @Data
 @Builder(toBuilder = true)
 public class LifecycleEvent {
+    private String buildVersion;
     private Signal signal;
     private UUID uuid;
     private long messageId;
