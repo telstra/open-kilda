@@ -16,6 +16,7 @@
 package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.PathId;
 import org.openkilda.pce.exception.RecoverableException;
@@ -88,12 +89,17 @@ public class AvailableNetworkFactory {
             flowPaths.forEach(pathId ->
                     flowPathRepository.findById(pathId)
                             .ifPresent(flowPath -> {
-                                network.processDiversitySegments(flowPath.getSegments());
+                                network.processDiversitySegments(flowPath.getSegments(), flow);
                                 network.processDiversitySegmentsWithPop(flowPath.getSegments());
                             }));
         }
 
         return network;
+    }
+
+    private boolean isPrimaryPath(Flow flow, FlowPath flowPath) {
+        return flowPath.getPathId().equals(flow.getForwardPathId())
+                || flowPath.getPathId().equals(flow.getReversePathId());
     }
 
     private Collection<Isl> getAvailableIsls(BuildStrategy buildStrategy, Flow flow) {

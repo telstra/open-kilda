@@ -142,6 +142,8 @@ public class AvailableNetworkFactoryTest {
         flow.setSrcSwitch(switchA);
         flow.setDestSwitch(switchC);
         flow.setGroupId(GROUP_ID);
+        flow.setForwardPathId(new PathId("forward_path_id"));
+        flow.setReversePathId(new PathId("reverse_path_id"));
 
         when(config.getNetworkStrategy()).thenReturn(BuildStrategy.COST.name());
         when(islRepository.findActiveWithAvailableBandwidth(flow.getBandwidth(), flow.getEncapsulationType()))
@@ -149,8 +151,6 @@ public class AvailableNetworkFactoryTest {
 
         when(flowPathRepository.findPathIdsByFlowGroupId(GROUP_ID))
                 .thenReturn(Lists.newArrayList(FORWARD_PATH_ID, REVERSE_PATH_ID));
-
-
 
         AvailableNetwork availableNetwork = availableNetworkFactory.getAvailableNetwork(flow, Collections.emptyList());
         assertEquals(2, availableNetwork.getSwitch(switchB.getSwitchId()).getDiversityGroupUseCounter());
