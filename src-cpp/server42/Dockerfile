@@ -8,4 +8,8 @@ COPY ./CMakeLists.txt /root/
 
 RUN ./build.sh
 
-CMD ["bash"]
+WORKDIR /root/cmake-build-release/
+
+COPY ./docker_entrypoint.sh /root/cmake-build-release/
+
+CMD ["./docker_entrypoint.sh"]

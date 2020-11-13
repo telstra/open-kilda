@@ -23,6 +23,7 @@
 #include <pcapplusplus/EthLayer.h>
 
 #include <zmq.hpp>
+#include <queue>
 
 #include "statistics.pb.h"
 
@@ -32,6 +33,16 @@
 using namespace std::literals::chrono_literals;
 
 namespace org::openkilda {
+
+    uint64_t get_current_timestamp() {
+        auto now = std::chrono::time_point_cast<std::chrono::nanoseconds>(
+                std::chrono::high_resolution_clock::now());
+        auto duration = now.time_since_epoch();
+        uint64_t seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
+        uint64_t nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration - std::chrono::seconds(seconds)).count();
+        uint64_t timestamp = (seconds << 32ul) + (nanoseconds & 0xFFFFFFFF);
+        return timestamp;
+    }
 
     bool write_thread(boost::atomic<bool> &alive,
                       pcpp::DpdkDevice* device,
@@ -51,6 +62,8 @@ namespace org::openkilda {
                     pcpp::MBufRawPacket **start = m_pool.table.data();
                     pcpp::MBufRawPacket **end = start + m_pool.table.size();
 
+                    const uint64_t timestamp = htobe64(get_current_timestamp());
+
                     const auto chunk_size = long(Config::chunk_size);
                     uint_fast8_t error_count = 0;
                     for (pcpp::MBufRawPacket **pos = start; pos < end; pos += chunk_size) {
@@ -64,8 +77,13 @@ namespace org::openkilda {
                             mbuf_send_buffer[i].initFromRawPacket(*(pos+i), device);
                             mbuf_send_buffer_p[i] = &mbuf_send_buffer[i];
                             mbuf_send_buffer_p[i]->setFreeMbuf(true);
-                        }
 
+                            //TODO: can be switched to raw memory arithmetics
+                            pcpp::Packet parsed_packet(mbuf_send_buffer_p[i], false, pcpp::UDP);
+                            auto *udp_layer = parsed_packet.getLayerOfType<pcpp::UdpLayer>();
+                            auto *payload = reinterpret_cast<org::openkilda::Payload *>(udp_layer->getLayerPayload());
+                            payload->t0 = timestamp;
+                        }
 
                         while (send != std::min(chunk_size, end - pos)) {
                             send = device->sendPackets(mbuf_send_buffer_p, std::min(chunk_size, end - pos), 0, false);
@@ -123,10 +141,13 @@ namespace org::openkilda {
                 continue;
             }
 
+            uint64_t timestamp = get_current_timestamp();
+
             BOOST_LOG_TRIVIAL(debug) << "read_thread recived packets " << table_size;
 
             for (uint32_t i = 0; i < table_size; ++i) {
                 mbuf_table[i] = mbuf_raw_ptr_table[i]->getMBuf();
+                mbuf_table[i]->timestamp = timestamp;
             }
 
             uint32_t enqueued = rte_ring_sp_enqueue_bulk(ring.get(), reinterpret_cast<void *const *>(mbuf_table), table_size,
@@ -217,7 +238,12 @@ namespace org::openkilda {
 
                             packet->set_flow_id(payload->flow_id);
                             packet->set_t0(be64toh(payload->t0));
-                            packet->set_t1(be64toh(payload->t1));
+
+                            if (payload->t1) {
+                                packet->set_t1(be64toh(payload->t1));
+                            } else {
+                                packet->set_t1(mbuf_table[i]->timestamp);
+                            }
                             packet->set_packet_id(packet_id);
                             packet->set_direction(payload->direction);
                             BOOST_LOG_TRIVIAL(debug) << packet->DebugString();
@@ -278,12 +304,21 @@ namespace org::openkilda {
 
         std::map<std::string, uint64_t> fake_duration;
         std::random_device rd{};
-        std::uniform_int_distribution<int> base_latency(10000, 20000);
-        std::uniform_int_distribution<int> random_latency(0, 1000);
+        std::uniform_int_distribution<int> base_latency(0, 900); // in ms
 
+        typedef std::tuple<uint64_t, std::shared_ptr<pcpp::MBufRawPacket>> mbuf_container_t;
+
+        // Using lambda to compare elements.
+        auto cmp = [](mbuf_container_t& left, mbuf_container_t& right) { return std::get<0>(left) > std::get<0>(right); };
+        std::priority_queue<mbuf_container_t, std::vector<mbuf_container_t>, decltype(cmp) > queue(cmp);
+
+        const uint64_t cycles_in_one_second = rte_get_hpet_hz();
+        const uint64_t cycles_in_1_ms = cycles_in_one_second / 1000;
 
         while (alive.load()) {
             uint16_t num_of_packets = device->receivePackets(rx_mbuf, Config::chunk_size, 0);
+
+            uint64_t start_tsc = rte_get_hpet_cycles();
 
             for (uint16_t i = 0; i < num_of_packets; ++i) {
 
@@ -298,29 +333,44 @@ namespace org::openkilda {
 
                 auto *payload = reinterpret_cast<org::openkilda::Payload *>(udp_layer->getLayerPayload());
 
-                auto now = std::chrono::time_point_cast<std::chrono::nanoseconds>(
-                        std::chrono::high_resolution_clock::now());
-
-                auto duration = now.time_since_epoch();
-                uint64_t seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
-                uint64_t nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
-
                 std::string flow_id(payload->flow_id);
 
                 if (!fake_duration.count(flow_id)) {
-                    fake_duration[flow_id] = base_latency(rd);
+                    fake_duration[flow_id] = base_latency(rd) * cycles_in_1_ms;
                 }
 
-                uint64_t timestamp = (seconds << 32ul) + (nanoseconds & 0xFFFFFFFF);
+                std::shared_ptr<pcpp::MBufRawPacket> mbuf_raw_ptr(new pcpp::MBufRawPacket());
 
-                payload->t0 = htobe64(timestamp);
-                payload->t1 = htobe64(timestamp +
-                                      fake_duration[flow_id] +
-                                      random_latency(rd));
+                mbuf_raw_ptr->initFromRawPacket(rx_mbuf[i], device);
+
+                uint64_t latency_time = fake_duration[flow_id];
+                const uint64_t delta_based_direction = 3 * cycles_in_1_ms;
+                if (payload->direction) {
+                    latency_time += delta_based_direction;
+                } else {
+                    latency_time -= delta_based_direction;
+                }
+
+                queue.push(std::make_tuple(start_tsc + latency_time, mbuf_raw_ptr));
             }
 
-            if (num_of_packets > 0) {
-                device->sendPackets(rx_mbuf, num_of_packets, 0, false);
+            std::vector<pcpp::MBufRawPacket *> send_buf;
+            std::vector<std::shared_ptr<pcpp::MBufRawPacket>> holder;
+
+            while (queue.size()) {
+                uint64_t ts = std::get<0>(queue.top());
+                if (start_tsc > ts) {
+                    auto ptr = std::get<1>(queue.top());
+                    send_buf.push_back(ptr.get());
+                    holder.push_back(ptr);
+                    queue.pop();
+                } else {
+                    break;
+                }
+            }
+
+            if (send_buf.size() > 0) {
+                device->sendPackets(send_buf.data(), send_buf.size(), 0, false);
             }
         }
 
