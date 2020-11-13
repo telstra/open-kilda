@@ -314,9 +314,18 @@ int main(int argc, char *argv[]) {
             BOOST_LOG_TRIVIAL(info) << "Exception on main loop " << exception.what() << "\n";
         }
 
-        // Write stats to file once per second
+        // Once per second actions
         if (rte_get_timer_cycles() - last_stats_dump_tsc >= cycles_in_one_second) {
+            // Write stats to file
             save_stats_to_file(config, shared_context);
+
+            // Check interface
+            pcpp::DpdkDevice::LinkStatus link_status {};
+            device->getLinkStatus(link_status);
+            if (!link_status.linkUp) {
+                BOOST_LOG_TRIVIAL(warning) << "Link DOWN";
+            }
+
             last_stats_dump_tsc = rte_get_timer_cycles();
         }
     }
