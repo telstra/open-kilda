@@ -73,6 +73,7 @@ public class RequestedFlowMapperTest {
             .allocateProtectedPath(true)
             .ignoreBandwidth(true)
             .periodicPings(true)
+            .loopSwitchId(sourceEndpoint.getSwitchId())
             .build();
 
     private Flow flow = Flow.builder()
@@ -213,6 +214,9 @@ public class RequestedFlowMapperTest {
 
         assertEquals(PATH_COMPUTATION_STRATEGY, result.getPathComputationStrategy());
         assertNull(result.getTargetPathComputationStrategy());
+
+        assertTrue(result.isLooped());
+        assertEquals(flow.getSrcSwitchId(), result.getSrcSwitchId());
     }
 
     @Test

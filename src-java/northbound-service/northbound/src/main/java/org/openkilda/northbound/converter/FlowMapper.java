@@ -20,6 +20,7 @@ import org.openkilda.messaging.command.flow.FlowRequest.Type;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
+import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.UniFlowPingResponse;
 import org.openkilda.messaging.model.DetectConnectedDevicesDto;
 import org.openkilda.messaging.model.FlowDto;
@@ -27,6 +28,7 @@ import org.openkilda.messaging.model.FlowPatch;
 import org.openkilda.messaging.model.PatchEndpoint;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.SwapFlowDto;
+import org.openkilda.messaging.nbtopology.response.FlowLoopDto;
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
@@ -48,6 +50,7 @@ import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput;
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPathV2;
@@ -160,6 +163,7 @@ public abstract class FlowMapper {
             expression = "java(request.getMaxLatency() != null ? request.getMaxLatency() * 1000000L : null)")
     @Mapping(target = "maxLatencyTier2",
             expression = "java(request.getMaxLatencyTier2() != null ? request.getMaxLatencyTier2() * 1000000L : null)")
+    @Mapping(target = "loopSwitchId", ignore = true)
     public abstract FlowRequest toFlowRequest(FlowRequestV2 request);
 
     @Mapping(target = "flowId", source = "id")
@@ -173,6 +177,7 @@ public abstract class FlowMapper {
     @Mapping(target = "maxLatency",
             expression = "java(payload.getMaxLatency() != null ? payload.getMaxLatency() * 1000000L : null)")
     @Mapping(target = "maxLatencyTier2", ignore = true)
+    @Mapping(target = "loopSwitchId", ignore = true)
     public abstract FlowRequest toFlowRequest(FlowPayload payload);
 
     @Mapping(target = "outerVlanId", source = "vlanId")
@@ -221,7 +226,7 @@ public abstract class FlowMapper {
      * @return {@link FlowRequest} instance.
      */
     public FlowRequest toFlowUpdateRequest(FlowUpdatePayload source) {
-        FlowRequest target =  toFlowRequest(source).toBuilder()
+        FlowRequest target = toFlowRequest(source).toBuilder()
                 .diverseFlowId(source.getDiverseFlowId())
                 .type(Type.UPDATE)
                 .build();
@@ -300,6 +305,7 @@ public abstract class FlowMapper {
             expression = "java(f.getMaxLatency() != null ? f.getMaxLatency() / 1000000L : null)")
     @Mapping(target = "maxLatencyTier2",
             expression = "java(f.getMaxLatencyTier2() != null ? f.getMaxLatencyTier2() / 1000000L : null)")
+    @Mapping(target = "loopSwitchId", source = "f.loopSwitchId")
     protected abstract FlowResponseV2 generatedMap(FlowDto f, FlowEndpointV2 source, FlowEndpointV2 destination);
 
     @Mapping(target = "id", source = "flowId")
@@ -492,4 +498,11 @@ public abstract class FlowMapper {
 
         return message;
     }
+
+    @Mapping(target = "switchId", expression = "java(new org.openkilda.model.SwitchId(payload.getSwitchId()))")
+    public abstract FlowLoopResponse toFlowLoopResponse(FlowLoopDto payload);
+
+    @Mapping(target = "flowId", source = "payload.flowId")
+    @Mapping(target = "switchId", source = "payload.loopSwitchId")
+    public abstract FlowLoopResponse toFlowLoopResponse(FlowResponse response);
 }

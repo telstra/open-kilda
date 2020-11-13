@@ -34,6 +34,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.EndpointUpdate;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.FlowLoopOperation;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
@@ -78,6 +79,9 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
             stateMachine.setEndpointUpdate(endpointUpdate);
 
             if (endpointUpdate.isPartialUpdate()) {
+                FlowLoopOperation flowLoopOperation = detectFlowLoopOperation(originalFlow, targetFlow);
+                stateMachine.setFlowLoopOperation(flowLoopOperation);
+
                 stateMachine.setNewPrimaryForwardPath(flow.getForwardPathId());
                 stateMachine.setNewPrimaryReversePath(flow.getReversePathId());
                 stateMachine.setNewProtectedForwardPath(flow.getProtectedForwardPathId());
@@ -170,6 +174,7 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
                 targetFlow.setPathComputationStrategy(flow.getPathComputationStrategy());
             }
         }
+        flow.setLoopSwitchId(targetFlow.getLoopSwitchId());
         return targetFlow;
     }
 
@@ -207,6 +212,13 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         dstEndpointChanged |= originalFlow.getDestVlan() != targetFlow.getDestVlan();
         dstEndpointChanged |= originalFlow.getDestInnerVlan() != targetFlow.getDestInnerVlan();
 
+        if (originalFlow.getLoopSwitchId() != targetFlow.getLoopSwitchId()) {
+            srcEndpointChanged |= originalFlow.getSrcSwitch().equals(originalFlow.getLoopSwitchId());
+            srcEndpointChanged |= originalFlow.getSrcSwitch().equals(targetFlow.getLoopSwitchId());
+            dstEndpointChanged |= originalFlow.getDestSwitch().equals(originalFlow.getLoopSwitchId());
+            dstEndpointChanged |= originalFlow.getDestSwitch().equals(targetFlow.getLoopSwitchId());
+        }
+
         if (updateEndpointOnly) {
             if (srcEndpointChanged && dstEndpointChanged) {
                 return EndpointUpdate.BOTH;
@@ -221,7 +233,17 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         return EndpointUpdate.NONE;
     }
 
-    @Override
+    private FlowLoopOperation detectFlowLoopOperation(RequestedFlow originalFlow, RequestedFlow targetFlow) {
+        if (originalFlow.getLoopSwitchId() == targetFlow.getLoopSwitchId()) {
+            return FlowLoopOperation.NONE;
+        }
+        if (originalFlow.getLoopSwitchId() != null) {
+            return FlowLoopOperation.DELETE;
+        } else {
+            return FlowLoopOperation.CREATE;
+        }
+    }
+
     protected String getGenericErrorMessage() {
         return "Could not update flow";
     }

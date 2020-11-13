@@ -27,6 +27,8 @@ import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PA
 
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.CreateFlowLoopRequest;
+import org.openkilda.messaging.command.flow.DeleteFlowLoopRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
@@ -98,6 +100,14 @@ public class RouterBolt extends AbstractBolt {
         } else if (data instanceof SwapFlowEndpointRequest) {
             log.debug("Received a swap flow endpoints request with key {}. MessageId {}", key, input.getMessageId());
             emitWithContext(ROUTER_TO_FLOW_SWAP_ENDPOINTS_HUB.name(), input, new Values(key, data));
+        } else if (data instanceof CreateFlowLoopRequest) {
+            log.debug("Received a create flow loop request with key {}. MessageId {}", key, input.getMessageId());
+            CreateFlowLoopRequest request = (CreateFlowLoopRequest) data;
+            emitWithContext(ROUTER_TO_FLOW_UPDATE_HUB.name(), input, new Values(key, request.getFlowId(), data));
+        } else if (data instanceof DeleteFlowLoopRequest) {
+            log.debug("Received a delete flow loop request with key {}. MessageId {}", key, input.getMessageId());
+            DeleteFlowLoopRequest request = (DeleteFlowLoopRequest) data;
+            emitWithContext(ROUTER_TO_FLOW_UPDATE_HUB.name(), input, new Values(key, request.getFlowId(), data));
         } else {
             unhandledInput(input);
         }

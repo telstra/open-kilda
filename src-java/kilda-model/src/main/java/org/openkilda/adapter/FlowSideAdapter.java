@@ -80,4 +80,6 @@ public abstract class FlowSideAdapter {
     public abstract boolean isDetectConnectedDevicesArp();
 
     public abstract boolean isPrimaryEgressPath(@NonNull PathId pathId);
+
+    public abstract boolean isLooped();
 }

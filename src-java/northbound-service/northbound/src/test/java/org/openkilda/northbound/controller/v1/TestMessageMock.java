@@ -47,6 +47,7 @@ import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.SwitchId;
@@ -86,6 +87,14 @@ public class TestMessageMock implements MessagingChannel {
     static final FlowEndpointV2 secondFlowPayloadEndpoint = new FlowEndpointV2(SECOND_SWITCH_ID, 2, 2,
             new DetectConnectedDevicesV2(false, false));
     public static final FlowPayload flow = FlowPayload.builder()
+            .id(FLOW_ID)
+            .source(flowEndpoint)
+            .destination(flowEndpoint)
+            .maximumBandwidth(10000)
+            .description(FLOW_ID)
+            .status(FlowState.UP.getState())
+            .build();
+    public static final FlowResponsePayload flowResponsePayload = FlowResponsePayload.flowResponsePayloadBuilder()
             .id(FLOW_ID)
             .source(flowEndpoint)
             .destination(flowEndpoint)

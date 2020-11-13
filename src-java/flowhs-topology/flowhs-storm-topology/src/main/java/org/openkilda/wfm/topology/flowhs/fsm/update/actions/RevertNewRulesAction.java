@@ -15,7 +15,11 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
+import static org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.FlowLoopOperation.NONE;
+
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
+import org.openkilda.floodlight.api.request.factory.IngressFlowLoopSegmentRequestFactory;
+import org.openkilda.floodlight.api.request.factory.TransitFlowLoopSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -38,6 +42,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
@@ -83,16 +88,46 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
                 Flow oldFlow = RequestedFlowMapper.INSTANCE.toFlow(stateMachine.getOriginalFlow());
                 switch (stateMachine.getEndpointUpdate()) {
                     case SOURCE:
-                        revertCommands.addAll(commandBuilder.buildIngressOnlyOneDirection(commandContext,
-                                flow, newForward, newReverse, speakerRequestBuildContext.getForward()));
-                        revertCommands.addAll(commandBuilder.buildEgressOnlyOneDirection(commandContext,
-                                oldFlow, newReverse, newForward));
+                        switch (stateMachine.getFlowLoopOperation()) {
+                            case NONE:
+                                revertCommands.addAll(commandBuilder.buildIngressOnlyOneDirection(commandContext,
+                                        flow, newForward, newReverse, speakerRequestBuildContext.getForward()));
+                                revertCommands.addAll(commandBuilder.buildEgressOnlyOneDirection(commandContext,
+                                        oldFlow, newReverse, newForward));
+                                break;
+                            case CREATE:
+                                revertCommands.addAll(commandBuilder.buildAll(commandContext, flow,
+                                        newForward, newReverse, speakerRequestBuildContext).stream()
+                                        .filter(f -> f instanceof IngressFlowLoopSegmentRequestFactory
+                                                || f instanceof TransitFlowLoopSegmentRequestFactory)
+                                        .collect(Collectors.toList()));
+                                break;
+                            case DELETE:
+                            default:
+                                // No need to revert rules
+                                break;
+                        }
                         break;
                     case DESTINATION:
-                        revertCommands.addAll(commandBuilder.buildIngressOnlyOneDirection(commandContext,
-                                flow, newReverse, newForward, speakerRequestBuildContext.getReverse()));
-                        revertCommands.addAll(commandBuilder.buildEgressOnlyOneDirection(commandContext,
-                                oldFlow, newForward, newReverse));
+                        switch (stateMachine.getFlowLoopOperation()) {
+                            case NONE:
+                                revertCommands.addAll(commandBuilder.buildIngressOnlyOneDirection(commandContext,
+                                        flow, newReverse, newForward, speakerRequestBuildContext.getReverse()));
+                                revertCommands.addAll(commandBuilder.buildEgressOnlyOneDirection(commandContext,
+                                        oldFlow, newForward, newReverse));
+                                break;
+                            case CREATE:
+                                revertCommands.addAll(commandBuilder.buildAll(commandContext, flow,
+                                        newForward, newReverse, speakerRequestBuildContext).stream()
+                                        .filter(f -> f instanceof IngressFlowLoopSegmentRequestFactory
+                                                || f instanceof TransitFlowLoopSegmentRequestFactory)
+                                        .collect(Collectors.toList()));
+                                break;
+                            case DELETE:
+                            default:
+                                // No need to revert rules
+                                break;
+                        }
                         break;
                     default:
                         revertCommands.addAll(commandBuilder.buildIngressOnly(commandContext, flow, newForward,
@@ -116,12 +151,16 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
             if (stateMachine.getEndpointUpdate().isPartialUpdate()) {
                 switch (stateMachine.getEndpointUpdate()) {
                     case SOURCE:
-                        revertCommands.addAll(commandBuilder.buildEgressOnlyOneDirection(commandContext,
-                                oldFlow, newReverse, newForward));
+                        if (stateMachine.getFlowLoopOperation() == NONE) {
+                            revertCommands.addAll(commandBuilder.buildEgressOnlyOneDirection(commandContext,
+                                    oldFlow, newReverse, newForward));
+                        }
                         break;
                     case DESTINATION:
-                        revertCommands.addAll(commandBuilder.buildEgressOnlyOneDirection(commandContext,
-                                oldFlow, newForward, newReverse));
+                        if (stateMachine.getFlowLoopOperation() == NONE) {
+                            revertCommands.addAll(commandBuilder.buildEgressOnlyOneDirection(commandContext,
+                                    oldFlow, newForward, newReverse));
+                        }
                         break;
                     default:
                         revertCommands.addAll(commandBuilder.buildEgressOnly(commandContext, oldFlow, newForward,

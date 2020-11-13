@@ -52,6 +52,8 @@ public class RequestedFlow {
     private PathComputationStrategy pathComputationStrategy;
     private DetectConnectedDevices detectConnectedDevices;
 
+    private SwitchId loopSwitchId;
+
     private boolean srcWithMultiTable;
     private boolean destWithMultiTable;
 }

@@ -19,6 +19,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.model.DetectConnectedDevicesDto;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
@@ -59,6 +60,7 @@ public class FlowRequest extends CommandData {
     String diverseFlowId;
     FlowEncapsulationType encapsulationType;
     String pathComputationStrategy;
+    SwitchId loopSwitchId;
     Type type;
 
     @NonNull

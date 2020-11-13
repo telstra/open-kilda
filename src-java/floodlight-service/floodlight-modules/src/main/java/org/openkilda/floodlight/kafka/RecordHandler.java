@@ -57,8 +57,10 @@ import org.openkilda.floodlight.command.flow.FlowSegmentResponseFactory;
 import org.openkilda.floodlight.command.flow.FlowSegmentSyncResponseFactory;
 import org.openkilda.floodlight.command.flow.FlowSegmentWrapperCommand;
 import org.openkilda.floodlight.command.flow.egress.EgressFlowSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressFlowLoopSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowInstallCommand;
+import org.openkilda.floodlight.command.flow.transit.TransitFlowLoopSegmentInstallCommand;
 import org.openkilda.floodlight.converter.OfFlowStatsMapper;
 import org.openkilda.floodlight.converter.OfMeterConverter;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
@@ -95,11 +97,13 @@ import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
+import org.openkilda.messaging.command.flow.InstallIngressLoopFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallServer42Flow;
 import org.openkilda.messaging.command.flow.InstallServer42IngressFlow;
 import org.openkilda.messaging.command.flow.InstallSharedFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
+import org.openkilda.messaging.command.flow.InstallTransitLoopFlow;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
@@ -1648,6 +1652,10 @@ class RecordHandler implements Runnable {
             command = makeFlowSegmentWrappedCommand((InstallIngressFlow) request, messageContext, responseFactory);
         } else if (request instanceof InstallOneSwitchFlow) {
             command = makeFlowSegmentWrappedCommand((InstallOneSwitchFlow) request, messageContext, responseFactory);
+        } else if (request instanceof InstallIngressLoopFlow) {
+            command = makeIngressLoopWrappedCommand((InstallIngressLoopFlow) request, messageContext, responseFactory);
+        } else if (request instanceof InstallTransitLoopFlow) {
+            command = makeTransitLoopWrappedCommand((InstallTransitLoopFlow) request, messageContext, responseFactory);
         } else if (request instanceof InstallEgressFlow) {
             command = makeFlowSegmentWrappedCommand((InstallEgressFlow) request, messageContext, responseFactory);
         } else {
@@ -1694,6 +1702,24 @@ class RecordHandler implements Runnable {
         EgressFlowSegmentInstallCommand command = new EgressFlowSegmentInstallCommand(
                 messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, request.getIngressEndpoint(),
                 request.getInputPort(), makeTransitEncapsulation(request));
+
+        return new FlowSegmentWrapperCommand(command, responseFactory);
+    }
+
+    private FlowSegmentWrapperCommand makeTransitLoopWrappedCommand(
+            InstallTransitLoopFlow request, MessageContext messageContext, FlowSegmentResponseFactory responseFactory) {
+        TransitFlowLoopSegmentInstallCommand command = new TransitFlowLoopSegmentInstallCommand(
+                messageContext, request.getSwitchId(), EMPTY_COMMAND_ID, makeSegmentMetadata(request),
+                request.getInputPort(), makeTransitEncapsulation(request), request.getOutputPort());
+
+        return new FlowSegmentWrapperCommand(command, responseFactory);
+    }
+
+    private FlowSegmentWrapperCommand makeIngressLoopWrappedCommand(
+            InstallIngressLoopFlow request, MessageContext messageContext, FlowSegmentResponseFactory responseFactory) {
+        IngressFlowLoopSegmentInstallCommand command = new IngressFlowLoopSegmentInstallCommand(
+                messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), request.getIngressEndpoint(), null,
+                request.getSwitchId(), request.getOutputPort(), makeTransitEncapsulation(request), null);
 
         return new FlowSegmentWrapperCommand(command, responseFactory);
     }

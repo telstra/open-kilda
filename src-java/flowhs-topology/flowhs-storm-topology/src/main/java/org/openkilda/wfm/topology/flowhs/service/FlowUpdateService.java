@@ -17,9 +17,17 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.flow.CreateFlowLoopRequest;
+import org.openkilda.messaging.command.flow.DeleteFlowLoopRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.model.Flow;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
@@ -38,6 +46,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 public class FlowUpdateService {
@@ -49,6 +58,7 @@ public class FlowUpdateService {
             = new FsmExecutor<>(Event.NEXT);
 
     private final FlowUpdateHubCarrier carrier;
+    private final FlowRepository flowRepository;
     private final FlowEventRepository flowEventRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
 
@@ -58,6 +68,7 @@ public class FlowUpdateService {
                              int speakerCommandRetriesLimit) {
         this.carrier = carrier;
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        flowRepository = repositoryFactory.createFlowRepository();
         flowEventRepository = repositoryFactory.createFlowEventRepository();
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
         fsmFactory = new FlowUpdateFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
@@ -68,39 +79,14 @@ public class FlowUpdateService {
     /**
      * Handles request for flow update.
      *
-     * @param key     command identifier.
+     * @param key command identifier.
      * @param request request data.
      */
-    public void handleRequest(String key, CommandContext commandContext, FlowRequest request) {
-        log.debug("Handling flow update request with key {} and flow ID: {}", key, request.getFlowId());
 
-        if (fsms.containsKey(key)) {
-            log.error("Attempt to create a FSM with key {}, while there's another active FSM with the same key.", key);
-            return;
-        }
-
-        String eventKey = commandContext.getCorrelationId();
-        if (flowEventRepository.existsByTaskId(eventKey)) {
-            log.error("Attempt to reuse key {}, but there's a history record(s) for it.", eventKey);
-            return;
-        }
-
-        FlowUpdateFsm fsm = fsmFactory.newInstance(commandContext, request.getFlowId());
-        fsms.put(key, fsm);
-
-        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
-        if (requestedFlow.getFlowEncapsulationType() == null) {
-            requestedFlow.setFlowEncapsulationType(
-                    kildaConfigurationRepository.getOrDefault().getFlowEncapsulationType());
-        }
-        FlowUpdateContext context = FlowUpdateContext.builder()
-                .targetFlow(requestedFlow)
-                .bulkUpdateFlowIds(request.getBulkUpdateFlowIds())
-                .doNotRevert(request.isDoNotRevert())
-                .build();
-        fsmExecutor.fire(fsm, Event.NEXT, context);
-
-        removeIfFinished(fsm, key);
+    public void handleUpdateRequest(String key, CommandContext commandContext, FlowRequest request) {
+        Optional<Flow> flow = flowRepository.findById(request.getFlowId());
+        request.setLoopSwitchId(flow.map(Flow::getLoopSwitchId).orElse(null));
+        handleRequest(key, commandContext, request);
     }
 
     /**
@@ -145,6 +131,78 @@ public class FlowUpdateService {
         fsmExecutor.fire(fsm, Event.TIMEOUT, null);
 
         removeIfFinished(fsm, key);
+    }
+
+    /**
+     * Handles create flow loop request.
+     *
+     * @param request request to handle.
+     */
+    public void handleCreateFlowLoopRequest(String key, CommandContext commandContext,
+                                            CreateFlowLoopRequest request) {
+        Optional<Flow> flow = flowRepository.findById(request.getFlowId());
+        if (flow.isPresent()) {
+            FlowRequest flowRequest = RequestedFlowMapper.INSTANCE.toFlowRequest(flow.get());
+            flowRequest.setLoopSwitchId(request.getSwitchId());
+            handleRequest(key, commandContext, flowRequest);
+        } else {
+            carrier.sendNorthboundResponse(buildFlowNotFoundErrorMessage(request.getFlowId(), commandContext));
+        }
+    }
+
+    /**
+     * Handles delete flow loop request.
+     *
+     * @param request request to handle.
+     */
+    public void handleDeleteFlowLoopRequest(String key, CommandContext commandContext,
+                                            DeleteFlowLoopRequest request) {
+        Optional<Flow> flow = flowRepository.findById(request.getFlowId());
+        if (flow.isPresent()) {
+            FlowRequest flowRequest = RequestedFlowMapper.INSTANCE.toFlowRequest(flow.get());
+            flowRequest.setLoopSwitchId(null);
+            handleRequest(key, commandContext, flowRequest);
+        } else {
+            carrier.sendNorthboundResponse(buildFlowNotFoundErrorMessage(request.getFlowId(), commandContext));
+        }
+    }
+
+    private void handleRequest(String key, CommandContext commandContext, FlowRequest request) {
+        log.debug("Handling flow update request with key {} and flow ID: {}", key, request.getFlowId());
+
+        if (fsms.containsKey(key)) {
+            log.error("Attempt to create a FSM with key {}, while there's another active FSM with the same key.", key);
+            return;
+        }
+
+        String eventKey = commandContext.getCorrelationId();
+        if (flowEventRepository.existsByTaskId(eventKey)) {
+            log.error("Attempt to reuse key {}, but there's a history record(s) for it.", eventKey);
+            return;
+        }
+
+        FlowUpdateFsm fsm = fsmFactory.newInstance(commandContext, request.getFlowId());
+        fsms.put(key, fsm);
+
+        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
+        if (requestedFlow.getFlowEncapsulationType() == null) {
+            requestedFlow.setFlowEncapsulationType(kildaConfigurationRepository.getOrDefault()
+                    .getFlowEncapsulationType());
+        }
+        FlowUpdateContext context = FlowUpdateContext.builder()
+                .targetFlow(requestedFlow)
+                .bulkUpdateFlowIds(request.getBulkUpdateFlowIds())
+                .doNotRevert(request.isDoNotRevert())
+                .build();
+        fsmExecutor.fire(fsm, Event.NEXT, context);
+
+        removeIfFinished(fsm, key);
+    }
+
+    private Message buildFlowNotFoundErrorMessage(String flowId, CommandContext commandContext) {
+        String description = String.format("Flow '%s' not found.", flowId);
+        ErrorData error = new ErrorData(ErrorType.NOT_FOUND, "Flow not found", description);
+        return new ErrorMessage(error, commandContext.getCreateTime(), commandContext.getCorrelationId());
     }
 
     private void removeIfFinished(FlowUpdateFsm fsm, String key) {

@@ -16,6 +16,7 @@
 package org.openkilda.messaging.payload.flow;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -48,6 +49,9 @@ public class FlowResponsePayload extends FlowPayload {
     @JsonProperty("target-path-computation-strategy")
     private String targetPathComputationStrategy;
 
+    @JsonProperty("loop-switch-id")
+    private SwitchId loopSwitchId;
+
     /**
      * Instance constructor.
      *
@@ -71,6 +75,7 @@ public class FlowResponsePayload extends FlowPayload {
      * @param encapsulationType         flow encapsulation type
      * @param pathComputationStrategy   path computation strategy
      * @param targetPathComputationStrategy     target path computation strategy
+     * @param loopSwitchId              looped switch id
      */
     @Builder(builderMethodName = "flowResponsePayloadBuilder")
     @JsonCreator
@@ -93,7 +98,8 @@ public class FlowResponsePayload extends FlowPayload {
                                @JsonProperty("pinned") Boolean pinned,
                                @JsonProperty("encapsulation-type") String encapsulationType,
                                @JsonProperty("path-computation-strategy") String pathComputationStrategy,
-                               @JsonProperty("target-path-computation-strategy") String targetPathComputationStrategy) {
+                               @JsonProperty("target-path-computation-strategy") String targetPathComputationStrategy,
+                               @JsonProperty("loop-switch-id") SwitchId loopSwitchId) {
         super(id, source, destination, maximumBandwidth, ignoreBandwidth, periodicPings, allocateProtectedPath,
                 description, created, lastUpdated, status, maxLatency, priority, pinned, encapsulationType,
                 pathComputationStrategy);
@@ -101,5 +107,6 @@ public class FlowResponsePayload extends FlowPayload {
         this.flowStatusDetails = flowStatusDetails;
         this.statusInfo = statusInfo;
         this.targetPathComputationStrategy = targetPathComputationStrategy;
+        this.loopSwitchId = loopSwitchId;
     }
 }

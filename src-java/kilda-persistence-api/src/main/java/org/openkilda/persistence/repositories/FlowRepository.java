@@ -96,4 +96,8 @@ public interface FlowRepository extends Repository<Flow> {
     long computeFlowsBandwidthSum(Set<String> flowIds);
 
     Optional<Flow> remove(String flowId);
+
+    Collection<Flow> findLoopedByFlowIdAndLoopSwitchId(String flowId, SwitchId switchId);
+
+    Collection<Flow> findLoopedByLoopSwitchId(SwitchId switchId);
 }
