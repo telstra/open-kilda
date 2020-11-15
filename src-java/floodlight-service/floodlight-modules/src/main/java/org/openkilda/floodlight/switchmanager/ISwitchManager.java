@@ -424,15 +424,18 @@ public interface ISwitchManager extends IFloodlightService {
      * Build all expected Server 42 rules.
      *
      * @param dpid switch id
-     * @param server42Port server 42 port
-     * @param server42Vlan vlan of packer received from server 42
-     * @param server42MacAddress mac address of server 42
+     * @param server42FlowRttFeatureToggle server 42 feature toggle
+     * @param server42FlowRttSwitchProperty server 42 switch property
+     * @param server42Port server 42 port. Could be null if server42FlowRttSwitchProperty is false
+     * @param server42Vlan vlan of packer received from server 42.
+     *                     Could be null if server42FlowRttSwitchProperty is false
+     * @param server42MacAddress mac address of server 42. Could be null if server42FlowRttSwitchProperty is false
      * @param customerPorts switch ports with enabled server 42 ping
      * @return modification command
      */
     List<OFFlowMod> buildExpectedServer42Flows(
-            DatapathId dpid, int server42Port, int server42Vlan, MacAddress server42MacAddress,
-            Set<Integer> customerPorts)
+            DatapathId dpid, boolean server42FlowRttFeatureToggle, boolean server42FlowRttSwitchProperty,
+            Integer server42Port, Integer server42Vlan, MacAddress server42MacAddress, Set<Integer> customerPorts)
             throws SwitchNotFoundException;
 
     /**
