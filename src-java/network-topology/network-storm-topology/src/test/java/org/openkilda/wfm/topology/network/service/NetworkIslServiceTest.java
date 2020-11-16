@@ -768,6 +768,83 @@ public class NetworkIslServiceTest {
         verifyNoMoreInteractions(dashboardLogger);
     }
 
+    @Test
+    public void pollDiscoveryResetsPortDownStatus() {
+        IslReference reference = preparePortDownStatusReset();
+
+        verifyZeroInteractions(dashboardLogger); // only destination endpoint status is cleaned
+
+        service.islUp(reference.getSource(), reference, new IslDataHolder(100, 100, 100));
+        verifyZeroInteractions(dashboardLogger); // only destination endpoint status is cleaned
+
+        service.islUp(reference.getDest(), reference, new IslDataHolder(100, 100, 100));
+        verify(dashboardLogger).onIslUp(eq(reference));
+        verifyNoMoreInteractions(dashboardLogger);
+    }
+
+    @Test
+    public void roundTripDiscoveryOnSourceResetPortDownStatus() {
+        IslReference reference = preparePortDownStatusReset();
+
+        clock.adjust(Duration.ofSeconds(1));
+        service.roundTripStatusNotification(
+                reference, new RoundTripStatus(reference.getSource(), clock.instant(), clock.instant()));
+        verifyNoMoreInteractions(dashboardLogger);
+
+        clock.adjust(Duration.ofSeconds(1));
+        service.roundTripStatusNotification(
+                reference, new RoundTripStatus(reference.getSource(), clock.instant(), clock.instant()));
+        verify(dashboardLogger).onIslUp(eq(reference));
+        verifyNoMoreInteractions(dashboardLogger);
+    }
+
+    @Test
+    public void roundTripDiscoveryOnDestResetPortDownStatus() {
+        IslReference reference = preparePortDownStatusReset();
+
+        clock.adjust(Duration.ofSeconds(1));
+        service.roundTripStatusNotification(
+                reference, new RoundTripStatus(reference.getDest(), clock.instant(), clock.instant()));
+        verifyNoMoreInteractions(dashboardLogger);
+
+        clock.adjust(Duration.ofSeconds(1));
+        service.roundTripStatusNotification(
+                reference, new RoundTripStatus(reference.getDest(), clock.instant(), clock.instant()));
+        verify(dashboardLogger).onIslUp(eq(reference));
+        verifyNoMoreInteractions(dashboardLogger);
+    }
+
+    @Test
+    public void portDownMonitorIgnoresEmptyRoundTripUpdates() {
+        IslReference reference = preparePortDownStatusReset();
+
+        Instant lastUpdate = clock.instant();
+        service.roundTripStatusNotification(
+                reference, new RoundTripStatus(reference.getSource(), lastUpdate, clock.instant()));
+        verifyNoMoreInteractions(dashboardLogger);
+
+        clock.adjust(Duration.ofSeconds(1));
+        service.roundTripStatusNotification(
+                reference, new RoundTripStatus(reference.getSource(), lastUpdate, clock.instant()));
+        verifyNoMoreInteractions(dashboardLogger);
+
+        clock.adjust(Duration.ofSeconds(1));
+        service.roundTripStatusNotification(
+                reference, new RoundTripStatus(reference.getSource(), lastUpdate, clock.instant()));
+        verifyNoMoreInteractions(dashboardLogger);
+    }
+
+    private IslReference preparePortDownStatusReset() {
+        setupIslStorageStub();
+        IslReference reference = prepareActiveIsl();
+
+        service.islDown(reference.getSource(), reference, IslDownReason.PORT_DOWN);
+        verify(dashboardLogger).onIslDown(eq(reference));
+        reset(dashboardLogger);
+
+        return reference;
+    }
+
     private IslReference prepareBfdEnabledIsl() {
         IslReference reference = prepareActiveIsl();
 
