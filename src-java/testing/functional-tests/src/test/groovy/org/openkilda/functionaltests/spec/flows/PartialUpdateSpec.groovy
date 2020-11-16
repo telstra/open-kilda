@@ -562,7 +562,8 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         def originalCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-            !new Cookie(it.cookie).serviceFlag
+            def cookie = new Cookie(it.cookie)
+            !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT
         }
 
         when: "Request a flow partial update for an encapsulationType field(vxlan)"
@@ -577,8 +578,8 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         northboundV2.getFlow(flow.flowId).encapsulationType == newEncapsulationTypeValue
 
         and: "Flow rules have been reinstalled"
-        !northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-            !new Cookie(it.cookie).serviceFlag
+        !northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll { def cookie = new Cookie(it.cookie)
+            !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT
         }.any { it in originalCookies }
 
         cleanup: "Remove the flow"

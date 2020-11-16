@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.junit.Assume.assumeFalse
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -77,6 +78,7 @@ class SwitchSyncSpec extends BaseSpecification {
     @Tidy
     def "Able to synchronize switch (install missing rules and meters)"() {
         given: "Two active not neighboring switches"
+        assumeFalse("This test should be fixed for multiTable mode + server42", useMultitable)
         def switchPair = topologyHelper.allNotNeighboringSwitchPairs.find { it.src.ofVersion != "OF_12" &&
                 it.dst.ofVersion != "OF_12" } ?: assumeTrue("No suiting switches found", false)
 

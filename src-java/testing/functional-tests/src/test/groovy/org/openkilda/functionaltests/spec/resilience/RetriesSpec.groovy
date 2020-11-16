@@ -434,6 +434,11 @@ and at least 1 path must remain safe"
             assert northbound.getFlowHistory(flow.flowId).size() == eventsAmount
         }
 
+        and: "Src/dst switches are valid"
+        wait(WAIT_OFFSET) { //due to instability in multiTable mode + server42
+            [flow.source.switchId, flow.destination.switchId].each { verifySwitchRules(it) }
+        }
+
         cleanup:
         lockKeeper.cleanupTrafficShaperRules(swPair.src.regions)
         flowHelperV2.deleteFlow(flow.flowId)

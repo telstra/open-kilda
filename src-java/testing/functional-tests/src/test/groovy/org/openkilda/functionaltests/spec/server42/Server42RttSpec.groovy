@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.server42
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.STATS_FROM_SERVER42_LOGGING_TIMEOUT
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -14,6 +15,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.util.mop.Use
@@ -301,5 +303,10 @@ class Server42RttSpec extends HealthCheckSpecification {
         flowRttFeatureStartState != null && changeFlowRttToggle(flowRttFeatureStartState)
         initialSwitchRtt.each { sw, state -> changeFlowRttSwitch(sw, state)  }
         flows.each { flowHelperV2.deleteFlow(it.flowId) }
+        initialSwitchRtt.keySet().each { sw ->
+            Wrappers.wait(RULES_INSTALLATION_TIME) {
+                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+            }
+        }
     }
 }

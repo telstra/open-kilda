@@ -30,6 +30,7 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Unroll
 
 import javax.inject.Provider
@@ -857,9 +858,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
         northbound.deleteSwitchRules(swP.src.dpId, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
 
         then: "System detects missing rules on the src switch"
+        def amountOfServer42Rules = northbound.getSwitchProperties(swP.src.dpId).server42FlowRtt ? 1 : 0
         with(northbound.validateSwitch(swP.src.dpId).rules) {
             it.excess.empty
-            it.missing.size() == 3
+            it.missing.size() == 3 + amountOfServer42Rules //ingress, egress, shared, server42
         }
 
         when: "Synchronize the src switch"
@@ -889,6 +891,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Ignore("https://github.com/telstra/open-kilda/issues/3858")
     def "System doesn't rebuild flow path to more preferable path while updating innerVlanId"() {
         given: "Two active switches connected to traffgens with two possible paths at least"
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected*.dpId ?:
