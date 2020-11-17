@@ -18,6 +18,8 @@ package org.openkilda.wfm.topology.flowhs.service;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.floodlight.api.request.EgressFlowSegmentInstallRequest;
@@ -28,7 +30,14 @@ import org.openkilda.floodlight.api.request.IngressFlowSegmentVerifyRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.flow.FlowRequest;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPathStatus;
@@ -36,17 +45,20 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.CommandContext;
 
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -357,6 +369,50 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         }
 
         verifyFlowStatus(flowRequest.getFlowId(), FlowStatus.DOWN);
+    }
+
+    @Test
+    public void shouldRetryOnResourceAllocationFailure() throws RecoverableException, UnroutableFlowException {
+        final IslRepository islRepository = setupIslRepositorySpy();
+
+        final FlowCreateService service = new FlowCreateService(
+                carrier, persistenceManager, pathComputer, flowResourcesManager, 1, 0, 0, 0);
+
+        String key = "retries_on_resource_allocation";
+        final FlowRequest flowRequest = makeRequest()
+                .flowId("global_retry_demo")
+                .build();
+        preparePathComputation(flowRequest.getFlowId(), make2SwitchesPathPair());
+
+        when(islRepository.updateAvailableBandwidth(
+                islSourceDest.getSourceEndpoint().getSwitchId(), islSourceDest.getSourceEndpoint().getPortNumber(),
+                islSourceDest.getDestEndpoint().getSwitchId(), islSourceDest.getDestEndpoint().getPortNumber(),
+                flowRequest.getBandwidth()))
+                .thenReturn(-1L)
+                .thenCallRealMethod();
+
+        service.handleRequest(key, new CommandContext(), flowRequest);
+
+        verifyFlowStatus(flowRequest.getFlowId(), FlowStatus.IN_PROGRESS);
+
+        ArgumentCaptor<Message> responseCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(carrier, times(2)).sendNorthboundResponse(responseCaptor.capture());
+
+        Iterator<Message> responses = responseCaptor.getAllValues().iterator();
+
+        // FIXME(surabujin): flow create must not produce error response if it will make retry
+        Assert.assertTrue(responses.hasNext());
+        Message raw = responses.next();
+        Assert.assertTrue(raw instanceof ErrorMessage);
+        ErrorData errorPayload = ((ErrorMessage) raw).getData();
+        Assert.assertEquals(errorPayload.getErrorType(), ErrorType.INTERNAL_ERROR);
+
+        Assert.assertTrue(responses.hasNext());
+        raw = responses.next();
+        Assert.assertTrue(raw instanceof InfoMessage);
+
+        InfoData infoPayload = ((InfoMessage) raw).getData();
+        Assert.assertTrue(infoPayload instanceof FlowResponse);
     }
 
     private void handleResponse(FlowCreateService service, String key, FlowSegmentRequest request) {

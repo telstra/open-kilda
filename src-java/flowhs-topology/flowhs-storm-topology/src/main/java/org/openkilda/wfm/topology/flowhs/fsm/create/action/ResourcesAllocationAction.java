@@ -142,7 +142,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
             throw new FlowProcessingException(ErrorType.NOT_FOUND,
                     "Couldn't find the diverse flow. " + e.getMessage(), e);
         } catch (FlowAlreadyExistException e) {
-            if (!stateMachine.retryIfAllowed()) {
+            if (!stateMachine.retryIfAllowed(context)) {
                 throw new FlowProcessingException(ErrorType.INTERNAL_ERROR, e.getMessage(), e);
             } else {
                 // we have retried the operation, no need to respond.

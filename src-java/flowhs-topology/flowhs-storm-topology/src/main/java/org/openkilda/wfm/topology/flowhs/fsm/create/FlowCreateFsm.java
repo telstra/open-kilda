@@ -116,11 +116,11 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
      *
      * @return true if retry was triggered.
      */
-    public boolean retryIfAllowed() {
+    public boolean retryIfAllowed(FlowCreateContext context) {
         if (!timedOut && remainRetries-- > 0) {
             log.info("About to retry flow create. Retries left: {}", remainRetries);
             resetState();
-            fire(Event.RETRY);
+            fire(Event.RETRY, context);
             return true;
         } else {
             if (timedOut) {
@@ -137,6 +137,12 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
         fire(Event.TIMEOUT);
     }
 
+    public void retryIfAllowedAction(State from, State to, Event event, FlowCreateContext context) {
+        if (! retryIfAllowed(context)) {
+            fire(Event.NEXT);
+        }
+    }
+
     @Override
     protected void afterTransitionCausedException(State fromState, State toState, Event event,
                                                   FlowCreateContext context) {
@@ -150,7 +156,7 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
             carrier.sendNorthboundResponse(message);
         }
 
-        fireError(errorMessage);
+        fireError(errorMessage, context);
     }
 
     @Override
@@ -160,17 +166,21 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
 
     @Override
     public void fireError(String errorReason) {
-        fireError(Event.ERROR, errorReason);
+        fireError(Event.ERROR, errorReason, null);
     }
 
-    private void fireError(Event errorEvent, String errorReason) {
+    public void fireError(String errorReason, FlowCreateContext context) {
+        fireError(Event.ERROR, errorReason, context);
+    }
+
+    private void fireError(Event errorEvent, String errorReason, FlowCreateContext context) {
         if (this.errorReason != null) {
             log.error("Subsequent error fired: " + errorReason);
         } else {
             this.errorReason = errorReason;
         }
 
-        fire(errorEvent);
+        fire(errorEvent, context);
     }
 
     @Override
@@ -432,7 +442,7 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
                     .on(Event.NEXT);
 
             builder.onEntry(State._FAILED)
-                    .callMethod("retryIfAllowed");
+                    .callMethod("retryIfAllowedAction");
 
             builder.transition()
                     .from(State._FAILED)
