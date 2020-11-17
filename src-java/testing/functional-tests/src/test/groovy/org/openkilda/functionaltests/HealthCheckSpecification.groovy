@@ -83,7 +83,7 @@ class HealthCheckSpecification extends BaseSpecification {
         }
 
         and: "Switches configurations are in expected state"
-        topology.switches.each { sw ->
+        topology.activeSwitches.each { sw ->
             verifyAll(northbound.getSwitchProperties(sw.dpId)) {
                 multiTable == useMultitable && sw.features.contains(SwitchFeature.MULTI_TABLE)
                 //server42 props can be either on or off
