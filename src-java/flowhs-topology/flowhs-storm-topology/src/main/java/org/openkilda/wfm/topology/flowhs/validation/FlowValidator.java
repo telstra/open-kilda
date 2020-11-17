@@ -94,6 +94,45 @@ public class FlowValidator {
         }
     }
 
+    /**
+     * Validates the specified flow.
+     *
+     * @param flow current flow state.
+     * @param requestedFlow a flow to be validated.
+     * @param bulkUpdateFlowIds flows to be ignored when check endpoints.
+     * @throws InvalidFlowException is thrown if a violation is found.
+     */
+    public void validate(Flow flow, RequestedFlow requestedFlow, Set<String> bulkUpdateFlowIds)
+            throws InvalidFlowException, UnavailableFlowEndpointException {
+        validate(requestedFlow, bulkUpdateFlowIds);
+        validateFlowLoop(flow, requestedFlow);
+    }
+
+    private void validateFlowLoop(Flow flow, RequestedFlow requestedFlow) throws InvalidFlowException {
+        if (requestedFlow.getLoopSwitchId() != null) {
+            //todo: fix loops for q-in-q and singe switch loops
+            if (requestedFlow.getSrcInnerVlan() != 0 || requestedFlow.getDestInnerVlan() != 0) {
+                throw new InvalidFlowException("Loop for Q-in-Q flows is not implemented",
+                        ErrorType.NOT_IMPLEMENTED);
+            }
+            if (requestedFlow.getSrcSwitch().equals(requestedFlow.getDestSwitch())) {
+                throw new InvalidFlowException("Loop for single switch flows is not implemented",
+                        ErrorType.NOT_IMPLEMENTED);
+            }
+            SwitchId loopSwitchId = requestedFlow.getLoopSwitchId();
+            boolean loopSwitchIsTerminating = flow.getSrcSwitchId().equals(loopSwitchId)
+                    || flow.getDestSwitchId().equals(loopSwitchId);
+            if (!loopSwitchIsTerminating) {
+                throw new InvalidFlowException("Loop switch is not terminating in flow path",
+                        ErrorType.PARAMETERS_INVALID);
+            }
+
+            if (flow.isLooped() && !loopSwitchId.equals(flow.getLoopSwitchId())) {
+                throw new InvalidFlowException("Can't change loop switch", ErrorType.PARAMETERS_INVALID);
+            }
+        }
+    }
+
     private void baseFlowValidate(RequestedFlow flow, Set<String> bulkUpdateFlowIds)
             throws InvalidFlowException, UnavailableFlowEndpointException {
         final FlowEndpoint source = RequestedFlowMapper.INSTANCE.mapSource(flow);
@@ -138,6 +177,17 @@ public class FlowValidator {
         baseFlowValidate(secondFlow, Sets.newHashSet(firstFlow.getFlowId()));
 
         checkForEqualsEndpoints(firstFlow, secondFlow);
+        //todo: fix swap endpoints for looped flows
+        boolean firstFlowLooped = flowRepository.findById(firstFlow.getFlowId())
+                .map(f -> f.getLoopSwitchId() != null)
+                .orElse(false);
+        boolean secondFlowLooped = flowRepository.findById(secondFlow.getFlowId())
+                .map(f -> f.getLoopSwitchId() != null)
+                .orElse(false);
+        if (firstFlowLooped || secondFlowLooped) {
+            throw new InvalidFlowException("Swap endpoints is not implemented for looped flows",
+                    ErrorType.NOT_IMPLEMENTED);
+        }
     }
 
     @VisibleForTesting

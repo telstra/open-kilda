@@ -22,12 +22,15 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.links.BfdProperties;
+import org.openkilda.northbound.dto.v2.links.BfdPropertiesPayload;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
+import org.openkilda.testing.model.topology.TopologyDefinition;
 
 import com.fasterxml.jackson.databind.util.StdDateFormat;
 import lombok.extern.slf4j.Slf4j;
@@ -174,6 +177,50 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
         return restTemplate.exchange("/api/v2/switches/{switchId}", HttpMethod.PATCH,
                 new HttpEntity<>(dto, buildHeadersWithCorrelationId()), SwitchDtoV2.class, switchId)
                 .getBody();
+    }
+
+    @Override
+    public BfdPropertiesPayload setLinkBfd(TopologyDefinition.Isl isl) {
+        return setLinkBfd(isl, new BfdProperties(350L, (short) 3));
+    }
+
+    @Override
+    public BfdPropertiesPayload setLinkBfd(TopologyDefinition.Isl isl, BfdProperties props) {
+        return setLinkBfd(isl.getSrcSwitch().getDpId(), isl.getSrcPort(), isl.getDstSwitch().getDpId(),
+                isl.getDstPort(), props);
+    }
+
+    @Override
+    public BfdPropertiesPayload setLinkBfd(SwitchId srcSwId, Integer srcPort, SwitchId dstSwId, Integer dstPort,
+                                           BfdProperties props) {
+        return restTemplate.exchange("/api/v2/links/{src-switch}_{src-port}/{dst-switch}_{dst-port}/bfd",
+                HttpMethod.PUT, new HttpEntity<>(props, buildHeadersWithCorrelationId()), BfdPropertiesPayload.class,
+                srcSwId, srcPort, dstSwId, dstPort).getBody();
+    }
+
+    @Override
+    public void deleteLinkBfd(SwitchId srcSwId, Integer srcPort, SwitchId dstSwId, Integer dstPort) {
+        restTemplate.exchange("/api/v2/links/{src-switch}_{src-port}/{dst-switch}_{dst-port}/bfd",
+                HttpMethod.DELETE, new HttpEntity<>(buildHeadersWithCorrelationId()), Void.class, srcSwId, srcPort,
+                dstSwId, dstPort);
+    }
+
+    @Override
+    public void deleteLinkBfd(TopologyDefinition.Isl isl) {
+        deleteLinkBfd(isl.getSrcSwitch().getDpId(), isl.getSrcPort(), isl.getDstSwitch().getDpId(), isl.getDstPort());
+    }
+
+    @Override
+    public BfdPropertiesPayload getLinkBfd(SwitchId srcSwId, Integer srcPort, SwitchId dstSwId, Integer dstPort) {
+        return restTemplate.exchange("/api/v2/links/{src-switch}_{src-port}/{dst-switch}_{dst-port}/bfd",
+                HttpMethod.GET, new HttpEntity<>(buildHeadersWithCorrelationId()), BfdPropertiesPayload.class,
+                srcSwId, srcPort, dstSwId, dstPort).getBody();
+    }
+
+    @Override
+    public BfdPropertiesPayload getLinkBfd(TopologyDefinition.Isl isl) {
+        return getLinkBfd(isl.getSrcSwitch().getDpId(), isl.getSrcPort(), isl.getDstSwitch().getDpId(),
+                isl.getDstPort());
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {

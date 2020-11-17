@@ -323,7 +323,7 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
                     .callMethod("renewPortCreateAction");
             builder.internalTransition()
                     .within(State.CREATING).on(Event.WORKER_SUCCESS)
-                    .callMethod("workerSuccessAction");
+                    .callMethod("reportWorkerSuccessAction");
             builder.internalTransition()
                     .within(State.CREATING).on(Event.WORKER_ERROR)
                     .callMethod("sendSessionFailureAction");

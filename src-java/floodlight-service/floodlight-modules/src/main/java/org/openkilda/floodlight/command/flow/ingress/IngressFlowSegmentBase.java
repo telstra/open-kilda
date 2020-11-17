@@ -154,7 +154,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     }
 
     private CompletableFuture<FlowSegmentReport> planOfFlowsInstall(MeterId effectiveMeterId) {
-        if (effectiveMeterId == null && !rulesContext.isUpdateMeter()) {
+        if (effectiveMeterId == null && rulesContext != null && !rulesContext.isUpdateMeter()) {
             effectiveMeterId = getMeterConfig().getId();
         }
         List<OFFlowMod> ofMessages = makeFlowModMessages(effectiveMeterId);
@@ -302,6 +302,39 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
         } else {
             ofMessages.add(flowModFactory.makeDefaultPortServer42IngressFlowMessage(
                     getKildaCoreConfig().getServer42UdpPortOffset()));
+        }
+        return ofMessages;
+    }
+
+    protected List<OFFlowMod> makeIngressLoopFlowModMessages() {
+        if (metadata.isMultiTable()) {
+            return makeMultiTableLoopFlowModMessages();
+        } else {
+            return makeSingleTableLoopFlowModMessages();
+        }
+    }
+
+    protected List<OFFlowMod> makeMultiTableLoopFlowModMessages() {
+        List<OFFlowMod> ofMessages = new ArrayList<>(2);
+        if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
+            if (FlowEndpoint.isVlanIdSet(endpoint.getInnerVlanId())) {
+                ofMessages.add(flowModFactory.makeDoubleVlanFlowLoopMessage());
+            } else {
+                ofMessages.add(flowModFactory.makeSingleVlanFlowLoopMessage());
+            }
+        } else {
+            ofMessages.add(flowModFactory.makeDefaultPortIngressFlowLoopMessage());
+        }
+
+        return ofMessages;
+    }
+
+    protected List<OFFlowMod> makeSingleTableLoopFlowModMessages() {
+        List<OFFlowMod> ofMessages = new ArrayList<>();
+        if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
+            ofMessages.add(flowModFactory.makeOuterOnlyVlanIngressFlowLoopMessage());
+        } else {
+            ofMessages.add(flowModFactory.makeDefaultPortIngressFlowLoopMessage());
         }
         return ofMessages;
     }

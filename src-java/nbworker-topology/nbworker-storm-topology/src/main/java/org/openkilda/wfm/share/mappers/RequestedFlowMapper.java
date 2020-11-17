@@ -18,6 +18,7 @@ package org.openkilda.wfm.share.mappers;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.SwitchId;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -56,4 +57,8 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "bulkUpdateFlowIds", ignore = true)
     @Mapping(target = "doNotRevert", ignore = true)
     public abstract FlowRequest toFlowRequest(Flow flow);
+
+    public SwitchId map(String value) {
+        return value == null ? null : new SwitchId(value);
+    }
 }

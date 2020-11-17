@@ -1,5 +1,41 @@
 # Changelog
 
+## v1.77.0 (17/11/2020)
+
+### Features:
+-  [#3851](https://github.com/telstra/open-kilda/pull/3851) [Server42] Software timestamps
+-  [#3787](https://github.com/telstra/open-kilda/pull/3787) Flow loop feature implementation [**api**][**floodlight**][**northbound**][**storm-topologies**]
+-  [#3747](https://github.com/telstra/open-kilda/pull/3747) Rework design for flow loop feature [**docs**]
+-  [#3828](https://github.com/telstra/open-kilda/pull/3828) [Server42] Show warning if dpdk interface is down
+
+### Bug Fixes:
+-  [#3854](https://github.com/telstra/open-kilda/pull/3854) Fix BFD logical port FSM action name [**storm-topologies**]
+
+### Improvements:
+-  [#3840](https://github.com/telstra/open-kilda/pull/3840) Add test for round-trip isl discovery in special cases [**tests**]
+-  [#3781](https://github.com/telstra/open-kilda/pull/3781) Add test that reveals #3780 [**tests**]
+-  [#3848](https://github.com/telstra/open-kilda/pull/3848) ignore test according to #3847 [**tests**]
+-  [#3722](https://github.com/telstra/open-kilda/pull/3722) Add functional tests for bfd v2 api [**tests**]
+-  [#3790](https://github.com/telstra/open-kilda/pull/3790) Add logging for fallbacks in fetching switches in data model [**storm-topologies**]
+-  [#3816](https://github.com/telstra/open-kilda/pull/3816) fix flowRulesSpec according to server42FlowRtt feature [**tests**]
+-  [#3822](https://github.com/telstra/open-kilda/pull/3822) Add func tests for protected flow + max_latency (Issue: [#3821](https://github.com/telstra/open-kilda/issues/3821)) [**tests**]
+-  [#3824](https://github.com/telstra/open-kilda/pull/3824) improve envExtension (configure switch mode if cleanup = true) [**tests**]
+-  [#3827](https://github.com/telstra/open-kilda/pull/3827) Refactor reroute tests to reveal #3826 [**tests**]
+-  [#3830](https://github.com/telstra/open-kilda/pull/3830) Fight port down and discovery events race condition [**storm-topologies**]
+-  [#3831](https://github.com/telstra/open-kilda/pull/3831) Removed legacy variable OK_TESTS="DISABLE_LOGIN"
+-  [#3832](https://github.com/telstra/open-kilda/pull/3832) Removed legacy Entry_point from wfm make file
+-  [#3838](https://github.com/telstra/open-kilda/pull/3838) ignore unstable test in swapEndpointSpec [**tests**]
+-  [#3839](https://github.com/telstra/open-kilda/pull/3839) Wrap git commands for floodlight and loxigen in gradle
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.76.0...v1.77.0).
+
+### Affected Components:
+stats, stats-router, ping, network, nb, reroute, nbworker, otsdb, router, connected, flow-hs, isllatency, portstate, fl, swmanager
+
+
+---
+
 ## v1.76.0 (29/10/2020)
 
 ### Features:

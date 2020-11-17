@@ -22,10 +22,14 @@ task cloneFloodlightRepo {
     outputs.dir(repo)
 
     if (repo.exists()) {
-        def grgit = Grgit.open(currentDir: repo.absolutePath)
-        grgit.fetch()
-        grgit.checkout(branch: versionTag)
-        grgit.close()
+        try {
+            def grgit = Grgit.open(currentDir: repo.absolutePath)
+            grgit.fetch()
+            grgit.checkout(branch: versionTag)
+            grgit.close()
+        } catch (Exception e) {
+            logger.warn("Failed to fetch floodlight from git: {}", e.getMessage())
+        }
     } else {
         def repoUri = 'https://github.com/kilda/floodlight.git'
         if (project.hasProperty("floodlightGitRepo")) {

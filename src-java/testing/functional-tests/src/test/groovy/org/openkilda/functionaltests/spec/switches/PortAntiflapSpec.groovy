@@ -18,6 +18,7 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Issue
 import spock.lang.Narrative
 
@@ -154,6 +155,7 @@ timeout"() {
      * directly to kafka, because currently it is the only way to simulate an incredibly rapid port flapping that
      * may sometimes occur on hardware switches(overheat?)
      */
+    @Ignore("https://github.com/telstra/open-kilda/issues/3847")
     @Tags(SMOKE)
     def "System properly registers events order when port flaps incredibly fast (end with Down)"() {
 

@@ -27,6 +27,8 @@ import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.CreateFlowLoopRequest;
+import org.openkilda.messaging.command.flow.DeleteFlowLoopRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.info.InfoMessage;
@@ -93,8 +95,19 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
         currentKey = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
-        FlowRequest payload = (FlowRequest) input.getValueByField(FIELD_ID_PAYLOAD);
-        service.handleRequest(currentKey, pullContext(input), payload);
+        Object payload = input.getValueByField(FIELD_ID_PAYLOAD);
+        if (payload instanceof FlowRequest) {
+            FlowRequest flowRequest = (FlowRequest) payload;
+            service.handleUpdateRequest(currentKey, pullContext(input), flowRequest);
+        } else if (payload instanceof CreateFlowLoopRequest) {
+            CreateFlowLoopRequest flowLoopRequest = (CreateFlowLoopRequest) payload;
+            service.handleCreateFlowLoopRequest(currentKey, pullContext(input), flowLoopRequest);
+        } else if (payload instanceof DeleteFlowLoopRequest) {
+            DeleteFlowLoopRequest flowLoopRequest = (DeleteFlowLoopRequest) payload;
+            service.handleDeleteFlowLoopRequest(currentKey, pullContext(input), flowLoopRequest);
+        } else {
+            unhandledInput(input);
+        }
     }
 
     @Override

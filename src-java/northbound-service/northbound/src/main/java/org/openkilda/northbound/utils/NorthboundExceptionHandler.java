@@ -83,6 +83,9 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
             case NOT_PERMITTED:
                 status = HttpStatus.FORBIDDEN;
                 break;
+            case NOT_IMPLEMENTED:
+                status = HttpStatus.NOT_IMPLEMENTED;
+                break;
             default:
                 status = HttpStatus.INTERNAL_SERVER_ERROR;
                 break;

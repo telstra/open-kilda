@@ -297,6 +297,83 @@ public abstract class IngressFlowModFactory {
                 .build());
     }
 
+    /**
+     * Make ingress flow loop rule to match all port traffic and route it back to port from where it came.
+     */
+    public OFFlowMod makeDefaultPortIngressFlowLoopMessage() {
+        FlowEndpoint endpoint = command.getEndpoint();
+        return flowModBuilderFactory
+                .makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID), -10)
+                .setMatch(of.buildMatch()
+                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
+                        .build())
+                .setCookie(U64.of(command.getCookie().getValue()))
+                .setInstructions(makeIngressFlowLoopInstructions(endpoint))
+                .build();
+    }
+
+    /**
+     * Make ingress flow loop rule to match all flow traffic by port and two vlans and route it back to port from
+     * where it came and restore vlan stack.
+     */
+    public OFFlowMod makeDoubleVlanFlowLoopMessage() {
+        FlowEndpoint endpoint = command.getEndpoint();
+        RoutingMetadata metadata = RoutingMetadata.builder()
+                .outerVlanId(endpoint.getOuterVlanId())
+                .build(switchFeatures);
+
+        return flowModBuilderFactory
+                .makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID), 10)
+                .setMatch(of.buildMatch()
+                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
+                        .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(endpoint.getInnerVlanId()))
+                        .setMasked(MatchField.METADATA,
+                                OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
+                        .build())
+                .setCookie(U64.of(command.getCookie().getValue()))
+                .setInstructions(makeIngressFlowLoopInstructions(endpoint))
+                .build();
+    }
+
+    /**
+     * Make ingress flow loop rule to match all flow traffic by port&vlan and route it back to port from
+     * where it came.
+     */
+    public OFFlowMod makeSingleVlanFlowLoopMessage() {
+        FlowEndpoint endpoint = command.getEndpoint();
+        RoutingMetadata metadata = RoutingMetadata.builder()
+                .outerVlanId(endpoint.getOuterVlanId())
+                .build(switchFeatures);
+
+        return flowModBuilderFactory
+                .makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID))
+                .setMatch(of.buildMatch()
+                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
+                        .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(endpoint.getInnerVlanId()))
+                        .setMasked(MatchField.METADATA,
+                                OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
+                        .build())
+                .setCookie(U64.of(command.getCookie().getValue()))
+                .setInstructions(makeIngressFlowLoopInstructions(endpoint))
+                .build();
+    }
+
+    /**
+     * Make ingress flow loop rule to match all flow traffic by port and outer vlan and route it back to port from
+     * where it came.
+     */
+    public OFFlowMod makeOuterOnlyVlanIngressFlowLoopMessage() {
+        FlowEndpoint endpoint = command.getEndpoint();
+        return flowModBuilderFactory
+                .makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID))
+                .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), endpoint.getOuterVlanId())
+                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
+                        .build())
+                .setCookie(U64.of(command.getCookie().getValue()))
+                .setInstructions(makeIngressFlowLoopInstructions(endpoint))
+                .build();
+    }
+
     private OFFlowMod makeServer42IngressFlowMessage(Builder builder, List<Integer> vlanStack) {
         builder.setInstructions(makeServer42IngressFlowMessageInstructions(vlanStack));
         if (switchFeatures.contains(SwitchFeature.RESET_COUNTS_FLAG)) {
@@ -334,6 +411,8 @@ public abstract class IngressFlowModFactory {
 
     protected abstract List<OFInstruction> makeForwardMessageInstructions(
             MeterId effectiveMeterId, List<Integer> vlanStack);
+
+    protected abstract List<OFInstruction> makeIngressFlowLoopInstructions(FlowEndpoint endpoint);
 
     protected abstract List<OFInstruction> makeOuterVlanMatchInstructions();
 }

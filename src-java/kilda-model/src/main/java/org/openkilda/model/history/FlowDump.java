@@ -111,6 +111,7 @@ public class FlowDump implements CompositeDataEntity<FlowDump.FlowDumpData> {
                 .append(getEncapsulationType(), that.getEncapsulationType())
                 .append(getPathComputationStrategy(), that.getPathComputationStrategy())
                 .append(getMaxLatency(), that.getMaxLatency())
+                .append(getLoopSwitchId(), that.getLoopSwitchId())
                 .isEquals();
     }
 
@@ -122,7 +123,7 @@ public class FlowDump implements CompositeDataEntity<FlowDump.FlowDumpData> {
                 getSourceInnerVlan(), getDestinationInnerVlan(), getForwardMeterId(), getReverseMeterId(),
                 getGroupId(), getForwardPath(), getReversePath(), getForwardStatus(), getReverseStatus(),
                 isAllocateProtectedPath(), isPinned(), isPeriodicPings(), getEncapsulationType(),
-                getPathComputationStrategy(), getMaxLatency());
+                getPathComputationStrategy(), getMaxLatency(), getLoopSwitchId());
     }
 
     /**
@@ -240,6 +241,10 @@ public class FlowDump implements CompositeDataEntity<FlowDump.FlowDumpData> {
         Long getMaxLatency();
 
         void setMaxLatency(Long maxLatency);
+
+        SwitchId getLoopSwitchId();
+
+        void setLoopSwitchId(SwitchId switchId);
     }
 
     /**
@@ -277,6 +282,7 @@ public class FlowDump implements CompositeDataEntity<FlowDump.FlowDumpData> {
         FlowEncapsulationType encapsulationType;
         PathComputationStrategy pathComputationStrategy;
         Long maxLatency;
+        SwitchId loopSwitchId;
 
         @Override
         public Boolean isAllocateProtectedPath() {

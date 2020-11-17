@@ -17,6 +17,10 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -30,9 +34,17 @@ import static org.mockito.Mockito.when;
 import static org.mockito.hamcrest.MockitoHamcrest.argThat;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.request.IngressFlowLoopSegmentInstallRequest;
+import org.openkilda.floodlight.api.request.IngressFlowLoopSegmentRemoveRequest;
+import org.openkilda.floodlight.api.request.IngressFlowLoopSegmentVerifyRequest;
+import org.openkilda.floodlight.api.request.TransitFlowLoopSegmentInstallRequest;
+import org.openkilda.floodlight.api.request.TransitFlowLoopSegmentRemoveRequest;
+import org.openkilda.floodlight.api.request.TransitFlowLoopSegmentVerifyRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
+import org.openkilda.messaging.command.flow.CreateFlowLoopRequest;
+import org.openkilda.messaging.command.flow.DeleteFlowLoopRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
@@ -47,6 +59,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 
+import com.google.common.collect.Sets;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -170,7 +183,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     private Flow testExpectedFailure(FlowRequest request, Flow origin, ErrorType expectedError) {
-        makeService().handleRequest(dummyRequestKey, commandContext, request);
+        makeService().handleUpdateRequest(dummyRequestKey, commandContext, request);
 
         verifyNoSpeakerInteraction(carrier);
         verifyNorthboundErrorResponse(carrier, expectedError);
@@ -191,7 +204,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
                 .build();
 
         FlowUpdateService service = makeService();
-        service.handleRequest(dummyRequestKey, commandContext, request);
+        service.handleUpdateRequest(dummyRequestKey, commandContext, request);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -232,7 +245,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
                 .build();
 
         FlowUpdateService service = makeService();
-        service.handleRequest(dummyRequestKey, commandContext, request);
+        service.handleUpdateRequest(dummyRequestKey, commandContext, request);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -266,7 +279,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
                 .build();
 
         FlowUpdateService service = makeService();
-        service.handleRequest(dummyRequestKey, commandContext, request);
+        service.handleUpdateRequest(dummyRequestKey, commandContext, request);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -307,7 +320,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
                 .build();
 
         FlowUpdateService service = makeService();
-        service.handleRequest(dummyRequestKey, commandContext, request);
+        service.handleUpdateRequest(dummyRequestKey, commandContext, request);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -347,7 +360,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
                 eq(FlowPathStatus.IN_PROGRESS));
 
         FlowUpdateService service = makeService();
-        service.handleRequest(dummyRequestKey, commandContext, request);
+        service.handleUpdateRequest(dummyRequestKey, commandContext, request);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -392,7 +405,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
                         eq(FlowPathStatus.ACTIVE));
 
         FlowUpdateService service = makeService();
-        service.handleRequest(dummyRequestKey, commandContext, request);
+        service.handleUpdateRequest(dummyRequestKey, commandContext, request);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -432,7 +445,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
                 .remove(eq(origin.getForwardPathId()));
 
         FlowUpdateService service = makeService();
-        service.handleRequest(dummyRequestKey, commandContext, request);
+        service.handleUpdateRequest(dummyRequestKey, commandContext, request);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -467,7 +480,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
                 .build();
 
         FlowUpdateService service = makeService();
-        service.handleRequest(dummyRequestKey, commandContext, request);
+        service.handleUpdateRequest(dummyRequestKey, commandContext, request);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
@@ -530,9 +543,87 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         testExpectedSuccess(request, origin);
     }
 
+    @Test
+    public void shouldSuccessfullyUpdateFlowCreateFlowLoop() {
+        Flow origin = makeFlow();
+        CreateFlowLoopRequest request = new CreateFlowLoopRequest(origin.getFlowId(), origin.getSrcSwitchId());
+
+        FlowUpdateService service = makeService();
+        service.handleCreateFlowLoopRequest(dummyRequestKey, commandContext, request);
+
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
+
+        Set<Class> allowedRequestTypes = Sets.newHashSet(IngressFlowLoopSegmentInstallRequest.class,
+                IngressFlowLoopSegmentVerifyRequest.class,
+                TransitFlowLoopSegmentInstallRequest.class,
+                TransitFlowLoopSegmentVerifyRequest.class);
+        FlowSegmentRequest speakerRequest;
+        while ((speakerRequest = requests.poll()) != null) {
+            if (!allowedRequestTypes.contains(speakerRequest.getClass())) {
+                throw new IllegalStateException(String.format("Not allowed request found %s", speakerRequest));
+            }
+            if (speakerRequest.isVerifyRequest()) {
+                service.handleAsyncResponse(dummyRequestKey, buildResponseOnVerifyRequest(speakerRequest));
+            } else {
+                service.handleAsyncResponse(dummyRequestKey, SpeakerFlowSegmentResponse.builder()
+                        .messageContext(speakerRequest.getMessageContext())
+                        .commandId(speakerRequest.getCommandId())
+                        .metadata(speakerRequest.getMetadata())
+                        .switchId(speakerRequest.getSwitchId())
+                        .success(true)
+                        .build());
+            }
+        }
+
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
+        assertTrue(result.isLooped());
+        assertEquals(request.getSwitchId(), result.getLoopSwitchId());
+    }
+
+    @Test
+    public void shouldSuccessfullyUpdateFlowDeleteFlowLoop() {
+        Flow origin = makeFlow();
+        transactionManager.doInTransaction(() -> {
+            Flow flow = repositoryFactory.createFlowRepository().findById(origin.getFlowId()).get();
+            flow.setLoopSwitchId(origin.getDestSwitchId());
+        });
+        DeleteFlowLoopRequest request = new DeleteFlowLoopRequest(origin.getFlowId());
+
+        FlowUpdateService service = makeService();
+        service.handleDeleteFlowLoopRequest(dummyRequestKey, commandContext, request);
+
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
+
+        Set<Class> allowedRequestTypes = Sets.newHashSet(IngressFlowLoopSegmentRemoveRequest.class,
+                TransitFlowLoopSegmentRemoveRequest.class);
+        FlowSegmentRequest speakerRequest;
+        while ((speakerRequest = requests.poll()) != null) {
+            if (!allowedRequestTypes.contains(speakerRequest.getClass())) {
+                throw new IllegalStateException(String.format("Not allowed request found %s", speakerRequest));
+            }
+            if (speakerRequest.isVerifyRequest()) {
+                service.handleAsyncResponse(dummyRequestKey, buildResponseOnVerifyRequest(speakerRequest));
+            } else {
+                service.handleAsyncResponse(dummyRequestKey, SpeakerFlowSegmentResponse.builder()
+                        .messageContext(speakerRequest.getMessageContext())
+                        .commandId(speakerRequest.getCommandId())
+                        .metadata(speakerRequest.getMetadata())
+                        .switchId(speakerRequest.getSwitchId())
+                        .success(true)
+                        .build());
+            }
+        }
+
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
+        assertFalse(result.isLooped());
+        assertNull(result.getLoopSwitchId());
+    }
+
     private void testExpectedSuccess(FlowRequest request, Flow origin) {
         FlowUpdateService service = makeService();
-        service.handleRequest(dummyRequestKey, commandContext, request);
+        service.handleUpdateRequest(dummyRequestKey, commandContext, request);
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);

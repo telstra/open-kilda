@@ -17,6 +17,7 @@ package org.openkilda.messaging.payload.history;
 
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.PathComputationStrategy;
+import org.openkilda.model.SwitchId;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -75,4 +76,6 @@ public class FlowDumpPayload {
     private PathComputationStrategy pathComputationStrategy;
 
     private long maxLatency;
+
+    private SwitchId loopSwitchId;
 }

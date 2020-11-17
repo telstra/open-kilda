@@ -98,8 +98,8 @@ class Wrappers {
         } finally {
             def now = System.currentTimeMillis()
             log.debug("$name took " + (now - start) + "ms")
-            return result
         }
+        return result
     }
 
     /**

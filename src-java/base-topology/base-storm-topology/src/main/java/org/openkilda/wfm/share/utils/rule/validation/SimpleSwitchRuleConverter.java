@@ -29,6 +29,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRule.SimpleSwitchRuleBuilder;
 
 import org.apache.commons.lang3.math.NumberUtils;
 
@@ -55,7 +56,7 @@ public class SimpleSwitchRuleConverter {
                                                                      double flowMeterBurstCoefficient) {
         List<SimpleSwitchRule> rules = new ArrayList<>();
         if (!flowPath.isProtected()) {
-            rules.add(buildIngressSimpleSwitchRule(flow, flowPath, encapsulationId, flowMeterMinBurstSizeInKbits,
+            rules.addAll(buildIngressSimpleSwitchRules(flow, flowPath, encapsulationId, flowMeterMinBurstSizeInKbits,
                     flowMeterBurstCoefficient));
         }
         if (! flow.isOneSwitchFlow()) {
@@ -64,10 +65,11 @@ public class SimpleSwitchRuleConverter {
         return rules;
     }
 
-    private SimpleSwitchRule buildIngressSimpleSwitchRule(Flow flow, FlowPath flowPath,
-                                                          EncapsulationId encapsulationId,
-                                                          long flowMeterMinBurstSizeInKbits,
-                                                          double flowMeterBurstCoefficient) {
+    private List<SimpleSwitchRule> buildIngressSimpleSwitchRules(Flow flow, FlowPath flowPath,
+                                                                 EncapsulationId encapsulationId,
+                                                                 long flowMeterMinBurstSizeInKbits,
+                                                                 double flowMeterBurstCoefficient) {
+        List<SimpleSwitchRule> rules = new ArrayList<>();
         boolean forward = flow.isForward(flowPath);
         int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
         int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
@@ -115,8 +117,26 @@ public class SimpleSwitchRuleConverter {
                 rule.setTunnelId(encapsulationId.getEncapsulationId());
             }
         }
+        rules.add(rule);
+        if (ingress.isLooped() && !flowPath.isProtected()) {
+            rules.add(buildIngressLoopSimpleSwitchRule(rule, flowPath, ingress));
+        }
 
-        return rule;
+        return rules;
+    }
+
+    private SimpleSwitchRule buildIngressLoopSimpleSwitchRule(SimpleSwitchRule rule, FlowPath flowPath,
+                                                              FlowSideAdapter ingress) {
+        SimpleSwitchRuleBuilder builder = SimpleSwitchRule.builder()
+                .switchId(rule.getSwitchId())
+                .cookie(flowPath.getCookie().toBuilder().looped(true).build().getValue())
+                .inPort(rule.getInPort())
+                .inVlan(rule.getInVlan())
+                .outPort(rule.getInPort());
+        if (ingress.getEndpoint().getInnerVlanId() != 0) {
+            builder.outVlan(Collections.singletonList(ingress.getEndpoint().getOuterVlanId()));
+        }
+        return builder.build();
     }
 
     private List<SimpleSwitchRule> buildTransitAndEgressSimpleSwitchRules(Flow flow, FlowPath flowPath,
@@ -138,7 +158,7 @@ public class SimpleSwitchRuleConverter {
             throw new IllegalStateException(
                     String.format("PathSegment was not found for egress flow rule, flowId: %s", flow.getFlowId()));
         }
-        rules.add(buildEgressSimpleSwitchRule(flow, flowPath, egressSegment, encapsulationId));
+        rules.addAll(buildEgressSimpleSwitchRules(flow, flowPath, egressSegment, encapsulationId));
 
         return rules;
     }
@@ -162,10 +182,13 @@ public class SimpleSwitchRuleConverter {
         return rule;
     }
 
-    private SimpleSwitchRule buildEgressSimpleSwitchRule(Flow flow, FlowPath flowPath,
-                                                         PathSegment egressSegment,
-                                                         EncapsulationId encapsulationId) {
-        FlowEndpoint endpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
+    private List<SimpleSwitchRule> buildEgressSimpleSwitchRules(Flow flow, FlowPath flowPath,
+                                                                PathSegment egressSegment,
+                                                                EncapsulationId encapsulationId) {
+        List<SimpleSwitchRule> rules = new ArrayList<>();
+
+        FlowSideAdapter egressAdapter = FlowSideAdapter.makeEgressAdapter(flow, flowPath);
+        FlowEndpoint endpoint = egressAdapter.getEndpoint();
         SimpleSwitchRule rule = SimpleSwitchRule.builder()
                 .switchId(flowPath.getDestSwitchId())
                 .outPort(endpoint.getPortNumber())
@@ -182,8 +205,22 @@ public class SimpleSwitchRuleConverter {
             rule.setTunnelId(encapsulationId.getEncapsulationId());
             rule.setOutVlan(calcVlanSetSequence(Collections.emptyList(), endpoint.getVlanStack()));
         }
+        if (egressAdapter.isLooped() && !flowPath.isProtected()) {
+            rules.add(buildTransitLoopRuleForEgressSwitch(rule, flowPath));
+        }
 
-        return rule;
+        rules.add(rule);
+        return rules;
+    }
+
+    private SimpleSwitchRule buildTransitLoopRuleForEgressSwitch(SimpleSwitchRule rule, FlowPath flowPath) {
+        return SimpleSwitchRule.builder()
+                .switchId(rule.getSwitchId())
+                .cookie(flowPath.getCookie().toBuilder().looped(true).build().getValue())
+                .inPort(rule.getInPort())
+                .inVlan(rule.getInVlan())
+                .outPort(rule.getInPort())
+                .build();
     }
 
     /**

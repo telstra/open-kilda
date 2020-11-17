@@ -23,6 +23,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.PathComputationStrategy;
+import org.openkilda.model.SwitchId;
 import org.openkilda.server42.control.messaging.flowrtt.ActivateFlowMonitoringInfoData;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
@@ -57,6 +58,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(source = "destVlan", target = "destVlan")
     @Mapping(source = "encapsulationType", target = "flowEncapsulationType")
     @Mapping(target = "diverseFlowId", ignore = true)
+    @Mapping(target = "loopSwitchId", source = "loopSwitchId")
     public abstract RequestedFlow toRequestedFlow(Flow flow);
 
     /**
@@ -86,6 +88,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "destWithMultiTable", ignore = true)
     @Mapping(target = "srcInnerVlan", ignore = true)
     @Mapping(target = "destInnerVlan", ignore = true)
+    @Mapping(target = "loopSwitchId", ignore = true)
     public abstract RequestedFlow toRequestedFlow(SwapFlowDto flow);
 
     /**
@@ -105,6 +108,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "statusInfo", ignore = true)
     @Mapping(target = "targetPathComputationStrategy", ignore = true)
+    @Mapping(target = "loopSwitchId", source = "loopSwitchId")
     public abstract Flow toFlow(RequestedFlow requestedFlow);
 
     @Mapping(source = "encapsulationType", target = "flowEncapsulationType")
@@ -118,6 +122,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "destInnerVlan", ignore = true)
     @Mapping(target = "srcWithMultiTable", ignore = true)
     @Mapping(target = "destWithMultiTable", ignore = true)
+    @Mapping(target = "loopSwitchId", source = "loopSwitchId")
     protected abstract RequestedFlow generatedMap(FlowRequest request);
 
     public abstract FlowEncapsulationType map(org.openkilda.messaging.payload.flow.FlowEncapsulationType source);
@@ -145,9 +150,9 @@ public abstract class RequestedFlowMapper {
      */
     @Mapping(target = "flowId", source = "flowId")
     @Mapping(target = "source", expression = "java(new FlowEndpoint(flow.getSrcSwitchId(), "
-            + "flow.getSrcPort(), flow.getSrcVlan()))")
+            + "flow.getSrcPort(), flow.getSrcVlan(), flow.getSrcInnerVlan()))")
     @Mapping(target = "destination", expression = "java(new FlowEndpoint(flow.getDestSwitchId(), "
-            + "flow.getDestPort(), flow.getDestVlan()))")
+            + "flow.getDestPort(), flow.getDestVlan(), flow.getDestInnerVlan()))")
     @Mapping(target = "encapsulationType", source = "encapsulationType")
     @Mapping(target = "pathComputationStrategy",
             expression = "java(java.util.Optional.ofNullable(flow.getPathComputationStrategy())"
@@ -188,4 +193,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "destination.innerVlanId", source = "destInnerVlan")
     public abstract ActivateFlowMonitoringInfoData toActivateFlowMonitoringInfoData(RequestedFlow flow);
 
+    public SwitchId mapSwitchId(String value) {
+        return value == null ? null : new SwitchId(value);
+    }
 }

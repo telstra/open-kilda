@@ -148,6 +148,23 @@ public class ValidationServiceImplTest {
     }
 
     @Test
+    public void validateLoopedRules() {
+        ValidationService validationService =
+                new ValidationServiceImpl(persistenceManager()
+                        .withIngressCookies(1L)
+                        .withLoop()
+                        .build(),
+                        topologyConfig);
+        List<FlowEntry> flowEntries = Lists.newArrayList(FlowEntry.builder().cookie(1L).build(),
+                FlowEntry.builder().cookie(0x8000000000001L).build());
+        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
+        assertTrue(response.getMissingRules().isEmpty());
+        assertEquals(ImmutableSet.of(0x8000000000001L, 1L),
+                new HashSet<>(response.getProperRules()));
+        assertTrue(response.getExcessRules().isEmpty());
+    }
+
+    @Test
     public void validateDefaultRules() throws SwitchNotFoundException {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         List<FlowEntry> flowEntries =
@@ -331,6 +348,7 @@ public class ValidationServiceImplTest {
 
         private long[] segmentsCookies = new long[0];
         private long[] ingressCookies = new long[0];
+        private boolean looped = false;
         private DetectConnectedDevices detectConnectedDevices = DetectConnectedDevices.builder().build();
         private SwitchProperties switchProperties = SwitchProperties.builder().build();
 
@@ -354,10 +372,15 @@ public class ValidationServiceImplTest {
             return this;
         }
 
+        private PersistenceManagerBuilder withLoop() {
+            this.looped = true;
+            return this;
+        }
+
         private PersistenceManager build() {
             List<FlowPath> pathsBySegment = new ArrayList<>(segmentsCookies.length);
             for (long cookie : segmentsCookies) {
-                Flow flow = buildFlow(cookie, "flow_");
+                Flow flow = buildFlow(cookie, "flow_", looped);
                 FlowPath flowPath = buildFlowPath(flow, switchA, switchB, "path_" + cookie, cookie);
                 flow.setForwardPath(flowPath);
                 pathsBySegment.add(flowPath);
@@ -368,7 +391,7 @@ public class ValidationServiceImplTest {
             }
             List<FlowPath> flowPaths = new ArrayList<>(ingressCookies.length);
             for (long cookie : ingressCookies) {
-                Flow flow = buildFlow(cookie, "flow_");
+                Flow flow = buildFlow(cookie, "flow_", looped);
                 FlowPath flowPath = buildFlowPath(flow, switchA, switchB, "path_" + cookie, cookie);
                 flow.setForwardPath(flowPath);
                 flowPaths.add(flowPath);
@@ -451,12 +474,13 @@ public class ValidationServiceImplTest {
             return persistenceManager;
         }
 
-        private Flow buildFlow(long cookie, String flowIdPrefix) {
+        private Flow buildFlow(long cookie, String flowIdPrefix, boolean looped) {
             return Flow.builder()
                     .srcSwitch(switchA)
                     .destSwitch(switchB)
                     .detectConnectedDevices(detectConnectedDevices)
                     .flowId(flowIdPrefix + cookie)
+                    .loopSwitchId(looped ? switchA.getSwitchId() : null)
                     .build();
         }
     }
