@@ -48,7 +48,7 @@ public abstract class HubBolt extends CoordinatedBolt {
     protected transient OutputCollector collector;
 
     public HubBolt(Config config) {
-        super(config.isAutoAck(), config.getTimeoutMs());
+        super(config.isAutoAck(), config.getTimeoutMs(), config.getLifeCycleEventComponent());
 
         requireNonNull(config.getRequestSenderComponent(),
                 "A component that sends income requests should be not null");
@@ -57,6 +57,7 @@ public abstract class HubBolt extends CoordinatedBolt {
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
+
         if (hubConfig.getRequestSenderComponent().equals(input.getSourceComponent())) {
             registerCallback(pullKey(input));
             onRequest(input);
@@ -91,6 +92,8 @@ public abstract class HubBolt extends CoordinatedBolt {
 
         @Builder.Default
         private String workerComponent = WorkerBolt.ID;
+
+        private String lifeCycleEventComponent;
 
         @Builder.Default
         private int timeoutMs = 100;

@@ -53,7 +53,7 @@ public abstract class WorkerBolt extends CoordinatedBolt {
     private transient Map<String, Tuple> pendingTasks;
 
     public WorkerBolt(Config config) {
-        super(config.isAutoAck(), config.getDefaultTimeout());
+        super(config.isAutoAck(), config.getDefaultTimeout(), null);
 
         requireNonNull(config.getStreamToHub(), "Stream to hub bolt cannot be null");
         requireNonNull(config.getHubComponent(), "Hub bolt id cannot be null");
