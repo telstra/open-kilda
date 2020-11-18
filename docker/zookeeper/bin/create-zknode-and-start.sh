@@ -53,7 +53,11 @@ done
 
 
 # add floodlight router topology zkNodes
-
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/floodlightrouter ""
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/floodlightrouter/blue ""
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/floodlightrouter/blue/signal "START"
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/floodlightrouter/blue/state ""
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/floodlightrouter/blue/build-version "v3r\$i0n"
 
 # add connected devices topology zkNodes
 /opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/connecteddevices ""

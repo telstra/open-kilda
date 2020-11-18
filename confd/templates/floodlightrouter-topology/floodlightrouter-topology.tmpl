@@ -5,12 +5,15 @@ config:
   topology.spouts.parallelism: {{ getv "/kilda_storm_parallelism_level" }}
 
 # spout definitions
-# spouts:
-
+spouts:
+  - id: "zookeeper.spout"
+    parallelism: 1
 # bolt definitions
 bolts:
   - id: "KILDA_TOPO_DISCO_BOLT"
     # must be 1 for now
     parallelism: 1
   - id: "clock"
+    parallelism: 1
+  - id: "zookeeper.bolt"
     parallelism: 1
