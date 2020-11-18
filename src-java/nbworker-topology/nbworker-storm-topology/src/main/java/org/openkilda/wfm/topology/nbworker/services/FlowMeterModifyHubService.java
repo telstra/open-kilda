@@ -40,13 +40,15 @@ import java.util.Map;
 @Slf4j
 public class FlowMeterModifyHubService {
     private Map<String, FlowMeterModifyFsm> fsms = new HashMap<>();
-
+    private boolean active = true;
+    private FlowHubCarrier defaultCarrier;
     private PersistenceManager persistenceManager;
     private StateMachineBuilder<FlowMeterModifyFsm, FlowMeterModifyState, FlowMeterModifyEvent, Object> builder;
 
-    public FlowMeterModifyHubService(PersistenceManager persistenceManager) {
+    public FlowMeterModifyHubService(PersistenceManager persistenceManager, FlowHubCarrier defaultCarrier) {
         this.persistenceManager = persistenceManager;
         this.builder = FlowMeterModifyFsm.builder();
+        this.defaultCarrier = defaultCarrier;
     }
 
     /**
@@ -110,6 +112,26 @@ public class FlowMeterModifyHubService {
 
         if (exitStates.contains(fsm.getCurrentState())) {
             fsms.remove(fsm.getKey());
+            if (fsms.isEmpty() && !active) {
+                defaultCarrier.sendInactive();
+            }
         }
     }
+
+
+    /**
+     * Deactivates service.
+     */
+    public boolean deactivate() {
+        active = false;
+        if (fsms.isEmpty()) {
+            return true;
+        }
+        return false;
+    }
+
+    public void activate() {
+        active = true;
+    }
 }
+
