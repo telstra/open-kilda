@@ -64,12 +64,17 @@ public class AvailableNetworkFactory {
             links.forEach(network::addLink);
 
             if (!reusePathsResources.isEmpty() && !flow.isIgnoreBandwidth()) {
-                reusePathsResources.forEach(pathId -> {
-                    // ISLs occupied by the flow (take the bandwidth already occupied by the flow into account).
-                    Collection<Isl> flowLinks = islRepository.findActiveAndOccupiedByFlowPathWithAvailableBandwidth(
-                            pathId, flow.getBandwidth(), flow.getEncapsulationType());
-                    flowLinks.forEach(network::addLink);
-                });
+                reusePathsResources.stream()
+                        .filter(pathId -> flowPathRepository.findById(pathId)
+                                .map(path -> !path.isIgnoreBandwidth())
+                                .orElse(false))
+                        .forEach(pathId -> {
+                            // ISLs occupied by the flow (take the bandwidth already occupied by the flow into account).
+                            Collection<Isl> flowLinks = islRepository
+                                    .findActiveAndOccupiedByFlowPathWithAvailableBandwidth(pathId,
+                                            flow.getBandwidth(), flow.getEncapsulationType());
+                            flowLinks.forEach(network::addLink);
+                        });
             }
         } catch (PersistenceException e) {
             throw new RecoverableException("An error from the database", e);
