@@ -20,6 +20,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
@@ -35,6 +36,8 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 
 import groovy.util.logging.Slf4j
+import org.springframework.http.HttpStatus
+import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
@@ -125,19 +128,24 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         pathHelper.getInvolvedIsls(pathAfterReroute1).each {
             assert northbound.getLink(it).availableBandwidth == flow.maximumBandwidth - 1 }
 
-        //https://github.com/telstra/open-kilda/issues/3826
-//        when: "Try to manually reroute the degraded flow, while there is still not enough bandwidth"
-//        northboundV2.rerouteFlow(flow.flowId)
-//
-//        then: "Flow remains DEGRADED and on the same path"
-//        wait(rerouteDelay + WAIT_OFFSET) { //2 more reroute attempts
-//            //questionable. should it be +1 or +2? https://github.com/telstra/open-kilda/issues/3826
-//            assert northbound.getFlowHistory(flow.flowId).size() == history.size() + 2
-//        }
-//        northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
-//        PathHelper.convert(northbound.getFlowPath(flow.flowId)) == pathAfterReroute1
-//        pathHelper.getInvolvedIsls(pathAfterReroute1).each {
-//            assert northbound.getLink(it).availableBandwidth == flow.maximumBandwidth - 1 }
+        when: "Try to manually reroute the degraded flow, while there is still not enough bandwidth"
+        northboundV2.rerouteFlow(flow.flowId)
+
+        then: "Error is returned, stating a readable reason"
+        def error = thrown(HttpClientErrorException)
+        error.statusCode == HttpStatus.NOT_FOUND
+        def errorDetails = error.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not reroute flow"
+        errorDetails.errorDescription.contains("Not enough bandwidth or no path found")
+
+        and: "Flow remains DEGRADED and on the same path"
+        wait(rerouteDelay + WAIT_OFFSET) { //2 more reroute attempts (reroute + retry)
+            assert northbound.getFlowHistory(flow.flowId).size() == history.size() + 2
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
+        }
+        PathHelper.convert(northbound.getFlowPath(flow.flowId)) == pathAfterReroute1
+        pathHelper.getInvolvedIsls(pathAfterReroute1).each {
+            assert northbound.getLink(it).availableBandwidth == flow.maximumBandwidth - 1 }
 
         when: "Broken ISL on the original path is back online"
         def portUp = antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
