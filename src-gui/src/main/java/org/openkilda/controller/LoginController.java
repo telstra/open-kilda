@@ -120,7 +120,7 @@ public class LoginController extends BaseController {
                 SecurityContextHolder.getContext().setAuthentication(authenticate);
                 userService.updateLoginDetail(username);
             } else {
-                error = "Invalid email or password";
+                error = "Login failed; Invalid email or password.";
                 LOGGER.warn("Authentication failure for user: '" + username + "'");
                 modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
             }
@@ -155,7 +155,7 @@ public class LoginController extends BaseController {
             }
         } catch (BadCredentialsException e) {
             LOGGER.warn("Authentication failure", e);
-            error = "Invalid email or password";
+            error = "Login failed; Invalid email or password.";
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         } catch (Exception e) {
             LOGGER.warn("Authentication failure", e);

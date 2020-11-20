@@ -24,7 +24,6 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.dao.repository.UserRepository;
 
@@ -48,7 +47,7 @@ public class CustomAuthenticationProvider extends DaoAuthenticationProvider {
         String verificationCode = customWebAuthenticationDetails.getVerificationCode();
         UserEntity user = userRepository.findByUsernameIgnoreCase(auth.getName());
         if (user == null || !user.getActiveFlag()) {
-            throw new UsernameNotFoundException("User '" + auth.getName() + "' does not exist");
+            throw new BadCredentialsException("Login Failed; Invalid email or password.");
         }
         try {
             Authentication result = super.authenticate(auth);
