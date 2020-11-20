@@ -16,6 +16,7 @@
 
 package org.openkilda.wfm.share.zk;
 
+import org.openkilda.bluegreen.BuildVersionObserver;
 import org.openkilda.bluegreen.LifeCycleObserver;
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.bluegreen.Signal;
@@ -36,7 +37,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
-public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
+public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver, BuildVersionObserver {
     public static final String BOLT_ID = "zookeeper.spout";
     public static final String FIELD_ID_LIFECYCLE_EVENT = "lifecycle.event";
 
@@ -66,7 +67,8 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
         try {
             this.watchDog = ZkWatchDog.builder().id(id).serviceName(serviceName).apiVersion(apiVersion)
                     .connectionString(connectionString).build();
-            watchDog.subscribe(this);
+            watchDog.subscribe((LifeCycleObserver) this);
+            watchDog.subscribe((BuildVersionObserver) this);
         } catch (IOException e) {
             log.error("Failed to init ZooKeeper with connection string: %s, received: %s ", connectionString,
                     e.getMessage());
@@ -103,6 +105,15 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
                 .uuid(UUID.randomUUID())
                 .messageId(messageId++).build();
         this.event = event;
+        this.newEvent = true;
+    }
+
+    @Override
+    public void handle(String buildVersion) {
+        this.event = LifecycleEvent.builder()
+                .buildVersion(buildVersion)
+                .uuid(UUID.randomUUID())
+                .messageId(messageId++).build();
         this.newEvent = true;
     }
 }

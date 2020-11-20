@@ -15,27 +15,49 @@
 
 package org.openkilda.wfm.topology.utils;
 
+import static org.openkilda.messaging.Utils.MESSAGE_VERSION_HEADER;
+
 import org.openkilda.wfm.CommandContext;
 
+import com.google.common.collect.Lists;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.Header;
 import org.apache.storm.kafka.spout.RecordTranslator;
 import org.apache.storm.tuple.Values;
 
 import java.util.List;
 
+@Slf4j
 public abstract class KafkaRecordTranslator<K, V, D> implements RecordTranslator<K, V> {
     private static final long serialVersionUID = 1L;
 
     public static final String FIELD_ID_KEY = "key";
     public static final String FIELD_ID_PAYLOAD = "message";
+    public static final String FIELD_ID_VERSION = "messaging.version";
+    public static final String UNKNOWN_VERSION = "unknown_version";
     // FIXME(surabujin): keep payload at index 0 because some code grab it in following way: `tuple.getString(0)`
     // public static final Fields FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_KEY);
 
     @Override
     public List<Object> apply(ConsumerRecord<K, V> record) {
+        List<Header> headers = Lists.newArrayList(record.headers().headers(MESSAGE_VERSION_HEADER));
+        String version;
+
+        if (headers.isEmpty()) {
+            log.error(String.format("Missed %s header for record %s", MESSAGE_VERSION_HEADER, record));
+            version = UNKNOWN_VERSION;
+        } else {
+            if (headers.size() > 1) {
+                log.error(String.format("Fount more than one %s headers for record %s",
+                        MESSAGE_VERSION_HEADER, record));
+            }
+            version = new String(headers.get(0).value());
+        }
+
         D payload = decodePayload(record.value());
         CommandContext context = makeContext(record, payload);
-        return makeTuple(record, payload, context);
+        return makeTuple(record, payload, context, version);
     }
 
     @Override
@@ -47,5 +69,5 @@ public abstract class KafkaRecordTranslator<K, V, D> implements RecordTranslator
 
     protected abstract CommandContext makeContext(ConsumerRecord<?, ?> record, D payload);
 
-    protected abstract Values makeTuple(ConsumerRecord<K, V> record, D payload, CommandContext context);
+    protected abstract Values makeTuple(ConsumerRecord<K, V> record, D payload, CommandContext context, String version);
 }

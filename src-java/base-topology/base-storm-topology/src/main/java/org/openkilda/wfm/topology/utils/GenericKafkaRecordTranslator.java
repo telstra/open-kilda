@@ -27,7 +27,8 @@ abstract class GenericKafkaRecordTranslator<D> extends KafkaRecordTranslator<Str
     // use FIELD_ID_KEY instead
     @Deprecated
     public static final String KEY_FIELD = FIELD_ID_KEY;
-    public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
+    public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT,
+            FIELD_ID_VERSION);
 
     @Override
     public Fields getFieldsFor(String stream) {
@@ -40,7 +41,7 @@ abstract class GenericKafkaRecordTranslator<D> extends KafkaRecordTranslator<Str
     }
 
     @Override
-    protected Values makeTuple(ConsumerRecord<String, D> record, D payload, CommandContext context) {
-        return new Values(record.key(), payload, context);
+    protected Values makeTuple(ConsumerRecord<String, D> record, D payload, CommandContext context, String version) {
+        return new Values(record.key(), payload, context, version);
     }
 }

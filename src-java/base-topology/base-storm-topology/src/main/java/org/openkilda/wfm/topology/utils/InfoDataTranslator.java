@@ -23,7 +23,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
 
 public class InfoDataTranslator extends KafkaRecordTranslator<String, InfoData, InfoData> {
-    public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD);
+    public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_VERSION);
 
     @Override
     public Fields getFieldsFor(String stream) {
@@ -41,7 +41,8 @@ public class InfoDataTranslator extends KafkaRecordTranslator<String, InfoData, 
     }
 
     @Override
-    protected Values makeTuple(ConsumerRecord<String, InfoData> record, InfoData payload, CommandContext context) {
-        return new Values(record.key(), payload);
+    protected Values makeTuple(ConsumerRecord<String, InfoData> record, InfoData payload, CommandContext context,
+                               String version) {
+        return new Values(record.key(), payload, version);
     }
 }
