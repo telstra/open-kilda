@@ -17,6 +17,11 @@ package org.openkilda.pce;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.model.Flow;
@@ -46,6 +51,7 @@ import org.mockito.MockitoAnnotations;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 public class AvailableNetworkFactoryTest {
 
@@ -199,6 +205,32 @@ public class AvailableNetworkFactoryTest {
         AvailableNetwork availableNetwork = availableNetworkFactory.getAvailableNetwork(flow, Collections.emptyList());
 
         assertAvailableNetworkIsCorrect(isl, availableNetwork);
+    }
+
+    @Test
+    public void shouldBuildAvailableNetworkForFlowWithIgnoreBandwidthPaths() throws Exception {
+        Flow flow = getFlow(false);
+        Isl isl = getIsl(flow);
+        PathId pathId = new PathId("flow-path-id");
+        FlowPath flowPath = FlowPath.builder()
+                .pathId(pathId)
+                .srcSwitch(flow.getSrcSwitch())
+                .destSwitch(flow.getDestSwitch())
+                .ignoreBandwidth(true)
+                .build();
+
+        when(config.getNetworkStrategy()).thenReturn("SYMMETRIC_COST");
+
+        when(islRepository.findSymmetricActiveWithAvailableBandwidth(flow.getBandwidth(), flow.getEncapsulationType()))
+                .thenReturn(Collections.singletonList(isl));
+        when(flowPathRepository.findById(pathId)).thenReturn(Optional.of(flowPath));
+
+        AvailableNetwork availableNetwork =
+                availableNetworkFactory.getAvailableNetwork(flow, Collections.singletonList(pathId));
+
+        assertAvailableNetworkIsCorrect(isl, availableNetwork);
+        verify(islRepository, never())
+                .findActiveAndOccupiedByFlowPathWithAvailableBandwidth(eq(pathId), anyLong(), any());
     }
 
     private static Flow getFlow(boolean ignoreBandwidth) {

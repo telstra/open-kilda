@@ -46,11 +46,13 @@ public abstract class BaseFlowPathRemovalAction<T extends FlowProcessingFsm<T, S
 
     protected void updateIslsForFlowPath(FlowPath... paths) {
         for (FlowPath path : paths) {
-            path.getSegments().forEach(pathSegment ->
-                    transactionManager.doInTransaction(() -> {
-                        updateAvailableBandwidth(pathSegment.getSrcSwitchId(), pathSegment.getSrcPort(),
-                                pathSegment.getDestSwitchId(), pathSegment.getDestPort());
-                    }));
+            if (!path.isIgnoreBandwidth()) {
+                path.getSegments().forEach(pathSegment ->
+                        transactionManager.doInTransaction(() -> {
+                            updateAvailableBandwidth(pathSegment.getSrcSwitchId(), pathSegment.getSrcPort(),
+                                    pathSegment.getDestSwitchId(), pathSegment.getDestPort());
+                        }));
+            }
         }
     }
 
