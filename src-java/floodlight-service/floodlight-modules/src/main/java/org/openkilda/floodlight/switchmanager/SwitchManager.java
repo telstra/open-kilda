@@ -1773,18 +1773,25 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @Override
     public List<OFFlowMod> buildExpectedServer42Flows(
-            DatapathId dpid, int server42Port, int server42Vlan, org.openkilda.model.MacAddress server42MacAddress,
+            DatapathId dpid, boolean server42FlowRttFeatureToggle, boolean server42FlowRttSwitchProperty,
+            Integer server42Port, Integer server42Vlan, org.openkilda.model.MacAddress server42MacAddress,
             Set<Integer> customerPorts) throws SwitchNotFoundException {
 
         List<SwitchFlowGenerator> generators = new ArrayList<>();
-        for (Integer port : customerPorts) {
-            generators.add(switchFlowFactory.getServer42InputFlowGenerator(server42Port, port, server42MacAddress));
+        if (server42FlowRttFeatureToggle) {
+            generators.add(switchFlowFactory.getServer42TurningFlowGenerator());
+
+            if (server42FlowRttSwitchProperty) {
+                for (Integer port : customerPorts) {
+                    generators.add(switchFlowFactory.getServer42InputFlowGenerator(
+                            server42Port, port, server42MacAddress));
+                }
+                generators.add(switchFlowFactory.getServer42OutputVlanFlowGenerator(
+                        server42Port, server42Vlan, server42MacAddress));
+                generators.add(switchFlowFactory.getServer42OutputVxlanFlowGenerator(
+                        server42Port, server42Vlan, server42MacAddress));
+            }
         }
-        generators.add(switchFlowFactory.getServer42TurningFlowGenerator());
-        generators.add(switchFlowFactory.getServer42OutputVlanFlowGenerator(
-                server42Port, server42Vlan, server42MacAddress));
-        generators.add(switchFlowFactory.getServer42OutputVxlanFlowGenerator(
-                server42Port, server42Vlan, server42MacAddress));
 
         IOFSwitch sw = lookupSwitch(dpid);
         return generators.stream()

@@ -229,6 +229,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.TO_SWITCH_MANAGER.toString())
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME, StreamType.ERROR.toString())
+                .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME, StreamType.TO_SWITCH_MANAGER.toString())
                 .shuffleGrouping(KILDA_CONFIG_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(PATHS_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(HISTORY_BOLT_NAME, StreamType.ERROR.toString())

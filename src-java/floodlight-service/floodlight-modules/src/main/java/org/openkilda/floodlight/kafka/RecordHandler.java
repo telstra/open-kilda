@@ -756,18 +756,22 @@ class RecordHandler implements Runnable {
                 Integer server42Port = request.getServer42Port();
                 Integer server42Vlan = request.getServer42Vlan();
                 MacAddress server42MacAddress = request.getServer42MacAddress();
-                if (request.isServer42FlowRtt() && server42Port != null && server42Vlan != null
-                        && server42MacAddress != null) {
+
+                if (request.isServer42FlowRttFeatureToggle()) {
                     installedRules.add(
                             processInstallDefaultFlowByCookie(request.getSwitchId(), SERVER_42_TURNING_COOKIE));
-                    installedRules.add(switchManager.installServer42OutputVlanFlow(
-                            dpid, server42Port, server42Vlan, server42MacAddress));
-                    installedRules.add(switchManager.installServer42OutputVxlanFlow(
-                            dpid, server42Port, server42Vlan, server42MacAddress));
 
-                    for (Integer port : request.getServer42FlowRttPorts()) {
-                        installedRules.add(switchManager.installServer42InputFlow(
-                                dpid, server42Port, port, server42MacAddress));
+                    if (request.isServer42FlowRttSwitchProperty() && server42Port != null && server42Vlan != null
+                            && server42MacAddress != null) {
+                        installedRules.add(switchManager.installServer42OutputVlanFlow(
+                                dpid, server42Port, server42Vlan, server42MacAddress));
+                        installedRules.add(switchManager.installServer42OutputVxlanFlow(
+                                dpid, server42Port, server42Vlan, server42MacAddress));
+
+                        for (Integer port : request.getServer42FlowRttPorts()) {
+                            installedRules.add(switchManager.installServer42InputFlow(
+                                    dpid, server42Port, port, server42MacAddress));
+                        }
                     }
                 }
             }
@@ -951,7 +955,8 @@ class RecordHandler implements Runnable {
                     removedRules.addAll(switchManager.deleteDefaultRules(dpid, request.getIslPorts(),
                             request.getFlowPorts(), request.getFlowLldpPorts(), request.getFlowArpPorts(),
                             request.getServer42FlowRttPorts(), request.isMultiTable(), request.isSwitchLldp(),
-                            request.isSwitchArp(), request.isServer42FlowRtt()));
+                            request.isSwitchArp(),
+                            request.isServer42FlowRttFeatureToggle() && request.isServer42FlowRttSwitchProperty()));
                 }
             }
 
@@ -1008,16 +1013,19 @@ class RecordHandler implements Runnable {
                 Integer server42Port = request.getServer42Port();
                 Integer server42Vlan = request.getServer42Vlan();
                 MacAddress server42MacAddress = request.getServer42MacAddress();
-                if (request.isServer42FlowRtt() && server42Port != null && server42Vlan != null
-                        && server42MacAddress != null) {
+                if (request.isServer42FlowRttFeatureToggle()) {
                     switchManager.installServer42TurningFlow(dpid);
-                    switchManager.installServer42OutputVlanFlow(
-                            dpid, server42Port, server42Vlan, server42MacAddress);
-                    switchManager.installServer42OutputVxlanFlow(
-                            dpid, server42Port, server42Vlan, server42MacAddress);
 
-                    for (Integer port : request.getServer42FlowRttPorts()) {
-                        switchManager.installServer42InputFlow(dpid, server42Port, port, server42MacAddress);
+                    if (request.isServer42FlowRttSwitchProperty() && server42Port != null && server42Vlan != null
+                            && server42MacAddress != null) {
+                        switchManager.installServer42OutputVlanFlow(
+                                dpid, server42Port, server42Vlan, server42MacAddress);
+                        switchManager.installServer42OutputVxlanFlow(
+                                dpid, server42Port, server42Vlan, server42MacAddress);
+
+                        for (Integer port : request.getServer42FlowRttPorts()) {
+                            switchManager.installServer42InputFlow(dpid, server42Port, port, server42MacAddress);
+                        }
                     }
                 }
             }
@@ -1073,7 +1081,8 @@ class RecordHandler implements Runnable {
         boolean multiTable = request.isMultiTable();
         boolean switchLldp = request.isSwitchLldp();
         boolean switchArp = request.isSwitchArp();
-        boolean server42FlowRtt = request.isServer42FlowRtt();
+        boolean server42FlowRttFeatureToggle = request.isServer42FlowRttFeatureToggle();
+        boolean server42FlowRttSwitchProperty = request.isServer42FlowRttSwitchProperty();
         Integer server42Port = request.getServer42Port();
         Integer server42Vlan = request.getServer42Vlan();
         MacAddress server42MacAddress = request.getServer42MacAddress();
@@ -1103,11 +1112,9 @@ class RecordHandler implements Runnable {
                     defaultRules.add(context.getSwitchManager().buildArpInputCustomerFlow(dpid, port));
                 }
             }
-            if (server42FlowRtt) {
-                defaultRules.addAll(context.getSwitchManager()
-                        .buildExpectedServer42Flows(dpid, server42Port, server42Vlan, server42MacAddress,
-                                server42FlowRttPorts));
-            }
+            defaultRules.addAll(context.getSwitchManager()
+                    .buildExpectedServer42Flows(dpid, server42FlowRttFeatureToggle, server42FlowRttSwitchProperty,
+                            server42Port, server42Vlan, server42MacAddress, server42FlowRttPorts));
 
             List<FlowEntry> flows = defaultRules.stream()
                     .map(OfFlowStatsMapper.INSTANCE::toFlowEntry)

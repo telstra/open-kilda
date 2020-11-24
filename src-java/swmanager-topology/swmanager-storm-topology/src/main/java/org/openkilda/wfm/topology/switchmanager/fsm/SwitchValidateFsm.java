@@ -79,7 +79,6 @@ import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 @Slf4j
@@ -334,9 +333,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         final SwitchId switchId = getSwitchId();
         log.info("Sending requests to get expected switch service rules (switch={}, key={})", switchId, key);
 
-
-        Optional<FeatureToggles> featureToggles = featureTogglesRepository.find();
-        boolean isServer42FlowRtt = switchProperties.isServer42FlowRtt() && featureToggles
+        boolean isServer42FlowRttFeatureToggle = featureTogglesRepository.find()
                 .map(FeatureToggles::getServer42FlowRtt)
                 .orElse(FeatureToggles.DEFAULTS.getServer42FlowRtt());
 
@@ -346,7 +343,8 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                 .multiTable(isMultiTable)
                 .switchLldp(isSwitchLldp)
                 .switchArp(isSwitchArp)
-                .server42FlowRtt(isServer42FlowRtt)
+                .server42FlowRttFeatureToggle(isServer42FlowRttFeatureToggle)
+                .server42FlowRttSwitchProperty(switchProperties.isServer42FlowRtt())
                 .server42Port(switchProperties.getServer42Port())
                 .server42Vlan(switchProperties.getServer42Vlan())
                 .server42MacAddress(switchProperties.getServer42MacAddress());
@@ -366,7 +364,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
 
             if (flowSide.isMultiTableSegment()) {
                 payload.flowPort(endpoint.getPortNumber());
-                if (isServer42FlowRtt && !flow.isOneSwitchFlow()) {
+                if (isServer42FlowRttFeatureToggle && switchProperties.isServer42FlowRtt() && !flow.isOneSwitchFlow()) {
                     payload.server42FlowRttPort(endpoint.getPortNumber());
                 }
             }

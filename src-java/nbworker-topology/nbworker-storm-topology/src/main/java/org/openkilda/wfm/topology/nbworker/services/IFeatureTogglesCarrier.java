@@ -16,7 +16,10 @@
 package org.openkilda.wfm.topology.nbworker.services;
 
 import org.openkilda.model.FeatureToggles;
+import org.openkilda.model.SwitchId;
 
 public interface IFeatureTogglesCarrier {
     void featureTogglesUpdateNotification(FeatureToggles toggles);
+
+    void requestSwitchSync(SwitchId switchId);
 }

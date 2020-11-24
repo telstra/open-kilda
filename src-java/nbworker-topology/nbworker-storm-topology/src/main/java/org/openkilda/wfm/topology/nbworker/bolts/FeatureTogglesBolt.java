@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
@@ -25,9 +26,11 @@ import org.openkilda.messaging.nbtopology.request.CreateOrUpdateFeatureTogglesRe
 import org.openkilda.messaging.nbtopology.request.GetFeatureTogglesRequest;
 import org.openkilda.messaging.nbtopology.response.FeatureTogglesResponse;
 import org.openkilda.model.FeatureToggles;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.FeatureTogglesNotFoundException;
 import org.openkilda.wfm.share.mappers.FeatureTogglesMapper;
+import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FeatureTogglesService;
 import org.openkilda.wfm.topology.nbworker.services.IFeatureTogglesCarrier;
@@ -94,6 +97,18 @@ public class FeatureTogglesBolt extends PersistenceOperationsBolt implements IFe
         emit(STREAM_NOTIFICATION_ID, getCurrentTuple(), makeNotificationTuple(payload));
     }
 
+    @Override
+    public void requestSwitchSync(SwitchId switchId) {
+        SwitchValidateRequest data = SwitchValidateRequest.builder()
+                .switchId(switchId)
+                .performSync(true)
+                .processMeters(true)
+                .removeExcess(true)
+                .build();
+        getOutput().emit(StreamType.TO_SWITCH_MANAGER.toString(), getCurrentTuple(),
+                new Values(data, KeyProvider.generateChainedKey(getCorrelationId())));
+    }
+
     // -- private --
 
     private Values makeNotificationTuple(InfoData payload) {
@@ -106,5 +121,7 @@ public class FeatureTogglesBolt extends PersistenceOperationsBolt implements IFe
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
         declarer.declareStream(STREAM_NOTIFICATION_ID, STREAM_NOTIFICATION_FIELDS);
+        declarer.declareStream(StreamType.TO_SWITCH_MANAGER.toString(),
+                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
     }
 }
