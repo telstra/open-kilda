@@ -62,6 +62,11 @@ public class DiscoveryRoundTripMonitor extends DiscoveryMonitor<IslEndpointRound
     }
 
     @Override
+    public String getName() {
+        return "round-trip";
+    }
+
+    @Override
     public void actualUpdate(IslFsmEvent event, IslFsmContext context) {
         if (event == IslFsmEvent.ROUND_TRIP_STATUS) {
             updateEndpointStatus(context.getEndpoint(), context.getRoundTripStatus());
