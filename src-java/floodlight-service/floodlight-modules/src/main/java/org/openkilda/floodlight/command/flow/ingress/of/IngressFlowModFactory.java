@@ -349,7 +349,6 @@ public abstract class IngressFlowModFactory {
                 .makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID))
                 .setMatch(of.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
-                        .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(endpoint.getInnerVlanId()))
                         .setMasked(MatchField.METADATA,
                                 OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
                         .build())

@@ -18,6 +18,7 @@ package org.openkilda.floodlight.command.flow.transit;
 import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.SwitchId;
@@ -45,6 +46,11 @@ public class TransitFlowLoopSegmentVerifyCommand extends TransitFlowLoopSegmentI
     @Override
     protected CompletableFuture<FlowSegmentReport> makeExecutePlan(SpeakerCommandProcessor commandProcessor) {
         return makeVerifyPlan(ImmutableList.of(makeTransitModMessage()));
+    }
+
+    @Override
+    protected int getTableId() {
+        return SwitchManager.EGRESS_TABLE_ID;
     }
 
     @Override

@@ -69,6 +69,11 @@ public class TransitFlowLoopSegmentInstallCommand extends TransitFlowSegmentComm
     }
 
     @Override
+    protected int getTableId() {
+        return SwitchManager.EGRESS_TABLE_ID;
+    }
+
+    @Override
     protected SegmentAction getSegmentAction() {
         return SegmentAction.INSTALL;
     }

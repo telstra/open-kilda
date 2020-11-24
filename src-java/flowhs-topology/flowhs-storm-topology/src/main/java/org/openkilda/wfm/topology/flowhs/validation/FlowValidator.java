@@ -110,11 +110,7 @@ public class FlowValidator {
 
     private void validateFlowLoop(Flow flow, RequestedFlow requestedFlow) throws InvalidFlowException {
         if (requestedFlow.getLoopSwitchId() != null) {
-            //todo: fix loops for q-in-q and singe switch loops
-            if (requestedFlow.getSrcInnerVlan() != 0 || requestedFlow.getDestInnerVlan() != 0) {
-                throw new InvalidFlowException("Loop for Q-in-Q flows is not implemented",
-                        ErrorType.NOT_IMPLEMENTED);
-            }
+            //todo: fix loops singe switch loops
             if (requestedFlow.getSrcSwitch().equals(requestedFlow.getDestSwitch())) {
                 throw new InvalidFlowException("Loop for single switch flows is not implemented",
                         ErrorType.NOT_IMPLEMENTED);
