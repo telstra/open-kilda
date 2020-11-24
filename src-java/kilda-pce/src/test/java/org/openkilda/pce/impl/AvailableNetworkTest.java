@@ -21,6 +21,7 @@ import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslConfig;
@@ -57,6 +58,12 @@ public class AvailableNetworkTest {
 
     private static final SwitchId SRC_SWITCH = new SwitchId("00:00:00:22:3d:6c:00:b8");
     private static final SwitchId DST_SWITCH = new SwitchId("00:00:00:22:3d:5a:04:87");
+
+    private static final Flow DUMMY_FLOW = Flow.builder()
+            .flowId("flow-id")
+            .srcSwitch(Switch.builder().switchId(new SwitchId("1")).build())
+            .destSwitch(Switch.builder().switchId(new SwitchId("2")).build())
+            .build();
 
     @Test
     public void shouldNotAllowDuplicates() {
@@ -149,9 +156,8 @@ public class AvailableNetworkTest {
         addLink(network, DST_SWITCH, SRC_SWITCH, 2, 1, cost, 5);
         addLink(network, DST_SWITCH, SRC_SWITCH, 1, 3, cost, 5);
 
-        network.processDiversitySegments(
-                asList(buildPathWithSegment(SRC_SWITCH, DST_SWITCH, 3, 1, 0),
-                        buildPathWithSegment(DST_SWITCH, SRC_SWITCH, 1, 3, 0)));
+        network.processDiversitySegments(singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 3, 1, 0)), DUMMY_FLOW);
+        network.processDiversitySegments(singletonList(buildPathSegment(DST_SWITCH, SRC_SWITCH, 1, 3, 0)), DUMMY_FLOW);
         network.reduceByWeight(weightFunction);
 
         assertThat(network.getSwitch(SRC_SWITCH).getOutgoingLinks(), Matchers.hasSize(1));
@@ -271,8 +277,8 @@ public class AvailableNetworkTest {
 
 
         network.processDiversitySegmentsWithPop(
-                asList(buildPathWithSegment(SWITCH_1, SWITCH_3, 2, 1, 0),
-                        buildPathWithSegment(SWITCH_3, SWITCH_5, 2, 2, 1)));
+                asList(buildPathSegment(SWITCH_1, SWITCH_3, 2, 1, 0),
+                        buildPathSegment(SWITCH_3, SWITCH_5, 2, 2, 1)));
         for (Edge edge : network.edges) {
             long currentWeight = weightFunction.apply(edge).toLong();
             assertEquals(cost, currentWeight);
@@ -329,7 +335,7 @@ public class AvailableNetworkTest {
         addLink(network, SRC_SWITCH, DST_SWITCH,
                 7, 60, 10, 3);
         network.processDiversitySegments(
-                singletonList(buildPathWithSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 0)));
+                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 0)), DUMMY_FLOW);
 
         Node srcSwitch = network.getSwitch(SRC_SWITCH);
 
@@ -339,12 +345,34 @@ public class AvailableNetworkTest {
     }
 
     @Test
+    public void shouldFillEmptyDiversityWeightsForTerminatingSwitch() {
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SRC_SWITCH, DST_SWITCH, 7, 60, 10, 3);
+
+        Flow flow = Flow.builder()
+                .flowId("flow-id")
+                .srcSwitch(Switch.builder().switchId(SRC_SWITCH).build())
+                .destSwitch(Switch.builder().switchId(DST_SWITCH).build())
+                .build();
+
+        network.processDiversitySegments(
+                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 0)), flow);
+
+        Node srcSwitch = network.getSwitch(SRC_SWITCH);
+
+        Edge edge = srcSwitch.getOutgoingLinks().iterator().next();
+        assertEquals(1, edge.getDiversityGroupUseCounter());
+        assertEquals(0, edge.getDestSwitch().getDiversityGroupUseCounter());
+        assertEquals(0, edge.getSrcSwitch().getDiversityGroupUseCounter());
+    }
+
+    @Test
     public void shouldFillDiversityWeightsTransit() {
         AvailableNetwork network = new AvailableNetwork();
         addLink(network, SRC_SWITCH, DST_SWITCH,
                 7, 60, 10, 3);
         network.processDiversitySegments(
-                singletonList(buildPathWithSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 1)));
+                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 1)), DUMMY_FLOW);
 
         Node srcSwitch = network.getSwitch(SRC_SWITCH);
 
@@ -368,8 +396,8 @@ public class AvailableNetworkTest {
         addLink(network, switchB, switchC, 2, 2, 10, 3);
         addLink(network, switchC, switchD, 3, 3, 10, 3);
         network.processDiversitySegments(asList(
-                buildPathWithSegment(switchA, switchB, 1, 1, 0),
-                buildPathWithSegment(switchC, switchD, 3, 3, 0)));
+                buildPathSegment(switchA, switchB, 1, 1, 0),
+                buildPathSegment(switchC, switchD, 3, 3, 0)), DUMMY_FLOW);
 
         Node nodeB = network.getSwitch(switchB);
 
@@ -386,7 +414,7 @@ public class AvailableNetworkTest {
         addLink(network, SRC_SWITCH, DST_SWITCH,
                 7, 60, 10, 3);
         network.processDiversitySegments(
-                singletonList(buildPathWithSegment(SRC_SWITCH, DST_SWITCH, 1, 2, 0)));
+                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 1, 2, 0)), DUMMY_FLOW);
 
         Node srcSwitch = network.getSwitch(SRC_SWITCH);
 
@@ -420,7 +448,7 @@ public class AvailableNetworkTest {
         network.addLink(isl);
     }
 
-    private PathSegment buildPathWithSegment(SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort, int seqId) {
+    private PathSegment buildPathSegment(SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort, int seqId) {
         return buildPathWithSegment(srcDpid, dstDpid, srcPort, dstPort, null, null, seqId);
     }
 
