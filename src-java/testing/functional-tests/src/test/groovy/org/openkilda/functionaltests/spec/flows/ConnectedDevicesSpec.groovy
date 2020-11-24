@@ -723,19 +723,18 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Corresponding devices are detected on a switch port"
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northboundV2.getConnectedDevices(sw.dpId).ports) { ports ->
-                ports.size() == 1
-                ports[0].portNumber == tg.switchPort
-                ports[0].lldp.first().vlan == vlan
-                verifyEquals(ports[0].lldp.first(), lldpData)
-                ports[0].arp.first().vlan == vlan
-                verifyEquals(ports[0].arp.first(), arpData)
+            verifyAll(northboundV2.getConnectedDevices(sw.dpId).ports.find { it.portNumber == tg.switchPort }) { port ->
+                port.portNumber == tg.switchPort
+                port.lldp.first().vlan == vlan
+                verifyEquals(port.lldp.first(), lldpData)
+                port.arp.first().vlan == vlan
+                verifyEquals(port.arp.first(), arpData)
             }
         }
 
         cleanup: "Turn off devices prop, remove connected devices"
-        database.removeConnectedDevices(sw.dpId)
         switchHelper.updateSwitchProperties(sw, initialProps)
+        database.removeConnectedDevices(sw.dpId)
     }
 
     @Unroll
