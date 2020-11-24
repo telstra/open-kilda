@@ -842,6 +842,47 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             verifyEquals(it.source.arp.first(), arpData2)
         }
 
+
+        when: "Other devices send lldp and arp packets into a flow port with double vlans different from flow vlan"
+        def lldpData3 = LldpData.buildRandom()
+        def arpData3 = ArpData.buildRandom()
+        def vlans = [vlan - 1, vlan - 2]
+        new ConnectedDevice(traffExamProvider.get(), tg, vlans).withCloseable {
+            it.sendLldp(lldpData3)
+            it.sendArp(arpData3)
+        }
+
+        then: "Corresponding devices are detected on a switch port with reference to corresponding default flow"
+        Wrappers.wait(WAIT_OFFSET) {
+            verifyAll(northboundV2.getConnectedDevices(sw.dpId).ports) {
+                it.size() == 1
+                it[0].portNumber == tg.switchPort
+                it[0].lldp.size() == 3
+                it[0].lldp.last().flowId == defaultFlow.id
+                it[0].lldp.last().vlan == vlans[0] //due to issue 3475
+                verifyEquals(it[0].lldp.last(), lldpData3)
+                it[0].arp.size() == 3
+                it[0].arp.last().flowId == defaultFlow.id
+                it[0].arp.last().vlan == vlans[0] //due to issue 3475
+                verifyEquals(it[0].arp.last(), arpData3)
+            }
+        }
+
+        and: "Devices are not visible as a flow devices"
+        //it's a previous devices, nothing changed
+        verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
+            it.source.lldp.size() == 1
+            it.source.arp.size() == 1
+        }
+
+        and: "Devices are visible as a default flow devices"
+        verifyAll(northbound.getFlowConnectedDevices(defaultFlow.id)) {
+            it.source.lldp.size() == 2
+            verifyEquals(it.source.lldp.sort { it.timeFirstSeen }.last(), lldpData3)
+            it.source.arp.size() == 2
+            verifyEquals(it.source.arp.sort { it.timeFirstSeen }.last(), arpData3)
+        }
+
         cleanup: "Turn off devices prop, remove connected devices, remove flow"
         flowHelper.deleteFlow(flow.id)
         flowHelper.deleteFlow(defaultFlow.id)
@@ -1261,6 +1302,85 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         100    | 200         | FlowEncapsulationType.TRANSIT_VLAN
         0      | 200         | FlowEncapsulationType.VXLAN
         100    | 200         | FlowEncapsulationType.VXLAN
+    }
+
+    @Unroll
+    @Tags([SMOKE_SWITCHES])
+    def "Able to detect devices when two qinq single-switch different-port flows exist with the same outerVlanId"() {
+        given: "Two flows between different ports on the same switch with the same outerVlanId"
+        assumeTrue("Require at least 1 switch with connected traffgen", topology.activeTraffGens.size() > 0)
+        def sw = topology.activeTraffGens*.switchConnected.first()
+        def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
+
+        def flow1 = flowHelperV2.singleSwitchFlow(sw, true)
+        flow1.source.detectConnectedDevices.lldp = true
+        flow1.source.detectConnectedDevices.arp = true
+        flow1.source.vlanId = commonOuterVlanId
+        flow1.source.innerVlanId = innerVlanIdFlow1
+        flow1.encapsulationType = encapsulationType
+        flowHelperV2.addFlow(flow1)
+
+        def flow2 = flowHelperV2.singleSwitchFlow(sw, true, [flow1])
+        flow2.source.detectConnectedDevices.lldp = true
+        flow2.source.detectConnectedDevices.arp = true
+        flow2.source.vlanId = commonOuterVlanId
+        flow2.source.innerVlanId = innerVlanIdFlow2
+        flow2.encapsulationType = encapsulationType
+        flowHelperV2.addFlow(flow2)
+
+        when: "Device connects to src endpoint and send lldp and arp packets for flow1 only"
+        def lldpData = LldpData.buildRandom()
+        def arpData = ArpData.buildRandom()
+        new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(sw.dpId),
+                [flow1.source.vlanId, flow1.source.innerVlanId]).withCloseable {
+            it.sendLldp(lldpData)
+            it.sendArp(arpData)
+        }
+
+        then: "LLDP and ARP connected devices are recognized for flow1"
+        Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
+            verifyAll(northbound.getFlowConnectedDevices(flow1.flowId)) {
+                it.source.lldp.size() == 1
+                it.source.arp.size() == 1
+                it.destination.lldp.empty
+                it.destination.arp.empty
+                verifyEquals(it.source.lldp[0], lldpData)
+                verifyEquals(it.source.arp[0], arpData)
+            }
+        }
+
+        and: "LLDP and ARP connected devices are not recognized for flow2"
+        verifyAll(northbound.getFlowConnectedDevices(flow2.flowId)) {
+            it.source.lldp.empty
+            it.source.arp.empty
+            it.destination.lldp.empty
+            it.destination.arp.empty
+        }
+
+        and: "Devices are registered on the switch"
+        verifyAll(northboundV2.getConnectedDevices(flow1.source.switchId).ports) {
+            it.size() == 1
+            it[0].portNumber == flow1.source.portNumber
+            it[0].lldp.size() == 1
+            it[0].lldp.first().flowId == flow1.flowId
+            it[0].lldp.first().vlan == commonOuterVlanId //due to issue 3475
+            verifyEquals(it[0].lldp.first(), lldpData)
+            it[0].arp.size() == 1
+            it[0].arp.first().flowId == flow1.flowId
+            it[0].arp.first().vlan == commonOuterVlanId //due to issue 3475
+            verifyEquals(it[0].arp.first(), arpData)
+        }
+
+        cleanup: "Restore initial switch properties"
+        flow1 && flowHelperV2.deleteFlow(flow1.flowId)
+        flow2 && flowHelperV2.deleteFlow(flow2.flowId)
+        initialProps && restoreSwitchProperties(sw.dpId, initialProps)
+        sw && database.removeConnectedDevices(sw.dpId)
+
+        where:
+        commonOuterVlanId | innerVlanIdFlow1 | innerVlanIdFlow2 | encapsulationType
+        1                 | 2                | 4                | FlowEncapsulationType.TRANSIT_VLAN
+        1                 | 3                | 5                | FlowEncapsulationType.VXLAN
     }
 
     /**
