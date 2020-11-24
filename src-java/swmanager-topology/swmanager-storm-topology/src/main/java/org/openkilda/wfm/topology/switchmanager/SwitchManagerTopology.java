@@ -23,6 +23,9 @@ import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
+import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.switchmanager.bolt.SpeakerWorkerBolt;
 import org.openkilda.wfm.topology.switchmanager.bolt.SwitchManagerHub;
@@ -55,6 +58,10 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
 
         TopologyBuilder builder = new TopologyBuilder();
 
+        String zkString = getZookeeperConfig().getConnectString();
+        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(), zkString);
+        declareSpout(builder, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
+
         declareSpout(builder, new CoordinatorSpout(), CoordinatorSpout.ID);
         declareBolt(builder, new CoordinatorBolt(), CoordinatorBolt.ID)
                 .allGrouping(CoordinatorSpout.ID)
@@ -66,15 +73,17 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
         HubBolt.Config hubConfig = HubBolt.Config.builder()
                 .requestSenderComponent(HUB_SPOUT)
                 .workerComponent(SpeakerWorkerBolt.ID)
+                .lifeCycleEventComponent(ZooKeeperSpout.SPOUT_ID)
                 .timeoutMs((int) TimeUnit.SECONDS.toMillis(topologyConfig.getProcessTimeout()))
                 .build();
         List<String> inputTopics = Lists.newArrayList(topologyConfig.getKafkaSwitchManagerNbTopic(),
                 topologyConfig.getKafkaSwitchManagerNetworkTopic(),
                 topologyConfig.getKafkaSwitchManagerNbWorkerTopic());
-        declareKafkaSpout(builder, inputTopics, HUB_SPOUT);
+        declareKafkaSpout(builder, inputTopics, HUB_SPOUT, getZkTopoName(), getConfig().getBlueGreenMode());
         declareBolt(builder, new SwitchManagerHub(hubConfig, persistenceManager,
                 topologyConfig, configurationProvider.getConfiguration(FlowResourcesConfig.class)),
                 SwitchManagerHub.ID)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID)
                 .fieldsGrouping(HUB_SPOUT, FIELDS_KEY)
                 .directGrouping(SpeakerWorkerBolt.ID, SwitchManagerHub.INCOME_STREAM)
                 .directGrouping(CoordinatorBolt.ID);
@@ -85,20 +94,32 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
                 .workerSpoutComponent(WORKER_SPOUT)
                 .defaultTimeout((int) TimeUnit.SECONDS.toMillis(topologyConfig.getOperationTimeout()))
                 .build();
-        declareKafkaSpout(builder, topologyConfig.getKafkaSwitchManagerTopic(), WORKER_SPOUT);
+        declareKafkaSpout(builder, topologyConfig.getKafkaSwitchManagerTopic(), WORKER_SPOUT,
+                getZkTopoName(), getConfig().getBlueGreenMode());
         declareBolt(builder, new SpeakerWorkerBolt(speakerWorkerConfig),
                 SpeakerWorkerBolt.ID)
                 .fieldsGrouping(WORKER_SPOUT, FIELDS_KEY)
                 .fieldsGrouping(SwitchManagerHub.ID, SpeakerWorkerBolt.INCOME_STREAM, FIELDS_KEY)
                 .directGrouping(CoordinatorBolt.ID);
 
-        declareBolt(builder, buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic()), NB_KAFKA_BOLT)
+        declareBolt(builder, buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic(),
+                getZkTopoName(), getConfig().getBlueGreenMode()), NB_KAFKA_BOLT)
                 .shuffleGrouping(SwitchManagerHub.ID, StreamType.TO_NORTHBOUND.toString());
 
-        declareBolt(builder, buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic()), SPEAKER_KAFKA_BOLT)
+        declareBolt(builder, buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic(),
+                getZkTopoName(), getConfig().getBlueGreenMode()), SPEAKER_KAFKA_BOLT)
                 .shuffleGrouping(SpeakerWorkerBolt.ID, StreamType.TO_FLOODLIGHT.toString());
 
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(), zkString);
+        declareBolt(builder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
+                .allGrouping(SwitchManagerHub.ID, ZkStreams.ZK.toString());
+
         return builder.createTopology();
+    }
+
+    @Override
+    protected String getZkTopoName() {
+        return "swmanager";
     }
 
     /**

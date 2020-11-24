@@ -35,6 +35,7 @@ import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchValidateService;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 
@@ -55,6 +56,9 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
             SwitchValidateFsm, SwitchValidateState, SwitchValidateEvent, SwitchValidateContext> fsmExecutor;
 
     private final RepositoryFactory repositoryFactory;
+
+    @Getter
+    private boolean active = true;
 
     public SwitchValidateServiceImpl(
             SwitchManagerCarrier carrier, PersistenceManager persistenceManager, ValidationService validationService) {
@@ -153,6 +157,25 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
             log.info("Switch {} validation FSM have reached termination state (key={})",
                     fsm.getSwitchId(), fsm.getKey());
             fsms.remove(fsm.getKey());
+            if (isAllOperationsCompleted() && !active) {
+                carrier.sendInactive();
+            }
         }
+    }
+
+    @Override
+    public void activate() {
+        active = true;
+    }
+
+    @Override
+    public boolean deactivate() {
+        active = false;
+        return isAllOperationsCompleted();
+    }
+
+    @Override
+    public boolean isAllOperationsCompleted() {
+        return fsms.isEmpty();
     }
 }

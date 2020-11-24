@@ -42,4 +42,10 @@ public interface SwitchValidateService {
     void handleTaskTimeout(String key);
 
     void handleTaskError(String key, ErrorMessage message);
+
+    void activate();
+
+    boolean deactivate();
+
+    boolean isAllOperationsCompleted();
 }
