@@ -431,9 +431,6 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
                     .to(State._FAILED)
                     .on(Event.NEXT);
 
-            builder.onEntry(State._FAILED)
-                    .callMethod("retryIfAllowed");
-
             builder.transition()
                     .from(State._FAILED)
                     .toFinal(State.FINISHED_WITH_ERROR)
