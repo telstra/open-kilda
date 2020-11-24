@@ -25,6 +25,7 @@ import {
   declare var jQuery: any;
   import { environment } from "../../../../environments/environment";
 import { TopologyGraphService } from 'src/app/common/services/topology-graph.service';
+import { TopologyService } from 'src/app/common/services/topology.service';
 @Component({
   selector: 'app-world-map-view',
   templateUrl: './world-map-view.component.html',
@@ -32,6 +33,7 @@ import { TopologyGraphService } from 'src/app/common/services/topology-graph.ser
 })
 export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy {
   @Input() data:any;
+  @Input() reloadMap:boolean;
     map:any;
 	linkLayer:any;
 	centerLng:number = 0 ;
@@ -54,14 +56,15 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 	clusterDistance:any=50;
 	overlay:any; 
 	popInfoOverlay:any;
+	oldTranformation:any='';
 	container=  document.getElementById('popup');
 	content = document.getElementById('popup-content');
 	closer = document.getElementById('popup-closer');
 	popinfocontainer = document.getElementById('popInfoContainer');
 	popinfocontent = document.getElementById('popInfocontent');
 	popinfocloser = document.getElementById('popInfocloser');
-	// minimise = document.getElementById('popup-minimize');
-	// maximise = document.getElementById('popup-maximize');
+	 //minimise = document.getElementById('popup-minimize');
+	 //maximise = document.getElementById('popup-maximize');
 	graph_loader = document.getElementById('graph_loader');
 	default_location:any={
 		"pop": "Unknown",
@@ -77,12 +80,139 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 	selectDoubleClick = new Select({
 	condition: doubleClick, 
 	});
-	constructor(private httpClient:HttpClient,private topologyGraphService:TopologyGraphService) { 
+	constructor(private httpClient:HttpClient,private topologyGraphService:TopologyGraphService,private topologyService:TopologyService) { 
   }
 
 	ngOnInit(): void {
-		
+		this.topologyService.notifyObj.subscribe((data:any)=>{
+			if(data && typeof data.type !='undefined'){
+				var type = 'switch';
+				if(data.type.includes('isl')){
+					type = 'isl';
+				}
+				switch(type){
+					case 'isl': this.highLightPopLink(data.newlink);
+							 break;
+					case 'switch': this.highLightPop(data.switch);
+							 break;
+				}
+			}
+		})
 	}
+
+	highLightPopLink(data){
+		var self = this;
+		var foundFeature = null;
+		if(this.ClusterLinks && this.ClusterLinks.length){
+			this.ClusterLinks.forEach(link=>{
+				var clusterLinkData = link.values_.clusterLinkData;
+				if(clusterLinkData && clusterLinkData.length){
+					clusterLinkData.forEach(l=>{
+						if(l.source_switch == data.source_switch && l.target_switch == data.target_switch && l.src_port == data.src_port && l.dst_port == data.dst_port){
+							foundFeature = link;
+						}
+					})
+				}
+			})
+		}
+		if(this.linkSource && !foundFeature){
+			Object.keys(this.linkSource.uidIndex_).forEach((link)=>{
+				var linksData = self.linkSource.uidIndex_[link].values_.linksData;
+				if(linksData && linksData.length){
+					linksData.forEach((l)=>{
+						if(l.source_switch == data.source_switch && l.target_switch == data.target_switch && l.src_port == data.src_port && l.dst_port == data.dst_port){
+							foundFeature = self.linkSource.uidIndex_[link];
+						}
+					})
+				}
+			})
+		}
+		// if link is inside pop
+		var linkInsidePop = null;
+		if(this.clusterSource && this.clusterSource.features && this.clusterSource.features.length){
+			var clusterFeatures = this.clusterSource.features;
+			clusterFeatures.forEach(feature => {
+					var valueFeatures = feature.values_.features;
+					valueFeatures.forEach(f=>{
+						var featureLinks = f.values_.links;
+						featureLinks.forEach(l => {
+							if(l.source_switch == data.source_switch && l.target_switch == data.target_switch && l.src_port == data.src_port && l.dst_port == data.dst_port){
+								linkInsidePop = feature;
+							}
+						});
+					});
+					
+			});
+		}
+		if(foundFeature){
+			var oldStyle =foundFeature.getStyle();
+			var style = new Style({
+				stroke: new Stroke({
+				  color:'rgba(255, 0, 0, '+0.5+')',
+				  width: 10
+				})
+			});
+			foundFeature.setStyle(style);
+			setTimeout(()=>{
+				foundFeature.setStyle(oldStyle);
+			},2000);
+		}
+		if(linkInsidePop){
+			var oldStyle = linkInsidePop.getStyle();
+			var style =  new Style({
+				image:new CircleStyle({
+				  radius: 5,
+				  fill: new Fill({color: 'white'}),
+				  stroke: new Stroke({
+					color: 'rgba(255, 0, 0, '+0.5+')',
+					width: 20,
+				  })
+				}),
+			  });
+			  linkInsidePop.setStyle(style);
+			  setTimeout(()=>{
+				linkInsidePop.setStyle(oldStyle);
+			  },2000);
+		}
+	}
+
+	highLightPop(data){
+		var self = this;
+		var popFeature = null;
+		if(this.clusterSource && this.clusterSource.features && this.clusterSource.features.length){
+			var clusterFeatures = this.clusterSource.features;
+			clusterFeatures.forEach(feature => {
+					var valueFeatures = feature.values_.features;
+					valueFeatures.forEach(f=>{
+						var featureSwitches = f.values_.switches;
+						featureSwitches.forEach(d => {
+							if(d.switch_id == data.switch_id){
+								popFeature = feature;
+							}
+						});
+					});
+					
+			});
+		}
+		if(popFeature){
+			var oldStyle = popFeature.getStyle();
+			var style =  new Style({
+				image:new CircleStyle({
+					radius: 5,
+					fill: new Fill({color: 'white'}),
+					stroke: new Stroke({
+					color: 'rgba(255, 0, 0, '+0.5+')',
+					width: 20,
+					})
+				}),
+				});
+				popFeature.setStyle(style);
+				setTimeout(()=>{
+				popFeature.setStyle(oldStyle);
+				},2000);
+		}
+	}
+
 	getPopLinks(switches,links){
 		var switchIds = switches.map((d)=>{
 			return d.switch_id;
@@ -131,6 +261,8 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 			if(typeof(change.data)!=='undefined' && change.data.currentValue){
 			  this.data  = JSON.parse(JSON.stringify(change.data.currentValue));
 			  if(this.data && this.data.switch && this.data.switch.length){
+				this.pops = [];
+				this.popLinks = [];
 				this.links = this.data.isl;
 				this.switches = this.data.switch;
 				var popWiseData = this.groupBy(this.switches,'location');
@@ -169,9 +301,13 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 				}
 			}
 			}
-			this.initMap();
+			if(this.reloadMap){
+				this.reloadWorldMap();
+			}else{
+				this.initMap();
+			}
+			
 		  }
-
 		
 	}
 
@@ -224,6 +360,26 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 	this.loadMarkersClusters();	
   }
 
+  reloadWorldMap(){
+	setTimeout(()=>{
+		if(typeof this.clusterLayer !='undefined' && typeof this.clusterLayer.getSource() !='undefined'){
+			this.clusterLayer.getSource().clear();	
+		 }
+		  if(typeof this.clusterLinkLayer !='undefined' && typeof this.clusterLinkLayer.getSource() !='undefined'){
+			this.clusterLinkLayer.getSource().clear();	
+		 }
+		 if(typeof this.linkLayer !='undefined' && typeof this.linkLayer.getSource() !='undefined'){
+			this.linkLayer.getSource().clear();	
+		 }
+		 this.clusterSource.clear();
+		 this.markerSource.clear();
+		 this.markers = [];
+		 this.loadLinks(this.popLinks);
+		 this.loadMarkersClusters();
+	},200);
+	
+  }
+
   loadEvents(){
 	var self = this;
 	if(this.closer){
@@ -244,15 +400,31 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 	}
 
 	// if(this.minimise){
-	// 	this.minimise.onclick= (()=>{
-	// 		console.log('here i m');
+	// 	this.minimise.onclick= ((e)=>{
+	// 		this.maximise.style.display="block";
+	// 		this.minimise.style.display="none";
+	// 		this.container.style.width="400px";
+	// 		this.container.parentElement.style.transform = this.oldTranformation;
 	// 		return false;	
 	// 	});
 	// }
 
 	// if(this.maximise){
-	// 	this.maximise.onclick= (()=>{
-	// 		console.log('here i m max');
+	// 	this.maximise.onclick= ((e)=>{
+	// 		this.minimise.style.display="block";
+	// 		this.maximise.style.display="none";
+	// 		var rootDiv = document.getElementById('worldmap');
+	// 		var svg = this.content.querySelector('svg');
+	// 		var width = rootDiv.offsetWidth;
+	// 		var height = rootDiv.offsetHeight;
+	// 		var leftTrans = rootDiv.offsetLeft;
+	// 		var topTrans = rootDiv.offsetTop;
+	// 		this.container.style.width=width+"px";
+	// 		this.container.style.height=height+"px";
+	// 		svg.style.width = (width-40)+"px";
+	// 		svg.style.height = (height-40)+"px";
+	// 		this.oldTranformation = this.container.parentElement.style.transform;
+	// 		this.container.parentElement.style.transform = "translate(0%, 0%) translate("+(leftTrans+100)+"px, "+height+"px)";
 	// 		return false;	
 	// 	});
 	// }
@@ -605,8 +777,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 							no_links:no_of_links.toString()
 							});
 							this.ClusterLinks.push(feature);
-					}
-				
+					}				
 			    }
 			}
 				

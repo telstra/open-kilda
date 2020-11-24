@@ -11,8 +11,7 @@
     <i class="icon-affected-isl" aria-hidden="true"></i>
   </span>
   <span *ngIf="!this.defaultSetting.WORLDMAP" (click)="showSwitch()" ngbPopover="Show Switch" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave" class="switch_icon custom-icon" id="switch_icon">
-
-    <i [class.icon-switch]="this.defaultSetting.SWITCH_CHECKED" [class.inactive-icon-switch]="!this.defaultSetting.SWITCH_CHECKED"
+   <i [class.icon-switch]="this.defaultSetting.SWITCH_CHECKED" [class.inactive-icon-switch]="!this.defaultSetting.SWITCH_CHECKED"
       aria-hidden="true"></i>
   </span>
   <span *ngIf="this.defaultSetting.FLOW_CHECKED && !this.defaultSetting.WORLDMAP" (click)="showIsl()" data-balloon-pos="down" ngbPopover="Show ISL"
@@ -21,7 +20,6 @@
     <i class="icon-isl" aria-hidden="true"></i></span>
 
   <span *ngIf="this.defaultSetting.ISL_CHECKED && !this.defaultSetting.WORLDMAP" (click)="showFlow()" data-balloon-pos="down" ngbPopover="Show Flows" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave" class="isl_switch_icon custom-icon" id="physical" style="">
-
     <i class="icon-flows" aria-hidden="true"></i>
   </span>
   <div *ngIf="!this.defaultSetting.WORLDMAP" class="import-export-setting d-inline-block align-middle" ngbDropdown placement="bottom-right" >
@@ -36,18 +34,19 @@
      </div>
   </div>
   
-
-  <span *ngIf="!this.defaultSetting.WORLDMAP" (clickOutside)="onClickedOutside($event,'refreshMenu')" ngbPopover="Refresh" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave"
+  
+  <span  (clickOutside)="onClickedOutside($event,'refreshMenu')" ngbPopover="Refresh" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave"
     class="refresh_toggle custom-icon" (click)="toggleRefreshMenu()">
     <i class="icon-refresh-kilda" [class.active]="defaultSetting.REFRESH_CHECKED"></i>
   </span>
-  <ul *ngIf="!this.defaultSetting.WORLDMAP" class="refresh_list" [@changeState]="refreshMenu">
+  <ul  class="refresh_list" [@changeState]="refreshMenu">
     <li class="stop_refresh" [class.active]="!defaultSetting.REFRESH_CHECKED" (click)="stopAutoRefresh()"><i class="fa fa-check"></i> STOP</li>
     <li *ngFor="let interval of refreshIntervals" [class.active]="defaultSetting.REFRESH_CHECKED && defaultSetting.REFRESH_INTERVAL== interval.value" class="refresh_option" (click)="setAutoRefresh(interval.value)"><i class="fa fa-check"></i> {{interval.label}}</li>
    </ul>
+
   <span (clickOutside)="onClickedOutside($event,'showInfoFlag')" (click)="showInfo()" class="refresh_toggle custom-icon"><i class="info-icon" aria-hidden="true"></i></span>
   </div>
-<div *ngIf="!this.defaultSetting.WORLDMAP" class="topology-txt" id="topology-txt" [@changeState]="showInfoFlag">
+<div class="topology-txt" id="topology-txt" [@changeState]="showInfoFlag">
   <h1 align="center">Information</h1>
   <p> 1. Graph represents all logical (Flows) and physical (ISLs) links between switches and their state.</p>
   <p> 2. One can drag the switches in any direction to have a better view of the connections.</p>
