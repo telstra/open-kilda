@@ -14,6 +14,11 @@ export class TopologyService {
   settingReceiver = this.settingTransmitter.asObservable();
   autoRefreshReceiver = this.autoRefreshTransmitter.asObservable();
 
+  private notificationSource = new BehaviorSubject([]);
+  notificationObj = this.notificationSource.asObservable();
+
+  private notifySource = new BehaviorSubject([]);
+  notifyObj = this.notifySource.asObservable();
 
   linksdata = [];
   failedIsl = [];
@@ -40,6 +45,14 @@ export class TopologyService {
     let currentViewSetting = this.getViewOptions();
     /**Transmit new setting to component */
     this.settingTransmitter.emit(currentViewSetting); 
+  }
+
+  displayNotifications(notifications){
+    this.notificationSource.next(notifications); 
+  }
+
+  highlightNotifications(data){
+    this.notifySource.next(data); 
   }
 
   updateAutoRefreshSetting(){

@@ -16,6 +16,7 @@
 package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.PathId;
 import org.openkilda.pce.exception.RecoverableException;
@@ -64,12 +65,17 @@ public class AvailableNetworkFactory {
             links.forEach(network::addLink);
 
             if (!reusePathsResources.isEmpty() && !flow.isIgnoreBandwidth()) {
-                reusePathsResources.forEach(pathId -> {
-                    // ISLs occupied by the flow (take the bandwidth already occupied by the flow into account).
-                    Collection<Isl> flowLinks = islRepository.findActiveAndOccupiedByFlowPathWithAvailableBandwidth(
-                            pathId, flow.getBandwidth(), flow.getEncapsulationType());
-                    flowLinks.forEach(network::addLink);
-                });
+                reusePathsResources.stream()
+                        .filter(pathId -> flowPathRepository.findById(pathId)
+                                .map(path -> !path.isIgnoreBandwidth())
+                                .orElse(false))
+                        .forEach(pathId -> {
+                            // ISLs occupied by the flow (take the bandwidth already occupied by the flow into account).
+                            Collection<Isl> flowLinks = islRepository
+                                    .findActiveAndOccupiedByFlowPathWithAvailableBandwidth(pathId,
+                                            flow.getBandwidth(), flow.getEncapsulationType());
+                            flowLinks.forEach(network::addLink);
+                        });
             }
         } catch (PersistenceException e) {
             throw new RecoverableException("An error from the database", e);
@@ -88,12 +94,17 @@ public class AvailableNetworkFactory {
             flowPaths.forEach(pathId ->
                     flowPathRepository.findById(pathId)
                             .ifPresent(flowPath -> {
-                                network.processDiversitySegments(flowPath.getSegments());
+                                network.processDiversitySegments(flowPath.getSegments(), flow);
                                 network.processDiversitySegmentsWithPop(flowPath.getSegments());
                             }));
         }
 
         return network;
+    }
+
+    private boolean isPrimaryPath(Flow flow, FlowPath flowPath) {
+        return flowPath.getPathId().equals(flow.getForwardPathId())
+                || flowPath.getPathId().equals(flow.getReversePathId());
     }
 
     private Collection<Isl> getAvailableIsls(BuildStrategy buildStrategy, Flow flow) {

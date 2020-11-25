@@ -52,8 +52,11 @@ public class SwitchRulesInstallRequest extends CommandData {
     @JsonProperty("switch_arp")
     private boolean switchArp = false;
 
-    @JsonProperty("server42_flow_rtt")
-    private boolean server42FlowRtt = false;
+    @JsonProperty("server42_flow_rtt_feature_toggle")
+    private boolean server42FlowRttFeatureToggle = false;
+
+    @JsonProperty("server42_flow_rtt_switch_property")
+    private boolean server42FlowRttSwitchProperty = false;
 
     @JsonProperty("server42_port")
     private Integer server42Port;

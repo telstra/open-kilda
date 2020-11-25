@@ -44,8 +44,11 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
     @JsonProperty("switch_arp")
     private boolean switchArp;
 
-    @JsonProperty("server42_flow_rtt")
-    private boolean server42FlowRtt;
+    @JsonProperty("server42_flow_rtt_feature_toggle")
+    private boolean server42FlowRttFeatureToggle;
+
+    @JsonProperty("server42_flow_rtt_switch_property")
+    private boolean server42FlowRttSwitchProperty;
 
     @JsonProperty("server42_port")
     private Integer server42Port;
@@ -76,7 +79,10 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
                                           @JsonProperty("multi_table") boolean multiTable,
                                           @JsonProperty("switch_lldp") boolean switchLldp,
                                           @JsonProperty("switch_arp") boolean switchArp,
-                                          @JsonProperty("server42_flow_rtt") boolean server42FlowRtt,
+                                          @JsonProperty("server42_flow_rtt_feature_toggle")
+                                                      boolean server42FlowRttFeatureToggle,
+                                          @JsonProperty("server42_flow_rtt_switch_property")
+                                                      boolean server42FlowRttSwitchProperty,
                                           @JsonProperty("server42_port") Integer server42Port,
                                           @JsonProperty("server42_vlan") Integer server42Vlan,
                                           @JsonProperty("server42_mac_address") MacAddress server42MacAddress,
@@ -90,7 +96,8 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
         this.multiTable = multiTable;
         this.switchLldp = switchLldp;
         this.switchArp = switchArp;
-        this.server42FlowRtt = server42FlowRtt;
+        this.server42FlowRttFeatureToggle = server42FlowRttFeatureToggle;
+        this.server42FlowRttSwitchProperty = server42FlowRttSwitchProperty;
         this.server42Port = server42Port;
         this.server42Vlan = server42Vlan;
         this.server42MacAddress = server42MacAddress;
