@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.78.0 (25/11/2020)
+
+### Features:
+-  [#3835](https://github.com/telstra/open-kilda/pull/3835) Adding feature of auto-refresh in world map (Issue: [#3794](https://github.com/telstra/open-kilda/issues/3794)) [**gui**]
+
+### Bug Fixes:
+-  [#3560](https://github.com/telstra/open-kilda/pull/3560) Fix ISL behavior on round-trip discovery loss [**storm-topologies**]
+-  [#3852](https://github.com/telstra/open-kilda/pull/3852) Fix create protected flow with max latency path computation strategy (Issue: [#3821](https://github.com/telstra/open-kilda/issues/3821)) 
+-  [#3868](https://github.com/telstra/open-kilda/pull/3868) Fix reroute degraded flow (Issue: [#3826](https://github.com/telstra/open-kilda/issues/3826)) 
+
+### Improvements:
+-  [#3853](https://github.com/telstra/open-kilda/pull/3853) Install server 42 rule if RTT toggle is True (Issue: [#3871](https://github.com/telstra/open-kilda/issues/3871)) [**floodlight**][**storm-topologies**]
+-  [#3829](https://github.com/telstra/open-kilda/pull/3829) ISL status transition visibility improvement [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.77.0...v1.78.0).
+
+### Affected Components:
+nbworker, network, gui, fl, flow-hs
+
+---
+
 ## v1.77.0 (17/11/2020)
 
 ### Features:
