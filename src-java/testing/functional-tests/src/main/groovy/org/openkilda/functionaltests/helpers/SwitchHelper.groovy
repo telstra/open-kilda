@@ -172,11 +172,13 @@ class SwitchHelper {
         }
         if (swProps.server42FlowRtt) {
             server42Rules << SERVER_42_OUTPUT_VLAN_COOKIE
-            if (sw.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST)) {
-                server42Rules << SERVER_42_TURNING_COOKIE
-            }
             if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
                 server42Rules << SERVER_42_OUTPUT_VXLAN_COOKIE
+            }
+        }
+        if (northbound.getFeatureToggles().server42FlowRtt) {
+            if (sw.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST)) {
+                server42Rules << SERVER_42_TURNING_COOKIE
             }
         }
         if (sw.noviflow && !sw.wb5164) {
