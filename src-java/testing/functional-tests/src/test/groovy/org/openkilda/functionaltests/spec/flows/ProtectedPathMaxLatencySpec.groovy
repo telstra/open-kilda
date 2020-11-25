@@ -16,7 +16,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Shared
 import spock.lang.Unroll
 
@@ -45,7 +44,6 @@ class ProtectedPathMaxLatencySpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/3821")
     def "Able to create protected flow with max_latency strategy if both paths satisfy SLA"() {
         given: "2 non-overlapping paths with 10 and 9 latency"
         setLatencyForPaths(10, 9)
