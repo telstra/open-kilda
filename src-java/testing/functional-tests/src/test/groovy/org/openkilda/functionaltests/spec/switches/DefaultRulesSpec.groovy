@@ -5,6 +5,7 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.model.cookie.Cookie.SERVER_42_TURNING_COOKIE
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
@@ -19,6 +20,7 @@ import org.openkilda.messaging.command.CommandData
 import org.openkilda.messaging.command.CommandMessage
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
+import org.openkilda.model.SwitchFeature
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -353,6 +355,64 @@ switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
                     it.noviflow || it.virtual
                 }.unique { activeSw -> activeSw.description }
         ].combinations()
+    }
+
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
+    def "Able to delete/install the server42 turning rule on a switch"() {
+        setup: "Select a switch which support server42 turning rule"
+        def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST) } ?:
+                assumeTrue("No suiting switch found", false)
+
+        and: "Server42 is enabled in feature toggle"
+        def initFeatureToggle = northbound.getFeatureToggles()
+        def featureToggleIsChanged = false
+        if (!initFeatureToggle.server42FlowRtt) {
+            northbound.toggleFeature(initFeatureToggle.jacksonCopy().tap { server42FlowRtt = true })
+            Wrappers.wait(RULES_INSTALLATION_TIME) {
+                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+            }
+            featureToggleIsChanged = true
+        }
+
+        when: "Delete the server42 turning rule from the switch"
+        def deleteResponse = northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.REMOVE_SERVER_42_TURNING)
+
+        then: "The delete rule response contains the server42 turning cookie only"
+        deleteResponse.size() == 1
+        deleteResponse[0] == SERVER_42_TURNING_COOKIE
+
+        and: "The corresponding rule is really deleted"
+        Wrappers.wait(RULES_DELETION_TIME) {
+            assert northbound.getSwitchRules(sw.dpId).flowEntries.findAll { it.cookie == SERVER_42_TURNING_COOKIE }.empty
+        }
+
+        and: "Switch and rules validation shows that corresponding rule is missing"
+        verifyAll(northbound.validateSwitchRules(sw.dpId)) {
+            missingRules == [SERVER_42_TURNING_COOKIE]
+            excessRules.empty
+            properRules.sort() == sw.defaultCookies.findAll { it != SERVER_42_TURNING_COOKIE }.sort()
+        }
+        verifyAll(northbound.validateSwitch(sw.dpId)) {
+            rules.missing == [SERVER_42_TURNING_COOKIE]
+            rules.misconfigured.empty
+            rules.excess.empty
+            rules.proper.sort() == sw.defaultCookies.findAll { it != SERVER_42_TURNING_COOKIE }.sort()
+        }
+
+        when: "Install the server42 turning rule"
+        def installResponse = northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_SERVER_42_TURNING)
+
+        then: "The install rule response contains the server42 turning cookie only"
+        installResponse.size() == 1
+        installResponse[0] == SERVER_42_TURNING_COOKIE
+
+        and: "The corresponding rule is really installed"
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            assert !northbound.getSwitchRules(sw.dpId).flowEntries.findAll { it.cookie == SERVER_42_TURNING_COOKIE }.empty
+        }
+
+        cleanup: "Revert the feature toggle to init state"
+        featureToggleIsChanged && northbound.toggleFeature(initFeatureToggle)
     }
 
     void compareRules(actualRules, expectedRules) {
