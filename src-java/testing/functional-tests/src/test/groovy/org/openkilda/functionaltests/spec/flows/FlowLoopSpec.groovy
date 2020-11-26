@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.junit.Assume.assumeFalse
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -34,7 +33,6 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
@@ -54,13 +52,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider
-
-    @Value('${use.multitable}')
-    boolean useMultitable
-
-    def setupOnce() {
-        assumeFalse("FlowLoop for multiTable mode is not implemented", useMultitable)
-    }
 
     @Tidy
     @Unroll
@@ -161,7 +152,9 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "Counter on the simple(ingress/egress) flow rules is increased on the dst switch"
         with(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) {
-            it.findAll { it.cookie in [forwardCookie, reverseCookie] }*.packetCount.every { it == reverseLoopPacketCount_2 }
+            it.findAll { it.cookie in [forwardCookie, reverseCookie] }*.packetCount.every {
+                it == reverseLoopPacketCount_2
+            }
         }
 
         when: "Delete flowLoop"
@@ -235,19 +228,18 @@ class FlowLoopSpec extends HealthCheckSpecification {
                          },
                          flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
                  ],
-                 //"Loop for Q-in-Q flows is not implemented" https://github.com/telstra/open-kilda/issues/3846
-//                 [
-//                         flowDescription: "qinq",
-//                         switchPair     : { List<SwitchId> switchIds ->
-//                             getSwPairConnectedToTraffGenForQinQ(switchIds)
-//                         },
-//                         flowTap        : { FlowRequestV2 fl ->
-//                             fl.source.vlanId = 10
-//                             fl.source.innerVlanId = 100
-//                             fl.destination.vlanId = 20
-//                             fl.destination.innerVlanId = 200
-//                         }
-//                 ]
+                 [
+                         flowDescription: "qinq",
+                         switchPair     : { List<SwitchId> switchIds ->
+                             getSwPairConnectedToTraffGenForQinQ(switchIds)
+                         },
+                         flowTap        : { FlowRequestV2 fl ->
+                             fl.source.vlanId = 10
+                             fl.source.innerVlanId = 100
+                             fl.destination.vlanId = 20
+                             fl.destination.innerVlanId = 200
+                         }
+                 ]
         ]
     }
 
@@ -548,32 +540,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not update flow"
         errorDetails.errorDescription == "Loop for single switch flows is not implemented"
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-    }
-
-    @Tidy
-    @Tags(LOW_PRIORITY)
-    def "Unable to create flowLoop for a QinQ flow"() {
-        given: "An active QinQ flow"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { northbound.getSwitchProperties(it.dpId).multiTable }
-        } ?: assumeTrue("Not able to find enough switches in multi-table mode", false)
-        def flow = flowHelperV2.randomFlow(swP)
-        flow.source.innerVlanId = 4093
-        flow.destination.innerVlanId = 3904
-        northboundV2.addFlow(flow)
-
-        when: "Create flowLoop on the src switch"
-        northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(swP.src.dpId))
-
-        then: "Human readable error is returned"
-        def exc = thrown(HttpServerErrorException) //https://github.com/telstra/open-kilda/issues/3846
-        exc.statusCode == HttpStatus.NOT_IMPLEMENTED
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not update flow"
-        errorDetails.errorDescription == "Loop for Q-in-Q flows is not implemented"
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)

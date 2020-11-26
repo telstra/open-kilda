@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.junit.Assume.assumeFalse
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -30,8 +29,6 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
 import org.openkilda.model.SwitchStatus
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload
@@ -41,7 +38,6 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
@@ -54,9 +50,6 @@ class SwapEndpointSpec extends HealthCheckSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider
-
-    @Value('${use.multitable}')
-    boolean useMultitable
 
     @Tidy
     @Unroll
@@ -1387,7 +1380,6 @@ switches"() {
     @Tidy
     def "Unable to swap endpoints for a flow with flowLoop"() {
         setup: "Create two flows with the same src and different dst switches"
-        assumeFalse("FlowLoop for multiTable mode is not implemented", useMultitable)
         def tgSwitchIds = topology.getActiveTraffGens()*.switchConnected*.dpId
         assumeTrue("Not enough traffgen switches found", tgSwitchIds.size() > 2)
         SwitchPair flow2SwitchPair = null
