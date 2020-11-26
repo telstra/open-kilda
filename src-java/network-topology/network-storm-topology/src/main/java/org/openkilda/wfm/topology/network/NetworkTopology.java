@@ -265,8 +265,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
                 .allGrouping(CoordinatorSpout.ID)
                 .fieldsGrouping(SwitchHandler.BOLT_ID, SwitchHandler.STREAM_PORT_ID, endpointGrouping)
                 .fieldsGrouping(DecisionMakerHandler.BOLT_ID, decisionMakerGrouping)
-                .fieldsGrouping(SpeakerRouter.BOLT_ID, SpeakerRouter.STREAM_PORT_ID, endpointGrouping)
-                .fieldsGrouping(WatcherHandler.BOLT_ID, WatcherHandler.STREAM_PORT_ID, endpointGrouping);
+                .fieldsGrouping(SpeakerRouter.BOLT_ID, SpeakerRouter.STREAM_PORT_ID, endpointGrouping);
     }
 
     private void bfdHub(TopologyBuilder topology) {

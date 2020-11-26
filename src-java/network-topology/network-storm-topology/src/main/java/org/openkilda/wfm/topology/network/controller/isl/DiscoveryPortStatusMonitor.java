@@ -22,7 +22,6 @@ import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.controller.isl.IslFsm.IslFsmContext;
 import org.openkilda.wfm.topology.network.controller.isl.IslFsm.IslFsmEvent;
-import org.openkilda.wfm.topology.network.model.IslEndpointPortStatus;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
 import lombok.extern.slf4j.Slf4j;
@@ -30,24 +29,23 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Optional;
 
 @Slf4j
-public class DiscoveryPortStatusMonitor extends DiscoveryMonitor<IslEndpointPortStatus> {
+public class DiscoveryPortStatusMonitor extends DiscoveryMonitor<Boolean> {
     // To avoid a race condition between port-down and round-trip updates we enforce to wait for at least
-    // MIN_UPDATE_COUNT updates before resetting reset DOWN state on both endpoints.
+    // MIN_UPDATE_COUNT updates before resetting DOWN state on both endpoints.
     private static final int MIN_UPDATE_COUNT = 2;
+
+    private int downResetCounter = 0;
 
     public DiscoveryPortStatusMonitor(IslReference reference) {
         super(reference);
 
-        IslEndpointPortStatus dummy = new IslEndpointPortStatus();
-        discoveryData.putBoth(dummy);
-        cache.putBoth(dummy);
+        discoveryData.putBoth(false);
+        cache.putBoth(false);
     }
 
     @Override
     public Optional<IslStatus> evaluateStatus() {
-        boolean isDown = discoveryData.stream()
-                .anyMatch(IslEndpointPortStatus::isDown);
-        if (isDown) {
+        if (isDown()) {
             return Optional.of(IslStatus.INACTIVE);
         }
         return Optional.empty();
@@ -97,33 +95,30 @@ public class DiscoveryPortStatusMonitor extends DiscoveryMonitor<IslEndpointPort
     }
 
     private void becomeDown(Endpoint endpoint) {
-        IslEndpointPortStatus current = discoveryData.get(endpoint);
-        discoveryData.put(
-                endpoint, new IslEndpointPortStatus(true, MIN_UPDATE_COUNT, current.getLastRoundTripReceivedAt()));
+        downResetCounter = MIN_UPDATE_COUNT;
+        discoveryData.put(endpoint, true);
     }
 
     private void becomeUp(Endpoint endpoint) {
-        IslEndpointPortStatus current = discoveryData.get(endpoint);
-        discoveryData.put(endpoint, new IslEndpointPortStatus(current.getLastRoundTripReceivedAt()));
+        downResetCounter = 0;
+        discoveryData.put(endpoint, false);
     }
 
     private void updateRoundTrip(RoundTripStatus roundTrip) {
-        IslEndpointPortStatus current = discoveryData.get(roundTrip.getEndpoint());
-        if (current.getLastRoundTripReceivedAt().isBefore(roundTrip.getLastSeen())) {
-            int resetCounter = Math.max(current.getResetCounter() - 1, 0);
-            IslEndpointPortStatus update = new IslEndpointPortStatus(
-                    0 < resetCounter, resetCounter, roundTrip.getLastSeen());
-            discoveryData.put(roundTrip.getEndpoint(), update);
+        if (IslStatus.ACTIVE != roundTrip.getStatus()) {
+            return;
+        }
 
-            updateRoundTrip(reference.getOpposite(roundTrip.getEndpoint()));
+        if (isDown()) {
+            downResetCounter = Math.max(downResetCounter - 1, 0);
+            if (downResetCounter < 1) {
+                discoveryData.putBoth(false);
+            }
         }
     }
 
-    private void updateRoundTrip(Endpoint endpoint) {
-        IslEndpointPortStatus current = discoveryData.get(endpoint);
-        int resetCounter = Math.max(current.getResetCounter() - 1, 0);
-        discoveryData.put(
-                endpoint, new IslEndpointPortStatus(
-                        0 < resetCounter, resetCounter, current.getLastRoundTripReceivedAt()));
+    private boolean isDown() {
+        return discoveryData.stream()
+                .anyMatch(entry -> entry);
     }
 }

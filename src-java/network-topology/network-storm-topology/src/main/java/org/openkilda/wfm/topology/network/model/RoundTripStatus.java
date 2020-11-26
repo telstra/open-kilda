@@ -15,15 +15,13 @@
 
 package org.openkilda.wfm.topology.network.model;
 
+import org.openkilda.model.IslStatus;
 import org.openkilda.wfm.share.model.Endpoint;
 
 import lombok.Value;
 
-import java.time.Instant;
-
 @Value
 public class RoundTripStatus {
     private final Endpoint endpoint;
-    private final Instant lastSeen;
-    private final Instant now;
+    private final IslStatus status;
 }

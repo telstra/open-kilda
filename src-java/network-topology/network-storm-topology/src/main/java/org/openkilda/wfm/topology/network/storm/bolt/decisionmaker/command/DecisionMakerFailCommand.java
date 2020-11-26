@@ -28,6 +28,6 @@ public class DecisionMakerFailCommand extends DecisionMakerCommand {
 
     @Override
     public void apply(DecisionMakerHandler handler) {
-        handler.processFailed(getEndpoint(), packetId);
+        handler.processOneWayFailure(getEndpoint(), packetId);
     }
 }

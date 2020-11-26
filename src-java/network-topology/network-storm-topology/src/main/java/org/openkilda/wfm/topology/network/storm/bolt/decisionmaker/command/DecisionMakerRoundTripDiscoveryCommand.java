@@ -13,29 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.model;
+package org.openkilda.wfm.topology.network.storm.bolt.decisionmaker.command;
 
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.topology.network.storm.bolt.decisionmaker.DecisionMakerHandler;
 
-import java.time.Instant;
+public class DecisionMakerRoundTripDiscoveryCommand extends DecisionMakerCommand {
+    private final long packetId;
 
-@Value
-@EqualsAndHashCode(of = {"down"})
-@AllArgsConstructor
-public class IslEndpointPortStatus {
-    boolean down;
-
-    int resetCounter;
-
-    Instant lastRoundTripReceivedAt;
-
-    public IslEndpointPortStatus() {
-        this(false, 0, Instant.MIN);
+    public DecisionMakerRoundTripDiscoveryCommand(Endpoint endpoint, long packetId) {
+        super(endpoint);
+        this.packetId = packetId;
     }
 
-    public IslEndpointPortStatus(Instant lastRoundTrip) {
-        this(false, 0, lastRoundTrip);
+    @Override
+    public void apply(DecisionMakerHandler handler) {
+        handler.processRoundTripDiscovery(getEndpoint(), packetId);
     }
 }
