@@ -17,60 +17,52 @@ package org.openkilda.floodlight.api.request.factory;
 
 import org.openkilda.floodlight.api.request.IngressFlowLoopSegmentInstallRequest;
 import org.openkilda.floodlight.api.request.IngressFlowLoopSegmentRemoveRequest;
+import org.openkilda.floodlight.api.request.IngressFlowLoopSegmentRequest;
 import org.openkilda.floodlight.api.request.IngressFlowLoopSegmentVerifyRequest;
-import org.openkilda.floodlight.api.request.IngressFlowSegmentRequest;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
-import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
-import org.openkilda.model.FlowTransitEncapsulation;
-import org.openkilda.model.MeterConfig;
-import org.openkilda.model.SwitchId;
 
 import lombok.Builder;
 
 import java.util.UUID;
 
 public class IngressFlowLoopSegmentRequestFactory extends FlowSegmentRequestFactory {
-    private final IngressFlowSegmentRequest requestBlank;
+    private final IngressFlowLoopSegmentRequest requestBlank;
 
     @Builder
     @SuppressWarnings("squid:S00107")
     public IngressFlowLoopSegmentRequestFactory(
             MessageContext messageContext, FlowSegmentMetadata metadata,
-            FlowEndpoint endpoint, MeterConfig meterConfig, SwitchId egressSwitchId, int islPort,
-            FlowTransitEncapsulation encapsulation, RulesContext rulesContext) {
-        this(new RequestBlank(messageContext, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
-                rulesContext));
+            FlowEndpoint endpoint) {
+        this(new RequestBlank(messageContext, metadata, endpoint));
     }
 
-    private IngressFlowLoopSegmentRequestFactory(IngressFlowSegmentRequest requestBlank) {
+    private IngressFlowLoopSegmentRequestFactory(IngressFlowLoopSegmentRequest requestBlank) {
         super(requestBlank);
         this.requestBlank = requestBlank;
     }
 
     @Override
-    public IngressFlowSegmentRequest makeInstallRequest(UUID commandId) {
+    public IngressFlowLoopSegmentRequest makeInstallRequest(UUID commandId) {
         return new IngressFlowLoopSegmentInstallRequest(requestBlank, commandId);
     }
 
     @Override
-    public IngressFlowSegmentRequest makeRemoveRequest(UUID commandId) {
+    public IngressFlowLoopSegmentRequest makeRemoveRequest(UUID commandId) {
         return new IngressFlowLoopSegmentRemoveRequest(requestBlank, commandId);
     }
 
     @Override
-    public IngressFlowSegmentRequest makeVerifyRequest(UUID commandId) {
+    public IngressFlowLoopSegmentRequest makeVerifyRequest(UUID commandId) {
         return new IngressFlowLoopSegmentVerifyRequest(requestBlank, commandId);
     }
 
-    private static class RequestBlank extends IngressFlowSegmentRequest {
+    private static class RequestBlank extends IngressFlowLoopSegmentRequest {
         RequestBlank(
                 MessageContext context, FlowSegmentMetadata metadata,
-                FlowEndpoint endpoint, MeterConfig meterConfig, SwitchId egressSwitchId, int islPort,
-                FlowTransitEncapsulation encapsulation, RulesContext rulesContext) {
-            super(context, dummyCommandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
-                    rulesContext);
+                FlowEndpoint endpoint) {
+            super(context, dummyCommandId, metadata, endpoint);
         }
     }
 }

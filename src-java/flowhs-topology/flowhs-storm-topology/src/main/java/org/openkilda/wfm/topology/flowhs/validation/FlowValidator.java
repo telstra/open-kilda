@@ -110,11 +110,6 @@ public class FlowValidator {
 
     private void validateFlowLoop(Flow flow, RequestedFlow requestedFlow) throws InvalidFlowException {
         if (requestedFlow.getLoopSwitchId() != null) {
-            //todo: fix loops singe switch loops
-            if (requestedFlow.getSrcSwitch().equals(requestedFlow.getDestSwitch())) {
-                throw new InvalidFlowException("Loop for single switch flows is not implemented",
-                        ErrorType.NOT_IMPLEMENTED);
-            }
             SwitchId loopSwitchId = requestedFlow.getLoopSwitchId();
             boolean loopSwitchIsTerminating = flow.getSrcSwitchId().equals(loopSwitchId)
                     || flow.getDestSwitchId().equals(loopSwitchId);

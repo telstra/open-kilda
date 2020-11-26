@@ -19,38 +19,32 @@ import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.ToString;
 
 import java.util.UUID;
 
+@JsonIgnoreProperties({"switch_id"})
 @Getter
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-@SuppressWarnings("squid:MaximumInheritanceDepth")
-public class IngressFlowLoopSegmentVerifyRequest extends IngressFlowLoopSegmentRequest {
-    @JsonCreator
-    @Builder(toBuilder = true)
-    public IngressFlowLoopSegmentVerifyRequest(
-            @JsonProperty("message_context") MessageContext messageContext,
-            @JsonProperty("command_id") UUID commandId,
-            @JsonProperty("metadata") FlowSegmentMetadata metadata,
-            @JsonProperty("endpoint") FlowEndpoint endpoint) {
-        super(messageContext, commandId, metadata, endpoint);
+public abstract class IngressFlowLoopSegmentRequest extends FlowSegmentRequest {
+    @JsonProperty("endpoint")
+    protected final FlowEndpoint endpoint;
+
+    @SuppressWarnings("squid:S00107")
+    protected IngressFlowLoopSegmentRequest(MessageContext context, UUID commandId, FlowSegmentMetadata metadata,
+                                            FlowEndpoint endpoint) {
+        super(context, endpoint.getSwitchId(), commandId, metadata);
+
+        this.endpoint = endpoint;
     }
 
-    public IngressFlowLoopSegmentVerifyRequest(IngressFlowLoopSegmentRequest other, UUID commandId) {
-        super(other, commandId);
-    }
-
-    @JsonIgnore
-    @Override
-    public boolean isVerifyRequest() {
-        return true;
+    protected IngressFlowLoopSegmentRequest(@NonNull IngressFlowLoopSegmentRequest other, @NonNull UUID commandId) {
+        this(other.messageContext, commandId, other.metadata, other.endpoint);
     }
 }
