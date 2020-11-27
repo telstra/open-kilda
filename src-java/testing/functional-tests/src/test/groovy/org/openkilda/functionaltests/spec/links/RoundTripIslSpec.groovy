@@ -149,7 +149,9 @@ round trip latency rule is removed on the dst switch"() {
         def dstSw = roundTripIsl.dstSwitch
 
         and: "Round trip status is ACTIVE for the given ISL in both directions"
-        [roundTripIsl, roundTripIsl.reversed].each { assert database.getIslRoundTripStatus(it) == IslStatus.ACTIVE }
+        [roundTripIsl, roundTripIsl.reversed].each {
+            assert northbound.getLink(it).roundTripStatus == IslChangeType.DISCOVERED
+        }
 
         when: "Simulate connection lose between the src switch and FL, switches become DEACTIVATED and remain operable"
         def mgmtBlockData = lockKeeper.knockoutSwitch(srcSwToDeactivate, RW)
@@ -160,8 +162,8 @@ round trip latency rule is removed on the dst switch"() {
 
         then: "Round trip status for forward direction is not available and ACTIVE in reverse direction"
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET / 2) {
-            assert database.getIslRoundTripStatus(roundTripIsl) == IslStatus.INACTIVE
-            assert database.getIslRoundTripStatus(roundTripIsl.reversed) == IslStatus.ACTIVE
+            assert northbound.getLink(roundTripIsl).roundTripStatus == IslChangeType.FAILED
+            assert northbound.getLink(roundTripIsl.reversed).roundTripStatus == IslChangeType.DISCOVERED
         }
 
         when: "Delete ROUND_TRIP_LATENCY_RULE_COOKIE on the dst switch"
@@ -179,7 +181,7 @@ round trip latency rule is removed on the dst switch"() {
         and: "Round trip status is not available for the given ISL in both directions"
         Wrappers.wait(WAIT_OFFSET / 2) {
             [roundTripIsl, roundTripIsl.reversed].each {
-                assert database.getIslRoundTripStatus(it) == IslStatus.INACTIVE
+                assert northbound.getLink(it).roundTripStatus == IslChangeType.FAILED
             }
         }
 
@@ -198,8 +200,8 @@ round trip latency rule is removed on the dst switch"() {
 
         and: "Round trip status is available for the given ISL in forward direction only"
         Wrappers.wait(WAIT_OFFSET / 2) {
-            assert database.getIslRoundTripStatus(roundTripIsl) == IslStatus.ACTIVE
-            assert database.getIslRoundTripStatus(roundTripIsl.reversed) == IslStatus.INACTIVE
+            assert northbound.getLink(roundTripIsl).roundTripStatus == IslChangeType.DISCOVERED
+            assert northbound.getLink(roundTripIsl.reversed).roundTripStatus == IslChangeType.FAILED
         }
 
         when: "Install ROUND_TRIP_LATENCY_RULE_COOKIE on the dst switch"
@@ -211,7 +213,8 @@ round trip latency rule is removed on the dst switch"() {
 
         then: "Round trip status is available for the given ISL in both directions"
         Wrappers.wait(WAIT_OFFSET / 2) {
-            [roundTripIsl, roundTripIsl.reversed].each { assert database.getIslRoundTripStatus(it) == IslStatus.ACTIVE }
+            [roundTripIsl, roundTripIsl.reversed].each {
+                assert northbound.getLink(it).roundTripStatus == IslChangeType.DISCOVERED }
         }
 
         cleanup:
