@@ -22,6 +22,8 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_RER
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_SPEAKER_WORKER;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
+import org.openkilda.bluegreen.LifecycleEvent;
+import org.openkilda.bluegreen.Signal;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.messaging.Message;
@@ -37,6 +39,8 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathSwapHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathSwapService;
@@ -45,6 +49,7 @@ import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 import lombok.Builder;
 import lombok.Getter;
 import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
@@ -56,6 +61,8 @@ public class FlowPathSwapHubBolt extends HubBolt implements FlowPathSwapHubCarri
 
     private transient FlowPathSwapService service;
     private String currentKey;
+
+    private LifecycleEvent deferedShutdownEvent;
 
     public FlowPathSwapHubBolt(FlowPathSwapConfig config, PersistenceManager persistenceManager,
                                FlowResourcesConfig flowResourcesConfig) {
@@ -77,6 +84,22 @@ public class FlowPathSwapHubBolt extends HubBolt implements FlowPathSwapHubCarri
     }
 
     @Override
+    protected void handleLifeCycleEvent(LifecycleEvent event) {
+        if (event.getSignal().equals(Signal.SHUTDOWN)) {
+            if (service.deactivate()) {
+                emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
+            } else {
+                deferedShutdownEvent = event;
+            }
+        } else if (event.getSignal().equals(Signal.START)) {
+            service.activate();
+            emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
+        } else {
+            log.info("Received signal info {}", event.getSignal());
+        }
+    }
+
+    @Override
     protected void onRequest(Tuple input) throws PipelineException {
         currentKey = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
         FlowPathSwapRequest payload = (FlowPathSwapRequest) input.getValueByField(FIELD_ID_PAYLOAD);
@@ -95,6 +118,12 @@ public class FlowPathSwapHubBolt extends HubBolt implements FlowPathSwapHubCarri
     public void onTimeout(String key, Tuple tuple) {
         currentKey = key;
         service.handleTimeout(key);
+    }
+
+    @Override
+    public void sendInactive() {
+        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferedShutdownEvent, getCommandContext()));
+        deferedShutdownEvent = null;
     }
 
     @Override
@@ -148,6 +177,8 @@ public class FlowPathSwapHubBolt extends HubBolt implements FlowPathSwapHubCarri
         declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_PING_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_REROUTE_RESPONSE_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(ZkStreams.ZK.toString(),
+                new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 
     @Getter
@@ -155,9 +186,10 @@ public class FlowPathSwapHubBolt extends HubBolt implements FlowPathSwapHubCarri
         private int speakerCommandRetriesLimit;
 
         @Builder(builderMethodName = "flowPathSwapBuilder", builderClassName = "flowPathSwapBuild")
-        public FlowPathSwapConfig(String requestSenderComponent, String workerComponent, int timeoutMs, boolean autoAck,
+        public FlowPathSwapConfig(String requestSenderComponent, String workerComponent, String lifeCycleEventComponent,
+                                  int timeoutMs, boolean autoAck,
                                 int speakerCommandRetriesLimit) {
-            super(requestSenderComponent, workerComponent, null, timeoutMs, autoAck);
+            super(requestSenderComponent, workerComponent, lifeCycleEventComponent, timeoutMs, autoAck);
             this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
         }
     }

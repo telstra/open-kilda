@@ -7,6 +7,10 @@ config:
 spouts:
   - id: "coordinator.spout"
     parallelism: 1
+  - id: "zookeeper.spout"
+    parallelism: 1
 
 # bolt definitions
-# bolts:
+bolts:
+  - id: "zookeeper.bolt"
+    parallelism: 1
