@@ -15,9 +15,12 @@
 
 package org.openkilda.wfm.topology.reroute.bolts;
 
+import static org.openkilda.wfm.share.zk.ZooKeeperSpout.FIELD_ID_LIFECYCLE_EVENT;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_KEY;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
+import org.openkilda.bluegreen.LifecycleEvent;
+import org.openkilda.bluegreen.Signal;
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -28,6 +31,9 @@ import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.CoordinatedBolt;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
+import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.reroute.service.OperationQueueService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +53,8 @@ public class OperationQueueBolt extends CoordinatedBolt implements OperationQueu
 
     public static final Fields FLOW_HS_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD);
 
+    private LifecycleEvent deferedShutdownEvent;
+
     private transient OperationQueueService service;
 
     public OperationQueueBolt(int defaultTimeout) {
@@ -61,22 +69,43 @@ public class OperationQueueBolt extends CoordinatedBolt implements OperationQueu
     @Override
     protected void handleInput(Tuple tuple) throws PipelineException {
         CommandContext context = pullContext(tuple);
-        MessageData data = pullValue(tuple, FIELD_ID_PAYLOAD, MessageData.class);
-        if (data instanceof FlowPathSwapRequest) {
-            FlowPathSwapRequest flowPathSwapRequest = (FlowPathSwapRequest) data;
-            service.addFirst(flowPathSwapRequest.getFlowId(), context.getCorrelationId(), flowPathSwapRequest);
-        } else if (data instanceof FlowRerouteRequest) {
-            FlowRerouteRequest flowRerouteRequest = (FlowRerouteRequest) data;
-            service.addLast(flowRerouteRequest.getFlowId(), context.getCorrelationId(), flowRerouteRequest);
-        } else if (data instanceof RerouteResultInfoData) {
-            RerouteResultInfoData rerouteResultInfoData = (RerouteResultInfoData) data;
-            service.operationCompleted(rerouteResultInfoData.getFlowId(), rerouteResultInfoData);
-            emitRerouteResponse(rerouteResultInfoData);
-        } else if (data instanceof PathSwapResult) {
-            PathSwapResult pathSwapResult = (PathSwapResult) data;
-            service.operationCompleted(pathSwapResult.getFlowId(), pathSwapResult);
+        if (ZooKeeperSpout.BOLT_ID.equals(tuple.getSourceComponent())) {
+            LifecycleEvent event = (LifecycleEvent) tuple.getValueByField(FIELD_ID_LIFECYCLE_EVENT);
+            handleLifeCycleEvent(event);
         } else {
-            unhandledInput(tuple);
+            MessageData data = pullValue(tuple, FIELD_ID_PAYLOAD, MessageData.class);
+            if (data instanceof FlowPathSwapRequest) {
+                FlowPathSwapRequest flowPathSwapRequest = (FlowPathSwapRequest) data;
+                service.addFirst(flowPathSwapRequest.getFlowId(), context.getCorrelationId(), flowPathSwapRequest);
+            } else if (data instanceof FlowRerouteRequest) {
+                FlowRerouteRequest flowRerouteRequest = (FlowRerouteRequest) data;
+                service.addLast(flowRerouteRequest.getFlowId(), context.getCorrelationId(), flowRerouteRequest);
+            } else if (data instanceof RerouteResultInfoData) {
+                RerouteResultInfoData rerouteResultInfoData = (RerouteResultInfoData) data;
+                service.operationCompleted(rerouteResultInfoData.getFlowId(), rerouteResultInfoData);
+                emitRerouteResponse(rerouteResultInfoData);
+            } else if (data instanceof PathSwapResult) {
+                PathSwapResult pathSwapResult = (PathSwapResult) data;
+                service.operationCompleted(pathSwapResult.getFlowId(), pathSwapResult);
+            } else {
+                unhandledInput(tuple);
+            }
+        }
+    }
+
+    @Override
+    protected void handleLifeCycleEvent(LifecycleEvent event) {
+        if (event.getSignal().equals(Signal.SHUTDOWN)) {
+            if (service.deactivate()) {
+                emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
+            } else {
+                deferedShutdownEvent = event;
+            }
+        } else if (event.getSignal().equals(Signal.START)) {
+            service.activate();
+            emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
+        } else {
+            log.info("Received signal info %s", event.getSignal());
         }
     }
 
@@ -85,6 +114,8 @@ public class OperationQueueBolt extends CoordinatedBolt implements OperationQueu
         super.declareOutputFields(output);
         output.declare(FLOW_HS_FIELDS);
         output.declareStream(REROUTE_QUEUE_STREAM, REROUTE_QUEUE_FIELDS);
+        output.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+                ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 
     @Override
@@ -97,6 +128,13 @@ public class OperationQueueBolt extends CoordinatedBolt implements OperationQueu
         emit(getCurrentTuple(),
                 new Values(correlationId, new CommandMessage(commandData, System.currentTimeMillis(), correlationId)));
         registerCallback(correlationId);
+    }
+
+    @Override
+    public void sendInactive() {
+        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferedShutdownEvent, getCommandContext()));
+        deferedShutdownEvent = null;
+
     }
 
     public void emitRerouteResponse(RerouteResultInfoData data) {

@@ -15,8 +15,10 @@
 
 package org.openkilda.wfm.topology.reroute.bolts;
 
+import static org.openkilda.wfm.share.zk.ZooKeeperSpout.FIELD_ID_LIFECYCLE_EVENT;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
+import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -34,6 +36,9 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
+import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 import org.openkilda.wfm.topology.reroute.service.RerouteService;
 
@@ -82,14 +87,18 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
      */
     @Override
     protected void handleInput(Tuple tuple) throws PipelineException {
-        Message message = pullValue(tuple, FIELD_ID_PAYLOAD, Message.class);
-
-        if (message instanceof CommandMessage) {
-            handleCommandMessage((CommandMessage) message);
-        } else if (message instanceof InfoMessage) {
-            handleInfoMessage(message);
+        if (ZooKeeperSpout.BOLT_ID.equals(tuple.getSourceComponent())) {
+            LifecycleEvent event = (LifecycleEvent) tuple.getValueByField(FIELD_ID_LIFECYCLE_EVENT);
+            handleLifeCycleEvent(event);
         } else {
-            unhandledInput(tuple);
+            Message message = pullValue(tuple, FIELD_ID_PAYLOAD, Message.class);
+            if (active && message instanceof CommandMessage) {
+                handleCommandMessage((CommandMessage) message);
+            } else if (message instanceof InfoMessage) {
+                handleInfoMessage(message);
+            } else {
+                unhandledInput(tuple);
+            }
         }
     }
 
@@ -121,7 +130,7 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
                 PathSwapResult pathSwapResult = (PathSwapResult) infoData;
                 emitWithContext(STREAM_OPERATION_QUEUE_ID, getCurrentTuple(),
                         new Values(pathSwapResult.getFlowId(), pathSwapResult));
-            } else if (infoData instanceof SwitchStateChanged) {
+            } else if (active && infoData instanceof SwitchStateChanged) {
                 rerouteService.processSingleSwitchFlowStatusUpdate((SwitchStateChanged) infoData);
             } else {
                 unhandledInput(getCurrentTuple());
@@ -133,6 +142,7 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
 
     /**
      * Emit reroute command for consumer.
+     *
      * @param flowId flow id
      * @param flowThrottlingData flow throttling data
      */
@@ -149,6 +159,7 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
 
     /**
      * Emit manual reroute command for consumer.
+     *
      * @param flowId flow id
      * @param flowThrottlingData flow throttling data
      */
@@ -183,5 +194,7 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
         output.declareStream(STREAM_MANUAL_REROUTE_REQUEST_ID,
                 new Fields(FLOW_ID_FIELD, THROTTLING_DATA_FIELD, FIELD_ID_CONTEXT));
         output.declareStream(STREAM_OPERATION_QUEUE_ID, FIELDS_OPERATION_QUEUE);
+        output.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+                ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 }
