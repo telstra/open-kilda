@@ -39,6 +39,8 @@ public class OperationQueueService {
     private final OperationQueueCarrier carrier;
 
     private final Map<String, FlowQueueData> flowCommands = new HashMap<>();
+    private boolean active;
+
 
     public OperationQueueService(OperationQueueCarrier carrier) {
         this.carrier = carrier;
@@ -103,6 +105,9 @@ public class OperationQueueService {
             log.info("Flow command {} has been sent", operationData.getCommandData());
         } else if (queueData.getQueue().isEmpty() && !queueData.isOperationInProgress()) {
             flowCommands.remove(flowId);
+            if (!active && flowCommands.isEmpty()) {
+                carrier.sendInactive();
+            }
         }
     }
 
@@ -114,6 +119,25 @@ public class OperationQueueService {
     Map<String, FlowQueueData> getFlowCommands() {
         return flowCommands;
     }
+
+    /**
+     * Handles activate command.
+     */
+    public void activate() {
+        active = true;
+    }
+
+    /**
+     * Handles deactivate command.
+     */
+    public boolean deactivate() {
+        active = false;
+        if (flowCommands.isEmpty()) {
+            return true;
+        }
+        return false;
+    }
+
 
     @Getter
     @Setter
