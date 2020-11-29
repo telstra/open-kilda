@@ -42,6 +42,8 @@ public class FlowSwapEndpointsHubService {
 
     private final FlowSwapEndpointsHubCarrier carrier;
 
+    private boolean active;
+
     public FlowSwapEndpointsHubService(FlowSwapEndpointsHubCarrier carrier, PersistenceManager persistenceManager) {
         this.carrier = carrier;
         this.fsmFactory = new Factory(carrier, persistenceManager);
@@ -112,6 +114,28 @@ public class FlowSwapEndpointsHubService {
             fsms.remove(key);
 
             carrier.cancelTimeoutCallback(key);
+
+            if (!active && fsms.isEmpty()) {
+                carrier.sendInactive();
+            }
         }
+    }
+
+    /**
+     * Handles deactivate command.
+     */
+    public boolean deactivate() {
+        active = false;
+        if (fsms.isEmpty()) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Handles activate command.
+     */
+    public void activate() {
+        active = true;
     }
 }
