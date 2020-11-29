@@ -19,4 +19,6 @@ import org.openkilda.messaging.command.CommandData;
 
 public interface OperationQueueCarrier {
     void emitRequest(String correlationId, CommandData commandData);
+
+    void sendInactive();
 }
