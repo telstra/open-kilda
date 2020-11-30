@@ -737,10 +737,10 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         then: "FlowLoop is not created on the dst switch"
         def exc2 = thrown(HttpClientErrorException)
-        exc2.statusCode == HttpStatus.BAD_REQUEST
+        exc2.statusCode == HttpStatus.UNPROCESSABLE_ENTITY
         with(exc2.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not update flow"
-            errorDescription == "Can't change loop switch"
+            errorMessage == "Can't create flow loop on '$flow.flowId' found"
+            errorDescription == "Flow is already looped on switch '$switchPair.src.dpId'"
         }
 
         cleanup:
