@@ -582,6 +582,21 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     @Test
+    public void shouldSendCorrectErrorWhenCreateFlowLoopOnLoopedFlow() {
+        Flow origin = makeFlow();
+        transactionManager.doInTransaction(() -> {
+            Flow flow = repositoryFactory.createFlowRepository().findById(origin.getFlowId()).get();
+            flow.setLoopSwitchId(origin.getDestSwitchId());
+        });
+        CreateFlowLoopRequest request = new CreateFlowLoopRequest(origin.getFlowId(), origin.getSrcSwitchId());
+
+        FlowUpdateService service = makeService();
+        service.handleCreateFlowLoopRequest(dummyRequestKey, commandContext, request);
+
+        verifyNorthboundErrorResponse(carrier, ErrorType.UNPROCESSABLE_REQUEST);
+    }
+
+    @Test
     public void shouldSuccessfullyUpdateFlowDeleteFlowLoop() {
         Flow origin = makeFlow();
         transactionManager.doInTransaction(() -> {

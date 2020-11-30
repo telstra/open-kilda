@@ -84,8 +84,6 @@ public class FlowUpdateService {
      */
 
     public void handleUpdateRequest(String key, CommandContext commandContext, FlowRequest request) {
-        Optional<Flow> flow = flowRepository.findById(request.getFlowId());
-        request.setLoopSwitchId(flow.map(Flow::getLoopSwitchId).orElse(null));
         handleRequest(key, commandContext, request);
     }
 
@@ -143,8 +141,12 @@ public class FlowUpdateService {
         Optional<Flow> flow = flowRepository.findById(request.getFlowId());
         if (flow.isPresent()) {
             FlowRequest flowRequest = RequestedFlowMapper.INSTANCE.toFlowRequest(flow.get());
-            flowRequest.setLoopSwitchId(request.getSwitchId());
-            handleRequest(key, commandContext, flowRequest);
+            if (flowRequest.getLoopSwitchId() == null) {
+                flowRequest.setLoopSwitchId(request.getSwitchId());
+                handleRequest(key, commandContext, flowRequest);
+            } else {
+                carrier.sendNorthboundResponse(buildFlowAlreadyLoopedErrorMessage(flowRequest, commandContext));
+            }
         } else {
             carrier.sendNorthboundResponse(buildFlowNotFoundErrorMessage(request.getFlowId(), commandContext));
         }
@@ -202,6 +204,13 @@ public class FlowUpdateService {
     private Message buildFlowNotFoundErrorMessage(String flowId, CommandContext commandContext) {
         String description = String.format("Flow '%s' not found.", flowId);
         ErrorData error = new ErrorData(ErrorType.NOT_FOUND, "Flow not found", description);
+        return new ErrorMessage(error, commandContext.getCreateTime(), commandContext.getCorrelationId());
+    }
+
+    private Message buildFlowAlreadyLoopedErrorMessage(FlowRequest flow, CommandContext commandContext) {
+        String description = String.format("Flow is already looped on switch '%s'", flow.getLoopSwitchId());
+        ErrorData error = new ErrorData(ErrorType.UNPROCESSABLE_REQUEST,
+                String.format("Can't create flow loop on '%s' found", flow.getFlowId()), description);
         return new ErrorMessage(error, commandContext.getCreateTime(), commandContext.getCorrelationId());
     }
 
