@@ -7,6 +7,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -15,6 +16,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.SwitchId
@@ -65,7 +67,11 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         response."$data.field" == data.newValue
 
         and: "Changes actually took place"
-        northboundV2.getFlow(flow.flowId)."$data.field" == data.newValue
+        Wrappers.wait(WAIT_OFFSET) {
+            def flowInfo = northboundV2.getFlow(flow.flowId)
+            assert flowInfo.status == FlowState.UP.toString()
+            assert flowInfo."$data.field" == data.newValue
+        }
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
@@ -99,18 +105,20 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                         field   : "pinned",
                         newValue: true
                 ],
-                [
-                        field   : "pathComputationStrategy",
-                        newValue: PathComputationStrategy.LATENCY.toString().toLowerCase()
-                ],
+                //https://github.com/telstra/open-kilda/issues/3896
+//                [
+//                        field   : "pathComputationStrategy",
+//                        newValue: PathComputationStrategy.LATENCY.toString().toLowerCase()
+//                ],
                 [
                         field   : "description",
                         newValue: "updated"
                 ],
-                [
-                        field   : "ignoreBandwidth",
-                        newValue: true
-                ]
+                //https://github.com/telstra/open-kilda/issues/3896
+//                [
+//                        field   : "ignoreBandwidth",
+//                        newValue: true
+//                ]
         ]
     }
 
