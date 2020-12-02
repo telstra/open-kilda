@@ -27,6 +27,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchFeature
+import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
@@ -209,8 +210,8 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
     @Tags(HARDWARE)
     def "Able to CRUD a pinned flow with 'VXLAN' encapsulation"() {
         when: "Create a flow"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.src.noviflow && !it.src.wb5164 && it.dst.noviflow && !it.dst.wb5164
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
+            [swP.src, swP.dst].every { sw -> isVxlanEnabled(sw.dpId) }
         }
         assumeTrue("Unable to find required switches in topology", switchPair as boolean)
 
@@ -241,14 +242,15 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
     @Tidy
     @Tags(HARDWARE)
     def "Able to CRUD a vxlan flow with protected path"() {
-        given: "Two active Noviflow switches with two available path at least"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.src.noviflow && !it.src.wb5164 && it.dst.noviflow && !it.dst.wb5164 &&
-                    it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
+        given: "Two active VXLAN supported switches with two available path at least"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
+            [swP.src, swP.dst].every { sw -> isVxlanEnabled(sw.dpId) } && swP.paths.unique(false) {
+                a, b -> a.intersect(b) == [] ? 1 : 0
+            }.size() >= 2
         } ?: assumeTrue("No suiting switches found", false)
 
         def availablePaths = switchPair.paths.findAll { path ->
-            pathHelper.getInvolvedSwitches(path).every { it.noviflow && !it.wb5164 }
+            pathHelper.getInvolvedSwitches(path).every { isVxlanEnabled(it.dpId) }
         }
         assumeTrue("Unable to find required paths between switches", availablePaths.size() >= 2)
 
@@ -360,10 +362,10 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
     @Tags([HARDWARE, SMOKE_SWITCHES])
     def "System allows tagged traffic via default flow(0<->0) with 'VXLAN' encapsulation"() {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
-        given: "Noviflow switches"
+        given: "Two active VXLAN supported switches connected to traffgen"
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.findAll {
-            it.noviflow && !it.wb5164
-        }*.dpId ?: assumeTrue("Should be at least two active traffgens connected to NoviFlow switches for test execution",
+            isVxlanEnabled(it.dpId)
+        }*.dpId ?: assumeTrue("Should be at least two active traffgens connected to VXLAN supported switches",
                 false)
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
             allTraffgenSwitchIds.contains(it.src.dpId) && allTraffgenSwitchIds.contains(it.dst.dpId)
@@ -514,9 +516,9 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
     @Tidy
     @Tags([LOW_PRIORITY, TOPOLOGY_DEPENDENT])
     def "Unable to create a vxlan flow when dst switch does not support it"() {
-        given: "Noviflow and non-Noviflow switches"
+        given: "VXLAN supported and not supported switches"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.src.noviflow && !it.src.wb5164 && !it.dst.noviflow
+            isVxlanEnabled(it.src.dpId) && !isVxlanEnabled(it.dst.dpId)
         }
         assumeTrue("Unable to find required switches in topology", switchPair as boolean)
 
@@ -545,8 +547,8 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
     def "System allows to create/update encapsulation type for a one-switch flow\
 (#encapsulationCreate.toString() -> #encapsulationUpdate.toString())"() {
         when: "Try to create a one-switch flow"
-        def sw = topology.activeSwitches.find { it.noviflow && !it.wb5164 }
-        assumeTrue("Require at least 1 Noviflow non-WB switch", sw as boolean)
+        def sw = topology.activeSwitches.find { isVxlanEnabled(it.dpId) }
+        assumeTrue("Require at least 1 VXLAN supported switch", sw as boolean)
         def flow = flowHelperV2.singleSwitchFlow(sw)
         flow.encapsulationType = encapsulationCreate
         northboundV2.addFlow(flow)
@@ -638,10 +640,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
      * Get minimum amount of switchPairs that will use every unique legal switch as src or dst at least once
      */
     List<SwitchPair> getUniqueVxlanSwitchPairs() {
-        def vxlanEnabledSwitches = topology.activeSwitches.findAll {
-            northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation
-                      .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
-        }
+        def vxlanEnabledSwitches = topology.activeSwitches.findAll { isVxlanEnabled(it.dpId) }
         def vxlanSwitchPairs = topologyHelper.getSwitchPairs().findAll { swPair ->
             swPair.paths.find { pathHelper.getInvolvedSwitches(it).every { it in vxlanEnabledSwitches } }
         }
@@ -655,5 +654,10 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             }
             r
         } as List<SwitchPair>
+    }
+
+    void isVxlanEnabled(SwitchId switchId) {
+        northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
+                .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 }
