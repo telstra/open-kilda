@@ -6,9 +6,11 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -93,7 +95,9 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
 
         expect: "No rule discrepancies on every switch of the flow"
-        switches.each { verifySwitchRules(it.dpId) }
+        wait(WAIT_OFFSET) { //due to instability on jenkins in multiTable mode + server42
+            switches.each { verifySwitchRules(it.dpId) }
+        }
 
         and: "No discrepancies when doing flow validation"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
@@ -556,7 +560,10 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
             def validation = northbound.validateSwitch(it.dpId)
             validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
             validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
-            def amountOfFlowRules = northbound.getSwitchProperties(it.dpId).multiTable ? 3 : 2
+            def swProps = northbound.getSwitchProperties(it.dpId)
+            def amountOfMultiTableRules = swProps.multiTable ? 1 : 0
+            def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId,dstSwitch.dpId]) ? 1 : 0
+            def amountOfFlowRules = 2 + amountOfMultiTableRules + amountOfServer42Rules
             assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
         }
 

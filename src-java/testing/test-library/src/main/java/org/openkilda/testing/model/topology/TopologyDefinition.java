@@ -154,6 +154,9 @@ public class TopologyDefinition {
                 isl.getSrcSwitch().getDpId().equals(sw.getDpId())).map(Isl::getSrcPort).collect(toList()));
         allPorts.removeAll(getIslsForActiveSwitches().stream().filter(isl ->
                 isl.getDstSwitch().getDpId().equals(sw.getDpId())).map(Isl::getDstPort).collect(toList()));
+        if (sw.prop != null) {
+            allPorts.remove(sw.prop.server42Port);
+        }
         return allPorts;
     }
 
@@ -194,9 +197,7 @@ public class TopologyDefinition {
     public List<Switch> getActiveServer42Switches() {
         return switches.stream()
                 .filter(Switch::isActive)
-                .filter(s -> s.prop != null
-                        && s.prop.server42FlowRtt != null
-                        && s.prop.server42FlowRtt)
+                .filter(s -> s.prop != null)
                 .collect(toList());
     }
 
@@ -333,7 +334,7 @@ public class TopologyDefinition {
 
         public SwitchProperties(@JsonProperty("server42_flow_rtt") Boolean server42FlowRtt,
                                 @JsonProperty("server42_port") Integer server42Port,
-                                @JsonProperty("server42_mac_address")String server42MacAddress,
+                                @JsonProperty("server42_mac_address") String server42MacAddress,
                                 @JsonProperty("server42_vlan") Integer server42Vlan) {
             this.server42FlowRtt = server42FlowRtt;
             this.server42Port = server42Port;
