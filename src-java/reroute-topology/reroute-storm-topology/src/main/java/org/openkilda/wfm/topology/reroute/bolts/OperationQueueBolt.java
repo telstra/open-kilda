@@ -50,7 +50,7 @@ public class OperationQueueBolt extends CoordinatedBolt implements OperationQueu
     private transient OperationQueueService service;
 
     public OperationQueueBolt(int defaultTimeout) {
-        super(true, defaultTimeout);
+        super(true, defaultTimeout, null);
     }
 
     @Override
