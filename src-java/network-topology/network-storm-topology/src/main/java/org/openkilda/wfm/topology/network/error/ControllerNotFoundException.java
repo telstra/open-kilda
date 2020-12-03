@@ -22,11 +22,7 @@ public class ControllerNotFoundException extends RuntimeException {
         super(String.format("%s controller for %s not found", kind, anchor));
     }
 
-    protected static String makePhysicalEndpointReference(Endpoint endpoint) {
-        return String.format("%s (physical)", endpoint);
-    }
-
-    protected static String makeLogicalEndpointReference(Endpoint endpoint) {
-        return String.format("%s (logical)", endpoint);
+    protected ControllerNotFoundException(String kind, Endpoint endpoint) {
+        this(kind, String.format("%s endpoint", endpoint));
     }
 }

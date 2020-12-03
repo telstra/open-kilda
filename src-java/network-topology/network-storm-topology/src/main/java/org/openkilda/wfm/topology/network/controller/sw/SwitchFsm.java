@@ -102,6 +102,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                 .createKildaConfigurationRepository();
 
         this.options = options;
+
+        logWrapper.onSwitchAdd(switchId);
     }
 
     // -- FSM actions --
@@ -229,6 +231,12 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         for (AbstractPort port : ports) {
             portDel(port, context);
         }
+    }
+
+    public void deletedEnterAction(
+            SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+        logWrapper.onSwitchDelete(switchId);
+        context.getOutput().switchRemovedNotification(switchId);
     }
 
     // -- private/service methods --
@@ -521,6 +529,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                     .callMethod("offlineEnter");
 
             // DELETED
+            builder.onEntry(SwitchFsmState.DELETED)
+                    .callMethod("deletedEnterAction");
             builder.defineFinalState(SwitchFsmState.DELETED);
         }
 

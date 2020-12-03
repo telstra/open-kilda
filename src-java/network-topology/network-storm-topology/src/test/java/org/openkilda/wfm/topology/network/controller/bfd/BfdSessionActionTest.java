@@ -31,7 +31,7 @@ import java.net.Inet4Address;
 import java.net.UnknownHostException;
 
 @RunWith(MockitoJUnitRunner.class)
-public class SessionActionTest {
+public class BfdSessionActionTest {
     private NoviBfdSession payload = NoviBfdSession.builder()
             .target(new SwitchReference(new SwitchId(1), Inet4Address.getByName("192.168.1.1")))
             .remote(new SwitchReference(new SwitchId(2), Inet4Address.getByName("192.168.1.2")))
@@ -44,7 +44,7 @@ public class SessionActionTest {
             .keepOverDisconnect(true)
             .build();
 
-    public SessionActionTest() throws UnknownHostException {
+    public BfdSessionActionTest() throws UnknownHostException {
     }
 
     @Test

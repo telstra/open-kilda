@@ -13,12 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.error;
+package org.openkilda.wfm.topology.network.utils;
 
-import org.openkilda.wfm.share.model.Endpoint;
+class SwitchOnlineStatusMonitorEntry extends BaseMonitorEntry<SwitchOnlineStatusListener, Boolean> {
+    public SwitchOnlineStatusMonitorEntry() {
+        super(false);
+    }
 
-public class BfdLogicalPortControllerNotFoundException extends ControllerNotFoundException {
-    public BfdLogicalPortControllerNotFoundException(Endpoint endpoint) {
-        super("BFD logical port", endpoint);
+    @Override
+    boolean isEmpty() {
+        return super.isEmpty() && !status;
+    }
+
+    @Override
+    void propagate(SwitchOnlineStatusListener listener, Boolean change) {
+        listener.switchOnlineStatusUpdate(change);
     }
 }

@@ -29,12 +29,15 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
+import org.openkilda.wfm.topology.network.model.BfdSessionData;
 import org.openkilda.wfm.topology.network.model.BfdStatusUpdate;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.OnlineStatus;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
+import org.openkilda.wfm.topology.network.utils.EndpointStatusMonitor;
+import org.openkilda.wfm.topology.network.utils.SwitchOnlineStatusMonitor;
 
 import lombok.Data;
 
@@ -66,19 +69,25 @@ public class NetworkIntegrationCarrier
     private IBfdSessionCarrier bfdSessionCarrier = this;
     private IBfdGlobalToggleCarrier bfdGlobalToggleCarrier = this;
 
+    private final SwitchOnlineStatusMonitor switchOnlineStatusMonitor = new SwitchOnlineStatusMonitor();
+    private final EndpointStatusMonitor endpointStatusMonitor = new EndpointStatusMonitor();
+
     public NetworkIntegrationCarrier(NetworkOptions options, PersistenceManager persistenceManager) {
         switchService = new NetworkSwitchService(this, persistenceManager, options);
         portService = new NetworkPortService(this, persistenceManager);
         uniIslService = new NetworkUniIslService(this);
         islService = new NetworkIslService(this, persistenceManager, options);
-        bfdLogicalPortService = new NetworkBfdLogicalPortService(this, options.getBfdLogicalPortOffset());
-        bfdSessionService = new NetworkBfdSessionService(this, persistenceManager);
+
+        bfdLogicalPortService = new NetworkBfdLogicalPortService(
+                this, switchOnlineStatusMonitor, options.getBfdLogicalPortOffset());
+        bfdSessionService = new NetworkBfdSessionService(
+                persistenceManager, switchOnlineStatusMonitor, endpointStatusMonitor, this);
         bfdGlobalToggleService = new NetworkBfdGlobalToggleService(this, persistenceManager);
     }
 
     @Override
-    public void bfdPropertiesApplyRequest(Endpoint physicalEndpoint, IslReference reference, BfdProperties properties) {
-        bfdSessionService.enableUpdate(physicalEndpoint, reference, properties);
+    public void bfdPropertiesApplyRequest(Endpoint physical, IslReference reference, BfdProperties properties) {
+        bfdLogicalPortService.apply(physical, reference, properties);
     }
 
     @Override
@@ -144,28 +153,13 @@ public class NetworkIntegrationCarrier
     }
 
     @Override
-    public void createSession(Endpoint logical, int physicalPortNumber) {
-        bfdSessionService.add(logical, physicalPortNumber);
+    public void enableUpdateSession(Endpoint logical, int physicalPortNumber, BfdSessionData sessionData) {
+        bfdSessionService.enableUpdate(logical, physicalPortNumber, sessionData);
     }
 
     @Override
-    public void enableUpdateSession(Endpoint physical, IslReference reference, BfdProperties properties) {
-        bfdSessionService.enableUpdate(physical, reference, properties);
-    }
-
-    @Override
-    public void disableSession(Endpoint physical) {
-        bfdSessionService.disable(physical);
-    }
-
-    @Override
-    public void deleteSession(Endpoint logical) {
-        bfdSessionService.delete(logical);
-    }
-
-    @Override
-    public void updateSessionOnlineStatus(Endpoint logical, boolean isOnline) {
-        bfdSessionService.updateOnlineStatus(logical, isOnline);
+    public void disableSession(Endpoint logical) {
+        bfdSessionService.disable(logical);
     }
 
     @Override
@@ -179,20 +173,25 @@ public class NetworkIntegrationCarrier
     }
 
     @Override
-    public String addBfdSession(NoviBfdSession bfdSession) {
+    public String sendWorkerBfdSessionCreateRequest(NoviBfdSession bfdSession) {
         // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
         return "dummy";
     }
 
     @Override
-    public String deleteBfdSession(NoviBfdSession bfdSession) {
+    public String sendWorkerBfdSessionDeleteRequest(NoviBfdSession bfdSession) {
         // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
         return "dummy";
+    }
+
+    @Override
+    public void sessionRotateRequest(Endpoint logical, boolean error) {
+        bfdSessionService.rotate(logical, error);
     }
 
     @Override
     public void sessionCompleteNotification(Endpoint physical) {
-        bfdLogicalPortService.sessionDeleted(physical);
+        bfdLogicalPortService.sessionCompleteNotification(physical);
     }
 
     @Override
@@ -267,12 +266,7 @@ public class NetworkIntegrationCarrier
 
     @Override
     public void sendBfdLinkStatusUpdate(Endpoint logicalEndpoint, LinkStatus linkStatus) {
-        bfdSessionService.updateLinkStatus(logicalEndpoint, linkStatus);
-    }
-
-    @Override
-    public void sendBfdSwitchStatusUpdate(Endpoint endpoint, boolean isOnline) {
-        bfdLogicalPortService.updateOnlineStatus(endpoint, isOnline);
+        endpointStatusMonitor.update(logicalEndpoint, linkStatus);
     }
 
     @Override
@@ -286,6 +280,12 @@ public class NetworkIntegrationCarrier
     @Override
     public void sendSwitchStateChanged(SwitchId switchId, SwitchStatus status) {
 
+    }
+
+    @Override
+    public void switchRemovedNotification(SwitchId switchId) {
+        switchOnlineStatusMonitor.cleanup(switchId);
+        endpointStatusMonitor.cleanup(switchId);
     }
 
     @Override
