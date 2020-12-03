@@ -228,18 +228,11 @@ class QinQFlowSpec extends HealthCheckSpecification {
             }.empty
         }
 
-        //TODO(andriidovhan) reduce amount of test when this feature is stable
         where:
         srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
-        0         | 0              | 0         | 0
         10        | 20             | 30        | 40
-        10        | 10             | 10        | 10
         10        | 0              | 0         | 40
-        0         | 20             | 30        | 0
         10        | 20             | 0         | 0
-        0         | 0              | 30        | 40
-        10        | 20             | 30        | 0
-        0         | 20             | 30        | 40
     }
 
     @Unroll
@@ -303,15 +296,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         where:
         srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
-        0         | 0              | 0         | 0
         10        | 20             | 30        | 40
-        10        | 10             | 10        | 10
         10        | 0              | 0         | 40
-        0         | 20             | 30        | 0
         10        | 20             | 0         | 0
-        0         | 0              | 30        | 40
-        10        | 20             | 30        | 0
-        0         | 20             | 30        | 40
     }
 
     @Tidy
@@ -639,12 +626,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         where:
         srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
         10        | 20             | 30        | 40
-        10        | 20             | 30        | 0
-        10        | 20             | 0         | 0
         10        | 0              | 0         | 40
-        0         | 20             | 30        | 0
-        0         | 20             | 30        | 40
-        0         | 0              | 30        | 40
+        10        | 20             | 0         | 0
     }
 
     @Unroll
@@ -825,15 +808,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         where:
         srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
-        0         | 0              | 0         | 0
         10        | 20             | 30        | 40
-        10        | 10             | 10        | 10
         10        | 0              | 0         | 40
-        0         | 20             | 30        | 0
         10        | 20             | 0         | 0
-        0         | 0              | 30        | 40
-        10        | 20             | 30        | 0
-        0         | 20             | 30        | 40
     }
 
     @Tidy
