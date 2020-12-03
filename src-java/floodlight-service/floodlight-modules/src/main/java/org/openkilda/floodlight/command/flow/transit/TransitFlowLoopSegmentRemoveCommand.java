@@ -62,6 +62,11 @@ public class TransitFlowLoopSegmentRemoveCommand extends TransitFlowSegmentComma
     }
 
     @Override
+    protected int getTableId() {
+        return SwitchManager.EGRESS_TABLE_ID;
+    }
+
+    @Override
     protected SegmentAction getSegmentAction() {
         return SegmentAction.REMOVE;
     }

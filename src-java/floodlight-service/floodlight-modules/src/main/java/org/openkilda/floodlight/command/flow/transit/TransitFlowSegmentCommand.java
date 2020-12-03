@@ -60,11 +60,15 @@ abstract class TransitFlowSegmentCommand extends NotIngressFlowSegmentCommand {
 
     protected OFFlowMod makeTransitModMessage() {
         OFFactory of = getSw().getOFFactory();
-        return flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.TRANSIT_TABLE_ID))
+        return flowModBuilderFactory.makeBuilder(of, TableId.of(getTableId()))
                 .setCookie(U64.of(metadata.getCookie().getValue()))
                 .setInstructions(makeTransitModMessageInstructions(of))
                 .setMatch(makeTransitMatch(of))
                 .build();
+    }
+
+    protected int getTableId() {
+        return SwitchManager.TRANSIT_TABLE_ID;
     }
 
     protected abstract List<OFInstruction> makeTransitModMessageInstructions(OFFactory of);
