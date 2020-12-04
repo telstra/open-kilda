@@ -39,3 +39,8 @@ spring.kafka.producer.properties.interceptor.classes=org.openkilda.bluegreen.kaf
 spring.kafka.producer.properties.kafka.producer.messaging.zookeeper.connecting.string.property={{ getv "/kilda_zookeeper_hosts"}}/{{ getv "/kilda_zookeeper_state_root" }}
 spring.kafka.producer.properties.kafka.producer.messaging.component.name.property={{ getv "/kilda_server42_stats_component_name" }}
 spring.kafka.producer.properties.kafka.producer.messaging.run.id.property={{ getv "/kilda_server42_stats_run_id" }}
+
+spring.kafka.consumer.properties.interceptor.classes=org.openkilda.bluegreen.kafka.interceptors.VersioningConsumerInterceptor
+spring.kafka.consumer.properties.kafka.consumer.messaging.zookeeper.connecting.string.property={{ getv "/kilda_zookeeper_hosts"}}/{{ getv "/kilda_zookeeper_state_root" }}
+spring.kafka.consumer.properties.kafka.consumer.messaging.component.name.property={{ getv "/kilda_server42_stats_component_name" }}
+spring.kafka.consumer.properties.kafka.consumer.messaging.run.id.property={{ getv "/kilda_server42_stats_run_id" }}
