@@ -15,6 +15,13 @@
 
 package org.openkilda.northbound.config;
 
+import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_NAME;
+import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_RUN_ID;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+
+import org.openkilda.bluegreen.kafka.interceptors.VersioningConsumerInterceptor;
 import org.openkilda.messaging.Message;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageListener;
@@ -55,6 +62,12 @@ public class MessageConsumerConfig {
     private String kafkaHosts;
 
     /**
+     * ZooKeeper hosts.
+     */
+    @Value("${zookeeper.connect_string}")
+    private String zookeeperConnectString;
+
+    /**
      * Kafka group id.
      */
     @Value("#{kafkaGroupConfig.getGroupId()}")
@@ -83,6 +96,10 @@ public class MessageConsumerConfig {
                 .put(ConsumerConfig.GROUP_ID_CONFIG, groupId)
                 .put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
                 .put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, kafkaSessionTimeout)
+                .put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName())
+                .put(CONSUMER_COMPONENT_NAME_PROPERTY, COMMON_COMPONENT_NAME)
+                .put(CONSUMER_RUN_ID_PROPERTY, COMMON_COMPONENT_RUN_ID)
+                .put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, zookeeperConnectString)
                 .build();
     }
 

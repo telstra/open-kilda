@@ -32,6 +32,19 @@ public final class Utils {
      */
     public static final String MESSAGE_VERSION_HEADER = "kafka.message.version.header";
     /**
+     * Property name for Kafka consumer to specify component name for consumer interceptor.
+     */
+    public static final String CONSUMER_COMPONENT_NAME_PROPERTY = "kafka.consumer.messaging.component.name.property";
+    /**
+     * Property name for Kafka consumer to specify run ID for consumer interceptor.
+     */
+    public static final String CONSUMER_RUN_ID_PROPERTY = "kafka.consumer.messaging.run.id.property";
+    /**
+     * Property name for Kafka consumer to specify zookeeper connection string.
+     */
+    public static final String CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY =
+            "kafka.consumer.messaging.zookeeper.connecting.string.property";
+    /**
      * Property name for Kafka producer to specify component name for producer interceptor.
      */
     public static final String PRODUCER_COMPONENT_NAME_PROPERTY = "kafka.producer.messaging.component.name.property";
