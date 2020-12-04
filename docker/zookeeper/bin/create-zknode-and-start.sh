@@ -107,6 +107,11 @@ done
 /opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/reroute/blue/build-version "v3r\$i0n"
 
 # add stats topology zkNodes
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/stats ""
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/stats/blue ""
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/stats/blue/signal "START"
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/stats/blue/state ""
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/stats/blue/build-version "v3r\$i0n"
 
 
 # add swmanager topology zkNodes
