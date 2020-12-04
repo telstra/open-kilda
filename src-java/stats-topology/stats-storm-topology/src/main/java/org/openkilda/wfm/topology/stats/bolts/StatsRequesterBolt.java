@@ -26,6 +26,8 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 
@@ -40,12 +42,14 @@ import java.util.Collection;
 import java.util.Optional;
 
 public class StatsRequesterBolt extends AbstractBolt {
+    public static final String ZOOKEEPER_STREAM = ZkStreams.ZK.toString();
 
     private final PersistenceManager persistenceManager;
     private transient SwitchRepository switchRepository;
     private transient FeatureTogglesRepository featureTogglesRepository;
 
-    public StatsRequesterBolt(PersistenceManager persistenceManager) {
+    public StatsRequesterBolt(PersistenceManager persistenceManager, String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
         this.persistenceManager = persistenceManager;
     }
 
@@ -59,14 +63,22 @@ public class StatsRequesterBolt extends AbstractBolt {
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declareStream(STATS_REQUEST.name(), new Fields(AbstractTopology.MESSAGE_FIELD));
         declarer.declareStream(GRPC_REQUEST.name(), new Fields(AbstractTopology.MESSAGE_FIELD));
+        declarer.declareStream(ZOOKEEPER_STREAM, new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+                ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 
     @Override
     protected void handleInput(Tuple input) {
-        if (!StatsComponentType.TICK_BOLT.name().equals(input.getSourceComponent())) {
-            unhandledInput(input);
-            return;
+        if (active) {
+            if (StatsComponentType.TICK_BOLT.name().equals(input.getSourceComponent())) {
+                sendStatsRequest(input);
+            } else {
+                unhandledInput(input);
+            }
         }
+    }
+
+    private void sendStatsRequest(Tuple input) {
         CommandMessage statsRequest = new CommandMessage(
                 new StatsRequest(), System.currentTimeMillis(), getCommandContext().getCorrelationId());
         Values values = new Values(statsRequest);

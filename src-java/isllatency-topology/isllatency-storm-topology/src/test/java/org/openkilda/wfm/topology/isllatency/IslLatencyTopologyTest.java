@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.isllatency;
 
+import static java.lang.String.format;
 import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -70,6 +71,8 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
     private static final IslKey FORWARD_ISL = new IslKey(SWITCH_ID_1, PORT_1, SWITCH_ID_2, PORT_2);
     private static final IslKey REVERSE_ISL = new IslKey(SWITCH_ID_2, PORT_2, SWITCH_ID_1, PORT_1);
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    public static final String COMPONENT_NAME = "isllatency";
+    public static final String RUN_ID = "blue";
     private static IslLatencyTopologyConfig islLatencyTopologyConfig;
     private static TestKafkaConsumer otsdbConsumer;
     private static InMemoryGraphPersistenceManager persistenceManager;
@@ -78,7 +81,8 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
 
     @BeforeClass
     public static void setupOnce() throws Exception {
-        AbstractStormTest.startZooKafkaAndStorm();
+        AbstractStormTest.startZooKafka();
+        AbstractStormTest.startStorm(COMPONENT_NAME, RUN_ID);
 
         LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
         Properties configOverlay = new Properties();
@@ -99,7 +103,7 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
         cluster.submitTopology(IslLatencyTopologyTest.class.getSimpleName(), config, stormTopology);
 
         otsdbConsumer = new TestKafkaConsumer(islLatencyTopologyConfig.getKafkaOtsdbTopic(),
-                kafkaConsumerProperties(UUID.randomUUID().toString()));
+                kafkaConsumerProperties(UUID.randomUUID().toString(), COMPONENT_NAME, RUN_ID));
         otsdbConsumer.start();
 
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
@@ -203,7 +207,7 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
         } catch (InterruptedException e) {
             throw new AssertionError(POLL_DATAPOINT_ASSERT_MESSAGE);
         } catch (IOException e) {
-            throw new AssertionError(String.format("Could not parse datapoint object: '%s'", record.value()));
+            throw new AssertionError(format("Could not parse datapoint object: '%s'", record.value()));
         }
     }
 
