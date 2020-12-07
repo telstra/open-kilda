@@ -26,7 +26,6 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -35,7 +34,6 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import org.springframework.web.client.HttpServerErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
@@ -523,26 +521,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
             }
         }
         database.resetCosts()
-    }
-
-    def "Unable to create flowLoop for a singleSwitch flow"() {
-        given: "An active singleSwitch flow"
-        def sw = topology.activeSwitches.first()
-        def flow = flowHelperV2.singleSwitchFlow(sw)
-        flowHelperV2.addFlow(flow)
-
-        when: "Create flowLoop on the sw switch"
-        northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(sw.dpId))
-
-        then: "Human readable error is returned"
-        def exc = thrown(HttpServerErrorException) //https://github.com/telstra/open-kilda/issues/3846
-        exc.statusCode == HttpStatus.NOT_IMPLEMENTED
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not update flow"
-        errorDetails.errorDescription == "Loop for single switch flows is not implemented"
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/3846")

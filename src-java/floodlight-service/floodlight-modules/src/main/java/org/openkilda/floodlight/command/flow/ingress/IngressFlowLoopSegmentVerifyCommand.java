@@ -18,12 +18,8 @@ package org.openkilda.floodlight.command.flow.ingress;
 import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
-import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
-import org.openkilda.model.FlowTransitEncapsulation;
-import org.openkilda.model.MeterConfig;
-import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -38,14 +34,8 @@ public class IngressFlowLoopSegmentVerifyCommand extends IngressFlowLoopSegmentI
             @JsonProperty("message_context") MessageContext context,
             @JsonProperty("command_id") UUID commandId,
             @JsonProperty("metadata") FlowSegmentMetadata metadata,
-            @JsonProperty("endpoint") FlowEndpoint endpoint,
-            @JsonProperty("meter_config") MeterConfig meterConfig,
-            @JsonProperty("egress_switch") SwitchId egressSwitchId,
-            @JsonProperty("isl_port") int islPort,
-            @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
-            @JsonProperty("rules_context") RulesContext rulesContext) {
-        super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
-                rulesContext);
+            @JsonProperty("endpoint") FlowEndpoint endpoint) {
+        super(context, commandId, metadata, endpoint);
     }
 
     @Override
