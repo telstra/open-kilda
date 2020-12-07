@@ -16,6 +16,8 @@
 
 package org.openkilda.bluegreen;
 
+import static java.lang.String.format;
+
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,7 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
 
     private static final String SIGNAL = "signal";
     private static final String BUILD_VERSION = "build-version";
+    public static final String DEFAULT_BUILD_VERSION = "v3r$i0n";
 
     @VisibleForTesting
     protected String signalPath;
@@ -65,7 +68,7 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
     void validateNodes() throws KeeperException, InterruptedException {
         super.validateNodes();
         ensureZNode(serviceName, id, SIGNAL);
-        ensureZNode(serviceName, id, BUILD_VERSION);
+        ensureZNode(DEFAULT_BUILD_VERSION.getBytes(), serviceName, id, BUILD_VERSION);
     }
 
 
@@ -168,5 +171,27 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
         for (BuildVersionObserver observer : buildVersionObservers) {
             observer.handle(buildVersion);
         }
+    }
+
+    /**
+     * Close connection to zookeeper.
+     *
+     * @throws IllegalStateException if there are observers which use zookeeper connection
+     * @throws InterruptedException if there are some problems with stopping client thread
+     */
+    public void close() throws IllegalStateException, InterruptedException {
+        if (!observers.isEmpty()) {
+            String message = format("Could not close connection to zookeeper %S. Watch dog still have %S life cycle "
+                            + "observers", connectionString, observers.size());
+            log.error(message);
+            throw new IllegalStateException(message);
+        }
+        if (!buildVersionObservers.isEmpty()) {
+            String message = format("Could not close connection to zookeeper %s. Watch dog still have %s build "
+                            + "version observers", connectionString, buildVersionObservers.size());
+            log.error(message);
+            throw new IllegalStateException(message);
+        }
+        zookeeper.close();
     }
 }

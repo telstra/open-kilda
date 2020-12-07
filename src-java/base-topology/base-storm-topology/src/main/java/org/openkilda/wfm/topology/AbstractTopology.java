@@ -16,7 +16,13 @@
 package org.openkilda.wfm.topology;
 
 import static java.lang.String.format;
+import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_NAME;
+import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_RUN_ID;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
 
+import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
 import org.openkilda.config.KafkaConfig;
 import org.openkilda.config.ZookeeperConfig;
 import org.openkilda.config.naming.KafkaNamingStrategy;
@@ -204,12 +210,26 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         return errorCode;
     }
 
+    /**
+     * //TODO(zero_down_time) Remove when zero down time feature will be completed.
+     *
+     * @deprecated use getKafkaProducerProperties with parameters (component name, run id)
+     */
+    @Deprecated
     private Properties getKafkaProducerProperties() {
+        return getKafkaProducerProperties(COMMON_COMPONENT_NAME, COMMON_COMPONENT_RUN_ID);
+    }
+
+    private Properties getKafkaProducerProperties(String componentName, String runId) {
         Properties kafka = new Properties();
 
         kafka.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         kafka.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         kafka.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaConfig.getHosts());
+        kafka.setProperty(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningProducerInterceptor.class.getName());
+        kafka.setProperty(PRODUCER_COMPONENT_NAME_PROPERTY, componentName);
+        kafka.setProperty(PRODUCER_RUN_ID_PROPERTY, runId);
+        kafka.setProperty(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, getZookeeperConfig().getConnectString());
 
         return kafka;
     }
@@ -347,6 +367,17 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     }
 
     /**
+     * Creates Kafka bolt, that uses {@link MessageSerializer} in order to serialize an object.
+     *
+     * @param topic Kafka topic
+     * @return {@link KafkaBolt}
+     */
+    protected KafkaBolt<String, Message> buildKafkaBolt(
+            final String topic, String componentName, String runId) {
+        return makeKafkaBolt(topic, MessageSerializer.class, componentName, runId);
+    }
+
+    /**
      * Creates Kafka bolt, that uses {@link ObjectSerializer} in order to serialize an object.
      *
      * @param topic Kafka topic
@@ -390,13 +421,36 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         return kafkaNamingStrategy.kafkaConsumerGroupName(format("%s__%s", topologyName, spoutId));
     }
 
+    /**
+     * //TODO(zero_down_time) Remove when zero down time feature will be completed.
+     *
+     * @deprecated use makeKafkaBolt with parameters (component name, run id)
+     */
+    @Deprecated
     protected <V> KafkaBolt<String, V> makeKafkaBolt(String topic, Class<? extends Serializer<V>> valueEncoder) {
         return makeKafkaBolt(valueEncoder)
                 .withTopicSelector(topic);
     }
 
+    protected <V> KafkaBolt<String, V> makeKafkaBolt(
+            String topic, Class<? extends Serializer<V>> valueEncoder, String componentName, String runId) {
+        return makeKafkaBolt(valueEncoder, componentName, runId)
+                .withTopicSelector(topic);
+    }
+
+    /**
+     * //TODO(zero_down_time) Remove when zero down time feature will be completed.
+     *
+     * @deprecated use makeKafkaBolt with parameters (component name, run id)
+     */
+    @Deprecated
     protected <V> KafkaBolt<String, V> makeKafkaBolt(Class<? extends Serializer<V>> valueEncoder) {
-        Properties properties = getKafkaProducerProperties();
+        return makeKafkaBolt(valueEncoder, COMMON_COMPONENT_NAME, COMMON_COMPONENT_RUN_ID);
+    }
+
+    protected <V> KafkaBolt<String, V> makeKafkaBolt(
+            Class<? extends Serializer<V>> valueEncoder, String componentName, String runId) {
+        Properties properties = getKafkaProducerProperties(componentName, runId);
         properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, valueEncoder.getName());
 
         return new KafkaBolt<String, V>()

@@ -15,6 +15,14 @@
 
 package org.openkilda.testing.service.kafka;
 
+import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_NAME;
+import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_RUN_ID;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+
+import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
+
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -39,11 +47,16 @@ public class KafkaConfig {
     }
 
     @Bean(name = "kafkaProducerProperties")
-    public Properties kafkaProducerProperties(@Value("${kafka.bootstrap.server}") String bootstrapServer) {
+    public Properties kafkaProducerProperties(@Value("${kafka.bootstrap.server}") String bootstrapServer,
+                                              @Value("${zookeeper.connect_string}") String zookeeperHosts) {
         Properties connectDefaults = new Properties();
         connectDefaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServer);
         connectDefaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         connectDefaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        connectDefaults.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningProducerInterceptor.class.getName());
+        connectDefaults.put(PRODUCER_COMPONENT_NAME_PROPERTY, COMMON_COMPONENT_NAME);
+        connectDefaults.put(PRODUCER_RUN_ID_PROPERTY, COMMON_COMPONENT_RUN_ID);
+        connectDefaults.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, zookeeperHosts);
         return connectDefaults;
     }
 }
