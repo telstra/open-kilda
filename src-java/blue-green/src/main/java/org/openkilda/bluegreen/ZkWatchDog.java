@@ -32,19 +32,28 @@ import java.util.Set;
 public class ZkWatchDog extends ZkClient implements DataCallback {
 
     private static final String SIGNAL = "signal";
+    private static final String BUILD_VERSION = "build-version";
+
     @VisibleForTesting
     protected String signalPath;
     private Signal signal;
 
     @VisibleForTesting
+    protected String buildVersionPath;
+    private String buildVersion;
+
+    @VisibleForTesting
     Set<LifeCycleObserver> observers = new HashSet<>();
+    @VisibleForTesting
+    Set<BuildVersionObserver> buildVersionObservers = new HashSet<>();
 
     @Builder
     public ZkWatchDog(String id, String serviceName, String connectionString,
                       int sessionTimeout, Signal signal) throws IOException {
         super(id, serviceName, connectionString, sessionTimeout);
 
-        signalPath = getPaths(serviceName, id, SIGNAL);
+        this.buildVersionPath = getPaths(serviceName, id, BUILD_VERSION);
+        this.signalPath = getPaths(serviceName, id, SIGNAL);
         if (signal == null) {
             signal = Signal.NONE;
         }
@@ -56,12 +65,22 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
     void validateNodes() throws KeeperException, InterruptedException {
         super.validateNodes();
         ensureZNode(serviceName, id, SIGNAL);
+        ensureZNode(serviceName, id, BUILD_VERSION);
     }
 
 
     @VisibleForTesting
     void subscribeSignal() throws KeeperException, InterruptedException {
-        zookeeper.getData(signalPath, this, this, null);
+        checkData(signalPath);
+    }
+
+    @VisibleForTesting
+    void subscribeBuildVersion() throws KeeperException, InterruptedException {
+        checkData(buildVersionPath);
+    }
+
+    private void checkData(String path) throws KeeperException, InterruptedException {
+        zookeeper.getData(path, this, this, null);
     }
 
     @Override
@@ -69,6 +88,7 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
         try {
             validateNodes();
             subscribeSignal();
+            subscribeBuildVersion();
         } catch (KeeperException | InterruptedException e) {
             log.error(e.getMessage(), e);
         }
@@ -82,20 +102,37 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
     }
 
     /**
+     * Subscribe for events.
+     */
+    public void subscribe(BuildVersionObserver observer) {
+        buildVersionObservers.add(observer);
+    }
+
+    /**
      * Unsubscribe for events.
      */
     public void unsubscribe(LifeCycleObserver observer) {
-        if (observers.contains(observer)) {
-            observers.remove(observer);
-        }
+        observers.remove(observer);
+    }
+
+    /**
+     * Unsubscribe for events.
+     */
+    public void unsubscribe(BuildVersionObserver observer) {
+        buildVersionObservers.remove(observer);
     }
 
     @Override
     public void process(WatchedEvent event) {
         log.info("Received event: {}", event);
         try {
-            if (!refreshConnection(event.getState()) && signalPath.equals(event.getPath())) {
-                subscribeSignal();
+            if (!refreshConnection(event.getState())) {
+                if (signalPath.equals(event.getPath())) {
+                    subscribeSignal();
+                }
+                if (buildVersionPath.equals(event.getPath())) {
+                    subscribeBuildVersion();
+                }
             }
         } catch (IOException | InterruptedException | KeeperException e) {
             log.error("Failed to read zk event: {}", e.getMessage(), e);
@@ -115,6 +152,10 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
             notifyObservers();
         }
 
+        if (buildVersionPath.equals(path) && data != null && data.length > 0) {
+            this.buildVersion = new String(data);
+            notifyBuildVersionObservers();
+        }
     }
 
     protected void notifyObservers() {
@@ -123,4 +164,9 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
         }
     }
 
+    protected void notifyBuildVersionObservers() {
+        for (BuildVersionObserver observer : buildVersionObservers) {
+            observer.handle(buildVersion);
+        }
+    }
 }
