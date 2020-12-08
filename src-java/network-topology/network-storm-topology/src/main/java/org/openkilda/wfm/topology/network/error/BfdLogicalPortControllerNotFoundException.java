@@ -18,15 +18,7 @@ package org.openkilda.wfm.topology.network.error;
 import org.openkilda.wfm.share.model.Endpoint;
 
 public class BfdLogicalPortControllerNotFoundException extends ControllerNotFoundException {
-    public static BfdLogicalPortControllerNotFoundException ofPhysical(Endpoint physical) {
-        return new BfdLogicalPortControllerNotFoundException(makePhysicalEndpointReference(physical));
-    }
-
-    public static BfdLogicalPortControllerNotFoundException ofLogical(Endpoint logical) {
-        return new BfdLogicalPortControllerNotFoundException(makeLogicalEndpointReference(logical));
-    }
-
-    public BfdLogicalPortControllerNotFoundException(String anchor) {
-        super("BFD logical port", anchor);
+    public BfdLogicalPortControllerNotFoundException(Endpoint endpoint) {
+        super("BFD logical port", endpoint);
     }
 }

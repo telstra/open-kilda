@@ -18,15 +18,7 @@ package org.openkilda.wfm.topology.network.error;
 import org.openkilda.wfm.share.model.Endpoint;
 
 public class BfdSessionControllerNotFoundException extends ControllerNotFoundException {
-    public static BfdSessionControllerNotFoundException ofPhysical(Endpoint endpoint) {
-        return new BfdSessionControllerNotFoundException(makePhysicalEndpointReference(endpoint));
-    }
-
-    public static BfdSessionControllerNotFoundException ofLogical(Endpoint endpoint) {
-        return new BfdSessionControllerNotFoundException(makeLogicalEndpointReference(endpoint));
-    }
-
-    public BfdSessionControllerNotFoundException(String anchor) {
-        super("BFD-session", anchor);
+    public BfdSessionControllerNotFoundException(Endpoint endpoint) {
+        super("BFD-session", endpoint);
     }
 }

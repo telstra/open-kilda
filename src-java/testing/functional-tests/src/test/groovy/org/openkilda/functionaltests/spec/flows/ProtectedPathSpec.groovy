@@ -8,6 +8,7 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -751,11 +752,20 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         assert !northbound.getFlowPath(flow.id).protectedPath
 
         and: "Cookies are created by flow"
-        def createdCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
+        def createdCookiesSrcSw = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
             !new Cookie(it.cookie).serviceFlag
         }*.cookie
-        def amountOfFlowRules = northbound.getSwitchProperties(switchPair.src.dpId).multiTable ? 3 : 2
-        assert createdCookies.size() == amountOfFlowRules
+        def createdCookiesDstSw = northbound.getSwitchRules(switchPair.dst.dpId).flowEntries.findAll {
+            !new Cookie(it.cookie).serviceFlag
+        }*.cookie
+        def srcSwProps = northbound.getSwitchProperties(switchPair.src.dpId)
+        def amountOfserver42Rules = srcSwProps.server42FlowRtt ? 1 : 0
+        def amountOfFlowRulesSrcSw = srcSwProps.multiTable ? (3 + amountOfserver42Rules) : (2 + amountOfserver42Rules)
+        assert createdCookiesSrcSw.size() == amountOfFlowRulesSrcSw
+        def dstSwProps = northbound.getSwitchProperties(switchPair.dst.dpId)
+        def amountOfserver42RulesDstSw = dstSwProps.server42FlowRtt ? 1 : 0
+        def amountOfFlowRulesDstSw = dstSwProps.multiTable ? (3 + amountOfserver42RulesDstSw) : (2 + amountOfserver42RulesDstSw)
+        assert createdCookiesDstSw.size() == amountOfFlowRulesDstSw
 
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
         flowHelper.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = true })
@@ -774,7 +784,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 !new Cookie(it.cookie).serviceFlag
             }*.cookie
             // amountOfFlowRules for main path + one for protected path
-            cookiesAfterEnablingProtectedPath.size() == amountOfFlowRules + 1
+            cookiesAfterEnablingProtectedPath.size() == amountOfFlowRulesSrcSw + 1
         }
 
         and: "No rule discrepancies on every switch of the flow on the main path"
@@ -832,7 +842,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                     assert switchValidateInfo.meters.proper.findAll({dto -> !isDefaultMeter(dto)}).size() == 1
                     switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "misconfigured", "excess"])
                 }
-                assert switchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules + 1
+                assert switchValidateInfo.rules.proper.findAll { def cookie = new Cookie(it)
+                    !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT }.size() ==
+                        (switchId == switchPair.src.dpId) ? amountOfFlowRulesSrcSw + 1 : amountOfFlowRulesDstSw + 1
                 switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
             }
         }

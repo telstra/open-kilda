@@ -196,9 +196,10 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         northboundV2.getAllFlows().empty
 
         and: "Related switches have no excess rules"
-        pathHelper.getInvolvedSwitches(PathHelper.convert(path)).each {
+        //wait, server42 rules may take some time to disappear after flow removal
+        Wrappers.wait(WAIT_OFFSET / 2) { pathHelper.getInvolvedSwitches(PathHelper.convert(path)).each {
             verifySwitchRules(it.dpId)
-        }
+        }}
 
         and: "cleanup: restore broken path"
         antiflap.portUp(brokenIsl.srcSwitch.dpId, brokenIsl.srcPort)

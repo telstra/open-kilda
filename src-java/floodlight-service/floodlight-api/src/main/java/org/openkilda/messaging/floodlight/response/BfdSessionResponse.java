@@ -23,9 +23,11 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import lombok.Value;
 
 @Value
+@ToString
 @EqualsAndHashCode(callSuper = false)
 public class BfdSessionResponse extends InfoData {
     @JsonProperty("bfd-session")

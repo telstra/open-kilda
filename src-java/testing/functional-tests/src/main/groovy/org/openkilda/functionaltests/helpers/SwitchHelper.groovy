@@ -47,6 +47,7 @@ import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.model.topology.TopologyDefinition.SwitchProperties
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.model.Floodlight
 import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode
@@ -171,11 +172,13 @@ class SwitchHelper {
         }
         if (swProps.server42FlowRtt) {
             server42Rules << SERVER_42_OUTPUT_VLAN_COOKIE
-            if (sw.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST)) {
-                server42Rules << SERVER_42_TURNING_COOKIE
-            }
             if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
                 server42Rules << SERVER_42_OUTPUT_VXLAN_COOKIE
+            }
+        }
+        if (northbound.getFeatureToggles().server42FlowRtt) {
+            if (sw.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST)) {
+                server42Rules << SERVER_42_TURNING_COOKIE
             }
         }
         if (sw.noviflow && !sw.wb5164) {
@@ -366,6 +369,10 @@ class SwitchHelper {
         } else {
             assert Math.abs(expected - actual) <= 1
         }
+    }
+
+    static SwitchProperties getDummyServer42Props() {
+        return new SwitchProperties(true, 33, "00:00:00:00:00:00", 1)
     }
 
     /**

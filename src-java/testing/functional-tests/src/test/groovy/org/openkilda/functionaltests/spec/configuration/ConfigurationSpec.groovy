@@ -32,8 +32,6 @@ This spec assumes that 'transit_vlan' is always default type
 class ConfigurationSpec extends HealthCheckSpecification {
     @Shared
     FlowEncapsulationType defaultEncapsulationType = FlowEncapsulationType.TRANSIT_VLAN
-    @Value('${use.multitable}')
-    boolean useMultitable
 
     @Tidy
     @Tags(HARDWARE)

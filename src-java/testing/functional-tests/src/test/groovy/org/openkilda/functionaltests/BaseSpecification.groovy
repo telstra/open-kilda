@@ -76,6 +76,8 @@ class BaseSpecification extends Specification implements SetupOnce {
     int antiflapCooldown
     @Value('${antiflap.min}')
     int antiflapMin
+    @Value('${use.multitable}')
+    boolean useMultitable
 
     /**
      * Use this instead of setupSpec in order to have access to Spring Context and do actions BeforeClass.

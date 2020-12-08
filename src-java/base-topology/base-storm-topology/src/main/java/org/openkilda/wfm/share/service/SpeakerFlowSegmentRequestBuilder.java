@@ -239,8 +239,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                     requests.add(makeIngressSegmentRequest(context, path, encapsulation, ingressSide, segment,
                             egressSide, rulesContext));
                     if (ingressLoopRuleRequired(flow, ingressSide)) {
-                        requests.addAll(makeLoopRequests(context, path, encapsulation, ingressSide, segment,
-                                egressSide));
+                        requests.addAll(makeLoopRequests(context, path, encapsulation, ingressSide, segment));
                     }
                 }
             } else {
@@ -260,7 +259,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             // one switch flow (path without path segments)
             requests.add(makeOneSwitchRequest(context, path, ingressSide, egressSide, rulesContext));
             if (singleSwitchLoopRuleRequired(flow)) {
-                requests.add(makeSingleSwitchIngressLoopRequest(context, path, encapsulation, ingressSide));
+                requests.add(makeSingleSwitchIngressLoopRequest(context, path, ingressSide));
             }
         }
 
@@ -298,7 +297,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
 
     private List<FlowSegmentRequestFactory> makeLoopRequests(
             CommandContext context, FlowPath path, FlowTransitEncapsulation encapsulation,
-            FlowSideAdapter flowSide, PathSegment segment, FlowSideAdapter egress) {
+            FlowSideAdapter flowSide, PathSegment segment) {
         List<FlowSegmentRequestFactory> result = new ArrayList<>(2);
         PathSegmentSide segmentSide = makePathSegmentSourceSide(segment);
 
@@ -310,9 +309,6 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 .messageContext(messageContext)
                 .metadata(makeMetadata(path.getFlow().getFlowId(), cookie, segmentSide.isMultiTable()))
                 .endpoint(flowSide.getEndpoint())
-                .egressSwitchId(egress.getEndpoint().getSwitchId())
-                .islPort(segmentSide.getEndpoint().getPortNumber())
-                .encapsulation(encapsulation)
                 .build());
 
         FlowPathDirection reverse = cookie.getDirection() == FlowPathDirection.FORWARD ? FlowPathDirection.REVERSE
@@ -333,8 +329,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     }
 
     private FlowSegmentRequestFactory makeSingleSwitchIngressLoopRequest(
-            CommandContext context, FlowPath path, FlowTransitEncapsulation encapsulation,
-            FlowSideAdapter flowSide) {
+            CommandContext context, FlowPath path, FlowSideAdapter flowSide) {
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
         Cookie cookie = path.getCookie().toBuilder().looped(true).build();
@@ -342,8 +337,6 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 .messageContext(messageContext)
                 .metadata(makeMetadata(path.getFlow().getFlowId(), cookie, flowSide.isMultiTableSegment()))
                 .endpoint(flowSide.getEndpoint())
-                .encapsulation(encapsulation)
-                .egressSwitchId(flowSide.getEndpoint().getSwitchId())
                 .build();
     }
 
