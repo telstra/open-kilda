@@ -13,29 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.error;
+package org.openkilda.messaging.info;
 
-import org.openkilda.messaging.AbstractMessage;
-import org.openkilda.messaging.MessageContext;
+import org.openkilda.bluegreen.kafka.DeserializationError;
 
 import lombok.EqualsAndHashCode;
 import lombok.Value;
-import lombok.experimental.NonFinal;
 
-/**
- * Class represents error abstract message.
- */
 @Value
-@EqualsAndHashCode(callSuper = false)
-@NonFinal
-public class ErrorAbstractMessage extends AbstractMessage {
+@EqualsAndHashCode(callSuper = true)
+public class DeserializationErrorInfoData extends ErrorInfoData implements DeserializationError {
 
-    private String errorMessage;
-    private String errorDescription;
+    public DeserializationErrorInfoData(String errorMessage, String errorDescription) {
+        super(errorMessage, errorDescription);
+    }
 
-    public ErrorAbstractMessage(String errorMessage, String errorDescription) {
-        super(new MessageContext());
-        this.errorMessage = errorMessage;
-        this.errorDescription = errorDescription;
+    @Override
+    public String getDeserializationErrorMessage() {
+        return String.format("Error message: %s, Error description: %s", getErrorMessage(), getErrorDescription());
     }
 }
