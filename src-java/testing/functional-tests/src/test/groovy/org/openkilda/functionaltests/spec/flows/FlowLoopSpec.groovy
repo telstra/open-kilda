@@ -523,6 +523,108 @@ class FlowLoopSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
+    @Tags(LOW_PRIORITY)
+    def "Able to create flowLoop for a singleSwitch flow"() {
+        given: "An active singleSwitch flow"
+        def sw = topology.activeSwitches.first()
+        def flow = flowHelperV2.singleSwitchFlow(sw)
+        flowHelperV2.addFlow(flow)
+
+        when: "Create flowLoop on the sw switch"
+        def createResponse = northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(sw.dpId))
+
+        then: "Create flowLoop response contains flowId and src switchId"
+        assert createResponse.flowId == flow.flowId
+        assert createResponse.switchId == sw.dpId
+
+        and: "Flow is UP and valid"
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
+        and: "FlowLoop is really created on the switch"
+        def flowLoopOnSwitch = northboundV2.getFlowLoop(flow.flowId)
+        flowLoopOnSwitch.size() == 1
+        with(flowLoopOnSwitch[0]) {
+            it.flowId == flow.flowId
+            it.switchId == sw.dpId
+        }
+
+        and: "FlowLoop rules are created"
+        and: "The switch is valid"
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            assert getFlowLoopRules(sw.dpId).size() == 2
+            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        }
+
+
+        when: "Delete flowLoop"
+        northboundV2.deleteFlowLoop(flow.flowId)
+
+        then: "FlowLoop is deleted"
+        !northboundV2.getFlow(flow.flowId).loopSwitchId
+
+        and: "FlowLoop rules are deleted from the switch"
+        assert getFlowLoopRules(sw.dpId).empty
+
+        and: "Flow is UP and valid"
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
+        and: "The switch is valid"
+        northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        def testIsCompleted = true
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        !testIsCompleted && northbound.synchronizeSwitch(sw.dpId, true)
+    }
+
+    @Tidy
+    @Tags(LOW_PRIORITY)
+    def "Able to create flowLoop for a singleSwitchSinglePort flow"() {
+        given: "An active singleSwitchSinglePort flow"
+        def sw = topology.activeSwitches.first()
+        def flow = flowHelperV2.singleSwitchSinglePortFlow(sw)
+        flowHelperV2.addFlow(flow)
+
+        when: "Create flowLoop on the sw switch"
+        def createResponse = northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(sw.dpId))
+
+        then: "Create flowLoop response contains flowId and src switchId"
+        assert createResponse.flowId == flow.flowId
+        assert createResponse.switchId == sw.dpId
+
+        and: "Flow is UP and valid"
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
+        and: "FlowLoop is really created on the switch"
+        northbound.getFlow(flow.flowId).loopSwitchId == sw.dpId
+
+        and: "FlowLoop rules are created"
+        and: "The switch is valid"
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            assert getFlowLoopRules(sw.dpId).size() == 2
+            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        }
+
+        when: "Delete the flow with created flowLoop"
+        flowHelperV2.deleteFlow(flow.flowId)
+        def flowIsDeleted = true
+
+        then: "FlowLoop rules are deleted from the switch"
+        getFlowLoopRules(sw.dpId).empty
+
+        and: "The switch is valid"
+        northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        def testIsCompleted = true
+
+        cleanup: "Delete the flow"
+        !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
+        !testIsCompleted && northbound.synchronizeSwitch(sw.dpId, true)
+    }
+
     @Ignore("https://github.com/telstra/open-kilda/issues/3846")
     @Tidy
     @Tags(LOW_PRIORITY)
