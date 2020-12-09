@@ -364,6 +364,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         when: "Create a flow"
         def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchFlow(sw))
         def createdCookies = getCookiesWithMeter(sw.dpId)
+        def createdHexCookies = createdCookies.collect { Long.toHexString(it) }
 
         and: "Delete created rules"
         northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
@@ -371,9 +372,11 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         then: "Rule info is moved into the 'missing' section"
         def switchValidateInfo = northbound.validateSwitch(sw.dpId)
         switchValidateInfo.rules.missing.containsAll(createdCookies)
+        switchValidateInfo.rules.missingHex.containsAll(createdHexCookies)
 
         and: "The rest fields in the 'rule' section are empty"
         switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["proper", "excess"])
+        switchHelper.verifyHexRuleSectionsAreEmpty(switchValidateInfo, ["properHex", "excessHex"])
 
         when: "Try to synchronize the switch"
         def syncResponse = northbound.synchronizeSwitch(sw.dpId, false)
@@ -441,6 +444,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchValidateInfo = northbound.validateSwitch(sw.dpId)
             //excess egress/ingress/transit rules are added
             switchValidateInfo.rules.excess.size() == 3
+            switchValidateInfo.rules.excessHex.size() == 3
             switchValidateInfo.meters.excess.size() == 1
         }
 
@@ -509,6 +513,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         then: "Switch validation shows missing rules"
         def amountOfFlowRules = northbound.getSwitchProperties(sw.dpId).multiTable ? 4 : 2
         northbound.validateSwitch(sw.dpId).rules.missing.size() == amountOfFlowRules
+        northbound.validateSwitch(sw.dpId).rules.missingHex.size() == amountOfFlowRules
 
         when: "Synchronize switch"
         with(northbound.synchronizeSwitch(sw.dpId, false)) {
@@ -518,6 +523,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         then: "Switch validation shows no discrepancies"
         with(northbound.validateSwitch(sw.dpId)) {
             switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
+            switchHelper.verifyHexRuleSectionsAreEmpty(it, ["missingHex", "excessHex"])
             it.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
             def properMeters = it.meters.proper.findAll({dto -> !isDefaultMeter(dto)})
             properMeters.size() == 2

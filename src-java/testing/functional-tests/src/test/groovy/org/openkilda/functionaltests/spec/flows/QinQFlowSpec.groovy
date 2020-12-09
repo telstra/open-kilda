@@ -112,6 +112,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         involvedSwitchesFlow1.each {
             with(northbound.validateSwitch(it.dpId)) { validation ->
                 validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
                 validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
             }
         }
@@ -838,15 +839,18 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def amountOfServer42Rules = northbound.getSwitchProperties(swP.src.dpId).server42FlowRtt ? 1 : 0
         with(northbound.validateSwitch(swP.src.dpId).rules) {
             it.excess.empty
+            it.excessHex.empty
             it.missing.size() == 3 + amountOfServer42Rules //ingress, egress, shared, server42
+            it.missingHex.size() == 3 + amountOfServer42Rules
         }
 
         when: "Synchronize the src switch"
         northbound.synchronizeSwitch(swP.src.dpId, false)
 
         then: "Missing rules are reinstalled"
-        switchHelper.verifyRuleSectionsAreEmpty(northbound.validateSwitch(swP.src.dpId),
-                ["missing", "excess", "misconfigured"])
+        def validateSwResponse = northbound.validateSwitch(swP.src.dpId)
+        switchHelper.verifyRuleSectionsAreEmpty(validateSwResponse, ["missing", "excess", "misconfigured"])
+        switchHelper.verifyHexRuleSectionsAreEmpty(validateSwResponse, ["missingHex", "excessHex", "misconfiguredHex"])
 
         and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
