@@ -16,8 +16,6 @@
 package org.openkilda.wfm.topology.floodlightrouter;
 
 import org.openkilda.config.KafkaTopicsConfig;
-import org.openkilda.messaging.AbstractMessage;
-import org.openkilda.messaging.Message;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
@@ -36,7 +34,6 @@ import org.openkilda.wfm.topology.floodlightrouter.bolts.SwitchMonitorBolt;
 import joptsimple.internal.Strings;
 import lombok.Value;
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
@@ -57,7 +54,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     private final PersistenceManager persistenceManager;
 
     public FloodlightRouterTopology(LaunchEnvironment env) throws ConfigurationException {
-        super(env, FloodlightRouterTopologyConfig.class);
+        super(env, "floodlightrouter-topology", FloodlightRouterTopologyConfig.class);
 
         regions = topologyConfig.getFloodlightRegions().stream()
                 .filter(entry -> !Strings.isNullOrEmpty(entry))
@@ -75,46 +72,42 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
         logger.info("Creating FloodlightRouter topology as {}", topologyName);
 
         TopologyBuilder builder = new TopologyBuilder();
-        int newParallelism = topologyConfig.getNewParallelism();
-        int parallelism = topologyConfig.getParallelism();
 
-        TopologyOutput output = kafkaOutput(builder, newParallelism);
+        TopologyOutput output = kafkaOutput(builder);
 
-        speakerToNetwork(builder, parallelism, newParallelism, output);
-        networkToSpeaker(builder, parallelism, newParallelism, output);
+        speakerToNetwork(builder, output);
+        networkToSpeaker(builder, output);
 
-        speakerToFlowHs(builder, parallelism, newParallelism, output);
-        flowHsToSpeaker(builder, parallelism, newParallelism, output);
+        speakerToFlowHs(builder, output);
+        flowHsToSpeaker(builder, output);
 
-        speakerToPing(builder, parallelism, newParallelism, output);
-        pingToSpeaker(builder, parallelism, newParallelism, output);
+        speakerToPing(builder, output);
+        pingToSpeaker(builder, output);
 
-        speakerToStats(builder, parallelism, newParallelism, output);
-        speakerToIslLatency(builder, parallelism, newParallelism, output);
-        speakerToConnectedDevices(builder, parallelism, newParallelism, output);
-        speakerToSwitchManager(builder, parallelism, newParallelism, output);
-        speakerToNorthbound(builder, parallelism, newParallelism, output);
-        speakerToNbWorker(builder, parallelism, newParallelism, output);
+        speakerToStats(builder, output);
+        speakerToIslLatency(builder, output);
+        speakerToConnectedDevices(builder, output);
+        speakerToSwitchManager(builder, output);
+        speakerToNorthbound(builder, output);
+        speakerToNbWorker(builder, output);
 
-        controllerToSpeaker(builder, parallelism, newParallelism, output);
+        controllerToSpeaker(builder, output);
 
         regionTracker(builder, output);
-        switchMonitor(builder, output, newParallelism);
+        switchMonitor(builder, output);
 
         clock(builder);
 
         return builder.createTopology();
     }
 
-    private void speakerToNetwork(
-            TopologyBuilder topology, int spoutParallelism, int parallelism, TopologyOutput output) {
-        KafkaSpout<String, Message> spout = buildKafkaSpout(
+    private void speakerToNetwork(TopologyBuilder topology, TopologyOutput output) {
+        declareKafkaSpout(topology,
                 makeRegionTopics(kafkaTopics.getTopoDiscoRegionTopic()), ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT);
-        topology.setSpout(ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT, spout, spoutParallelism);
 
         SpeakerToNetworkProxyBolt proxy = new SpeakerToNetworkProxyBolt(
                 kafkaTopics.getTopoDiscoTopic(), Duration.ofSeconds(topologyConfig.getSwitchMappingRemoveDelay()));
-        topology.setBolt(SpeakerToNetworkProxyBolt.BOLT_ID, proxy, parallelism)
+        declareBolt(topology, proxy, SpeakerToNetworkProxyBolt.BOLT_ID)
                 .allGrouping(SwitchMonitorBolt.BOLT_ID, SwitchMonitorBolt.STREAM_REGION_MAPPING_ID)
                 .shuffleGrouping(ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT);
 
@@ -122,112 +115,99 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                 .shuffleGrouping(SpeakerToNetworkProxyBolt.BOLT_ID);
     }
 
-    private void networkToSpeaker(
-            TopologyBuilder topology, int spoutParallelism, int parallelism, TopologyOutput output) {
+    private void networkToSpeaker(TopologyBuilder topology, TopologyOutput output) {
         declareControllerToSpeakerProxy(
                 topology, kafkaTopics.getSpeakerDiscoRegionTopic(), kafkaTopics.getSpeakerDiscoTopic(),
                 ComponentType.SPEAKER_DISCO_KAFKA_SPOUT, ComponentType.SPEAKER_DISCO_REQUEST_BOLT,
-                output.getKafkaGenericOutput(), spoutParallelism, parallelism);
+                output.getKafkaGenericOutput());
     }
 
-    private void speakerToFlowHs(
-            TopologyBuilder topology, int spoutParallelism, int parallelism, TopologyOutput output) {
-        KafkaSpout<String, AbstractMessage> spout = buildKafkaSpoutForAbstractMessage(
+    private void speakerToFlowHs(TopologyBuilder topology, TopologyOutput output) {
+        declareKafkaSpoutForAbstractMessage(topology,
                 makeRegionTopics(kafkaTopics.getFlowHsSpeakerRegionTopic()), ComponentType.KILDA_FLOW_HS_KAFKA_SPOUT);
-        topology.setSpout(ComponentType.KILDA_FLOW_HS_KAFKA_SPOUT, spout, spoutParallelism);
 
         declareSpeakerToControllerProxy(
                 topology, kafkaTopics.getFlowHsSpeakerTopic(),
                 ComponentType.KILDA_FLOW_HS_KAFKA_SPOUT, ComponentType.KILDA_FLOW_HS_REPLY_BOLT,
-                output.getKafkaHsOutput(), parallelism);
+                output.getKafkaHsOutput());
     }
 
-    private void flowHsToSpeaker(
-            TopologyBuilder topology, int spoutParallelism, int parallelism, TopologyOutput output) {
-        KafkaSpout<String, AbstractMessage> spout = buildKafkaSpoutForAbstractMessage(
+    private void flowHsToSpeaker(TopologyBuilder topology, TopologyOutput output) {
+        declareKafkaSpoutForAbstractMessage(topology,
                 kafkaTopics.getSpeakerFlowHsTopic(), ComponentType.SPEAKER_FLOW_HS_KAFKA_SPOUT);
-        topology.setSpout(ComponentType.SPEAKER_FLOW_HS_KAFKA_SPOUT, spout, spoutParallelism);
 
         declareControllerToSpeakerProxy(
                 topology, kafkaTopics.getSpeakerFlowRegionTopic(),
                 ComponentType.SPEAKER_FLOW_HS_KAFKA_SPOUT, ComponentType.SPEAKER_FLOW_REQUEST_BOLT,
-                output.getKafkaHsOutput(), parallelism);
+                output.getKafkaHsOutput());
     }
 
-    private void speakerToPing(TopologyBuilder topology, int spoutParallelism, int parallelism, TopologyOutput output) {
+    private void speakerToPing(TopologyBuilder topology, TopologyOutput output) {
         declareSpeakerToControllerProxy(
                 topology, kafkaTopics.getPingRegionTopic(), kafkaTopics.getPingTopic(),
                 ComponentType.KILDA_PING_KAFKA_SPOUT, ComponentType.KILDA_PING_REPLY_BOLT,
-                output.getKafkaGenericOutput(), spoutParallelism, parallelism);
+                output.getKafkaGenericOutput());
     }
 
-    private void pingToSpeaker(TopologyBuilder topology, int spoutParallelism, int parallelism, TopologyOutput output) {
+    private void pingToSpeaker(TopologyBuilder topology, TopologyOutput output) {
         declareControllerToSpeakerProxy(
                 topology, kafkaTopics.getSpeakerFlowPingRegionTopic(), kafkaTopics.getSpeakerFlowPingTopic(),
                 ComponentType.SPEAKER_PING_KAFKA_SPOUT, Stream.SPEAKER_PING,
-                output.getKafkaGenericOutput(), spoutParallelism, parallelism);
+                output.getKafkaGenericOutput());
     }
 
-    private void speakerToStats(
-            TopologyBuilder topology, int spoutParallelism, int parallelism, TopologyOutput output) {
+    private void speakerToStats(TopologyBuilder topology, TopologyOutput output) {
         declareSpeakerToControllerProxy(
                 topology, kafkaTopics.getStatsRegionTopic(), kafkaTopics.getStatsTopic(),
                 ComponentType.KILDA_STATS_KAFKA_SPOUT, ComponentType.KILDA_STATS_REPLY_BOLT,
-                output.getKafkaGenericOutput(), spoutParallelism, parallelism);
+                output.getKafkaGenericOutput());
     }
 
-    private void speakerToIslLatency(
-            TopologyBuilder topology, int spoutParallelism, int parallelism, TopologyOutput output) {
+    private void speakerToIslLatency(TopologyBuilder topology, TopologyOutput output) {
         declareSpeakerToControllerProxy(
                 topology, kafkaTopics.getTopoIslLatencyRegionTopic(), kafkaTopics.getTopoIslLatencyTopic(),
                 ComponentType.KILDA_ISL_LATENCY_KAFKA_SPOUT, ComponentType.KILDA_ISL_LATENCY_REPLY_BOLT,
-                output.getKafkaGenericOutput(), spoutParallelism, parallelism);
+                output.getKafkaGenericOutput());
     }
 
-    private void speakerToConnectedDevices(
-            TopologyBuilder topology, int spoutParallelism, int parallelism, TopologyOutput output) {
+    private void speakerToConnectedDevices(TopologyBuilder topology, TopologyOutput output) {
         declareSpeakerToControllerProxy(
                 topology, kafkaTopics.getTopoConnectedDevicesRegionTopic(), kafkaTopics.getTopoConnectedDevicesTopic(),
                 ComponentType.KILDA_CONNECTED_DEVICES_KAFKA_SPOUT, ComponentType.KILDA_CONNECTED_DEVICES_REPLY_BOLT,
-                output.getKafkaGenericOutput(), spoutParallelism, parallelism);
+                output.getKafkaGenericOutput());
     }
 
-    private void speakerToSwitchManager(
-            TopologyBuilder topology, int spoutParallelism, int parallelism, TopologyOutput output) {
+    private void speakerToSwitchManager(TopologyBuilder topology, TopologyOutput output) {
         declareSpeakerToControllerProxy(
                 topology, kafkaTopics.getTopoSwitchManagerRegionTopic(), kafkaTopics.getTopoSwitchManagerTopic(),
                 ComponentType.KILDA_SWITCH_MANAGER_KAFKA_SPOUT, ComponentType.KILDA_SWITCH_MANAGER_REPLY_BOLT,
-                output.getKafkaGenericOutput(), spoutParallelism, parallelism);
+                output.getKafkaGenericOutput());
     }
 
-    private void speakerToNorthbound(
-            TopologyBuilder topology, int spoutParallelism, int parallelism, TopologyOutput output) {
+    private void speakerToNorthbound(TopologyBuilder topology, TopologyOutput output) {
         declareSpeakerToControllerProxy(
                 topology, kafkaTopics.getNorthboundRegionTopic(), kafkaTopics.getNorthboundTopic(),
                 ComponentType.NORTHBOUND_REPLY_KAFKA_SPOUT, ComponentType.NORTHBOUND_REPLY_BOLT,
-                output.getKafkaGenericOutput(), spoutParallelism, parallelism);
+                output.getKafkaGenericOutput());
     }
 
-    private void speakerToNbWorker(
-            TopologyBuilder topology, int spoutParallelism, int parallelism, TopologyOutput output) {
+    private void speakerToNbWorker(TopologyBuilder topology, TopologyOutput output) {
         declareSpeakerToControllerProxy(
                 topology, kafkaTopics.getTopoNbRegionTopic(), kafkaTopics.getTopoNbTopic(),
                 ComponentType.KILDA_NB_WORKER_KAFKA_SPOUT, ComponentType.KILDA_NB_WORKER_REPLY_BOLT,
-                output.getKafkaGenericOutput(), spoutParallelism, parallelism);
+                output.getKafkaGenericOutput());
     }
 
     private void controllerToSpeaker(
-            TopologyBuilder topology, int spoutParallelism, int parallelism, TopologyOutput output) {
+            TopologyBuilder topology, TopologyOutput output) {
         BoltDeclarer kafkaProducer = output.getKafkaGenericOutput();
 
-        KafkaSpout<String, Message> spout = buildKafkaSpout(
-                kafkaTopics.getSpeakerTopic(), ComponentType.SPEAKER_KAFKA_SPOUT);
-        topology.setSpout(ComponentType.SPEAKER_KAFKA_SPOUT, spout, spoutParallelism);
+        declareKafkaSpout(topology, kafkaTopics.getSpeakerTopic(), ComponentType.SPEAKER_KAFKA_SPOUT);
 
         ControllerToSpeakerProxyBolt proxy = new ControllerToSpeakerSharedProxyBolt(
                 kafkaTopics.getSpeakerRegionTopic(), regions, kafkaTopics,
                 Duration.ofSeconds(topologyConfig.getSwitchMappingRemoveDelay()));
-        topology.setBolt(ComponentType.SPEAKER_REQUEST_BOLT, proxy, parallelism)
+        declareBolt(topology, proxy, ComponentType.SPEAKER_REQUEST_BOLT)
                 .shuffleGrouping(ComponentType.SPEAKER_KAFKA_SPOUT)
                 .allGrouping(SwitchMonitorBolt.BOLT_ID, SwitchMonitorBolt.STREAM_REGION_MAPPING_ID);
 
@@ -242,7 +222,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                 kafkaTopics.getSpeakerDiscoRegionTopic(), persistenceManager, regions,
                 topologyConfig.getFloodlightAliveTimeout(), topologyConfig.getFloodlightAliveInterval(),
                 topologyConfig.getFloodlightDumpInterval());
-        topology.setBolt(RegionTrackerBolt.BOLT_ID, bolt, 1)  // must be 1 for now
+        declareBolt(topology, bolt, RegionTrackerBolt.BOLT_ID)
                 .allGrouping(MonotonicTick.BOLT_ID)
                 .shuffleGrouping(SpeakerToNetworkProxyBolt.BOLT_ID, SpeakerToNetworkProxyBolt.STREAM_ALIVE_EVIDENCE_ID);
 
@@ -250,11 +230,11 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                 .shuffleGrouping(RegionTrackerBolt.BOLT_ID, RegionTrackerBolt.STREAM_SPEAKER_ID);
     }
 
-    private void switchMonitor(TopologyBuilder topology, TopologyOutput output, int parallelism) {
+    private void switchMonitor(TopologyBuilder topology, TopologyOutput output) {
         Fields switchIdGrouping = new Fields(SpeakerToNetworkProxyBolt.FIELD_ID_SWITCH_ID);
 
         SwitchMonitorBolt bolt = new SwitchMonitorBolt(kafkaTopics.getTopoDiscoTopic());
-        topology.setBolt(SwitchMonitorBolt.BOLT_ID, bolt, parallelism)
+        declareBolt(topology, bolt, SwitchMonitorBolt.BOLT_ID)
                 .allGrouping(MonotonicTick.BOLT_ID)
                 .allGrouping(RegionTrackerBolt.BOLT_ID, RegionTrackerBolt.STREAM_REGION_NOTIFICATION_ID)
                 .fieldsGrouping(
@@ -265,38 +245,34 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     }
 
     private void clock(TopologyBuilder topology) {
-        topology.setBolt(MonotonicTick.BOLT_ID, new MonotonicTick(), 1);
+        declareBolt(topology, new MonotonicTick(), MonotonicTick.BOLT_ID);
     }
 
-    private TopologyOutput kafkaOutput(TopologyBuilder topology, int scaleFactor) {
+    private TopologyOutput kafkaOutput(TopologyBuilder topology) {
         RegionAwareKafkaTopicSelector topicSelector = new RegionAwareKafkaTopicSelector();
-        BoltDeclarer generic = topology.setBolt(
-                ComponentType.KAFKA_GENERIC_OUTPUT,
+        BoltDeclarer generic = declareBolt(topology,
                 makeKafkaBolt(MessageSerializer.class).withTopicSelector(topicSelector),
-                scaleFactor);
-        BoltDeclarer hs = topology.setBolt(
-                ComponentType.KAFKA_HS_OUTPUT,
+                ComponentType.KAFKA_GENERIC_OUTPUT);
+        BoltDeclarer hs = declareBolt(topology,
                 makeKafkaBolt(AbstractMessageSerializer.class).withTopicSelector(topicSelector),
-                scaleFactor);
+                ComponentType.KAFKA_HS_OUTPUT);
 
         return new TopologyOutput(generic, hs);
     }
 
     private void declareSpeakerToControllerProxy(
             TopologyBuilder topology, String speakerTopicsSeed, String controllerTopic, String spoutId,
-            String proxyBoltId, BoltDeclarer output, int spoutParallelism, int proxyParallelism) {
-        KafkaSpout<String, Message> spout = buildKafkaSpout(makeRegionTopics(speakerTopicsSeed), spoutId);
-        topology.setSpout(spoutId, spout, spoutParallelism);
+            String proxyBoltId, BoltDeclarer output) {
+        declareKafkaSpout(topology, makeRegionTopics(speakerTopicsSeed), spoutId);
 
-        declareSpeakerToControllerProxy(topology, controllerTopic, spoutId, proxyBoltId, output, proxyParallelism);
+        declareSpeakerToControllerProxy(topology, controllerTopic, spoutId, proxyBoltId, output);
     }
 
     private void declareSpeakerToControllerProxy(
-            TopologyBuilder topology, String controllerTopic, String spoutId, String proxyBoltId, BoltDeclarer output,
-            int parallelism) {
+            TopologyBuilder topology, String controllerTopic, String spoutId, String proxyBoltId, BoltDeclarer output) {
         SpeakerToControllerProxyBolt proxy = new SpeakerToControllerProxyBolt(
                 controllerTopic, Duration.ofSeconds(topologyConfig.getSwitchMappingRemoveDelay()));
-        topology.setBolt(proxyBoltId, proxy, parallelism)
+        declareBolt(topology, proxy, proxyBoltId)
                 .allGrouping(SwitchMonitorBolt.BOLT_ID, SwitchMonitorBolt.STREAM_REGION_MAPPING_ID)
                 .shuffleGrouping(spoutId);
 
@@ -305,20 +281,19 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
 
     private void declareControllerToSpeakerProxy(
             TopologyBuilder topology, String speakerTopicsSeed, String controllerTopic, String spoutId,
-            String proxyBoltId, BoltDeclarer output, int spoutParallelism, int proxyParallelism) {
-        KafkaSpout<String, Message> spout = buildKafkaSpout(controllerTopic, spoutId);
-        topology.setSpout(spoutId, spout, spoutParallelism);
+            String proxyBoltId, BoltDeclarer output) {
+        declareKafkaSpout(topology, controllerTopic, spoutId);
 
         declareControllerToSpeakerProxy(
-                topology, speakerTopicsSeed, spoutId, proxyBoltId, output, proxyParallelism);
+                topology, speakerTopicsSeed, spoutId, proxyBoltId, output);
     }
 
     private void declareControllerToSpeakerProxy(
             TopologyBuilder topology, String speakerTopicsSeed, String spoutId, String proxyBoltId,
-            BoltDeclarer output, int parallelism) {
+            BoltDeclarer output) {
         ControllerToSpeakerProxyBolt proxy = new ControllerToSpeakerProxyBolt(
                 speakerTopicsSeed, regions, Duration.ofSeconds(topologyConfig.getSwitchMappingRemoveDelay()));
-        topology.setBolt(proxyBoltId, proxy, parallelism)
+        declareBolt(topology, proxy, proxyBoltId)
                 .shuffleGrouping(spoutId)
                 .allGrouping(SwitchMonitorBolt.BOLT_ID, SwitchMonitorBolt.STREAM_REGION_MAPPING_ID);
 

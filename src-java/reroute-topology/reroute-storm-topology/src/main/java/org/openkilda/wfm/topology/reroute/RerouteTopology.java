@@ -37,7 +37,6 @@ import org.openkilda.wfm.topology.reroute.bolts.TimeWindowBolt;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
-import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 
@@ -53,7 +52,7 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
     public static final Fields KAFKA_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD);
 
     public RerouteTopology(LaunchEnvironment env) {
-        super(env, RerouteTopologyConfig.class);
+        super(env, "reroute-topology", RerouteTopologyConfig.class);
     }
 
     /**
@@ -65,48 +64,44 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
 
         TopologyBuilder topologyBuilder = new TopologyBuilder();
 
-        final Integer parallelism = topologyConfig.getNewParallelism();
+        coordinator(topologyBuilder);
 
-        coordinator(topologyBuilder, parallelism);
-
-        KafkaSpout<String, Message> kafkaSpout =
-                buildKafkaSpout(topologyConfig.getKafkaTopoRerouteTopic(), SPOUT_ID_REROUTE);
-        topologyBuilder.setSpout(SPOUT_ID_REROUTE, kafkaSpout, parallelism);
+        declareKafkaSpout(topologyBuilder, topologyConfig.getKafkaTopoRerouteTopic(), SPOUT_ID_REROUTE);
 
         PersistenceManager persistenceManager = PersistenceProvider.getInstance()
                 .getPersistenceManager(configurationProvider);
 
-        rerouteBolt(topologyBuilder, parallelism, persistenceManager);
-        rerouteQueueBolt(topologyBuilder, parallelism, persistenceManager);
+        rerouteBolt(topologyBuilder, persistenceManager);
+        rerouteQueueBolt(topologyBuilder, persistenceManager);
         timeWindowBolt(topologyBuilder);
 
-        operationQueue(topologyBuilder, parallelism);
+        operationQueue(topologyBuilder);
 
         KafkaBolt<String, Message> kafkaFlowHsBolt = buildKafkaBolt(topologyConfig.getKafkaFlowHsTopic());
-        topologyBuilder.setBolt(BOLT_ID_KAFKA_FLOWHS, kafkaFlowHsBolt, parallelism)
+        declareBolt(topologyBuilder, kafkaFlowHsBolt, BOLT_ID_KAFKA_FLOWHS)
                 .shuffleGrouping(OperationQueueBolt.BOLT_ID);
 
         KafkaBolt<String, Message> kafkaNorthboundBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
-        topologyBuilder.setBolt(BOLT_ID_KAFKA_NB, kafkaNorthboundBolt, parallelism)
+        declareBolt(topologyBuilder, kafkaNorthboundBolt, BOLT_ID_KAFKA_NB)
                 .shuffleGrouping(FlowRerouteQueueBolt.BOLT_ID, STREAM_NORTHBOUND_ID);
 
         return topologyBuilder.createTopology();
     }
 
-    private void rerouteBolt(TopologyBuilder topologyBuilder, int parallelism,
+    private void rerouteBolt(TopologyBuilder topologyBuilder,
                              PersistenceManager persistenceManager) {
         RerouteBolt rerouteBolt = new RerouteBolt(persistenceManager);
-        topologyBuilder.setBolt(RerouteBolt.BOLT_ID, rerouteBolt, parallelism)
+        declareBolt(topologyBuilder, rerouteBolt, RerouteBolt.BOLT_ID)
                 .shuffleGrouping(SPOUT_ID_REROUTE);
     }
 
-    private void rerouteQueueBolt(TopologyBuilder topologyBuilder, int parallelism,
+    private void rerouteQueueBolt(TopologyBuilder topologyBuilder,
                                   PersistenceManager persistenceManager) {
         int rerouteTimeout = (int) TimeUnit.SECONDS.toMillis(topologyConfig.getRerouteTimeoutSeconds());
         FlowRerouteQueueBolt flowRerouteQueueBolt = new FlowRerouteQueueBolt(persistenceManager,
                 topologyConfig.getDefaultFlowPriority(),
                 topologyConfig.getMaxRetry(), rerouteTimeout);
-        topologyBuilder.setBolt(FlowRerouteQueueBolt.BOLT_ID, flowRerouteQueueBolt, parallelism)
+        declareBolt(topologyBuilder, flowRerouteQueueBolt, FlowRerouteQueueBolt.BOLT_ID)
                 .fieldsGrouping(RerouteBolt.BOLT_ID, STREAM_REROUTE_REQUEST_ID, new Fields(RerouteBolt.FLOW_ID_FIELD))
                 .fieldsGrouping(RerouteBolt.BOLT_ID, STREAM_MANUAL_REROUTE_REQUEST_ID,
                         new Fields(RerouteBolt.FLOW_ID_FIELD))
@@ -120,23 +115,23 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
         TimeWindowBolt timeWindowBolt = new TimeWindowBolt(topologyConfig.getRerouteThrottlingMinDelay(),
                 topologyConfig.getRerouteThrottlingMaxDelay());
         // Time window bolt should use parallelism 1 to provide synchronisation for all reroute queue bolts
-        topologyBuilder.setBolt(TimeWindowBolt.BOLT_ID, timeWindowBolt, 1)
+        declareBolt(topologyBuilder, timeWindowBolt, TimeWindowBolt.BOLT_ID)
                 .allGrouping(FlowRerouteQueueBolt.BOLT_ID, STREAM_TIME_WINDOW_EVENT_ID)
                 .allGrouping(CoordinatorSpout.ID);
     }
 
-    private void coordinator(TopologyBuilder topologyBuilder, int parallelism) {
-        topologyBuilder.setSpout(CoordinatorSpout.ID, new CoordinatorSpout());
-        topologyBuilder.setBolt(CoordinatorBolt.ID, new CoordinatorBolt(), parallelism)
+    private void coordinator(TopologyBuilder topologyBuilder) {
+        declareSpout(topologyBuilder, new CoordinatorSpout(), CoordinatorSpout.ID);
+        declareBolt(topologyBuilder, new CoordinatorBolt(), CoordinatorBolt.ID)
                 .allGrouping(CoordinatorSpout.ID)
                 .fieldsGrouping(FlowRerouteQueueBolt.BOLT_ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
                 .fieldsGrouping(OperationQueueBolt.BOLT_ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
     }
 
-    private void operationQueue(TopologyBuilder topologyBuilder, int parallelism) {
+    private void operationQueue(TopologyBuilder topologyBuilder) {
         OperationQueueBolt operationQueueBolt =
                 new OperationQueueBolt((int) TimeUnit.SECONDS.toMillis(topologyConfig.getRerouteTimeoutSeconds()));
-        topologyBuilder.setBolt(OperationQueueBolt.BOLT_ID, operationQueueBolt, parallelism)
+        declareBolt(topologyBuilder, operationQueueBolt, OperationQueueBolt.BOLT_ID)
                 .fieldsGrouping(RerouteBolt.BOLT_ID, RerouteBolt.STREAM_OPERATION_QUEUE_ID,
                         new Fields(RerouteBolt.FLOW_ID_FIELD))
                 .fieldsGrouping(FlowRerouteQueueBolt.BOLT_ID, FlowRerouteQueueBolt.STREAM_OPERATION_QUEUE_ID,

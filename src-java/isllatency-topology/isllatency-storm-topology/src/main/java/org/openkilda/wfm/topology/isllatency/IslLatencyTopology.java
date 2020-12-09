@@ -52,7 +52,7 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
     public static final Fields ISL_GROUPING_FIELDS = new Fields(ISL_GROUPING_FIELD);
 
     public IslLatencyTopology(LaunchEnvironment env) {
-        super(env, IslLatencyTopologyConfig.class);
+        super(env, "isllatency-topology", IslLatencyTopologyConfig.class);
     }
 
     /**
@@ -85,7 +85,7 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
     private void createOpenTsdbBolt(TopologyBuilder builder) {
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
         KafkaBolt openTsdbBolt = createKafkaBolt(openTsdbTopic);
-        builder.setBolt(ISL_LATENCY_OTSDB_BOLT_ID, openTsdbBolt, topologyConfig.getIslLatencyParallelism())
+        declareBolt(builder, openTsdbBolt, ISL_LATENCY_OTSDB_BOLT_ID)
                 .shuffleGrouping(ISL_STATS_BOLT_ID);
     }
 
@@ -94,7 +94,7 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
                 persistenceManager,
                 topologyConfig.getLatencyUpdateInterval(),
                 topologyConfig.getLatencyUpdateTimeRange());
-        builder.setBolt(ISL_LATENCY_BOLT_ID, islLatencyBolt, topologyConfig.getIslLatencyParallelism())
+        declareBolt(builder, islLatencyBolt, ISL_LATENCY_BOLT_ID)
                 .fieldsGrouping(ONE_WAY_MANIPULATION_BOLT_ID, StreamType.LATENCY.toString(), ISL_GROUPING_FIELDS)
                 .fieldsGrouping(CACHE_BOLT_ID, StreamType.LATENCY.toString(), ISL_GROUPING_FIELDS);
     }
@@ -104,7 +104,7 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
                 * topologyConfig.getDiscoveryInterval());
 
         IslStatsBolt islStatsBolt = new IslStatsBolt(topologyConfig.getMetricPrefix(), latencyTimeout);
-        builder.setBolt(ISL_STATS_BOLT_ID, islStatsBolt, topologyConfig.getIslLatencyParallelism())
+        declareBolt(builder, islStatsBolt, ISL_STATS_BOLT_ID)
                 .fieldsGrouping(ONE_WAY_MANIPULATION_BOLT_ID, StreamType.LATENCY.toString(), ISL_GROUPING_FIELDS)
                 .fieldsGrouping(CACHE_BOLT_ID, StreamType.LATENCY.toString(), ISL_GROUPING_FIELDS)
                 .fieldsGrouping(ISL_STATUS_UPDATE_BOLT_ID, StreamType.ISL_STATUS.toString(), ISL_GROUPING_FIELDS);
@@ -113,28 +113,27 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
     private void createOneWayManipulationBolt(TopologyBuilder builder) {
         OneWayLatencyManipulationBolt oneWayLatencyManipulationBolt = new OneWayLatencyManipulationBolt();
 
-        builder.setBolt(ONE_WAY_MANIPULATION_BOLT_ID, oneWayLatencyManipulationBolt,
-                topologyConfig.getIslLatencyParallelism())
+        declareBolt(builder, oneWayLatencyManipulationBolt, ONE_WAY_MANIPULATION_BOLT_ID)
                 .fieldsGrouping(ROUTER_BOLT_ID, StreamType.ONE_WAY_MANIPULATION.toString(), ISL_GROUPING_FIELDS);
     }
 
 
     private void createCacheBolt(TopologyBuilder builder, PersistenceManager persistenceManager) {
         CacheBolt cacheBolt = new CacheBolt(persistenceManager);
-        builder.setBolt(CACHE_BOLT_ID, cacheBolt, topologyConfig.getIslLatencyParallelism())
+        declareBolt(builder, cacheBolt, CACHE_BOLT_ID)
                 .allGrouping(ISL_STATUS_UPDATE_BOLT_ID, StreamType.ISL_STATUS.toString())
                 .fieldsGrouping(ROUTER_BOLT_ID, StreamType.CACHE.toString(), new Fields(SWITCH_KEY_FIELD));
     }
 
     private void createIslStatusUpdateBolt(TopologyBuilder builder) {
         IslStatusUpdateBolt islStatusUpdateBolt = new IslStatusUpdateBolt();
-        builder.setBolt(ISL_STATUS_UPDATE_BOLT_ID, islStatusUpdateBolt, topologyConfig.getIslLatencyParallelism())
+        declareBolt(builder, islStatusUpdateBolt, ISL_STATUS_UPDATE_BOLT_ID)
                 .shuffleGrouping(ISL_STATUS_SPOUT_ID);
     }
 
     private void createRouterBolt(TopologyBuilder builder) {
         RouterBolt routerBolt = new RouterBolt();
-        builder.setBolt(ROUTER_BOLT_ID, routerBolt, topologyConfig.getIslLatencyParallelism())
+        declareBolt(builder, routerBolt, ROUTER_BOLT_ID)
                 .shuffleGrouping(ISL_LATENCY_SPOUT_ID);
     }
 
@@ -142,9 +141,8 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
         String topoIslLatencyTopic = topologyConfig.getKafkaTopoIslLatencyTopic();
 
         logger.debug("connecting to {} topic", topoIslLatencyTopic);
-        builder.setSpout(ISL_LATENCY_SPOUT_ID, buildKafkaSpout(topoIslLatencyTopic, ISL_LATENCY_SPOUT_ID));
-        builder.setSpout(ISL_STATUS_SPOUT_ID,
-                buildKafkaSpout(topologyConfig.getKafkaNetworkIslStatusTopic(), ISL_STATUS_SPOUT_ID));
+        declareKafkaSpout(builder, topoIslLatencyTopic, ISL_LATENCY_SPOUT_ID);
+        declareKafkaSpout(builder, topologyConfig.getKafkaNetworkIslStatusTopic(), ISL_STATUS_SPOUT_ID);
     }
 
     /**

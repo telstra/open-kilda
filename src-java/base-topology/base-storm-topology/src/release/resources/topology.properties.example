@@ -1,11 +1,5 @@
 environment.naming.prefix = 
 
-isl.latency.parallelism = 4
-parallelism.new = 2
-parallelism = 1
-flow.hs.parallelism = 4
-workers = 1
-
 #######
 # Storm-specific topology configuration.
 #
@@ -52,15 +46,8 @@ bfd.port.offset = 200
 
 opentsdb.hosts = http://opentsdb.pendev:4242
 opentsdb.timeout = 30
-opentsdb.num.spouts = 1
-opentsdb.num.opentsdbfilterbolt = 1
-opentsdb.num.opentsdbbolt = 1
-opentsdb.workers.opentsdbolt = 1
-opentsdb.num.datapointparserbolt = 1
-opentsdb.workers.datapointparserbolt = 1
 opentsdb.batch.size = 50
 opentsdb.flush.interval = 1
-opentsdb.workers = 1
 opentsdb.client.chunked-requests.enabled = true
 opentsdb.metric.prefix = kilda.
 
@@ -93,7 +80,6 @@ discovery.timeout = 15
 discovery.db.write.repeats.time.frame = 30
 
 # all following ping intervals are in seconds
-#flow.ping.scale-factor = 2
 #flow.ping.interval = 10
 #flow.ping.timeout = 2
 #flow.ping.fail.delay = 45

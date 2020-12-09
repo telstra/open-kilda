@@ -29,7 +29,7 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
     public static final String PACKET_BOLT_ID = "packet-bolt";
 
     public ConnectedDevicesTopology(LaunchEnvironment env) {
-        super(env, ConnectedDevicesTopologyConfig.class);
+        super(env, "connecteddevices-topology", ConnectedDevicesTopologyConfig.class);
     }
 
     /**
@@ -49,13 +49,12 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
 
     private void createPacketBolt(TopologyBuilder builder, PersistenceManager persistenceManager) {
         PacketBolt routerBolt = new PacketBolt(persistenceManager);
-        builder.setBolt(PACKET_BOLT_ID, routerBolt, topologyConfig.getNewParallelism())
+        declareBolt(builder, routerBolt, PACKET_BOLT_ID)
                 .shuffleGrouping(CONNECTED_DEVICES_SPOUT_ID);
     }
 
     private void createSpout(TopologyBuilder builder) {
-        builder.setSpout(CONNECTED_DEVICES_SPOUT_ID, buildKafkaSpout(topologyConfig.getKafkaTopoConnectedDevicesTopic(),
-                CONNECTED_DEVICES_SPOUT_ID));
+        declareKafkaSpout(builder, topologyConfig.getKafkaTopoConnectedDevicesTopic(), CONNECTED_DEVICES_SPOUT_ID);
     }
 
     /**

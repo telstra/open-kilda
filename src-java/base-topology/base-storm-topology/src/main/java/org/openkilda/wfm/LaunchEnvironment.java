@@ -95,7 +95,7 @@ public class LaunchEnvironment {
         return overlay;
     }
 
-    protected Properties getProperties() {
+    public Properties getProperties() {
         return properties;
     }
 }
