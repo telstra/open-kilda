@@ -35,7 +35,8 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @EqualsAndHashCode(of = {"latency", "source", "destination", "speed", "availableBandwidth", "maxBandwidth",
-        "defaultMaxBandwidth", "state", "actualState", "cost", "underMaintenance", "enableBfd", "bfdSessionStatus"},
+        "defaultMaxBandwidth", "state", "actualState", "roundTripStatus", "cost", "underMaintenance", "enableBfd",
+        "bfdSessionStatus"},
         callSuper = false)
 public class IslInfoData extends CacheTimeTag {
     /**
@@ -75,6 +76,9 @@ public class IslInfoData extends CacheTimeTag {
 
     @JsonProperty("actual_state")
     private IslChangeType actualState;
+
+    @JsonProperty("round_trip_status")
+    private final IslChangeType roundTripStatus;
 
     @JsonProperty("time_create")
     private final Long timeCreateMillis;
@@ -122,6 +126,7 @@ public class IslInfoData extends CacheTimeTag {
                 that.getDefaultMaxBandwidth(),
                 that.getState(),
                 that.getActualState(),
+                that.getRoundTripStatus(),
                 that.getCost(),
                 that.getTimeCreateMillis(),
                 that.getTimeModifyMillis(),
@@ -135,7 +140,8 @@ public class IslInfoData extends CacheTimeTag {
      * Simple constructor for an ISL with only source/destination and state.
      */
     public IslInfoData(PathNode source, PathNode destination, IslChangeType state, boolean underMaintenance) {
-        this(-1, source, destination, 0, 0, 0, 0, state, null, 0, null, null, underMaintenance, false, null, null);
+        this(-1, source, destination, 0, 0, 0, 0, state, null, null, 0, null, null, underMaintenance, false, null,
+                null);
     }
 
     @Builder(toBuilder = true)
@@ -149,6 +155,7 @@ public class IslInfoData extends CacheTimeTag {
                        @JsonProperty("default_max_bandwidth") long defaultMaxBandwidth,
                        @JsonProperty("state") IslChangeType state,
                        @JsonProperty("actual_state")  IslChangeType actualState,
+                       @JsonProperty("round_trip_status") IslChangeType roundTripStatus,
                        @JsonProperty("cost") int cost,
                        @JsonProperty("time_create") Long timeCreateMillis,
                        @JsonProperty("time_modify") Long timeModifyMillis,
@@ -165,6 +172,7 @@ public class IslInfoData extends CacheTimeTag {
         this.defaultMaxBandwidth = defaultMaxBandwidth;
         this.state = state;
         this.actualState = actualState;
+        this.roundTripStatus = roundTripStatus;
         this.cost = cost;
         this.timeCreateMillis = timeCreateMillis;
         this.timeModifyMillis = timeModifyMillis;
