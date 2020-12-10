@@ -34,8 +34,6 @@ RUN apt update \
         gcc \
         build-essential \
         automake \
-        file \
-        openssl \
     && pip3 install setuptools==45.2.0 \
     && pip3 install wheel==0.34.2 \
     && pip3 install tox==3.14.4 \
