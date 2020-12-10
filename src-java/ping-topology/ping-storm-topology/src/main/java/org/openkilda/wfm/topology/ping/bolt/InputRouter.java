@@ -26,6 +26,8 @@ import org.openkilda.messaging.floodlight.response.PingResponse;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -47,16 +49,26 @@ public class InputRouter extends Abstract {
     public static final String STREAM_ON_DEMAND_REQUEST_ID = "ping_request";
     public static final String STREAM_PERIODIC_PING_UPDATE_REQUEST_ID = "periodic_ping_request";
 
+    public static final Fields STREAM_ZOOKEEPER_FIELDS = new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+            ZooKeeperBolt.FIELD_ID_CONTEXT);
+    public static final String STREAM_ZOOKEEPER = ZkStreams.ZK.toString();
+
+    public InputRouter(String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
+    }
+
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        Message message = pullInput(input);
+        if (active) {
+            Message message = pullInput(input);
 
-        if (message instanceof InfoMessage) {
-            routeInfoMessage(input, (InfoMessage) message);
-        } else if (message instanceof CommandMessage) {
-            routeCommandMessage(input, (CommandMessage) message);
-        } else {
-            unhandledInput(input);
+            if (message instanceof InfoMessage) {
+                routeInfoMessage(input, (InfoMessage) message);
+            } else if (message instanceof CommandMessage) {
+                routeCommandMessage(input, (CommandMessage) message);
+            } else {
+                unhandledInput(input);
+            }
         }
     }
 
@@ -95,5 +107,6 @@ public class InputRouter extends Abstract {
         outputManager.declareStream(STREAM_SPEAKER_PING_RESPONSE_ID, STREAM_SPEAKER_PING_RESPONSE_FIELDS);
         outputManager.declareStream(STREAM_ON_DEMAND_REQUEST_ID, STREAM_PING_REQUEST_FIELDS);
         outputManager.declareStream(STREAM_PERIODIC_PING_UPDATE_REQUEST_ID, STREAM_PING_REQUEST_FIELDS);
+        outputManager.declareStream(STREAM_ZOOKEEPER, STREAM_ZOOKEEPER_FIELDS);
     }
 }

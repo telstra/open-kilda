@@ -25,6 +25,13 @@ abstract class Abstract extends org.openkilda.wfm.AbstractBolt {
     public static final String FIELD_ID_PING = "ping";
     public static final String FIELD_ID_PING_GROUP = "ping.group";
 
+    public Abstract() {
+    }
+
+    public Abstract(String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
+    }
+
     protected PingContext pullPingContext(Tuple input) throws PipelineException {
         return pullValue(input, FIELD_ID_PING, PingContext.class);
     }
