@@ -41,3 +41,9 @@ spring.kafka.consumer.properties.spring.json.default.value.type=org.openkilda.se
 spring.kafka.consumer.properties.spring.json.use.type.headers=false
 spring.kafka.consumer.properties.spring.json.remove.type.headers=true
 spring.kafka.listener.missing-topics-fatal=false
+
+# Kafka versioning (zero_downtime)
+spring.kafka.producer.properties.interceptor.classes=org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor
+spring.kafka.producer.properties.kafka.producer.messaging.zookeeper.connecting.string.property={{ getv "/kilda_zookeeper_hosts"}}/{{ getv "/kilda_zookeeper_state_root" }}
+spring.kafka.producer.properties.kafka.producer.messaging.component.name.property={{ getv "/kilda_server42_control_component_name" }}
+spring.kafka.producer.properties.kafka.producer.messaging.run.id.property={{ getv "/kilda_server42_control_run_id" }}

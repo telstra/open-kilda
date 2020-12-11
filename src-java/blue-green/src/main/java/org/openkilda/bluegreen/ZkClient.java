@@ -36,7 +36,7 @@ public abstract class ZkClient implements Watcher {
     protected String id;
     protected String serviceName;
     protected ZooKeeper zookeeper;
-    private final String connectionString;
+    protected final String connectionString;
     private final int sessionTimeout;
 
     public ZkClient(String id, String serviceName, String connectionString,
@@ -73,10 +73,14 @@ public abstract class ZkClient implements Watcher {
     }
 
     protected void ensureZNode(String... path) throws KeeperException, InterruptedException {
+        ensureZNode(new byte[0], path); // by default we set empty value for zookeeper node
+    }
+
+    protected void ensureZNode(byte[] value, String... path) throws KeeperException, InterruptedException {
         String nodePath = getPaths(path);
         if (zookeeper.exists(nodePath, false) == null) {
             try {
-                zookeeper.create(nodePath, "".getBytes(),
+                zookeeper.create(nodePath, value,
                         Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             } catch (Exception e) {
                 log.error("Failed to ensure node: {}", nodePath);
@@ -94,4 +98,7 @@ public abstract class ZkClient implements Watcher {
         ensureZNode(serviceName, id);
     }
 
+    public boolean isConnectionAlive() {
+        return zookeeper.getState().isAlive();
+    }
 }

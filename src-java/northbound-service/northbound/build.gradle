@@ -17,6 +17,7 @@ dependencies {
     implementation project(':ping-messaging')
     implementation project(':floodlight-api')
     implementation project(':kilda-persistence-tinkerpop')
+    implementation project(':blue-green')
     runtimeClasspath project(':kilda-persistence-orientdb')
     implementation project(':kilda-configuration')
     testImplementation project(':kilda-utils:stubs')
