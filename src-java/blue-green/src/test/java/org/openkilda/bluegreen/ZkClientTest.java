@@ -52,22 +52,24 @@ public class ZkClientTest {
     public void testRefreshConnectionOnExpired() throws IOException {
         ZkClient client = Mockito.mock(ZkClient.class);
         ZooKeeper zkMock = Mockito.mock(ZooKeeper.class);
+        doCallRealMethod().when(client).initZk();
         when(client.getZk()).thenReturn(zkMock);
         when(client.refreshConnection(any())).thenCallRealMethod();
         assertTrue(client.refreshConnection(KeeperState.Expired));
         verify(client, Mockito.times(1)).getZk();
-        verify(client, Mockito.times(1)).initWatch();
+        verify(client, Mockito.times(1)).init();
     }
 
     @Test
     public void testRefreshConnectionOnDisconnected() throws IOException {
         ZkClient client = Mockito.mock(ZkClient.class);
         ZooKeeper zkMock = Mockito.mock(ZooKeeper.class);
+        doCallRealMethod().when(client).initZk();
         when(client.getZk()).thenReturn(zkMock);
         when(client.refreshConnection(any())).thenCallRealMethod();
         assertTrue(client.refreshConnection(KeeperState.Disconnected));
         verify(client, Mockito.times(1)).getZk();
-        verify(client, Mockito.times(1)).initWatch();
+        verify(client, Mockito.times(1)).init();
     }
 
     @Test
@@ -83,12 +85,12 @@ public class ZkClientTest {
         for (KeeperState state : states) {
             assertFalse(client.refreshConnection(state));
             verify(client, Mockito.times(0)).getZk();
-            verify(client, Mockito.times(0)).initWatch();
+            verify(client, Mockito.times(0)).init();
         }
     }
 
     @Test
-    public void testValidateNodes() throws KeeperException, InterruptedException {
+    public void testValidateNodes() throws KeeperException, InterruptedException, IOException {
         ZkClient client = Mockito.mock(ZkClient.class);
         client.serviceName = "service";
         client.id = "id";
@@ -98,7 +100,7 @@ public class ZkClientTest {
     }
 
     @Test
-    public void testEnsureZNodeExists() throws KeeperException, InterruptedException {
+    public void testEnsureZNodeExists() throws KeeperException, InterruptedException, IOException {
         ZkClient client = Mockito.mock(ZkClient.class);
         when(client.getPaths(any())).thenCallRealMethod();
         doCallRealMethod().when(client).ensureZNode(any());
@@ -111,7 +113,7 @@ public class ZkClientTest {
     }
 
     @Test
-    public void testEnsureZNodeCreate() throws KeeperException, InterruptedException {
+    public void testEnsureZNodeCreate() throws KeeperException, InterruptedException, IOException {
         ZkClient client = Mockito.mock(ZkClient.class);
         when(client.getPaths(any())).thenCallRealMethod();
         doCallRealMethod().when(client).ensureZNode(any());
@@ -127,7 +129,7 @@ public class ZkClientTest {
 
 
     @Test
-    public void testEnsureZNodeCreateFails() throws KeeperException, InterruptedException {
+    public void testEnsureZNodeCreateFails() throws KeeperException, InterruptedException, IOException {
         ZkClient client = Mockito.mock(ZkClient.class);
         when(client.getPaths(any())).thenCallRealMethod();
         doCallRealMethod().when(client).ensureZNode(any());

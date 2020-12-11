@@ -31,7 +31,6 @@ import org.apache.storm.topology.base.BaseRichSpout;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.Queue;
 import java.util.UUID;
@@ -62,14 +61,10 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
     public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
         this.collector = collector;
         this.signals = new ConcurrentLinkedQueue<>();
-        try {
-            this.watchDog = ZkWatchDog.builder().id(id).serviceName(serviceName)
-                    .connectionString(connectionString).build();
-            watchDog.subscribe(this);
-        } catch (IOException e) {
-            log.error("Failed to init ZooKeeper with connection string: {} received: {} ", connectionString,
-                    e.getMessage(), e);
-        }
+        this.watchDog = ZkWatchDog.builder().id(id).serviceName(serviceName)
+                .connectionString(connectionString).build();
+        watchDog.init();
+        watchDog.subscribe(this);
     }
 
     @Override
@@ -83,6 +78,10 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
             collector.emit(new Values(event, new CommandContext()), messageId);
         } else {
             org.apache.storm.utils.Utils.sleep(1L);
+        }
+        if (!watchDog.isConnectionAlive()) {
+            log.info("Service {} with run_id {} tries to reconnect to ZooKeeper {}", serviceName, id, connectionString);
+            watchDog.init();
         }
     }
 

@@ -52,7 +52,7 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
 
     @Builder
     public ZkWatchDog(String id, String serviceName, String connectionString,
-                      int sessionTimeout, Signal signal) throws IOException {
+                      int sessionTimeout, Signal signal) {
         super(id, serviceName, connectionString, sessionTimeout);
 
         this.buildVersionPath = getPaths(serviceName, id, BUILD_VERSION);
@@ -61,38 +61,39 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
             signal = Signal.NONE;
         }
         this.signal = signal;
-        initWatch();
     }
 
     @Override
-    void validateNodes() throws KeeperException, InterruptedException {
+    void validateNodes() throws KeeperException, InterruptedException, IOException {
         super.validateNodes();
         ensureZNode(serviceName, id, SIGNAL);
         ensureZNode(DEFAULT_BUILD_VERSION.getBytes(), serviceName, id, BUILD_VERSION);
+        nodesValidated = true;
     }
 
 
     @VisibleForTesting
-    void subscribeSignal() throws KeeperException, InterruptedException {
+    void subscribeSignal() {
         checkData(signalPath);
     }
 
     @VisibleForTesting
-    void subscribeBuildVersion() throws KeeperException, InterruptedException {
+    void subscribeBuildVersion() {
         checkData(buildVersionPath);
     }
 
-    private void checkData(String path) throws KeeperException, InterruptedException {
+    private void checkData(String path) {
         zookeeper.getData(path, this, this, null);
     }
 
     @Override
-    void initWatch() {
+    public void init() {
         try {
+            initZk();
             validateNodes();
             subscribeSignal();
             subscribeBuildVersion();
-        } catch (KeeperException | InterruptedException e) {
+        } catch (KeeperException | InterruptedException | IOException e) {
             log.error(e.getMessage(), e);
         }
     }
@@ -137,7 +138,7 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
                     subscribeBuildVersion();
                 }
             }
-        } catch (IOException | InterruptedException | KeeperException e) {
+        } catch (IOException e) {
             log.error("Failed to read zk event: {}", e.getMessage(), e);
         }
     }

@@ -28,12 +28,9 @@ public class ZkWriter extends ZkClient {
     private String statePath;
 
     @Builder
-    public ZkWriter(String id, String serviceName, String connectionString,
-                    int sessionTimeout) throws IOException, KeeperException, InterruptedException {
+    public ZkWriter(String id, String serviceName, String connectionString, int sessionTimeout) {
         super(id, serviceName, connectionString, sessionTimeout);
         statePath = getPaths(serviceName, id, STATE);
-
-        validateNodes();
     }
 
     /**
@@ -51,11 +48,21 @@ public class ZkWriter extends ZkClient {
         }
     }
 
+    @Override
+    public void init() {
+        try {
+            initZk();
+            validateNodes();
+        } catch (KeeperException | InterruptedException | IOException e) {
+            log.error(e.getMessage(), e);
+        }
+    }
 
     @Override
-    void validateNodes() throws KeeperException, InterruptedException {
+    void validateNodes() throws KeeperException, InterruptedException, IOException {
         super.validateNodes();
         ensureZNode(serviceName, id, STATE);
+        nodesValidated = true;
     }
 
     @Override
@@ -67,6 +74,4 @@ public class ZkWriter extends ZkClient {
             log.error("Failed to read zk event: {}", e.getMessage(), e);
         }
     }
-
-
 }

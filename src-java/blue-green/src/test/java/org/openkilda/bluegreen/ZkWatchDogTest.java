@@ -31,11 +31,12 @@ import org.apache.zookeeper.ZooKeeper;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.IOException;
 import java.util.HashSet;
 
 public class ZkWatchDogTest {
     @Test
-    public void testValidateNodes() throws KeeperException, InterruptedException {
+    public void testValidateNodes() throws KeeperException, InterruptedException, IOException {
         ZkWatchDog watchDog = Mockito.mock(ZkWatchDog.class);
         doCallRealMethod().when(watchDog).validateNodes();
         watchDog.validateNodes();
@@ -68,10 +69,10 @@ public class ZkWatchDogTest {
     }
 
     @Test
-    public void testInitWatch() throws KeeperException, InterruptedException {
+    public void testInitWatch() throws KeeperException, InterruptedException, IOException {
         ZkWatchDog watchDog = Mockito.mock(ZkWatchDog.class);
-        doCallRealMethod().when(watchDog).initWatch();
-        watchDog.initWatch();
+        doCallRealMethod().when(watchDog).init();
+        watchDog.init();
         verify(watchDog, Mockito.times(1)).validateNodes();
         verify(watchDog, Mockito.times(1)).subscribeSignal();
         verify(watchDog, Mockito.times(1)).subscribeBuildVersion();

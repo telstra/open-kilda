@@ -15,14 +15,11 @@
 
 package org.openkilda.bluegreen.kafka.interceptors;
 
-import static java.lang.String.format;
-
 import org.openkilda.bluegreen.BuildVersionObserver;
 import org.openkilda.bluegreen.ZkWatchDog;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.IOException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
@@ -57,19 +54,12 @@ public abstract class VersioningInterceptorBase implements BuildVersionObserver 
     }
 
     protected void initWatchDog() {
-        try {
-            watchDog = ZkWatchDog.builder()
-                    .id(runId)
-                    .serviceName(componentName)
-                    .connectionString(connectionString)
-                    .build();
-            watchDog.subscribe(this);
-        } catch (IOException e) {
-            if (isZooKeeperConnectTimeoutPassed()) {
-                log.error(format("Component %s with id %s can't connect to ZooKeeper with connection string: %s, "
-                        + "received: %s", componentName, runId, connectionString, e.getMessage()));
-                cantConnectToZooKeeperTimestamp = Instant.now();
-            }
-        }
+        watchDog = ZkWatchDog.builder()
+                .id(runId)
+                .serviceName(componentName)
+                .connectionString(connectionString)
+                .build();
+        watchDog.init();
+        watchDog.subscribe(this);
     }
 }
