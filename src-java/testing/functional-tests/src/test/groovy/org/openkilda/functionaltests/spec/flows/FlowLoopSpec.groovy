@@ -26,6 +26,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -34,7 +35,6 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Unroll
@@ -99,11 +99,11 @@ class FlowLoopSpec extends HealthCheckSpecification {
         northbound.validateSwitch(switchPair.src.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
 
         and: "Flow is not pingable"
-        //https://github.com/telstra/open-kilda/issues/3846
-//        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-//            !forward.pingSuccess
-//            !reverse.pingSuccess
-//        }
+        //it works, because the 'pingFlow' endpoint doesn't verify terminating switch
+        with(northbound.pingFlow(flow.flowId, new PingInput())) {
+            forward.pingSuccess
+            reverse.pingSuccess
+        }
 
         when: "Send traffic via flow in the forward direction"
         def traffExam = traffExamProvider.get()
@@ -625,7 +625,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         !testIsCompleted && northbound.synchronizeSwitch(sw.dpId, true)
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/3846")
     @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to create flowLoop twice on the src for the same flow"() {
@@ -641,10 +640,10 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
+        exc.statusCode == HttpStatus.UNPROCESSABLE_ENTITY
         with(exc.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not update flow"
-            errorDescription == "Can't change loop switch"
+            errorMessage == "Can't create flow loop on '$flow.flowId' found"
+            errorDescription == "Flow is already looped on switch '$switchPair.src.dpId'"
         }
 
         and: "FlowLoop is still present for the src switch"
@@ -736,9 +735,9 @@ class FlowLoopSpec extends HealthCheckSpecification {
         northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.dst.dpId))
 
         then: "FlowLoop is not created on the dst switch"
-        def exc2 = thrown(HttpClientErrorException)
-        exc2.statusCode == HttpStatus.UNPROCESSABLE_ENTITY
-        with(exc2.responseBodyAsString.to(MessageError)) {
+        def exc = thrown(HttpClientErrorException)
+        exc.statusCode == HttpStatus.UNPROCESSABLE_ENTITY
+        with(exc.responseBodyAsString.to(MessageError)) {
             errorMessage == "Can't create flow loop on '$flow.flowId' found"
             errorDescription == "Flow is already looped on switch '$switchPair.src.dpId'"
         }
