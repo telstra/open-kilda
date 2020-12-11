@@ -691,10 +691,16 @@ misconfigured"
     @Tags(HARDWARE)
     @Ignore("https://github.com/telstra/open-kilda/issues/3021")
     def "Able to validate and sync a switch with missing 'vxlan' ingress/transit/egress rule + meter"() {
-        given: "Two active not neighboring Noviflow switches"
+        given: "Two active not neighboring VXLAN supported switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
-            swP.src.noviflow && !swP.src.wb5164 && swP.dst.noviflow && !swP.dst.wb5164 && swP.paths.find { path ->
-                pathHelper.getInvolvedSwitches(path).every { it.noviflow && !it.wb5164 }
+            [swP.src, swP.dst].every {
+                northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation
+                        .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+            } && swP.paths.find { path ->
+                pathHelper.getInvolvedSwitches(path).every {
+                    northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation
+                            .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+                }
             }
         } ?: assumeTrue("Unable to find required switches in topology", false)
 

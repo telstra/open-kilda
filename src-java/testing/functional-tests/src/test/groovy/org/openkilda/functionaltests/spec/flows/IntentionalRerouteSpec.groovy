@@ -250,14 +250,18 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
     def "Intentional flow reroute with VXLAN encapsulation is not causing any packet loss"() {
         given: "A vxlan flow"
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.findAll {
-            it.noviflow && !it.wb5164
+            northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation
+                    .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
         }*.dpId ?: assumeTrue("Should be at least two active traffgens connected to NoviFlow switches", false)
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
             allTraffgenSwitchIds.contains(swP.src.dpId) && allTraffgenSwitchIds.contains(swP.dst.dpId) &&
                     swP.paths.findAll { path ->
-                        pathHelper.getInvolvedSwitches(path).every { it.noviflow  && !it.wb5164 }
+                        pathHelper.getInvolvedSwitches(path).every {
+                            northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation
+                                    .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+                        }
                     }.size() > 1
-        } ?: assumeTrue("Unable to find required switches/paths in topology",false)
+        } ?: assumeTrue("Unable to find required switches/paths in topology", false)
         def availablePaths = switchPair.paths.findAll { pathHelper.getInvolvedSwitches(it).find { it.noviflow }}
 
         def flow = flowHelper.randomFlow(switchPair)
@@ -272,7 +276,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         when: "Start traffic examination"
         def traffExam = traffExamProvider.get()
         def bw = 100000 // 100 Mbps
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, bw)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, bw, 30)
         withPool {
             [exam.forward, exam.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction, true)
