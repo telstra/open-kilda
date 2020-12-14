@@ -376,7 +376,9 @@ class FlowLoopSpec extends HealthCheckSpecification {
         flowLoopRules.each { northbound.deleteSwitchRules(switchPair.src.dpId, it) }
 
         then: "System detects missing flowLoop rules"
-        northbound.validateSwitch(switchPair.src.dpId).rules.missing.sort() == flowLoopRules.sort()
+        Wrappers.wait(RULES_DELETION_TIME) {
+            assert northbound.validateSwitch(switchPair.src.dpId).rules.missing.sort() == flowLoopRules.sort()
+        }
 
         when: "Sync the src switch"
         def syncResponse = northbound.synchronizeSwitch(switchPair.src.dpId, true)
