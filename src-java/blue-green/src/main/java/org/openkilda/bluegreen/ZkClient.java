@@ -15,6 +15,7 @@
 
 package org.openkilda.bluegreen;
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.zookeeper.CreateMode;
@@ -37,23 +38,21 @@ public abstract class ZkClient implements Watcher {
     protected String serviceName;
     protected ZooKeeper zookeeper;
     protected final String connectionString;
+    protected boolean nodesValidated;
     private final int sessionTimeout;
 
-    public ZkClient(String id, String serviceName, String connectionString,
-                    int sessionTimeout) throws IOException {
+    public ZkClient(String id, String serviceName, String connectionString, int sessionTimeout) {
         if (sessionTimeout == 0) {
             sessionTimeout = DEFAULT_SESSION_TIMEOUT;
         }
+        this.nodesValidated = false;
         this.serviceName = serviceName;
         this.id = id;
         this.connectionString = connectionString;
         this.sessionTimeout = sessionTimeout;
-        this.zookeeper = getZk();
     }
 
-    void initWatch() {
-
-    }
+    public abstract void init();
 
     String getPaths(String... paths) {
         return Paths.get(ROOT, paths).toString();
@@ -61,23 +60,32 @@ public abstract class ZkClient implements Watcher {
 
     boolean refreshConnection(KeeperState state) throws IOException {
         if (state == KeeperState.Disconnected || state == KeeperState.Expired) {
-            zookeeper = getZk();
-            initWatch();
+            initZk();
+            init();
             return true;
         }
         return false;
     }
 
-    protected ZooKeeper getZk() throws IOException {
+    protected void initZk() throws IOException {
+        nodesValidated = false;
+        zookeeper = getZk();
+    }
+
+    @VisibleForTesting
+    ZooKeeper getZk() throws IOException {
         return new ZooKeeper(connectionString, sessionTimeout, this);
     }
 
-    protected void ensureZNode(String... path) throws KeeperException, InterruptedException {
+    protected void ensureZNode(String... path) throws KeeperException, InterruptedException, IOException {
         ensureZNode(new byte[0], path); // by default we set empty value for zookeeper node
     }
 
-    protected void ensureZNode(byte[] value, String... path) throws KeeperException, InterruptedException {
+    protected void ensureZNode(byte[] value, String... path) throws KeeperException, InterruptedException, IOException {
         String nodePath = getPaths(path);
+        if (zookeeper == null) {
+            initZk();
+        }
         if (zookeeper.exists(nodePath, false) == null) {
             try {
                 zookeeper.create(nodePath, value,
@@ -93,12 +101,18 @@ public abstract class ZkClient implements Watcher {
         }
     }
 
-    void validateNodes() throws KeeperException, InterruptedException {
+    void validateNodes() throws KeeperException, InterruptedException, IOException {
         ensureZNode(serviceName);
         ensureZNode(serviceName, id);
     }
 
+    /**
+     * Checks that connection to zookeeper is alive and nodes were validated.
+     */
     public boolean isConnectionAlive() {
+        if (zookeeper == null || !nodesValidated) {
+            return false;
+        }
         return zookeeper.getState().isAlive();
     }
 }

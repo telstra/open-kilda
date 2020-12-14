@@ -22,9 +22,6 @@ import org.openkilda.wfm.AbstractBolt;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
-import org.apache.zookeeper.KeeperException;
-
-import java.io.IOException;
 
 /**
  * This bolt is responsible for writing data into ZooKeeper.
@@ -48,9 +45,9 @@ public class ZooKeeperBolt extends AbstractBolt {
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        if (zkStateTracker == null) {
+        if (!zkWriter.isConnectionAlive()) {
             // TODO(tdurakov): verify there are no issues in constant reconnect
-            initZk();
+            zkWriter.init();
         }
         try {
             LifecycleEvent event = (LifecycleEvent) input.getValueByField(FIELD_ID_STATE);
@@ -72,14 +69,10 @@ public class ZooKeeperBolt extends AbstractBolt {
     }
 
     private void initZk() {
-        try {
-            zkWriter = ZkWriter.builder().id(id).serviceName(serviceName)
-                    .connectionString(connectionString).build();
-            zkStateTracker = new ZkStateTracker(zkWriter);
-        } catch (IOException | InterruptedException | KeeperException e) {
-            log.error("Failed to init ZooKeeper with connection string: {}, received: {} ", connectionString,
-                    e.getMessage(), e);
-        }
+        zkWriter = ZkWriter.builder().id(id).serviceName(serviceName)
+                .connectionString(connectionString).build();
+        zkWriter.init();
+        zkStateTracker = new ZkStateTracker(zkWriter);
     }
 
     @Override

@@ -30,7 +30,7 @@ import java.io.IOException;
 
 public class ZkWriterTest {
     @Test
-    public void testValidateNodes() throws KeeperException, InterruptedException {
+    public void testValidateNodes() throws KeeperException, InterruptedException, IOException {
         ZkWriter writer = Mockito.mock(ZkWriter.class);
         doCallRealMethod().when(writer).validateNodes();
         writer.validateNodes();
