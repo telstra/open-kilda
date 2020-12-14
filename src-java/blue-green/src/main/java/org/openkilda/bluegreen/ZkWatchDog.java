@@ -52,8 +52,8 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
 
     @Builder
     public ZkWatchDog(String id, String serviceName, String connectionString,
-                      int sessionTimeout, Signal signal) {
-        super(id, serviceName, connectionString, sessionTimeout);
+                      int sessionTimeout, Signal signal, long connectionRefreshInterval) {
+        super(id, serviceName, connectionString, sessionTimeout, connectionRefreshInterval);
 
         this.buildVersionPath = getPaths(serviceName, id, BUILD_VERSION);
         this.signalPath = getPaths(serviceName, id, SIGNAL);
@@ -96,6 +96,7 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
         } catch (KeeperException | InterruptedException | IOException | IllegalStateException e) {
             log.error(String.format("Couldn't init ZooKeeper watch dog for component %s with run id %s and "
                     + "connection string %s. Error: %s", serviceName, id, connectionString, e.getMessage()), e);
+            closeZk();
         }
     }
 
@@ -194,6 +195,6 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
             log.error(message);
             throw new IllegalStateException(message);
         }
-        zookeeper.close();
+        closeZk();
     }
 }

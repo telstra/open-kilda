@@ -27,12 +27,15 @@ import org.apache.zookeeper.ZooKeeper;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Slf4j
 @SuperBuilder
 public abstract class ZkClient implements Watcher {
     private static final String ROOT = "/";
     private static final int DEFAULT_SESSION_TIMEOUT = 30000;
+    public static final long DEFAULT_CONNECTION_REFRESH_INTERVAL = 10;
 
     protected String id;
     protected String serviceName;
@@ -40,8 +43,11 @@ public abstract class ZkClient implements Watcher {
     protected final String connectionString;
     protected boolean nodesValidated;
     private final int sessionTimeout;
+    protected Instant lastRefreshAttempt;
+    protected long connectionRefreshInterval;
 
-    public ZkClient(String id, String serviceName, String connectionString, int sessionTimeout) {
+    public ZkClient(String id, String serviceName, String connectionString, int sessionTimeout,
+                    long connectionRefreshInterval) {
         if (sessionTimeout == 0) {
             sessionTimeout = DEFAULT_SESSION_TIMEOUT;
         }
@@ -50,6 +56,8 @@ public abstract class ZkClient implements Watcher {
         this.id = id;
         this.connectionString = connectionString;
         this.sessionTimeout = sessionTimeout;
+        this.connectionRefreshInterval = connectionRefreshInterval;
+        this.lastRefreshAttempt = Instant.MIN;
     }
 
     public abstract void init();
@@ -60,11 +68,43 @@ public abstract class ZkClient implements Watcher {
 
     boolean refreshConnection(KeeperState state) throws IOException {
         if (state == KeeperState.Disconnected || state == KeeperState.Expired) {
+            closeZk();
             initZk();
             init();
             return true;
         }
         return false;
+    }
+
+    protected boolean isRefreshIntervalPassed() {
+        return Instant.now().isAfter(lastRefreshAttempt.plus(connectionRefreshInterval, ChronoUnit.SECONDS));
+    }
+
+    void closeZk() {
+        if (zookeeper != null) {
+            try {
+                zookeeper.close();
+            } catch (InterruptedException e) {
+                log.warn(String.format("Failed to close connection to zk %s", connectionString), e);
+            }
+        }
+    }
+
+    /**
+     * Attempt to refresh connection after specified interval of time.
+     */
+    public void safeRefreshConnection() {
+        if (isRefreshIntervalPassed()) {
+            closeZk();
+            init();
+            lastRefreshAttempt = Instant.now();
+        } else {
+            if (log.isTraceEnabled()) {
+                log.trace("Skipping connection {} refresh for zookeeper client {}/{}", connectionString,
+                        serviceName, id);
+            }
+        }
+
     }
 
     protected void initZk() throws IOException {
