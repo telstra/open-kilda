@@ -85,12 +85,12 @@ class BfdSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cost of ISL is unchanged"
-        islUtils.getIslInfo(isl).get().cost == costBeforeFailure
-
-        and: "Round trip latency status is ACTIVE"
+        and: "Cost of ISL is unchanged and round trip latency status is ACTIVE"
         [isl, isl.reversed].each {
-            assert database.getIslRoundTripStatus(it) == IslStatus.ACTIVE
+            verifyAll(northbound.getLink(it)) {
+                cost == costBeforeFailure
+                roundTripStatus == IslChangeType.DISCOVERED
+            }
         }
 
         when: "Restore connection"
@@ -107,7 +107,7 @@ class BfdSpec extends HealthCheckSpecification {
         }
 
         when: "Remove existing BFD session"
-       northboundV2.deleteLinkBfd(isl)
+        northboundV2.deleteLinkBfd(isl)
         def bfdRemoved = true
 
         then: "Bfd field is removed from isl"
