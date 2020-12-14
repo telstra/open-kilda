@@ -93,8 +93,9 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
             validateNodes();
             subscribeSignal();
             subscribeBuildVersion();
-        } catch (KeeperException | InterruptedException | IOException e) {
-            log.error(e.getMessage(), e);
+        } catch (KeeperException | InterruptedException | IOException | IllegalStateException e) {
+            log.error(String.format("Couldn't init ZooKeeper watch dog for component %s with run id %s and "
+                    + "connection string %s. Error: %s", serviceName, id, connectionString, e.getMessage()), e);
         }
     }
 
