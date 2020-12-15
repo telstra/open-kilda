@@ -3009,27 +3009,18 @@ left: calc(100% - 16px);
   top: 2px;
   right: 8px;
 }
-/* .ol-popup-closer:after {
-  content: "✖";
-} */
 .ol-popup-minimize {
   text-decoration: none;
   position: absolute;
   top: 2px;
   right: 35px;
 }
-/* .ol-popup-minimize:after {
-  content: "-";
-} */
 .ol-popup-maximize {
   text-decoration: none;
   position: absolute;
   top: 2px;
   right: 25px;
 }
-/* .ol-popup-maximize:after {
-  content: "[]";
-} */
 
 #popup-content .circle.blue {
   fill: #fff;

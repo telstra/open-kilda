@@ -2177,7 +2177,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
   };
   addOverlayHtml(){
     var html = '<div #popup id="popup" class="ol-popup"><a  title="Minimize" href="javascript:void(0)" style="display:none;" id="popup-minimize" class="ol-popup-minimize"><i class="fa fa-window-minimize" aria-hidden="true"></i></a><a  title="Maximize" href="javascript:void(0)" id="popup-maximize" class="ol-popup-maximize"><i class="fa fa-window-maximize" aria-hidden="true"></i></a><a  href="#" id="popup-closer" class="ol-popup-closer"><i class="fa fa-window-close" aria-hidden="true"></i></a>';
-    // var html = '<div #popup id="popup" class="ol-popup"><a  href="#" id="popup-closer" class="ol-popup-closer"></a>';
     html+= '<div id="graph_loader" style="display:none;"><span style="padding:150px 180px;float:left;">Loading...</span></div> <div #content id="popup-content" ></div></div>';
     html+= '<div #popinfoContainer id="popInfoContainer" class="ol-popup-info"><a  href="#" id="popInfocloser" class="ol-popup-closer"></a>';
     html+= '<div #popInfocontent id="popInfocontent" ></div></div>';   
