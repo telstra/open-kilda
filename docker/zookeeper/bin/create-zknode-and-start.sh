@@ -79,6 +79,11 @@ done
 
 
 # add portstate topology zkNodes
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/portstate ""
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/portstate/blue ""
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/portstate/blue/signal "START"
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/portstate/blue/state ""
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/portstate/blue/build-version "v3r\$i0n"
 
 
 # add reroute topology zkNodes
