@@ -96,6 +96,7 @@ public abstract class AbstractFlowTest extends InMemoryGraphBasedTest {
 
     protected final FlowEndpoint flowSource = new FlowEndpoint(SWITCH_SOURCE, 1, 101);
     protected final FlowEndpoint flowDestination = new FlowEndpoint(SWITCH_DEST, 2, 102);
+    protected final FlowEndpoint singleSwitchFlowEndpoint = new FlowEndpoint(SWITCH_SOURCE, 3, 103);
 
     protected static PersistenceDummyEntityFactory dummyFactory;
 

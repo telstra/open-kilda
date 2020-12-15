@@ -21,7 +21,7 @@ import org.openkilda.wfm.topology.network.service.IBfdSessionCarrier;
 
 class BfdSessionRemoveAction extends BfdSessionAction {
     BfdSessionRemoveAction(IBfdSessionCarrier carrier, NoviBfdSession requestPayload) {
-        super(carrier.deleteBfdSession(requestPayload));
+        super(carrier.sendWorkerBfdSessionDeleteRequest(requestPayload));
     }
 
     @Override

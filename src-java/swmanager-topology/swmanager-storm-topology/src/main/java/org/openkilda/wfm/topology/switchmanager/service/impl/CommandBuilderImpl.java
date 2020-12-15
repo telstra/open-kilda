@@ -144,6 +144,25 @@ public class CommandBuilderImpl implements CommandBuilder {
                                     encapsulationResources, foundIngressSegment.isSrcWithMultiTable()));
                         }
                     }
+
+                    long loopCookie = flowPath.getCookie().toBuilder().looped(true).build().getValue();
+                    if (switchRules.contains(loopCookie)) {
+                        log.info("Loop rule with cookie {} is to be reinstalled on switch {}", loopCookie, switchId);
+                        Flow flow = getFlow(flowPath);
+                        EncapsulationResources encapsulationResources = getEncapsulationResources(
+                                flowPath, flow);
+                        if (flowPath.getSrcSwitch().getSwitchId().equals(switchId)) {
+                            boolean srcWithMultiTable = flowPath.getSegments().get(0).isSrcWithMultiTable();
+                            commands.add(flowCommandFactory.buildInstallIngressLoopFlow(flow, flowPath,
+                                    encapsulationResources, srcWithMultiTable));
+                        } else {
+                            PathSegment lastSegment = flowPath.getSegments().get(flowPath.getSegments().size() - 1);
+                            boolean destWithMultiTable = lastSegment.isDestWithMultiTable();
+                            commands.add(flowCommandFactory.buildInstallTransitLoopFlow(flow, flowPath,
+                                    lastSegment.getDestPort(), encapsulationResources, destWithMultiTable));
+                        }
+
+                    }
                 });
 
         return commands;

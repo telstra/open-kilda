@@ -39,7 +39,7 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
     private static final String OTSDB_KAFKA_BOLT_NAME = "otsdb.kafka.bolt";
 
     protected PortStateTopology(LaunchEnvironment env) {
-        super(env, PortStateTopologyConfig.class);
+        super(env, "portstate-topology", PortStateTopologyConfig.class);
     }
 
     @Override
@@ -64,38 +64,38 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
         // Setup spout and bolt for TOPO_DISCO_SPOUT line
         String topoDiscoTopic = topologyConfig.getKafkaTopoDiscoTopic();
         logger.debug("connecting to {} topic", topoDiscoTopic);
-        builder.setSpout(TOPO_DISCO_SPOUT, buildKafkaSpout(topoDiscoTopic, TOPO_DISCO_SPOUT));
+        declareKafkaSpout(builder, topoDiscoTopic, TOPO_DISCO_SPOUT);
 
         TopoDiscoParseBolt topoDiscoParseBolt = new TopoDiscoParseBolt();
-        builder.setBolt(TOPO_DISCO_PARSE_BOLT_NAME, topoDiscoParseBolt, topologyConfig.getParallelism())
+        declareBolt(builder, topoDiscoParseBolt, TOPO_DISCO_PARSE_BOLT_NAME)
                 .shuffleGrouping(TOPO_DISCO_SPOUT);
 
         ParsePortInfoBolt parsePortInfoBolt = new ParsePortInfoBolt(topologyConfig.getMetricPrefix());
-        builder.setBolt(PARSE_PORT_INFO_BOLT_NAME, parsePortInfoBolt, topologyConfig.getParallelism())
+        declareBolt(builder, parsePortInfoBolt, PARSE_PORT_INFO_BOLT_NAME)
                 .shuffleGrouping(TOPO_DISCO_PARSE_BOLT_NAME, TopoDiscoParseBolt.TOPO_TO_PORT_INFO_STREAM)
                 .shuffleGrouping(WFM_STATS_PARSE_BOLT_NAME, WfmStatsParseBolt.WFM_TO_PARSE_PORT_INFO_STREAM);
 
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
         KafkaBolt openTsdbBolt = createKafkaBolt(openTsdbTopic);
-        builder.setBolt(OTSDB_KAFKA_BOLT_NAME, openTsdbBolt, topologyConfig.getParallelism())
+        declareBolt(builder, openTsdbBolt, OTSDB_KAFKA_BOLT_NAME)
                 .shuffleGrouping(PARSE_PORT_INFO_BOLT_NAME);
 
         // Setup spout and bolt for WFM_STATS_SPOUT line
         String wfmStatsTopic = topologyConfig.getKafkaStatsTopic();
         logger.debug("connecting to {} topic", wfmStatsTopic);
-        builder.setSpout(WFM_STATS_SPOUT, buildKafkaSpout(wfmStatsTopic, WFM_STATS_SPOUT));
+        declareKafkaSpout(builder, wfmStatsTopic, WFM_STATS_SPOUT);
 
         WfmStatsParseBolt wfmStatsParseBolt = new WfmStatsParseBolt();
-        builder.setBolt(WFM_STATS_PARSE_BOLT_NAME, wfmStatsParseBolt, topologyConfig.getParallelism())
+        declareBolt(builder, wfmStatsParseBolt, WFM_STATS_PARSE_BOLT_NAME)
                 .shuffleGrouping(WFM_STATS_SPOUT);
 
         // Setup spout and bolt for sending SwitchPortsCommand every frequency seconds
         SwitchPortsSpout switchPortsSpout = new SwitchPortsSpout(JANITOR_REFRESH);
-        builder.setSpout(SWITCH_PORTS_SPOUT_NAME, switchPortsSpout);
+        declareSpout(builder, switchPortsSpout, SWITCH_PORTS_SPOUT_NAME);
 
         String speakerTopic = topologyConfig.getKafkaSpeakerTopic();
         KafkaBolt speakerBolt = createKafkaBolt(speakerTopic);
-        builder.setBolt(SPEAKER_KAFKA_BOLT_NAME, speakerBolt, topologyConfig.getParallelism())
+        declareBolt(builder, speakerBolt, SPEAKER_KAFKA_BOLT_NAME)
                 .shuffleGrouping(SWITCH_PORTS_SPOUT_NAME);
 
         return builder.createTopology();

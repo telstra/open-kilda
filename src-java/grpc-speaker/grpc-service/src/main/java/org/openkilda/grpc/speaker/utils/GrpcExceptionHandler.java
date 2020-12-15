@@ -21,6 +21,7 @@ import org.openkilda.grpc.speaker.exception.GrpcRequestFailureException;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.GrpcMessageError;
 
+import io.grpc.StatusRuntimeException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,15 +30,14 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import java.net.SocketException;
-import java.util.concurrent.CompletionException;
-
 @ControllerAdvice
 public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
 
-    @ExceptionHandler(GrpcRequestFailureException.class)
-    protected ResponseEntity<Object> handleGrpcRequestExeption(GrpcRequestFailureException ex,
-                                                               WebRequest request) {
+    /**
+     * Exception handler.
+     */
+    @ExceptionHandler
+    public ResponseEntity<Object> handleException(GrpcRequestFailureException ex, WebRequest request) {
         HttpStatus status;
 
         switch (ex.getErrorType()) {
@@ -58,28 +58,12 @@ public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
         return makeExceptionalResponse(ex, makeErrorPayload(ex.getCode(), ex.getMessage()), status, request);
     }
 
-    @ExceptionHandler(CompletionException.class)
-    protected ResponseEntity<Object> handleCompletionExceptions(CompletionException wrapper, WebRequest request) {
-        ResponseEntity<Object> response;
-        try {
-            throw wrapper.getCause();
-        } catch (SocketException e) {
-            GrpcMessageError body = makeErrorPayload(-1, format("Communication failure - %s", e.getMessage()));
-            response = makeExceptionalResponse(e, body, HttpStatus.INTERNAL_SERVER_ERROR, request);
-        } catch (Exception e) {
-            GrpcMessageError body = makeErrorPayload(-1, ErrorType.INTERNAL_ERROR.toString());
-            response = makeExceptionalResponse(
-                    e, body, HttpStatus.INTERNAL_SERVER_ERROR, request);
-        } catch (Throwable e) {
-            GrpcMessageError body = makeErrorPayload(-1, ErrorType.INTERNAL_ERROR.toString());
-            response = new ResponseEntity<>(body, new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-        return response;
+    @ExceptionHandler
+    public ResponseEntity<Object> handleException(StatusRuntimeException ex, WebRequest request) {
+        GrpcMessageError body = makeErrorPayload(-1, format("Communication failure - %s", ex.getMessage()));
+        return makeExceptionalResponse(ex, body, HttpStatus.INTERNAL_SERVER_ERROR, request);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception exception, Object body, HttpHeaders headers,
                                                              HttpStatus status, WebRequest request) {
@@ -90,7 +74,7 @@ public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
 
     private ResponseEntity<Object> makeExceptionalResponse(
             Exception ex, GrpcMessageError body, HttpStatus status, WebRequest request) {
-        logger.error(format("Produce error response: %s", body), ex);
+        logger.error(format("Produce error response: %s", body));
         return super.handleExceptionInternal(ex, body, new HttpHeaders(), status, request);
     }
 

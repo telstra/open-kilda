@@ -141,8 +141,8 @@ class FlowSyncSpec extends HealthCheckSpecification {
     }
 
     List<FlowEntry> getFlowRules(Switch sw) {
-        northbound.getSwitchRules(sw.dpId).flowEntries.findAll { !(it.cookie in sw.defaultCookies) &&
-                new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW
+        northbound.getSwitchRules(sw.dpId).flowEntries.findAll { def cookie = new Cookie(it.cookie)
+            cookie.type == CookieType.SERVICE_OR_FLOW_SEGMENT && !cookie.serviceFlag
         }.sort()
     }
 }

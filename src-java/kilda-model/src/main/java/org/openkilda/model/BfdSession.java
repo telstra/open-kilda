@@ -81,14 +81,17 @@ public class BfdSession implements CompositeDataEntity<BfdSession.BfdSessionData
                 .append(getRemoteSwitchId(), that.getRemoteSwitchId())
                 .append(getRemoteIpAddress(), that.getRemoteIpAddress())
                 .append(getPort(), that.getPort())
+                .append(getPhysicalPort(), that.getPhysicalPort())
                 .append(getDiscriminator(), that.getDiscriminator())
+                .append(getInterval(), that.getInterval())
+                .append(getMultiplier(), that.getMultiplier())
                 .isEquals();
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(getSwitchId(), getIpAddress(), getRemoteSwitchId(), getRemoteIpAddress(),
-                getPort(), getDiscriminator());
+                getPort(), getPhysicalPort(), getDiscriminator(), getInterval(), getMultiplier());
     }
 
     /**

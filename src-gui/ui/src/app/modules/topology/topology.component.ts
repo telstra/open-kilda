@@ -66,6 +66,8 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
 
   linksSourceArr = [];
   new_nodes = false;
+  switches_location_changes = false;
+  notification_arr = [];
   optArray = [];
   size: any;
   forceSimulation: any;
@@ -78,7 +80,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
   linkedByIndex = {};
   isDragMove = true;
   flagHover = true;
-
+  reloadMap = false;
   graphdata = { switch: [], isl: [], flow: [] };
 
   syncCoordinates = null;
@@ -149,7 +151,41 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     this.topologyService.autoRefreshReceiver.subscribe(
       this.onAutoRefreshSettingUpdate
     );
-
+    
+    this.topologyService.notifyObj.subscribe((data:any)=>{
+			if(data && typeof data.type !='undefined'){
+				var type = 'switch';
+				if(data.type.includes('isl')){
+					type = 'isl';
+				}
+				switch(type){
+          case 'isl': var link  = data.newlink;
+                      var index = null;
+                      this.links.forEach((l,i)=>{
+                          if(l.source_switch == link.source_switch && l.src_port == link.src_port && l.target_switch == link.target_switch && l.dst_port == link.dst_port){
+                            index = i;  
+                          }
+                      });
+                      if(index !=null){
+                        var element = document.getElementById('link'+index);
+                        var oldstroke = element.getAttribute('stroke');
+                        var oldClasses = element.getAttribute('class');
+                        var classes = " link physical notify_animate";
+                        element.setAttribute("class", classes);
+                        element.setAttribute('stroke','#545A52');
+                        setTimeout(()=>{
+                          element.setAttribute('stroke',oldstroke);
+                          element.setAttribute("class", oldClasses);
+                        },2000);                      
+                      
+                      }
+							 break;
+          case 'switch':  var switchData = data.switch;
+                          this.searchNode(switchData.name);
+							 break;
+				}
+			}
+		})
     
   }
 
@@ -1160,10 +1196,23 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private processNodesData(newNodes, removedNodes, response) {
+    var self = this;
     this.nodes.forEach(function(d) {
       for (var i = 0, len = response.length; i < len; i++) {
         if (d.switch_id == response[i].switch_id) {
+           // condition for world map refresh
+           if( d.state != response[i].state){
+              self.switches_location_changes = true;
+              var notification_msg = {
+                    'id':"switch_"+d.switch_id,
+                    'type':'switch',
+                    'switch':d,
+                    'message':d.name+" Switch state changed from "+d.state+" to "+response[i].state
+                  }
+              self.notification_arr.push(notification_msg);
+          }
           d.state = response[i].state;
+          
           var classes = "circle blue";
           if (d.state && d.state.toLowerCase() == "deactivated") {
             classes = "circle red";
@@ -1214,9 +1263,69 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
           d.src_port == response[i].src_port &&
           d.dst_port == response[i].dst_port
         ) {
+           // condition for world map refresh
+           if(d.available_bandwidth != response[i].available_bandwidth)
+           {
+            ref.switches_location_changes = true;
+            var notification_msg = {
+              'id':'isl_bandwidth_'+response[i]["source_switch"]+"_"+response[i]["src_port"]+"_"+response[i]["target_switch"]+"_"+response[i]["dst_port"],
+              'type':'isl',
+              'oldlink':d,
+              'newlink':response[i],
+              'message':" ISL having src("+d.source_switch_name+") and target("+d.target_switch_name+") has change in its Available bandwidth from "+d.available_bandwidth+" to "+response[i].available_bandwidth,  
+            }
+            ref.notification_arr.push(notification_msg);
+           } 
+            if(d.max_bandwidth != response[i].max_bandwidth){
+              ref.switches_location_changes = true;
+              var notification_msg = {
+                'id':'isl_max_bandwidth_'+response[i]["source_switch"]+"_"+response[i]["src_port"]+"_"+response[i]["target_switch"]+"_"+response[i]["dst_port"],
+                'type':'isl',
+                'oldlink':d,
+                'newlink':response[i],
+                'message':" ISL having src("+d.source_switch_name+") and target("+d.target_switch_name+") has change in its max bandwidth from "+d.max_bandwidth+" to "+response[i].max_bandwidth,   
+              }
+              ref.notification_arr.push(notification_msg);
+            } 
+            if(d.state != response[i].state){
+              ref.switches_location_changes = true;
+              var notification_msg = {
+                'id':'isl_state_'+response[i]["source_switch"]+"_"+response[i]["src_port"]+"_"+response[i]["target_switch"]+"_"+response[i]["dst_port"],
+                'type':'isl',
+                'oldlink':d,
+                'newlink':response[i],
+                'message':" ISL having src("+d.source_switch_name+") and target("+d.target_switch_name+") state changed from "+d.state+" to "+response[i].state,  
+              }
+              ref.notification_arr.push(notification_msg);
+            } 
+            if(d.under_maintenance != response[i].under_maintenance){
+              ref.switches_location_changes = true;
+              var notification_msg = {
+                'id':'isl_maintenance_'+response[i]["source_switch"]+"_"+response[i]["src_port"]+"_"+response[i]["target_switch"]+"_"+response[i]["dst_port"],
+                'type':'isl',
+                'oldlink':d,
+                'newlink':response[i],
+                'message':" ISL having src("+d.source_switch_name+") and target("+d.target_switch_name+")maintenance flag changed from "+d.under_maintenance+" to "+response[i].under_maintenance,  
+              }
+              ref.notification_arr.push(notification_msg);
+            } 
+            if(d.unidirectional  != response[i].unidirectional){
+              ref.switches_location_changes = true;
+              var notification_msg = {
+                'id':'isl_unidirectional'+response[i]["source_switch"]+"_"+response[i]["src_port"]+"_"+response[i]["target_switch"]+"_"+response[i]["dst_port"],
+                'type':'isl',
+                'oldlink':d,
+                'newlink':response[i],
+                'message':" ISL having src("+d.source_switch_name+") and target("+d.target_switch_name+") Unidirectional state changed from "+d.unidirectional+" to "+ response[i].unidirectional  
+              }
+              ref.notification_arr.push(notification_msg);
+           }
           d.available_bandwidth = response[i].available_bandwidth;
           d.max_bandwidth = response[i].max_bandwidth;
           d.state = response[i].state;
+          d.under_maintenance = response[i].under_maintenance;
+          d.unidirectional = response[i].unidirectional;
+         
           var availbandwidth = d.available_bandwidth;
           var max_bandwidth = d.max_bandwidth;
           var percentage = ref.commonService.getPercentage(availbandwidth,max_bandwidth);
@@ -1225,8 +1334,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
           } else {
             d["affected"] = false;
           }
-          d.under_maintenance = response[i].under_maintenance;
-          d.unidirectional = response[i].unidirectional;
+         
           if (
             d.unidirectional ||
             (d.state && d.state.toLowerCase() == "failed")
@@ -1283,10 +1391,27 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     if (
       (newLinks && newLinks.length) ||
       (removedLinks && removedLinks.length) ||
-      this.new_nodes
+      this.new_nodes || (this.switches_location_changes && this.showWorldMap)
     ) {
       this.new_nodes = false;
-      this.restartGraphWithNewIsl(newLinks, removedLinks);
+      if(this.showWorldMap){
+        this.reloadMap = false;
+        this.graphdata = { switch: [], isl: [], flow: [] };
+      }
+      this.restartGraphWithNewIsl(newLinks, removedLinks);      
+    }else{ // In case user is on topology view and data changes in autoreload
+      if(ref.notification_arr && ref.notification_arr.length && this.switches_location_changes){
+        var oldNotifications = JSON.parse(localStorage.getItem('notification_data')) || [];
+        if(oldNotifications && oldNotifications.length){
+          var notifyArr = oldNotifications.concat(ref.notification_arr);
+          localStorage.setItem('notification_data',JSON.stringify(notifyArr));
+          this.topologyService.displayNotifications(notifyArr);
+        }else{
+          localStorage.setItem('notification_data',JSON.stringify(ref.notification_arr));
+          this.topologyService.displayNotifications(ref.notification_arr);
+        }
+      }
+      
     }
   }
 
@@ -1298,8 +1423,8 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         switchArr = this.getNewSwitch(this.nodes, response);
         var newNodes = switchArr["added"] || [];
         var removedNodes = switchArr["removed"] || [];
+        this.switches_location_changes = switchArr['location_updated'];
         this.processNodesData(newNodes, removedNodes, response);
-
       },
       error => {
         this.appLoader.hide();
@@ -1324,16 +1449,27 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** get removed and newly added switch list */
   getNewSwitch(nodes, response) {
-    var nodesArr = { added: [], removed: [] };
+    var ref = this;
+    var nodesArr = { added: [], removed: [] ,location_updated:false};
     for (var i = 0; i < response.length; i++) {
       var foundFlag = false;
       for (var j = 0; j < nodes.length; j++) {
         if (nodes[j].switch_id == response[i].switch_id) {
           foundFlag = true;
+          if(nodes[j].location.latitude != response[i].location.latitude || nodes[j].location.longitude != response[i].location.longitude){
+            nodesArr['location_updated'] = true;
+          }
         }
       }
       if (!foundFlag) {
         nodesArr["added"].push(response[i]);
+        var notification_msg = {
+          'id':'switchadded_'+response[i].switch_id,
+          'type':'switchadded',
+          'switch':response[i],
+          'message':" New switch("+response[i].name+") has been added"  
+        }
+        ref.notification_arr.push(notification_msg);
       }
     }
     for (var i = 0; i < nodes.length; i++) {
@@ -1345,6 +1481,13 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       if (!foundFlag) {
         nodesArr["removed"].push(nodes[i]);
+        var notification_msg = {
+          'id':'switchremoved_'+nodes[i].switch_id,
+          'type':'switchremoved',
+          'switch':nodes[i],
+          'message':" Switch("+nodes[i].name+") has been removed"  
+        }
+        ref.notification_arr.push(notification_msg);
       }
     }
     return nodesArr;
@@ -1389,7 +1532,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     return linksArr;
   }
-
+  
   restartGraphWithNewIsl(newLinks, removedLinks) {
     this.optArray = [];
     let ref = this;
@@ -1420,12 +1563,20 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     for (var i = 0; i < nodelength; i++) {
       this.optArray.push(this.nodes[i].name);
       for (var j = 0; j < linklength; j++) {
+        var notification_msg = {
+          'id':"isladded_"+newLinks[j]["source_switch"]+"_"+newLinks[j]["src_port"]+"_"+newLinks[j]["target_switch"]+"_"+newLinks[j]["dst_port"],
+          'type':'isladded',
+          'link':newLinks[j],
+          'message':" New ISL between src("+newLinks[j]["source_switch_name"]+") and target("+newLinks[j]["target_switch_name"]+") has been added"  
+        }
+        ref.notification_arr.push(notification_msg);
         if (
           this.nodes[i].switch_id == newLinks[j]["source_switch"] &&
           this.nodes[i].switch_id == newLinks[j]["target_switch"]
         ) {
           newLinks[j].source = i;
           newLinks[j].target = i;
+          
         } else {
           if (this.nodes[i].switch_id == newLinks[j]["source_switch"]) {
             newLinks[j].source = i;
@@ -1441,6 +1592,13 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       this.links = this.links.filter(function(d) {
         var foundFlag = false;
         for (var i = 0; i < removedLinks.length; i++) {
+          var notification_msg = {
+            'id':"islremoved_"+removedLinks[i]["source_switch"]+"_"+removedLinks[i]["src_port"]+"_"+removedLinks[i]["target_switch"]+"_"+removedLinks[i]["dst_port"],
+            'type':'islremoved',
+            'link':removedLinks[i],
+            'message':" ISL between src("+removedLinks[i]["source_switch_name"]+") and target("+removedLinks[i]["target_switch_name"]+") has been removed"  
+          }
+          ref.notification_arr.push(notification_msg);
           if (
             d.source_switch == removedLinks[i].source_switch &&
             d.target_switch == removedLinks[i].target_switch &&
@@ -1460,42 +1618,61 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         return !foundFlag;
       });
     }
-    this.appLoader.show(MessageObj.reloading_topology_with_new_data);
-    this.graphShow = false;
-
-    this.forceSimulation = d3
-    .forceSimulation()
-    .velocityDecay(0.2)
-    .force("charge_force",d3.forceManyBody().strength(-1000))
-    .force("xPos", d3.forceX(this.width /2))
-    .force("yPos", d3.forceY(this.height / 2));
     
-    this.forceSimulation.nodes(this.nodes);
-    this.forceSimulation.force("link", d3.forceLink().links(this.links).distance(200).strength(1));
-    this.forceSimulation.stop();
-   
-    this.forceSimulation.on("tick",()=>{
-      this.repositionNodes();
-      this.tick();
-      this.zoomFit();
-    });
+    var oldNotifications = JSON.parse(localStorage.getItem('notification_data')) || [];
+    if(oldNotifications && oldNotifications.length){
+      var notifyArr = oldNotifications.concat(ref.notification_arr);
+      localStorage.setItem('notification_data',JSON.stringify(notifyArr));
+      this.topologyService.displayNotifications(notifyArr);
+    }else{
+      localStorage.setItem('notification_data',JSON.stringify(ref.notification_arr));
+      this.topologyService.displayNotifications(ref.notification_arr);
+    }
+    
+    if(this.showWorldMap){
+      this.reloadMap = true;
+      this.graphdata.isl = this.links;
+      this.graphdata.switch = this.nodes;
+    }else{
+      this.appLoader.show(MessageObj.reloading_topology_with_new_data);
+      this.graphShow = false;
+      this.forceSimulation = d3
+      .forceSimulation()
+      .velocityDecay(0.2)
+      .force("charge_force",d3.forceManyBody().strength(-1000))
+      .force("xPos", d3.forceX(this.width /2))
+      .force("yPos", d3.forceY(this.height / 2));
+      
+      this.forceSimulation.nodes(this.nodes);
+      this.forceSimulation.force("link", d3.forceLink().links(this.links).distance(200).strength(1));
+      this.forceSimulation.stop();
+    
+      this.forceSimulation.on("tick",()=>{
+        this.repositionNodes();
+        this.tick();
+        this.zoomFit();
+      });
 
-    this.insertLinks(this.links);
-    this.insertNodes(this.nodes);
-    this.insertCircles();  
-    this.forceSimulation.restart(); 
+      this.insertLinks(this.links);
+      this.insertNodes(this.nodes);
+      this.insertCircles();  
+      this.forceSimulation.restart(); 
 
-    this.forceSimulation.on("end",()=>{
-      this.appLoader.hide();  
-      this.graphShow = true;
-      this.onViewSettingUpdate(this.viewOptions, true);
-      this.zoomFit();
-    });
+      this.forceSimulation.on("end",()=>{
+        this.appLoader.hide();  
+        this.graphShow = true;
+        this.onViewSettingUpdate(this.viewOptions, true);
+        this.zoomFit();
+      });
+    }
+    
 
   }
 
   restartAutoRefreshWithNewSettings(duration) {
     this.autoRefreshTimerInstance = setInterval(() => {
+      this.notification_arr = [];
+      this.switches_location_changes = false;
       if(this.viewOptions.FLOW_CHECKED){
         this.getSwitchList();
       }else{
@@ -1845,8 +2022,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       this.topologyService.setCoordinates(positions);
     });
 
-    
-
     setTimeout(()=>{
       this.forceSimulation.stop();
       this.zoomFit();
@@ -1990,7 +2165,10 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if(setting.WORLDMAP){
         this.showWorldMap = true;
-        this.addOverlayHtml()
+        var isPopup = $('#worldmap').find('#popup');
+        if(isPopup.length ==0){          
+          this.addOverlayHtml();
+        }
     }else{
       this.showWorldMap = false; 
     }
@@ -1998,12 +2176,11 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     this.onAutoRefreshSettingUpdate(setting);
   };
   addOverlayHtml(){
-    //var html = '<div #popup id="popup" class="ol-popup"><a  href="javascript:void(0)" id="popup-minimize" class="ol-popup-minimize"><a  href="javascript:void(0)" id="popup-maximize" class="ol-popup-maximize"><a  href="#" id="popup-closer" class="ol-popup-closer"></a>';
+   // var html = '<div #popup id="popup" class="ol-popup"><a  href="javascript:void(0)" style="display:none;" id="popup-minimize" class="ol-popup-minimize"><a  href="javascript:void(0)" id="popup-maximize" class="ol-popup-maximize"><a  href="#" id="popup-closer" class="ol-popup-closer"></a>';
     var html = '<div #popup id="popup" class="ol-popup"><a  href="#" id="popup-closer" class="ol-popup-closer"></a>';
     html+= '<div id="graph_loader" style="display:none;"><span style="padding:150px 180px;float:left;">Loading...</span></div> <div #content id="popup-content" ></div></div>';
     html+= '<div #popinfoContainer id="popInfoContainer" class="ol-popup-info"><a  href="#" id="popInfocloser" class="ol-popup-closer"></a>';
-    html+= '<div #popInfocontent id="popInfocontent" ></div></div>';
-   
+    html+= '<div #popInfocontent id="popInfocontent" ></div></div>';   
     jQuery("#worldmap").append(html);
    
   }
@@ -2047,7 +2224,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         this.searchHidden = false;
         this.searchModel = '';
       }
-      
     }, 1000);
 
     this.syncCoordinates = setInterval(() => {
@@ -2078,9 +2254,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     if(this.syncCoordinates){
       clearTimeout(this.syncCoordinates);
     }
-
-
-   
+  
   }
 
 }

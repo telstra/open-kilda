@@ -23,4 +23,7 @@ import com.sabre.oss.conf4j.annotation.Key;
 public interface ZookeeperConfig {
     @Key("hosts")
     String getHosts();
+
+    @Key("connect_string")
+    String getConnectString();
 }

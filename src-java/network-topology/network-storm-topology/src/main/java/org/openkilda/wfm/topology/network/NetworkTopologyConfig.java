@@ -26,10 +26,6 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
     @IgnoreKey
     DiscoveryConfig getDiscoveryConfig();
 
-    default int getScaleFactor() {
-        return getDiscoveryConfig().getScaleFactor();
-    }
-
     default int getDiscoveryGenericInterval() {
         return getDiscoveryConfig().getDiscoveryGenericInterval();
     }
@@ -103,10 +99,6 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
     @Configuration
     @Key("discovery")
     interface DiscoveryConfig {
-        @Key("scale-factor")
-        @Default("2")
-        int getScaleFactor();
-
         @Key("generic.interval")
         int getDiscoveryGenericInterval();
 

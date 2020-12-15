@@ -30,6 +30,7 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Unroll
 
 import javax.inject.Provider
@@ -111,6 +112,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         involvedSwitchesFlow1.each {
             with(northbound.validateSwitch(it.dpId)) { validation ->
                 validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
                 validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
             }
         }
@@ -227,18 +229,11 @@ class QinQFlowSpec extends HealthCheckSpecification {
             }.empty
         }
 
-        //TODO(andriidovhan) reduce amount of test when this feature is stable
         where:
         srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
-        0         | 0              | 0         | 0
         10        | 20             | 30        | 40
-        10        | 10             | 10        | 10
         10        | 0              | 0         | 40
-        0         | 20             | 30        | 0
         10        | 20             | 0         | 0
-        0         | 0              | 30        | 40
-        10        | 20             | 30        | 0
-        0         | 20             | 30        | 40
     }
 
     @Unroll
@@ -302,15 +297,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         where:
         srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
-        0         | 0              | 0         | 0
         10        | 20             | 30        | 40
-        10        | 10             | 10        | 10
         10        | 0              | 0         | 40
-        0         | 20             | 30        | 0
         10        | 20             | 0         | 0
-        0         | 0              | 30        | 40
-        10        | 20             | 30        | 0
-        0         | 20             | 30        | 40
     }
 
     @Tidy
@@ -638,12 +627,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         where:
         srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
         10        | 20             | 30        | 40
-        10        | 20             | 30        | 0
-        10        | 20             | 0         | 0
         10        | 0              | 0         | 40
-        0         | 20             | 30        | 0
-        0         | 20             | 30        | 40
-        0         | 0              | 30        | 40
+        10        | 20             | 0         | 0
     }
 
     @Unroll
@@ -660,7 +645,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
             [it.src, it.dst].every { sw ->
                 sw.dpId in allTraffGenSwitches*.dpId && northbound.getSwitchProperties(sw.dpId).multiTable &&
-                        sw.noviflow && !sw.wb5164
+                        northbound.getSwitchProperties(sw.dpId).supportedTransitEncapsulation
+                                .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
             } && it.paths.size() > 2
         } ?: assumeTrue("Not able to find enough switches with traffgens and in multi-table mode", false)
 
@@ -824,15 +810,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         where:
         srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
-        0         | 0              | 0         | 0
         10        | 20             | 30        | 40
-        10        | 10             | 10        | 10
         10        | 0              | 0         | 40
-        0         | 20             | 30        | 0
         10        | 20             | 0         | 0
-        0         | 0              | 30        | 40
-        10        | 20             | 30        | 0
-        0         | 20             | 30        | 40
     }
 
     @Tidy
@@ -857,17 +837,21 @@ class QinQFlowSpec extends HealthCheckSpecification {
         northbound.deleteSwitchRules(swP.src.dpId, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
 
         then: "System detects missing rules on the src switch"
+        def amountOfServer42Rules = northbound.getSwitchProperties(swP.src.dpId).server42FlowRtt ? 1 : 0
         with(northbound.validateSwitch(swP.src.dpId).rules) {
             it.excess.empty
-            it.missing.size() == 3
+            it.excessHex.empty
+            it.missing.size() == 3 + amountOfServer42Rules //ingress, egress, shared, server42
+            it.missingHex.size() == 3 + amountOfServer42Rules
         }
 
         when: "Synchronize the src switch"
         northbound.synchronizeSwitch(swP.src.dpId, false)
 
         then: "Missing rules are reinstalled"
-        switchHelper.verifyRuleSectionsAreEmpty(northbound.validateSwitch(swP.src.dpId),
-                ["missing", "excess", "misconfigured"])
+        def validateSwResponse = northbound.validateSwitch(swP.src.dpId)
+        switchHelper.verifyRuleSectionsAreEmpty(validateSwResponse, ["missing", "excess", "misconfigured"])
+        switchHelper.verifyHexRuleSectionsAreEmpty(validateSwResponse, ["missingHex", "excessHex", "misconfiguredHex"])
 
         and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
@@ -889,6 +873,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Ignore("https://github.com/telstra/open-kilda/issues/3858")
     def "System doesn't rebuild flow path to more preferable path while updating innerVlanId"() {
         given: "Two active switches connected to traffgens with two possible paths at least"
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected*.dpId ?:

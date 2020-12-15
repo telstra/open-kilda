@@ -1,5 +1,92 @@
 # Changelog
 
+## v1.79.0 (07/12/2020)
+
+### Features:
+-  [#3859](https://github.com/telstra/open-kilda/pull/3859) Zero downtime
+-  [#3860](https://github.com/telstra/open-kilda/pull/3860) Zero downtime version
+
+### Bug Fixes:
+-  [#3875](https://github.com/telstra/open-kilda/pull/3875) Remove corrupted global retry in flow create FSM
+-  [#3834](https://github.com/telstra/open-kilda/pull/3834) Fix GRPC speaker rest api error handling (Issue: [#3754](https://github.com/telstra/open-kilda/issues/3754))
+-  [#3902](https://github.com/telstra/open-kilda/pull/3902) Fix develop compile time error
+
+### Improvements:
+-  [#3897](https://github.com/telstra/open-kilda/pull/3897) ignore tests according to #3896 [**tests**]
+-  [#3873](https://github.com/telstra/open-kilda/pull/3873) Fix flow loops for Q-in-Q (Issue: [#3846](https://github.com/telstra/open-kilda/issues/3846)) [**floodlight**]
+-  [#3874](https://github.com/telstra/open-kilda/pull/3874) extend connectedВevices spec [**tests**]
+-  [#3876](https://github.com/telstra/open-kilda/pull/3876) add test for installing/deleting the server42_turning rule [**tests**]
+-  [#3878](https://github.com/telstra/open-kilda/pull/3878) Fix flow loops for single switch flows (Issues: [#3846](https://github.com/telstra/open-kilda/issues/3846) [#3873](https://github.com/telstra/open-kilda/issues/3873)) [**floodlight**]
+-  [#3819](https://github.com/telstra/open-kilda/pull/3819) Move BFD session transition code out of FSM [**storm-topologies**]
+-  [#3833](https://github.com/telstra/open-kilda/pull/3833) Removed legacy docker tag `full_build_number:-latest`
+-  [#3900](https://github.com/telstra/open-kilda/pull/3900) refactor qinq spec(reduce amount of tests) [**tests**]
+-  [#3668](https://github.com/telstra/open-kilda/pull/3668) improvements in func-test, enable server42 (Issue: [#3853](https://github.com/telstra/open-kilda/issues/3853)) [**tests**]
+
+### Other changes:
+-  [#3885](https://github.com/telstra/open-kilda/pull/3885) Add retries for db_migration in docker-compose [**configuration**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.78.0...v1.79.0).
+
+### Affected Components:
+fl, network, flow-hs, grpc
+
+## v1.78.0 (25/11/2020)
+
+### Features:
+-  [#3835](https://github.com/telstra/open-kilda/pull/3835) Adding feature of auto-refresh in world map (Issue: [#3794](https://github.com/telstra/open-kilda/issues/3794)) [**gui**]
+
+### Bug Fixes:
+-  [#3560](https://github.com/telstra/open-kilda/pull/3560) Fix ISL behavior on round-trip discovery loss [**storm-topologies**]
+-  [#3852](https://github.com/telstra/open-kilda/pull/3852) Fix create protected flow with max latency path computation strategy (Issue: [#3821](https://github.com/telstra/open-kilda/issues/3821))
+-  [#3868](https://github.com/telstra/open-kilda/pull/3868) Fix reroute degraded flow (Issue: [#3826](https://github.com/telstra/open-kilda/issues/3826))
+
+### Improvements:
+-  [#3853](https://github.com/telstra/open-kilda/pull/3853) Install server 42 rule if RTT toggle is True (Issue: [#3871](https://github.com/telstra/open-kilda/issues/3871)) [**floodlight**][**storm-topologies**]
+-  [#3829](https://github.com/telstra/open-kilda/pull/3829) ISL status transition visibility improvement [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.77.0...v1.78.0).
+
+### Affected Components:
+nbworker, network, gui, fl, flow-hs
+
+---
+
+## v1.77.0 (17/11/2020)
+
+### Features:
+-  [#3851](https://github.com/telstra/open-kilda/pull/3851) [Server42] Software timestamps
+-  [#3787](https://github.com/telstra/open-kilda/pull/3787) Flow loop feature implementation [**api**][**floodlight**][**northbound**][**storm-topologies**]
+-  [#3747](https://github.com/telstra/open-kilda/pull/3747) Rework design for flow loop feature [**docs**]
+-  [#3828](https://github.com/telstra/open-kilda/pull/3828) [Server42] Show warning if dpdk interface is down
+
+### Bug Fixes:
+-  [#3854](https://github.com/telstra/open-kilda/pull/3854) Fix BFD logical port FSM action name [**storm-topologies**]
+
+### Improvements:
+-  [#3840](https://github.com/telstra/open-kilda/pull/3840) Add test for round-trip isl discovery in special cases [**tests**]
+-  [#3781](https://github.com/telstra/open-kilda/pull/3781) Add test that reveals #3780 [**tests**]
+-  [#3848](https://github.com/telstra/open-kilda/pull/3848) ignore test according to #3847 [**tests**]
+-  [#3722](https://github.com/telstra/open-kilda/pull/3722) Add functional tests for bfd v2 api [**tests**]
+-  [#3790](https://github.com/telstra/open-kilda/pull/3790) Add logging for fallbacks in fetching switches in data model [**storm-topologies**]
+-  [#3816](https://github.com/telstra/open-kilda/pull/3816) fix flowRulesSpec according to server42FlowRtt feature [**tests**]
+-  [#3822](https://github.com/telstra/open-kilda/pull/3822) Add func tests for protected flow + max_latency (Issue: [#3821](https://github.com/telstra/open-kilda/issues/3821)) [**tests**]
+-  [#3824](https://github.com/telstra/open-kilda/pull/3824) improve envExtension (configure switch mode if cleanup = true) [**tests**]
+-  [#3827](https://github.com/telstra/open-kilda/pull/3827) Refactor reroute tests to reveal #3826 [**tests**]
+-  [#3830](https://github.com/telstra/open-kilda/pull/3830) Fight port down and discovery events race condition [**storm-topologies**]
+-  [#3831](https://github.com/telstra/open-kilda/pull/3831) Removed legacy variable OK_TESTS="DISABLE_LOGIN"
+-  [#3832](https://github.com/telstra/open-kilda/pull/3832) Removed legacy Entry_point from wfm make file
+-  [#3838](https://github.com/telstra/open-kilda/pull/3838) ignore unstable test in swapEndpointSpec [**tests**]
+-  [#3839](https://github.com/telstra/open-kilda/pull/3839) Wrap git commands for floodlight and loxigen in gradle
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.76.0...v1.77.0).
+
+### Affected Components:
+stats, stats-router, ping, network, nb, reroute, nbworker, otsdb, router, connected, flow-hs, isllatency, portstate, fl, swmanager
+
+
+---
+
 ## v1.76.0 (29/10/2020)
 
 ### Features:
@@ -61,7 +148,7 @@ gui, server42
 -  [#3785](https://github.com/telstra/open-kilda/pull/3785) update doc related to func test [**tests**]
 -  [#3786](https://github.com/telstra/open-kilda/pull/3786) Added parallelism for Isl Latency Topology [**storm-topologies**]
 -  [#3725](https://github.com/telstra/open-kilda/pull/3725) configure multiTable mode on hardware env via test framework [**tests**]
--  [#3791](https://github.com/telstra/open-kilda/pull/3791) Added storm parallelism option for Flow HS topology 
+-  [#3791](https://github.com/telstra/open-kilda/pull/3791) Added storm parallelism option for Flow HS topology
 -  [#3743](https://github.com/telstra/open-kilda/pull/3743) Reset BFD session status on start (Issue: [#3744](https://github.com/telstra/open-kilda/issues/3744)) [**storm-topologies**]
 
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.74.0...v1.74.1).
@@ -112,17 +199,17 @@ isllatency, reroute, portstate, network, stats, flow-hs, swmanager, ping, connec
 ### Bug Fixes:
 -  [#3761](https://github.com/telstra/open-kilda/pull/3761) Wrap delete BfdSession operations (BfdPortFsm) into a transaction. [**storm-topologies**]
 -  [#3762](https://github.com/telstra/open-kilda/pull/3762) Fix creation of BfdSession without a discriminator. [**storm-topologies**]
--  [#3767](https://github.com/telstra/open-kilda/pull/3767) Fix FeatureToggles label in OrientDB init script. 
+-  [#3767](https://github.com/telstra/open-kilda/pull/3767) Fix FeatureToggles label in OrientDB init script.
 
 ### Improvements:
--  [#3433](https://github.com/telstra/open-kilda/pull/3433) Re-implement the data model for Tinkerpop-based persistence layer (Issues: [#940](https://github.com/telstra/open-kilda/issues/940)) 
--  [#3434](https://github.com/telstra/open-kilda/pull/3434) Implement Tinkerpop-based persistence layer (Issues: [#940](https://github.com/telstra/open-kilda/issues/940)) 
--  [#3508](https://github.com/telstra/open-kilda/pull/3508) Implement persistence layer for OrientDB (Issues: [#940](https://github.com/telstra/open-kilda/issues/940)) 
+-  [#3433](https://github.com/telstra/open-kilda/pull/3433) Re-implement the data model for Tinkerpop-based persistence layer (Issues: [#940](https://github.com/telstra/open-kilda/issues/940))
+-  [#3434](https://github.com/telstra/open-kilda/pull/3434) Implement Tinkerpop-based persistence layer (Issues: [#940](https://github.com/telstra/open-kilda/issues/940))
+-  [#3508](https://github.com/telstra/open-kilda/pull/3508) Implement persistence layer for OrientDB (Issues: [#940](https://github.com/telstra/open-kilda/issues/940))
 
 ### Other changes:
--  [#3745](https://github.com/telstra/open-kilda/pull/3745) Add migration scripts for Neo4j to OrientDB (Issue: [#940](https://github.com/telstra/open-kilda/issues/940)) 
+-  [#3745](https://github.com/telstra/open-kilda/pull/3745) Add migration scripts for Neo4j to OrientDB (Issue: [#940](https://github.com/telstra/open-kilda/issues/940))
 -  [#3765](https://github.com/telstra/open-kilda/pull/3765) Add single orient db local env setup option [**configuration**]
--  [#3766](https://github.com/telstra/open-kilda/pull/3766) Use custom OrientDB user (Kilda) for all-in-one configuration. 
+-  [#3766](https://github.com/telstra/open-kilda/pull/3766) Use custom OrientDB user (Kilda) for all-in-one configuration.
 
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.72.2...v1.73.0).
 
@@ -131,8 +218,8 @@ grpc, nbworker, router, stats-router, swmanager, fl, otsdb, stats, ping, reroute
 
 ### Upgrade notes:
 
-This version of OpenKilda supports only [OrientDB](https://www.orientdb.org/) as the storage. Neo4j is no longer supported. 
-It's required to deploy an OrientDB cluster and move the Kilda data to it. 
+This version of OpenKilda supports only [OrientDB](https://www.orientdb.org/) as the storage. Neo4j is no longer supported.
+It's required to deploy an OrientDB cluster and move the Kilda data to it.
 The migration procedure is defined in [neo4j-to-orientdb-migration-steps](https://github.com/telstra/open-kilda/blob/v1.73.0/docs/design/solutions/data-storage-v2/migration-to-orientdb/neo4j-to-orientdb-migration-steps.md) / [#3745](https://github.com/telstra/open-kilda/pull/3745)  
 
 ---
@@ -140,13 +227,13 @@ The migration procedure is defined in [neo4j-to-orientdb-migration-steps](https:
 ## v1.72.2 (01/10/2020)
 
 ### Features:
--  [#3724](https://github.com/telstra/open-kilda/pull/3724) [Server42] Stats app reconnecting 
--  [#3694](https://github.com/telstra/open-kilda/pull/3694) Add logical port type field for logical port create request (Issues: [#2461](https://github.com/telstra/open-kilda/issues/2461) [#2468](https://github.com/telstra/open-kilda/issues/2468)) 
+-  [#3724](https://github.com/telstra/open-kilda/pull/3724) [Server42] Stats app reconnecting
+-  [#3694](https://github.com/telstra/open-kilda/pull/3694) Add logical port type field for logical port create request (Issues: [#2461](https://github.com/telstra/open-kilda/issues/2461) [#2468](https://github.com/telstra/open-kilda/issues/2468))
 
 ### Bug Fixes:
--  [#3751](https://github.com/telstra/open-kilda/pull/3751) Allow processing grpc requests without kafka-key 
--  [#3752](https://github.com/telstra/open-kilda/pull/3752) Fix GRPC stats response kafka topic 
--  [#3721](https://github.com/telstra/open-kilda/pull/3721) [Server42] Add the ability to monitor flow connected to the same server42 instance (Issue: [#3695](https://github.com/telstra/open-kilda/issues/3695)) 
+-  [#3751](https://github.com/telstra/open-kilda/pull/3751) Allow processing grpc requests without kafka-key
+-  [#3752](https://github.com/telstra/open-kilda/pull/3752) Fix GRPC stats response kafka topic
+-  [#3721](https://github.com/telstra/open-kilda/pull/3721) [Server42] Add the ability to monitor flow connected to the same server42 instance (Issue: [#3695](https://github.com/telstra/open-kilda/issues/3695))
 
 ### Improvements:
 -  [#3750](https://github.com/telstra/open-kilda/pull/3750) update log template for func_test [**tests**]
@@ -181,10 +268,10 @@ gui
 
 
 ### Improvements:
--  [#3709](https://github.com/telstra/open-kilda/pull/3709) Cleanup outdated kafka-topic references 
+-  [#3709](https://github.com/telstra/open-kilda/pull/3709) Cleanup outdated kafka-topic references
 -  [#3726](https://github.com/telstra/open-kilda/pull/3726) add template functional-tests.log4j2.toml [**tests**]
--  [#3698](https://github.com/telstra/open-kilda/pull/3698) Fix gui build 
--  [#3699](https://github.com/telstra/open-kilda/pull/3699) Debug logging toggle for storm topologies 
+-  [#3698](https://github.com/telstra/open-kilda/pull/3698) Fix gui build
+-  [#3699](https://github.com/telstra/open-kilda/pull/3699) Debug logging toggle for storm topologies
 -  [#3741](https://github.com/telstra/open-kilda/pull/3741) Hex view for switch field representing cookies [**api**][**northbound**]
 
 ### Other changes:
@@ -301,9 +388,9 @@ flow-hs, gui, reroute
 -  [#3650](https://github.com/telstra/open-kilda/pull/3650) Save cookie -> flowId data for each switch (Issue: [#3628](https://github.com/telstra/open-kilda/issues/3628)) [**storm-topologies**]
 -  [#3682](https://github.com/telstra/open-kilda/pull/3682) Fix deleting MOVED ISLs (Issue: [#3677](https://github.com/telstra/open-kilda/issues/3677)) [**storm-topologies**]
 -  [#3685](https://github.com/telstra/open-kilda/pull/3685) Use chunked messages for flow history response (Issue: [#3681](https://github.com/telstra/open-kilda/issues/3681)) [**northbound**][**storm-topologies**]
--  [#3651](https://github.com/telstra/open-kilda/pull/3651) Make flow Degraded after reroute if protected flow is Down (Issue: [#3648](https://github.com/telstra/open-kilda/issues/3648)) 
--  [#3675](https://github.com/telstra/open-kilda/pull/3675) Add check for the allocated paths to ensure that all ISLs are active on those paths (Issue: [#3665](https://github.com/telstra/open-kilda/issues/3665)) 
--  [#3678](https://github.com/telstra/open-kilda/pull/3678) Use correct values in flow dump before flow update (Issue: [#3577](https://github.com/telstra/open-kilda/issues/3577)) 
+-  [#3651](https://github.com/telstra/open-kilda/pull/3651) Make flow Degraded after reroute if protected flow is Down (Issue: [#3648](https://github.com/telstra/open-kilda/issues/3648))
+-  [#3675](https://github.com/telstra/open-kilda/pull/3675) Add check for the allocated paths to ensure that all ISLs are active on those paths (Issue: [#3665](https://github.com/telstra/open-kilda/issues/3665))
+-  [#3678](https://github.com/telstra/open-kilda/pull/3678) Use correct values in flow dump before flow update (Issue: [#3577](https://github.com/telstra/open-kilda/issues/3577))
 
 ### Improvements:
 -  [#3683](https://github.com/telstra/open-kilda/pull/3683) Multi-floodlight part2 (feature-merge) (Issues: [#3580](https://github.com/telstra/open-kilda/issues/3580) [#3623](https://github.com/telstra/open-kilda/issues/3623)) [**floodlight**][**storm-topologies**]
@@ -325,7 +412,7 @@ ping, router, nb, nbworker, stats, flow-hs, fl, network
 ## v1.68.1 (10/08/2020)
 
 ### Features:
--  [#2746](https://github.com/telstra/open-kilda/pull/2746) Design for kilda apps 
+-  [#2746](https://github.com/telstra/open-kilda/pull/2746) Design for kilda apps
 
 ### Bug Fixes:
 -  [#3660](https://github.com/telstra/open-kilda/pull/3660) Fix link deleting in the Network topology (Issue: [#3656](https://github.com/telstra/open-kilda/issues/3656)) [**storm-topologies**]
@@ -333,7 +420,7 @@ ping, router, nb, nbworker, stats, flow-hs, fl, network
 
 ### Improvements:
 -  [#3672](https://github.com/telstra/open-kilda/pull/3672) Add catch of an exception when the ISL controller is not found [**storm-topologies**]
--  [#3676](https://github.com/telstra/open-kilda/pull/3676) Build outside of git repo 
+-  [#3676](https://github.com/telstra/open-kilda/pull/3676) Build outside of git repo
 
 
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.68.0...v1.68.1).
@@ -349,12 +436,12 @@ network, nbworker
 -  [#3604](https://github.com/telstra/open-kilda/pull/3604) Implementation of smart discovery feature. (Issue: [#3548](https://github.com/telstra/open-kilda/issues/3548)) [**storm-topologies**]
 
 ### Bug Fixes:
--  [#3654](https://github.com/telstra/open-kilda/pull/3654) Improve flow history dumps (Issue: [#3031](https://github.com/telstra/open-kilda/issues/3031)) 
+-  [#3654](https://github.com/telstra/open-kilda/pull/3654) Improve flow history dumps (Issue: [#3031](https://github.com/telstra/open-kilda/issues/3031))
 
 ### Improvements:
 -  [#3653](https://github.com/telstra/open-kilda/pull/3653) Add missing fields to flow patch operation. [**northbound**][**storm-topologies**]
 -  [#3657](https://github.com/telstra/open-kilda/pull/3657) improve cleanup in swapEndpointSpec [**tests**]
--  [#3666](https://github.com/telstra/open-kilda/pull/3666) Floodlight repo fetch tag insead branch 
+-  [#3666](https://github.com/telstra/open-kilda/pull/3666) Floodlight repo fetch tag insead branch
 -  [#3640](https://github.com/telstra/open-kilda/pull/3640) refactor rest according to #3639 [**tests**]
 
 ### Other changes:
@@ -414,7 +501,7 @@ gui
 -  [#3592](https://github.com/telstra/open-kilda/pull/3592) Add more tests for rerouting pinned flows [**tests**]
 -  [#3554](https://github.com/telstra/open-kilda/pull/3554) Add replug tests for round-trip case and no portDown case [**tests**]
 -  [#3619](https://github.com/telstra/open-kilda/pull/3619) Add more verifications to MultiRerouteSpec [**tests**]
--  [#3624](https://github.com/telstra/open-kilda/pull/3624) Remove FlowReroteFact 
+-  [#3624](https://github.com/telstra/open-kilda/pull/3624) Remove FlowReroteFact
 -  [#3629](https://github.com/telstra/open-kilda/pull/3629) Add test that shows no-retry behavior after global timeout on operation [**tests**]
 -  [#3630](https://github.com/telstra/open-kilda/pull/3630) Minor test adjustments [**tests**]
 -  [#3631](https://github.com/telstra/open-kilda/pull/3631) Minor fixes in perf tests [**tests**]
@@ -436,7 +523,7 @@ nb, gui, swmanager, nbworker
 
 ### Improvements:
 -  [#3597](https://github.com/telstra/open-kilda/pull/3597) Add test for partial update of 'pinned' field [**tests**]
--  [#3599](https://github.com/telstra/open-kilda/pull/3599) Change format of History records in DB from ISO to epoch 
+-  [#3599](https://github.com/telstra/open-kilda/pull/3599) Change format of History records in DB from ISO to epoch
 -  [#3600](https://github.com/telstra/open-kilda/pull/3600) fix FlowDiversitySpec according to #3591 [**tests**]
 -  [#3606](https://github.com/telstra/open-kilda/pull/3606) ignore test related to server42+opentsdb [**tests**]
 -  [#3518](https://github.com/telstra/open-kilda/pull/3518) Suppress stale discovery requests on FL side [**floodlight**]
@@ -498,14 +585,14 @@ gui
 -  [#3589](https://github.com/telstra/open-kilda/pull/3589) Added `location` field to Switch DTO (Issue: [#3571](https://github.com/telstra/open-kilda/issues/3571)) [**northbound**]
 -  [#3595](https://github.com/telstra/open-kilda/pull/3595) Added PATCH Switch operation for `location` and `pop` fields. (Issue: [#3572](https://github.com/telstra/open-kilda/issues/3572)) [**northbound**][**storm-topologies**]
 -  [#3542](https://github.com/telstra/open-kilda/pull/3542) Feature to display isl and switch maintenance mode on list pages (Issues: [#3532](https://github.com/telstra/open-kilda/issues/3532) [#3533](https://github.com/telstra/open-kilda/issues/3533)) [**gui**]
--  [#3579](https://github.com/telstra/open-kilda/pull/3579) Add `status_info` field to Flow (Issue: [#3570](https://github.com/telstra/open-kilda/issues/3570)) 
+-  [#3579](https://github.com/telstra/open-kilda/pull/3579) Add `status_info` field to Flow (Issue: [#3570](https://github.com/telstra/open-kilda/issues/3570))
 
 ### Bug Fixes:
--  [#3593](https://github.com/telstra/open-kilda/pull/3593) Fix merge pr issues 
+-  [#3593](https://github.com/telstra/open-kilda/pull/3593) Fix merge pr issues
 -  [#3541](https://github.com/telstra/open-kilda/pull/3541) Skip reroute requests for flows without affected path segment (Issue: [#3390](https://github.com/telstra/open-kilda/issues/3390)) [**storm-topologies**]
 -  [#3562](https://github.com/telstra/open-kilda/pull/3562) Fix for authentication Xss and permission access issue  (Issue: [#3553](https://github.com/telstra/open-kilda/issues/3553)) [**gui**]
 -  [#3574](https://github.com/telstra/open-kilda/pull/3574) One switch flows update status on switch events (Issue: [#1464](https://github.com/telstra/open-kilda/issues/1464)) [**storm-topologies**]
--  [#3578](https://github.com/telstra/open-kilda/pull/3578) Handle case when trying to update available bandwidth of non existent ISL (Issue: [#3255](https://github.com/telstra/open-kilda/issues/3255)) 
+-  [#3578](https://github.com/telstra/open-kilda/pull/3578) Handle case when trying to update available bandwidth of non existent ISL (Issue: [#3255](https://github.com/telstra/open-kilda/issues/3255))
 
 ### Improvements:
 -  [#3590](https://github.com/telstra/open-kilda/pull/3590) Add `pinned` flag to FlowPatchDto [**northbound**][**storm-topologies**]
@@ -516,7 +603,7 @@ gui
 -  [#3561](https://github.com/telstra/open-kilda/pull/3561) Add more tests to smoke_switches suite [**tests**]
 -  [#3568](https://github.com/telstra/open-kilda/pull/3568) Add test that tries to create a single-sw flow with periodic pings [**tests**]
 -  [#3581](https://github.com/telstra/open-kilda/pull/3581) Add group-id to history flow dump objects [**northbound**]
--  [#3582](https://github.com/telstra/open-kilda/pull/3582) Don't drop group id when updating flow without diverse_flowid param 
+-  [#3582](https://github.com/telstra/open-kilda/pull/3582) Don't drop group id when updating flow without diverse_flowid param
 
 ### Other changes:
 -  [#3588](https://github.com/telstra/open-kilda/pull/3588) Improve Delete ISL logs [**northbound**][**storm-topologies**]
@@ -599,7 +686,7 @@ grpc, stats, network, router, flow, flow-hs, swmanager, fl, gui
 ### Improvements:
 -  [#3494](https://github.com/telstra/open-kilda/pull/3494) Add tests for partial update v2 api [**tests**]
 -  [#3499](https://github.com/telstra/open-kilda/pull/3499) Add proper history wait in tests after path swap [**tests**]
--  [#3505](https://github.com/telstra/open-kilda/pull/3505) Run checkstyle task in Travis builds 
+-  [#3505](https://github.com/telstra/open-kilda/pull/3505) Run checkstyle task in Travis builds
 -  [#3506](https://github.com/telstra/open-kilda/pull/3506) add test to cover #3498 (Issue: [#3498](https://github.com/telstra/open-kilda/issues/3498)) [**tests**]
 -  [#3510](https://github.com/telstra/open-kilda/pull/3510) fix tests according to 1.59.0 v [**tests**]
 -  [#3484](https://github.com/telstra/open-kilda/pull/3484) Various test stability fixes [**tests**]
@@ -619,20 +706,20 @@ flow-hs, swmanager, fl
 -  [#3402](https://github.com/telstra/open-kilda/pull/3402) Server 42 RTT Ingress rule [**floodlight**]
 -  [#3487](https://github.com/telstra/open-kilda/pull/3487) Server 42 RTT: Added single table mode (Issue: [#3462](https://github.com/telstra/open-kilda/issues/3462)) [**storm-topologies**]
 -  [#3454](https://github.com/telstra/open-kilda/pull/3454) Server 42 RTT: push/pop vlan (Issue: [#3402](https://github.com/telstra/open-kilda/issues/3402)) [**floodlight**][**storm-topologies**]
--  [#3227](https://github.com/telstra/open-kilda/pull/3227) Model update for kilda applications 
+-  [#3227](https://github.com/telstra/open-kilda/pull/3227) Model update for kilda applications
 -  [#3490](https://github.com/telstra/open-kilda/pull/3490) Add "cost and available bandwidth" path computation strategy [**northbound**][**storm-topologies**]
 
 ### Bug Fixes:
 -  [#3448](https://github.com/telstra/open-kilda/pull/3448) Increase accuracy extra OF commands produces for ingress flow segment (Issue: [#3446](https://github.com/telstra/open-kilda/issues/3446)) [**floodlight**]
--  [#3401](https://github.com/telstra/open-kilda/pull/3401) Allowed flow deletion when there are no flow encapsulation resources (Issue: [#3256](https://github.com/telstra/open-kilda/issues/3256)) 
+-  [#3401](https://github.com/telstra/open-kilda/pull/3401) Allowed flow deletion when there are no flow encapsulation resources (Issue: [#3256](https://github.com/telstra/open-kilda/issues/3256))
 -  [#3486](https://github.com/telstra/open-kilda/pull/3486) Disable port discovery race condition removal (Issue: [#3474](https://github.com/telstra/open-kilda/issues/3474)) [**storm-topologies**]
--  [#3237](https://github.com/telstra/open-kilda/pull/3237) Fixed allocation of a protected path when updating a flow via APIv2. (Issue: [#3033](https://github.com/telstra/open-kilda/issues/3033)) 
--  [#3501](https://github.com/telstra/open-kilda/pull/3501) Fixed unmapped props and buildIngressOnly method 
--  [#3502](https://github.com/telstra/open-kilda/pull/3502) Add sub second timestamp support to FlowRttMetricGenBolt 
+-  [#3237](https://github.com/telstra/open-kilda/pull/3237) Fixed allocation of a protected path when updating a flow via APIv2. (Issue: [#3033](https://github.com/telstra/open-kilda/issues/3033))
+-  [#3501](https://github.com/telstra/open-kilda/pull/3501) Fixed unmapped props and buildIngressOnly method
+-  [#3502](https://github.com/telstra/open-kilda/pull/3502) Add sub second timestamp support to FlowRttMetricGenBolt
 
 ### Improvements:
 -  [#3456](https://github.com/telstra/open-kilda/pull/3456) Changed alert level of mapstruct warning "unmappedTargetField" from WARN to ERROR (Issue: [#3276](https://github.com/telstra/open-kilda/issues/3276)) [**floodlight**][**northbound**]
--  [#3459](https://github.com/telstra/open-kilda/pull/3459) Fix NPE in H&S reroute and update thrown for a flow with no paths (Issues: [#2954](https://github.com/telstra/open-kilda/issues/2954) [#3028](https://github.com/telstra/open-kilda/issues/3028) [#3467](https://github.com/telstra/open-kilda/issues/3467)) 
+-  [#3459](https://github.com/telstra/open-kilda/pull/3459) Fix NPE in H&S reroute and update thrown for a flow with no paths (Issues: [#2954](https://github.com/telstra/open-kilda/issues/2954) [#3028](https://github.com/telstra/open-kilda/issues/3028) [#3467](https://github.com/telstra/open-kilda/issues/3467))
 -  [#3473](https://github.com/telstra/open-kilda/pull/3473) Add fields to 'PATCH /flows/{flow-id}/' (Issue: [#3444](https://github.com/telstra/open-kilda/issues/3444)) [**northbound**][**storm-topologies**]
 -  [#3495](https://github.com/telstra/open-kilda/pull/3495) Organize sw features detection tests [**tests**]
 -  [#3432](https://github.com/telstra/open-kilda/pull/3432) Dispatch v1 flow create to flow hs [**api**][**northbound**]
@@ -675,7 +762,7 @@ In case of issues these rollback scripts should be executed:
 
 ### Improvements:
 -  [#3457](https://github.com/telstra/open-kilda/pull/3457) improve "Newly discovered link gets cost and max bandwidth from link props" [**tests**]
--  [#3215](https://github.com/telstra/open-kilda/pull/3215) Allow flowhs speaker request retry for all error codes 
+-  [#3215](https://github.com/telstra/open-kilda/pull/3215) Allow flowhs speaker request retry for all error codes
 -  [#3441](https://github.com/telstra/open-kilda/pull/3441) add test for #3430  [**tests**]
 -  [#3409](https://github.com/telstra/open-kilda/pull/3409) Renamed server_42 options to server42 [**storm-topologies**]
 
@@ -683,7 +770,7 @@ In case of issues these rollback scripts should be executed:
 -  [#3361](https://github.com/telstra/open-kilda/pull/3361) Add inner vlan tag field into APIv2 requests/responses [**northbound**][**storm-topologies**]
 -  [#3476](https://github.com/telstra/open-kilda/pull/3476) Workaround issue #3474 in tests [**tests**]
 -  [#3452](https://github.com/telstra/open-kilda/pull/3452) Add test for errors during flow delete [**tests**]
--  [#3421](https://github.com/telstra/open-kilda/pull/3421) Fix build, add dependency for python wheels lib 
+-  [#3421](https://github.com/telstra/open-kilda/pull/3421) Fix build, add dependency for python wheels lib
 
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.57.0...v1.58.0).
 
@@ -708,7 +795,7 @@ nbworker, portstate, fl, nb, swmanager, flow, flow-hs, stats
 
 ### Other changes:
 -  [#3202](https://github.com/telstra/open-kilda/pull/3202) Update README with project reorganization changes. [**docs**]
--  [#3247](https://github.com/telstra/open-kilda/pull/3247) Fix and prevent dependency classes conflict in src-java 
+-  [#3247](https://github.com/telstra/open-kilda/pull/3247) Fix and prevent dependency classes conflict in src-java
 
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.56.1...v1.57.0).
 
@@ -724,7 +811,7 @@ fl, gui, network
 
 
 ### Improvements:
--  [#3428](https://github.com/telstra/open-kilda/pull/3428) group cookie classes in single package 
+-  [#3428](https://github.com/telstra/open-kilda/pull/3428) group cookie classes in single package
 -  [#3405](https://github.com/telstra/open-kilda/pull/3405) add tests for link-delete spec according to #3268 [**tests**]
 -  [#3437](https://github.com/telstra/open-kilda/pull/3437) add tidy annotation for negative tests [**tests**]
 -  [#3373](https://github.com/telstra/open-kilda/pull/3373) Protected Path Swap in Flow HS topology [**northbound**]

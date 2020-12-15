@@ -26,7 +26,6 @@ import lombok.Value;
 public class BfdDescriptor {
     private SwitchReference local;
     private SwitchReference remote;
-    private int discriminator;
 
     /**
      * Fill DB record with data stored in this descriptor.

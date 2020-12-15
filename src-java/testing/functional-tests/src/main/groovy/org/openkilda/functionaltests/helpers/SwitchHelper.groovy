@@ -47,6 +47,7 @@ import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.model.topology.TopologyDefinition.SwitchProperties
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.model.Floodlight
 import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode
@@ -171,11 +172,13 @@ class SwitchHelper {
         }
         if (swProps.server42FlowRtt) {
             server42Rules << SERVER_42_OUTPUT_VLAN_COOKIE
-            if (sw.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST)) {
-                server42Rules << SERVER_42_TURNING_COOKIE
-            }
             if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
                 server42Rules << SERVER_42_OUTPUT_VXLAN_COOKIE
+            }
+        }
+        if (northbound.getFeatureToggles().server42FlowRtt) {
+            if (sw.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST)) {
+                server42Rules << SERVER_42_TURNING_COOKIE
             }
         }
         if (sw.noviflow && !sw.wb5164) {
@@ -353,6 +356,39 @@ class SwitchHelper {
         }
     }
 
+    /**
+     * Verifies that specified hexRule sections in the validation response are empty.
+     * NOTE: will filter out default rules, except default flow rules(multiTable flow)
+     * Default flow rules for the system looks like as a simple default rule.
+     * Based on that you have to use extra filter to detect these rules in
+     * missingHex/excessHex/misconfiguredHex sections.
+     */
+    static void verifyHexRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
+                                           List<String> sections = ["properHex", "excessHex", "missingHex",
+                                                                    "misconfiguredHex"]) {
+        sections.each { String section ->
+            if (section == "properHex") {
+                def defaultCookies = switchValidateInfo.rules.proper.findAll {
+                    def cookie = new Cookie(it)
+                    cookie.serviceFlag || cookie.type == CookieType.SHARED_OF_FLOW
+                }
+
+                def defaultHexCookies = []
+                defaultCookies.each { defaultHexCookies.add(Long.toHexString(it)) }
+                assert switchValidateInfo.rules.properHex.findAll { !(it in defaultHexCookies) }.empty
+            } else {
+                def defaultCookies = switchValidateInfo.rules."$section".findAll {
+                    def cookie = new Cookie(it)
+                    cookie.serviceFlag || cookie.type != CookieType.MULTI_TABLE_INGRESS_RULES
+                }
+
+                def defaultHexCookies = []
+                defaultCookies.each { defaultHexCookies.add(Long.toHexString(it)) }
+                assert switchValidateInfo.rules."$section".findAll { !(it in defaultHexCookies) }.empty
+            }
+        }
+    }
+
     static boolean isDefaultMeter(MeterInfoDto dto) {
         return MeterId.isMeterIdOfDefaultRule(dto.getMeterId())
     }
@@ -366,6 +402,10 @@ class SwitchHelper {
         } else {
             assert Math.abs(expected - actual) <= 1
         }
+    }
+
+    static SwitchProperties getDummyServer42Props() {
+        return new SwitchProperties(true, 33, "00:00:00:00:00:00", 1)
     }
 
     /**

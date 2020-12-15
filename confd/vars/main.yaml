@@ -18,6 +18,7 @@ kilda_orientdb_database: "kilda"
 
 kilda_kafka_hosts: "kafka.pendev:9092"
 kilda_zookeeper_hosts: "zookeeper.pendev"
+kilda_zookeeper_state_root: "kilda"
 kilda_opentsdb_hosts: "opentsdb.pendev"
 kilda_opentsdb_port: "4242"
 kilda_storm_numbus_hosts: "nimbus.pendev"
@@ -68,7 +69,7 @@ kilda_discovery_generic_interval: 3
 kilda_discovery_exhausted_interval: 60
 kilda_discovery_auxiliary_interval: 30
 kilda_discovery_round_trip_status_interval: 1
-kilda_discovery_packet_ttl: 5
+kilda_discovery_packet_ttl: 8
 kilda_discovery_timeout: 15
 kilda_discovery_db_write_repeats_time_frame: 30
 
@@ -175,10 +176,14 @@ kilda_server42_control_switch_to_vlan_1003: "1003=00:00:00:00:00:00:00:03"
 
 kilda_server42_control_kafka_group_id: "server42-control"
 kilda_server42_control_zeromq_connection_host: "tcp://server42-server-stub.pendev:5555"
+kilda_server42_control_component_name: "server42-control"
+kilda_server42_control_run_id: "server42-control-run-id"
 
 kilda_server42_stats_http_port: 9003
 kilda_server42_stats_zeromq_connection_host: "tcp://server42-server-stub.pendev:5556"
 kilda_server42_stats_kafka_group_id: "server42-stats"
+kilda_server42_stats_component_name: "server42-stats"
+kilda_server42_stats_run_id: "server42-stats-run-id"
 
 kilda_server42_control_storm_stub_http_port: 9001
 kilda_server42_control_storm_stub_kafka_group_id: "server42-control-storm-stub"

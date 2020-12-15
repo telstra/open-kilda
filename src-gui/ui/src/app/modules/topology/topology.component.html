@@ -18,17 +18,14 @@
         <i id="zoom_out" (click)="zoomFn(-1)" title="Zoom Out">-</i>
         <i id="reset" class="fa fa-undo" (click)="zoomReset()" title="Reset"></i>
       </div>
-
     </div>
   </div>
-
 </div>
 <div id="topology-click-txt">
   <button id="close_switch_detail" style="margin-right:5px;" type="button" class="close right" aria-label="Close">
     <span aria-hidden="true">×</span>
   </button>
   <div class="form-wrapper" id="switch_click" style="display:none">
-
     <div class="row">
       <label class="col-sm-3 col-form-label" style="font-weight: bold;">Name:</label>
       <p class="col-sm-9 switchdetails_div_click_switch_name"></p>
@@ -44,8 +41,7 @@
     <div class="row">
       <label class="col-sm-3 col-form-label" style="font-weight: bold;">Address:</label>
       <p class="col-sm-9 switchdetails_div_click_address"></p>
-    </div>
-    
+    </div>    
     <div class="row">
       <label class="col-sm-3 col-form-label" style="font-weight: bold;">Description:</label>
       <p class="col-sm-9 switchdetails_div_click_desc"></p>
@@ -56,7 +52,6 @@
 <div id="topology-hover-txt" style="display: none; top: 339.089px; left: 596.811px;" class="">
 		
   <div class="form-wrapper" id="switch_hover" style="display: none;">
-
     <div class="row">
       <label class="col-sm-3 col-form-label" style="font-weight: bold;">Name:</label>
       <p class="col-sm-9 switchdetails_div_switch_name"></p>
@@ -116,14 +111,13 @@
     <div class="row">
       <label class="col-sm-5 col-form-label" style="font-weight: bold;">Available Bandwidth:</label>
       <p class="col-sm-6 isldetails_div_bandwidth"></p>
-    </div>
-    
+    </div>    
   </div>
 </div>
 </div>
 
 <div id="worldmap" class="world-map-container" [hidden]="!showWorldMap">  
-  <app-world-map-view [data]="graphdata" *ngIf="showWorldMap"></app-world-map-view>
+  <app-world-map-view [data]="graphdata" [reloadMap]="reloadMap"  *ngIf="showWorldMap"></app-world-map-view>
 </div>
 
 

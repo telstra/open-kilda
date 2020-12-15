@@ -18,6 +18,7 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentBase;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
 import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchFeature;
 
@@ -37,6 +38,11 @@ public abstract class IngressRemoveFlowModFactory extends IngressFlowModFactory 
 
     @Override
     protected List<OFInstruction> makeForwardMessageInstructions(MeterId effectiveMeterId, List<Integer> vlanStack) {
+        return Collections.emptyList();
+    }
+
+    @Override
+    protected List<OFInstruction> makeIngressFlowLoopInstructions(FlowEndpoint endpoint) {
         return Collections.emptyList();
     }
 

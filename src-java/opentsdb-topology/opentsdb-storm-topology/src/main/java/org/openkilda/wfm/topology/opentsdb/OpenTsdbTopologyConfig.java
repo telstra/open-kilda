@@ -46,28 +46,10 @@ public interface OpenTsdbTopologyConfig extends AbstractTopologyConfig {
         @Key("client.chunked-requests.enabled")
         boolean getClientChunkedRequestsEnabled();
 
-        @Key("num.spouts")
-        int getNumSpouts();
-
-        @Key("num.opentsdbfilterbolt")
-        int getFilterBoltExecutors();
-
-        @Key("num.opentsdbbolt")
-        int getBoltExecutors();
-
-        @Key("workers.opentsdbolt")
-        int getBoltWorkers();
-
         @Key("batch.size")
         int getBatchSize();
 
         @Key("flush.interval")
         int getFlushInterval();
-
-        @Key("num.datapointparserbolt")
-        int getDatapointParseBoltExecutors();
-
-        @Key("workers.datapointparserbolt")
-        int getDatapointParseBoltWorkers();
     }
 }

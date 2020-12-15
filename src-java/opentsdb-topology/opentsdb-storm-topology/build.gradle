@@ -16,6 +16,8 @@ dependencies {
 
     implementation('org.apache.storm:storm-opentsdb:1.2.1') {
         exclude(group: 'org.apache.httpcomponents', module: 'httpclient')
+        // This conflicts with jcl-over-slf4j
+        exclude(group: 'commons-logging', module: 'commons-logging')
     }
 
     compileOnly('org.apache.storm:storm-core')
@@ -44,7 +46,10 @@ dependencies {
         exclude(group: 'javax.inject', module: 'javax.inject')
     }
     implementation 'org.glassfish.jersey.core:jersey-common:2.26'
-    implementation 'org.glassfish.jersey.connectors:jersey-apache-connector:2.26'
+    implementation ('org.glassfish.jersey.connectors:jersey-apache-connector:2.26') {
+        // This conflicts with jcl-over-slf4j
+        exclude(group: 'commons-logging', module: 'commons-logging')
+    }
 
     compileOnly 'org.projectlombok:lombok'
     testCompileOnly 'org.projectlombok:lombok'

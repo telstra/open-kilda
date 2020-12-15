@@ -32,10 +32,12 @@ public class FlowSegmentCookie extends Cookie {
     static final BitField FLOW_EFFECTIVE_ID_FIELD     = new BitField(0x0000_0000_000F_FFFFL);
     static final BitField FLOW_REVERSE_DIRECTION_FLAG = new BitField(0x2000_0000_0000_0000L);
     static final BitField FLOW_FORWARD_DIRECTION_FLAG = new BitField(0x4000_0000_0000_0000L);
+    static final BitField FLOW_LOOP_FLAG              = new BitField(0x0008_0000_0000_0000L);
 
     // used by unit tests to check fields intersections
     static final BitField[] ALL_FIELDS = ArrayUtils.addAll(
-            CookieBase.ALL_FIELDS, FLOW_FORWARD_DIRECTION_FLAG, FLOW_REVERSE_DIRECTION_FLAG, FLOW_EFFECTIVE_ID_FIELD);
+            CookieBase.ALL_FIELDS, FLOW_FORWARD_DIRECTION_FLAG, FLOW_REVERSE_DIRECTION_FLAG, FLOW_EFFECTIVE_ID_FIELD,
+            FLOW_LOOP_FLAG);
 
     private static final Set<CookieType> VALID_TYPES = ImmutableSet.of(
                     CookieType.SERVICE_OR_FLOW_SEGMENT,
@@ -47,7 +49,7 @@ public class FlowSegmentCookie extends Cookie {
     }
 
     public FlowSegmentCookie(FlowPathDirection direction, long flowEffectiveId) {
-        this(CookieType.SERVICE_OR_FLOW_SEGMENT, direction, flowEffectiveId);
+        this(CookieType.SERVICE_OR_FLOW_SEGMENT, direction, flowEffectiveId, false);
     }
 
     FlowSegmentCookie(CookieType type, long value) {
@@ -55,8 +57,8 @@ public class FlowSegmentCookie extends Cookie {
     }
 
     @Builder
-    private FlowSegmentCookie(CookieType type, FlowPathDirection direction, long flowEffectiveId) {
-        super(makeValue(type, direction, flowEffectiveId), type);
+    private FlowSegmentCookie(CookieType type, FlowPathDirection direction, long flowEffectiveId, boolean looped) {
+        super(makeValue(type, direction, flowEffectiveId, looped), type);
     }
 
     @Override
@@ -86,7 +88,8 @@ public class FlowSegmentCookie extends Cookie {
         return new FlowSegmentCookieBuilder()
                 .type(getType())
                 .direction(getDirection())
-                .flowEffectiveId(getFlowEffectiveId());
+                .flowEffectiveId(getFlowEffectiveId())
+                .looped(isLooped());
     }
 
     /**
@@ -119,12 +122,17 @@ public class FlowSegmentCookie extends Cookie {
         return getField(FLOW_EFFECTIVE_ID_FIELD);
     }
 
+    public boolean isLooped() {
+        return getField(FLOW_LOOP_FLAG) == 1;
+    }
+
     public static FlowSegmentCookieBuilder builder() {
         return new FlowSegmentCookieBuilder()
                 .type(CookieType.SERVICE_OR_FLOW_SEGMENT);
     }
 
-    private static long makeValue(CookieType type, FlowPathDirection direction, long flowEffectiveId) {
+    private static long makeValue(CookieType type, FlowPathDirection direction, long flowEffectiveId,
+                                  boolean looped) {
         if (!VALID_TYPES.contains(type)) {
             throw new IllegalArgumentException(formatIllegalTypeError(type, VALID_TYPES));
         }
@@ -133,7 +141,11 @@ public class FlowSegmentCookie extends Cookie {
         if (direction != null) {
             value = makeValueDirection(direction);
         }
-        return setField(value, FLOW_EFFECTIVE_ID_FIELD, flowEffectiveId);
+        long result = setField(value, FLOW_EFFECTIVE_ID_FIELD, flowEffectiveId);
+        if (looped) {
+            result = setField(result, FLOW_LOOP_FLAG, 1);
+        }
+        return result;
     }
 
     /**

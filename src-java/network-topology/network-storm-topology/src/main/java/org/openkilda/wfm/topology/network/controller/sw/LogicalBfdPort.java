@@ -47,7 +47,7 @@ public class LogicalBfdPort extends AbstractPort {
 
     @Override
     public void updateOnlineStatus(ISwitchCarrier carrier, OnlineStatus onlineStatus) {
-        carrier.sendBfdSwitchStatusUpdate(getEndpoint(), onlineStatus.isOnline());
+        // BFD tracks for whole switch online status not for endpoint online status
     }
 
     @Override

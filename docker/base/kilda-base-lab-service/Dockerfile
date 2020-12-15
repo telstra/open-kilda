@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
-ARG base_image=ubuntu:eoan
+ARG base_image=ubuntu:focal
 FROM ${base_image}
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -38,9 +38,9 @@ RUN apt update \
     && pip3 install wheel==0.34.2 \
     && pip3 install tox==3.14.4 \
     && cd /root \
-    && curl  https://www.openvswitch.org/releases/openvswitch-2.12.0.tar.gz -o openvswitch-2.12.0.tar.gz \
-    && tar -xvf openvswitch-2.12.0.tar.gz \
-    && cd  openvswitch-2.12.0 \
+    && curl  https://www.openvswitch.org/releases/openvswitch-2.14.0.tar.gz -o openvswitch-2.14.0.tar.gz \
+    && tar -xvf openvswitch-2.14.0.tar.gz \
+    && cd  openvswitch-2.14.0 \
     && cp ofproto/ofproto-dpif.h ofproto/ofproto-dpif.h.original \
     && sed  -i  's/enum { N_TABLES = 255 };/enum { N_TABLES = 11 };/' ofproto/ofproto-dpif.h \
     && ./configure --prefix=/usr --localstatedir=/var --sysconfdir=/etc \

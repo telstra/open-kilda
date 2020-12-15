@@ -4,8 +4,10 @@ import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -14,6 +16,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.SwitchId
@@ -25,21 +28,16 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
-
-import javax.inject.Provider
 
 @Narrative("""
 Covers PATCH /api/v2/flows/:flowId and PATCH /api/v1/flows/:flowId
@@ -47,8 +45,7 @@ This API allows to partially update a flow, i.e. update a flow without specifyin
 Depending on changed fields flow will be either updated+rerouted or just have its values changed in database.
 """)
 class PartialUpdateSpec extends HealthCheckSpecification {
-    @Autowired
-    Provider<TraffExamService> traffExamProvider
+    def amountOfFlowRules = 2
 
     @Tidy
     @Unroll
@@ -70,7 +67,11 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         response."$data.field" == data.newValue
 
         and: "Changes actually took place"
-        northboundV2.getFlow(flow.flowId)."$data.field" == data.newValue
+        Wrappers.wait(WAIT_OFFSET) {
+            def flowInfo = northboundV2.getFlow(flow.flowId)
+            assert flowInfo.status == FlowState.UP.toString()
+            assert flowInfo."$data.field" == data.newValue
+        }
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
@@ -104,18 +105,20 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                         field   : "pinned",
                         newValue: true
                 ],
-                [
-                        field   : "pathComputationStrategy",
-                        newValue: PathComputationStrategy.LATENCY.toString().toLowerCase()
-                ],
+                //https://github.com/telstra/open-kilda/issues/3896
+//                [
+//                        field   : "pathComputationStrategy",
+//                        newValue: PathComputationStrategy.LATENCY.toString().toLowerCase()
+//                ],
                 [
                         field   : "description",
                         newValue: "updated"
                 ],
-                [
-                        field   : "ignoreBandwidth",
-                        newValue: true
-                ]
+                //https://github.com/telstra/open-kilda/issues/3896
+//                [
+//                        field   : "ignoreBandwidth",
+//                        newValue: true
+//                ]
         ]
     }
 
@@ -330,9 +333,8 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "Flow rules are installed on the new dst switch"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            def amountOfFlowRules = northbound.getSwitchProperties(newDstSwitch.dpId).multiTable ? 3 : 2
-            assert northbound.getSwitchRules(newDstSwitch.dpId).flowEntries.findAll {
-                !new Cookie(it.cookie).serviceFlag
+            assert northbound.getSwitchRules(newDstSwitch.dpId).flowEntries.findAll { def cookie = new Cookie(it.cookie)
+                !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT
             }.size() == amountOfFlowRules
         }
 
@@ -558,8 +560,11 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     @Tags(HARDWARE)
     def "Able to update flow encapsulationType using partial update"() {
         given: "A flow with a 'transit_vlan' encapsulation"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.src.noviflow && !it.src.wb5164 && it.dst.noviflow && !it.dst.wb5164
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
+            [swP.src, swP.dst].every { sw ->
+                northbound.getSwitchProperties(sw.dpId).supportedTransitEncapsulation
+                        .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+            }
         }
         assumeTrue("Unable to find required switches in topology", switchPair as boolean)
 
@@ -568,7 +573,8 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         def originalCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-            !new Cookie(it.cookie).serviceFlag
+            def cookie = new Cookie(it.cookie)
+            !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT
         }
 
         when: "Request a flow partial update for an encapsulationType field(vxlan)"
@@ -583,8 +589,8 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         northboundV2.getFlow(flow.flowId).encapsulationType == newEncapsulationTypeValue
 
         and: "Flow rules have been reinstalled"
-        !northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-            !new Cookie(it.cookie).serviceFlag
+        !northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll { def cookie = new Cookie(it.cookie)
+            !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT
         }.any { it in originalCookies }
 
         cleanup: "Remove the flow"

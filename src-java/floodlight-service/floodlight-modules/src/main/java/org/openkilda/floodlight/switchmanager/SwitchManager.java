@@ -216,6 +216,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int CATCH_BFD_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
     public static final int ROUND_TRIP_LATENCY_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
     public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
+    public static final int FLOW_LOOP_PRIORITY = FLOW_PRIORITY + 100;
     public static final int ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
     public static final int ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 3;
     public static final int INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
@@ -1772,18 +1773,25 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @Override
     public List<OFFlowMod> buildExpectedServer42Flows(
-            DatapathId dpid, int server42Port, int server42Vlan, org.openkilda.model.MacAddress server42MacAddress,
+            DatapathId dpid, boolean server42FlowRttFeatureToggle, boolean server42FlowRttSwitchProperty,
+            Integer server42Port, Integer server42Vlan, org.openkilda.model.MacAddress server42MacAddress,
             Set<Integer> customerPorts) throws SwitchNotFoundException {
 
         List<SwitchFlowGenerator> generators = new ArrayList<>();
-        for (Integer port : customerPorts) {
-            generators.add(switchFlowFactory.getServer42InputFlowGenerator(server42Port, port, server42MacAddress));
+        if (server42FlowRttFeatureToggle) {
+            generators.add(switchFlowFactory.getServer42TurningFlowGenerator());
+
+            if (server42FlowRttSwitchProperty) {
+                for (Integer port : customerPorts) {
+                    generators.add(switchFlowFactory.getServer42InputFlowGenerator(
+                            server42Port, port, server42MacAddress));
+                }
+                generators.add(switchFlowFactory.getServer42OutputVlanFlowGenerator(
+                        server42Port, server42Vlan, server42MacAddress));
+                generators.add(switchFlowFactory.getServer42OutputVxlanFlowGenerator(
+                        server42Port, server42Vlan, server42MacAddress));
+            }
         }
-        generators.add(switchFlowFactory.getServer42TurningFlowGenerator());
-        generators.add(switchFlowFactory.getServer42OutputVlanFlowGenerator(
-                server42Port, server42Vlan, server42MacAddress));
-        generators.add(switchFlowFactory.getServer42OutputVxlanFlowGenerator(
-                server42Port, server42Vlan, server42MacAddress));
 
         IOFSwitch sw = lookupSwitch(dpid);
         return generators.stream()

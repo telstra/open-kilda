@@ -93,7 +93,7 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
                 FlowStatus status, String statusInfo, Long maxLatency, Long maxLatencyTier2, Integer priority,
                 boolean pinned, DetectConnectedDevices detectConnectedDevices, boolean srcWithMultiTable,
                 boolean destWithMultiTable, PathComputationStrategy pathComputationStrategy,
-                PathComputationStrategy targetPathComputationStrategy) {
+                PathComputationStrategy targetPathComputationStrategy, SwitchId loopSwitchId) {
         FlowDataImpl.FlowDataImplBuilder builder = FlowDataImpl.builder()
                 .flowId(flowId).srcSwitch(srcSwitch).destSwitch(destSwitch)
                 .srcPort(srcPort).srcVlan(srcVlan).srcInnerVlan(srcInnerVlan)
@@ -104,7 +104,8 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
                 .status(status).statusInfo(statusInfo).maxLatency(maxLatency).maxLatencyTier2(maxLatencyTier2)
                 .priority(priority).pinned(pinned).srcWithMultiTable(srcWithMultiTable)
                 .destWithMultiTable(destWithMultiTable).pathComputationStrategy(pathComputationStrategy)
-                .targetPathComputationStrategy(targetPathComputationStrategy);
+                .targetPathComputationStrategy(targetPathComputationStrategy)
+                .loopSwitchId(loopSwitchId);
         if (detectConnectedDevices != null) {
             builder.detectConnectedDevices(detectConnectedDevices);
         }
@@ -372,6 +373,14 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
                 || pathId.equals(getProtectedForwardPathId()) || pathId.equals(getProtectedReversePathId()));
     }
 
+    /**
+     * Checks if flow looped.
+     * @return true if flow is looped.
+     */
+    public boolean isLooped() {
+        return getLoopSwitchId() != null;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -579,6 +588,10 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
         PathComputationStrategy getTargetPathComputationStrategy();
 
         void setTargetPathComputationStrategy(PathComputationStrategy pathComputationStrategy);
+
+        SwitchId getLoopSwitchId();
+
+        void setLoopSwitchId(SwitchId loopSwitchId);
     }
 
     /**
@@ -624,6 +637,7 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
         boolean destWithMultiTable;
         PathComputationStrategy pathComputationStrategy;
         PathComputationStrategy targetPathComputationStrategy;
+        SwitchId loopSwitchId;
         @ToString.Exclude
         @EqualsAndHashCode.Exclude
         final Set<FlowPath> paths = new HashSet<>();

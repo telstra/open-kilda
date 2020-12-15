@@ -102,6 +102,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                 .createKildaConfigurationRepository();
 
         this.options = options;
+
+        logWrapper.onSwitchAdd(switchId);
     }
 
     // -- FSM actions --
@@ -144,10 +146,11 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         logWrapper.onSwitchOnline(switchId);
 
         transactionManager.doInTransaction(transactionRetryPolicy, () -> updatePersistentStatus(SwitchStatus.ACTIVE));
-        context.getOutput().sendSwitchStateChanged(switchId, SwitchStatus.ACTIVE);
 
         updatePorts(context, speakerData, true);
         speakerData = null;
+
+        context.getOutput().sendSwitchStateChanged(switchId, SwitchStatus.ACTIVE);
         context.getOutput().sendAffectedFlowRerouteRequest(switchId);
     }
 
@@ -229,6 +232,12 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         for (AbstractPort port : ports) {
             portDel(port, context);
         }
+    }
+
+    public void deletedEnterAction(
+            SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+        logWrapper.onSwitchDelete(switchId);
+        context.getOutput().switchRemovedNotification(switchId);
     }
 
     // -- private/service methods --
@@ -521,6 +530,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                     .callMethod("offlineEnter");
 
             // DELETED
+            builder.onEntry(SwitchFsmState.DELETED)
+                    .callMethod("deletedEnterAction");
             builder.defineFinalState(SwitchFsmState.DELETED);
         }
 

@@ -23,6 +23,7 @@ import com.syncleus.ferma.VertexFrame;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 
 import java.time.Instant;
+import java.util.Objects;
 
 /**
  * A base for Kilda data model entity that is mapped to a graph edge.
@@ -30,7 +31,8 @@ import java.time.Instant;
 public abstract class KildaBaseEdgeFrame extends AbstractEdgeFrame {
     @Override
     public void setProperty(String name, Object value) {
-        if (!name.equals(KildaBaseVertexFrame.TIME_MODIFY_PROPERTY)) {
+        if (!name.equals(KildaBaseVertexFrame.TIME_MODIFY_PROPERTY)
+                && !Objects.equals(value, getProperty(name))) {
             setProperty(KildaBaseVertexFrame.TIME_MODIFY_PROPERTY,
                     InstantStringConverter.INSTANCE.toGraphProperty(Instant.now()));
         }

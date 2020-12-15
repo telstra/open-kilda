@@ -23,12 +23,14 @@ import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
+import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
@@ -252,4 +254,30 @@ public interface FlowService {
      * @return the list devices connected to flow.
      */
     CompletableFuture<FlowConnectedDevicesResponse> getFlowConnectedDevices(String flowId, Instant since);
+
+    /**
+     * Get flow loops.
+     *
+     * @param flowId    filter by flow id
+     * @param switchId  filter by switch id
+     * @return the list of flow loops.
+     */
+    CompletableFuture<List<FlowLoopResponse>> getFlowLoops(String flowId, String switchId);
+
+    /**
+     * Create flow loop.
+     *
+     * @param flowId    flow id
+     * @param switchId  switch id
+     * @return created flow loop.
+     */
+    CompletableFuture<FlowLoopResponse> createFlowLoop(String flowId, SwitchId switchId);
+
+    /**
+     * Delete flow loop.
+     *
+     * @param flowId    flow id
+     * @return deleted flow loop.
+     */
+    CompletableFuture<FlowLoopResponse> deleteFlowLoop(String flowId);
 }

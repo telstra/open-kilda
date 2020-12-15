@@ -30,12 +30,15 @@ import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.FlowConnectedDeviceRequest;
 import org.openkilda.messaging.nbtopology.request.FlowReadRequest;
 import org.openkilda.messaging.nbtopology.request.FlowsDumpRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowLoopsRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForIslRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.RerouteFlowsForIslRequest;
 import org.openkilda.messaging.nbtopology.response.ConnectedDeviceDto;
 import org.openkilda.messaging.nbtopology.response.FlowConnectedDevicesResponse;
+import org.openkilda.messaging.nbtopology.response.FlowLoopDto;
+import org.openkilda.messaging.nbtopology.response.FlowLoopsResponse;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.nbtopology.response.TypedConnectedDevicesDto;
 import org.openkilda.model.Flow;
@@ -99,6 +102,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
             result = processFlowReadRequest((FlowReadRequest) request);
         } else if (request instanceof FlowsDumpRequest) {
             result = processFlowsDumpRequest((FlowsDumpRequest) request);
+        } else if (request instanceof GetFlowLoopsRequest) {
+            result = processGetFlowLoopsRequest((GetFlowLoopsRequest) request);
         } else {
             unhandledInput(tuple);
         }
@@ -251,6 +256,24 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         } catch (Exception e) {
             throw new MessageException(ErrorType.INTERNAL_ERROR, "Can not dump flows", "Internal Error");
         }
+    }
+
+    private List<InfoData> processGetFlowLoopsRequest(GetFlowLoopsRequest request) {
+        try {
+            SwitchId switchId = request.getSwitchId() == null ? null : new SwitchId(request.getSwitchId());
+            List<FlowLoopDto> flowLoops = flowOperationsService.getLoopedFlows(request.getFlowId(), switchId).stream()
+                    .map(this::map)
+                    .collect(Collectors.toList());
+            FlowLoopsResponse flowLoopsResponse = new FlowLoopsResponse();
+            flowLoopsResponse.setPayload(flowLoops);
+            return Collections.singletonList(flowLoopsResponse);
+        } catch (Exception e) {
+            throw new MessageException(ErrorType.INTERNAL_ERROR, "Can not dump flow loops", "Internal Error");
+        }
+    }
+
+    private FlowLoopDto map(Flow flow) {
+        return new FlowLoopDto(flow.getFlowId(), flow.getLoopSwitchId().toString());
     }
 
     @Override

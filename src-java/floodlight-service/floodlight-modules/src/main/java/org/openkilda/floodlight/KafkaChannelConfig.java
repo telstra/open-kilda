@@ -15,11 +15,19 @@
 
 package org.openkilda.floodlight;
 
+import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_NAME;
+import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_RUN_ID;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+
+import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
 import org.openkilda.config.KafkaConsumerGroupConfig;
 import org.openkilda.config.mapping.Mapping;
 
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
+import org.apache.kafka.clients.producer.ProducerConfig;
 
 import java.util.Properties;
 import javax.validation.constraints.Min;
@@ -32,6 +40,9 @@ public interface KafkaChannelConfig extends KafkaConsumerGroupConfig {
 
     @Key("bootstrap-servers")
     String getBootstrapServers();
+
+    @Key("zookeeper-connect-string")
+    String getZooKeeperConnectString();
 
     @Key("heart-beat-interval")
     @Default("1")
@@ -73,6 +84,12 @@ public interface KafkaChannelConfig extends KafkaConsumerGroupConfig {
 
         properties.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         properties.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+
+        properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG,
+                VersioningProducerInterceptor.class.getName());
+        properties.put(PRODUCER_COMPONENT_NAME_PROPERTY, COMMON_COMPONENT_NAME);
+        properties.put(PRODUCER_RUN_ID_PROPERTY, COMMON_COMPONENT_RUN_ID);
+        properties.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, getZooKeeperConnectString());
 
         return properties;
     }

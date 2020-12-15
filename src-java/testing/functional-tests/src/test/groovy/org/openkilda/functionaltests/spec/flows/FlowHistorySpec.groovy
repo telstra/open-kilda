@@ -27,8 +27,6 @@ import java.util.concurrent.TimeUnit
 History record is created in case the create/update action is completed successfully.""")
 @Tags([LOW_PRIORITY])
 class FlowHistorySpec extends HealthCheckSpecification {
-    @Value('${use.multitable}')
-    boolean useMultitable
 
     @Shared
     Long timestampBefore

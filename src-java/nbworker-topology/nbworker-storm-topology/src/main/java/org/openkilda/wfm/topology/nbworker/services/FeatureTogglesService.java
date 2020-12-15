@@ -17,13 +17,16 @@ package org.openkilda.wfm.topology.nbworker.services;
 
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.FeatureToggles.FeatureTogglesCloner;
+import org.openkilda.model.Switch;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.error.FeatureTogglesNotFoundException;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Collection;
 import java.util.Optional;
 
 @Slf4j
@@ -31,12 +34,14 @@ public class FeatureTogglesService {
     private final IFeatureTogglesCarrier carrier;
 
     private FeatureTogglesRepository featureTogglesRepository;
+    private SwitchRepository switchRepository;
     private TransactionManager transactionManager;
 
     public FeatureTogglesService(IFeatureTogglesCarrier carrier, RepositoryFactory repositoryFactory,
                                  TransactionManager transactionManager) {
         this.carrier = carrier;
         this.featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
+        this.switchRepository = repositoryFactory.createSwitchRepository();
         this.transactionManager = transactionManager;
     }
 
@@ -71,6 +76,15 @@ public class FeatureTogglesService {
         if (!before.equals(after)) {
             log.info("Emit feature-toggles update notification - toggles:{}", after);
             carrier.featureTogglesUpdateNotification(after);
+
+            if (before.getServer42FlowRtt() != after.getServer42FlowRtt()) {
+                Collection<Switch> switches = switchRepository.findActive();
+
+                for (Switch sw : switches) {
+                    log.info("Emit switch {} sync command", sw.getSwitchId());
+                    carrier.requestSwitchSync(sw.getSwitchId());
+                }
+            }
         }
         return after;
     }

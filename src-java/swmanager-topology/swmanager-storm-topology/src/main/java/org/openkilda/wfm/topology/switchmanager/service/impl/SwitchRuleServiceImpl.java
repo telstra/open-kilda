@@ -75,14 +75,15 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
             return;
         }
         Optional<SwitchProperties> switchProperties = switchPropertiesRepository.findBySwitchId(switchId);
-        if (switchProperties.isPresent()) {
-            boolean server42Rtt = featureTogglesRepository.find().map(FeatureToggles::getServer42FlowRtt).orElse(false)
-                    && switchProperties.get().isServer42FlowRtt();
+        boolean server42FeatureToggle = featureTogglesRepository.find()
+                .map(FeatureToggles::getServer42FlowRtt).orElse(false);
+        data.setServer42FlowRttFeatureToggle(server42FeatureToggle);
 
+        if (switchProperties.isPresent()) {
             data.setMultiTable(switchProperties.get().isMultiTable());
             data.setSwitchLldp(switchProperties.get().isSwitchLldp());
             data.setSwitchArp(switchProperties.get().isSwitchArp());
-            data.setServer42FlowRtt(server42Rtt);
+            data.setServer42FlowRttSwitchProperty(switchProperties.get().isServer42FlowRtt());
             data.setServer42Port(switchProperties.get().getServer42Port());
             data.setServer42Vlan(switchProperties.get().getServer42Vlan());
             data.setServer42MacAddress(switchProperties.get().getServer42MacAddress());
@@ -92,7 +93,7 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
             Set<Integer> flowArpPorts = new HashSet<>();
             Set<Integer> server42FlowPorts = new HashSet<>();
             fillFlowPorts(switchProperties.get(), flowPaths, flowPorts, flowLldpPorts, flowArpPorts, server42FlowPorts,
-                    server42Rtt);
+                    server42FeatureToggle && switchProperties.get().isServer42FlowRtt());
 
             data.setFlowPorts(flowPorts);
             data.setFlowLldpPorts(flowLldpPorts);
@@ -118,14 +119,16 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
             return;
         }
         Optional<SwitchProperties> switchProperties = switchPropertiesRepository.findBySwitchId(switchId);
-        if (switchProperties.isPresent()) {
-            boolean server42Rtt = featureTogglesRepository.find().map(FeatureToggles::getServer42FlowRtt).orElse(false)
-                    && switchProperties.get().isServer42FlowRtt();
 
+        boolean server42FeatureToggle = featureTogglesRepository.find()
+                .map(FeatureToggles::getServer42FlowRtt).orElse(false);
+        data.setServer42FlowRttFeatureToggle(server42FeatureToggle);
+
+        if (switchProperties.isPresent()) {
             data.setMultiTable(switchProperties.get().isMultiTable());
             data.setSwitchLldp(switchProperties.get().isSwitchLldp());
             data.setSwitchArp(switchProperties.get().isSwitchArp());
-            data.setServer42FlowRtt(server42Rtt);
+            data.setServer42FlowRttSwitchProperty(switchProperties.get().isServer42FlowRtt());
             data.setServer42Port(switchProperties.get().getServer42Port());
             data.setServer42Vlan(switchProperties.get().getServer42Vlan());
             data.setServer42MacAddress(switchProperties.get().getServer42MacAddress());
@@ -135,7 +138,7 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
             Set<Integer> flowArpPorts = new HashSet<>();
             Set<Integer> server42FlowPorts = new HashSet<>();
             fillFlowPorts(switchProperties.get(), flowPaths, flowPorts, flowLldpPorts, flowArpPorts, server42FlowPorts,
-                    server42Rtt);
+                    server42FeatureToggle && switchProperties.get().isServer42FlowRtt());
             data.setFlowPorts(flowPorts);
             data.setFlowLldpPorts(flowLldpPorts);
             data.setFlowArpPorts(flowArpPorts);

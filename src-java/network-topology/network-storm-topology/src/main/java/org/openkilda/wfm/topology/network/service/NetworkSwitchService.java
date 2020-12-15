@@ -23,7 +23,6 @@ import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
-import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
 import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm;
 import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm.SwitchFsmContext;
 import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm.SwitchFsmEvent;
@@ -41,8 +40,6 @@ public class NetworkSwitchService {
     private final SwitchFsm.SwitchFsmFactory controllerFactory;
     private final Map<SwitchId, SwitchFsm> controller = new HashMap<>();
     private final FsmExecutor<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> controllerExecutor;
-
-    private static final NetworkTopologyDashboardLogger logWrapper = new NetworkTopologyDashboardLogger(log);
 
     private final PersistenceManager persistenceManager;
 
@@ -216,7 +213,6 @@ public class NetworkSwitchService {
         if (fsm.isTerminated()) {
             controller.remove(datapath);
             log.debug("Switch service removed FSM {}", datapath);
-            logWrapper.onSwitchDelete(datapath);
         } else {
             log.error("Switch service remove failed for FSM {}, state: {}", datapath, fsm.getCurrentState());
         }
@@ -234,9 +230,6 @@ public class NetworkSwitchService {
 
     private SwitchFsm locateControllerCreateIfAbsent(SwitchId datapath) {
         return controller.computeIfAbsent(
-                datapath, key -> {
-                    logWrapper.onSwitchAdd(key);
-                    return controllerFactory.produce(persistenceManager, datapath, options);
-                });
+                datapath, key -> controllerFactory.produce(persistenceManager, datapath, options));
     }
 }

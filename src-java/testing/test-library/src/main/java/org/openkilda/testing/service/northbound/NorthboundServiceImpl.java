@@ -293,8 +293,9 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public List<FlowValidationDto> validateFlow(String flowId) {
-        FlowValidationDto[] flowValidations = restTemplate.exchange("/api/v1/flows/{flow_id}/validate", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), FlowValidationDto[].class, flowId).getBody();
+        FlowValidationDto[] flowValidations = restTemplate.exchange("/api/v1/flows/{flow_id}/validate",
+                HttpMethod.GET, new HttpEntity(buildHeadersWithCorrelationId()),
+                FlowValidationDto[].class, flowId).getBody();
         return Arrays.asList(flowValidations);
     }
 
@@ -631,7 +632,7 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType flowEncapsulationType,
-                      PathComputationStrategy pathComputationStrategy) {
+                             PathComputationStrategy pathComputationStrategy) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/network/paths");
         if (srcSwitch != null) {
             uriBuilder.queryParam("src_switch", srcSwitch);
@@ -722,6 +723,8 @@ public class NorthboundServiceImpl implements NorthboundService {
                 .latency(dto.getLatency())
                 .bfdSessionStatus(dto.getBfdSessionStatus())
                 .enableBfd(dto.isEnableBfd())
+                .roundTripStatus(dto.getRoundTripStatus() != null 
+                        ? IslChangeType.from(dto.getRoundTripStatus().toString()) : null)
                 .build();
     }
 }

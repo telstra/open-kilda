@@ -35,7 +35,8 @@ public abstract class CoordinatedBolt extends AbstractBolt {
     private final boolean autoAck;
     private final int defaultTimeout;
 
-    public CoordinatedBolt(boolean autoAck, int defaultTimeout) {
+    public CoordinatedBolt(boolean autoAck, int defaultTimeout, String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
         this.autoAck = autoAck;
         this.defaultTimeout = defaultTimeout;
     }

@@ -27,9 +27,9 @@ import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.tx.TransactionCallback;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.model.Endpoint;
-import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.controller.bfd.BfdSessionFsm.BfdSessionFsmContext;
@@ -37,262 +37,337 @@ import org.openkilda.wfm.topology.network.controller.bfd.BfdSessionFsm.Event;
 import org.openkilda.wfm.topology.network.controller.bfd.BfdSessionFsm.State;
 import org.openkilda.wfm.topology.network.error.SwitchReferenceLookupException;
 import org.openkilda.wfm.topology.network.model.BfdDescriptor;
+import org.openkilda.wfm.topology.network.model.BfdSessionData;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.service.IBfdSessionCarrier;
+import org.openkilda.wfm.topology.network.utils.EndpointStatusListener;
+import org.openkilda.wfm.topology.network.utils.EndpointStatusMonitor;
+import org.openkilda.wfm.topology.network.utils.SwitchOnlineStatusListener;
+import org.openkilda.wfm.topology.network.utils.SwitchOnlineStatusMonitor;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.ToString;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 
 @Slf4j
-public final class BfdSessionFsm extends
-        AbstractBaseFsm<BfdSessionFsm, State, Event, BfdSessionFsmContext> {
+public final class BfdSessionFsm
+        extends AbstractBaseFsm<BfdSessionFsm, State, Event, BfdSessionFsmContext>
+        implements BfdSessionManager, SwitchOnlineStatusListener, EndpointStatusListener {
     static final int BFD_UDP_PORT = 3784;
+
+    private final Random random = new Random();
 
     private final TransactionManager transactionManager;
     private final SwitchRepository switchRepository;
     private final BfdSessionRepository bfdSessionRepository;
 
-    private final Random random = new Random();
+    private final IBfdSessionCarrier carrier;
 
-    @Getter
-    private final Endpoint physicalEndpoint;
-    @Getter
     private final Endpoint logicalEndpoint;
+    private final int physicalPortNumber;
+    private final BfdSessionData sessionData;
 
-    private final PortStatusMonitor portStatusMonitor;
-
-    private IslReference islReference;
     private BfdProperties properties;
-    private BfdProperties effectiveProperties;
-    private BfdDescriptor sessionDescriptor = null;
-    private BfdSessionAction action = null;
+    private Integer discriminator;
 
-    public static BfdSessionFsmFactory factory() {
-        return new BfdSessionFsmFactory();
+    private BfdSessionAction action = null;
+    private boolean error = false;
+    private boolean online;
+    private LinkStatus endpointStatus;
+
+    public static BfdSessionFsmFactory factory(
+            PersistenceManager persistenceManager, SwitchOnlineStatusMonitor switchOnlineStatusMonitor,
+            EndpointStatusMonitor endpointStatusMonitor, IBfdSessionCarrier carrier) {
+        return new BfdSessionFsmFactory(persistenceManager, switchOnlineStatusMonitor, endpointStatusMonitor, carrier);
     }
 
-    public BfdSessionFsm(PersistenceManager persistenceManager, Endpoint endpoint, Integer physicalPortNumber) {
+    public BfdSessionFsm(
+            PersistenceManager persistenceManager,
+            SwitchOnlineStatusMonitor switchOnlineStatusMonitor, EndpointStatusMonitor endpointStatusMonitor,
+            IBfdSessionCarrier carrier, Endpoint logical, Integer physicalPortNumber, BfdSessionData sessionData) {
         transactionManager = persistenceManager.getTransactionManager();
 
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.switchRepository = repositoryFactory.createSwitchRepository();
         this.bfdSessionRepository = repositoryFactory.createBfdSessionRepository();
 
-        this.logicalEndpoint = endpoint;
-        this.physicalEndpoint = Endpoint.of(logicalEndpoint.getDatapath(), physicalPortNumber);
+        this.carrier = carrier;
 
-        portStatusMonitor = new PortStatusMonitor(this);
+        this.logicalEndpoint = logical;
+        this.physicalPortNumber = physicalPortNumber;
+        this.sessionData = sessionData;
+
+        online = switchOnlineStatusMonitor.subscribe(logical.getDatapath(), this);
+        endpointStatus = endpointStatusMonitor.subscribe(logical, this);
     }
 
     // -- external API --
 
-    public void updateLinkStatus(IBfdSessionCarrier carrier, LinkStatus status) {
-        portStatusMonitor.update(carrier, status);
+    @Override
+    public boolean isOperationalAndEqualTo(BfdSessionData goal) {
+        switch (getCurrentState()) {
+            case ACTIVE:
+            case WAIT_STATUS:
+            case UP:
+            case DOWN:
+            case OFFLINE:
+                BfdSessionData effective = new BfdSessionData(sessionData.getReference(), properties);
+                return effective.equals(goal);
+
+            default:
+                return false;
+        }
     }
 
-    // FIXME(surabujin): extremely unreliable
-    public boolean isDoingCleanup() {
-        return State.DO_CLEANUP == getCurrentState();
+    @Override
+    public void speakerResponse(String key) {
+        speakerResponse(key, null);  // timeout
+    }
+
+    @Override
+    public void speakerResponse(String key, BfdSessionResponse response) {
+        if (action != null) {
+            action.consumeSpeakerResponse(key, response)
+                    .ifPresent(result -> handleActionResult(result, response));
+        }
+    }
+
+    @Override
+    public boolean disable() {
+        if (! isTerminated()) {
+            handle(Event.DISABLE);
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public void switchOnlineStatusUpdate(boolean isOnline) {
+        online = isOnline;
+        if (! isTerminated()) {
+            handle(isOnline ? Event.ONLINE : Event.OFFLINE);
+        }
+    }
+
+    @Override
+    public void endpointStatusUpdate(LinkStatus status) {
+        endpointStatus = status;
+        if (! isTerminated()) {
+            handle(mapEndpointStatusToEvent(status));
+        }
+    }
+
+    public void handle(Event event) {
+        handle(event, BfdSessionFsmContext.builder().build());
+    }
+
+    public void handle(Event event, BfdSessionFsmContext context) {
+        BfdSessionFsmFactory.EXECUTOR.fire(this, event, context);
+    }
+
+    @Override
+    public boolean isDummy() {
+        return false;
     }
 
     // -- FSM actions --
 
-    public void consumeHistory(State from, State to, Event event, BfdSessionFsmContext context) {
-        Optional<BfdSession> session = loadBfdSession();
-        if (session.isPresent()) {
-            BfdSession dbView = session.get();
-            try {
-                sessionDescriptor = BfdDescriptor.builder()
-                        .local(makeSwitchReference(dbView.getSwitchId(), dbView.getIpAddress()))
-                        .remote(makeSwitchReference(dbView.getRemoteSwitchId(), dbView.getRemoteIpAddress()))
-                        .discriminator(dbView.getDiscriminator())
-                        .build();
-                properties = effectiveProperties = BfdProperties.builder()
-                        .interval(dbView.getInterval())
-                        .multiplier(dbView.getMultiplier())
-                        .build();
-            } catch (SwitchReferenceLookupException e) {
-                log.error("{} - unable to use stored BFD session data {} - {}",
-                        makeLogPrefix(), dbView, e.getMessage());
-            }
+    public void enterEnterAction(State from, State to, Event event, BfdSessionFsmContext context) {
+        loadExistingSession();
+    }
+
+    public void prepareEnterAction(State from, State to, Event event, BfdSessionFsmContext context) {
+        Optional<BfdDescriptor> descriptor = allocateDiscriminator(context);
+        if (online && descriptor.isPresent()) {
+            action = new BfdSessionCreateAction(carrier, makeBfdSessionRecord(descriptor.get()));
+            fire(Event.READY, context);
         }
     }
 
-    public void handleInitChoice(State from, State to, Event event, BfdSessionFsmContext context) {
-        if (sessionDescriptor == null) {
-            fire(Event._INIT_CHOICE_CLEAN, context);
-        } else {
-            fire(Event._INIT_CHOICE_DIRTY, context);
+    public void sendSessionCreateRequestAction(State from, State to, Event event, BfdSessionFsmContext context) {
+        Optional<BfdDescriptor> descriptor = makeSessionDescriptor(context);
+        if (descriptor.isPresent()) {
+            action = new BfdSessionCreateAction(carrier, makeBfdSessionRecord(descriptor.get()));
+            fire(Event.READY, context);
         }
     }
 
-    public void idleEnter(State from, State to, Event event, BfdSessionFsmContext context) {
-        logInfo("ready for setup requests");
+    public void creatingEnterAction(State from, State to, Event event, BfdSessionFsmContext context) {
+        endpointStatus = null;
     }
 
-    public void doSetupEnter(State from, State to, Event event, BfdSessionFsmContext context) {
-        portStatusMonitor.cleanTransitions();
-
-        logInfo(String.format("BFD session setup process have started - discriminator:%s, remote-datapath:%s",
-                sessionDescriptor.getDiscriminator(), sessionDescriptor.getRemote().getDatapath()));
-        action = new BfdSessionSetupAction(context.getOutput(), makeBfdSessionRecord(properties));
-    }
-
-    public void saveIslReference(State from, State to, Event event, BfdSessionFsmContext context) {
-        islReference = context.getIslReference();
-        properties = context.getProperties();
-    }
-
-    public void savePropertiesAction(State from, State to, Event event, BfdSessionFsmContext context) {
-        properties = context.getProperties();
-    }
-
-    public void doAllocateResources(State from, State to, Event event, BfdSessionFsmContext context) {
-        try {
-            sessionDescriptor = allocateDiscriminator(makeSessionDescriptor(islReference));
-        } catch (SwitchReferenceLookupException e) {
-            logError(String.format("Can't allocate BFD-session resources - %s", e.getMessage()));
-            fire(Event.FAIL, context);
-        }
-    }
-
-    public void doReleaseResources(State from, State to, Event event, BfdSessionFsmContext context) {
-        transactionManager.doInTransaction(() -> {
-            bfdSessionRepository.findBySwitchIdAndPort(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber())
-                    .ifPresent(value -> {
-                        if (value.getDiscriminator().equals(sessionDescriptor.getDiscriminator())) {
-                            bfdSessionRepository.remove(value);
-                        }
-                    });
-        });
-        sessionDescriptor = null;
-    }
-
-    public void activeEnter(State from, State to, Event event, BfdSessionFsmContext context) {
+    public void activeEnterAction(State from, State to, Event event, BfdSessionFsmContext context) {
         logInfo("BFD session is operational");
-
-        effectiveProperties = properties;
         saveEffectiveProperties();
     }
 
-    public void activeExit(State from, State to, Event event, BfdSessionFsmContext context) {
+    public void activeExitAction(State from, State to, Event event, BfdSessionFsmContext context) {
         logInfo("notify consumer(s) to STOP react on BFD event");
-        portStatusMonitor.cleanTransitions();
-        context.getOutput().bfdKillNotification(physicalEndpoint);
+        carrier.bfdKillNotification(getPhysicalEndpoint());
     }
 
-    public void waitStatusEnter(State from, State to, Event event, BfdSessionFsmContext context) {
-        portStatusMonitor.pull(context.getOutput());
+    public void offlineEnterAction(State from, State to, Event event, BfdSessionFsmContext context) {
+        endpointStatus = null;
     }
 
-    public void upEnter(State from, State to, Event event, BfdSessionFsmContext context) {
-        logInfo("LINK detected");
-        context.getOutput().bfdUpNotification(physicalEndpoint);
-    }
-
-    public void downEnter(State from, State to, Event event, BfdSessionFsmContext context) {
-        logInfo("LINK corrupted");
-        context.getOutput().bfdDownNotification(physicalEndpoint);
-    }
-
-    public void setupFailEnter(State from, State to, Event event, BfdSessionFsmContext context) {
-        logError("BFD-setup action have failed");
-        context.getOutput().bfdFailNotification(physicalEndpoint);
-    }
-
-    public void removeFailEnter(State from, State to, Event event, BfdSessionFsmContext context) {
-        logError("BFD-remove action have failed");
-        context.getOutput().bfdFailNotification(physicalEndpoint);
-    }
-
-    public void chargedFailEnter(State from, State to, Event event, BfdSessionFsmContext context) {
-        logError("BFD-remove action have failed (for re-setup)");
-    }
-
-    public void makeBfdRemoveAction(State from, State to, Event event, BfdSessionFsmContext context) {
-        logInfo(String.format("perform BFD session remove - discriminator:%s, remote-datapath:%s",
-                sessionDescriptor.getDiscriminator(), sessionDescriptor.getRemote().getDatapath()));
-        BfdProperties bfdProperties = this.effectiveProperties;
-        if (bfdProperties == null) {
-            bfdProperties = properties;
+    public void waitStatusEnterAction(State from, State to, Event event, BfdSessionFsmContext context) {
+        if (endpointStatus != null) {
+            fire(mapEndpointStatusToEvent(endpointStatus), context);
         }
-        action = new BfdSessionRemoveAction(context.getOutput(), makeBfdSessionRecord(bfdProperties));
     }
 
-    public void proxySpeakerResponseIntoAction(State from, State to, Event event, BfdSessionFsmContext context) {
-        action.consumeSpeakerResponse(context.getRequestKey(), context.getBfdSessionResponse())
-                .ifPresent(result -> handleActionResult(result, context));
+    public void upEnterAction(State from, State to, Event event, BfdSessionFsmContext context) {
+        logInfo("LINK detected");
+        carrier.bfdUpNotification(getPhysicalEndpoint());
     }
 
-    public void reportSetupSuccess(State from, State to, Event event, BfdSessionFsmContext context) {
-        logInfo("BFD session setup is successfully completed");
+    public void downEnterAction(State from, State to, Event event, BfdSessionFsmContext context) {
+        logInfo("LINK corrupted");
+        carrier.bfdDownNotification(getPhysicalEndpoint());
+    }
+
+    public void removingEnterAction(State from, State to, Event event, BfdSessionFsmContext context) {
+        makeSessionRemoveAction(context);
+    }
+
+    public void sessionRemoveAction(State from, State to, Event event, BfdSessionFsmContext context) {
+        makeSessionRemoveAction(context);
+    }
+
+    public void emitBfdFailAction(State from, State to, Event event, BfdSessionFsmContext context) {
+        emitBfdFail();
+    }
+
+    public void errorEnterAction(State from, State to, Event event, BfdSessionFsmContext context) {
+        error = true;
+        emitBfdFail();
+    }
+
+    public void housekeepingEnterAction(State from, State to, Event event, BfdSessionFsmContext context) {
+        releaseDiscriminator();
+    }
+
+    public void stopEnterAction(State from, State to, Event event, BfdSessionFsmContext context) {
+        carrier.sessionRotateRequest(logicalEndpoint, error);
     }
 
     // -- private/service methods --
-    private NoviBfdSession makeBfdSessionRecord(BfdProperties bfdProperties) {
-        if (bfdProperties == null) {
-            throw new IllegalArgumentException(String.format(
-                    "Can't produce %s without properties (properties is null)", NoviBfdSession.class.getSimpleName()));
+
+    private void disableIfConfigured() {
+        if (discriminator != null && properties != null && properties.isEnabled()) {
+            handle(Event.DISABLE);
+        } else {
+            discriminator = null;
+            properties = null;
         }
-        return NoviBfdSession.builder()
-                .target(sessionDescriptor.getLocal())
-                .remote(sessionDescriptor.getRemote())
-                .physicalPortNumber(physicalEndpoint.getPortNumber())
-                .logicalPortNumber(logicalEndpoint.getPortNumber())
-                .udpPortNumber(BFD_UDP_PORT)
-                .discriminator(sessionDescriptor.getDiscriminator())
-                .keepOverDisconnect(true)
-                .intervalMs((int) bfdProperties.getInterval().toMillis())
-                .multiplier(bfdProperties.getMultiplier())
+    }
+
+    private void loadExistingSession() {
+        transactionManager.doInTransaction(() -> loadBfdSession().ifPresent(this::loadExistingSession));
+    }
+
+    private void loadExistingSession(BfdSession dbView) {
+        discriminator = dbView.getDiscriminator();
+        properties = BfdProperties.builder()
+                .interval(dbView.getInterval())
+                .multiplier(dbView.getMultiplier())
                 .build();
     }
 
-    private BfdDescriptor allocateDiscriminator(BfdDescriptor descriptor) {
-        BfdSession dbView;
+    private void makeSessionRemoveAction(BfdSessionFsmContext context) {
+        if (online) {
+            makeSessionDescriptor(context).ifPresent(
+                    descriptor -> action = new BfdSessionRemoveAction(carrier, makeBfdSessionRecord(descriptor)));
+        }
+    }
+
+    private NoviBfdSession makeBfdSessionRecord(BfdDescriptor descriptor) {
+        if (discriminator == null) {
+            throw new IllegalStateException(makeLogPrefix() + " there is no allocated discriminator");
+        }
+
+        BfdProperties effectiveProperties = properties != null ? properties : sessionData.getProperties();
+        return NoviBfdSession.builder()
+                .target(descriptor.getLocal())
+                .remote(descriptor.getRemote())
+                .physicalPortNumber(physicalPortNumber)
+                .logicalPortNumber(logicalEndpoint.getPortNumber())
+                .udpPortNumber(BFD_UDP_PORT)
+                .discriminator(discriminator)
+                .keepOverDisconnect(true)
+                .intervalMs((int) effectiveProperties.getInterval().toMillis())
+                .multiplier(effectiveProperties.getMultiplier())
+                .build();
+    }
+
+    private Optional<BfdDescriptor> allocateDiscriminator(BfdSessionFsmContext context) {
+        Optional<BfdDescriptor> descriptor = makeSessionDescriptor(context);
+        descriptor.ifPresent(this::allocateDiscriminator);
+        return descriptor;
+    }
+
+    private void allocateDiscriminator(BfdDescriptor descriptor) {
+        // FIXME(surabujin): loop will never end if all possible discriminators are allocated
         while (true) {
             try {
-                dbView = transactionManager.doInTransaction(() -> {
-                    BfdSession bfdSession = loadBfdSession().orElse(null);
-                    if (bfdSession == null || bfdSession.getDiscriminator() == null) {
-                        // FIXME(surabujin): loop will never end if all possible discriminators are allocated
-                        int discriminator = random.nextInt();
-                        if (bfdSession != null) {
-                            bfdSession.setDiscriminator(discriminator);
-                            descriptor.fill(bfdSession);
-                        } else {
-                            bfdSession = BfdSession.builder()
-                                    .switchId(logicalEndpoint.getDatapath())
-                                    .port(logicalEndpoint.getPortNumber())
-                                    .physicalPort(physicalEndpoint.getPortNumber())
-                                    .discriminator(discriminator)
-                                    .build();
-                            descriptor.fill(bfdSession);
-                            bfdSessionRepository.add(bfdSession);
-                        }
-                    }
-                    return bfdSession;
-                });
+                discriminator = transactionManager.doInTransaction(
+                        () -> allocateDiscriminator(descriptor, loadBfdSession().orElse(null)));
                 break;
             } catch (ConstraintViolationException ex) {
                 log.warn("ConstraintViolationException on allocate bfd discriminator");
             }
         }
+    }
 
-        return descriptor.toBuilder()
-                .discriminator(dbView.getDiscriminator())
-                .build();
+    private Integer allocateDiscriminator(BfdDescriptor descriptor, BfdSession bfdSession) {
+        if (bfdSession != null && bfdSession.getDiscriminator() != null) {
+            return bfdSession.getDiscriminator();
+        }
+
+        Integer attempt = random.nextInt();
+        if (bfdSession != null) {
+            bfdSession.setDiscriminator(attempt);
+            descriptor.fill(bfdSession);
+        } else {
+            bfdSession = BfdSession.builder()
+                    .switchId(logicalEndpoint.getDatapath())
+                    .port(logicalEndpoint.getPortNumber())
+                    .physicalPort(physicalPortNumber)
+                    .discriminator(attempt)
+                    .build();
+            descriptor.fill(bfdSession);
+            bfdSessionRepository.add(bfdSession);
+        }
+
+        return attempt;
+    }
+
+    private void releaseDiscriminator() {
+        if (discriminator == null) {
+            return;
+        }
+
+        transactionManager.doInTransaction(() -> {
+            loadBfdSession().ifPresent(this::releaseDiscriminator);
+        });
+    }
+
+    private void releaseDiscriminator(BfdSession session) {
+        if (Objects.equals(session.getDiscriminator(), discriminator)) {
+            bfdSessionRepository.remove(session);
+        }
     }
 
     private void saveEffectiveProperties() {
+        properties = sessionData.getProperties();
         transactionManager.doInTransaction(this::saveEffectivePropertiesTransaction);
     }
 
@@ -300,6 +375,7 @@ public final class BfdSessionFsm extends
         Optional<BfdSession> session = loadBfdSession();
         if (session.isPresent()) {
             BfdSession dbView = session.get();
+            logInfo("save effective session properties {}", properties);
             dbView.setInterval(properties.getInterval());
             dbView.setMultiplier(properties.getMultiplier());
         } else {
@@ -312,10 +388,22 @@ public final class BfdSessionFsm extends
                 logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber());
     }
 
-    private BfdDescriptor makeSessionDescriptor(IslReference islReference) throws SwitchReferenceLookupException {
-        Endpoint remoteEndpoint = islReference.getOpposite(getPhysicalEndpoint());
+    private Optional<BfdDescriptor> makeSessionDescriptor(BfdSessionFsmContext context) {
+        BfdDescriptor descriptor = null;
+        try {
+            descriptor = transactionManager.doInTransaction(
+                    (TransactionCallback<BfdDescriptor, SwitchReferenceLookupException>) this::makeSessionDescriptor);
+        } catch (SwitchReferenceLookupException e) {
+            logError(e.getMessage());
+            fire(Event.ERROR, context);
+        }
+        return Optional.ofNullable(descriptor);
+    }
+
+    private BfdDescriptor makeSessionDescriptor() throws SwitchReferenceLookupException {
+        Endpoint remoteEndpoint = sessionData.getReference().getOpposite(getPhysicalEndpoint());
         return BfdDescriptor.builder()
-                .local(makeSwitchReference(physicalEndpoint.getDatapath()))
+                .local(makeSwitchReference(logicalEndpoint.getDatapath()))
                 .remote(makeSwitchReference(remoteEndpoint.getDatapath()))
                 .build();
     }
@@ -326,25 +414,11 @@ public final class BfdSessionFsm extends
         return new SwitchReference(datapath, sw.getSocketAddress().getAddress());
     }
 
-    private SwitchReference makeSwitchReference(SwitchId datapath, String ipAddress)
-            throws SwitchReferenceLookupException {
-        if (ipAddress == null) {
-            throw new SwitchReferenceLookupException(datapath, "null switch address is provided");
-        }
-
-        InetAddress address;
-        try {
-            address = InetAddress.getByName(ipAddress);
-        } catch (UnknownHostException e) {
-            throw new SwitchReferenceLookupException(
-                    datapath,
-                    String.format("unable to parse switch address \"%s\"", ipAddress));
-        }
-
-        return new SwitchReference(datapath, address);
+    private void emitBfdFail() {
+        carrier.bfdFailNotification(getPhysicalEndpoint());
     }
 
-    private void handleActionResult(BfdSessionAction.ActionResult result, BfdSessionFsmContext context) {
+    private void handleActionResult(BfdSessionAction.ActionResult result, BfdSessionResponse response) {
         Event event;
         if (result.isSuccess()) {
             event = Event.ACTION_SUCCESS;
@@ -352,7 +426,12 @@ public final class BfdSessionFsm extends
             event = Event.ACTION_FAIL;
             reportActionFailure(result);
         }
-        fire(event, context);
+
+        action = null;
+        BfdSessionFsmContext context = BfdSessionFsmContext.builder()
+                .speakerResponse(response)
+                .build();
+        handle(event, context);
     }
 
     private void reportActionFailure(BfdSessionAction.ActionResult result) {
@@ -364,335 +443,220 @@ public final class BfdSessionFsm extends
         }
     }
 
-    private void logInfo(String message) {
+    private Endpoint getPhysicalEndpoint() {
+        return Endpoint.of(logicalEndpoint.getDatapath(), physicalPortNumber);
+    }
+
+    private Event mapEndpointStatusToEvent(LinkStatus status) {
+        Event event;
+        switch (status) {
+            case UP:
+                event = Event.PORT_UP;
+                break;
+            case DOWN:
+                event = Event.PORT_DOWN;
+                break;
+
+            default:
+                throw new IllegalStateException(String.format(
+                        "%s - there is no mapping from %s.%s into %s",
+                        makeLogPrefix(), status.getClass().getName(), status, Event.class.getName()));
+        }
+        return event;
+    }
+
+    private void logInfo(String message, Object... args) {
         if (log.isInfoEnabled()) {
-            log.info("{} - {}", makeLogPrefix(), message);
+            log.info("{} - " + message, makeLogPrefix(), args);
         }
     }
 
-    private void logError(String message) {
+    private void logError(String message, Object... args) {
         if (log.isErrorEnabled()) {
-            log.error("{} - {}", makeLogPrefix(), message);
+            log.error("{} - " + message, makeLogPrefix(), args);
         }
     }
 
     private String makeLogPrefix() {
-        return String.format("BFD session %s(physical-port:%s)", logicalEndpoint, physicalEndpoint.getPortNumber());
+        return String.format("BFD session %s(physical-port:%s)", logicalEndpoint, physicalPortNumber);
     }
 
     public static class BfdSessionFsmFactory {
         public static final FsmExecutor<BfdSessionFsm, State, Event, BfdSessionFsmContext> EXECUTOR
                 = new FsmExecutor<>(Event.NEXT);
 
+        private final PersistenceManager persistenceManager;
+        @Getter
+        private final SwitchOnlineStatusMonitor switchOnlineStatusMonitor;
+        private final EndpointStatusMonitor endpointStatusMonitor;
+
+        @Getter
+        private final IBfdSessionCarrier carrier;
+
         private final StateMachineBuilder<BfdSessionFsm, State, Event, BfdSessionFsmContext> builder;
 
-        BfdSessionFsmFactory() {
-            final String doReleaseResourcesMethod = "doReleaseResources";
-            final String saveIslReferenceMethod = "saveIslReference";
-            final String savePropertiesMethod = "savePropertiesAction";
-            final String makeBfdRemoveActionMethod = "makeBfdRemoveAction";
-            final String proxySpeakerResponseIntoActionMethod = "proxySpeakerResponseIntoAction";
+        BfdSessionFsmFactory(
+                PersistenceManager persistenceManager, SwitchOnlineStatusMonitor switchOnlineStatusMonitor,
+                EndpointStatusMonitor endpointStatusMonitor, IBfdSessionCarrier carrier) {
+            this.persistenceManager = persistenceManager;
+            this.switchOnlineStatusMonitor = switchOnlineStatusMonitor;
+            this.endpointStatusMonitor = endpointStatusMonitor;
+            this.carrier = carrier;
 
             builder = StateMachineBuilderFactory.create(
                     BfdSessionFsm.class, State.class, Event.class, BfdSessionFsmContext.class,
                     // extra parameters
-                    PersistenceManager.class, Endpoint.class, Integer.class);
+                    PersistenceManager.class, SwitchOnlineStatusMonitor.class, EndpointStatusMonitor.class,
+                    IBfdSessionCarrier.class, Endpoint.class, Integer.class, BfdSessionData.class);
 
-            // INIT
-            builder.transition()
-                    .from(State.INIT).to(State.INIT_CHOICE).on(Event.HISTORY)
-                    .callMethod("consumeHistory");
+            final String sessionRemoveAction = "sessionRemoveAction";
+            final String emitBfdFailAction = "emitBfdFailAction";
 
-            // INIT_CHOICE
+            // ENTER
+            builder.onEntry(State.ENTER)
+                    .callMethod("enterEnterAction");
             builder.transition()
-                    .from(State.INIT_CHOICE).to(State.IDLE).on(Event._INIT_CHOICE_CLEAN);
+                    .from(State.ENTER).to(State.PREPARE).on(Event.ENABLE);
             builder.transition()
-                    .from(State.INIT_CHOICE).to(State.INIT_REMOVE).on(Event._INIT_CHOICE_DIRTY);
-            builder.onEntry(State.INIT_CHOICE)
-                    .callMethod("handleInitChoice");
+                    .from(State.ENTER).to(State.REMOVING).on(Event.DISABLE);
 
-            // IDLE
+            // PREPARE
+            builder.onEntry(State.PREPARE)
+                    .callMethod("prepareEnterAction");
             builder.transition()
-                    .from(State.IDLE).to(State.INIT_SETUP).on(Event.ENABLE_UPDATE)
-                    .callMethod(saveIslReferenceMethod);
+                    .from(State.PREPARE).to(State.CREATING).on(Event.READY);
             builder.transition()
-                    .from(State.IDLE).to(State.UNOPERATIONAL).on(Event.OFFLINE);
-            builder.onEntry(State.IDLE)
-                    .callMethod("idleEnter");
-
-            // UNOPERATIONAL
+                    .from(State.PREPARE).to(State.HOUSEKEEPING).on(Event.DISABLE);
             builder.transition()
-                    .from(State.UNOPERATIONAL).to(State.IDLE).on(Event.ONLINE);
-            builder.transition()
-                    .from(State.UNOPERATIONAL).to(State.PENDING).on(Event.ENABLE_UPDATE)
-                    .callMethod(savePropertiesMethod);
-
-            // PENDING
-            builder.transition()
-                    .from(State.PENDING).to(State.UNOPERATIONAL).on(Event.DISABLE);
-            builder.transition()
-                    .from(State.PENDING).to(State.INIT_SETUP).on(Event.ONLINE);
-            builder.onEntry(State.PENDING)
-                    .callMethod(saveIslReferenceMethod);
-
-            // INIT_SETUP
-            builder.transition()
-                    .from(State.INIT_SETUP).to(State.IDLE).on(Event.FAIL);
-            builder.transition()
-                    .from(State.INIT_SETUP).to(State.DO_SETUP).on(Event.NEXT);
-            builder.onEntry(State.INIT_SETUP)
-                    .callMethod("doAllocateResources");
-
-            // DO_SETUP
-            builder.transition()
-                    .from(State.DO_SETUP).to(State.ACTIVE).on(Event.ACTION_SUCCESS)
-                    .callMethod("reportSetupSuccess");
-            builder.transition()
-                    .from(State.DO_SETUP).to(State.INIT_REMOVE).on(Event.DISABLE);
-            builder.transition()
-                    .from(State.DO_SETUP).to(State.SETUP_FAIL).on(Event.ACTION_FAIL);
-            builder.transition()
-                    .from(State.DO_SETUP).to(State.SETUP_INTERRUPT).on(Event.OFFLINE);
-            builder.transition()
-                    .from(State.DO_SETUP).to(State.INIT_CLEANUP).on(Event.KILL);
-            builder.internalTransition().within(State.DO_SETUP).on(Event.SPEAKER_RESPONSE)
-                    .callMethod(proxySpeakerResponseIntoActionMethod);
-            builder.onEntry(State.DO_SETUP)
-                    .callMethod("doSetupEnter");
-
-            // SETUP_FAIL
-            builder.transition()
-                    .from(State.SETUP_FAIL).to(State.INIT_REMOVE).on(Event.DISABLE);
-            builder.transition()
-                    .from(State.SETUP_FAIL).to(State.SETUP_INTERRUPT).on(Event.OFFLINE);
-            builder.transition()
-                    .from(State.SETUP_FAIL).to(State.INIT_CLEANUP).on(Event.KILL);
-            builder.transition()
-                    .from(State.SETUP_FAIL).to(State.RESET).on(Event.ENABLE_UPDATE)
-                    .callMethod(savePropertiesMethod);
-            builder.onEntry(State.SETUP_FAIL)
-                    .callMethod("setupFailEnter");
-
-            // SETUP_INTERRUPT
-            builder.transition()
-                    .from(State.SETUP_INTERRUPT).to(State.RESET).on(Event.ONLINE);
-            builder.transition()
-                    .from(State.SETUP_INTERRUPT).to(State.REMOVE_INTERRUPT).on(Event.DISABLE);
-
-            // RESET
-            builder.transition()
-                    .from(State.RESET).to(State.DO_SETUP).on(Event.ACTION_SUCCESS);
-            builder.transition()
-                    .from(State.RESET).to(State.SETUP_INTERRUPT).on(Event.OFFLINE);
-            builder.transition()
-                    .from(State.RESET).to(State.SETUP_FAIL).on(Event.ACTION_FAIL);
-            builder.transition()
-                    .from(State.RESET).to(State.DO_REMOVE).on(Event.DISABLE);
-            builder.transition()
-                    .from(State.RESET).to(State.DO_CLEANUP).on(Event.KILL);
+                    .from(State.PREPARE).to(State.ERROR).on(Event.ERROR);
             builder.internalTransition()
-                    .within(State.RESET).on(Event.SPEAKER_RESPONSE)
-                    .callMethod(proxySpeakerResponseIntoActionMethod);
-            builder.onEntry(State.RESET)
-                    .callMethod(makeBfdRemoveActionMethod);
+                    .within(State.PREPARE).on(Event.ONLINE)
+                    .callMethod("sendSessionCreateRequestAction");
+
+            // CREATING
+            builder.onEntry(State.CREATING)
+                    .callMethod("creatingEnterAction");
+            builder.transition()
+                    .from(State.CREATING).to(State.ACTIVE).on(Event.ACTION_SUCCESS);
+            builder.transition()
+                    .from(State.CREATING).to(State.ERROR).on(Event.ACTION_FAIL);
+            builder.transition()
+                    .from(State.CREATING).to(State.REMOVING).on(Event.DISABLE);
 
             // ACTIVE
+            builder.onEntry(State.ACTIVE)
+                    .callMethod("activeEnterAction");
+            builder.transition()
+                    .from(State.ACTIVE).to(State.REMOVING).on(Event.DISABLE);
             builder.transition()
                     .from(State.ACTIVE).to(State.OFFLINE).on(Event.OFFLINE);
-            builder.transition()
-                    .from(State.ACTIVE).to(State.INIT_REMOVE).on(Event.DISABLE);
-            builder.transition()
-                    .from(State.ACTIVE).to(State.INIT_CLEANUP).on(Event.KILL);
-            builder.transition()
-                    .from(State.ACTIVE).to(State.RESET).on(Event.ENABLE_UPDATE)
-                    .callMethod(savePropertiesMethod);
-            builder.onEntry(State.ACTIVE)
-                    .callMethod("activeEnter");
             builder.onExit(State.ACTIVE)
-                    .callMethod("activeExit");
+                    .callMethod("activeExitAction");
+
             builder.defineSequentialStatesOn(
                     State.ACTIVE,
                     State.WAIT_STATUS, State.UP, State.DOWN);
 
             // WAIT_STATUS
+            builder.onEntry(State.WAIT_STATUS)
+                    .callMethod("waitStatusEnterAction");
             builder.transition()
                     .from(State.WAIT_STATUS).to(State.UP).on(Event.PORT_UP);
             builder.transition()
                     .from(State.WAIT_STATUS).to(State.DOWN).on(Event.PORT_DOWN);
-            builder.onEntry(State.WAIT_STATUS)
-                    .callMethod("waitStatusEnter");
 
             // UP
             builder.transition()
                     .from(State.UP).to(State.DOWN).on(Event.PORT_DOWN);
             builder.onEntry(State.UP)
-                    .callMethod("upEnter");
+                    .callMethod("upEnterAction");
 
             // DOWN
             builder.transition()
                     .from(State.DOWN).to(State.UP).on(Event.PORT_UP);
             builder.onEntry(State.DOWN)
-                    .callMethod("downEnter");
+                    .callMethod("downEnterAction");
 
             // OFFLINE
+            builder.onEntry(State.OFFLINE)
+                    .callMethod("offlineEnterAction");
             builder.transition()
                     .from(State.OFFLINE).to(State.ACTIVE).on(Event.ONLINE);
             builder.transition()
-                    .from(State.OFFLINE).to(State.REMOVE_INTERRUPT).on(Event.DISABLE);
+                    .from(State.OFFLINE).to(State.REMOVING).on(Event.DISABLE);
 
-            // INIT_REMOVE
+            // REMOVING
+            builder.onEntry(State.REMOVING)
+                    .callMethod("removingEnterAction");
             builder.transition()
-                    .from(State.INIT_REMOVE).to(State.DO_REMOVE).on(Event.NEXT);
-            builder.onEntry(State.INIT_REMOVE)
-                    .callMethod(makeBfdRemoveActionMethod);
-
-            // DO_REMOVE
-            builder.transition()
-                    .from(State.DO_REMOVE).to(State.IDLE).on(Event.ACTION_SUCCESS)
-                    .callMethod(doReleaseResourcesMethod);
-            builder.transition()
-                    .from(State.DO_REMOVE).to(State.REMOVE_FAIL).on(Event.ACTION_FAIL);
-            builder.transition()
-                    .from(State.DO_REMOVE).to(State.REMOVE_INTERRUPT).on(Event.OFFLINE);
-            builder.transition()
-                    .from(State.DO_REMOVE).to(State.DO_CLEANUP).on(Event.KILL);
-            builder.transition()
-                    .from(State.DO_REMOVE).to(State.CHARGED).on(Event.ENABLE_UPDATE)
-                    .callMethod(saveIslReferenceMethod);
-            builder.internalTransition().within(State.DO_REMOVE).on(Event.SPEAKER_RESPONSE)
-                    .callMethod(proxySpeakerResponseIntoActionMethod);
-
-            // REMOVE_FAIL
-            builder.transition()
-                    .from(State.REMOVE_FAIL).to(State.CHARGED_RESET).on(Event.ENABLE_UPDATE)
-                    .callMethod(saveIslReferenceMethod);
-            builder.transition()
-                    .from(State.REMOVE_FAIL).to(State.REMOVE_INTERRUPT).on(Event.OFFLINE);
-            builder.transition()
-                    .from(State.REMOVE_FAIL).to(State.INIT_REMOVE).on(Event.DISABLE);
-            builder.onEntry(State.REMOVE_FAIL)
-                    .callMethod("removeFailEnter");
-
-            // REMOVE_INTERRUPT
-            builder.transition()
-                    .from(State.REMOVE_INTERRUPT).to(State.INIT_REMOVE).on(Event.ONLINE);
-            builder.transition()
-                    .from(State.REMOVE_INTERRUPT).to(State.CHARGED_INTERRUPT).on(Event.ENABLE_UPDATE)
-                    .callMethod(saveIslReferenceMethod);
-
-            // CHARGED
-            builder.transition()
-                    .from(State.CHARGED).to(State.INIT_SETUP).on(Event.ACTION_SUCCESS)
-                    .callMethod(doReleaseResourcesMethod);
-            builder.transition()
-                    .from(State.CHARGED).to(State.CHARGED_FAIL).on(Event.ACTION_FAIL);
-            builder.transition()
-                    .from(State.CHARGED).to(State.DO_REMOVE).on(Event.DISABLE);
-            builder.transition()
-                    .from(State.CHARGED).to(State.CHARGED_INTERRUPT).on(Event.OFFLINE);
-            builder.transition()
-                    .from(State.CHARGED).to(State.DO_CLEANUP).on(Event.KILL);
+                    .from(State.REMOVING).to(State.HOUSEKEEPING).on(Event.ACTION_SUCCESS);
             builder.internalTransition()
-                    .within(State.CHARGED).on(Event.SPEAKER_RESPONSE)
-                    .callMethod(proxySpeakerResponseIntoActionMethod);
+                    .within(State.REMOVING).on(Event.ACTION_FAIL)
+                    .callMethod(emitBfdFailAction);
             builder.internalTransition()
-                    .within(State.CHARGED).on(Event.ENABLE_UPDATE)
-                    .callMethod(saveIslReferenceMethod);
-
-            // CHARGED_FAIL
-            builder.transition()
-                    .from(State.CHARGED_FAIL).to(State.CHARGED_INTERRUPT).on(Event.OFFLINE);
-            builder.transition()
-                    .from(State.CHARGED_FAIL).to(State.REMOVE_FAIL).on(Event.DISABLE);
-            builder.transition()
-                    .from(State.CHARGED_FAIL).to(State.CHARGED_RESET).on(Event.ENABLE_UPDATE)
-                    .callMethod(saveIslReferenceMethod);
-            builder.onEntry(State.CHARGED_FAIL)
-                    .callMethod("chargedFailEnter");
-
-            // CHARGED_INTERRUPT
-            builder.transition()
-                    .from(State.CHARGED_INTERRUPT).to(State.CHARGED_RESET).on(Event.ONLINE);
-            builder.transition()
-                    .from(State.CHARGED_INTERRUPT).to(State.REMOVE_INTERRUPT).on(Event.DISABLE);
-
-            // CHARGED_RESET
-            builder.transition()
-                    .from(State.CHARGED_RESET).to(State.CHARGED).on(Event.NEXT);
-            builder.onEntry(State.CHARGED_RESET)
-                    .callMethod(makeBfdRemoveActionMethod);
-
-            // INIT_CLEANUP
-            builder.transition()
-                    .from(State.INIT_CLEANUP).to(State.DO_CLEANUP).on(Event.NEXT);
-            builder.onEntry(State.INIT_CLEANUP)
-                    .callMethod(makeBfdRemoveActionMethod);
-
-            // DO_CLEANUP
-            builder.transition()
-                    .from(State.DO_CLEANUP).to(State.STOP).on(Event.ACTION_SUCCESS)
-                    .callMethod(doReleaseResourcesMethod);
-            builder.transition()
-                    .from(State.DO_CLEANUP).to(State.STOP).on(Event.ACTION_FAIL);
+                    .within(State.REMOVING).on(Event.ONLINE)
+                    .callMethod(sessionRemoveAction);
             builder.internalTransition()
-                    .within(State.DO_CLEANUP).on(Event.SPEAKER_RESPONSE)
-                    .callMethod(proxySpeakerResponseIntoActionMethod);
+                    .within(State.REMOVING).on(Event.DISABLE)
+                    .callMethod(sessionRemoveAction);
+
+            // ERROR
+            builder.onEntry(State.ERROR)
+                    .callMethod("errorEnterAction");
+            builder.transition()
+                    .from(State.ERROR).to(State.HOUSEKEEPING).on(Event.NEXT);
+
+            // HOUSEKEEPING
+            builder.onEntry(State.HOUSEKEEPING)
+                    .callMethod("housekeepingEnterAction");
+            builder.transition()
+                    .from(State.HOUSEKEEPING).to(State.STOP).on(Event.NEXT);
 
             // STOP
+            builder.onEntry(State.STOP)
+                    .callMethod("stopEnterAction");
             builder.defineFinalState(State.STOP);
         }
 
-        public BfdSessionFsm produce(PersistenceManager persistenceManager, Endpoint endpoint,
-                                     Integer physicalPortNumber) {
-            return builder.newStateMachine(State.INIT, persistenceManager, endpoint, physicalPortNumber);
+        public BfdSessionFsm produce(Endpoint logical, Integer physicalPortNumber, BfdSessionData sessionData) {
+            BfdSessionFsm entity = builder.newStateMachine(
+                    State.ENTER, persistenceManager, switchOnlineStatusMonitor, endpointStatusMonitor, carrier,
+                    logical, physicalPortNumber, sessionData);
+            entity.start(BfdSessionFsmContext.builder().build());
+
+            entity.disableIfConfigured();
+            entity.handle(Event.ENABLE);
+
+            return entity;
         }
     }
 
     @Value
     @Builder
+    @ToString
     public static class BfdSessionFsmContext {
-        private final IBfdSessionCarrier output;
-
-        private IslReference islReference;
-        private BfdProperties properties;
-
-        private String requestKey;
-        private BfdSessionResponse bfdSessionResponse;
-
-        /**
-         * Builder.
-         */
-        public static BfdSessionFsmContextBuilder builder(IBfdSessionCarrier carrier) {
-            return (new BfdSessionFsmContextBuilder())
-                    .output(carrier);
-        }
+        BfdSessionResponse speakerResponse;
     }
 
     public enum Event {
-        NEXT, KILL, FAIL,
+        NEXT, ERROR, READY,
+        ENABLE, DISABLE,
 
-        HISTORY,
-        ENABLE_UPDATE, DISABLE,
-        ONLINE, OFFLINE,
-        PORT_UP, PORT_DOWN,
-
-        SPEAKER_RESPONSE,
         ACTION_SUCCESS, ACTION_FAIL,
 
-        _INIT_CHOICE_CLEAN, _INIT_CHOICE_DIRTY
+        ONLINE, OFFLINE,
+        PORT_UP, PORT_DOWN,
     }
 
     public enum State {
-        INIT, INIT_CHOICE,
-        IDLE, UNOPERATIONAL, PENDING,
-
-        INIT_SETUP, DO_SETUP, SETUP_FAIL, SETUP_INTERRUPT,
-        RESET,
-        ACTIVE, WAIT_STATUS, UP, DOWN, OFFLINE,
-        INIT_REMOVE, DO_REMOVE, REMOVE_FAIL, REMOVE_INTERRUPT,
-        CHARGED, CHARGED_FAIL, CHARGED_INTERRUPT, CHARGED_RESET,
-        INIT_CLEANUP, DO_CLEANUP,
-
+        ENTER,
+        PREPARE,
+        CREATING,
+        ACTIVE, WAIT_STATUS, UP, DOWN,
+        OFFLINE,
+        REMOVING,
+        ERROR,
+        HOUSEKEEPING,
         STOP
     }
 }

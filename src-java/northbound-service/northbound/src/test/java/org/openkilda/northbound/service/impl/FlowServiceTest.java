@@ -27,6 +27,7 @@ import org.openkilda.northbound.MessageExchanger;
 import org.openkilda.northbound.config.KafkaConfig;
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 import org.openkilda.northbound.messaging.MessagingChannel;
@@ -107,6 +108,27 @@ public class FlowServiceTest {
         SwapFlowEndpointPayload result = flowService.swapFlowEndpoint(input).get();
         assertEquals(secondEndpoint, result.getFirstFlow().getDestination());
         assertEquals(firstEndpoint, result.getSecondFlow().getDestination());
+    }
+
+    @Test
+    public void createFlowLoop() throws Exception {
+        String correlationId = "correlation-id";
+        RequestCorrelationId.create(correlationId);
+
+        String flowId = "flow-id";
+        SwitchId switchId = new SwitchId("1");
+
+        FlowDto dto = FlowDto.builder()
+                .flowId(flowId)
+                .loopSwitchId(switchId)
+                .build();
+
+        FlowResponse response = new FlowResponse(dto);
+        messageExchanger.mockResponse(correlationId, response);
+
+        FlowLoopResponse result = flowService.createFlowLoop(flowId, switchId).get();
+        assertEquals(flowId, result.getFlowId());
+        assertEquals(switchId, result.getSwitchId());
     }
 
     @TestConfiguration

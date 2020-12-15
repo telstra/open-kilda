@@ -57,8 +57,10 @@ import org.openkilda.floodlight.command.flow.FlowSegmentResponseFactory;
 import org.openkilda.floodlight.command.flow.FlowSegmentSyncResponseFactory;
 import org.openkilda.floodlight.command.flow.FlowSegmentWrapperCommand;
 import org.openkilda.floodlight.command.flow.egress.EgressFlowSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressFlowLoopSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowInstallCommand;
+import org.openkilda.floodlight.command.flow.transit.TransitFlowLoopSegmentInstallCommand;
 import org.openkilda.floodlight.converter.OfFlowStatsMapper;
 import org.openkilda.floodlight.converter.OfMeterConverter;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
@@ -95,11 +97,13 @@ import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
+import org.openkilda.messaging.command.flow.InstallIngressLoopFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallServer42Flow;
 import org.openkilda.messaging.command.flow.InstallServer42IngressFlow;
 import org.openkilda.messaging.command.flow.InstallSharedFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
+import org.openkilda.messaging.command.flow.InstallTransitLoopFlow;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
@@ -752,18 +756,22 @@ class RecordHandler implements Runnable {
                 Integer server42Port = request.getServer42Port();
                 Integer server42Vlan = request.getServer42Vlan();
                 MacAddress server42MacAddress = request.getServer42MacAddress();
-                if (request.isServer42FlowRtt() && server42Port != null && server42Vlan != null
-                        && server42MacAddress != null) {
+
+                if (request.isServer42FlowRttFeatureToggle()) {
                     installedRules.add(
                             processInstallDefaultFlowByCookie(request.getSwitchId(), SERVER_42_TURNING_COOKIE));
-                    installedRules.add(switchManager.installServer42OutputVlanFlow(
-                            dpid, server42Port, server42Vlan, server42MacAddress));
-                    installedRules.add(switchManager.installServer42OutputVxlanFlow(
-                            dpid, server42Port, server42Vlan, server42MacAddress));
 
-                    for (Integer port : request.getServer42FlowRttPorts()) {
-                        installedRules.add(switchManager.installServer42InputFlow(
-                                dpid, server42Port, port, server42MacAddress));
+                    if (request.isServer42FlowRttSwitchProperty() && server42Port != null && server42Vlan != null
+                            && server42MacAddress != null) {
+                        installedRules.add(switchManager.installServer42OutputVlanFlow(
+                                dpid, server42Port, server42Vlan, server42MacAddress));
+                        installedRules.add(switchManager.installServer42OutputVxlanFlow(
+                                dpid, server42Port, server42Vlan, server42MacAddress));
+
+                        for (Integer port : request.getServer42FlowRttPorts()) {
+                            installedRules.add(switchManager.installServer42InputFlow(
+                                    dpid, server42Port, port, server42MacAddress));
+                        }
                     }
                 }
             }
@@ -947,7 +955,8 @@ class RecordHandler implements Runnable {
                     removedRules.addAll(switchManager.deleteDefaultRules(dpid, request.getIslPorts(),
                             request.getFlowPorts(), request.getFlowLldpPorts(), request.getFlowArpPorts(),
                             request.getServer42FlowRttPorts(), request.isMultiTable(), request.isSwitchLldp(),
-                            request.isSwitchArp(), request.isServer42FlowRtt()));
+                            request.isSwitchArp(),
+                            request.isServer42FlowRttFeatureToggle() && request.isServer42FlowRttSwitchProperty()));
                 }
             }
 
@@ -1004,16 +1013,19 @@ class RecordHandler implements Runnable {
                 Integer server42Port = request.getServer42Port();
                 Integer server42Vlan = request.getServer42Vlan();
                 MacAddress server42MacAddress = request.getServer42MacAddress();
-                if (request.isServer42FlowRtt() && server42Port != null && server42Vlan != null
-                        && server42MacAddress != null) {
+                if (request.isServer42FlowRttFeatureToggle()) {
                     switchManager.installServer42TurningFlow(dpid);
-                    switchManager.installServer42OutputVlanFlow(
-                            dpid, server42Port, server42Vlan, server42MacAddress);
-                    switchManager.installServer42OutputVxlanFlow(
-                            dpid, server42Port, server42Vlan, server42MacAddress);
 
-                    for (Integer port : request.getServer42FlowRttPorts()) {
-                        switchManager.installServer42InputFlow(dpid, server42Port, port, server42MacAddress);
+                    if (request.isServer42FlowRttSwitchProperty() && server42Port != null && server42Vlan != null
+                            && server42MacAddress != null) {
+                        switchManager.installServer42OutputVlanFlow(
+                                dpid, server42Port, server42Vlan, server42MacAddress);
+                        switchManager.installServer42OutputVxlanFlow(
+                                dpid, server42Port, server42Vlan, server42MacAddress);
+
+                        for (Integer port : request.getServer42FlowRttPorts()) {
+                            switchManager.installServer42InputFlow(dpid, server42Port, port, server42MacAddress);
+                        }
                     }
                 }
             }
@@ -1069,7 +1081,8 @@ class RecordHandler implements Runnable {
         boolean multiTable = request.isMultiTable();
         boolean switchLldp = request.isSwitchLldp();
         boolean switchArp = request.isSwitchArp();
-        boolean server42FlowRtt = request.isServer42FlowRtt();
+        boolean server42FlowRttFeatureToggle = request.isServer42FlowRttFeatureToggle();
+        boolean server42FlowRttSwitchProperty = request.isServer42FlowRttSwitchProperty();
         Integer server42Port = request.getServer42Port();
         Integer server42Vlan = request.getServer42Vlan();
         MacAddress server42MacAddress = request.getServer42MacAddress();
@@ -1099,11 +1112,9 @@ class RecordHandler implements Runnable {
                     defaultRules.add(context.getSwitchManager().buildArpInputCustomerFlow(dpid, port));
                 }
             }
-            if (server42FlowRtt) {
-                defaultRules.addAll(context.getSwitchManager()
-                        .buildExpectedServer42Flows(dpid, server42Port, server42Vlan, server42MacAddress,
-                                server42FlowRttPorts));
-            }
+            defaultRules.addAll(context.getSwitchManager()
+                    .buildExpectedServer42Flows(dpid, server42FlowRttFeatureToggle, server42FlowRttSwitchProperty,
+                            server42Port, server42Vlan, server42MacAddress, server42FlowRttPorts));
 
             List<FlowEntry> flows = defaultRules.stream()
                     .map(OfFlowStatsMapper.INSTANCE::toFlowEntry)
@@ -1648,6 +1659,10 @@ class RecordHandler implements Runnable {
             command = makeFlowSegmentWrappedCommand((InstallIngressFlow) request, messageContext, responseFactory);
         } else if (request instanceof InstallOneSwitchFlow) {
             command = makeFlowSegmentWrappedCommand((InstallOneSwitchFlow) request, messageContext, responseFactory);
+        } else if (request instanceof InstallIngressLoopFlow) {
+            command = makeIngressLoopWrappedCommand((InstallIngressLoopFlow) request, messageContext, responseFactory);
+        } else if (request instanceof InstallTransitLoopFlow) {
+            command = makeTransitLoopWrappedCommand((InstallTransitLoopFlow) request, messageContext, responseFactory);
         } else if (request instanceof InstallEgressFlow) {
             command = makeFlowSegmentWrappedCommand((InstallEgressFlow) request, messageContext, responseFactory);
         } else {
@@ -1694,6 +1709,23 @@ class RecordHandler implements Runnable {
         EgressFlowSegmentInstallCommand command = new EgressFlowSegmentInstallCommand(
                 messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, request.getIngressEndpoint(),
                 request.getInputPort(), makeTransitEncapsulation(request));
+
+        return new FlowSegmentWrapperCommand(command, responseFactory);
+    }
+
+    private FlowSegmentWrapperCommand makeTransitLoopWrappedCommand(
+            InstallTransitLoopFlow request, MessageContext messageContext, FlowSegmentResponseFactory responseFactory) {
+        TransitFlowLoopSegmentInstallCommand command = new TransitFlowLoopSegmentInstallCommand(
+                messageContext, request.getSwitchId(), EMPTY_COMMAND_ID, makeSegmentMetadata(request),
+                request.getInputPort(), makeTransitEncapsulation(request), request.getOutputPort());
+
+        return new FlowSegmentWrapperCommand(command, responseFactory);
+    }
+
+    private FlowSegmentWrapperCommand makeIngressLoopWrappedCommand(
+            InstallIngressLoopFlow request, MessageContext messageContext, FlowSegmentResponseFactory responseFactory) {
+        IngressFlowLoopSegmentInstallCommand command = new IngressFlowLoopSegmentInstallCommand(
+                messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), request.getIngressEndpoint());
 
         return new FlowSegmentWrapperCommand(command, responseFactory);
     }

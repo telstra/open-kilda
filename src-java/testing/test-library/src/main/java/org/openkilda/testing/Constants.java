@@ -31,7 +31,7 @@ public final class Constants {
     public static final Integer RULES_DELETION_TIME = 10;
     public static final Integer RULES_INSTALLATION_TIME = 20;
     public static final Integer STATS_LOGGING_TIMEOUT = 70;
-    public static final Integer STATS_FROM_SERVER42_LOGGING_TIMEOUT = 100;
+    public static final Integer STATS_FROM_SERVER42_LOGGING_TIMEOUT = 30;
     public static final SwitchId NON_EXISTENT_SWITCH_ID = new SwitchId("de:ad:be:ef:de:ad:be:ef");
     public static final String NON_EXISTENT_FLOW_ID = "non-existent-" + UUID.randomUUID().toString();
     public static final Integer SINGLE_TABLE_ID = 0;

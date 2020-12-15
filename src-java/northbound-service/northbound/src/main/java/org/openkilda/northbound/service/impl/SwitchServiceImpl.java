@@ -471,7 +471,7 @@ public class SwitchServiceImpl implements SwitchService {
                                                                          SwitchPropertiesDto switchPropertiesDto) {
 
         String correlationId = RequestCorrelationId.getId();
-        logger.debug("Update switch properties for the switch: {}", switchId);
+        logger.info("Update switch properties for the switch: {}, New properties: {}", switchId, switchPropertiesDto);
 
         if (switchPropertiesDto.getServer42Port() != null && switchPropertiesDto.getServer42Port() <= 0) {
             throw new MessageException(ErrorType.REQUEST_INVALID, format(
@@ -521,7 +521,8 @@ public class SwitchServiceImpl implements SwitchService {
     public CompletableFuture<PortPropertiesResponse> updatePortProperties(SwitchId switchId, int port,
                                                                           PortPropertiesDto portPropertiesDto) {
         String correlationId = RequestCorrelationId.getId();
-        logger.debug("Update port properties for the switch {} and port {}", switchId, port);
+        logger.info("Update port properties for the switch {} and port {}. New properties {}",
+                switchId, port, portPropertiesDto);
         UpdatePortPropertiesRequest data = new UpdatePortPropertiesRequest(switchId, port,
                 portPropertiesDto.isDiscoveryEnabled());
         InfoMessage request = new InfoMessage(data, System.currentTimeMillis(), correlationId);

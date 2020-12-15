@@ -26,6 +26,9 @@ export class SidebarComponent implements OnInit {
       if(!this.currentUrl.includes('/isl')) {
         localStorage.removeItem('linkData');
         localStorage.removeItem('ISL_LIST');  
+      }
+      if(!this.currentUrl.includes('/topology')) {
+        localStorage.removeItem('notification_data');
       } 
       if(!this.currentUrl.includes('/switches')) {
         localStorage.removeItem('SWITCHES_LIST');

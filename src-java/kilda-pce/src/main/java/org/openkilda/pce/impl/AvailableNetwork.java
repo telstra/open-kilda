@@ -15,6 +15,9 @@
 
 package org.openkilda.pce.impl;
 
+import static com.google.common.collect.Sets.newHashSet;
+
+import org.openkilda.model.Flow;
 import org.openkilda.model.Isl;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
@@ -88,15 +91,17 @@ public class AvailableNetwork {
     /**
      * Adds diversity weights into {@link AvailableNetwork} based on passed path segments and configuration.
      */
-    public void processDiversitySegments(List<PathSegment> segments) {
+    public void processDiversitySegments(List<PathSegment> segments, Flow flow) {
+        Set<SwitchId> terminatingSwitches = newHashSet(flow.getSrcSwitchId(), flow.getDestSwitchId());
         for (PathSegment segment : segments) {
             Node srcNode = getSwitch(segment.getSrcSwitchId());
             Node dstNode = getSwitch(segment.getDestSwitchId());
 
-            if (dstNode != null) {
+            if (dstNode != null && !terminatingSwitches.contains(dstNode.getSwitchId())) {
                 dstNode.increaseDiversityGroupUseCounter();
             }
-            if (srcNode != null && segment.getSeqId() == 0) {
+
+            if (srcNode != null && segment.getSeqId() == 0 && !terminatingSwitches.contains(srcNode.getSwitchId())) {
                 srcNode.increaseDiversityGroupUseCounter();
             }
 

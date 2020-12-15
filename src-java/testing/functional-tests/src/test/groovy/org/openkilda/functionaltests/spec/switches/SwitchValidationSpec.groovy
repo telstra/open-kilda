@@ -62,8 +62,6 @@ Description of fields:
 class SwitchValidationSpec extends HealthCheckSpecification {
     @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
     String speakerTopic
-    @Value('${use.multitable}')
-    boolean useMultitable
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
@@ -336,11 +334,7 @@ misconfigured"
         }?.cookie
         def untouchedCookiesOnSrcSw = northbound.getSwitchProperties(srcSwitch.dpId).multiTable ?
             (reverseCookies + sharedCookieOnSrcSw).sort() : reverseCookies
-        def sharedCookieOnDstSw = northbound.getSwitchRules(dstSwitch.dpId).flowEntries.find {
-            new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
-        }?.cookie
-        def cookiesOnDstSw = northbound.getSwitchProperties(srcSwitch.dpId).multiTable ?
-            (reverseCookies + forwardCookies + sharedCookieOnDstSw) : (reverseCookies + forwardCookies)
+        def cookiesOnDstSw = northbound.getSwitchRules(dstSwitch.dpId).flowEntries*.cookie
         northbound.deleteMeter(srcSwitch.dpId, srcSwitchCreatedMeterIds[0])
 
         then: "Meters info/rules are moved into the 'missing' section on the srcSwitch"
@@ -364,8 +358,7 @@ misconfigured"
 
         and: "Meters info/rules are NOT moved into the 'missing' section on the dstSwitch"
         verifyAll(northbound.validateSwitch(dstSwitch.dpId)) {
-            it.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == cookiesOnDstSw.size()
-            it.rules.proper.containsAll(cookiesOnDstSw)
+            it.rules.proper.sort() == cookiesOnDstSw.sort()
 
             def properMeters = it.meters.proper.findAll({dto -> !isDefaultMeter(dto)})
             properMeters*.meterId == dstSwitchCreatedMeterIds
@@ -533,25 +526,23 @@ misconfigured"
         and: "Create an intermediate-switch flow"
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
+        def rulesOnSrc = northbound.getSwitchRules(switchPair.src.dpId).flowEntries
+        def rulesOnDst = northbound.getSwitchRules(switchPair.dst.dpId).flowEntries
 
         when: "Delete created rules on the srcSwitch"
         def egressCookie = database.getFlow(flow.flowId).reversePath.cookie.value
         northbound.deleteSwitchRules(switchPair.src.dpId, egressCookie)
 
         then: "Rule info is moved into the 'missing' section on the srcSwitch"
-        def amountOfSharedRulesOnSrcSw = northbound.getSwitchProperties(switchPair.src.dpId).multiTable ? 1 : 0
-        def amountOfSharedRulesOnDstSw = northbound.getSwitchProperties(switchPair.src.dpId).multiTable ? 1 : 0
         verifyAll(northbound.validateSwitch(switchPair.src.dpId)) {
             it.rules.missing == [egressCookie]
-            it.rules.proper.findAll {
-                !new Cookie(it).serviceFlag
-            }.size() == 1 + amountOfSharedRulesOnSrcSw //ingress rule(s) is(are) left untouched
+            it.rules.proper.size() == rulesOnSrc.size() - 1
             it.rules.excess.empty
         }
 
         and: "Rule info is NOT moved into the 'missing' section on the dstSwitch and transit switches"
         def dstSwitchValidateInfo = northbound.validateSwitch(switchPair.dst.dpId)
-        dstSwitchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2 + amountOfSharedRulesOnDstSw
+        dstSwitchValidateInfo.rules.proper.sort() == rulesOnDst*.cookie.sort()
         switchHelper.verifyRuleSectionsAreEmpty(dstSwitchValidateInfo, ["missing", "excess"])
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
         def transitSwitches = involvedSwitches[1..-2].findAll { !it.description.contains("OF_12") }
@@ -569,7 +560,7 @@ misconfigured"
 
         then: "Repeated validation shows no discrepancies"
         verifyAll(northbound.validateSwitch(switchPair.dst.dpId)) {
-            it.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2 + amountOfSharedRulesOnSrcSw
+            it.rules.proper.sort() == rulesOnDst*.cookie.sort()
             switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
         }
 
@@ -600,19 +591,10 @@ misconfigured"
         and: "Create an intermediate-switch flow"
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
-        def createdCookiesSrcSw = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-            !new Cookie(it.cookie).serviceFlag
-        }*.cookie
-        def createdCookiesDstSw = northbound.getSwitchRules(switchPair.dst.dpId).flowEntries.findAll {
-            !new Cookie(it.cookie).serviceFlag
-        }*.cookie
-        def createdCookiesTransitSwitch = createdCookiesSrcSw.findAll {
-            new Cookie(it).getType() != CookieType.SHARED_OF_FLOW
-        }
-        def amountOfFlowRules = useMultitable ? 3 : 2  // 3 -> SHARED_OF_FLOW + ingress + egress
-        createdCookiesSrcSw.size() == amountOfFlowRules
-        createdCookiesDstSw.size() == amountOfFlowRules
-        createdCookiesTransitSwitch.size() == 2 // without SHARED_OF_FLOW
+        def createdCookiesSrcSw = northbound.getSwitchRules(switchPair.src.dpId).flowEntries*.cookie
+        def createdCookiesDstSw = northbound.getSwitchRules(switchPair.dst.dpId).flowEntries*.cookie
+        def createdCookiesTransitSwitch = northbound.getSwitchRules(pathHelper.getInvolvedSwitches(flow.flowId)[1].dpId)
+                .flowEntries*.cookie
 
         when: "Create excess rules on switches"
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
@@ -639,33 +621,23 @@ misconfigured"
 
         then: "Switch validation shows excess rules and store them in the 'excess' section"
         Wrappers.wait(WAIT_OFFSET) {
-            def newCookiesSize = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-                !new Cookie(it.cookie).serviceFlag
-            }.size()
-            assert newCookiesSize == createdCookiesSrcSw.size() + 1
+            assert northbound.getSwitchRules(switchPair.src.dpId).flowEntries.size() == createdCookiesSrcSw.size() + 1
 
             involvedSwitches.findAll { !it.description.contains("OF_12") }.each { switchId ->
                 def involvedSwitchValidateInfo = northbound.validateSwitch(switchId)
                 if (switchId == switchPair.src.dpId) {
-                    assert involvedSwitchValidateInfo.rules.proper.containsAll(createdCookiesSrcSw)
-                    assert involvedSwitchValidateInfo.rules.proper.findAll {
-                        !new Cookie(it).serviceFlag
-                    }.size() == amountOfFlowRules
+                    assert involvedSwitchValidateInfo.rules.proper.sort() == createdCookiesSrcSw.sort()
                 } else if (switchId == switchPair.dst.dpId) {
-                    assert involvedSwitchValidateInfo.rules.proper.containsAll(createdCookiesDstSw)
-                    assert involvedSwitchValidateInfo.rules.proper.findAll {
-                        !new Cookie(it).serviceFlag
-                    }.size() == amountOfFlowRules
+                    assert involvedSwitchValidateInfo.rules.proper.sort() == createdCookiesDstSw.sort()
                 } else {
-                    assert involvedSwitchValidateInfo.rules.proper.findAll {
-                        !new Cookie(it).serviceFlag
-                    }.size() == createdCookiesTransitSwitch.size()
-                    assert involvedSwitchValidateInfo.rules.proper.containsAll(createdCookiesTransitSwitch)
+                    assert involvedSwitchValidateInfo.rules.proper.sort() == createdCookiesTransitSwitch.sort()
                 }
                 switchHelper.verifyRuleSectionsAreEmpty(involvedSwitchValidateInfo, ["missing"])
 
                 assert involvedSwitchValidateInfo.rules.excess.size() == 1
                 assert involvedSwitchValidateInfo.rules.excess == [1L]
+                assert involvedSwitchValidateInfo.rules.excessHex.size() == 1
+                assert involvedSwitchValidateInfo.rules.excessHex == [Long.toHexString(1L)]
             }
         }
 
@@ -719,10 +691,16 @@ misconfigured"
     @Tags(HARDWARE)
     @Ignore("https://github.com/telstra/open-kilda/issues/3021")
     def "Able to validate and sync a switch with missing 'vxlan' ingress/transit/egress rule + meter"() {
-        given: "Two active not neighboring Noviflow switches"
+        given: "Two active not neighboring VXLAN supported switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
-            swP.src.noviflow && !swP.src.wb5164 && swP.dst.noviflow && !swP.dst.wb5164 && swP.paths.find { path ->
-                pathHelper.getInvolvedSwitches(path).every { it.noviflow && !it.wb5164 }
+            [swP.src, swP.dst].every {
+                northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation
+                        .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+            } && swP.paths.find { path ->
+                pathHelper.getInvolvedSwitches(path).every {
+                    northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation
+                            .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+                }
             }
         } ?: assumeTrue("Unable to find required switches in topology", false)
 
@@ -750,7 +728,10 @@ misconfigured"
         [switchPair.src, switchPair.dst].each { northbound.deleteMeter(it.dpId, metersMap[it.dpId][0]) }
         Wrappers.wait(RULES_DELETION_TIME) {
             def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
-            involvedSwitches.each { assert validationResultsMap[it.dpId].rules.missing.size() == 2 }
+            involvedSwitches.each {
+                assert validationResultsMap[it.dpId].rules.missing.size() == 2
+                assert validationResultsMap[it.dpId].rules.missingHex.size() == 2
+            }
             [switchPair.src, switchPair.dst].each { assert validationResultsMap[it.dpId].meters.missing.size() == 1 }
         }
 
@@ -758,6 +739,7 @@ misconfigured"
         involvedSwitches.eachWithIndex { sw, i ->
             verifyAll(northbound.validateSwitch(sw.dpId)) { validation ->
                 validation.rules.missing.size() == 2
+                validation.rules.missingHex.size() == 2
                 if (i == 0 || i == involvedSwitches.size() - 1) { //terminating switches
                     assert validation.meters.missing.size() == 1
                 }
@@ -788,6 +770,7 @@ misconfigured"
             involvedSwitches.each {
                 def validationResult = northbound.validateSwitch(it.dpId)
                 assert validationResult.rules.missing.size() == 0
+                assert validationResult.rules.missingHex.size() == 0
                 assert validationResult.meters.missing.size() == 0
             }
         }
@@ -833,87 +816,45 @@ misconfigured"
         def swPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
             it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
         } ?: assumeTrue("No switch pair with at least 2 diverse paths", false)
-        def flow = flowHelperV2.randomFlow(swPair)
-        flow.allocateProtectedPath = true
+        def flow = flowHelperV2.randomFlow(swPair).tap { allocateProtectedPath = true }
         flowHelperV2.addFlow(flow)
-        // protected path creates the 'egress' rule only on src and dst switches
-        // and creates 2 rules(input/output) on transit switches
-        // so, if (switchId == src/dst): 2 rules for main flow path + 1 egress for protected path = 3
-        // in case (switchId != src/dst): 2 rules for main flow path + 2 rules for protected path = 4
-        def amountOfRules = { SwitchId switchId ->
-            if (northbound.getSwitchProperties(switchId).multiTable) {
-                (switchId == swPair.src.dpId || switchId == swPair.dst.dpId) ? 4 : 5
-            } else {
-                (switchId == swPair.src.dpId || switchId == swPair.dst.dpId) ? 3 : 4
-            }
-        }
-
         def flowInfo = northbound.getFlowPath(flow.flowId)
-        assert flowInfo.protectedPath
-
-        when: "Validate rules on the switches"
-        def mainFlowPath = flowInfo.forwardPath
-        def protectedFlowPath = flowInfo.protectedPath.forwardPath
-        def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
-
-        then: "Rules are stored in the 'proper' section"
-        commonNodeIds.each { switchId ->
-            def rules = northbound.validateSwitchRules(switchId)
-            assert rules.properRules.findAll { !new Cookie(it).serviceFlag }.size() == amountOfRules(switchId)
-            assert rules.missingRules.empty
-            assert rules.excessRules.empty
+        def allSwitches = (pathHelper.getInvolvedSwitches(pathHelper.convert(flowInfo.protectedPath)) +
+                pathHelper.getInvolvedSwitches(pathHelper.convert(flowInfo))).unique { it.dpId }
+        def rulesPerSwitch = allSwitches.collectEntries {
+            [it.dpId, northbound.getSwitchRules(it.dpId).flowEntries*.cookie.sort()]
         }
 
-        def uniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } +
-                mainFlowPath.findAll {
-                    !commonNodeIds.contains(it.switchId)
-                }
-        uniqueNodes.forEach { sw ->
-            def rules = northbound.validateSwitchRules(sw.switchId)
-            assert rules.properRules.findAll { !new Cookie(it).serviceFlag }.size() == 2
+        expect: "Upon validation all rules are stored in the 'proper' section"
+        allSwitches*.dpId.each { switchId ->
+            def rules = northbound.validateSwitchRules(switchId)
+            assert rules.properRules.sort() == rulesPerSwitch[switchId]
             assert rules.missingRules.empty
             assert rules.excessRules.empty
         }
 
         when: "Delete rule of protected path on the srcSwitch (egress)"
         def protectedPath = northbound.getFlowPath(flow.flowId).protectedPath.forwardPath
-        def srcSwitchRules = northbound.getSwitchRules(commonNodeIds[0]).flowEntries.findAll {
+        def srcSwitchRules = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
             !new Cookie(it.cookie).serviceFlag
         }
-
         def ruleToDelete = srcSwitchRules.find {
             it.instructions?.applyActions?.flowOutput == protectedPath[0].inputPort.toString() &&
                     it.match.inPort == protectedPath[0].outputPort.toString()
         }.cookie
-
-        northbound.deleteSwitchRules(commonNodeIds[0], ruleToDelete)
+        northbound.deleteSwitchRules(swPair.src.dpId, ruleToDelete)
 
         then: "Deleted rule is moved to the 'missing' section on the srcSwitch"
-        verifyAll(northbound.validateSwitch(commonNodeIds[0])) {
-            it.rules.proper.findAll {
-                def cookie = new Cookie(it)
-                !cookie.serviceFlag || cookie.type == CookieType.SHARED_OF_FLOW
-            }.size() == amountOfRules(commonNodeIds[0]) - 1
+        verifyAll(northbound.validateSwitch(swPair.src.dpId)) {
+            it.rules.proper.sort() == rulesPerSwitch[swPair.src.dpId] - ruleToDelete
             it.rules.missing == [ruleToDelete]
             it.rules.excess.empty
         }
 
         and: "Rest switches are not affected by deleting the rule on the srcSwitch"
-        commonNodeIds[1..-1].each { switchId ->
-            def validation = northbound.validateSwitch(switchId)
-            assert validation.rules.proper.findAll {
-                def cookie = new Cookie(it)
-                !cookie.serviceFlag || cookie.type == CookieType.SHARED_OF_FLOW
-            }.size() == amountOfRules(switchId)
-            assert validation.rules.missing.empty
-            assert validation.rules.excess.empty
-        }
-        uniqueNodes.forEach { sw ->
-            def validation = northbound.validateSwitch(sw.switchId)
-            assert validation.rules.proper.findAll {
-                def cookie = new Cookie(it)
-                !cookie.serviceFlag || cookie.type == CookieType.SHARED_OF_FLOW
-            }.size() == 2
+        allSwitches.findAll { it.dpId != swPair.src.dpId }.each { sw ->
+            def validation = northbound.validateSwitch(sw.dpId)
+            assert validation.rules.proper.sort() == rulesPerSwitch[sw.dpId]
             assert validation.rules.missing.empty
             assert validation.rules.excess.empty
         }
@@ -926,10 +867,7 @@ misconfigured"
         then: "Switch validation no longer shows missing rules"
         verifyAll(northbound.validateSwitch(swPair.src.dpId)) {
             switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
-            it.rules.proper.findAll {
-                def cookie = new Cookie(it)
-                !cookie.serviceFlag || cookie.type == CookieType.SHARED_OF_FLOW
-            }.size() == amountOfRules(swPair.src.dpId)
+            it.rules.proper.sort() == rulesPerSwitch[swPair.src.dpId]
         }
 
         and: "Cleanup: delete the flow"
@@ -962,6 +900,7 @@ misconfigured"
         verifyAll(northbound.validateSwitch(flow.destination.datapath)) {
             !it.rules.proper.contains(deviceCookie)
             it.rules.missing.contains(deviceCookie)
+            it.rules.missingHex.contains(Long.toHexString(deviceCookie))
         }
 
         when: "Synchronize the switch"
@@ -973,7 +912,9 @@ misconfigured"
         verifyAll(northbound.validateSwitch(flow.destination.datapath)) {
             it.rules.proper.contains(deviceCookie)
             it.rules.missing.empty
+            it.rules.missingHex.empty
             it.rules.excess.empty
+            it.rules.excessHex.empty
             it.meters.missing.empty
             it.meters.excess.empty
         }

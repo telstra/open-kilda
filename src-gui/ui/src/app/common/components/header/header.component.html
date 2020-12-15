@@ -4,7 +4,25 @@
     </a>
     <nav class="navbar navbar-static-top">
       <div class="navbar-custom-menu pull-right">
-				<div ngbDropdown placement="bottom-right" class="d-inline-block">
+		<span *ngIf="defaultSetting.REFRESH_CHECKED && flagTopology" [class.active]="notification_arr.length > 0" class="notify_class" ngbPopover="Notifications" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave">
+			<i class="fa fa-bell fa-lg custom-icon cursor-pointer" (clickOutside)="onClickedOutside($event,'showNotification')" (click)="toggleNotification()"></i>
+			<span class="num" *ngIf="notification_arr.length > 0">{{notification_arr.length}}</span>
+		  </span>
+		  <div class="notification_list dropdown-menu" [@changeState]="showNotification" *ngIf="defaultSetting.REFRESH_CHECKED">
+			<ul  class="notification_list_ul" >
+				<li *ngFor="let data of notification_arr" (click)="openNotification(data)" class="refresh_option">
+					{{data.message}} <a href="javascript:void(0)" (click)="openNotificationObject(data)"><i class="fa fa-external-link"></i></a>
+			   </li>
+			   <li style="padding: 10px 90px;" *ngIf="notification_arr && notification_arr.length == 0">
+				   No notification data
+			   </li>
+			</ul>
+			<span class="col-md-12 pull-left  text-center" *ngIf="notification_arr && notification_arr.length > 0">
+				<button class="btn btn-sm btn-dark" (click)="clearAllNotification()">Clear All </button>
+			</span>
+		  </div>
+		 
+		   <div ngbDropdown placement="bottom-right" class="d-inline-block">
 					<button class="btn btn-outline-primary" id="dropdownBasic1" ngbDropdownToggle>{{username}} <i class="fa fa-angle-down" aria-hidden="true"></i></button>
 					<div ngbDropdownMenu aria-labelledby="dropdownBasic1">
 						<button (click)="openChangePassword()" class="dropdown-item"><i class="fa fa-lock"></i> Change Password</button>

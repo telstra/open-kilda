@@ -1,0 +1,5 @@
+[template]
+src = "ping-topology/ping-topology.tmpl"
+dest = "src-java/ping-topology/ping-storm-topology/src/main/resources/ping-topology.yaml"
+keys = [ "/" ]
+mode = "0644"

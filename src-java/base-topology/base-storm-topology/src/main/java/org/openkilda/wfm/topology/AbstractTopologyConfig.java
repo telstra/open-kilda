@@ -33,22 +33,6 @@ public interface AbstractTopologyConfig {
     @Converter(SecondsToMilisConverter.class)
     int getLocalExecutionTime();
 
-    @Key("flow.hs.parallelism")
-    @Default("4")
-    int getFlowHsParallelism();
-
-    @Key("parallelism")
-    int getParallelism();
-
-    @Key("parallelism.new")
-    int getNewParallelism();
-
-    @Key("isl.latency.parallelism")
-    int getIslLatencyParallelism();
-
-    @Key("workers")
-    int getWorkers();
-
     @Key("disruptor.wait.timeout")
     Integer getDisruptorWaitTimeout();
 
@@ -64,4 +48,8 @@ public interface AbstractTopologyConfig {
     default String getKafkaCtrlTopic() {
         return getKafkaTopics().getCtrlTopic();
     }
+
+    @Key("blue.green.mode")
+    @Default("blue")
+    String getBlueGreenMode();
 }

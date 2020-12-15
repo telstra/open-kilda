@@ -18,6 +18,7 @@ package org.openkilda.wfm.share.utils.rule.validation;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
@@ -103,6 +104,61 @@ public class SimpleSwitchRuleConverterTest {
                 BURST_COEFFICIENT);
 
         assertEquals(expectedSwitchRules, switchRules);
+    }
+
+    @Test
+    public void shouldConvertLoopedFlowPathWithTransitVlanEncapToSimpleSwitchRules() {
+        Flow flow = buildFlow(FlowEncapsulationType.TRANSIT_VLAN);
+        flow.setLoopSwitchId(flow.getSrcSwitchId());
+        List<SimpleSwitchRule> expectedSwitchRules = getSimpleSwitchRuleForTransitVlan();
+        expectedSwitchRules.add(SimpleSwitchRule.builder()
+                .switchId(TEST_SWITCH_ID_A)
+                .cookie(new FlowSegmentCookie(FLOW_A_FORWARD_COOKIE).toBuilder().looped(true).build().getValue())
+                .inPort(FLOW_A_SRC_PORT)
+                .outPort(FLOW_A_SRC_PORT)
+                .inVlan(FLOW_A_SRC_VLAN)
+                .build());
+
+        List<SimpleSwitchRule> switchRules = simpleSwitchRuleConverter.convertFlowPathToSimpleSwitchRules(flow,
+                flow.getForwardPath(),
+                TransitVlan.builder()
+                        .flowId(TEST_FLOW_ID_A)
+                        .pathId(FLOW_A_FORWARD_PATH_ID)
+                        .vlan(FLOW_A_ENCAP_ID)
+                        .build(),
+                MIN_BURST_SIZE_IN_KBITS,
+                BURST_COEFFICIENT);
+
+        assertEquals(expectedSwitchRules.size(), switchRules.size());
+        assertTrue(expectedSwitchRules.containsAll(switchRules));
+    }
+
+    @Test
+    public void shouldConvertReverseLoopedFlowPathWithTransitVlanEncapToSimpleSwitchRules() {
+        Flow flow = buildFlow(FlowEncapsulationType.TRANSIT_VLAN);
+        flow.setLoopSwitchId(flow.getDestSwitchId());
+        List<SimpleSwitchRule> expectedSwitchRules = getSimpleSwitchRuleForTransitVlan();
+        expectedSwitchRules.add(SimpleSwitchRule.builder()
+                .switchId(TEST_SWITCH_ID_C)
+                .cookie(new FlowSegmentCookie(FLOW_A_FORWARD_COOKIE).toBuilder()
+                        .looped(true).build().getValue())
+                .inPort(FLOW_A_SEGMENT_B_DST_PORT)
+                .outPort(FLOW_A_SEGMENT_B_DST_PORT)
+                .inVlan(FLOW_A_ENCAP_ID)
+                .build());
+
+        List<SimpleSwitchRule> switchRules = simpleSwitchRuleConverter.convertFlowPathToSimpleSwitchRules(flow,
+                flow.getForwardPath(),
+                TransitVlan.builder()
+                        .flowId(TEST_FLOW_ID_A)
+                        .pathId(FLOW_A_FORWARD_PATH_ID)
+                        .vlan(FLOW_A_ENCAP_ID)
+                        .build(),
+                MIN_BURST_SIZE_IN_KBITS,
+                BURST_COEFFICIENT);
+
+        assertEquals(expectedSwitchRules.size(), switchRules.size());
+        assertTrue(expectedSwitchRules.containsAll(switchRules));
     }
 
     @Test
