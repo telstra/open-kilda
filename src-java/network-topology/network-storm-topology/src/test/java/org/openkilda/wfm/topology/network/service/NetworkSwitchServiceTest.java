@@ -25,6 +25,7 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.error.rule.SwitchSyncErrorData;
@@ -88,10 +89,13 @@ public class NetworkSwitchServiceTest {
     private static final int BFD_LOGICAL_PORT_OFFSET = 200;
     private static final int SYNC_ATTEMPTS = 2;
 
+    private static final String DUMMY_CORRELATION_ID = "dummy";
+
     private NetworkOptions options = NetworkOptions.builder()
             .bfdLogicalPortOffset(BFD_LOGICAL_PORT_OFFSET)
             .dbRepeatMaxDurationSeconds(30)
             .countSynchronizationAttempts(SYNC_ATTEMPTS)
+            .switchOfflineGenerationLag(2)
             .build();
 
     @Mock
@@ -450,7 +454,7 @@ public class NetworkSwitchServiceTest {
         }
 
         SpeakerSwitchView periodicSyncEvent = speakerSwitchView.toBuilder().ports(ImmutableList.copyOf(ports)).build();
-        service.switchBecomeManaged(periodicSyncEvent);
+        service.switchBecomeManaged(periodicSyncEvent, DUMMY_CORRELATION_ID);
 
         // only changed ports
         verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, 1), LinkStatus.DOWN);
@@ -475,7 +479,7 @@ public class NetworkSwitchServiceTest {
         service.switchBecomeManaged(getSpeakerSwitchView().toBuilder()
                 .features(Collections.emptySet())
                 .ports(ports2)
-                .build());
+                .build(), DUMMY_CORRELATION_ID);
 
         // System.out.println(mockingDetails(carrier).printInvocations());
 
@@ -502,7 +506,7 @@ public class NetworkSwitchServiceTest {
         service.switchBecomeManaged(getSpeakerSwitchView().toBuilder()
                 .features(Collections.singleton(SwitchFeature.BFD))
                 .ports(ports2)
-                .build());
+                .build(), DUMMY_CORRELATION_ID);
 
         verify(carrier).removePortHandler(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET));
         verify(carrier).sendBfdPortAdd(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), 1);
@@ -875,16 +879,55 @@ public class NetworkSwitchServiceTest {
         verifyNoMoreInteractions(carrier);
     }
 
+    @Test
+    public void switchShouldBecomeOfflineEvenIfOfflineEventHaveBeenLost() {
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
+
+        SpeakerSwitchView alpha = getSpeakerSwitchView();
+
+        service.switchAddWithHistory(new HistoryFacts(betaDatapath, SwitchStatus.ACTIVE));
+        verifyZeroInteractions(carrier);
+
+        service.switchBecomeManaged(alpha, "A-0");
+        verify(carrier).sendSwitchSynchronizeRequest(any(), eq(alpha.getDatapath()));
+        verifyNoMoreInteractions(carrier);
+
+        service.switchBecomeManaged(alpha, "A-1");
+        verify(carrier).sendSwitchStateChanged(betaDatapath, SwitchStatus.INACTIVE);
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void switchMustStayOnlineIfItReceivePeriodicDumps() {
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
+
+        SpeakerSwitchView dump = getSpeakerSwitchView();
+        service.switchBecomeManaged(dump, "A-0");
+
+        ArgumentCaptor<String> syncKeyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(carrier).sendSwitchSynchronizeRequest(syncKeyCaptor.capture(), eq(dump.getDatapath()));
+        verifyNoMoreInteractions(carrier);
+
+        String syncKey = syncKeyCaptor.getValue();
+        SwitchSyncResponse response = makeSuccessSwitchSyncResponse(dump.getDatapath());
+        service.switchManagerResponse(response, syncKey);
+        verify(carrier).sendSwitchStateChanged(dump.getDatapath(), SwitchStatus.ACTIVE);
+        verify(carrier).sendAffectedFlowRerouteRequest(dump.getDatapath());
+        verifyNoMoreInteractions(carrier);
+
+        // +10 to be sure to cover +-1 mismatches
+        for (int i = 0; i < options.getSwitchOfflineGenerationLag() + 10; i++) {
+            service.switchBecomeManaged(dump, String.format("dump#%d", i));
+            verifyNoMoreInteractions(carrier);
+        }
+    }
+
     private void verifySwitchSync(NetworkSwitchService service) {
         // for a randomly generated key in SwitchFsm
         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
         verify(carrier).sendSwitchSynchronizeRequest(captor.capture(), eq(alphaDatapath));
 
-        RulesSyncEntry rulesSyncEntry =
-                new RulesSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
-        MetersSyncEntry metersSyncEntry =
-                new MetersSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
-        SwitchSyncResponse response = new SwitchSyncResponse(alphaDatapath, rulesSyncEntry, metersSyncEntry);
+        SwitchSyncResponse response = makeSuccessSwitchSyncResponse(alphaDatapath);
         service.switchManagerResponse(response, captor.getValue());
     }
 
@@ -976,5 +1019,13 @@ public class NetworkSwitchServiceTest {
                 .number(port.getNumber())
                 .state(port.getState() == State.UP ? State.DOWN : State.UP)
                 .build();
+    }
+
+    private SwitchSyncResponse makeSuccessSwitchSyncResponse(SwitchId switchId) {
+        RulesSyncEntry rulesSyncEntry =
+                new RulesSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
+        MetersSyncEntry metersSyncEntry =
+                new MetersSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
+        return new SwitchSyncResponse(switchId, rulesSyncEntry, metersSyncEntry);
     }
 }

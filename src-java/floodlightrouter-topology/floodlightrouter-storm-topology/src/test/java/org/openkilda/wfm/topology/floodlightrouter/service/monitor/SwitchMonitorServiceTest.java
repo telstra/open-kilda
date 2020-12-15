@@ -59,6 +59,7 @@ public class SwitchMonitorServiceTest {
     private static final String REGION_ALPHA = "alpha";
     private static final String REGION_BETA = "beta";
     private static final SwitchId SWITCH_ALPHA = new SwitchId(1);
+    private static final String NETWORK_DUMP_CORRELATION_ID = "dump-correlation-id";
 
     private final ManualClock clock = new ManualClock();
 
@@ -339,7 +340,8 @@ public class SwitchMonitorServiceTest {
         Instant t1 = clock.instant();
         SpeakerSwitchView suggestedBetaSpeakerData = makeSwitchActivateNotification(targetSw, 2)
                 .getSwitchView();
-        NetworkDumpSwitchData dumpBeta = new NetworkDumpSwitchData(suggestedBetaSpeakerData, true);
+        NetworkDumpSwitchData dumpBeta = new NetworkDumpSwitchData(
+                suggestedBetaSpeakerData, NETWORK_DUMP_CORRELATION_ID, true);
         subject.handleNetworkDumpResponse(dumpBeta, REGION_BETA);
         verify(carrier).sendSwitchAvailabilityUpdateNotification(
                 eq(targetSw), argThat(arg -> matchAvailabilityData(
@@ -393,7 +395,8 @@ public class SwitchMonitorServiceTest {
 
         SpeakerSwitchView suggestedAlphaSpeakerData = makeSwitchActivateNotification(targetSw, 1)
                 .getSwitchView();
-        NetworkDumpSwitchData dumpBeta = new NetworkDumpSwitchData(suggestedAlphaSpeakerData, true);
+        NetworkDumpSwitchData dumpBeta = new NetworkDumpSwitchData(
+                suggestedAlphaSpeakerData, NETWORK_DUMP_CORRELATION_ID, true);
         subject.handleNetworkDumpResponse(dumpBeta, REGION_ALPHA);
         verify(carrier).sendSwitchAvailabilityUpdateNotification(
                 eq(targetSw), argThat(arg -> matchAvailabilityData(
@@ -430,7 +433,8 @@ public class SwitchMonitorServiceTest {
         verifyNoMoreInteractions(carrier);
         reset(carrier);
 
-        NetworkDumpSwitchData dump = new NetworkDumpSwitchData(swAlphaActivate.getSwitchView(), true);
+        NetworkDumpSwitchData dump = new NetworkDumpSwitchData(
+                swAlphaActivate.getSwitchView(), NETWORK_DUMP_CORRELATION_ID, true);
         for (int i = 0; i < 5; i++) {
             clock.adjust(Duration.ofSeconds(60));
             subject.handleNetworkDumpResponse(dump, REGION_ALPHA);
