@@ -23,41 +23,45 @@ import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.wfm.error.MessageException;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.utils.AbstractKafkaParserBolt;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class WfmStatsParseBolt extends AbstractKafkaParserBolt {
-    private static final Logger logger = LoggerFactory.getLogger(WfmStatsParseBolt.class);
     public static final String WFM_TO_PARSE_PORT_INFO_STREAM = "wfm.to.parse.port.info.stream";
 
+    public WfmStatsParseBolt(String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
+    }
+
     @Override
-    public void execute(Tuple tuple) {
-        logger.debug("Ingoing tuple: {}", tuple);
-        Message message = (Message) tuple.getValueByField(MessageKafkaTranslator.FIELD_ID_PAYLOAD);
-        try {
-            InfoData data = getInfoData(message);
-            if (data instanceof SwitchPortStatusData) {
-                doParseSwitchPortsData((SwitchPortStatusData) data);
+    public void handleInput(Tuple tuple) {
+        if (active) {
+            log.debug("Ingoing tuple: {}", tuple);
+            Message message = (Message) tuple.getValueByField(MessageKafkaTranslator.FIELD_ID_PAYLOAD);
+            try {
+                InfoData data = getInfoData(message);
+                if (data instanceof SwitchPortStatusData) {
+                    doParseSwitchPortsData((SwitchPortStatusData) data);
+                }
+            } catch (MessageException e) {
+                log.error("Not an InfoMessage in queue message={}", message);
             }
-        } catch (MessageException e) {
-            logger.error("Not an InfoMessage in queue message={}", message);
-        } finally {
-            collector.ack(tuple);
-            logger.debug("Message ack: {}", message);
         }
     }
 
     private void doParseSwitchPortsData(SwitchPortStatusData data) {
         data.getPorts()
                 .stream()
-                .forEach(port -> collector.emit(WFM_TO_PARSE_PORT_INFO_STREAM, new Values(
+                .forEach(port -> emit(WFM_TO_PARSE_PORT_INFO_STREAM, new Values(
                         new PortInfoData(data.getSwitchId(), port.getId(),
                                 port.getStatus() == UP ? PortChangeType.UP : PortChangeType.DOWN))));
     }
@@ -65,5 +69,7 @@ public class WfmStatsParseBolt extends AbstractKafkaParserBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declareStream(WFM_TO_PARSE_PORT_INFO_STREAM, new Fields(TopoDiscoParseBolt.FIELD_NAME));
+        declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+                ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 }
