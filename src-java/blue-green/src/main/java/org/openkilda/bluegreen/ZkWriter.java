@@ -28,8 +28,9 @@ public class ZkWriter extends ZkClient {
     private String statePath;
 
     @Builder
-    public ZkWriter(String id, String serviceName, String connectionString, int sessionTimeout) {
-        super(id, serviceName, connectionString, sessionTimeout);
+    public ZkWriter(String id, String serviceName, String connectionString, int sessionTimeout,
+                    long connectionRefreshInterval) {
+        super(id, serviceName, connectionString, sessionTimeout, connectionRefreshInterval);
         statePath = getPaths(serviceName, id, STATE);
     }
 
@@ -56,6 +57,7 @@ public class ZkWriter extends ZkClient {
         } catch (KeeperException | InterruptedException | IOException | IllegalStateException e) {
             log.error(String.format("Couldn't init ZooKeeper writer for component %s with run id %s and "
                     + "connection string %s. Error: %s", serviceName, id, connectionString, e.getMessage()), e);
+            closeZk();
         }
     }
 

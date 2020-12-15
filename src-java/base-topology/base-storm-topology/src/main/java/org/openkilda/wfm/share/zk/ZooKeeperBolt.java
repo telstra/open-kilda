@@ -16,6 +16,7 @@
 package org.openkilda.wfm.share.zk;
 
 import org.openkilda.bluegreen.LifecycleEvent;
+import org.openkilda.bluegreen.ZkClient;
 import org.openkilda.bluegreen.ZkStateTracker;
 import org.openkilda.bluegreen.ZkWriter;
 import org.openkilda.wfm.AbstractBolt;
@@ -46,8 +47,7 @@ public class ZooKeeperBolt extends AbstractBolt {
     @Override
     protected void handleInput(Tuple input) throws Exception {
         if (!zkWriter.isConnectionAlive()) {
-            // TODO(tdurakov): verify there are no issues in constant reconnect
-            zkWriter.init();
+            zkWriter.safeRefreshConnection();
         }
         try {
             LifecycleEvent event = (LifecycleEvent) input.getValueByField(FIELD_ID_STATE);
@@ -70,6 +70,7 @@ public class ZooKeeperBolt extends AbstractBolt {
 
     private void initZk() {
         zkWriter = ZkWriter.builder().id(id).serviceName(serviceName)
+                .connectionRefreshInterval(ZkClient.DEFAULT_CONNECTION_REFRESH_INTERVAL)
                 .connectionString(connectionString).build();
         zkWriter.init();
         zkStateTracker = new ZkStateTracker(zkWriter);

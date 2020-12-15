@@ -46,7 +46,7 @@ public class VersioningProducerInterceptor<K, V> extends VersioningInterceptorBa
                         componentName, runId, connectionString);
                 cantConnectToZooKeeperTimestamp = Instant.now();
             }
-            watchDog.init(); // try to reconnect
+            watchDog.safeRefreshConnection(); // try to reconnect
         }
 
         if (record.headers().headers(MESSAGE_VERSION_HEADER).iterator().hasNext()) {

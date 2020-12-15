@@ -16,6 +16,7 @@
 package org.openkilda.bluegreen.kafka.interceptors;
 
 import org.openkilda.bluegreen.BuildVersionObserver;
+import org.openkilda.bluegreen.ZkClient;
 import org.openkilda.bluegreen.ZkWatchDog;
 
 import lombok.extern.slf4j.Slf4j;
@@ -58,6 +59,7 @@ public abstract class VersioningInterceptorBase implements BuildVersionObserver 
                 .id(runId)
                 .serviceName(componentName)
                 .connectionString(connectionString)
+                .connectionRefreshInterval(ZkClient.DEFAULT_CONNECTION_REFRESH_INTERVAL)
                 .build();
         watchDog.init();
         watchDog.subscribe(this);
