@@ -6,9 +6,14 @@
                      <input type="text" class="form-control" (keyup)="fulltextSearch($event)" placeholder="Search"/>
                  </div>
             </div>
-            <div class="col-sm-8 text-right text-filters mb-3" id="buttons">
-                  
+            <div class="col-sm-8 text-right text-filters"> 
+              <div class="row pull-right">
+                <button [disabled]="ifSelectedFlows()" class="cursor-pointer btn btn-dark mr-3" (click)="pingFlows()">Ping Flows</button>
+                <div class=" text-right text-filters mr-3" id="buttons"></div>
+              </div>             
+              
             </div>
+            
          </div>
          
      </div>
@@ -18,6 +23,8 @@
   <table id="switchflowDataTable" datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
     <thead>
       <tr class="tableHeading">
+        <th><input type="checkbox" [checked]="selectAll" style="margin-left: 7px;" class="large-checkbox" (click)="selectAllFlows($event)"  />
+        </th>
         <th class="">
           <span title="Flow ID"> Flow ID </span>
           <i class="fa fa-search" (click)="toggleSearch($event,'expandedFlowId')"></i>
@@ -79,29 +86,32 @@
       </tr>
     </thead>
     <tbody>
-      <tr *ngFor="let row of data; let i = index" (click)="showFlow(row)"  class="flowDataRow"   [class.down-state]="!(row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED')" [class.up-state]="row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED'" >
-        <td class="divTableCell" title="{{row.flowid }}"> 
+      <tr *ngFor="let row of data; let i = index"   class="flowDataRow"   [class.down-state]="!(row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED')" [class.up-state]="row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED'" >
+        <td>
+          <input type="checkbox" class="large-checkbox" name="switchFlow[row.flowid]" [checked]="switchFlow[row.flowid]" (click) = "toggleSelection(row)" />
+        </td>
+        <td (click)="showFlow(row)" class="divTableCell" title="{{row.flowid }}"> 
           {{row.flowid || "-"}} 
         
          </td>
-        <td title="{{row.source_switch_name}}" >
+        <td (click)="showFlow(row)" title="{{row.source_switch_name}}" >
           {{row.source_switch_name || "-"}}
         
         </td>
-        <td title="{{row.src_switch}}">{{row.source_switch || "-"}}</td>
-        <td title="{{row.src_port}}">{{row.src_port || "-"}}</td>
-        <td>{{row.src_vlan || "-"}}</td>
-        <td title="{{row.target_switch_name}}">
+        <td (click)="showFlow(row)" title="{{row.src_switch}}">{{row.source_switch || "-"}}</td>
+        <td (click)="showFlow(row)" title="{{row.src_port}}">{{row.src_port || "-"}}</td>
+        <td (click)="showFlow(row)">{{row.src_vlan || "-"}}</td>
+        <td (click)="showFlow(row)" title="{{row.target_switch_name}}">
           {{row.target_switch_name || "-"}}
           
         </td>
-         <td title="{{row.target_switch}}">{{row.target_switch || "-"}}</td>
-        <td>{{row.dst_port || "-"}}</td>
-        <td>{{row.dst_vlan || "-"}}</td>
-        <td>{{row.maximum_bandwidth / 1000  || "-"}}</td>
-        <td title="{{row.status || row.state ||  '-'}}">{{ row.status || row.state ||  "-"}}</td>
-        <td title="{{row.description}}">{{row.description || "-"}}</td>
-        <td >{{ descrepancyString(row) }}</td>
+         <td (click)="showFlow(row)" title="{{row.target_switch}}">{{row.target_switch || "-"}}</td>
+        <td (click)="showFlow(row)">{{row.dst_port || "-"}}</td>
+        <td (click)="showFlow(row)">{{row.dst_vlan || "-"}}</td>
+        <td (click)="showFlow(row)" >{{row.maximum_bandwidth / 1000  || "-"}}</td>
+        <td (click)="showFlow(row)" title="{{row.status || row.state ||  '-'}}">{{ row.status || row.state ||  "-"}}</td>
+        <td (click)="showFlow(row)" title="{{row.description}}">{{row.description || "-"}}</td>
+        <td (click)="showFlow(row)">{{ descrepancyString(row) }}</td>
       </tr>
     </tbody>
   </table>

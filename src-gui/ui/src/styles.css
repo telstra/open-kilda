@@ -1972,6 +1972,17 @@ label.btn.kilda_btn > span.copy_to_clipBoard {
 .btn.focus, .btn:focus , .btn-dark.focus, .btn-dark:focus{
   box-shadow: none;
 }
+/* .btn-dark:disabled{
+  background-color: #b0b0b0!important;
+  background: #b0b0b0!important;
+  text-decoration: none;
+  color:#000;
+} */
+.btn-dark:disabled:hover{
+  color: #fff;
+  background-color: #343a40;
+  border-color: #343a40;
+}
 
 #usermanagement_div .tab-content{
   z-index: inherit;
@@ -3009,27 +3020,27 @@ left: calc(100% - 16px);
   top: 2px;
   right: 8px;
 }
-.ol-popup-closer:after {
+/* .ol-popup-closer:after {
   content: "✖";
-}
+} */
 .ol-popup-minimize {
   text-decoration: none;
   position: absolute;
   top: 2px;
   right: 35px;
 }
-.ol-popup-minimize:after {
+/* .ol-popup-minimize:after {
   content: "-";
-}
+} */
 .ol-popup-maximize {
   text-decoration: none;
   position: absolute;
   top: 2px;
   right: 25px;
 }
-.ol-popup-maximize:after {
+/* .ol-popup-maximize:after {
   content: "[]";
-}
+} */
 
 #popup-content .circle.blue {
   fill: #fff;
