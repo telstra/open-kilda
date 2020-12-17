@@ -11,6 +11,7 @@ service.version=@project.version@
 service.description=@project.description@
 
 kafka.hosts={{ getv "/kilda_kafka_hosts" }}
+kafka.groupid=grpc-speaker-consumer-{{ getv "/kilda_blue_green_mode" }}
 zookeeper.connect_string = {{ getv "/kilda_zookeeper_hosts"}}/{{ getv "/kilda_zookeeper_state_root" }}
 server.port={{ getv "/kilda_grpc_rest_port" }}
 
