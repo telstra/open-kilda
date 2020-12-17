@@ -17,8 +17,12 @@ package org.openkilda.wfm.topology.opentsdb;
 
 import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 
+import org.openkilda.bluegreen.LifecycleEvent;
+import org.openkilda.bluegreen.Signal;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.wfm.StableAbstractStormTest;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
+import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 
 import org.apache.storm.Testing;
 import org.apache.storm.generated.StormTopology;
@@ -68,11 +72,14 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
         Testing.withTrackedCluster(clusterParam, (cluster) -> {
             OpenTsdbTopology topology = new OpenTsdbTopology(makeLaunchEnvironment());
 
+            sources.addMockData(ZooKeeperSpout.SPOUT_ID,
+                    new Values(LifecycleEvent.builder().signal(Signal.NONE).build(), null));
             sources.addMockData(OpenTsdbTopology.OTSDB_SPOUT_ID,
                     new Values(null, datapoint));
             completeTopologyParam.setMockedSources(sources);
 
             StormTopology stormTopology = topology.createTopology();
+            stormTopology.get_bolts().remove(ZooKeeperBolt.BOLT_ID);
 
             Map result = Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
         });
@@ -90,11 +97,14 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
         Testing.withTrackedCluster(clusterParam, (cluster) -> {
             OpenTsdbTopology topology = new OpenTsdbTopology(makeLaunchEnvironment());
 
+            sources.addMockData(ZooKeeperSpout.SPOUT_ID,
+                    new Values(LifecycleEvent.builder().signal(Signal.NONE).build(), null));
             sources.addMockData(OpenTsdbTopology.OTSDB_SPOUT_ID,
                     new Values(null, datapoint), new Values(null, datapoint));
             completeTopologyParam.setMockedSources(sources);
 
             StormTopology stormTopology = topology.createTopology();
+            stormTopology.get_bolts().remove(ZooKeeperBolt.BOLT_ID);
 
             Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
         });
@@ -118,11 +128,14 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
 
             OpenTsdbTopology topology = new OpenTsdbTopology(makeLaunchEnvironment(properties));
 
+            sources.addMockData(ZooKeeperSpout.SPOUT_ID,
+                    new Values(LifecycleEvent.builder().signal(Signal.NONE).build(), null));
             sources.addMockData(OpenTsdbTopology.OTSDB_SPOUT_ID,
                     new Values(null, datapoint1), new Values(null, datapoint2));
             completeTopologyParam.setMockedSources(sources);
 
             StormTopology stormTopology = topology.createTopology();
+            stormTopology.get_bolts().remove(ZooKeeperBolt.BOLT_ID);
 
             Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
         });
