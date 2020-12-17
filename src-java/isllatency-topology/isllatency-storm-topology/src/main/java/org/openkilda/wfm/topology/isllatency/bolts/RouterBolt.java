@@ -29,6 +29,8 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.isllatency.model.StreamType;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -36,26 +38,31 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-
 public class RouterBolt extends AbstractBolt {
+
+    public RouterBolt(String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
+    }
 
     @Override
     protected void handleInput(Tuple input) throws PipelineException {
         Message message = pullValue(input, FIELD_ID_PAYLOAD, Message.class);
 
-        if (message instanceof InfoMessage) {
-            log.debug("Received info message {}", message);
-            InfoData data = ((InfoMessage) message).getData();
+        if (active) {
+            if (message instanceof InfoMessage) {
+                log.debug("Received info message {}", message);
+                InfoData data = ((InfoMessage) message).getData();
 
-            if (data instanceof IslOneWayLatency) {
-                handleOneWayLatency(input, (IslOneWayLatency) data);
-            } else if (data instanceof IslRoundTripLatency) {
-                handleRoundTripLatency(input, (IslRoundTripLatency) data);
+                if (data instanceof IslOneWayLatency) {
+                    handleOneWayLatency(input, (IslOneWayLatency) data);
+                } else if (data instanceof IslRoundTripLatency) {
+                    handleRoundTripLatency(input, (IslRoundTripLatency) data);
+                } else {
+                    unhandledInput(input);
+                }
             } else {
                 unhandledInput(input);
             }
-        } else {
-            unhandledInput(input);
         }
     }
 
@@ -78,5 +85,7 @@ public class RouterBolt extends AbstractBolt {
         declarer.declareStream(StreamType.ONE_WAY_MANIPULATION.toString(), oneWayLatencyFields);
         declarer.declareStream(StreamType.CACHE.toString(),
                 new Fields(SWITCH_KEY_FIELD, LATENCY_DATA_FIELD, FIELD_ID_CONTEXT));
+        declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+                ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 }

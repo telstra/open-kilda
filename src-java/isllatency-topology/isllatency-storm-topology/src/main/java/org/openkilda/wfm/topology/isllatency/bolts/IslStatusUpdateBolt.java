@@ -27,6 +27,8 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.isllatency.model.StreamType;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -37,20 +39,26 @@ import org.apache.storm.tuple.Values;
 
 public class IslStatusUpdateBolt extends AbstractBolt {
 
+    public IslStatusUpdateBolt(String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
+    }
+
     @Override
     protected void handleInput(Tuple tuple) throws PipelineException {
-        Message message = pullValue(tuple, FIELD_ID_PAYLOAD, Message.class);
+        if (active) {
+            Message message = pullValue(tuple, FIELD_ID_PAYLOAD, Message.class);
 
-        if (message instanceof InfoMessage) {
-            InfoData data = ((InfoMessage) message).getData();
+            if (message instanceof InfoMessage) {
+                InfoData data = ((InfoMessage) message).getData();
 
-            if (data instanceof IslStatusUpdateNotification) {
-                handleIslStatusUpdateNotification(tuple, (IslStatusUpdateNotification) data);
+                if (data instanceof IslStatusUpdateNotification) {
+                    handleIslStatusUpdateNotification(tuple, (IslStatusUpdateNotification) data);
+                } else {
+                    unhandledInput(tuple);
+                }
             } else {
                 unhandledInput(tuple);
             }
-        } else {
-            unhandledInput(tuple);
         }
     }
 
@@ -67,5 +75,7 @@ public class IslStatusUpdateBolt extends AbstractBolt {
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         Fields fields = new Fields(ISL_GROUPING_FIELD, ISL_STATUS_FIELD, FIELD_ID_CONTEXT);
         declarer.declareStream(StreamType.ISL_STATUS.toString(), fields);
+        declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+                ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 }
