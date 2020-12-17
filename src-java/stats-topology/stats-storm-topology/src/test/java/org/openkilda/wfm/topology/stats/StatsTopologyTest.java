@@ -112,6 +112,8 @@ public class StatsTopologyTest extends AbstractStormTest {
     private static final int ENCAPSULATION_ID = 123;
     private static final UUID TRANSACTION_ID = UUID.randomUUID();
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    public static final String COMPONENT_NAME = "stats";
+    public static final String RUN_ID = "blue";
     private static InMemoryGraphPersistenceManager persistenceManager;
     private static StatsTopologyConfig statsTopologyConfig;
     private static TestKafkaConsumer otsdbConsumer;
@@ -133,7 +135,8 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     @BeforeClass
     public static void setupOnce() throws Exception {
-        AbstractStormTest.startZooKafkaAndStorm();
+        AbstractStormTest.startZooKafka();
+        AbstractStormTest.startStorm(COMPONENT_NAME, RUN_ID);
 
         LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
         Properties configOverlay = new Properties();
@@ -154,7 +157,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         cluster.submitTopology(StatsTopologyTest.class.getSimpleName(), config, stormTopology);
 
         otsdbConsumer = new TestKafkaConsumer(statsTopologyConfig.getKafkaOtsdbTopic(),
-                kafkaConsumerProperties(UUID.randomUUID().toString()));
+                kafkaConsumerProperties(UUID.randomUUID().toString(), COMPONENT_NAME, RUN_ID));
         otsdbConsumer.start();
 
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
