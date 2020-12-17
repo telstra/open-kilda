@@ -24,6 +24,8 @@ import com.sabre.oss.conf4j.annotation.Key;
 
 @Configuration
 public interface KafkaGrpcSpeakerConfig extends KafkaConsumerGroupConfig {
+    String GRPC_COMPONENT_NAME = "grpc";
+
     @Key("kafka.groupid")
     @Default("grpc-speaker-consumer")
     @Mapping(target = KAFKA_CONSUMER_GROUP_MAPPING)
