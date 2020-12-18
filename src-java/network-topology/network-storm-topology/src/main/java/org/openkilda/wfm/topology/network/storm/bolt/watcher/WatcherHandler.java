@@ -68,8 +68,8 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
 
     private transient NetworkWatcherService service;
 
-    public WatcherHandler(NetworkOptions options, String lifeCycleEventSourceComponent) {
-        super(lifeCycleEventSourceComponent);
+    public WatcherHandler(NetworkOptions options) {
+        super();
         this.options = options;
     }
 
@@ -107,16 +107,6 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
     @Override
     protected void init() {
         service = new NetworkWatcherService(this, options.getDiscoveryPacketTtl(), getTaskId());
-    }
-
-    @Override
-    protected void activate() {
-        service.activate();
-    }
-
-    @Override
-    protected void deactivate() {
-        service.deactivate();
     }
 
     @Override

@@ -21,6 +21,7 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.payload.switches.PortPropertiesPayload;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Isl;
 import org.openkilda.model.PortProperties;
 import org.openkilda.persistence.PersistenceManager;
@@ -48,6 +49,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.history.command.HistoryComm
 import org.openkilda.wfm.topology.network.storm.bolt.history.command.PortHistoryCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
+import org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast.ISpeakerBcastConsumer;
 import org.openkilda.wfm.topology.network.storm.bolt.sw.SwitchHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslDiscoveryCommand;
@@ -68,7 +70,7 @@ import org.apache.storm.tuple.Values;
 
 import java.time.Instant;
 
-public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlapCarrier {
+public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlapCarrier, ISpeakerBcastConsumer {
     public static final String BOLT_ID = ComponentId.PORT_HANDLER.toString();
 
     public static final String FIELD_ID_DATAPATH = SwitchHandler.FIELD_ID_DATAPATH;
@@ -163,16 +165,6 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     protected void init() {
         portService = new NetworkPortService(this, persistenceManager);
         antiFlapService = new NetworkAntiFlapService(this, antiFlapConfig);
-    }
-
-    @Override
-    protected void activate() {
-        antiFlapService.activate();
-    }
-
-    @Override
-    protected void deactivate() {
-        antiFlapService.deactivate();
     }
 
     @Override
@@ -290,6 +282,20 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
 
     public void processRoundTripStatus(RoundTripStatus status) {
         portService.roundTripStatusNotification(status);
+    }
+
+    // ISpeakerBcastConsumer
+
+    @Override
+    public void activationStatusUpdate(boolean isActive) {
+        if (! isActive) {
+            antiFlapService.reset();
+        }
+    }
+
+    @Override
+    public void processFeatureTogglesUpdate(FeatureToggles toggles) {
+        // no actions required
     }
 
     // Private

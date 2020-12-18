@@ -61,8 +61,8 @@ public class DecisionMakerHandler extends AbstractBolt implements IDecisionMaker
     private transient NetworkDecisionMakerService oneWayDiscoveryService;
     private transient NetworkRoundTripDecisionMakerService roundTripDiscoveryService;
 
-    public DecisionMakerHandler(NetworkOptions options, String lifeCycleEventSourceComponent) {
-        super(lifeCycleEventSourceComponent);
+    public DecisionMakerHandler(NetworkOptions options) {
+        super();
         this.options = options;
     }
 
@@ -81,18 +81,6 @@ public class DecisionMakerHandler extends AbstractBolt implements IDecisionMaker
     private void handleTimer(Tuple input) {
         oneWayDiscoveryService.tick();
         roundTripDiscoveryService.tick();
-    }
-
-    @Override
-    protected void activate() {
-        oneWayDiscoveryService.activate();
-        roundTripDiscoveryService.activate();
-    }
-
-    @Override
-    protected void deactivate() {
-        oneWayDiscoveryService.deactivate();
-        roundTripDiscoveryService.deactivate();
     }
 
     private void handleCommand(Tuple input) throws PipelineException {
