@@ -63,7 +63,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
     @Setter(AccessLevel.PROTECTED)
     private transient CommandContext commandContext;
 
-    private transient String lifeCycleEventSourceComponent;
+    private String lifeCycleEventSourceComponent;
 
     public AbstractBolt() {
     }
