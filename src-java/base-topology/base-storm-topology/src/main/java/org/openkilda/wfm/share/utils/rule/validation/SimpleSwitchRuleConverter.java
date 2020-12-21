@@ -214,13 +214,14 @@ public class SimpleSwitchRuleConverter {
     }
 
     private SimpleSwitchRule buildTransitLoopRuleForEgressSwitch(SimpleSwitchRule rule, FlowPath flowPath) {
-        return SimpleSwitchRule.builder()
+        SimpleSwitchRuleBuilder builder = SimpleSwitchRule.builder()
                 .switchId(rule.getSwitchId())
                 .cookie(flowPath.getCookie().toBuilder().looped(true).build().getValue())
                 .inPort(rule.getInPort())
                 .inVlan(rule.getInVlan())
-                .outPort(rule.getInPort())
-                .build();
+                .tunnelId(rule.getTunnelId())
+                .outPort(rule.getInPort());
+        return builder.build();
     }
 
     /**

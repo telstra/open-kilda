@@ -167,6 +167,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "priority", source = "priority")
     @Mapping(target = "pinned", source = "pinned")
     @Mapping(target = "detectConnectedDevices", source = "detectConnectedDevices")
+    @Mapping(target = "loopSwitchId", source = "loopSwitchId")
     @Mapping(target = "transitEncapsulationId", ignore = true)
     @Mapping(target = "diverseFlowId", ignore = true)
     @Mapping(target = "type", ignore = true)

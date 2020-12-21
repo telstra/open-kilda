@@ -54,6 +54,12 @@ public class UpdateRequestAction extends AnonymousAction<FlowSwapEndpointsFsm, S
         flowRequest.setDestination(
                 new FlowEndpoint(targetFlow.getDestSwitch(), targetFlow.getDestPort(), targetFlow.getDestVlan()));
 
+        if (flow.getLoopSwitchId() != null) {
+            boolean flowLoopedOnSrc = flow.getLoopSwitchId().equals(flow.getSrcSwitchId());
+            flowRequest.setLoopSwitchId(flowLoopedOnSrc ? flowRequest.getSource().getSwitchId()
+                    : flowRequest.getDestination().getSwitchId());
+        }
+
         flowRequest.setBulkUpdateFlowIds(Sets.newHashSet(anotherFlowId));
         flowRequest.setType(Type.UPDATE);
 
