@@ -54,7 +54,7 @@ up-test-mode:
 
 up-test-mode-stable:
 	cp -n .env.example .env
-	TAG=$(STABLE_TAG) WFM_TOPOLOGIES_MODE=blue docker-compose up -d --scale northbound-blue-green=0 {{if not (exists "/no_grpc_speaker")}}--scale grpc-speaker-blue-green=0{{end}}
+	TAG=$(STABLE_TAG) WFM_TOPOLOGIES_MODE=all docker-compose up -d --scale northbound-blue-green=0 {{if not (exists "/no_grpc_speaker")}}--scale grpc-speaker-blue-green=0{{end}}
 	docker-compose logs -f wfm
 	$(MAKE) -C tools/elk-dashboards
 

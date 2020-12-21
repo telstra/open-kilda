@@ -50,7 +50,7 @@ public class VersioningConsumerInterceptor<K, V> extends VersioningInterceptorBa
 
     @Override
     public ConsumerRecords<K, V> onConsume(ConsumerRecords<K, V> records) {
-        if (!watchDog.isActive()) {
+        if (!watchDog.isConnectedAndValidated()) {
             if (isZooKeeperConnectTimeoutPassed()) {
                 log.error("Component {} with id {} tries to reconnect to ZooKeeper with connection string: {}",
                         componentName, runId, connectionString);

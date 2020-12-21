@@ -38,6 +38,7 @@ import java.util.UUID;
 public class ZooKeeperService implements IService, LifeCycleObserver {
 
     public static final String ZK_COMPONENT_NAME = "floodlight";
+    public static final int ZK_CONNECTION_ATTEMPTS = 10;
 
     private final Set<ZooKeeperEventObserver> observers = new HashSet<>();
 
@@ -53,19 +54,20 @@ public class ZooKeeperService implements IService, LifeCycleObserver {
     @Override
     public void setup(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
         initZookeeper(moduleContext);
-        int i = 0;
-        while (i < 3) {
-            if (zkWriter.isActive() && watchDog.isActive()) {
-                break;
-            } else {
-                i++;
-                log.error("Failed to init zk clients, retrying {} of 3", i);
-                if (!zkWriter.isActive()) {
-                    zkWriter.safeRefreshConnection();
-                }
-                if (!watchDog.isActive()) {
-                    watchDog.safeRefreshConnection();
-                }
+        for (int i = 1; i <= ZK_CONNECTION_ATTEMPTS
+                && (!zkWriter.isConnectedAndValidated() || !watchDog.isConnectedAndValidated()); i++) {
+            log.error("Failed to init zk clients, retrying {} of {}", i, ZK_CONNECTION_ATTEMPTS);
+            if (!zkWriter.isConnectedAndValidated()) {
+                zkWriter.safeRefreshConnection();
+            }
+            if (!watchDog.isConnectedAndValidated()) {
+                watchDog.safeRefreshConnection();
+            }
+
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                log.error("Caught exception during waiting for zookeeper service initialization", e);
             }
         }
     }
