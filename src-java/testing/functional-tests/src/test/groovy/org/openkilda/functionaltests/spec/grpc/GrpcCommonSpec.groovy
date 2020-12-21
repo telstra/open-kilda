@@ -7,6 +7,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpServerErrorException
+import spock.lang.Ignore
 import spock.lang.Unroll
 
 class GrpcCommonSpec extends GrpcBaseSpecification {
@@ -51,6 +52,7 @@ class GrpcCommonSpec extends GrpcBaseSpecification {
     }
 
     @Tidy
+    @Ignore("https://github.com/telstra/open-kilda/issues/3901")
     @Tags(HARDWARE)
     def "Not able to get switch status from a non-existent switch address"() {
         when: "Get switch status"
@@ -58,7 +60,6 @@ class GrpcCommonSpec extends GrpcBaseSpecification {
         grpc.getSwitchStatus(nonExistentSwAddress)
 
         then: "Human readable error is returned"
-        //https://github.com/telstra/open-kilda/issues/3901
         def exc = thrown(HttpServerErrorException)
         exc.statusCode == HttpStatus.INTERNAL_SERVER_ERROR
     }

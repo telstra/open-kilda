@@ -6,6 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -197,7 +198,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
 
         and: "Related switches have no excess rules"
         //wait, server42 rules may take some time to disappear after flow removal
-        Wrappers.wait(WAIT_OFFSET / 2) { pathHelper.getInvolvedSwitches(PathHelper.convert(path)).each {
+        Wrappers.wait(RULES_DELETION_TIME) { pathHelper.getInvolvedSwitches(PathHelper.convert(path)).each {
             verifySwitchRules(it.dpId)
         }}
 

@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.server42
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.STATS_FROM_SERVER42_LOGGING_TIMEOUT
@@ -15,14 +16,13 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.util.mop.Use
 
 import java.util.concurrent.TimeUnit
 
-@Ignore("unstable on jenkins, fix ASAP")
+@Tags(HARDWARE) //unstable on jenkins, fix ASAP
 @Use(TimeCategory)
 @Narrative("Verify that statistic is collected from server42 Rtt")
 /* On local environment these tests will use stubs without sending real rtt packets across the network.
