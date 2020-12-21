@@ -22,6 +22,7 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.io.Serializable;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 @Value
@@ -34,11 +35,9 @@ public class NetworkOptions implements Serializable {
 
     private Long discoveryAuxiliaryInterval;
 
-    private Long discoveryRoundTripStatusInterval;
-
     private Long discoveryPacketTtl;
 
-    private Long discoveryTimeout;
+    private Duration discoveryTimeout;
 
     private Integer bfdLogicalPortOffset;
 
@@ -64,10 +63,8 @@ public class NetworkOptions implements Serializable {
         discoveryGenericInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryGenericInterval());
         discoveryExhaustedInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryExhaustedInterval());
         discoveryAuxiliaryInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryAuxiliaryInterval());
-        discoveryRoundTripStatusInterval = TimeUnit.SECONDS.toNanos(
-                topologyConfig.getDiscoveryRoundTripStatusInterval());
         discoveryPacketTtl = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryPacketTtl());
-        discoveryTimeout = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryTimeout());
+        discoveryTimeout = Duration.ofSeconds(topologyConfig.getDiscoveryTimeout());
 
         bfdLogicalPortOffset = topologyConfig.getBfdPortOffset();
         bfdEnabled = topologyConfig.isBfdEnabled();

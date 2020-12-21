@@ -90,7 +90,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkIslServiceTest {
@@ -107,7 +106,7 @@ public class NetworkIslServiceTest {
 
     private final NetworkOptions options = NetworkOptions.builder()
             .dbRepeatMaxDurationSeconds(30)
-            .discoveryTimeout(TimeUnit.SECONDS.toNanos(3))
+            .discoveryTimeout(Duration.ofSeconds(3))
             .build();
 
     private final BfdProperties genericBfdProperties = BfdProperties.builder()
@@ -500,28 +499,16 @@ public class NetworkIslServiceTest {
 
         final IslReference reference = prepareActiveIsl();
 
-        final Duration expirationTime = Duration.ofNanos(options.getDiscoveryTimeout());
-        final Duration halfExpirationTime = Duration.ofNanos(options.getDiscoveryTimeout() / 2);
-
-        Instant lastSeen = clock.instant();
-        Instant now = clock.adjust(halfExpirationTime);
-        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), lastSeen, now));
+        // round trip discovery (one endpoint enough)
+        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), IslStatus.ACTIVE));
 
         service.islDown(reference.getSource(), reference, IslDownReason.POLL_TIMEOUT);
         service.islDown(reference.getDest(), reference, IslDownReason.POLL_TIMEOUT);
 
         verify(dashboardLogger, times(0)).onIslDown(eq(reference), any());
 
-        // postpone
-        lastSeen = now;
-        now = clock.adjust(halfExpirationTime);
-        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), lastSeen, now));
-
-        verify(dashboardLogger, times(0)).onIslDown(eq(reference), any());
-
-        // expire
-        now = clock.adjust(expirationTime);
-        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), lastSeen, now));
+        // round trip fail/expire
+        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), IslStatus.INACTIVE));
         verify(dashboardLogger).onIslDown(eq(reference), any());
     }
 
@@ -530,69 +517,22 @@ public class NetworkIslServiceTest {
         setupIslStorageStub();
 
         final IslReference reference = prepareActiveIsl();
-
-        final Duration expirationTime = Duration.ofNanos(options.getDiscoveryTimeout());
-        final Duration halfExpirationTime = Duration.ofNanos(options.getDiscoveryTimeout() / 2);
-
-        Instant lastSeen = clock.instant();
-        Instant now = clock.adjust(halfExpirationTime);
-        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), lastSeen, now));
+        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), IslStatus.ACTIVE));
 
         service.islDown(reference.getSource(), reference, IslDownReason.POLL_TIMEOUT);
         service.islDown(reference.getDest(), reference, IslDownReason.POLL_TIMEOUT);
+        // still up because of active round trip discovery
         verify(dashboardLogger, times(0)).onIslDown(eq(reference), any());
 
-        // postpone
-        lastSeen = now;
-        now = clock.adjust(halfExpirationTime);
-        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), lastSeen, now));
-
-        verify(dashboardLogger, times(0)).onIslDown(eq(reference), any());
-
+        // restore one-way discovery status
         service.islUp(reference.getSource(), reference, new IslDataHolder(200L, 200L, 200L));
         service.islUp(reference.getDest(), reference, new IslDataHolder(200L, 200L, 200L));
 
-        now = clock.adjust(expirationTime);
-        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), lastSeen, now));
+        // remove round trip discovery
+        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), IslStatus.INACTIVE));
+
         // must not fail, because of successful discovery notifications
         verify(dashboardLogger, times(0)).onIslDown(eq(reference), any());
-    }
-
-    @Test
-    public void ignoreStaleRoundTripStatus() {
-        setupIslStorageStub();
-
-        final IslReference reference = prepareActiveIsl();
-        final Duration expirationTime = Duration.ofNanos(options.getDiscoveryTimeout());
-
-        Instant lastSeen = clock.instant();
-        clock.adjust(expirationTime);
-        Instant now = clock.adjust(expirationTime); // 2 expiration time have passed i.e. round trip have been expired
-        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), lastSeen, now));
-
-        // should fail on first poll fail event
-        service.islDown(reference.getSource(), reference, IslDownReason.POLL_TIMEOUT);
-        verify(dashboardLogger).onIslDown(eq(reference), any());
-    }
-
-    @Test
-    public void roundTripStatusMustExpireOnForeignEvent() {
-        setupIslStorageStub();
-
-        final IslReference reference = prepareActiveIsl();
-
-        Instant seenTime = clock.instant();
-        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), seenTime, seenTime));
-
-        service.islDown(reference.getSource(), reference, IslDownReason.POLL_TIMEOUT);  // half down
-
-        clock.adjust(Duration.ofNanos(options.getDiscoveryTimeout()));
-        clock.adjust(Duration.ofNanos(1));
-
-        verify(dashboardLogger, times(0)).onIslDown(eq(reference), any());
-        service.islUp(reference.getDest(), reference, new IslDataHolder(
-                lookupIsl(reference.getDest(), reference.getSource())));
-        verify(dashboardLogger).onIslDown(eq(reference), any());
     }
 
     @Test
@@ -602,9 +542,8 @@ public class NetworkIslServiceTest {
         final IslReference reference = prepareActiveIsl();
 
         // inject round-trip status
-        Instant lastSeen = clock.instant();
         service.roundTripStatusNotification(
-                reference, new RoundTripStatus(reference.getDest(), lastSeen, lastSeen));
+                reference, new RoundTripStatus(reference.getDest(), IslStatus.ACTIVE));
 
         Optional<Isl> forward = islStorage.lookup(reference.getSource(), reference.getDest());
         Assert.assertTrue(forward.isPresent());
@@ -806,14 +745,12 @@ public class NetworkIslServiceTest {
     public void roundTripDiscoveryOnSourceResetPortDownStatus() {
         IslReference reference = preparePortDownStatusReset();
 
-        clock.adjust(Duration.ofSeconds(1));
         service.roundTripStatusNotification(
-                reference, new RoundTripStatus(reference.getSource(), clock.instant(), clock.instant()));
+                reference, new RoundTripStatus(reference.getSource(), IslStatus.ACTIVE));
         verifyNoMoreInteractions(dashboardLogger);
 
-        clock.adjust(Duration.ofSeconds(1));
         service.roundTripStatusNotification(
-                reference, new RoundTripStatus(reference.getSource(), clock.instant(), clock.instant()));
+                reference, new RoundTripStatus(reference.getSource(), IslStatus.ACTIVE));
         verify(dashboardLogger).onIslUp(eq(reference), any());
         verifyNoMoreInteractions(dashboardLogger);
     }
@@ -822,35 +759,13 @@ public class NetworkIslServiceTest {
     public void roundTripDiscoveryOnDestResetPortDownStatus() {
         IslReference reference = preparePortDownStatusReset();
 
-        clock.adjust(Duration.ofSeconds(1));
         service.roundTripStatusNotification(
-                reference, new RoundTripStatus(reference.getDest(), clock.instant(), clock.instant()));
+                reference, new RoundTripStatus(reference.getDest(), IslStatus.ACTIVE));
         verifyNoMoreInteractions(dashboardLogger);
 
-        clock.adjust(Duration.ofSeconds(1));
         service.roundTripStatusNotification(
-                reference, new RoundTripStatus(reference.getDest(), clock.instant(), clock.instant()));
+                reference, new RoundTripStatus(reference.getDest(), IslStatus.ACTIVE));
         verify(dashboardLogger).onIslUp(eq(reference), any());
-        verifyNoMoreInteractions(dashboardLogger);
-    }
-
-    @Test
-    public void portDownMonitorIgnoresEmptyRoundTripUpdates() {
-        IslReference reference = preparePortDownStatusReset();
-
-        Instant lastUpdate = clock.instant();
-        service.roundTripStatusNotification(
-                reference, new RoundTripStatus(reference.getSource(), lastUpdate, clock.instant()));
-        verifyNoMoreInteractions(dashboardLogger);
-
-        clock.adjust(Duration.ofSeconds(1));
-        service.roundTripStatusNotification(
-                reference, new RoundTripStatus(reference.getSource(), lastUpdate, clock.instant()));
-        verifyNoMoreInteractions(dashboardLogger);
-
-        clock.adjust(Duration.ofSeconds(1));
-        service.roundTripStatusNotification(
-                reference, new RoundTripStatus(reference.getSource(), lastUpdate, clock.instant()));
         verifyNoMoreInteractions(dashboardLogger);
     }
 

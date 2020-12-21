@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.network.controller.port;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslStatus;
 import org.openkilda.model.PortProperties;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
@@ -81,6 +82,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
         IPortCarrier output = context.getOutput();
         output.disableDiscoveryPoll(endpoint);
         output.notifyPortDiscoveryFailed(endpoint);
+        emitRoundTripInactive(output);
     }
 
     public void proxyDiscovery(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
@@ -100,6 +102,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
         IPortCarrier output = context.getOutput();
         output.disableDiscoveryPoll(endpoint);
         output.notifyPortPhysicalDown(endpoint);
+        emitRoundTripInactive(output);
     }
 
     public void regionMissingEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
@@ -114,6 +117,10 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
     }
 
     // -- private/service methods --
+
+    private void emitRoundTripInactive(IPortCarrier carrier) {
+        carrier.notifyPortRoundTripStatus(new RoundTripStatus(endpoint, IslStatus.INACTIVE));
+    }
 
     // -- service data types --
 

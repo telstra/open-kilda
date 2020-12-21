@@ -20,36 +20,26 @@ import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.SwitchId;
-import org.openkilda.stubs.ManualClock;
 import org.openkilda.wfm.share.model.Endpoint;
-import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-
-import java.time.Duration;
-import java.time.Instant;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkWatcherServiceTest {
     private final Integer taskId = 0;
-    private final ManualClock testClock = new ManualClock();
 
     @Mock
     IWatcherCarrier carrier;
@@ -163,11 +153,12 @@ public class NetworkWatcherServiceTest {
 
         assertThat(w.getConfirmedPackets().size(), is(0));
 
-        verify(carrier).discoveryReceived(eq(new Endpoint(islAlphaBeta.getSource())), eq(0L), eq(islAlphaBeta),
+        verify(carrier).oneWayDiscoveryReceived(eq(new Endpoint(islAlphaBeta.getSource())), eq(0L), eq(islAlphaBeta),
                                           anyLong());
-        verify(carrier).discoveryReceived(eq(new Endpoint(islBetaAlpha.getSource())), eq(2L), eq(islBetaAlpha),
+        verify(carrier).oneWayDiscoveryReceived(eq(new Endpoint(islBetaAlpha.getSource())), eq(2L), eq(islBetaAlpha),
                                           anyLong());
-        verify(carrier, times(2)).discoveryReceived(any(Endpoint.class), anyLong(), any(IslInfoData.class), anyLong());
+        verify(carrier, times(2))
+                .oneWayDiscoveryReceived(any(Endpoint.class), anyLong(), any(IslInfoData.class), anyLong());
 
         assertThat(w.getTimeouts().size(), is(0));
     }
@@ -189,67 +180,10 @@ public class NetworkWatcherServiceTest {
         w.confirmation(new Endpoint(source), 0);
         w.tick(awaitTime + 1);
 
-        verify(carrier).discoveryReceived(eq(new Endpoint(source)), eq(0L), eq(islAlphaBeta), anyLong());
+        verify(carrier).oneWayDiscoveryReceived(eq(new Endpoint(source)), eq(0L), eq(islAlphaBeta), anyLong());
         verify(carrier, never()).discoveryFailed(eq(new Endpoint(source)), anyLong(), anyLong());
 
         assertThat(w.getConfirmedPackets().size(), is(0));
-    }
-
-    @Test
-    public void periodicallyProduceRoundTripStatusNotifications() {
-        Endpoint alpha = Endpoint.of(new SwitchId(1), 1);
-        Endpoint beta = Endpoint.of(new SwitchId(2), 2);
-
-        final PathNode source = new PathNode(alpha.getDatapath(), alpha.getPortNumber(), 0);
-        final PathNode destination = new PathNode(beta.getDatapath(), beta.getPortNumber(), 0);
-
-        NetworkWatcherService w = makeService();
-
-        testClock.adjust(Duration.ofMillis(1500));  // one and half round-trip-status notify interval
-        w.tick(1500);
-        verifyNoMoreInteractions(carrier);
-
-        IslInfoData discovery;
-
-        // discovery without round-trip response
-        w.addWatch(alpha, 1501);
-        discovery = IslInfoData.builder().source(source).destination(destination).packetId(0L).build();
-        w.discovery(discovery);
-
-        testClock.adjust(Duration.ofSeconds(1));
-        w.tick(2501);
-        verify(carrier, times(0)).sendRoundTripStatus(any());
-
-        // invalid packet id
-        Assert.assertTrue(w.getRoundTripPackets().isEmpty());
-        w.roundTripDiscovery(alpha, 0);
-        testClock.adjust(Duration.ofSeconds(1));
-        w.tick(3501);
-        verify(carrier, times(0)).sendRoundTripStatus(any());
-
-        // valid round trip response
-        w.addWatch(alpha, 3502);
-        Instant lastRoundTripTime = testClock.instant();
-        w.roundTripDiscovery(alpha, 1L);
-
-        verify(carrier, times(0)).sendRoundTripStatus(any());
-
-        InOrder inOrder = inOrder(carrier);
-        // expect periodically sent round trip status
-        for (int i = 0; i < 5; i++) {
-            testClock.adjust(Duration.ofSeconds(1));
-            w.tick(4502 + i * 1000);
-            inOrder.verify(carrier)
-                    .sendRoundTripStatus(eq(new RoundTripStatus(alpha, lastRoundTripTime, testClock.instant())));
-        }
-
-        reset(carrier);
-
-        // remove watch must remove round trip status too
-        w.removeWatch(alpha);
-        testClock.adjust(Duration.ofSeconds(1));
-        w.tick(10000);
-        verify(carrier, times(0)).sendRoundTripStatus(any());
     }
 
     private NetworkWatcherService makeService() {
@@ -257,7 +191,6 @@ public class NetworkWatcherServiceTest {
     }
 
     private NetworkWatcherService makeService(int awaitTime) {
-        Duration roundTripInterval = Duration.ofSeconds(1);
-        return new NetworkWatcherService(testClock, carrier, roundTripInterval, awaitTime, taskId);
+        return new NetworkWatcherService(carrier, awaitTime, taskId);
     }
 }

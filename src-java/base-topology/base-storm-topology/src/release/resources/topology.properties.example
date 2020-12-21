@@ -74,7 +74,6 @@ logger.level = INFO
 discovery.generic.interval = 3
 discovery.exhausted.interval = 60
 discovery.auxiliary.interval = 30
-discovery.round.trip.status.interval = 1
 discovery.packet.ttl = 5
 discovery.timeout = 15
 discovery.db.write.repeats.time.frame = 30
