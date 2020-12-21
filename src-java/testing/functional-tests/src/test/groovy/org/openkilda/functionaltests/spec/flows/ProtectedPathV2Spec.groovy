@@ -451,6 +451,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
         mainIsl && antiflap.portUp(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
         otherIsls && otherIsls.collectMany{[it, it.reversed]}.each { database.resetIslBandwidth(it) }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(mainIsl).state == IslChangeType.DISCOVERED }
         database.resetCosts()
     }
 
@@ -1138,6 +1139,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
                 northboundV2.partialSwitchUpdate(swId, new SwitchPatchDto().tap { it.pop = "" })
             }
         }
+        broughtDownPorts && database.resetCosts()
     }
 
     @Tidy

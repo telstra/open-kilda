@@ -1,10 +1,11 @@
 package org.openkilda.functionaltests.extension.fixture
 
 import org.openkilda.functionaltests.extension.spring.ContextAwareGlobalExtension
-import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.model.IslStatus
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
@@ -40,6 +41,8 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
     TopologyDefinition topology
     @Autowired
     FloodlightsHelper flHelper
+    @Autowired
+    Database database
 
     @Override
     void delayedVisitSpec(SpecInfo spec) {
@@ -89,10 +92,13 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
             }
         }
         regionVerifications.verify()
-        northbound.getAllLinks().each {
-            assert it.state == IslChangeType.DISCOVERED
-            assert it.cost == Constants.DEFAULT_COST || it.cost == 0
+        database.getAllIsls().each {
+            assert it.timeUnstable == null
+            assert it.actualStatus == IslStatus.ACTIVE
+            assert it.status == IslStatus.ACTIVE
             assert it.availableBandwidth == it.maxBandwidth
+            assert it.availableBandwidth == it.speed
+            assert it.cost == Constants.DEFAULT_COST || it.cost == 0
         }
     }
 }
