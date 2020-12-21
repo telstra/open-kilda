@@ -106,6 +106,8 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         tags.put("direction", FlowDirectionHelper.findDirectionSafe(entry.getCookie())
                 .orElse(Direction.UNKNOWN)
                 .name().toLowerCase());
+        CookieType cookieType = new Cookie(entry.getCookie()).getType();
+        tags.put("type", cookieType.name().toLowerCase());
 
         emitMetric("flow.raw.packets", timestamp, entry.getPacketCount(), tags);
         emitMetric("flow.raw.bytes", timestamp, entry.getByteCount(), tags);

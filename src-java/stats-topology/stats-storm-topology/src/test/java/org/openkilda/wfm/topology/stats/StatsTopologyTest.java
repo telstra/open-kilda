@@ -63,6 +63,7 @@ import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
@@ -81,6 +82,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -93,6 +95,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -315,7 +318,6 @@ public class StatsTopologyTest extends AbstractStormTest {
         });
     }
 
-
     @Test
     public void meterFlowRulesStatsTest() throws IOException {
         Flow flow = createFlow(SWITCH_ID_1, flowId);
@@ -509,7 +511,7 @@ public class StatsTopologyTest extends AbstractStormTest {
                 case METRIC_PREFIX + "flow.raw.packets":
                 case METRIC_PREFIX + "flow.raw.bytes":
                 case METRIC_PREFIX + "flow.raw.bits":
-                    assertEquals(7, datapoint.getTags().size());
+                    assertEquals(8, datapoint.getTags().size());
                     assertEquals(flowId, datapoint.getTags().get("flowid"));
                     assertEquals(direction, datapoint.getTags().get("direction"));
                     assertEquals(String.valueOf(flowStats.getTableId()), datapoint.getTags().get("tableid"));
@@ -563,6 +565,51 @@ public class StatsTopologyTest extends AbstractStormTest {
             assertEquals("10", datapoint.getTags().get("inPort"));
             assertEquals("unknown", datapoint.getTags().get("flowid"));
         });
+    }
+
+    @Test
+    public void flowAttendantRulesStatsTest() throws IOException {
+        FlowSegmentCookie server42IngressCookie = MAIN_FORWARD_COOKIE
+                .toBuilder().type(CookieType.SERVER_42_INGRESS).build();
+
+        FlowEndpoint ingress = new FlowEndpoint(SWITCH_ID_1, PORT_1);
+        FlowStatsEntry measure0 = new FlowStatsEntry(
+                0, server42IngressCookie.getValue(), 0, 0, ingress.getPortNumber(), ingress.getPortNumber() + 1);
+        FlowStatsEntry measure1 = new FlowStatsEntry(
+                0, server42IngressCookie.getValue(), 1, 200, ingress.getPortNumber(), ingress.getPortNumber() + 1);
+        FlowStatsEntry measure2 = new FlowStatsEntry(
+                0, server42IngressCookie.getValue(), 2, 300, ingress.getPortNumber(), ingress.getPortNumber() + 1);
+
+        sendStatsMessage(new FlowStatsData(ingress.getSwitchId(), Collections.singletonList(measure0)));
+
+        sendInstallIngressCommand(MAIN_FORWARD_COOKIE, ingress, SWITCH_ID_3);
+
+        sendStatsMessage(new FlowStatsData(ingress.getSwitchId(), Collections.singletonList(measure1)));
+
+        sendRemoveIngressCommand(MAIN_FORWARD_COOKIE);
+
+        sendStatsMessage(new FlowStatsData(ingress.getSwitchId(), Collections.singletonList(measure2)));
+
+        List<Datapoint> datapoints = pollDatapoints(9);
+        List<Datapoint> rawPacketsMetric = datapoints.stream()
+                .filter(entry -> (METRIC_PREFIX + "flow.raw.packets").equals(entry.getMetric()))
+                .collect(Collectors.toList());
+
+        Assert.assertEquals(3, rawPacketsMetric.size());
+        for (Datapoint entry : rawPacketsMetric) {
+            Map<String, String> tags = entry.getTags();
+            Assert.assertEquals(CookieType.SERVER_42_INGRESS.name().toLowerCase(), tags.get("type"));
+
+            if (Objects.equals(0, entry.getValue())) {
+                Assert.assertEquals("unknown", tags.get("flowid"));
+            } else if (Objects.equals(1, entry.getValue())) {
+                Assert.assertEquals(flowId, tags.get("flowid"));
+            } else if (Objects.equals(2, entry.getValue())) {
+                Assert.assertEquals("unknown", tags.get("flowid"));
+            } else {
+                Assert.fail(String.format("Unexpected metric value: %s", entry));
+            }
+        }
     }
 
     @Test
@@ -622,7 +669,6 @@ public class StatsTopologyTest extends AbstractStormTest {
         assertEquals(timestamp, datapoint.getTime().longValue());
     }
 
-
     @Test
     public void tableStatsTest() throws IOException {
         TableStatsEntry entry = TableStatsEntry.builder()
@@ -658,7 +704,6 @@ public class StatsTopologyTest extends AbstractStormTest {
             assertEquals(timestamp, datapoint.getTime().longValue());
         });
     }
-
 
     private Flow createFlow(SwitchId switchId, String flowId) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
@@ -724,11 +769,16 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     private void sendInstallIngressCommand(FlowSegmentCookie cookie) throws IOException {
+        sendInstallIngressCommand(cookie, new FlowEndpoint(SWITCH_ID_1, PORT_1), SWITCH_ID_3);
+    }
+
+    private void sendInstallIngressCommand(FlowSegmentCookie cookie, FlowEndpoint ingress, SwitchId egressSwitchId)
+            throws IOException {
         IngressFlowSegmentInstallRequest command = IngressFlowSegmentInstallRequest.builder()
                 .commandId(UUID.randomUUID())
                 .messageContext(new MessageContext())
-                .endpoint(new FlowEndpoint(SWITCH_ID_1, PORT_1))
-                .egressSwitchId(SWITCH_ID_3)
+                .endpoint(ingress)
+                .egressSwitchId(egressSwitchId)
                 .metadata(new FlowSegmentMetadata(flowId, cookie, false))
                 .encapsulation(new FlowTransitEncapsulation(1, FlowEncapsulationType.TRANSIT_VLAN))
                 .build();
