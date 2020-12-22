@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Slf4j
 public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
-    public static final String BOLT_ID = "zookeeper.spout";
+    public static final String SPOUT_ID = "zookeeper.spout";
     public static final String FIELD_ID_LIFECYCLE_EVENT = "lifecycle.event";
 
     public static final String FIELD_ID_CONTEXT = AbstractBolt.FIELD_ID_CONTEXT;

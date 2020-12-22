@@ -488,8 +488,4 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     protected ZookeeperConfig getZookeeperConfig() {
         return zookeeperConfig;
     }
-
-    protected String getZkTopoName() {
-        return getClass().getSimpleName();
-    }
 }
