@@ -1,30 +1,36 @@
 # Changelog
 
-## v1.80.0 (15/12/2020)
+## v1.80.0 (22/12/2020)
 
 ### Features:
 -  [#3843](https://github.com/telstra/open-kilda/pull/3843) Added round_trip_status to /v1/links API response [**northbound**][**storm-topologies**]
+-  [#3907](https://github.com/telstra/open-kilda/pull/3907) Added zero downtime producers (Issue: [#3912](https://github.com/telstra/open-kilda/issues/3912)) [**floodlight**][**northbound**][**storm-topologies**]
+-  [#3913](https://github.com/telstra/open-kilda/pull/3913) Moved ZkClient initialization out of constructor [**floodlight**][**northbound**][**storm-topologies**]
+-  [#3915](https://github.com/telstra/open-kilda/pull/3915) Handle IllegalStateException during ZkClient initialization (Issue: [#3913](https://github.com/telstra/open-kilda/issues/3913)) [**floodlight**][**northbound**][**storm-topologies**]
+-  [#3891](https://github.com/telstra/open-kilda/pull/3891) Increased storm slots for storm workers from 15 to 30 [**storm-topologies**]
+
+### Bug Fixes:
+-  [#3945](https://github.com/telstra/open-kilda/pull/3945) Zk Connection clean up (Issue: [#3926](https://github.com/telstra/open-kilda/issues/3926)) 
 
 ### Improvements:
--  [#3907](https://github.com/telstra/open-kilda/pull/3907) Added zero downtime producers (Issue: [#3912](https://github.com/telstra/open-kilda/issues/3912)) [**floodlight**][**northbound**][**storm-topologies**]
--  [#3891](https://github.com/telstra/open-kilda/pull/3891) Increased storm slots for storm workers from 15 to 30 [**storm-topologies**]
 -  [#3908](https://github.com/telstra/open-kilda/pull/3908) add test for #3906 [**tests**]
 -  [#3779](https://github.com/telstra/open-kilda/pull/3779) adjust func test to work with hex cookies [**tests**]
 -  [#3911](https://github.com/telstra/open-kilda/pull/3911) Docker base image for Lab-Api bumped to Ubuntu Focal [**tests**]
 -  [#3912](https://github.com/telstra/open-kilda/pull/3912) Upgrade openvswitch to 2.14 after migrating to Ubuntu 20.04 [**tests**]
 -  [#3850](https://github.com/telstra/open-kilda/pull/3850) Added logs for Update switch props request [**northbound**][**storm-topologies**]
 -  [#3818](https://github.com/telstra/open-kilda/pull/3818) unignore grpc tests [**tests**]
+-  [#3884](https://github.com/telstra/open-kilda/pull/3884) Use API to get round-trip status in functional tests [**tests**]
 -  [#3889](https://github.com/telstra/open-kilda/pull/3889) add flowLoop tests for singleSwFlow [**tests**]
 -  [#3903](https://github.com/telstra/open-kilda/pull/3903) Reorder switch events inside network topology [**storm-topologies**]
 -  [#3899](https://github.com/telstra/open-kilda/pull/3899) refactor vxlan related tests [**tests**]
 -  [#3837](https://github.com/telstra/open-kilda/pull/3837) Prevent updating of time-modify on property change with the same value. [**storm-topologies**]
 -  [#3803](https://github.com/telstra/open-kilda/pull/3803) Introduce fine tuning for storm topologies [**configuration**][**storm-topologies**]
--  [#3916](https://github.com/telstra/open-kilda/pull/3916) Zookeeper connection refresh with default retry interval [**storm-topologies**]
+-  [#3916](https://github.com/telstra/open-kilda/pull/3916) Zookeeper connection refresh with default retry interval [**floodlight**][**northbound**][**storm-topologies**]
 
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.79.0...v1.80.0).
 
 ### Affected Components:
-nb, nbworker, stats, fl, flow-hs, isllatency, swmanager, network, reroute, router, otsdb, stats-router, connected, ping, portstate
+nbworker, ping, network, isllatency, swmanager, stats, nb, flow-hs, grpc, connected, router, stats-router, portstate, otsdb, reroute, fl
 
 --
 
