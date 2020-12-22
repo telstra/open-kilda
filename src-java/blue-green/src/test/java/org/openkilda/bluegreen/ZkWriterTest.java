@@ -32,8 +32,9 @@ public class ZkWriterTest {
     @Test
     public void testValidateNodes() throws KeeperException, InterruptedException, IOException {
         ZkWriter writer = Mockito.mock(ZkWriter.class);
+        doCallRealMethod().when(writer).validateZNodes();
         doCallRealMethod().when(writer).validateNodes();
-        writer.validateNodes();
+        writer.validateZNodes();
         verify(writer, Mockito.times(3)).ensureZNode(any());
     }
 

@@ -26,7 +26,6 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.data.Stat;
 
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -64,11 +63,15 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
     }
 
     @Override
-    void validateNodes() throws KeeperException, InterruptedException, IOException {
-        super.validateNodes();
+    void validateNodes() throws KeeperException, InterruptedException {
         ensureZNode(serviceName, id, SIGNAL);
         ensureZNode(DEFAULT_BUILD_VERSION.getBytes(), serviceName, id, BUILD_VERSION);
-        nodesValidated = true;
+    }
+
+    @Override
+    void subscribeNodes() {
+        subscribeSignal();
+        subscribeBuildVersion();
     }
 
 
@@ -84,20 +87,6 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
 
     private void checkData(String path) {
         zookeeper.getData(path, this, this, null);
-    }
-
-    @Override
-    public void init() {
-        try {
-            initZk();
-            validateNodes();
-            subscribeSignal();
-            subscribeBuildVersion();
-        } catch (KeeperException | InterruptedException | IOException | IllegalStateException e) {
-            log.error(String.format("Couldn't init ZooKeeper watch dog for component %s with run id %s and "
-                    + "connection string %s. Error: %s", serviceName, id, connectionString, e.getMessage()), e);
-            closeZk();
-        }
     }
 
     /**
@@ -131,17 +120,13 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
     @Override
     public void process(WatchedEvent event) {
         log.info("Received event: {}", event);
-        try {
-            if (!refreshConnection(event.getState())) {
-                if (signalPath.equals(event.getPath())) {
-                    subscribeSignal();
-                }
-                if (buildVersionPath.equals(event.getPath())) {
-                    subscribeBuildVersion();
-                }
+        if (!refreshConnection(event.getState())) {
+            if (signalPath.equals(event.getPath())) {
+                subscribeSignal();
             }
-        } catch (IOException e) {
-            log.error("Failed to read zk event: {}", e.getMessage(), e);
+            if (buildVersionPath.equals(event.getPath())) {
+                subscribeBuildVersion();
+            }
         }
     }
 
@@ -185,13 +170,13 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
     public void close() throws IllegalStateException, InterruptedException {
         if (!observers.isEmpty()) {
             String message = format("Could not close connection to zookeeper %S. Watch dog still have %S life cycle "
-                            + "observers", connectionString, observers.size());
+                    + "observers", connectionString, observers.size());
             log.error(message);
             throw new IllegalStateException(message);
         }
         if (!buildVersionObservers.isEmpty()) {
             String message = format("Could not close connection to zookeeper %s. Watch dog still have %s build "
-                            + "version observers", connectionString, buildVersionObservers.size());
+                    + "version observers", connectionString, buildVersionObservers.size());
             log.error(message);
             throw new IllegalStateException(message);
         }

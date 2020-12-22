@@ -46,7 +46,7 @@ public class ZooKeeperBolt extends AbstractBolt {
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        if (!zkWriter.isConnectionAlive()) {
+        if (!zkWriter.isActive()) {
             zkWriter.safeRefreshConnection();
         }
         try {

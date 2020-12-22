@@ -82,7 +82,7 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
         } else {
             org.apache.storm.utils.Utils.sleep(1L);
         }
-        if (!watchDog.isConnectionAlive()) {
+        if (!watchDog.isActive()) {
             log.info("Service {} with run_id {} tries to reconnect to ZooKeeper {}", serviceName, id, connectionString);
             watchDog.safeRefreshConnection();
         }
