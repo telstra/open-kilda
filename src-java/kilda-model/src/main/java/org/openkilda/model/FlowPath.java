@@ -83,12 +83,16 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
                     FlowSegmentCookie cookie, MeterId meterId, GroupId ingressMirrorGroupId,
                     long latency, long bandwidth,
                     boolean ignoreBandwidth, FlowPathStatus status, List<PathSegment> segments,
-                    Set<FlowApplication> applications) {
+                    Set<FlowApplication> applications, boolean srcWithMultiTable, boolean destWithMultiTable) {
         data = FlowPathDataImpl.builder().pathId(pathId).srcSwitch(srcSwitch).destSwitch(destSwitch)
                 .cookie(cookie).meterId(meterId).ingressMirrorGroupId(ingressMirrorGroupId)
                 .latency(latency).bandwidth(bandwidth)
                 .ignoreBandwidth(ignoreBandwidth).status(status)
-                .applications(applications).build();
+                .applications(applications).srcWithMultiTable(srcWithMultiTable).destWithMultiTable(destWithMultiTable)
+                .build();
+        // The reference is used to link path segments back to the path. See {@link #setSegments(List)}.
+        ((FlowPathDataImpl) data).flowPath = this;
+
         if (segments != null && !segments.isEmpty()) {
             data.setSegments(segments);
         }
@@ -164,6 +168,8 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
                 .append(getStatus(), that.getStatus())
                 .append(getSegments(), that.getSegments())
                 .append(getApplications(), that.getApplications())
+                .append(isSrcWithMultiTable(), that.isSrcWithMultiTable())
+                .append(isDestWithMultiTable(), that.isDestWithMultiTable())
                 .isEquals();
     }
 
@@ -171,7 +177,7 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
     public int hashCode() {
         return Objects.hash(getPathId(), getSrcSwitchId(), getDestSwitchId(), getFlowId(), getCookie(), getMeterId(),
                 getLatency(), getBandwidth(), isIgnoreBandwidth(), getTimeCreate(), getTimeModify(), getStatus(),
-                getSegments());
+                getSegments(), getApplications(), isSrcWithMultiTable(), isDestWithMultiTable());
     }
 
     /**
@@ -241,6 +247,15 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         Set<FlowApplication> getApplications();
 
         void setApplications(Set<FlowApplication> applications);
+
+        boolean isSrcWithMultiTable();
+
+        void setSrcWithMultiTable(boolean srcWithMultiTable);
+
+        boolean isDestWithMultiTable();
+
+        void setDestWithMultiTable(boolean destWithMultiTable);
+
     }
 
     /**
@@ -281,6 +296,16 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
                 segments.forEach(segment -> segment.getData().setPathId(pathId));
             }
         }
+
+        // The reference is used to link path segments back to the path. See {@link #setSegments(List)}.
+        @Setter(AccessLevel.NONE)
+        @Getter(AccessLevel.NONE)
+        @ToString.Exclude
+        @EqualsAndHashCode.Exclude
+        FlowPath flowPath;
+
+        boolean srcWithMultiTable;
+        boolean destWithMultiTable;
 
         @Override
         public String getFlowId() {
