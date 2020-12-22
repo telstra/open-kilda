@@ -20,8 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 
-import java.io.IOException;
-
 @Slf4j
 public class ZkWriter extends ZkClient {
     private static final String STATE = "state";
@@ -50,31 +48,18 @@ public class ZkWriter extends ZkClient {
     }
 
     @Override
-    public void init() {
-        try {
-            initZk();
-            validateNodes();
-        } catch (KeeperException | InterruptedException | IOException | IllegalStateException e) {
-            log.error(String.format("Couldn't init ZooKeeper writer for component %s with run id %s and "
-                    + "connection string %s. Error: %s", serviceName, id, connectionString, e.getMessage()), e);
-            closeZk();
-        }
+    void validateNodes() throws KeeperException, InterruptedException {
+        ensureZNode(serviceName, id, STATE);
     }
 
     @Override
-    void validateNodes() throws KeeperException, InterruptedException, IOException {
-        super.validateNodes();
-        ensureZNode(serviceName, id, STATE);
-        nodesValidated = true;
+    void subscribeNodes() {
+
     }
 
     @Override
     public void process(WatchedEvent event) {
         log.info("Received event: {}", event);
-        try {
-            refreshConnection(event.getState());
-        } catch (IOException e) {
-            log.error("Failed to read zk event: {}", e.getMessage(), e);
-        }
+        refreshConnection(event.getState());
     }
 }
