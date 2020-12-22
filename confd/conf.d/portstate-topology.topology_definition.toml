@@ -1,0 +1,5 @@
+[template]
+src = "portstate-topology/portstate-topology.tmpl"
+dest = "src-java/portstate-topology/portstate-storm-topology/src/main/resources/portstate-topology.yaml"
+keys = [ "/" ]
+mode = "0644"

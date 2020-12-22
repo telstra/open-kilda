@@ -42,7 +42,7 @@ import java.util.Collections;
 public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
     public OpenTsdbTopology(LaunchEnvironment env) {
-        super(env, OpenTsdbTopologyConfig.class);
+        super(env, "opentsdb-topology", OpenTsdbTopologyConfig.class);
     }
 
     @VisibleForTesting
@@ -61,11 +61,10 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
         OpenTsdbConfig openTsdbConfig = topologyConfig.getOpenTsdbConfig();
 
-        tb.setBolt(OTSDB_PARSE_BOLT_ID, new DatapointParseBolt(), openTsdbConfig.getDatapointParseBoltExecutors())
-                .setNumTasks(openTsdbConfig.getDatapointParseBoltWorkers())
+        declareBolt(tb, new DatapointParseBolt(), OTSDB_PARSE_BOLT_ID)
                 .shuffleGrouping(OTSDB_SPOUT_ID);
 
-        tb.setBolt(OTSDB_FILTER_BOLT_ID, new OpenTSDBFilterBolt(), openTsdbConfig.getFilterBoltExecutors())
+        declareBolt(tb, new OpenTSDBFilterBolt(), OTSDB_FILTER_BOLT_ID)
                 .fieldsGrouping(OTSDB_PARSE_BOLT_ID, new Fields("hash"));
 
         OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
@@ -78,8 +77,7 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
         OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder,
                 Collections.singletonList(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER));
         openTsdbBolt.withBatchSize(openTsdbConfig.getBatchSize()).withFlushInterval(openTsdbConfig.getFlushInterval());
-        tb.setBolt(OTSDB_BOLT_ID, openTsdbBolt, openTsdbConfig.getBoltExecutors())
-                .setNumTasks(openTsdbConfig.getBoltWorkers())
+        declareBolt(tb, openTsdbBolt, OTSDB_BOLT_ID)
                 .shuffleGrouping(OTSDB_FILTER_BOLT_ID);
 
         return tb.createTopology();
@@ -87,8 +85,6 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
     private void attachInput(TopologyBuilder topology) {
         String otsdbTopic = topologyConfig.getKafkaOtsdbTopic();
-
-        OpenTsdbConfig openTsdbConfig = topologyConfig.getOpenTsdbConfig();
 
         //FIXME: We have to use the Message class for messaging.
         KafkaSpoutConfig<String, InfoData> config = getKafkaSpoutConfigBuilder(otsdbTopic, OTSDB_SPOUT_ID)
@@ -99,7 +95,7 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
                 .build();
 
         KafkaSpout<String, InfoData> kafkaSpout = new KafkaSpout<>(config);
-        topology.setSpout(OTSDB_SPOUT_ID, kafkaSpout, openTsdbConfig.getNumSpouts());
+        declareSpout(topology, kafkaSpout, OTSDB_SPOUT_ID);
     }
 
     /**

@@ -636,6 +636,8 @@ misconfigured"
 
                 assert involvedSwitchValidateInfo.rules.excess.size() == 1
                 assert involvedSwitchValidateInfo.rules.excess == [1L]
+                assert involvedSwitchValidateInfo.rules.excessHex.size() == 1
+                assert involvedSwitchValidateInfo.rules.excessHex == [Long.toHexString(1L)]
             }
         }
 
@@ -689,10 +691,16 @@ misconfigured"
     @Tags(HARDWARE)
     @Ignore("https://github.com/telstra/open-kilda/issues/3021")
     def "Able to validate and sync a switch with missing 'vxlan' ingress/transit/egress rule + meter"() {
-        given: "Two active not neighboring Noviflow switches"
+        given: "Two active not neighboring VXLAN supported switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
-            swP.src.noviflow && !swP.src.wb5164 && swP.dst.noviflow && !swP.dst.wb5164 && swP.paths.find { path ->
-                pathHelper.getInvolvedSwitches(path).every { it.noviflow && !it.wb5164 }
+            [swP.src, swP.dst].every {
+                northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation
+                        .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+            } && swP.paths.find { path ->
+                pathHelper.getInvolvedSwitches(path).every {
+                    northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation
+                            .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+                }
             }
         } ?: assumeTrue("Unable to find required switches in topology", false)
 
@@ -720,7 +728,10 @@ misconfigured"
         [switchPair.src, switchPair.dst].each { northbound.deleteMeter(it.dpId, metersMap[it.dpId][0]) }
         Wrappers.wait(RULES_DELETION_TIME) {
             def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
-            involvedSwitches.each { assert validationResultsMap[it.dpId].rules.missing.size() == 2 }
+            involvedSwitches.each {
+                assert validationResultsMap[it.dpId].rules.missing.size() == 2
+                assert validationResultsMap[it.dpId].rules.missingHex.size() == 2
+            }
             [switchPair.src, switchPair.dst].each { assert validationResultsMap[it.dpId].meters.missing.size() == 1 }
         }
 
@@ -728,6 +739,7 @@ misconfigured"
         involvedSwitches.eachWithIndex { sw, i ->
             verifyAll(northbound.validateSwitch(sw.dpId)) { validation ->
                 validation.rules.missing.size() == 2
+                validation.rules.missingHex.size() == 2
                 if (i == 0 || i == involvedSwitches.size() - 1) { //terminating switches
                     assert validation.meters.missing.size() == 1
                 }
@@ -758,6 +770,7 @@ misconfigured"
             involvedSwitches.each {
                 def validationResult = northbound.validateSwitch(it.dpId)
                 assert validationResult.rules.missing.size() == 0
+                assert validationResult.rules.missingHex.size() == 0
                 assert validationResult.meters.missing.size() == 0
             }
         }
@@ -887,6 +900,7 @@ misconfigured"
         verifyAll(northbound.validateSwitch(flow.destination.datapath)) {
             !it.rules.proper.contains(deviceCookie)
             it.rules.missing.contains(deviceCookie)
+            it.rules.missingHex.contains(Long.toHexString(deviceCookie))
         }
 
         when: "Synchronize the switch"
@@ -898,7 +912,9 @@ misconfigured"
         verifyAll(northbound.validateSwitch(flow.destination.datapath)) {
             it.rules.proper.contains(deviceCookie)
             it.rules.missing.empty
+            it.rules.missingHex.empty
             it.rules.excess.empty
+            it.rules.excessHex.empty
             it.meters.missing.empty
             it.meters.excess.empty
         }

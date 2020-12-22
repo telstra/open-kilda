@@ -295,6 +295,7 @@ public class SwitchOperationsService {
         UpdateSwitchPropertiesResult result = transactionManager.doInTransaction(() -> {
             SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
                     .orElseThrow(() -> new SwitchPropertiesNotFoundException(switchId));
+            final SwitchProperties oldProperties = new SwitchProperties(switchProperties);
 
             validateSwitchProperties(switchId, update);
 
@@ -310,6 +311,8 @@ public class SwitchOperationsService {
             switchProperties.setServer42Vlan(update.getServer42Vlan());
             switchProperties.setServer42MacAddress(update.getServer42MacAddress());
 
+            log.info("Updating {} switch properties from {} to {}. Is switch sync needed: {}",
+                    switchId, oldProperties, switchProperties, isSwitchSyncNeeded);
             return new UpdateSwitchPropertiesResult(
                     SwitchPropertiesMapper.INSTANCE.map(switchProperties), isSwitchSyncNeeded);
         });

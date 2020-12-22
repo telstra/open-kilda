@@ -1,0 +1,5 @@
+[template]
+src = "reroute-topology/reroute-topology.tmpl"
+dest = "src-java/reroute-topology/reroute-storm-topology/src/main/resources/reroute-topology.yaml"
+keys = [ "/" ]
+mode = "0644"

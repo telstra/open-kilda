@@ -15,6 +15,13 @@
 
 package org.openkilda.northbound.config;
 
+import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_NAME;
+import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_RUN_ID;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+
+import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
 import org.openkilda.messaging.Message;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageProducer;
@@ -47,6 +54,12 @@ public class MessageProducerConfig {
     private String kafkaHosts;
 
     /**
+     * ZooKeeper hosts.
+     */
+    @Value("${zookeeper.connect_string}")
+    private String zookeeperConnectString;
+
+    /**
      * Kafka producer config bean.
      * This {@link Map} is used by {@link MessageProducerConfig#producerFactory}.
      *
@@ -60,6 +73,10 @@ public class MessageProducerConfig {
         props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);
         props.put(ProducerConfig.LINGER_MS_CONFIG, 10);
         props.put(ProducerConfig.ACKS_CONFIG, "all");
+        props.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningProducerInterceptor.class.getName());
+        props.put(PRODUCER_COMPONENT_NAME_PROPERTY, COMMON_COMPONENT_NAME);
+        props.put(PRODUCER_RUN_ID_PROPERTY, COMMON_COMPONENT_RUN_ID);
+        props.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, zookeeperConnectString);
         return props;
     }
 

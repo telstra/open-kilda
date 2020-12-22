@@ -9,7 +9,6 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 description = 'Port State Storm Topology'
 dependencies {
     implementation project(':base-storm-topology')
-    implementation project(path: ':base-storm-topology', configuration: 'stormFluxArtifacts')
     runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     implementation project(':kilda-reporting')
     implementation project(':network-messaging')

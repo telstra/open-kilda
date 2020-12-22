@@ -24,6 +24,7 @@ import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
 import java.time.Instant;
+import java.util.Objects;
 
 /**
  * A base for Kilda data model entity that is mapped to a graph vertex.
@@ -34,14 +35,15 @@ public abstract class KildaBaseVertexFrame extends AbstractVertexFrame {
 
     @Override
     public void setProperty(String name, Object value) {
-        if (!name.equals(TIME_CREATE_PROPERTY) && !name.equals(TIME_MODIFY_PROPERTY)) {
+        if (!name.equals(TIME_CREATE_PROPERTY) && !name.equals(TIME_MODIFY_PROPERTY)
+                && !Objects.equals(value, getProperty(name))) {
             setProperty(TIME_MODIFY_PROPERTY, InstantStringConverter.INSTANCE.toGraphProperty(Instant.now()));
         }
         super.setProperty(name, value);
     }
 
     public Instant getTimeCreate() {
-        return InstantStringConverter.INSTANCE.toEntityAttribute((String) getProperty(TIME_CREATE_PROPERTY));
+        return InstantStringConverter.INSTANCE.toEntityAttribute(getProperty(TIME_CREATE_PROPERTY));
     }
 
     public void setTimeCreate(Instant timeCreate) {
@@ -49,7 +51,7 @@ public abstract class KildaBaseVertexFrame extends AbstractVertexFrame {
     }
 
     public Instant getTimeModify() {
-        return InstantStringConverter.INSTANCE.toEntityAttribute((String) getProperty(TIME_MODIFY_PROPERTY));
+        return InstantStringConverter.INSTANCE.toEntityAttribute(getProperty(TIME_MODIFY_PROPERTY));
     }
 
     public void setTimeModify(Instant timeModify) {

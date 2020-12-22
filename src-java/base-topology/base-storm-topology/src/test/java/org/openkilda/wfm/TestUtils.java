@@ -37,7 +37,7 @@ public final class TestUtils {
 
     private static Properties serverProperties(ZookeeperConfig config) {
         Properties props = new Properties();
-        props.setProperty("zookeeper.connect", config.getHosts());
+        props.setProperty("zookeeper.connect", config.getConnectString());
         props.setProperty("broker.id", "1");
         props.setProperty("delete.topic.enable", "true");
         props.setProperty("advertised.listeners", "PLAINTEXT://localhost:9092");
@@ -88,7 +88,7 @@ public final class TestUtils {
 
         private int getZkPort(Properties properties) {
             String url = (String) properties.get("zookeeper.connect");
-            String port = url.split(":")[1];
+            String port = url.split(":")[1].split("/")[0];
             return Integer.valueOf(port);
         }
     }

@@ -15,6 +15,13 @@
 
 package org.openkilda.grpc.speaker.config;
 
+import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_NAME;
+import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_RUN_ID;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+
+import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
 import org.openkilda.messaging.Message;
 
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -44,6 +51,12 @@ public class MessageProducerConfig {
     private String kafkaHosts;
 
     /**
+     * ZooKeeper hosts.
+     */
+    @Value("${zookeeper.connect_string:'zookeeper.pendev/kilda'}")
+    private String zookeeperConnectString;
+
+    /**
      * Kafka producer config bean.
      * This {@link Map} is used by {@link MessageProducerConfig#producerFactory}.
      *
@@ -57,6 +70,11 @@ public class MessageProducerConfig {
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
         props.put(ProducerConfig.RETRIES_CONFIG, 0);
         props.put(ProducerConfig.ACKS_CONFIG, "all");
+        props.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningProducerInterceptor.class.getName());
+        props.put(PRODUCER_COMPONENT_NAME_PROPERTY, COMMON_COMPONENT_NAME);
+        props.put(PRODUCER_RUN_ID_PROPERTY, COMMON_COMPONENT_RUN_ID);
+        props.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, zookeeperConnectString);
+
         return props;
     }
 

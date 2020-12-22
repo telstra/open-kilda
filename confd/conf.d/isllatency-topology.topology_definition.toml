@@ -1,0 +1,5 @@
+[template]
+src = "isllatency-topology/isllatency-topology.tmpl"
+dest = "src-java/isllatency-topology/isllatency-storm-topology/src/main/resources/isllatency-topology.yaml"
+keys = [ "/" ]
+mode = "0644"

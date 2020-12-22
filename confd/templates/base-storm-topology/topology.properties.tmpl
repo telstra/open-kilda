@@ -3,12 +3,6 @@
 
 environment.naming.prefix = {{ getv "/kilda_environment_naming_prefix" }}
 
-isl.latency.parallelism = {{ getv "/kilda_storm_isl_latency_parallelism" }}
-parallelism.new = {{ getv "/kilda_storm_parallelism_level_new" }}
-parallelism = {{ getv "/kilda_storm_parallelism_level" }}
-flow.hs.parallelism = {{ getv "/kilda_storm_flow_hs_parallelism" }}
-workers = {{ getv "/kilda_storm_parallelism_workers_count" }}
-
 #######
 # Storm-specific topology configuration.
 #
@@ -53,23 +47,12 @@ zookeeper.connect_string = {{ getv "/kilda_zookeeper_hosts"}}/{{ getv "/kilda_zo
 
 opentsdb.hosts = http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
 opentsdb.timeout = {{ getv "/kilda_opentsdb_timeout" }}
-opentsdb.num.spouts = {{ getv "/kilda_opentsdb_num_spouts" }}
-opentsdb.num.opentsdbfilterbolt = {{ getv "/kilda_opentsdb_num_opentsdbfilterbolt" }}
-opentsdb.num.opentsdbbolt = {{ getv "/kilda_opentsdb_num_opentsdbbolt" }}
-opentsdb.workers.opentsdbolt = {{ getv "/kilda_opentsdb_workers_opentsdbolt" }}
-opentsdb.num.datapointparserbolt = {{ getv "/kilda_opentsdb_num_datapointparserbolt" }}
-opentsdb.workers.datapointparserbolt = {{ getv "/kilda_opentsdb_workers_datapointparserbolt" }}
 opentsdb.batch.size = {{ getv "/kilda_opentsdb_batch_size" }}
 opentsdb.flush.interval = {{ getv "/kilda_opentsdb_flush_interval" }}
-opentsdb.workers = {{ getv "/kilda_opentsdb_workers" }}
 opentsdb.client.chunked-requests.enabled = true
 opentsdb.metric.prefix = {{ getv "/kilda_opentsdb_metric_prefix" }}
 
 statistics.interval = {{ getv "/kilda_statistics_interval" }}
-
-neo4j.uri = bolt://{{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
-neo4j.user = {{ getv "/kilda_neo4j_user" }}
-neo4j.password = {{ getv "/kilda_neo4j_password" }}
 
 {{if not (exists "/single_orientdb")}}
 orientdb.url=remote:{{ getv "/kilda_orientdb_hosts" }}/{{ getv "/kilda_orientdb_database" }}

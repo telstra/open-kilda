@@ -5,6 +5,7 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.messaging.info.event.IslChangeType.*
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -16,7 +17,6 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
@@ -53,8 +53,8 @@ class LinkSpec extends HealthCheckSpecification {
         then: "Status of the link is not changed to FAILED until discoveryTimeout is exceeded"
         Wrappers.timedLoop(waitTime) {
             def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
             sleep((interval * 1000).toLong())
         }
 
@@ -69,10 +69,10 @@ class LinkSpec extends HealthCheckSpecification {
          * */
         Wrappers.wait(WAIT_OFFSET + interval) {
             def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, isl).get().actualState == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, isl.reversed).get().actualState == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl).get().state == FAILED
+            assert islUtils.getIslInfo(links, isl).get().actualState == FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().actualState == DISCOVERED
         }
 
         when: "Fail the other part of ISL"
@@ -81,10 +81,10 @@ class LinkSpec extends HealthCheckSpecification {
         then: "Status remains FAILED and actual status is changed to failed for both directions"
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, isl).get().actualState == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, isl.reversed).get().actualState == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl).get().state == FAILED
+            assert islUtils.getIslInfo(links, isl).get().actualState == FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().actualState == FAILED
         }
 
         when: "Add the removed flow rules for one direction"
@@ -93,10 +93,10 @@ class LinkSpec extends HealthCheckSpecification {
         then: "The link remains FAILED, but actual status for one direction is DISCOVERED"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, isl).get().actualState == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, isl.reversed).get().actualState == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl).get().state == FAILED
+            assert islUtils.getIslInfo(links, isl).get().actualState == DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().actualState == FAILED
         }
 
         when: "Add the remaining missing rules on a-switch"
@@ -105,10 +105,10 @@ class LinkSpec extends HealthCheckSpecification {
         then: "Link status and actual status both changed to DISCOVERED in both directions"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, isl).get().actualState == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, isl.reversed).get().actualState == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
+            assert islUtils.getIslInfo(links, isl).get().actualState == DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().actualState == DISCOVERED
         }
     }
 
@@ -212,8 +212,8 @@ class LinkSpec extends HealthCheckSpecification {
         then: "The related ISL immediately goes down"
         Wrappers.wait(WAIT_OFFSET) {
             def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl).get().state == FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == FAILED
         }
 
         when: "The switch disconnects again"
@@ -229,8 +229,8 @@ class LinkSpec extends HealthCheckSpecification {
         then: "The related ISL is discovered again"
         Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
             def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
         }
     }
 
@@ -325,7 +325,7 @@ class LinkSpec extends HealthCheckSpecification {
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getLink(isl).actualState == IslChangeType.FAILED
+            assert northbound.getLink(isl).actualState == FAILED
         }
 
         when: "Try to delete the link"
@@ -342,8 +342,8 @@ class LinkSpec extends HealthCheckSpecification {
         then: "The link is rediscovered in both directions"
         Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
+            assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
         }
         database.resetCosts()
 
@@ -521,8 +521,8 @@ class LinkSpec extends HealthCheckSpecification {
         then: "ISL gets failed after discovery timeout"
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl).get().state == FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == FAILED
         }
 
         and: "Restore broken switches and revive ISL"
@@ -531,7 +531,7 @@ class LinkSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveSwitches()*.switchId.containsAll([isl.srcSwitch.dpId, isl.dstSwitch.dpId])
             northbound.getAllLinks().each {
-                assert it.state == IslChangeType.DISCOVERED
+                assert it.state == DISCOVERED
             }
         }
     }
@@ -680,7 +680,7 @@ class LinkSpec extends HealthCheckSpecification {
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getLink(isl).actualState == IslChangeType.FAILED
+            assert northbound.getLink(isl).actualState == FAILED
         }
 
         when: "Try to delete the link"
@@ -738,8 +738,8 @@ class LinkSpec extends HealthCheckSpecification {
         then: "The link is rediscovered in both directions"
         Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
+            assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
         }
 
         and: "Source and destination switches pass switch validation"
@@ -759,11 +759,72 @@ class LinkSpec extends HealthCheckSpecification {
             antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
             Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
                 def links = northbound.getAllLinks()
-                assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
-                assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
+                assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
+                assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
             }
         }
         database.resetCosts()
+    }
+
+    @Tidy
+    def "System detects a 1-way ISL as a Failed ISL"() {
+        given: "A deleted a-switch ISL"
+        def isl = topology.islsForActiveSwitches.find {
+            it.aswitch?.inPort && it.aswitch?.outPort
+        } ?: assumeTrue("Wasn't able to find suitable link", false)
+        lockKeeper.removeFlows([isl.aswitch])
+        lockKeeper.removeFlows([isl.aswitch.reversed])
+        def aSwitchForwardRuleIsDeleted = true
+        def aSwitchReverseRuleIsDeleted = true
+
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, isl).get().state == FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == FAILED
+        }
+
+        northbound.deleteLink(islUtils.toLinkParameters(isl))
+        Wrappers.wait(WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert !islUtils.getIslInfo(links, isl).present
+        }
+
+        when: "Add a-switch rules for discovering ISL in one direction only"
+        lockKeeper.addFlows([isl.aswitch])
+        aSwitchForwardRuleIsDeleted = false
+
+        then: "The ISL is discovered"
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            def fw = northbound.getLink(isl)
+            def rv = northbound.getLink(isl.reversed)
+            assert fw.state == FAILED
+            assert fw.actualState == DISCOVERED
+            assert rv.state == FAILED
+            assert rv.actualState == FAILED
+        }
+
+        and: "The src/dst switches are valid"
+        //https://github.com/telstra/open-kilda/issues/3906
+        if (!useMultitable) {
+            [isl.srcSwitch, isl.dstSwitch].each {
+                def validateInfo = northbound.validateSwitch(it.dpId).rules
+                assert validateInfo.missing.empty
+                assert validateInfo.excess.empty
+                assert validateInfo.misconfigured.empty
+            }
+        }
+
+        cleanup:
+        aSwitchForwardRuleIsDeleted && lockKeeper.addFlows([isl.aswitch])
+        aSwitchReverseRuleIsDeleted && lockKeeper.addFlows([isl.aswitch.reversed])
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            def fw = northbound.getLink(isl)
+            def rv = northbound.getLink(isl.reversed)
+            assert fw.state == DISCOVERED
+            assert fw.actualState == DISCOVERED
+            assert rv.state == DISCOVERED
+            assert rv.actualState == DISCOVERED
+        }
     }
 
     @Memoized

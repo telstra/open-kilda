@@ -15,7 +15,6 @@ import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
 
-@Ignore("https://github.com/telstra/open-kilda/issues/3245")
 @Narrative("""This test suite checks the CRUD actions on a logical port.
 Logical ports are defined by associating a single physical port to them to define
 Bidirectional Forwarding Detection(BFD) ports or
@@ -27,10 +26,13 @@ class LogicalPortSpec extends GrpcBaseSpecification {
 
     @Tidy
     @Unroll
+    @Tags(HARDWARE) //https://github.com/telstra/open-kilda/issues/3904
     def "Able to create/read/delete logicalport on the #switches.switchId switch"() {
         /**the update action is not working(issue on a Noviflow switch side)*/
         when: "Create logical port"
-        def switchPort = northbound.getPorts(switches.switchId).find { it.state[0] == "LINK_DOWN" }.portNumber
+        def switchPort = northbound.getPorts(switches.switchId).find {
+            it.state[0] == "LINK_DOWN" && !it.name.contains("novi_lport")
+        }.portNumber
         def switchLogicalPort = 1100 + switchPort
         def request = new LogicalPortDto(LogicalPortType.BFD, [switchPort], switchLogicalPort)
         def responseAfterCreating = grpc.createLogicalPort(switches.address, request)
@@ -107,7 +109,6 @@ class LogicalPortSpec extends GrpcBaseSpecification {
 
     @Tidy
     @Unroll
-    @Ignore("https://github.com/telstra/open-kilda/issues/3754")
     @Tags(HARDWARE)
     def "Not able to delete non-existent logical port number on the #switches.switchId switch"() {
         when: "Try to delete incorrect logicalPortNumber"

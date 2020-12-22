@@ -1,0 +1,5 @@
+[template]
+src = "connecteddevices-topology/connecteddevices-topology.tmpl"
+dest = "src-java/connecteddevices-topology/connecteddevices-storm-topology/src/main/resources/connecteddevices-topology.yaml"
+keys = [ "/" ]
+mode = "0644"

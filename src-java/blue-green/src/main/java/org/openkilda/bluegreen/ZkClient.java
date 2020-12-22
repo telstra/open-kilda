@@ -15,6 +15,7 @@
 
 package org.openkilda.bluegreen;
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.zookeeper.CreateMode;
@@ -26,57 +27,134 @@ import org.apache.zookeeper.ZooKeeper;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Slf4j
 @SuperBuilder
 public abstract class ZkClient implements Watcher {
     private static final String ROOT = "/";
     private static final int DEFAULT_SESSION_TIMEOUT = 30000;
+    public static final long DEFAULT_CONNECTION_REFRESH_INTERVAL = 10;
 
     protected String id;
     protected String serviceName;
-    protected ZooKeeper zookeeper;
-    private final String connectionString;
+    protected volatile ZooKeeper zookeeper;
+    protected final String connectionString;
+    protected boolean nodesValidated;
     private final int sessionTimeout;
+    protected Instant lastRefreshAttempt;
+    protected long connectionRefreshInterval;
 
-    public ZkClient(String id, String serviceName, String connectionString,
-                    int sessionTimeout) throws IOException {
+    public ZkClient(String id, String serviceName, String connectionString, int sessionTimeout,
+                    long connectionRefreshInterval) {
         if (sessionTimeout == 0) {
             sessionTimeout = DEFAULT_SESSION_TIMEOUT;
         }
+        this.nodesValidated = false;
         this.serviceName = serviceName;
         this.id = id;
         this.connectionString = connectionString;
         this.sessionTimeout = sessionTimeout;
-        this.zookeeper = getZk();
+        this.connectionRefreshInterval = connectionRefreshInterval;
+        this.lastRefreshAttempt = Instant.MIN;
     }
 
-    void initWatch() {
+    /**
+     * Init client.
+     */
+    public void init() {
+        try {
+            if (!isConnectionAlive()) {
+                initZk();
+            }
+        } catch (IOException e) {
+            log.error(String.format("Couldn't init ZooKeeper for component %s with run id %s and "
+                    + "connection string %s. Error: %s", serviceName, id, connectionString, e.getMessage()), e);
+            closeZk();
+        }
+        if (isConnectionAlive()) {
+            try {
+                validateZNodes();
+            } catch (KeeperException | InterruptedException | IllegalStateException e) {
+                log.error(String.format("Couldn't validate nodes for component %s with run id %s and "
+                        + "connection string %s. Error: %s", serviceName, id, connectionString, e.getMessage()), e);
 
+            }
+            subscribeNodes();
+        }
     }
 
     String getPaths(String... paths) {
         return Paths.get(ROOT, paths).toString();
     }
 
-    boolean refreshConnection(KeeperState state) throws IOException {
-        if (state == KeeperState.Disconnected || state == KeeperState.Expired) {
-            zookeeper = getZk();
-            initWatch();
+    boolean refreshConnection(KeeperState state) {
+        if ((state == KeeperState.Disconnected || state == KeeperState.Expired) && isRefreshIntervalPassed()) {
+            safeRefreshConnection();
             return true;
         }
         return false;
     }
 
-    protected ZooKeeper getZk() throws IOException {
+    @VisibleForTesting
+    boolean isRefreshIntervalPassed() {
+        return Instant.now().isAfter(lastRefreshAttempt.plus(connectionRefreshInterval, ChronoUnit.SECONDS));
+    }
+
+    void closeZk() {
+        if (zookeeper != null) {
+            try {
+                log.info("Going to close zookeeper connection 0x{}", Long.toHexString(zookeeper.getSessionId()));
+                zookeeper.close();
+            } catch (InterruptedException e) {
+                log.warn(String.format("Failed to close connection to zk %s", connectionString), e);
+            }
+        }
+    }
+
+    void initZk() throws IOException {
+        nodesValidated = false;
+        zookeeper = getZk();
+    }
+
+    @VisibleForTesting
+    ZooKeeper getZk() throws IOException {
         return new ZooKeeper(connectionString, sessionTimeout, this);
     }
 
+
+    /**
+     * Attempt to refresh connection after specified interval of time.
+     */
+    public synchronized void safeRefreshConnection() {
+        if (!isActive() && isRefreshIntervalPassed()) {
+            if (!isConnectionAlive()) {
+                log.info("Closing connection for session 0x{} due to state active={}",
+                        zookeeper != null ? Long.toHexString(zookeeper.getSessionId()) : 0L,
+                        isConnectionAlive());
+                closeZk();
+            }
+            init();
+            lastRefreshAttempt = Instant.now();
+        } else {
+            if (log.isTraceEnabled()) {
+                log.trace("Skipping connection {} refresh for zookeeper client {}/{}", connectionString,
+                        serviceName, id);
+            }
+        }
+
+    }
+
     protected void ensureZNode(String... path) throws KeeperException, InterruptedException {
+        ensureZNode(new byte[0], path); // by default we set empty value for zookeeper node
+    }
+
+    protected void ensureZNode(byte[] value, String... path) throws KeeperException, InterruptedException {
         String nodePath = getPaths(path);
         if (zookeeper.exists(nodePath, false) == null) {
             try {
-                zookeeper.create(nodePath, "".getBytes(),
+                zookeeper.create(nodePath, value,
                         Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             } catch (Exception e) {
                 log.error("Failed to ensure node: {}", nodePath);
@@ -89,9 +167,31 @@ public abstract class ZkClient implements Watcher {
         }
     }
 
-    void validateNodes() throws KeeperException, InterruptedException {
+    @VisibleForTesting
+    void validateZNodes() throws KeeperException, InterruptedException {
         ensureZNode(serviceName);
         ensureZNode(serviceName, id);
+        validateNodes();
+        nodesValidated = true;
+
     }
 
+    abstract void subscribeNodes();
+
+    abstract void validateNodes() throws KeeperException, InterruptedException;
+
+    /**
+     * Checks that connection to zookeeper is alive and nodes were validated.
+     */
+    boolean isConnectionAlive() {
+        // there is a state CONNECTING, that doesn't allow to use getState().isAlive()
+        return zookeeper != null && zookeeper.getState().isConnected();
+    }
+
+    /**
+     * Checks whether client is in operational state.
+     */
+    public boolean isActive() {
+        return isConnectionAlive() && nodesValidated;
+    }
 }

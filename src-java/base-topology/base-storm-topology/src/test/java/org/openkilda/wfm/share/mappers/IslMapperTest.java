@@ -38,6 +38,8 @@ public class IslMapperTest {
                 .destination(new PathNode(TEST_SWITCH_B_ID, 1, 1))
                 .speed(2L)
                 .state(IslChangeType.DISCOVERED)
+                .actualState(IslChangeType.MOVED)
+                .roundTripStatus(IslChangeType.FAILED)
                 .cost(700)
                 .availableBandwidth(4L)
                 .underMaintenance(false)
@@ -48,7 +50,6 @@ public class IslMapperTest {
         Assert.assertEquals(IslStatus.ACTIVE, isl.getStatus());
 
         IslInfoData islInfoDataMapping = IslMapper.INSTANCE.map(isl);
-        islInfoDataMapping.setState(IslChangeType.DISCOVERED);
 
         Assert.assertEquals(islInfoData, islInfoDataMapping);
     }

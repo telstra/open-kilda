@@ -15,7 +15,6 @@
 
 package org.openkilda.server42.control.topology;
 
-import org.openkilda.messaging.Message;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.server42.control.topology.storm.ComponentId;
@@ -27,7 +26,6 @@ import org.openkilda.wfm.topology.AbstractTopology;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
-import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 
@@ -35,7 +33,7 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
     private final PersistenceManager persistenceManager;
 
     public ControlTopology(LaunchEnvironment env) {
-        super(env, ControlTopologyConfig.class);
+        super(env, "control-topology", ControlTopologyConfig.class);
 
         persistenceManager = PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
     }
@@ -60,63 +58,59 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
 
         TopologyBuilder topology = new TopologyBuilder();
 
-        inputFlowHs(topology, topologyConfig.getNewParallelism());
-        inputNbWorker(topology, topologyConfig.getNewParallelism());
+        inputFlowHs(topology);
+        inputNbWorker(topology);
         //TODO: LCM stuff
         //inputControl(topology, topologyConfig.getNewParallelism());
 
-        router(topology, topologyConfig.getNewParallelism());
+        router(topology);
 
-        flowHandler(topology, topologyConfig.getNewParallelism());
+        flowHandler(topology);
 
-        outputSpeaker(topology, topologyConfig.getNewParallelism());
+        outputSpeaker(topology);
 
         lcm(topology, topologyConfig);
 
         return topology.createTopology();
     }
 
-    private void inputFlowHs(TopologyBuilder topology, int scaleFactor) {
-        KafkaSpout<String, Message> spout = buildKafkaSpout(
+    private void inputFlowHs(TopologyBuilder topology) {
+        declareKafkaSpout(topology,
                 topologyConfig.getKafkaTopics().getFlowHsServer42StormNotifyTopic(),
                 ComponentId.INPUT_FLOW_HS.toString());
-        topology.setSpout(ComponentId.INPUT_FLOW_HS.toString(), spout, scaleFactor);
     }
 
-    private void inputNbWorker(TopologyBuilder topology, int scaleFactor) {
-        KafkaSpout<String, Message> spout = buildKafkaSpout(
+    private void inputNbWorker(TopologyBuilder topology) {
+        declareKafkaSpout(topology,
                 topologyConfig.getKafkaTopics().getNbWorkerServer42StormNotifyTopic(),
                 ComponentId.INPUT_NB.toString());
-        topology.setSpout(ComponentId.INPUT_NB.toString(), spout, scaleFactor);
     }
 
-    private void inputControl(TopologyBuilder topology, int scaleFactor) {
-        KafkaSpout<String, Message> spout = buildKafkaSpout(
+    private void inputControl(TopologyBuilder topology) {
+        declareKafkaSpout(topology,
                 topologyConfig.getKafkaTopics().getServer42ControlCommandsReplyTopic(),
                 ComponentId.INPUT_SERVER42_CONTROL.toString());
-        topology.setSpout(ComponentId.INPUT_SERVER42_CONTROL.toString(), spout, scaleFactor);
     }
 
-    private void router(TopologyBuilder topology, int scaleFactor) {
+    private void router(TopologyBuilder topology) {
         Router bolt = new Router(persistenceManager);
-        topology.setBolt(Router.BOLT_ID, bolt, scaleFactor)
+        declareBolt(topology, bolt, Router.BOLT_ID)
                 .shuffleGrouping(ComponentId.INPUT_FLOW_HS.toString())
                 .shuffleGrouping(ComponentId.INPUT_NB.toString())
                 .shuffleGrouping(ComponentId.TICK_BOLT.toString());
     }
 
-    private void flowHandler(TopologyBuilder topology, int scaleFactor) {
+    private void flowHandler(TopologyBuilder topology) {
         FlowHandler bolt = new FlowHandler(persistenceManager);
         Fields grouping = new Fields(Router.FIELD_ID_SWITCH_ID);
-        topology.setBolt(FlowHandler.BOLT_ID, bolt, scaleFactor)
+        declareBolt(topology, bolt, FlowHandler.BOLT_ID)
                 .fieldsGrouping(Router.BOLT_ID, Router.STREAM_FLOW_ID, grouping);
 
     }
 
-    private void outputSpeaker(TopologyBuilder topology, int scaleFactor) {
-
+    private void outputSpeaker(TopologyBuilder topology) {
         KafkaBolt output = buildKafkaBoltWithRawObject(topologyConfig.getKafkaTopics().getServer42StormCommandsTopic());
-        topology.setBolt(ComponentId.OUTPUT_SERVER42_CONTROL.toString(), output, scaleFactor)
+        declareBolt(topology, output, ComponentId.OUTPUT_SERVER42_CONTROL.toString())
                 .shuffleGrouping(FlowHandler.BOLT_ID, FlowHandler.STREAM_CONTROL_COMMANDS_ID);
     }
 

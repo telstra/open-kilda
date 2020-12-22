@@ -17,6 +17,7 @@ dependencies {
     implementation project(':server42-messaging')
     implementation project(':base-messaging')
     implementation project(':kilda-model')
+    implementation project(':blue-green')
 
     implementation 'com.google.protobuf:protobuf-java:3.8.0'
     implementation 'io.springfox:springfox-swagger2:2.9.2'
