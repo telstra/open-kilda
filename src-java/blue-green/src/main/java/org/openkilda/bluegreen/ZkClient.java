@@ -65,7 +65,7 @@ public abstract class ZkClient implements Watcher {
      */
     public void init() {
         try {
-            if (!isConnectionAlive()) {
+            if (!isAlive()) {
                 initZk();
             }
         } catch (IOException e) {
@@ -73,7 +73,7 @@ public abstract class ZkClient implements Watcher {
                     + "connection string %s. Error: %s", serviceName, id, connectionString, e.getMessage()), e);
             closeZk();
         }
-        if (isConnectionAlive()) {
+        if (isConnected()) {
             try {
                 validateZNodes();
             } catch (KeeperException | InterruptedException | IllegalStateException e) {
@@ -128,11 +128,11 @@ public abstract class ZkClient implements Watcher {
      * Attempt to refresh connection after specified interval of time.
      */
     public synchronized void safeRefreshConnection() {
-        if (!isActive() && isRefreshIntervalPassed()) {
-            if (!isConnectionAlive()) {
+        if (!isConnectedAndValidated() && isRefreshIntervalPassed()) {
+            if (!isConnected()) {
                 log.info("Closing connection for session 0x{} due to state active={}",
                         zookeeper != null ? Long.toHexString(zookeeper.getSessionId()) : 0L,
-                        isConnectionAlive());
+                        isConnected());
                 closeZk();
             }
             init();
@@ -181,9 +181,16 @@ public abstract class ZkClient implements Watcher {
     abstract void validateNodes() throws KeeperException, InterruptedException;
 
     /**
-     * Checks that connection to zookeeper is alive and nodes were validated.
+     * Checks that connection to zookeeper is alive.
      */
-    boolean isConnectionAlive() {
+    boolean isAlive() {
+        return zookeeper != null && zookeeper.getState().isAlive();
+    }
+
+    /**
+     * Checks that connection to zookeeper is connected.
+     */
+    boolean isConnected() {
         // there is a state CONNECTING, that doesn't allow to use getState().isAlive()
         return zookeeper != null && zookeeper.getState().isConnected();
     }
@@ -191,7 +198,7 @@ public abstract class ZkClient implements Watcher {
     /**
      * Checks whether client is in operational state.
      */
-    public boolean isActive() {
-        return isConnectionAlive() && nodesValidated;
+    public boolean isConnectedAndValidated() {
+        return isConnected() && nodesValidated;
     }
 }
