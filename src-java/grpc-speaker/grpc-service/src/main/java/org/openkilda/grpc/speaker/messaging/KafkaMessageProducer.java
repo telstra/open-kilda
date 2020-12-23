@@ -15,6 +15,10 @@
 
 package org.openkilda.grpc.speaker.messaging;
 
+import static org.openkilda.messaging.Utils.HEALTH_CHECK_NON_OPERATIONAL_STATUS;
+import static org.openkilda.messaging.Utils.HEALTH_CHECK_OPERATIONAL_STATUS;
+
+import org.openkilda.grpc.speaker.service.HealthCheckService;
 import org.openkilda.messaging.Message;
 
 import lombok.extern.slf4j.Slf4j;
@@ -34,14 +38,23 @@ public class KafkaMessageProducer {
     @Autowired
     private KafkaTemplate<String, Message> kafkaTemplate;
 
+    @Autowired
+    private HealthCheckService healthCheckService;
+
     /**
      * Sends message to kafka topic.
      */
     public ListenableFuture<SendResult<String, Message>> send(String topic, String key, Message message) {
         ListenableFuture<SendResult<String, Message>> future = kafkaTemplate.send(topic, key, message);
         future.addCallback(
-                success -> log.debug("Response has been sent: topic={}, message={}", topic, message),
-                error -> log.error("Unable to send message: topic={}, message={}", topic, message, error)
+                success -> {
+                    log.debug("Response has been sent: topic={}, message={}", topic, message);
+                    healthCheckService.updateKafkaStatus(HEALTH_CHECK_OPERATIONAL_STATUS);
+                },
+                error -> {
+                    log.error("Unable to send message: topic={}, message={}", topic, message, error);
+                    healthCheckService.updateKafkaStatus(HEALTH_CHECK_NON_OPERATIONAL_STATUS);
+                }
         );
         return future;
     }
