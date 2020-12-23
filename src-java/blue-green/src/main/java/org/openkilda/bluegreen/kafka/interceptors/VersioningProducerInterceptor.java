@@ -40,7 +40,7 @@ public class VersioningProducerInterceptor<K, V> extends VersioningInterceptorBa
 
     @Override
     public ProducerRecord<K, V> onSend(ProducerRecord<K, V> record) {
-        if (!watchDog.isActive()) {
+        if (!watchDog.isConnectedAndValidated()) {
             if (isZooKeeperConnectTimeoutPassed()) {
                 log.error("Component {} with id {} tries to reconnect to ZooKeeper with connection string: {}",
                         componentName, runId, connectionString);
