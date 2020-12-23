@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.stats.bolts;
 
 import static org.openkilda.wfm.topology.stats.MeasurePoint.EGRESS;
 import static org.openkilda.wfm.topology.stats.MeasurePoint.INGRESS;
+import static org.openkilda.wfm.topology.stats.MeasurePoint.INGRESS_ATTENDANT;
 import static org.openkilda.wfm.topology.stats.MeasurePoint.ONE_SWITCH;
 import static org.openkilda.wfm.topology.stats.MeasurePoint.TRANSIT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_FILTER_BOLT;
@@ -35,6 +36,8 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.CookieBase.CookieType;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.context.PersistenceContextRequired;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -58,8 +61,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Stream;
 
 public class CacheBolt extends AbstractBolt {
@@ -113,6 +118,7 @@ public class CacheBolt extends AbstractBolt {
                             cookieToFlow.put(srcKey, new CacheFlowEntry(flowId, cookie, ONE_SWITCH));
                         } else {
                             cookieToFlow.put(srcKey, new CacheFlowEntry(flowId, cookie, INGRESS));
+                            cookieToFlow.putAll(makeFlowAttendantCookiesMapping(flowId, srcSwitchId, path.getCookie()));
                             cookieToFlow.put(
                                     new CookieCacheKey(dstSwitchId, cookie),
                                     new CacheFlowEntry(flowId, cookie, EGRESS));
@@ -203,7 +209,7 @@ public class CacheBolt extends AbstractBolt {
                 updateSwitchMeterFlowCache(cookie, meterId, flow, switchId, measurePoint);
                 break;
             case REMOVE:
-                cookieToFlow.remove(new CookieCacheKey(switchId, cookie));
+                removeCookieFlowCache(switchId, cookie);
                 switchAndMeterToFlow.remove(new MeterCacheKey(switchId, meterId));
                 break;
             default:
@@ -254,11 +260,47 @@ public class CacheBolt extends AbstractBolt {
     private void updateCookieFlowCache(
             Long cookie, String flowId, SwitchId switchId, MeasurePoint measurePoint) {
         cookieToFlow.put(new CookieCacheKey(switchId, cookie), new CacheFlowEntry(flowId, cookie, measurePoint));
+        if (measurePoint == INGRESS) {
+            cookieToFlow.putAll(makeFlowAttendantCookiesMapping(flowId, switchId, cookie));
+        }
     }
 
     private void updateSwitchMeterFlowCache(
             Long cookie, Long meterId, String flowId, SwitchId switchId, MeasurePoint measurePoint) {
         MeterCacheKey key = new MeterCacheKey(switchId, meterId);
         switchAndMeterToFlow.put(key, new CacheFlowEntry(flowId, cookie, measurePoint));
+    }
+
+    private void removeCookieFlowCache(SwitchId switchId, long cookie) {
+        cookieToFlow.remove(new CookieCacheKey(switchId, cookie));
+        for (Long entry : makeAttendantFlowCookies(cookie)) {
+            cookieToFlow.remove(new CookieCacheKey(switchId, entry));
+        }
+    }
+
+    private Map<CookieCacheKey, CacheFlowEntry> makeFlowAttendantCookiesMapping(
+            String flowId, SwitchId ingressSwitchId, long cookie) {
+        return makeFlowAttendantCookiesMapping(flowId, ingressSwitchId, new FlowSegmentCookie(cookie));
+    }
+
+    private Map<CookieCacheKey, CacheFlowEntry> makeFlowAttendantCookiesMapping(
+            String flowId, SwitchId ingressSwitchId, FlowSegmentCookie cookie) {
+        Map<CookieCacheKey, CacheFlowEntry> results = new HashMap<>();
+
+        long server42Cookie = cookie.toBuilder().type(CookieType.SERVER_42_INGRESS).build().getValue();
+        results.put(
+                new CookieCacheKey(ingressSwitchId, server42Cookie),
+                new CacheFlowEntry(flowId, server42Cookie, INGRESS_ATTENDANT));
+
+        return results;
+    }
+
+    private Set<Long> makeAttendantFlowCookies(long rawCookie) {
+        Set<Long> results = new HashSet<>();
+
+        FlowSegmentCookie cookie = new FlowSegmentCookie(rawCookie);
+        results.add(cookie.toBuilder().type(CookieType.SERVER_42_INGRESS).build().getValue());
+
+        return results;
     }
 }

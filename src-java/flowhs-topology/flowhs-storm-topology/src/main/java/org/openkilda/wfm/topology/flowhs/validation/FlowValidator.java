@@ -92,34 +92,17 @@ public class FlowValidator {
         if (StringUtils.isNotBlank(flow.getDiverseFlowId())) {
             checkDiverseFlow(flow);
         }
+        validateFlowLoop(flow);
     }
 
-    /**
-     * Validates the specified flow.
-     *
-     * @param flow current flow state.
-     * @param requestedFlow a flow to be validated.
-     * @param bulkUpdateFlowIds flows to be ignored when check endpoints.
-     * @throws InvalidFlowException is thrown if a violation is found.
-     */
-    public void validate(Flow flow, RequestedFlow requestedFlow, Set<String> bulkUpdateFlowIds)
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        validate(requestedFlow, bulkUpdateFlowIds);
-        validateFlowLoop(flow, requestedFlow);
-    }
-
-    private void validateFlowLoop(Flow flow, RequestedFlow requestedFlow) throws InvalidFlowException {
+    private void validateFlowLoop(RequestedFlow requestedFlow) throws InvalidFlowException {
         if (requestedFlow.getLoopSwitchId() != null) {
             SwitchId loopSwitchId = requestedFlow.getLoopSwitchId();
-            boolean loopSwitchIsTerminating = flow.getSrcSwitchId().equals(loopSwitchId)
-                    || flow.getDestSwitchId().equals(loopSwitchId);
+            boolean loopSwitchIsTerminating = requestedFlow.getSrcSwitch().equals(loopSwitchId)
+                    || requestedFlow.getDestSwitch().equals(loopSwitchId);
             if (!loopSwitchIsTerminating) {
                 throw new InvalidFlowException("Loop switch is not terminating in flow path",
                         ErrorType.PARAMETERS_INVALID);
-            }
-
-            if (flow.isLooped() && !loopSwitchId.equals(flow.getLoopSwitchId())) {
-                throw new InvalidFlowException("Can't change loop switch", ErrorType.PARAMETERS_INVALID);
             }
         }
     }
@@ -168,17 +151,6 @@ public class FlowValidator {
         baseFlowValidate(secondFlow, Sets.newHashSet(firstFlow.getFlowId()));
 
         checkForEqualsEndpoints(firstFlow, secondFlow);
-        //todo: fix swap endpoints for looped flows
-        boolean firstFlowLooped = flowRepository.findById(firstFlow.getFlowId())
-                .map(f -> f.getLoopSwitchId() != null)
-                .orElse(false);
-        boolean secondFlowLooped = flowRepository.findById(secondFlow.getFlowId())
-                .map(f -> f.getLoopSwitchId() != null)
-                .orElse(false);
-        if (firstFlowLooped || secondFlowLooped) {
-            throw new InvalidFlowException("Swap endpoints is not implemented for looped flows",
-                    ErrorType.NOT_IMPLEMENTED);
-        }
     }
 
     @VisibleForTesting

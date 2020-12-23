@@ -26,6 +26,7 @@ import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.CookieBase.CookieType;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.FlowCookieException;
 import org.openkilda.wfm.topology.stats.FlowDirectionHelper;
@@ -64,7 +65,8 @@ public class FlowMetricGenBolt extends MetricGenBolt {
 
     private void emit(FlowStatsEntry entry, long timestamp, @Nonnull SwitchId switchId,
                       @Nullable CacheFlowEntry flowEntry) throws FlowCookieException {
-        boolean isFlowSegmentEntry = new Cookie(entry.getCookie()).getType() == CookieType.SERVICE_OR_FLOW_SEGMENT;
+        boolean isFlowSegmentEntry = new Cookie(entry.getCookie()).getType() == CookieType.SERVICE_OR_FLOW_SEGMENT
+                && !new FlowSegmentCookie(entry.getCookie()).isLooped();
 
         String flowId = "unknown";
         if (flowEntry != null) {
@@ -106,6 +108,8 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         tags.put("direction", FlowDirectionHelper.findDirectionSafe(entry.getCookie())
                 .orElse(Direction.UNKNOWN)
                 .name().toLowerCase());
+        CookieType cookieType = new Cookie(entry.getCookie()).getType();
+        tags.put("type", cookieType.name().toLowerCase());
 
         emitMetric("flow.raw.packets", timestamp, entry.getPacketCount(), tags);
         emitMetric("flow.raw.bytes", timestamp, entry.getByteCount(), tags);

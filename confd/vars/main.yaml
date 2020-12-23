@@ -49,7 +49,6 @@ kilda_floodlight_ovs_meters_enabled: true
 
 kilda_grpc_speaker_kafka_listener_threads: 1
 kilda_grpc_speaker_kafka_session_timeout: 30000
-kilda_grpc_speaker_session_termination_timeout: 30
 
 kilda_lockkeeper_port: "5001"
 kilda_northbound_endpoint: "http://northbound.pendev"
@@ -68,7 +67,6 @@ kilda_kafka_topic_server42_stats: "kilda.server42-stats.flowrtt.priv"
 kilda_discovery_generic_interval: 3
 kilda_discovery_exhausted_interval: 60
 kilda_discovery_auxiliary_interval: 30
-kilda_discovery_round_trip_status_interval: 1
 kilda_discovery_packet_ttl: 8
 kilda_discovery_timeout: 15
 kilda_discovery_db_write_repeats_time_frame: 30

@@ -37,22 +37,24 @@ state OPERATIONAL {
     DOWN --> UP : port-up
     DOWN : enter / emit port-down into report
     DOWN : enter / emit physical-down
+    DOWN : enter / emit round-trip-inactive
     DOWN : enter / emit delWatch
     DOWN : poll-fail / emit fail
 
     UP --> DOWN : port-down
     UP --> UP_DISABLED : disable-discovery
     UP : enter / emit port-up into report
-    UP : enter[discovery-enabled] / issue addWatch
-    UP : poll-discovery / emit discovery
-    UP : poll-fail / emit fail
-    UP : round-trip-status / emit round-trip-status
-    UP : enable-discovery / issue addWatch
+    UP : enter[discovery-enabled] / emit addWatch
+    UP : poll-discovery / proxy discovery
+    UP : poll-fail / proxy fail
+    UP : round-trip-status / proxy round-trip-status
+    UP : enable-discovery / emit addWatch
 
     UP_DISABLED --> DOWN : port-down
     UP_DISABLED --> UP : enable-discovery
-    UP_DISABLED : enter / issue delWatch
-    UP_DISABLED : enter / issue notifyUniIslFail
+    UP_DISABLED : enter / emit delWatch
+    UP_DISABLED : enter / emit fail
+    UP_DISABLED : enter / emit round-trip-inactive
 }
 
 OPERATIONAL --> UNOPERATIONAL : offline
@@ -61,8 +63,8 @@ OPERATIONAL --> REGION_MISSING : region-offline
 
 UNOPERATIONAL --> OPERATIONAL : online
 UNOPERATIONAL --> FINISH : port-del
-UNOPERATIONAL : poll-fail / emit fail
-UNOPERATIONAL : round-trip-status / emit round-trip-status
+UNOPERATIONAL : poll-fail / proxy fail
+UNOPERATIONAL : round-trip-status / proxy round-trip-status
 
 REGION_MISSING : enter / emit delWatch
 REGION_MISSING --> OPERATIONAL : online

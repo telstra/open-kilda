@@ -57,14 +57,15 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 	overlay:any; 
 	popInfoOverlay:any;
 	oldTranformation:any='';
+	oldGraphTranslation:any='';
 	container=  document.getElementById('popup');
 	content = document.getElementById('popup-content');
 	closer = document.getElementById('popup-closer');
 	popinfocontainer = document.getElementById('popInfoContainer');
 	popinfocontent = document.getElementById('popInfocontent');
 	popinfocloser = document.getElementById('popInfocloser');
-	 //minimise = document.getElementById('popup-minimize');
-	 //maximise = document.getElementById('popup-maximize');
+	 minimise = document.getElementById('popup-minimize');
+	 maximise = document.getElementById('popup-maximize');
 	graph_loader = document.getElementById('graph_loader');
 	default_location:any={
 		"pop": "Unknown",
@@ -379,6 +380,48 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 	},200);
 	
   }
+ minimizePopup(){
+			this.maximise.style.display="block";
+			this.minimise.style.display="none";
+			this.container.style.width="400px";
+			this.container.style.height="360px";			
+			var svg = this.content.querySelector('svg');
+			svg.setAttribute('width',"380");
+			svg.setAttribute('height' , "345px");
+			this.container.parentElement.style.transform = this.oldTranformation;
+			this.graph_loader.style.display="block";
+			setTimeout(() => {				
+				this.topologyGraphService.zoomFit();
+				this.graph_loader.style.display="none";
+			}, 2000);
+			return false;
+ }
+
+ maximizePopup(){
+	this.minimise.style.display="block";
+	this.maximise.style.display="none";
+	var rootDiv = document.getElementById('worldmap');
+	var svg = this.content.querySelector('svg');
+	var width = rootDiv.offsetWidth;
+	var height = rootDiv.offsetHeight;
+	var svgWidth = (width-140);
+	var svgHeight = (height-140);
+	var leftTrans = rootDiv.offsetLeft;
+	this.container.style.width=(width-100)+"px";
+	this.container.style.height=(height-100)+"px";
+	svg.setAttribute('width',svgWidth.toString());
+	svg.setAttribute('height',svgHeight.toString());
+	this.graph_loader.style.display="block";
+	this.oldTranformation = this.container.parentElement.style.transform;
+	this.container.parentElement.style.transform = "translate(0%, 0%) translate("+(leftTrans+100)+"px, "+(height-50)+"px)";
+	setTimeout(() => {
+		this.graph_loader.style.display="none";
+		var widthTrans = svgWidth / 2;
+		var heightTrans = svgHeight / 2;
+		this.topologyGraphService.zoomFit(widthTrans,heightTrans);
+	}, 2000);
+	return false;
+ }
 
   loadEvents(){
 	var self = this;
@@ -386,6 +429,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 		this.closer.onclick= (()=>{
 			this.overlay.setPosition(undefined);
 			this.closer.blur();
+			this.minimizePopup();
 			return false;	
 		});
 	}
@@ -399,37 +443,20 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 		});
 	}
 
-	// if(this.minimise){
-	// 	this.minimise.onclick= ((e)=>{
-	// 		this.maximise.style.display="block";
-	// 		this.minimise.style.display="none";
-	// 		this.container.style.width="400px";
-	// 		this.container.parentElement.style.transform = this.oldTranformation;
-	// 		return false;	
-	// 	});
-	// }
+	if(this.minimise){
+		this.minimise.onclick= ((e)=>{
+				this.minimizePopup();
+		});
+	}
 
-	// if(this.maximise){
-	// 	this.maximise.onclick= ((e)=>{
-	// 		this.minimise.style.display="block";
-	// 		this.maximise.style.display="none";
-	// 		var rootDiv = document.getElementById('worldmap');
-	// 		var svg = this.content.querySelector('svg');
-	// 		var width = rootDiv.offsetWidth;
-	// 		var height = rootDiv.offsetHeight;
-	// 		var leftTrans = rootDiv.offsetLeft;
-	// 		var topTrans = rootDiv.offsetTop;
-	// 		this.container.style.width=width+"px";
-	// 		this.container.style.height=height+"px";
-	// 		svg.style.width = (width-40)+"px";
-	// 		svg.style.height = (height-40)+"px";
-	// 		this.oldTranformation = this.container.parentElement.style.transform;
-	// 		this.container.parentElement.style.transform = "translate(0%, 0%) translate("+(leftTrans+100)+"px, "+height+"px)";
-	// 		return false;	
-	// 	});
-	// }
+	if(this.maximise){
+		this.maximise.onclick= ((e)=>{
+			this.maximizePopup();	
+		});
+	}
 	this.map.on('pointermove',(evt)=>{
 		var pixel = evt.pixel;
+
 		var feature = this.map.forEachFeatureAtPixel(pixel, function(feature) {
 			return feature;
 		});
@@ -465,6 +492,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
 		if(this.overlay.getPosition()){
 			this.content.innerHTML = "";
 			this.overlay.setPosition(undefined);
+			this.minimizePopup();
 			this.closer.blur();
 		}
 	})

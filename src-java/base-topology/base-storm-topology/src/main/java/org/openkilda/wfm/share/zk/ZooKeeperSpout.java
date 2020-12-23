@@ -19,6 +19,7 @@ package org.openkilda.wfm.share.zk;
 import org.openkilda.bluegreen.LifeCycleObserver;
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.bluegreen.Signal;
+import org.openkilda.bluegreen.ZkClient;
 import org.openkilda.bluegreen.ZkWatchDog;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
@@ -38,7 +39,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Slf4j
 public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
-    public static final String BOLT_ID = "zookeeper.spout";
+    public static final String SPOUT_ID = "zookeeper.spout";
     public static final String FIELD_ID_LIFECYCLE_EVENT = "lifecycle.event";
 
     public static final String FIELD_ID_CONTEXT = AbstractBolt.FIELD_ID_CONTEXT;
@@ -62,7 +63,9 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
         this.collector = collector;
         this.signals = new ConcurrentLinkedQueue<>();
         this.watchDog = ZkWatchDog.builder().id(id).serviceName(serviceName)
-                .connectionString(connectionString).build();
+                .connectionString(connectionString)
+                .connectionRefreshInterval(ZkClient.DEFAULT_CONNECTION_REFRESH_INTERVAL)
+                .build();
         watchDog.init();
         watchDog.subscribe(this);
     }
@@ -79,9 +82,9 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
         } else {
             org.apache.storm.utils.Utils.sleep(1L);
         }
-        if (!watchDog.isConnectionAlive()) {
+        if (!watchDog.isActive()) {
             log.info("Service {} with run_id {} tries to reconnect to ZooKeeper {}", serviceName, id, connectionString);
-            watchDog.init();
+            watchDog.safeRefreshConnection();
         }
     }
 

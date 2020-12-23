@@ -38,10 +38,6 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
         return getDiscoveryConfig().getDiscoveryAuxiliaryInterval();
     }
 
-    default int getDiscoveryRoundTripStatusInterval() {
-        return getDiscoveryConfig().getDiscoveryRoundTripStatusInterval();
-    }
-
     default int getDiscoveryPacketTtl() {
         return getDiscoveryConfig().getDiscoveryPacketTtl();
     }
@@ -107,9 +103,6 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
 
         @Key("auxiliary.interval")
         int getDiscoveryAuxiliaryInterval();
-
-        @Key("round.trip.status.interval")
-        int getDiscoveryRoundTripStatusInterval();
 
         @Key("packet.ttl")
         int getDiscoveryPacketTtl();
