@@ -58,6 +58,12 @@ public class MessageConsumerConfig {
     private String groupId;
 
     /**
+     * Kilda blue green-mode.
+     */
+    @Value("${BLUE_GREEN_MODE:blue}")
+    private String blueGreenMode;
+
+    /**
      * Kafka group id.
      */
     @Value("${grpc.speaker.kafka.listener.threads:10}")
@@ -80,7 +86,7 @@ public class MessageConsumerConfig {
                 .put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHosts)
                 .put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
                 .put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class)
-                .put(ConsumerConfig.GROUP_ID_CONFIG, groupId)
+                .put(ConsumerConfig.GROUP_ID_CONFIG, buildGroupId())
                 .put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
                 .put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, kafkaSessionTimeout)
                 .build();
@@ -115,5 +121,9 @@ public class MessageConsumerConfig {
         factory.getContainerProperties().setPollTimeout(pollTimeout);
         factory.setConcurrency(kafkaListeners);
         return factory;
+    }
+
+    private String buildGroupId() {
+        return String.format("%s-%s", groupId, blueGreenMode);
     }
 }
