@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.utils;
 
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
+import static org.openkilda.messaging.Utils.TOPOLOGY_NAME;
 import static org.openkilda.wfm.protocol.BoltToBoltMessage.FIELD_ID_CORRELATION_ID;
 import static org.openkilda.wfm.protocol.JsonMessage.FIELD_ID_JSON;
 import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
@@ -31,6 +32,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -51,6 +53,26 @@ import java.util.Optional;
 public class LoggerContextInitializer {
     private static final Logger LOGGER = LoggerFactory.getLogger(LoggerContextInitializer.class);
 
+    private String stormId;
+
+    public LoggerContextInitializer() {
+        this.stormId = getCleanTopoName(System.getProperties().get("storm.id").toString());
+    }
+
+    static String getCleanTopoName(String stormId) {
+        if (stormId == null || stormId.isEmpty()) {
+            return "";
+        }
+        int matches = StringUtils.countMatches(stormId, "-");
+        if (matches < 2) {
+            return stormId;
+        }
+        matches -= 1;
+
+        int idx = StringUtils.ordinalIndexOf(stormId, "-", matches);
+        return stormId.substring(0, idx);
+    }
+
     /**
      * Wraps "execute" method of storm bolts to inject/cleanup fields in logger MDC.
      */
@@ -65,6 +87,8 @@ public class LoggerContextInitializer {
                 });
 
         Map<String, String> fields = prepareFields(context);
+        fields.put(TOPOLOGY_NAME, stormId);
+
         Map<String, String> current = inject(fields);
 
         try {
