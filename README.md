@@ -97,6 +97,52 @@ From the base directory run the following command:
 make up-test-mode
 ```
 
+### How to run Kilda Controller in blue-green mode
+
+Blue-green mode is an implementation of zero downtime feature. In this mode you
+run two versions of kilda: old one(blue) and new one(green).
+And switch blue to green at some moment.
+
+__First of all you need to build two sets of images.__
+
+To build blue version of Kilda you need to run:
+```
+make build-stable
+```
+
+To build green version of Kilda you need to run:
+```
+make build-latest
+```
+
+These two commands build images with tags `stable` and `latest`.
+These tags will be used to run kilda in blue mode (from stable images)
+or in green mode (for latest images).  
+
+__There are 3 new commands to run kilda in blue-green mode:__ 
+
+Following command run Kilda in blue mode from stable images.
+Also it runs all common components like zookeeper, database, kafka, etc.  
+```
+make up-stable
+```
+
+Next command run green version of Kilda from the latest images.
+Common components wouldn't be rerun (we started them by previous command).
+Also floodligth 1 wouldn't be rerun (only floodlight 2).
+Floodlight 1 will stay on blue mode.   
+```
+make up-green
+```
+
+Next command is used to test rollbacks. It runs stable components in blue mode.
+The difference with `make up-stable` is that command wouldn't start common components
+(like zookeeper, kafka, etc) and floodlight 2 (it stays in green mode). 
+
+```
+make up-blue
+``` 
+
 ### How to debug Kilda Controller components
 
 An important aspect of troubleshooting errors and problems in your code is to avoid them in the first place. It's not

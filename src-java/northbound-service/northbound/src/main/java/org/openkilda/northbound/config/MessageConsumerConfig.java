@@ -74,6 +74,12 @@ public class MessageConsumerConfig {
     private String groupId;
 
     /**
+     * Kilda blue green-mode.
+     */
+    @Value("${BLUE_GREEN_MODE:blue}")
+    private String blueGreenMode;
+
+    /**
      * Kafka group id.
      */
     @Value("${northbound.kafka.listener.threads}")
@@ -93,7 +99,7 @@ public class MessageConsumerConfig {
     private Map<String, Object> consumerConfigs() {
         return ImmutableMap.<String, Object>builder()
                 .put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHosts)
-                .put(ConsumerConfig.GROUP_ID_CONFIG, groupId)
+                .put(ConsumerConfig.GROUP_ID_CONFIG, buildGroupId())
                 .put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
                 .put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, kafkaSessionTimeout)
                 .put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName())
@@ -145,4 +151,7 @@ public class MessageConsumerConfig {
         return new KafkaMessagingChannel();
     }
 
+    private String buildGroupId() {
+        return String.format("%s-%s", groupId, blueGreenMode);
+    }
 }
