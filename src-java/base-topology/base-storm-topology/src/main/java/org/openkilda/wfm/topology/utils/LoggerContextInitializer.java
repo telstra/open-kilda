@@ -56,7 +56,7 @@ public class LoggerContextInitializer {
     private String stormId;
 
     public LoggerContextInitializer() {
-        this.stormId = getCleanTopoName(System.getProperties().get("storm.id").toString());
+        this.stormId = getCleanTopoName((String) System.getProperties().get("storm.id"));
     }
 
     static String getCleanTopoName(String stormId) {
