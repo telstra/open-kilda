@@ -22,6 +22,8 @@ import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_
 import static org.openkilda.bluegreen.kafka.Utils.MESSAGE_VERSION_HEADER;
 import static org.openkilda.bluegreen.kafka.Utils.getValue;
 
+import org.openkilda.bluegreen.kafka.DeserializationError;
+
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerInterceptor;
@@ -65,6 +67,12 @@ public class VersioningConsumerInterceptor<K, V> extends VersioningInterceptorBa
             for (ConsumerRecord<K, V> record : records.records(partition)) {
                 if (checkRecordVersion(record)) {
                     filteredRecords.add(record);
+
+                    if (record.value() instanceof DeserializationError) {
+                        log.error("Can't deserialize message from topic: {}, partition: {}, error: {}",
+                                record.topic(), record.partition(),
+                                ((DeserializationError) record.value()).getDeserializationErrorMessage());
+                    }
                 }
             }
 
