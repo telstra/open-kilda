@@ -88,7 +88,7 @@ clean-sources:
 {{end}}	$(MAKE) -C src-python/lab-service/lab clean
 	cd src-java && ./gradlew clean
 
-compile-blue: update-props-blue compile-common
+compile compile-blue: update-props-blue compile-common
 	cd src-java && ./gradlew buildAndCopyArtifacts -PdestPath=../docker/BUILD --info --stacktrace $(GRADLE_COMPILE_PARAMS)
 
 compile-green: update-props-green compile-common
