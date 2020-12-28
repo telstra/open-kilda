@@ -15,7 +15,6 @@
 
 package org.openkilda.config;
 
-import org.openkilda.dao.entity.VersionEntity;
 import org.openkilda.dao.repository.VersionRepository;
 
 import com.ibatis.common.jdbc.ScriptRunner;
@@ -23,7 +22,9 @@ import com.ibatis.common.jdbc.ScriptRunner;
 import org.apache.log4j.Logger;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,9 +33,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.sql.Connection;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 
@@ -67,48 +70,47 @@ public class DatabaseConfigurator {
     }
 
     private void loadInitialData() {
-        List<VersionEntity> versionEntities = versionRepository.findAll();
-        long lastestScriptNumber = getLatestScriptVersion(versionEntities);
-        Map<String, InputStream> filesByName = getScriptFiles(lastestScriptNumber);
-
-        for (int i = 0; i < filesByName.size(); i++) {
-            try (InputStream inputStream = filesByName.get(lastestScriptNumber + i + 1)) {
-                runScript(inputStream);
-            } catch (IOException e) {
-                LOGGER.error("Failed to load db script", e);
-            }
-        }
-    }
-
-    private Long getLatestScriptVersion(final List<VersionEntity> versionEntities) {
-        Long lastestVersion = 0L;
-        for (VersionEntity versionEntity : versionEntities) {
-            if (lastestVersion < versionEntity.getVersionNumber()) {
-                lastestVersion = versionEntity.getVersionNumber();
-            }
-        }
-        return lastestVersion;
-    }
-
-    private Map<String, InputStream> getScriptFiles(final long scriptNumber) {
-        long lastestScriptNumber = scriptNumber;
-        Map<String, InputStream> filesByName = new LinkedHashMap<>();
-        InputStream is;
+        List<Long> versionNumberList = versionRepository.findAllVersionNumber();
+        InputStream inputStream = null;
         try {
-            while (true) {
-                lastestScriptNumber++;
-                is = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/" + SCRIPT_FILE_PREFIX
-                        + lastestScriptNumber + SCRIPT_FILE_SUFFIX).getInputStream();
-                if (is != null) {
-                    runScript(is);
+            ClassLoader  loader = getClass().getClassLoader();
+            PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver(loader);
+            Resource[] resources = resolver.getResources("classpath:" + SCRIPT_LOCATION + "/*");
+            List<String> dbScripts = Arrays.stream(resources)
+                    .map(Resource::getFilename)
+                    .collect(Collectors.toList());
+            ArrayList<Long> sortedList = new ArrayList<Long>();
+            for (String scriptFile :  dbScripts) {
+                String scriptFileName = scriptFile.replaceFirst("[.][^.]+$", "");
+                String[] scriptNumber = scriptFileName.split("_");
+                Long scriptVersionNumber = Long.valueOf(scriptNumber[1]);
+                sortedList.add(scriptVersionNumber);
+            }
+            Collections.sort(sortedList);
+            for (Long scriptFileNumber :  sortedList) {
+                if (!versionNumberList.isEmpty()) {
+                    if (!versionNumberList.contains(scriptFileNumber)) {
+                        inputStream = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/" 
+               + SCRIPT_FILE_PREFIX + scriptFileNumber + SCRIPT_FILE_SUFFIX).getInputStream();
+                        if (inputStream != null) {
+                            runScript(inputStream);
+                        } else {
+                            break;
+                        }
+                    }
                 } else {
-                    break;
+                    inputStream = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/" 
+                              + SCRIPT_FILE_PREFIX + scriptFileNumber + SCRIPT_FILE_SUFFIX).getInputStream();
+                    if (inputStream != null) {
+                        runScript(inputStream);
+                    } else {
+                        break;
+                    }
                 }
             }
-        } catch (IOException e) {
-            LOGGER.info("Failed to load db scripts", e);
-        }
-        return filesByName;
+        } catch (IOException ex) {
+            LOGGER.error("Failed to load db scripts" + ex);
+        } 
     }
 
     private void runScript(final InputStream inputStream) {
