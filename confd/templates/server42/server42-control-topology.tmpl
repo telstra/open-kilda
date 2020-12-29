@@ -4,9 +4,13 @@ config:
   topology.workers: {{ getv "/kilda_storm_parallelism_workers_count" }}
 
 # spout definitions
-# spouts:
+spouts:
+  - id: "zookeeper.spout"
+    parallelism: 1
 
 # bolt definitions
 bolts:
   - id: "tick.bolt"
+    parallelism: 1
+  - id: "zookeeper.bolt"
     parallelism: 1

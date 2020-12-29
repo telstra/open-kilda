@@ -22,6 +22,9 @@ import org.openkilda.server42.control.topology.storm.bolt.TickBolt;
 import org.openkilda.server42.control.topology.storm.bolt.flow.FlowHandler;
 import org.openkilda.server42.control.topology.storm.bolt.router.Router;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
+import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 
 import org.apache.storm.generated.StormTopology;
@@ -58,10 +61,14 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
 
         TopologyBuilder topology = new TopologyBuilder();
 
+        zooKeeperSpout(topology);
+
         inputFlowHs(topology);
         inputNbWorker(topology);
         //TODO: LCM stuff
         //inputControl(topology, topologyConfig.getNewParallelism());
+
+        zooKeeperBolt(topology);
 
         router(topology);
 
@@ -74,30 +81,44 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
         return topology.createTopology();
     }
 
+    private void zooKeeperSpout(TopologyBuilder topology) {
+        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig().getConnectString());
+        declareSpout(topology, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
+    }
+
+    private void zooKeeperBolt(TopologyBuilder topology) {
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig().getConnectString());
+        declareBolt(topology, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
+                .allGrouping(Router.BOLT_ID, ZkStreams.ZK.toString());
+    }
+
     private void inputFlowHs(TopologyBuilder topology) {
         declareKafkaSpout(topology,
                 topologyConfig.getKafkaTopics().getFlowHsServer42StormNotifyTopic(),
-                ComponentId.INPUT_FLOW_HS.toString());
+                ComponentId.INPUT_FLOW_HS.toString(), getZkTopoName(), topologyConfig.getBlueGreenMode());
     }
 
     private void inputNbWorker(TopologyBuilder topology) {
         declareKafkaSpout(topology,
                 topologyConfig.getKafkaTopics().getNbWorkerServer42StormNotifyTopic(),
-                ComponentId.INPUT_NB.toString());
+                ComponentId.INPUT_NB.toString(), getZkTopoName(), topologyConfig.getBlueGreenMode());
     }
 
     private void inputControl(TopologyBuilder topology) {
         declareKafkaSpout(topology,
                 topologyConfig.getKafkaTopics().getServer42ControlCommandsReplyTopic(),
-                ComponentId.INPUT_SERVER42_CONTROL.toString());
+                ComponentId.INPUT_SERVER42_CONTROL.toString(), getZkTopoName(), topologyConfig.getBlueGreenMode());
     }
 
     private void router(TopologyBuilder topology) {
-        Router bolt = new Router(persistenceManager);
+        Router bolt = new Router(persistenceManager, ZooKeeperSpout.SPOUT_ID);
         declareBolt(topology, bolt, Router.BOLT_ID)
                 .shuffleGrouping(ComponentId.INPUT_FLOW_HS.toString())
                 .shuffleGrouping(ComponentId.INPUT_NB.toString())
-                .shuffleGrouping(ComponentId.TICK_BOLT.toString());
+                .shuffleGrouping(ComponentId.TICK_BOLT.toString())
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
     private void flowHandler(TopologyBuilder topology) {
@@ -109,7 +130,8 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
     }
 
     private void outputSpeaker(TopologyBuilder topology) {
-        KafkaBolt output = buildKafkaBoltWithRawObject(topologyConfig.getKafkaTopics().getServer42StormCommandsTopic());
+        KafkaBolt output = buildKafkaBoltWithRawObject(topologyConfig.getKafkaTopics().getServer42StormCommandsTopic(),
+                getZkTopoName(), topologyConfig.getBlueGreenMode());
         declareBolt(topology, output, ComponentId.OUTPUT_SERVER42_CONTROL.toString())
                 .shuffleGrouping(FlowHandler.BOLT_ID, FlowHandler.STREAM_CONTROL_COMMANDS_ID);
     }
@@ -117,5 +139,10 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
     private void lcm(TopologyBuilder topology, ControlTopologyConfig topologyConfig) {
         TickBolt tickBolt = new TickBolt(topologyConfig.getFlowRttSyncIntervalSeconds());
         declareBolt(topology, tickBolt, TickBolt.BOLT_ID);
+    }
+
+    @Override
+    protected String getZkTopoName() {
+        return "server42-control";
     }
 }
