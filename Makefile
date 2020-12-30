@@ -1,5 +1,5 @@
-# 'make' will build the latest and try to run it.
-default: update-props build-latest run-dev
+# 'make' will build docker images and try to run it.
+default: update-props build-stable up-test-mode
 
 UPDATE_PROPS := confd -onetime -confdir ./confd/ -backend file -file ./confd/vars/main.yaml -file ./confd/vars/docker-compose.yaml -sync-only
 
