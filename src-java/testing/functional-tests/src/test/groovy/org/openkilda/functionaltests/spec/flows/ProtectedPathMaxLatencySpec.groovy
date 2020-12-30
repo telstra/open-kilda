@@ -38,8 +38,8 @@ class ProtectedPathMaxLatencySpec extends HealthCheckSpecification {
         //deactivate other paths for more clear experiment
         def isls = mainIsls + protectedIsls
         islsToBreak = switchPair.paths.findAll { !paths.contains(it) }
-                                    .collect { pathHelper.getInvolvedIsls(it).find {!isls.contains(it) && !isls.contains(it.reversed) } }
-                                    .unique { [it, it.reversed].sort() }
+                                .collect { pathHelper.getInvolvedIsls(it).find {!isls.contains(it) && !isls.contains(it.reversed) } }
+                                .unique { [it, it.reversed].sort() }
         islsToBreak.each { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
     }
 
@@ -110,9 +110,9 @@ class ProtectedPathMaxLatencySpec extends HealthCheckSpecification {
 
     def cleanupSpec() {
         islsToBreak.each { getAntiflap().portUp(it.srcSwitch.dpId, it.srcPort) }
-        getDatabase().resetCosts()
         Wrappers.wait(getDiscoveryInterval() + WAIT_OFFSET) {
             assert getNorthbound().getActiveLinks().size() == getTopology().islsForActiveSwitches.size() * 2
         }
+        getDatabase().resetCosts()
     }
 }

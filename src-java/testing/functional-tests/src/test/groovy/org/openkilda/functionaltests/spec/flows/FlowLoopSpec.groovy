@@ -35,6 +35,7 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Unroll
@@ -629,7 +630,8 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(LOW_PRIORITY)
-    def "Unable to create flowLoop twice on the src for the same flow"() {
+    @Ignore("https://github.com/telstra/open-kilda/issues/3960")
+    def "Attempt to create the exact same flowLoop twice just reinstalls the rules"() {
         given: "An active multi switch flow with created flowLoop on the src switch"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -640,15 +642,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         when: "Try to create flowLoop on the src switch again"
         northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
 
-        then: "Human readable error is returned"
-        def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.UNPROCESSABLE_ENTITY
-        with(exc.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Can't create flow loop on '$flow.flowId' found"
-            errorDescription == "Flow is already looped on switch '$switchPair.src.dpId'"
-        }
-
-        and: "FlowLoop is still present for the src switch"
+        then: "FlowLoop is still present for the src switch"
         northboundV2.getFlow(flow.flowId).loopSwitchId == switchPair.src.dpId
 
         and: "No extra rules are created on the src/dst switches"
@@ -740,7 +734,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.statusCode == HttpStatus.UNPROCESSABLE_ENTITY
         with(exc.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Can't create flow loop on '$flow.flowId' found"
+            errorMessage == "Can't create flow loop on '$flow.flowId'"
             errorDescription == "Flow is already looped on switch '$switchPair.src.dpId'"
         }
 

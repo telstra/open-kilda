@@ -115,8 +115,8 @@ class PortHistorySpec extends HealthCheckSpecification {
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
                 assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
             }
-            database.resetCosts()
         }
+        database.resetCosts()
 
         where:
         [islDescription, historySizeOnDstSw, isl] << [
@@ -159,8 +159,8 @@ class PortHistorySpec extends HealthCheckSpecification {
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
                 assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
             }
-            database.resetCosts()
         }
+        database.resetCosts()
     }
 
     @Tidy
@@ -203,8 +203,8 @@ class PortHistorySpec extends HealthCheckSpecification {
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
                 assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
             }
-            database.resetCosts()
         }
+        database.resetCosts()
         switchToDisconnect && switchHelper.reviveSwitch(switchToDisconnect, blockData)
     }
 
