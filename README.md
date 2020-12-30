@@ -72,7 +72,7 @@ chmod +x /usr/local/bin/confd
 From the base directory run the following command:
 
 ```
-make build-latest
+make build-stable
 ```
 
 Note that additional Ubuntu packages will be installed as part of the build process.
