@@ -19,7 +19,6 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.PathSegment;
-import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
@@ -88,17 +87,9 @@ public class ResourcesDeallocationAction extends FlowProcessingAction<FlowCreate
 
     private void updateIslsForSegments(List<PathSegment> pathSegments) {
         pathSegments.forEach(pathSegment ->
-                transactionManager.doInTransaction(() -> {
-                    updateAvailableBandwidth(pathSegment.getSrcSwitchId(), pathSegment.getSrcPort(),
-                            pathSegment.getDestSwitchId(), pathSegment.getDestPort());
-                }));
-    }
-
-    private void updateAvailableBandwidth(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort) {
-        long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(srcSwitch, srcPort,
-                dstSwitch, dstPort);
-        log.debug("Updating ISL {}_{} - {}_{} with used bandwidth {}", srcSwitch, srcPort, dstSwitch, dstPort,
-                usedBandwidth);
-        islRepository.updateAvailableBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth);
+                transactionManager.doInTransaction(() ->
+                        islRepository.updateAvailableBandwidth(
+                                pathSegment.getSrcSwitchId(), pathSegment.getSrcPort(),
+                                pathSegment.getDestSwitchId(), pathSegment.getDestPort())));
     }
 }
