@@ -100,6 +100,7 @@ public class IslLinkConverter {
         islLinkInfo.setUnderMaintenance(islLink.isUnderMaintenance());
         islLinkInfo.setEvacuate(islLink.isEvacuate());
         islLinkInfo.setEnableBfd(islLink.isEnableBfd());
+        islLinkInfo.setBfdSessionStatus(islLink.getBfdSessionStatus());
         List<IslPath> islPaths = islLink.getPath();
         if (islPaths != null && !islPaths.isEmpty()) {
             if (islPaths.get(0) != null) {
