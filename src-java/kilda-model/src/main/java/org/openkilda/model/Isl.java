@@ -130,7 +130,7 @@ public class Isl implements CompositeDataEntity<Isl.IslData> {
                 .append(getTimeCreate(), that.getTimeCreate())
                 .append(getTimeModify(), that.getTimeModify())
                 .append(getBfdInterval(), that.getBfdInterval())
-                .append(getBfdMultiplier(), that.getBfdInterval())
+                .append(getBfdMultiplier(), that.getBfdMultiplier())
                 .append(getBfdSessionStatus(), that.getBfdSessionStatus())
                 .append(getTimeUnstable(), that.getTimeUnstable())
                 .isEquals();
