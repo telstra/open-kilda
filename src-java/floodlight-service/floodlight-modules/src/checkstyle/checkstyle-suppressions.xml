@@ -9,6 +9,12 @@
     <suppress files="src/main/java/org/openkilda/floodlight/utils/RequestCorrelationFilter.java" lines="21" checks="CustomImportOrder"/>
     <suppress files="src/main/java/org/openkilda/floodlight/utils/RequestCorrelationFilter.java" lines="31" checks="LineLength"/>
     <suppress files="src/test/java/org/openkilda/floodlight/Constants.java" lines="20" checks="HideUtilityClassConstructor"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="19" checks="JavadocParagraph"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="23" checks="JavadocParagraph"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/FloodlightTestCase.java" lines="25" checks="JavadocParagraph"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="19" checks="JavadocParagraph"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="23" checks="JavadocParagraph"/>
+    <suppress files="src/test/java/org/openkilda/floodlight/MockFloodlightProvider.java" lines="25" checks="JavadocParagraph"/>
     <suppress files="src/test/java/org/openkilda/floodlight/OFFactoryMock.java" lines="20" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/floodlight/OFFactoryVer12Mock.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/floodlight/OFFactoryVer12Mock.java" lines="7" checks="AbbreviationAsWordInName"/>

@@ -32,7 +32,7 @@ public interface TransactionManager {
      */
     <T, E extends Throwable> T doInTransaction(TransactionCallback<T, E> action) throws E;
 
-    <T, E extends Throwable> T doInTransaction(RetryPolicy retryPolicy, TransactionCallback<T, E> action) throws E;
+    <T, E extends Throwable> T doInTransaction(RetryPolicy<T> retryPolicy, TransactionCallback<T, E> action) throws E;
 
     /**
      * Execute the action specified by the given callback within a transaction.
@@ -44,10 +44,10 @@ public interface TransactionManager {
      */
     <E extends Throwable> void doInTransaction(TransactionCallbackWithoutResult<E> action) throws E;
 
-    <E extends Throwable> void doInTransaction(RetryPolicy retryPolicy, TransactionCallbackWithoutResult<E> action)
+    <E extends Throwable> void doInTransaction(RetryPolicy<?> retryPolicy, TransactionCallbackWithoutResult<E> action)
             throws E;
 
-    RetryPolicy getDefaultRetryPolicy();
+    <T> RetryPolicy<T> getDefaultRetryPolicy();
 
     boolean isTxOpen();
 }

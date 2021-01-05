@@ -96,7 +96,6 @@ import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -234,7 +233,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         try {
             algorithm = Algorithm.HMAC256(secret);
             verifier = JWT.require(algorithm).build();
-        } catch (UnsupportedEncodingException e) {
+        } catch (IllegalArgumentException e) {
             logger.error("Ivalid secret", e);
             throw new FloodlightModuleException("Invalid secret for HMAC256");
         }

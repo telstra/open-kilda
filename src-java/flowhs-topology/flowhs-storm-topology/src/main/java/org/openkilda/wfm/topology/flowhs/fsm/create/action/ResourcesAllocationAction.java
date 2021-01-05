@@ -69,17 +69,17 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeException;
+import net.jodah.failsafe.FailsafeExecutor;
 import net.jodah.failsafe.RetryPolicy;
-import net.jodah.failsafe.SyncFailsafe;
 import org.apache.commons.collections4.map.LazyMap;
 import org.apache.commons.lang3.StringUtils;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, State, Event, FlowCreateContext> {
@@ -189,18 +189,18 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
     @SneakyThrows
     private void createPaths(FlowCreateFsm stateMachine) throws UnroutableFlowException,
             RecoverableException, ResourceAllocationException, FlowNotFoundException, FlowAlreadyExistException {
-        RetryPolicy pathAllocationRetryPolicy = new RetryPolicy()
-                .retryOn(RecoverableException.class)
-                .retryOn(ResourceAllocationException.class)
-                .retryOn(UnroutableFlowException.class)
-                .retryOn(PersistenceException.class)
+        RetryPolicy<?> pathAllocationRetryPolicy = new RetryPolicy<>()
+                .handle(RecoverableException.class)
+                .handle(ResourceAllocationException.class)
+                .handle(UnroutableFlowException.class)
+                .handle(PersistenceException.class)
                 .withMaxRetries(pathAllocationRetriesLimit);
         if (pathAllocationRetryDelay > 0) {
-            pathAllocationRetryPolicy.withDelay(pathAllocationRetryDelay, TimeUnit.MILLISECONDS);
+            pathAllocationRetryPolicy.withDelay(Duration.ofMillis(pathAllocationRetryDelay));
         }
-        SyncFailsafe failsafe = Failsafe.with(pathAllocationRetryPolicy)
-                .onRetry(e -> log.warn("Failure in resource allocation. Retrying...", e))
-                .onRetriesExceeded(e -> log.warn("Failure in resource allocation. No more retries", e));
+        FailsafeExecutor<?> failsafe = Failsafe.with(pathAllocationRetryPolicy)
+                .onFailure(e -> log.warn("Failure in resource allocation. Retrying...", e))
+                .onComplete(e -> log.warn("Failure in resource allocation. No more retries", e));
         try {
             failsafe.run(() -> allocateMainPath(stateMachine));
             failsafe.run(() -> allocateProtectedPath(stateMachine));

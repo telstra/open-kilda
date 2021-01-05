@@ -84,8 +84,8 @@ public enum FlowState {
      * @param value enum's attribute
      * @return Enum value
      */
-    public  static FlowState getByValue(String value) {
-        for (FlowState f: values()) {
+    public static FlowState getByValue(String value) {
+        for (FlowState f : values()) {
             if (f.state.equals(value)) {
                 return f;
             }

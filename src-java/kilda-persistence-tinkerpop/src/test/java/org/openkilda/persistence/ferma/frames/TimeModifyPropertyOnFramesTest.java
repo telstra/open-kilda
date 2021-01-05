@@ -26,12 +26,12 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import net.jodah.failsafe.function.CheckedSupplier;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
 import java.time.Instant;
-import java.util.concurrent.Callable;
 
 public class TimeModifyPropertyOnFramesTest extends InMemoryGraphBasedTest {
     private SwitchRepository switchRepository;
@@ -130,7 +130,7 @@ public class TimeModifyPropertyOnFramesTest extends InMemoryGraphBasedTest {
     }
 
     private void waitUntilNowIsAfter(Instant before) {
-        Failsafe.with(new RetryPolicy().retryIf(result -> !before.isBefore((Instant) result)))
-                .get((Callable<Instant>) Instant::now);
+        Failsafe.with(new RetryPolicy<Instant>().handleResultIf(result -> !before.isBefore(result)))
+                .get((CheckedSupplier<Instant>) Instant::now);
     }
 }

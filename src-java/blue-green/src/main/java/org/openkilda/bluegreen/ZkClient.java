@@ -23,7 +23,6 @@ import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import net.jodah.failsafe.SyncFailsafe;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Watcher;
@@ -33,9 +32,9 @@ import org.apache.zookeeper.ZooKeeper;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @SuperBuilder
@@ -76,13 +75,13 @@ public abstract class ZkClient implements Watcher {
     public synchronized void initAndWaitConnection() {
         init();
 
-        RetryPolicy retryPolicy = new RetryPolicy()
-                .retryOn(IllegalStateException.class)
-                .withDelay(RECONNECT_DELAY_MS, TimeUnit.MILLISECONDS);
+        RetryPolicy<?> retryPolicy = new RetryPolicy<>()
+                .handle(IllegalStateException.class)
+                .withDelay(Duration.ofMillis(RECONNECT_DELAY_MS));
 
         final int[] attempt = {1}; // need to be final to be used in lambda
-        SyncFailsafe<Object> failsafe = Failsafe.with(retryPolicy)
-                .onRetry(e -> {
+        Failsafe.with(retryPolicy)
+                .onFailure(e -> {
                     String message = format("Failed to init zk client, retrying... Attempt: %d", attempt[0]++);
                     if (attempt[0] <= 10) {
                         log.info(message, e);
@@ -91,8 +90,8 @@ public abstract class ZkClient implements Watcher {
                     } else {
                         log.error(message, e);
                     }
-                });
-        failsafe.run(this::reconnect);
+                })
+                .run(this::reconnect);
     }
 
     private void reconnect() {

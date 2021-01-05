@@ -3,7 +3,7 @@ dependencies {
     implementation 'com.google.guava:guava'
     compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
     implementation 'org.apache.commons:commons-lang3'
-    implementation 'com.esotericsoftware:kryo:3.0.3'
+    implementation 'com.esotericsoftware:kryo'
 
     implementation 'org.mapstruct:mapstruct'
     implementation 'org.mapstruct:mapstruct-processor'

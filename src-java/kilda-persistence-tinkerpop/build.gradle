@@ -13,17 +13,18 @@ dependencies {
     aspect project(':kilda-persistence-api')
     implementation project(':kilda-configuration')
 
-    api('com.syncleus.ferma:ferma:3.3.0') {
+    api('com.syncleus.ferma:ferma:3.3.2') {
         exclude group: 'org.codehaus.groovy'
     }
-    implementation('org.apache.tinkerpop:gremlin-core:3.3.0') {
+    implementation('org.apache.tinkerpop:gremlin-core:3.4.6') {
         exclude group: 'org.codehaus.groovy'
     }
-    implementation('org.apache.tinkerpop:gremlin-driver:3.3.0') {
+    implementation('org.apache.tinkerpop:gremlin-driver:3.4.6') {
         exclude group: 'org.codehaus.groovy'
     }
 
-    implementation 'net.jodah:failsafe:1.0.5'
+    api 'net.jodah:failsafe'
+    implementation 'com.google.guava:guava'
 
     implementation 'org.aspectj:aspectjrt'
     implementation 'org.mapstruct:mapstruct'
@@ -31,9 +32,11 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor'
 
     testImplementation 'junit:junit:4.12'
-    testImplementation('org.apache.tinkerpop:tinkergraph-gremlin:3.3.0') {
+    testImplementation('org.apache.tinkerpop:tinkergraph-gremlin:3.4.6') {
         exclude group: 'org.codehaus.groovy'
     }
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.hamcrest:hamcrest-library'
 
     compileOnly 'org.projectlombok:lombok'
     testCompileOnly 'org.projectlombok:lombok'
@@ -48,9 +51,10 @@ configurations {
 }
 
 dependencies {
-    testArtifacts('org.apache.tinkerpop:tinkergraph-gremlin:3.3.0') {
+    testArtifacts('org.apache.tinkerpop:tinkergraph-gremlin:3.4.6') {
         exclude group: 'org.codehaus.groovy'
     }
+    testArtifacts project(':kilda-persistence-tinkerpop')
 }
 
 task testJar(type: Jar) {

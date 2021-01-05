@@ -38,12 +38,12 @@ import net.jodah.failsafe.RetryPolicy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Component
@@ -62,9 +62,10 @@ public class IslUtils {
      * @param isls which ISLs should have the specified status
      * @param expectedStatus which status to wait for specified ISLs
      */
-    public void waitForIslStatus(List<Isl> isls, IslChangeType expectedStatus, RetryPolicy retryPolicy) {
+    public void waitForIslStatus(List<Isl> isls, IslChangeType expectedStatus,
+                                 RetryPolicy<List<IslInfoData>> retryPolicy) {
         List<IslInfoData> actualIsl = Failsafe.with(retryPolicy
-                .retryIf(states -> states != null && ((List<IslInfoData>) states).stream()
+                .handleResultIf(states -> states != null && states.stream()
                         .map(IslInfoData::getState)
                         .anyMatch(state -> !expectedStatus.equals(state))))
                 .get(() -> {
@@ -208,9 +209,9 @@ public class IslUtils {
                 0, plugIntoSource ? aswFlowForward.getReversed() : aswFlowForward);
     }
 
-    private RetryPolicy retryPolicy() {
-        return new RetryPolicy()
-                .withDelay(3, TimeUnit.SECONDS)
+    private <T> RetryPolicy<T> retryPolicy() {
+        return new RetryPolicy<T>()
+                .withDelay(Duration.ofSeconds(3))
                 .withMaxRetries(20);
     }
 }

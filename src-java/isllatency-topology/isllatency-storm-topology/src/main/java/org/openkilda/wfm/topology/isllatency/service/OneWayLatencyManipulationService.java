@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.isllatency.service;
 
 import org.openkilda.messaging.info.event.IslOneWayLatency;
-
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.isllatency.carriers.OneWayLatencyManipulationCarrier;
 

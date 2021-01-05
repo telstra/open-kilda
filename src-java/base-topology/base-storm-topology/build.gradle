@@ -11,7 +11,7 @@ description = 'Base Storm Topology'
 dependencies {
     api project(':base-messaging')
     api project(':kilda-configuration')
-    api project(':kilda-persistence-tinkerpop')
+    api project(':kilda-persistence-api')
     aspect project(':kilda-persistence-api')
     api project(':blue-green')
     implementation project(':kilda-pce')
@@ -47,7 +47,6 @@ dependencies {
 
     api 'com.google.guava:guava'
     api 'org.apache.commons:commons-lang3'
-    api 'commons-lang:commons-lang'
     api 'org.apache.commons:commons-collections4'
     api 'com.fasterxml.jackson.core:jackson-annotations'
     api 'com.fasterxml.jackson.core:jackson-databind'

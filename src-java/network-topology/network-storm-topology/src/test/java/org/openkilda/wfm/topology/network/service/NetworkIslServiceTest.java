@@ -167,14 +167,14 @@ public class NetworkIslServiceTest {
         when(featureTogglesRepository.getOrDefault()).thenReturn(featureToggles);
 
         when(transactionManager.getDefaultRetryPolicy())
-                .thenReturn(new RetryPolicy().withMaxRetries(2));
+                .thenReturn(new RetryPolicy<>().withMaxRetries(2));
         doAnswer(invocation -> {
             TransactionCallbackWithoutResult<?> tr = invocation.getArgument(0);
             tr.doInTransaction();
             return null;
         }).when(transactionManager).doInTransaction(Mockito.any(TransactionCallbackWithoutResult.class));
         doAnswer(invocation -> {
-            RetryPolicy retryPolicy = invocation.getArgument(0);
+            RetryPolicy<?> retryPolicy = invocation.getArgument(0);
             TransactionCallbackWithoutResult<?> tr = invocation.getArgument(1);
             Failsafe.with(retryPolicy)
                     .run(tr::doInTransaction);

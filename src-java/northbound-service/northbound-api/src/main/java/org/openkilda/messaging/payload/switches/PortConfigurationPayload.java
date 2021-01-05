@@ -20,7 +20,6 @@ import org.openkilda.model.PortStatus;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
 import lombok.Value;
 
 import java.io.Serializable;

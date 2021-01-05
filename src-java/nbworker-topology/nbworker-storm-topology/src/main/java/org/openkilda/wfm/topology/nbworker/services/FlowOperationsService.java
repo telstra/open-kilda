@@ -59,9 +59,10 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.FailsafeExecutor;
 import net.jodah.failsafe.RetryPolicy;
-import net.jodah.failsafe.SyncFailsafe;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -69,7 +70,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -97,20 +97,20 @@ public class FlowOperationsService {
         this.transactionManager = transactionManager;
     }
 
-    private SyncFailsafe getReadOperationFailsafe() {
-        return Failsafe.with(new RetryPolicy()
-                .retryOn(PersistenceException.class)
-                .withDelay(RETRY_DELAY, TimeUnit.MILLISECONDS)
+    private <T> FailsafeExecutor<T> getReadOperationFailsafe() {
+        return Failsafe.with(new RetryPolicy<T>()
+                .handle(PersistenceException.class)
+                .withDelay(Duration.ofMillis(RETRY_DELAY))
                 .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT))
-                .onRetry(e -> log.warn("Retrying transaction finished with exception", e))
-                .onRetriesExceeded(e -> log.warn("TX retry attempts exceed with error", e));
+                .onFailure(e -> log.warn("Retrying transaction finished with exception", e))
+                .onComplete(e -> log.warn("TX retry attempts exceed with error", e));
     }
 
     /**
      * Return flow by flow id.
      */
     public Flow getFlow(String flowId) throws FlowNotFoundException {
-        Optional<Flow> found = (Optional<Flow>) getReadOperationFailsafe().get(() ->
+        Optional<Flow> found = getReadOperationFailsafe().get(() ->
                 transactionManager.doInTransaction(() -> flowRepository.findById(flowId)));
         return found.orElseThrow(() -> new FlowNotFoundException(flowId));
     }

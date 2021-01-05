@@ -26,7 +26,6 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 
 public class DataSignature {
@@ -37,7 +36,7 @@ public class DataSignature {
         try {
             signAlgorithm = Algorithm.HMAC256(secret);
             signVerification = JWT.require(signAlgorithm).build();
-        } catch (UnsupportedEncodingException e) {
+        } catch (IllegalArgumentException e) {
             throw new InvalidSignatureConfigurationException("Can't initialize sing/verify objects", e);
         }
     }

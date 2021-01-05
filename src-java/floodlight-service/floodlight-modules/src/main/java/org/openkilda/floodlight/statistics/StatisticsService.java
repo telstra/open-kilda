@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.statistics;
 
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.converter.OfFlowStatsMapper;
@@ -157,7 +158,8 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         logger.info("Getting port stats for switch={} OF-xid:{}", iofSwitch.getId(), portStatsRequest.getXid());
 
         Futures.addCallback(iofSwitch.writeStatsRequest(portStatsRequest), new RequestCallback<>(
-                data -> OfPortStatsMapper.INSTANCE.toPostStatsData(data, switchId), switchId, "port"));
+                data -> OfPortStatsMapper.INSTANCE.toPostStatsData(data, switchId), switchId, "port"),
+                directExecutor());
     }
 
     @NewCorrelationContextRequired
@@ -175,7 +177,8 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
             logger.info("Getting flow stats for switch={} OF-xid:{}", iofSwitch.getId(), flowStatsRequest.getXid());
 
             Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest), new RequestCallback<>(
-                    data -> OfFlowStatsMapper.INSTANCE.toFlowStatsData(data, switchId), switchId, "flow"));
+                    data -> OfFlowStatsMapper.INSTANCE.toFlowStatsData(data, switchId), switchId, "flow"),
+                    directExecutor());
         }
     }
 
@@ -207,7 +210,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
             };
 
             RequestCallback<OFTableStatsReply> callback = new RequestCallback<>(converter, switchId, "table");
-            Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest), callback);
+            Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest), callback, directExecutor());
         }
     }
 
@@ -227,7 +230,8 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
 
             Futures.addCallback(iofSwitch.writeStatsRequest(meterStatsRequest),
                     new RequestCallback<>(
-                            data -> OfMeterStatsMapper.INSTANCE.toMeterStatsData(data, switchId), switchId, "meter"));
+                            data -> OfMeterStatsMapper.INSTANCE.toMeterStatsData(data, switchId), switchId, "meter"),
+                    directExecutor());
         }
     }
 

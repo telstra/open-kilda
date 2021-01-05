@@ -62,6 +62,7 @@ import java.net.Inet4Address;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.InputMismatchException;
 import java.util.LinkedList;
@@ -98,8 +99,8 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
     private ConcurrentHashMap<UUID, HostResource> suppliedEndpoints = new ConcurrentHashMap<>();
     private List<HostResource> failedToRelease = new LinkedList<>();
 
-    private final RetryPolicy retryPolicy = new RetryPolicy()
-            .withDelay(1, TimeUnit.SECONDS)
+    private final RetryPolicy<ExamReport> retryPolicy = new RetryPolicy<ExamReport>()
+            .withDelay(Duration.ofSeconds(1))
             .withMaxRetries(30);
 
     @PostConstruct
@@ -251,7 +252,7 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
     @Override
     public ExamReport waitExam(Exam exam, boolean cleanup) {
         ExamReport result = Failsafe.with(retryPolicy
-                .retryIf((t, u) -> u instanceof ExamNotFinishedException))
+                .handleIf((t, u) -> u instanceof ExamNotFinishedException))
                 .get(() -> fetchReport(exam));
 
         if (result != null && cleanup) {
