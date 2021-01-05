@@ -41,7 +41,6 @@ dependencies {
     implementation 'org.apache.httpcomponents:httpclient:4.4.1'
     implementation 'com.google.guava:guava'
     implementation 'org.apache.commons:commons-lang3'
-    implementation 'commons-lang:commons-lang'
     implementation 'commons-io:commons-io'
     implementation 'org.apache.logging.log4j:log4j-api'
     implementation 'net.jodah:failsafe'

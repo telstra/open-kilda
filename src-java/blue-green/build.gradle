@@ -7,8 +7,8 @@ description = 'Kilda Blue Green'
 dependencies {
     implementation 'com.google.guava:guava'
     implementation 'org.apache.commons:commons-lang3'
-    implementation 'com.esotericsoftware:kryo:3.0.3'
-    implementation 'net.jodah:failsafe:1.0.5'
+    implementation 'com.esotericsoftware:kryo'
+    implementation 'net.jodah:failsafe'
 
     implementation 'org.mapstruct:mapstruct'
     implementation 'org.mapstruct:mapstruct-processor'

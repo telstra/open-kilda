@@ -155,10 +155,10 @@ public class NetworkSwitchServiceTest {
         reset(transactionManager);
 
         when(transactionManager.getDefaultRetryPolicy())
-                .thenReturn(new RetryPolicy().withMaxRetries(2));
+                .thenReturn(new RetryPolicy<>().withMaxRetries(2));
         doAnswer(invocation -> {
-            RetryPolicy retryPolicy = invocation.getArgument(0);
-            TransactionCallbackWithoutResult tr = invocation.getArgument(1);
+            RetryPolicy<?> retryPolicy = invocation.getArgument(0);
+            TransactionCallbackWithoutResult<?> tr = invocation.getArgument(1);
             Failsafe.with(retryPolicy)
                     .run(tr::doInTransaction);
             return null;

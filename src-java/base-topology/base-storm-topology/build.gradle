@@ -1,8 +1,15 @@
+buildscript {
+    dependencies {
+        classpath 'org.anarres.jarjar:jarjar-gradle:1.0.1'
+    }
+}
+
 plugins {
     id 'java-library'
     id 'io.freefair.aspectj.post-compile-weaving'
-    id 'org.anarres.jarjar'
 }
+
+apply plugin: 'org.anarres.jarjar'
 
 compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
 compileJava.ajc.options.compilerArgs += '-verbose'
@@ -11,7 +18,7 @@ description = 'Base Storm Topology'
 dependencies {
     api project(':base-messaging')
     api project(':kilda-configuration')
-    api project(':kilda-persistence-tinkerpop')
+    api project(':kilda-persistence-api')
     aspect project(':kilda-persistence-api')
     api project(':blue-green')
     implementation project(':kilda-pce')
@@ -47,7 +54,6 @@ dependencies {
 
     api 'com.google.guava:guava'
     api 'org.apache.commons:commons-lang3'
-    api 'commons-lang:commons-lang'
     api 'org.apache.commons:commons-collections4'
     api 'com.fasterxml.jackson.core:jackson-annotations'
     api 'com.fasterxml.jackson.core:jackson-databind'

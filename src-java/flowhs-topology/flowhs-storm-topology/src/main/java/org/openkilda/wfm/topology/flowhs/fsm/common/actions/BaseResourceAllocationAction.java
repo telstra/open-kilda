@@ -40,7 +40,6 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.IslRepository.IslEndpoints;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
@@ -65,10 +64,11 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeException;
+import net.jodah.failsafe.FailsafeExecutor;
 import net.jodah.failsafe.RetryPolicy;
-import net.jodah.failsafe.SyncFailsafe;
 import org.apache.commons.collections4.map.LazyMap;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -76,7 +76,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -236,20 +235,20 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             return result;
         });
 
-        RetryPolicy pathAllocationRetryPolicy = new RetryPolicy()
-                .retryOn(RecoverableException.class)
-                .retryOn(ResourceAllocationException.class)
-                .retryOn(UnroutableFlowException.class)
-                .retryOn(PersistenceException.class)
+        RetryPolicy<GetPathsResult> pathAllocationRetryPolicy = new RetryPolicy<GetPathsResult>()
+                .handle(RecoverableException.class)
+                .handle(ResourceAllocationException.class)
+                .handle(UnroutableFlowException.class)
+                .handle(PersistenceException.class)
                 .withMaxRetries(pathAllocationRetriesLimit);
         if (pathAllocationRetryDelay > 0) {
-            pathAllocationRetryPolicy.withDelay(pathAllocationRetryDelay, TimeUnit.MILLISECONDS);
+            pathAllocationRetryPolicy.withDelay(Duration.ofMillis(pathAllocationRetryDelay));
         }
-        SyncFailsafe failsafe = Failsafe.with(pathAllocationRetryPolicy)
-                .onRetry(e -> log.warn("Failure in path allocation. Retrying...", e))
-                .onRetriesExceeded(e -> log.warn("Failure in path allocation. No more retries", e));
+        FailsafeExecutor<GetPathsResult> failsafe = Failsafe.with(pathAllocationRetryPolicy)
+                .onFailure(e -> log.warn("Failure in path allocation. Retrying...", e))
+                .onComplete(e -> log.warn("Failure in path allocation. No more retries", e));
         try {
-            return (GetPathsResult) failsafe.get(() -> {
+            return failsafe.get(() -> {
                 GetPathsResult potentialPath;
                 if (forceToIgnoreBandwidth) {
                     boolean originalIgnoreBandwidth = flow.isIgnoreBandwidth();
@@ -296,10 +295,8 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             long updatedAvailableBandwidth =
                     pathSegmentRepository.addSegmentAndUpdateIslAvailableBandwidth(segment).orElse(0L);
             if (!segment.isIgnoreBandwidth() && updatedAvailableBandwidth < 0) {
-                String srcSwitchIdAsStr = SwitchIdConverter.INSTANCE.toGraphProperty(segment.getSrcSwitchId());
-                String destSwitchIdAsStr = SwitchIdConverter.INSTANCE.toGraphProperty(segment.getDestSwitchId());
-                IslEndpoints isl = new IslEndpoints(srcSwitchIdAsStr, segment.getSrcPort(),
-                        destSwitchIdAsStr, segment.getDestPort());
+                IslEndpoints isl = new IslEndpoints(segment.getSrcSwitchId().toString(), segment.getSrcPort(),
+                        segment.getDestSwitchId().toString(), segment.getDestPort());
                 log.debug("ISL {} is being over-provisioned, check if it's allowed", isl);
 
                 long allowedOverprovisionedBandwidth = reuseBandwidth.get().getOrDefault(isl, 0L);
@@ -315,8 +312,8 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
     protected FlowResources allocateFlowResources(Flow flow, PathId forwardPathId, PathId reversePathId)
             throws ResourceAllocationException {
         RetryPolicy resourceAllocationRetryPolicy = transactionManager.getDefaultRetryPolicy()
-                .retryOn(ResourceAllocationException.class)
-                .retryOn(ConstraintViolationException.class)
+                .handle(ResourceAllocationException.class)
+                .handle(ConstraintViolationException.class)
                 .withMaxRetries(resourceAllocationRetriesLimit);
         FlowResources flowResources = transactionManager.doInTransaction(resourceAllocationRetryPolicy,
                 () -> resourcesManager.allocateFlowResources(flow, forwardPathId, reversePathId));

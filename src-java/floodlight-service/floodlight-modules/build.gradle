@@ -22,8 +22,10 @@ dependencies {
         exclude group: 'org.slf4j', module: 'slf4j-log4j12'
         exclude group: 'log4j', module: 'log4j'
     }
+    implementation 'commons-codec:commons-codec'
     implementation 'org.apache.commons:commons-collections4'
     implementation 'com.auth0:java-jwt'
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.68'
 
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
@@ -31,7 +33,7 @@ dependencies {
     implementation 'org.aspectj:aspectjrt'
     implementation 'org.mapstruct:mapstruct'
     implementation 'org.mapstruct:mapstruct-processor'
-    implementation 'net.jodah:failsafe:1.0.5'
+    implementation 'net.jodah:failsafe'
     annotationProcessor 'org.mapstruct:mapstruct-processor'
     testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
 

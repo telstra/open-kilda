@@ -32,8 +32,8 @@ import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeException;
 import net.jodah.failsafe.RetryPolicy;
 
+import java.time.temporal.ChronoUnit;
 import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Ferma implementation of {@link TransactionManager}. Manages transaction boundaries.
@@ -63,7 +63,7 @@ public class FermaTransactionManager implements TransactionManager {
 
     @SneakyThrows
     @Override
-    public <T, E extends Throwable> T doInTransaction(RetryPolicy retryPolicy, TransactionCallback<T, E> action)
+    public <T, E extends Throwable> T doInTransaction(RetryPolicy<T> retryPolicy, TransactionCallback<T, E> action)
             throws E {
         if (isTxOpen()) {
             throw new PersistenceException("Nested transaction mustn't be retryable");
@@ -83,7 +83,7 @@ public class FermaTransactionManager implements TransactionManager {
 
     @SneakyThrows
     @Override
-    public <E extends Throwable> void doInTransaction(RetryPolicy retryPolicy,
+    public <E extends Throwable> void doInTransaction(RetryPolicy<?> retryPolicy,
                                                       TransactionCallbackWithoutResult<E> action) throws E {
         if (isTxOpen()) {
             throw new PersistenceException("Nested transaction mustn't be retryable");
@@ -92,23 +92,23 @@ public class FermaTransactionManager implements TransactionManager {
     }
 
     @Override
-    public RetryPolicy getDefaultRetryPolicy() {
-        RetryPolicy retryPolicy = new RetryPolicy()
-                .retryOn(RecoverablePersistenceException.class)
+    public <T> RetryPolicy<T> getDefaultRetryPolicy() {
+        RetryPolicy<T> retryPolicy = new RetryPolicy<T>()
+                .handle(RecoverablePersistenceException.class)
                 .withMaxRetries(transactionRetriesLimit);
         if (transactionRetriesMaxDelay > 0) {
             retryPolicy.withBackoff(Math.min(1, transactionRetriesMaxDelay), transactionRetriesMaxDelay,
-                    TimeUnit.MILLISECONDS);
+                    ChronoUnit.MILLIS);
         }
         return retryPolicy;
     }
 
     @SneakyThrows
-    private <T> T execute(RetryPolicy retryPolicy, Callable<T> action) {
+    private <T> T execute(RetryPolicy<T> retryPolicy, Callable<T> action) {
         try {
             return Failsafe.with(retryPolicy)
-                    .onRetry(e -> log.debug("Failure in transaction. Retrying...", e))
-                    .onRetriesExceeded(e -> log.error("Failure in transaction. No more retries", e))
+                    .onFailure(e -> log.debug("Failure in transaction. Retrying...", e))
+                    .onComplete(e -> log.error("Failure in transaction. No more retries", e))
                     .get(() -> execute(action));
         } catch (FailsafeException ex) {
             throw ex.getCause();

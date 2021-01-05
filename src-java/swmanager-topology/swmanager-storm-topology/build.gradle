@@ -20,7 +20,7 @@ dependencies {
     compileOnly('org.apache.storm:storm-core')
     testImplementation('org.apache.storm:storm-core')
 
-    implementation 'commons-lang:commons-lang'
+    implementation 'org.apache.commons:commons-lang3'
 
     testImplementation 'junit:junit'
     testImplementation 'pl.pragmatists:JUnitParams'

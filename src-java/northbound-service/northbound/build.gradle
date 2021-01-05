@@ -4,8 +4,8 @@ plugins {
 
 description = 'Northbound Service'
 dependencies {
-    implementation(platform('org.springframework:spring-framework-bom:4.3.10.RELEASE'))
-    implementation(platform('org.springframework.boot:spring-boot-dependencies:1.5.6.RELEASE')) {
+    implementation(platform('org.springframework:spring-framework-bom:4.3.30.RELEASE'))
+    implementation(platform('org.springframework.boot:spring-boot-dependencies:1.5.22.RELEASE')) {
         exclude group: 'org.projectlombok'
         exclude group: 'org.slf4j'
         exclude group: 'ch.qos.logback'
@@ -16,7 +16,7 @@ dependencies {
     implementation project(':nbworker-messaging')
     implementation project(':ping-messaging')
     implementation project(':floodlight-api')
-    implementation project(':kilda-persistence-tinkerpop')
+    implementation project(':kilda-persistence-api')
     implementation project(':blue-green')
     runtimeClasspath project(':kilda-persistence-orientdb')
     implementation project(':kilda-configuration')
