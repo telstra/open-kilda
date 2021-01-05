@@ -46,7 +46,6 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -560,7 +559,7 @@ public class NetworkUniIslServiceTest {
     }
 
     private void verifyProxyRoundTripStatus(NetworkUniIslService service, Endpoint endpoint, Endpoint remote) {
-        RoundTripStatus status = new RoundTripStatus(endpoint, Instant.EPOCH, Instant.ofEpochSecond(1));
+        RoundTripStatus status = new RoundTripStatus(endpoint, IslStatus.ACTIVE);
         service.roundTripStatusNotification(status);
 
         IslReference reference = new IslReference(endpoint, remote);

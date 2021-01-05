@@ -41,6 +41,10 @@ public final class Utils {
      */
     public static final String CORRELATION_ID = "correlation_id";
     /**
+     * The storm internal topology name.
+     */
+    public static final String TOPOLOGY_NAME = "topology_name";
+    /**
      * The Extra auth header name.
      */
     public static final String EXTRA_AUTH = "EXTRA_AUTH";

@@ -31,6 +31,6 @@ public class DecisionMakerDiscoveryCommand extends DecisionMakerCommand {
 
     @Override
     public void apply(DecisionMakerHandler handler) {
-        handler.processDiscovered(getEndpoint(), packetId, discoveryEvent);
+        handler.processOneWayDiscovery(getEndpoint(), packetId, discoveryEvent);
     }
 }

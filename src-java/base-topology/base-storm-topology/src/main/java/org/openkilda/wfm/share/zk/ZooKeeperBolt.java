@@ -24,6 +24,9 @@ import org.openkilda.wfm.AbstractBolt;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+
 /**
  * This bolt is responsible for writing data into ZooKeeper.
  */
@@ -35,6 +38,7 @@ public class ZooKeeperBolt extends AbstractBolt {
     private String id;
     private String serviceName;
     private String connectionString;
+    private Instant zooKeeperConnectionTimestamp = Instant.MIN;
     private transient ZkWriter zkWriter;
     private transient ZkStateTracker zkStateTracker;
 
@@ -44,10 +48,19 @@ public class ZooKeeperBolt extends AbstractBolt {
         this.connectionString = connectionString;
     }
 
+
+    protected boolean isZooKeeperConnectTimeoutPassed() {
+        return zooKeeperConnectionTimestamp.plus(10, ChronoUnit.SECONDS)
+                .isBefore(Instant.now());
+    }
+
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        if (!zkWriter.isConnectionAlive()) {
-            zkWriter.safeRefreshConnection();
+        if (!zkWriter.isConnectedAndValidated()) {
+            if (isZooKeeperConnectTimeoutPassed()) {
+                zkWriter.safeRefreshConnection();
+                zooKeeperConnectionTimestamp = Instant.now();
+            }
         }
         try {
             LifecycleEvent event = (LifecycleEvent) input.getValueByField(FIELD_ID_STATE);

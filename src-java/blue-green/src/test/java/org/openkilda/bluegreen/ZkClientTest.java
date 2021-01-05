@@ -53,11 +53,11 @@ public class ZkClientTest {
         ZkClient client = Mockito.mock(ZkClient.class);
         ZooKeeper zkMock = Mockito.mock(ZooKeeper.class);
         doCallRealMethod().when(client).initZk();
+        when(client.isRefreshIntervalPassed()).thenReturn(true);
         when(client.getZk()).thenReturn(zkMock);
         when(client.refreshConnection(any())).thenCallRealMethod();
         assertTrue(client.refreshConnection(KeeperState.Expired));
-        verify(client, Mockito.times(1)).getZk();
-        verify(client, Mockito.times(1)).init();
+        verify(client, Mockito.times(1)).safeRefreshConnection();
     }
 
     @Test
@@ -65,11 +65,11 @@ public class ZkClientTest {
         ZkClient client = Mockito.mock(ZkClient.class);
         ZooKeeper zkMock = Mockito.mock(ZooKeeper.class);
         doCallRealMethod().when(client).initZk();
+        when(client.isRefreshIntervalPassed()).thenReturn(true);
         when(client.getZk()).thenReturn(zkMock);
         when(client.refreshConnection(any())).thenCallRealMethod();
         assertTrue(client.refreshConnection(KeeperState.Disconnected));
-        verify(client, Mockito.times(1)).getZk();
-        verify(client, Mockito.times(1)).init();
+        verify(client, Mockito.times(1)).safeRefreshConnection();
     }
 
     @Test
@@ -94,8 +94,8 @@ public class ZkClientTest {
         ZkClient client = Mockito.mock(ZkClient.class);
         client.serviceName = "service";
         client.id = "id";
-        doCallRealMethod().when(client).validateNodes();
-        client.validateNodes();
+        doCallRealMethod().when(client).validateZNodes();
+        client.validateZNodes();
         verify(client, Mockito.times(2)).ensureZNode(Mockito.any());
     }
 

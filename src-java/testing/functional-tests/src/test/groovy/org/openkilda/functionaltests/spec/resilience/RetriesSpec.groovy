@@ -435,7 +435,7 @@ and at least 1 path must remain safe"
         }
 
         and: "Src/dst switches are valid"
-        wait(WAIT_OFFSET) { //due to instability in multiTable mode + server42
+        wait(WAIT_OFFSET * 2) { //due to instability in multiTable mode
             [flow.source.switchId, flow.destination.switchId].each { verifySwitchRules(it) }
         }
 

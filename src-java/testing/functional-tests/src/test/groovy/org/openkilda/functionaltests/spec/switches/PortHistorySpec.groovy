@@ -116,6 +116,7 @@ class PortHistorySpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
             }
         }
+        database.resetCosts()
 
         where:
         [islDescription, historySizeOnDstSw, isl] << [
@@ -159,6 +160,7 @@ class PortHistorySpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
             }
         }
+        database.resetCosts()
     }
 
     @Tidy
@@ -202,6 +204,7 @@ class PortHistorySpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
             }
         }
+        database.resetCosts()
         switchToDisconnect && switchHelper.reviveSwitch(switchToDisconnect, blockData)
     }
 
@@ -268,6 +271,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         Wrappers.wait(antiflapCooldown + WAIT_OFFSET) {
             antiflap.assertPortIsStable(isl.srcSwitch.dpId, isl.srcPort)
         }
+        database.resetCosts()
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/3007")
@@ -315,6 +319,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
+        database.resetCosts()
     }
 
     void checkPortHistory(PortHistoryResponse portHistory, SwitchId switchId, Integer port, PortHistoryEvent event) {

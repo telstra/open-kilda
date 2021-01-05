@@ -22,6 +22,7 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
@@ -38,8 +39,9 @@ public class ZkWatchDogTest {
     @Test
     public void testValidateNodes() throws KeeperException, InterruptedException, IOException {
         ZkWatchDog watchDog = Mockito.mock(ZkWatchDog.class);
+        doCallRealMethod().when(watchDog).validateZNodes();
         doCallRealMethod().when(watchDog).validateNodes();
-        watchDog.validateNodes();
+        watchDog.validateZNodes();
         verify(watchDog, Mockito.times(3)).ensureZNode(any());
         verify(watchDog, Mockito.times(1)).ensureZNode(any(byte[].class), any());
     }
@@ -72,10 +74,10 @@ public class ZkWatchDogTest {
     public void testInitWatch() throws KeeperException, InterruptedException, IOException {
         ZkWatchDog watchDog = Mockito.mock(ZkWatchDog.class);
         doCallRealMethod().when(watchDog).init();
+        when(watchDog.isConnected()).thenReturn(true);
         watchDog.init();
-        verify(watchDog, Mockito.times(1)).validateNodes();
-        verify(watchDog, Mockito.times(1)).subscribeSignal();
-        verify(watchDog, Mockito.times(1)).subscribeBuildVersion();
+        verify(watchDog, Mockito.times(1)).validateZNodes();
+        verify(watchDog, Mockito.times(1)).subscribeNodes();
     }
 
 

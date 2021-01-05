@@ -18,14 +18,13 @@ package org.openkilda.wfm.topology.network.service;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.share.model.Endpoint;
-import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
 public interface IWatcherCarrier {
-    void discoveryReceived(Endpoint endpoint, long packetNo, IslInfoData discoveryEvent, long currentTime);
+    void oneWayDiscoveryReceived(Endpoint endpoint, long packetNo, IslInfoData discoveryEvent, long currentTime);
+
+    void roundTripDiscoveryReceived(Endpoint endpoint, long packetId);
 
     void discoveryFailed(Endpoint endpoint, long packetNo, long currentTime);
-
-    void sendRoundTripStatus(RoundTripStatus status);
 
     void sendDiscovery(DiscoverIslCommandData discoveryRequest);
 

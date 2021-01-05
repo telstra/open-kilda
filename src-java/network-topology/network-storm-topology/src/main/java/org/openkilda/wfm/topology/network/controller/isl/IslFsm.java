@@ -135,7 +135,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 new DiscoveryMovedMonitor(reference),
                 new DiscoveryPortStatusMonitor(reference),
                 discoveryBfdMonitor,
-                new DiscoveryRoundTripMonitor(reference, clock, options),
+                new DiscoveryRoundTripMonitor(reference),
                 new DiscoveryPollMonitor(reference));
 
         transactionManager.doInTransaction(() -> {

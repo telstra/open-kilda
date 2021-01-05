@@ -26,6 +26,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -99,11 +100,11 @@ class FlowLoopSpec extends HealthCheckSpecification {
         northbound.validateSwitch(switchPair.src.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
 
         and: "Flow is not pingable"
-        //https://github.com/telstra/open-kilda/issues/3846
-//        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-//            !forward.pingSuccess
-//            !reverse.pingSuccess
-//        }
+        //it works, because the 'pingFlow' endpoint doesn't verify terminating switch
+        with(northbound.pingFlow(flow.flowId, new PingInput())) {
+            forward.pingSuccess
+            reverse.pingSuccess
+        }
 
         when: "Send traffic via flow in the forward direction"
         def traffExam = traffExamProvider.get()
@@ -376,7 +377,9 @@ class FlowLoopSpec extends HealthCheckSpecification {
         flowLoopRules.each { northbound.deleteSwitchRules(switchPair.src.dpId, it) }
 
         then: "System detects missing flowLoop rules"
-        northbound.validateSwitch(switchPair.src.dpId).rules.missing.sort() == flowLoopRules.sort()
+        Wrappers.wait(RULES_DELETION_TIME) {
+            assert northbound.validateSwitch(switchPair.src.dpId).rules.missing.sort() == flowLoopRules.sort()
+        }
 
         when: "Sync the src switch"
         def syncResponse = northbound.synchronizeSwitch(switchPair.src.dpId, true)
@@ -625,10 +628,10 @@ class FlowLoopSpec extends HealthCheckSpecification {
         !testIsCompleted && northbound.synchronizeSwitch(sw.dpId, true)
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/3846")
     @Tidy
     @Tags(LOW_PRIORITY)
-    def "Unable to create flowLoop twice on the src for the same flow"() {
+    @Ignore("https://github.com/telstra/open-kilda/issues/3960")
+    def "Attempt to create the exact same flowLoop twice just reinstalls the rules"() {
         given: "An active multi switch flow with created flowLoop on the src switch"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -639,15 +642,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         when: "Try to create flowLoop on the src switch again"
         northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
 
-        then: "Human readable error is returned"
-        def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        with(exc.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not update flow"
-            errorDescription == "Can't change loop switch"
-        }
-
-        and: "FlowLoop is still present for the src switch"
+        then: "FlowLoop is still present for the src switch"
         northboundV2.getFlow(flow.flowId).loopSwitchId == switchPair.src.dpId
 
         and: "No extra rules are created on the src/dst switches"
@@ -736,11 +731,11 @@ class FlowLoopSpec extends HealthCheckSpecification {
         northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.dst.dpId))
 
         then: "FlowLoop is not created on the dst switch"
-        def exc2 = thrown(HttpClientErrorException)
-        exc2.statusCode == HttpStatus.BAD_REQUEST
-        with(exc2.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not update flow"
-            errorDescription == "Can't change loop switch"
+        def exc = thrown(HttpClientErrorException)
+        exc.statusCode == HttpStatus.UNPROCESSABLE_ENTITY
+        with(exc.responseBodyAsString.to(MessageError)) {
+            errorMessage == "Can't create flow loop on '$flow.flowId'"
+            errorDescription == "Flow is already looped on switch '$switchPair.src.dpId'"
         }
 
         cleanup:

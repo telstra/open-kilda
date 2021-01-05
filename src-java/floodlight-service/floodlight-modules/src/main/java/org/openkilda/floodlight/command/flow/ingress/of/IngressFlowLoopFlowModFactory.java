@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Set;
 
 abstract class IngressFlowLoopFlowModFactory extends IngressInstallFlowModFactory {
-
     public IngressFlowLoopFlowModFactory(
             OfFlowModBuilderFactory flowModBuilderFactory, IngressFlowLoopCommand command, IOFSwitch sw,
             Set<SwitchFeature> features) {

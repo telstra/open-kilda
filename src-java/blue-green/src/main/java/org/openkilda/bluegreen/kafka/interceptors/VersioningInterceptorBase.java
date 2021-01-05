@@ -28,6 +28,7 @@ import java.time.temporal.ChronoUnit;
 public abstract class VersioningInterceptorBase implements BuildVersionObserver {
     public static final int VERSION_IS_NOT_SET_LOG_TIMEOUT = 60;
     public static final int CANT_CONNECT_TO_ZOOKEEPER_LOG_TIMEOUT = 60;
+    public static final int ZOOKEEPER_RECONNECTION_ATTEMPTS = 10;
 
     protected String connectionString;
     protected ZkWatchDog watchDog;
@@ -61,7 +62,20 @@ public abstract class VersioningInterceptorBase implements BuildVersionObserver 
                 .connectionString(connectionString)
                 .connectionRefreshInterval(ZkClient.DEFAULT_CONNECTION_REFRESH_INTERVAL)
                 .build();
-        watchDog.init();
         watchDog.subscribe(this);
+
+        for (int i = 1; i <= ZOOKEEPER_RECONNECTION_ATTEMPTS && !watchDog.isConnectedAndValidated(); i++) {
+            log.info("Component {} with id {} string to reconnect to ZooKeeper {} Attempt: {}",
+                    componentName, runId, connectionString, i);
+            watchDog.init();
+
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                log.debug(String.format("Component %s with id %s and connection string %s caught exception during "
+                                + "waiting for zookeeper watchdog initialized",
+                        componentName, runId, connectionString), e);
+            }
+        }
     }
 }

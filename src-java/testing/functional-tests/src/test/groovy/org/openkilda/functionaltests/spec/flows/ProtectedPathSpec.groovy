@@ -267,8 +267,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
             }
         }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
 
         where:
         flowDescription | bandwidth
@@ -399,8 +399,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
             }
         }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
 
         where:
         flowDescription | bandwidth
