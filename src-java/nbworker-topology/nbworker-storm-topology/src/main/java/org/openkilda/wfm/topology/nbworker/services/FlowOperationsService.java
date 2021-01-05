@@ -58,10 +58,9 @@ import com.google.common.annotations.VisibleForTesting;
 import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import net.jodah.failsafe.SyncFailsafe;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -69,7 +68,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -97,21 +95,22 @@ public class FlowOperationsService {
         this.transactionManager = transactionManager;
     }
 
-    private SyncFailsafe getReadOperationFailsafe() {
-        return Failsafe.with(new RetryPolicy()
-                .retryOn(PersistenceException.class)
-                .withDelay(RETRY_DELAY, TimeUnit.MILLISECONDS)
-                .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT))
-                .onRetry(e -> log.warn("Retrying transaction finished with exception", e))
-                .onRetriesExceeded(e -> log.warn("TX retry attempts exceed with error", e));
+    private <T> RetryPolicy<T> getReadOperationRetryPolicy() {
+        return new RetryPolicy<T>()
+                .handle(PersistenceException.class)
+                .withDelay(Duration.ofMillis(RETRY_DELAY))
+                .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT)
+                .onRetry(e -> log.debug("Failure in transaction. Retrying #{}...", e.getAttemptCount(),
+                        e.getLastFailure()))
+                .onRetriesExceeded(e -> log.error("Failure in transaction. No more retries", e.getFailure()));
     }
 
     /**
      * Return flow by flow id.
      */
     public Flow getFlow(String flowId) throws FlowNotFoundException {
-        Optional<Flow> found = (Optional<Flow>) getReadOperationFailsafe().get(() ->
-                transactionManager.doInTransaction(() -> flowRepository.findById(flowId)));
+        Optional<Flow> found = transactionManager.doInTransaction(getReadOperationRetryPolicy(),
+                () -> flowRepository.findById(flowId));
         return found.orElseThrow(() -> new FlowNotFoundException(flowId));
     }
 
@@ -136,12 +135,10 @@ public class FlowOperationsService {
      * Get flows.
      */
     public Collection<Flow> getAllFlows(FlowsDumpRequest request) {
-        return (Collection<Flow>) getReadOperationFailsafe().get(() ->
-                transactionManager.doInTransaction(() ->
-                        flowRepository.findByFlowFilter(FlowFilter.builder()
-                                .flowStatus(request.getStatus())
-                                .build()))
-        );
+        return transactionManager.doInTransaction(getReadOperationRetryPolicy(),
+                () -> flowRepository.findByFlowFilter(FlowFilter.builder()
+                        .flowStatus(request.getStatus())
+                        .build()));
     }
 
     /**

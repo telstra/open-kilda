@@ -95,7 +95,7 @@ public class FlowControllerTest {
 
         MvcResult result = mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(APPLICATION_JSON_VALUE))
                 .andReturn();
         System.out.println("RESPONSE: " + result.getResponse().getContentAsString());
         FlowResponsePayload response = MAPPER.readValue(result.getResponse().getContentAsString(),
@@ -114,7 +114,7 @@ public class FlowControllerTest {
         MvcResult result = mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk())
 
-                .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(APPLICATION_JSON_VALUE))
                 .andReturn();
         FlowResponsePayload response = MAPPER.readValue(result.getResponse().getContentAsString(),
                 FlowResponsePayload.class);
@@ -131,7 +131,7 @@ public class FlowControllerTest {
 
         MvcResult result = mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(APPLICATION_JSON_VALUE))
                 .andReturn();
         FlowResponsePayload response = MAPPER.readValue(result.getResponse().getContentAsString(),
                 FlowResponsePayload.class);
@@ -149,7 +149,7 @@ public class FlowControllerTest {
 
         MvcResult result = mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(APPLICATION_JSON_VALUE))
                 .andReturn();
         FlowResponsePayload[] response = MAPPER.readValue(result.getResponse().getContentAsString(),
                 FlowResponsePayload[].class);
@@ -176,7 +176,7 @@ public class FlowControllerTest {
 
         MvcResult result = mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(APPLICATION_JSON_VALUE))
                 .andReturn();
         FlowResponsePayload response = MAPPER.readValue(result.getResponse().getContentAsString(),
                 FlowResponsePayload.class);
@@ -193,7 +193,7 @@ public class FlowControllerTest {
 
         MvcResult result = mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(APPLICATION_JSON_VALUE))
                 .andReturn();
         List<FlowResponsePayload> response = MAPPER.readValue(
                 result.getResponse().getContentAsString(),
@@ -211,7 +211,7 @@ public class FlowControllerTest {
 
         MvcResult result = mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(APPLICATION_JSON_VALUE))
                 .andReturn();
         FlowIdStatusPayload response =
                 MAPPER.readValue(result.getResponse().getContentAsString(), FlowIdStatusPayload.class);
@@ -228,7 +228,7 @@ public class FlowControllerTest {
 
         MvcResult result = mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(APPLICATION_JSON_VALUE))
                 .andReturn();
         FlowPathPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPathPayload.class);
         assertEquals(TestMessageMock.flowPath, response);
@@ -241,7 +241,7 @@ public class FlowControllerTest {
                 .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
                 .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isNotFound())
-                .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(APPLICATION_JSON_VALUE))
                 .andReturn();
 
         MessageError response = MAPPER.readValue(result.getResponse().getContentAsString(), MessageError.class);

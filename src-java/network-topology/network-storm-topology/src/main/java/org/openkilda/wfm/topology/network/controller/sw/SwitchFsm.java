@@ -53,6 +53,7 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -62,7 +63,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> {
@@ -70,7 +70,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private final NetworkTopologyDashboardLogger logWrapper = new NetworkTopologyDashboardLogger(log);
 
     private final TransactionManager transactionManager;
-    private final RetryPolicy transactionRetryPolicy;
+    private final RetryPolicy<?> transactionRetryPolicy;
     private final SwitchRepository switchRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
@@ -93,7 +93,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     public SwitchFsm(PersistenceManager persistenceManager, SwitchId switchId, NetworkOptions options) {
         this.transactionManager = persistenceManager.getTransactionManager();
         this.transactionRetryPolicy = transactionManager.getDefaultRetryPolicy()
-                .withMaxDuration(options.getDbRepeatMaxDurationSeconds(), TimeUnit.SECONDS);
+                .withMaxDuration(Duration.ofSeconds(options.getDbRepeatMaxDurationSeconds()));
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
 
         this.switchId = switchId;

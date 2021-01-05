@@ -30,7 +30,6 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.Optional;
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -56,7 +55,7 @@ public class NorthboundBasicAuthenticationEntryPoint extends BasicAuthentication
      */
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception)
-            throws IOException, ServletException {
+            throws IOException {
         String realm = String.format("Basic realm=%s", getRealmName());
         response.addHeader(HttpHeaders.WWW_AUTHENTICATE, realm);
         response.setContentType(MediaType.APPLICATION_JSON_UTF8_VALUE);

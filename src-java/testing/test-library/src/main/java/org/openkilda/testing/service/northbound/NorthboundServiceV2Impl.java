@@ -35,7 +35,6 @@ import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 
-import com.fasterxml.jackson.databind.util.StdDateFormat;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -63,7 +62,8 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     @Qualifier("northboundRestTemplate")
     private RestTemplate restTemplate;
 
-    private DateFormat dateFormat = new SimpleDateFormat(StdDateFormat.DATE_FORMAT_STR_ISO8601);
+    // ISO format, with a colon in the timezone field.
+    private final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
 
     @Override
     public FlowResponseV2 getFlow(String flowId) {

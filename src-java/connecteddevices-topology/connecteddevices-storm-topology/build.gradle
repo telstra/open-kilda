@@ -18,9 +18,10 @@ dependencies {
 
     compileOnly('org.apache.storm:storm-core')
 
-    testImplementation 'junit:junit'
-    testImplementation 'org.mockito:mockito-core'
-    testImplementation 'pl.pragmatists:JUnitParams'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
+    testImplementation 'pl.pragmatists:JUnitParams:1.1.1'
 
     compileOnly 'org.projectlombok:lombok'
     testCompileOnly 'org.projectlombok:lombok'
