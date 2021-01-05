@@ -39,7 +39,7 @@ execution of subsequent tests.
 
 # How to run
 ### Virtual (local Kilda)
-- Build Kilda `make build-latest`
+- Build Kilda `make build-stable`
 - Deploy Kilda locally `make up-test-mode`
 - Run tests `make func-tests`
 > Note that the above command will overwrite any existing kilda.properties and topology.yaml 

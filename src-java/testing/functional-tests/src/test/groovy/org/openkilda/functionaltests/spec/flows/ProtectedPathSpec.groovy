@@ -266,8 +266,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
                 assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
             }
-            database.resetCosts()
         }
+        database.resetCosts()
         northbound.deleteLinkProps(northbound.getAllLinkProps())
 
         where:
@@ -398,8 +398,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
                 assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
             }
-            database.resetCosts()
         }
+        database.resetCosts()
         northbound.deleteLinkProps(northbound.getAllLinkProps())
 
         where:
@@ -624,8 +624,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
                 assert islUtils.getIslInfo(islToBreakProtectedPath).get().state == IslChangeType.DISCOVERED
             }
-            database.resetCosts()
         }
+        database.resetCosts()
     }
 
     @Tidy

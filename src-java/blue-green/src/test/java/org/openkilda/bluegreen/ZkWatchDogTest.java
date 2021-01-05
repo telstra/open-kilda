@@ -74,7 +74,7 @@ public class ZkWatchDogTest {
     public void testInitWatch() throws KeeperException, InterruptedException, IOException {
         ZkWatchDog watchDog = Mockito.mock(ZkWatchDog.class);
         doCallRealMethod().when(watchDog).init();
-        when(watchDog.isConnectionAlive()).thenReturn(true);
+        when(watchDog.isConnected()).thenReturn(true);
         watchDog.init();
         verify(watchDog, Mockito.times(1)).validateZNodes();
         verify(watchDog, Mockito.times(1)).subscribeNodes();

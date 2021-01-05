@@ -18,10 +18,14 @@ package org.openkilda.wfm.topology;
 import static java.lang.String.format;
 import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_NAME;
 import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_RUN_ID;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
 
+import org.openkilda.bluegreen.kafka.interceptors.VersioningConsumerInterceptor;
 import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
 import org.openkilda.config.KafkaConfig;
 import org.openkilda.config.ZookeeperConfig;
@@ -278,12 +282,35 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         return topologyConfig;
     }
 
+    /**
+     * //TODO(zero_down_time) Remove when zero down time feature will be completed.
+     *
+     * @deprecated use declareKafkaSpout with parameters (component name, run id)
+     */
+    @Deprecated
     protected SpoutDeclarer declareKafkaSpout(TopologyBuilder builder, String topic, String spoutId) {
-        return declareKafkaSpout(builder, Collections.singletonList(topic), spoutId);
+        return declareKafkaSpout(builder, topic, spoutId, COMMON_COMPONENT_NAME, COMMON_COMPONENT_RUN_ID);
     }
 
+    protected SpoutDeclarer declareKafkaSpout(
+            TopologyBuilder builder, String topic, String spoutId, String componentName, String runId) {
+        return declareKafkaSpout(builder, Collections.singletonList(topic), spoutId, componentName, runId);
+    }
+
+    /**
+     * //TODO(zero_down_time) Remove when zero down time feature will be completed.
+     *
+     * @deprecated use declareKafkaSpout with parameters (component name, run id)
+     */
+    @Deprecated
     protected SpoutDeclarer declareKafkaSpout(TopologyBuilder builder, List<String> topics, String spoutId) {
-        KafkaSpoutConfig<String, Message> config = getKafkaSpoutConfigBuilder(topics, spoutId).build();
+        return declareKafkaSpout(builder, topics, spoutId, COMMON_COMPONENT_NAME, COMMON_COMPONENT_RUN_ID);
+    }
+
+    protected SpoutDeclarer declareKafkaSpout(
+            TopologyBuilder builder, List<String> topics, String spoutId, String componentName, String runId) {
+        KafkaSpoutConfig<String, Message> config = getKafkaSpoutConfigBuilder(topics, spoutId, componentName, runId)
+                .build();
         logger.info("Setup kafka spout: id={}, group={}, subscriptions={}",
                 spoutId, config.getConsumerGroupId(), config.getSubscription().getTopicsString());
         return declareSpout(builder, new KafkaSpout<>(config), spoutId);
@@ -317,12 +344,37 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     }
 
     /**
+     * //TODO(zero_down_time) Remove when zero down time feature will be completed.
+     *
+     * @deprecated use declareKafkaSpoutForAbstractMessage with parameters (component name, run id)
+     */
+    @Deprecated
+    protected SpoutDeclarer declareKafkaSpoutForAbstractMessage(TopologyBuilder builder, String topic, String spoutId) {
+        return declareKafkaSpoutForAbstractMessage(builder, topic, spoutId,
+                COMMON_COMPONENT_NAME, COMMON_COMPONENT_RUN_ID);
+    }
+
+    /**
      * Creates Kafka spout. Transforms received value to {@link AbstractMessage}.
      *
      * @param topic Kafka topic
      */
-    protected SpoutDeclarer declareKafkaSpoutForAbstractMessage(TopologyBuilder builder, String topic, String spoutId) {
-        return declareKafkaSpoutForAbstractMessage(builder, Collections.singletonList(topic), spoutId);
+    protected SpoutDeclarer declareKafkaSpoutForAbstractMessage(
+            TopologyBuilder builder, String topic, String spoutId, String componentName, String runId) {
+        return declareKafkaSpoutForAbstractMessage(
+                builder, Collections.singletonList(topic), spoutId, componentName, runId);
+    }
+
+    /**
+     * //TODO(zero_down_time) Remove when zero down time feature will be completed.
+     *
+     * @deprecated use declareKafkaSpoutForAbstractMessage with parameters (component name, run id)
+     */
+    @Deprecated
+        protected SpoutDeclarer declareKafkaSpoutForAbstractMessage(
+                TopologyBuilder builder, List<String> topics, String spoutId) {
+        return declareKafkaSpoutForAbstractMessage(
+                builder, topics, spoutId, COMMON_COMPONENT_NAME, COMMON_COMPONENT_RUN_ID);
     }
 
     /**
@@ -330,10 +382,10 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      *
      * @param topics Kafka topics
      */
-    protected SpoutDeclarer declareKafkaSpoutForAbstractMessage(TopologyBuilder builder,
-                                                                List<String> topics, String spoutId) {
+    protected SpoutDeclarer declareKafkaSpoutForAbstractMessage(
+            TopologyBuilder builder, List<String> topics, String spoutId, String componentName, String runId) {
         KafkaSpout<?, ?> spout = new KafkaSpout<>(
-                makeKafkaSpoutConfig(topics, spoutId, AbstractMessageDeserializer.class)
+                makeKafkaSpoutConfig(topics, spoutId, AbstractMessageDeserializer.class, componentName, runId)
                         .setRecordTranslator(new AbstractMessageTranslator())
                         .build());
         return declareSpout(builder, spout, spoutId);
@@ -347,9 +399,21 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      * @deprecated replaced by {@link AbstractTopology#buildKafkaBolt(String)}
      */
     @Deprecated
-    protected KafkaBolt<String, String> createKafkaBolt(final String topic) {
+    protected KafkaBolt<String, String> createKafkaBolt(String topic) {
+        return createKafkaBolt(topic, COMMON_COMPONENT_NAME, COMMON_COMPONENT_RUN_ID);
+    }
+
+    /**
+     * Creates Kafka bolt.
+     *
+     * @param topic Kafka topic
+     * @return {@link KafkaBolt}
+     * @deprecated replaced by {@link AbstractTopology#buildKafkaBolt(String, String, String)}
+     */
+    @Deprecated
+    protected KafkaBolt<String, String> createKafkaBolt(String topic, String componentName, String runId) {
         return new KafkaBolt<String, String>()
-                .withProducerProperties(getKafkaProducerProperties())
+                .withProducerProperties(getKafkaProducerProperties(componentName, runId))
                 .withTopicSelector(new DefaultTopicSelector(topic))
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
     }
@@ -393,17 +457,30 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
     }
 
+    /**
+     * //TODO(zero_down_time) Remove when zero down time feature will be completed.
+     *
+     * @deprecated use getKafkaSpoutConfigBuilder with parameters (component name, run id)
+     */
+    @Deprecated
     protected KafkaSpoutConfig.Builder<String, Message> getKafkaSpoutConfigBuilder(String topic, String spoutId) {
-        return getKafkaSpoutConfigBuilder(Collections.singletonList(topic), spoutId);
+        return getKafkaSpoutConfigBuilder(topic, spoutId, COMMON_COMPONENT_NAME, COMMON_COMPONENT_RUN_ID);
     }
 
-    private KafkaSpoutConfig.Builder<String, Message> getKafkaSpoutConfigBuilder(List<String> topics, String spoutId) {
-        return makeKafkaSpoutConfig(topics, spoutId, MessageDeserializer.class)
+    protected KafkaSpoutConfig.Builder<String, Message> getKafkaSpoutConfigBuilder(
+            String topic, String spoutId, String componentName, String runId) {
+        return getKafkaSpoutConfigBuilder(Collections.singletonList(topic), spoutId, componentName, runId);
+    }
+
+    private KafkaSpoutConfig.Builder<String, Message> getKafkaSpoutConfigBuilder(
+            List<String> topics, String spoutId, String componentName, String runId) {
+        return makeKafkaSpoutConfig(topics, spoutId, MessageDeserializer.class, componentName, runId)
                 .setRecordTranslator(new MessageKafkaTranslator());
     }
 
     protected <V> KafkaSpoutConfig.Builder<String, V> makeKafkaSpoutConfig(
-            List<String> topics, String spoutId, Class<? extends Deserializer<V>> valueDecoder) {
+            List<String> topics, String spoutId, Class<? extends Deserializer<V>> valueDecoder, String componentName,
+            String runId) {
         KafkaSpoutConfig.Builder<String, V> config = new KafkaSpoutConfig.Builder<>(
                 kafkaConfig.getHosts(), new CustomNamedSubscription(topics));
 
@@ -412,6 +489,10 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
                 .setProp(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
                 .setProp(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
                 .setProp(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDecoder)
+                .setProp(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName())
+                .setProp(CONSUMER_COMPONENT_NAME_PROPERTY, componentName)
+                .setProp(CONSUMER_RUN_ID_PROPERTY, runId)
+                .setProp(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, getZookeeperConfig().getConnectString())
                 .setTupleTrackingEnforced(true);
 
         return config;
@@ -487,5 +568,9 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
 
     protected ZookeeperConfig getZookeeperConfig() {
         return zookeeperConfig;
+    }
+
+    protected String getZkTopoName() {
+        return getClass().getSimpleName();
     }
 }

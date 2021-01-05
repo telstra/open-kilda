@@ -17,10 +17,14 @@ package org.openkilda.testing.service.kafka;
 
 import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_NAME;
 import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_RUN_ID;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
 
+import org.openkilda.bluegreen.kafka.interceptors.VersioningConsumerInterceptor;
 import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -36,13 +40,18 @@ import java.util.Properties;
 @Configuration
 public class KafkaConfig {
     @Bean(name = "kafkaConsumerProperties")
-    public Properties kafkaConsumerProperties(@Value("${kafka.bootstrap.server}") String bootstrapServer) {
+    public Properties kafkaConsumerProperties(@Value("${kafka.bootstrap.server}") String bootstrapServer,
+                                              @Value("${zookeeper.connect_string}") String zookeeperHosts) {
         Properties connectDefaults = new Properties();
         connectDefaults.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServer);
         connectDefaults.put(ConsumerConfig.GROUP_ID_CONFIG, "autotest");
         connectDefaults.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         connectDefaults.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         connectDefaults.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        connectDefaults.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName());
+        connectDefaults.put(CONSUMER_COMPONENT_NAME_PROPERTY, COMMON_COMPONENT_NAME);
+        connectDefaults.put(CONSUMER_RUN_ID_PROPERTY, COMMON_COMPONENT_RUN_ID);
+        connectDefaults.put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, zookeeperHosts);
         return connectDefaults;
     }
 

@@ -27,6 +27,7 @@ ADD wfm/app /app
 
 # Main config
 COPY BUILD/base-storm-topology/resources/topology.properties /app/
+RUN grep "blue.green.mode" /app/topology.properties # Debug to check that 'stable' images use 'blue', 'latest' - 'green'
 
 
 
