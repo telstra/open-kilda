@@ -1,0 +1,16 @@
+@startuml
+title ISL cache update
+
+participant Floodlight
+control kilda.topo.isl.latency.storm
+box flow-monitoring topology
+participant IslLatencySpout
+participant IslCacheBolt
+end box
+
+Floodlight -> kilda.topo.isl.latency.storm : IslRoundTripLatency/IslOneWayLatency
+kilda.topo.isl.latency.storm -> IslLatencySpout : IslRoundTripLatency/IslOneWayLatency
+IslLatencySpout -> IslCacheBolt : IslRoundTripLatency/IslOneWayLatency
+IslCacheBolt -> IslCacheBolt : update ISL cache
+
+@enduml
