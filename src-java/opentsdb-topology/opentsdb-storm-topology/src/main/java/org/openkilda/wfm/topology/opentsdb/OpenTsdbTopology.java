@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.opentsdb;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.kafka.InfoDataDeserializer;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
@@ -25,19 +26,24 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.opentsdb.OpenTsdbTopologyConfig.OpenTsdbConfig;
 import org.openkilda.wfm.topology.opentsdb.bolts.DatapointParseBolt;
 import org.openkilda.wfm.topology.opentsdb.bolts.OpenTSDBFilterBolt;
+import org.openkilda.wfm.topology.opentsdb.bolts.OpenTsdbTelnetProtocolBolt;
+import org.openkilda.wfm.topology.opentsdb.spout.MonitoringKafkaSpoutProxy;
 import org.openkilda.wfm.topology.utils.InfoDataTranslator;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
+import org.apache.storm.opentsdb.bolt.ITupleOpenTsdbDatapointMapper;
 import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
 import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
 import org.apache.storm.opentsdb.client.OpenTsdbClient;
 import org.apache.storm.topology.TopologyBuilder;
+import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 
 import java.util.Collections;
+import java.util.List;
 
 /**
  * Apache Storm topology for sending metrics into Open TSDB.
@@ -55,7 +61,7 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
     private static final String OTSDB_PARSE_BOLT_ID = DatapointParseBolt.class.getSimpleName();
 
     @Override
-    public StormTopology createTopology() {
+    public StormTopology createTopology() throws ConfigurationException {
         logger.info("Creating OpenTsdbTopology - {}", topologyName);
 
         TopologyBuilder tb = new TopologyBuilder();
@@ -72,8 +78,6 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
         attachInput(tb);
 
-        OpenTsdbConfig openTsdbConfig = topologyConfig.getOpenTsdbConfig();
-
         declareBolt(tb, new DatapointParseBolt(), OTSDB_PARSE_BOLT_ID)
                 .shuffleGrouping(OTSDB_SPOUT_ID)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
@@ -81,18 +85,7 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
         declareBolt(tb, new OpenTSDBFilterBolt(), OTSDB_FILTER_BOLT_ID)
                 .fieldsGrouping(OTSDB_PARSE_BOLT_ID, new Fields("hash"));
 
-        OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
-                .newBuilder(openTsdbConfig.getHosts())
-                .returnDetails();
-        if (openTsdbConfig.getClientChunkedRequestsEnabled()) {
-            tsdbBuilder.enableChunkedEncoding();
-        }
-
-        OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder,
-                Collections.singletonList(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER));
-        openTsdbBolt.withBatchSize(openTsdbConfig.getBatchSize()).withFlushInterval(openTsdbConfig.getFlushInterval());
-        declareBolt(tb, openTsdbBolt, OTSDB_BOLT_ID)
-                .shuffleGrouping(OTSDB_FILTER_BOLT_ID);
+        attachOutput(tb);
 
         return tb.createTopology();
     }
@@ -110,7 +103,55 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
                 .build();
 
         KafkaSpout<String, InfoData> kafkaSpout = new KafkaSpout<>(config);
-        declareSpout(topology, kafkaSpout, OTSDB_SPOUT_ID);
+        MonitoringKafkaSpoutProxy<String, InfoData> proxy = new MonitoringKafkaSpoutProxy<>(kafkaSpout);
+        declareSpout(topology, proxy, OTSDB_SPOUT_ID);
+    }
+
+    private void attachOutput(TopologyBuilder topology) throws ConfigurationException {
+        final String httpProtocol = "http";
+        final String telnetProtocol = "telnet";
+
+        String protocol = topologyConfig.getOpenTsdbConfig().getProtocol().toLowerCase();
+        if (httpProtocol.equals(protocol)) {
+            outputHttpProtocol(topology);
+        } else if (telnetProtocol.equals(protocol)) {
+            outputTelnetProtocol(topology);
+        } else {
+            throw new ConfigurationException(String.format(
+                    "invalid opentsdb.protocol option value \"%s\" (valid values: \"%s\")", protocol,
+                    String.join("\", \"", httpProtocol, telnetProtocol)));
+        }
+    }
+
+    private void outputHttpProtocol(TopologyBuilder topology) {
+        OpenTsdbConfig config = topologyConfig.getOpenTsdbConfig();
+
+        OpenTsdbClient.Builder builder = OpenTsdbClient
+                .newBuilder(String.format("http://%s:%d", config.getHost(), config.getPort()))
+                .returnDetails();
+        if (config.getClientChunkedRequestsEnabled()) {
+            builder.enableChunkedEncoding();
+        }
+
+        OpenTsdbBolt bolt = new OpenTsdbBolt(builder, makeOutputMappers());
+        bolt.withBatchSize(config.getBatchSize()).withFlushInterval(config.getFlushInterval());
+        output(topology, bolt);
+    }
+
+    private void outputTelnetProtocol(TopologyBuilder topology) {
+        OpenTsdbConfig config = topologyConfig.getOpenTsdbConfig();
+        OpenTsdbTelnetProtocolBolt bolt = new OpenTsdbTelnetProtocolBolt(
+                config.getHost(), config.getPort(), makeOutputMappers());
+        output(topology, bolt);
+    }
+
+    private List<? extends ITupleOpenTsdbDatapointMapper> makeOutputMappers() {
+        return Collections.singletonList(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER);
+    }
+
+    private void output(TopologyBuilder topology, BaseRichBolt bolt) {
+        declareBolt(topology, bolt, OTSDB_BOLT_ID)
+                .shuffleGrouping(OTSDB_FILTER_BOLT_ID);
     }
 
     @Override

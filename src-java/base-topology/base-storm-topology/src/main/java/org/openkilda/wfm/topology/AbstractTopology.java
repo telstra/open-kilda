@@ -159,7 +159,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         return Optional.empty();
     }
 
-    protected void setup() throws TException, NameCollisionException {
+    protected void setup() throws TException, NameCollisionException, ConfigurationException {
         if (topologyConfig.getUseLocalCluster()) {
             setupLocal();
         } else {
@@ -167,7 +167,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         }
     }
 
-    private void setupRemote() throws TException, NameCollisionException {
+    private void setupRemote() throws TException, NameCollisionException, ConfigurationException {
         Config config = makeStormConfig();
         config.setDebug(false);
 
@@ -175,7 +175,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         StormSubmitter.submitTopology(topologyName, config, createTopology());
     }
 
-    private void setupLocal() throws NameCollisionException {
+    private void setupLocal() throws NameCollisionException, ConfigurationException {
         Config config = makeStormConfig();
         config.setDebug(true);
 

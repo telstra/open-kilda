@@ -36,8 +36,14 @@ public interface OpenTsdbTopologyConfig extends AbstractTopologyConfig {
     @Configuration
     @Key("opentsdb")
     interface OpenTsdbConfig {
-        @Key("hosts")
-        String getHosts();
+        @Key("protocol")
+        String getProtocol();
+
+        @Key("host")
+        String getHost();
+
+        @Key("port")
+        int getPort();
 
         @Key("timeout")
         @Converter(SecondsToMilisConverter.class)

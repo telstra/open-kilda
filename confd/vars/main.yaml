@@ -71,6 +71,7 @@ kilda_discovery_packet_ttl: 8
 kilda_discovery_timeout: 15
 kilda_discovery_db_write_repeats_time_frame: 30
 
+kilda_opentsdb_protocol: http
 kilda_opentsdb_timeout: 30
 kilda_opentsdb_num_spouts: 5
 kilda_opentsdb_num_opentsdbfilterbolt: 10
