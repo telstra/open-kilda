@@ -24,9 +24,6 @@ jobs:
         key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
         restore-keys: ${{ runner.os }}-gradle-
     - name: Prepare gradle props
-      env:
-        MAVEN_OPTS: "$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
-        PATH: "$PATH:/opt/confd/bin"
       run: |
         mkdir -p $HOME/.gradle
         echo "org.gradle.jvmargs=-Xmx4096M" >> $HOME/.gradle/gradle.properties
@@ -34,4 +31,7 @@ jobs:
         rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
         rm -fr $HOME/.gradle/caches/*/plugin-resolution/
     - name: Run unittests
-      run: make unit
+      run: |
+        export PATH="$PATH:/opt/confd/bin"
+        export MAVEN_OPTS="$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+        make unit
