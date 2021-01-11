@@ -5,7 +5,7 @@ defaults:
     shell: bash
 jobs:
   unittests:
-    runs-on: ubuntu-xenial
+    runs-on: ubuntu-16.04
     env:
       PATH: "$PATH:/opt/confd/bin"
       MAVEN_OPTS: "$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
