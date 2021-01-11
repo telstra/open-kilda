@@ -1,8 +1,5 @@
 name: unittests
 on: [pull_request]
-defaults:
-  run:
-    shell: bash
 jobs:
   unittests:
     runs-on: ubuntu-16.04
