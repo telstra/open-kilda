@@ -6,9 +6,6 @@ defaults:
 jobs:
   unittests:
     runs-on: ubuntu-16.04
-    env:
-      PATH: "$PATH:/opt/confd/bin"
-      MAVEN_OPTS: "$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
     steps:
     - uses: actions/checkout@v2
     - name: Set up JDK 1.8
@@ -18,12 +15,16 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Install confd
+      env:
+        PATH: "$PATH:/opt/confd/bin"
       run: |
         wget https://github.com/kelseyhightower/confd/releases/download/v0.16.0/confd-0.16.0-linux-amd64
         sudo mkdir -p /opt/confd/bin
         sudo mv confd-0.16.0-linux-amd64 /opt/confd/bin/confd
         sudo chmod +x /opt/confd/bin/confd
     - name: Prepare gradle
+      env:
+        MAVEN_OPTS: "$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
       run: |
         mkdir -p $HOME/.gradle
         echo "org.gradle.jvmargs=-Xmx4096M" >> $HOME/.gradle/gradle.properties
