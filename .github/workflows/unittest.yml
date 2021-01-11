@@ -10,8 +10,6 @@ jobs:
       with:
         java-version: 1.8
     - name: Install confd
-      env:
-        PATH: "$PATH:/opt/confd/bin"
       run: |
         apt-get insall -y wget
         wget https://github.com/kelseyhightower/confd/releases/download/v0.16.0/confd-0.16.0-linux-amd64
@@ -28,6 +26,7 @@ jobs:
     - name: Prepare gradle props
       env:
         MAVEN_OPTS: "$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+        PATH: "$PATH:/opt/confd/bin"
       run: |
         mkdir -p $HOME/.gradle
         echo "org.gradle.jvmargs=-Xmx4096M" >> $HOME/.gradle/gradle.properties
