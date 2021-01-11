@@ -12,8 +12,6 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 1.8
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
     - name: Install confd
       env:
         PATH: "$PATH:/opt/confd/bin"
@@ -22,12 +20,23 @@ jobs:
         sudo mkdir -p /opt/confd/bin
         sudo mv confd-0.16.0-linux-amd64 /opt/confd/bin/confd
         sudo chmod +x /opt/confd/bin/confd
-    - name: Prepare gradle
+    - name: Gradle cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.gradle/caches
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+        restore-keys: ${{ runner.os }}-gradle-
+    - name: Prepare gradle props
       env:
         MAVEN_OPTS: "$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
       run: |
         mkdir -p $HOME/.gradle
         echo "org.gradle.jvmargs=-Xmx4096M" >> $HOME/.gradle/gradle.properties
         echo "org.gradle.console=plain" >> $HOME/.gradle/gradle.properties
+        rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
+        rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
     - name: Run unittests
       run: make unit
