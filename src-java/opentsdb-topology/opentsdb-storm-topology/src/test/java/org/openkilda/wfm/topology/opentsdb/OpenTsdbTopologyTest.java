@@ -35,6 +35,7 @@ import org.mockserver.verify.VerificationTimes;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Properties;
 
 public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     private static final long timestamp = System.currentTimeMillis();
@@ -109,7 +110,13 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
         MockedSources sources = new MockedSources();
 
         Testing.withTrackedCluster(clusterParam, (cluster) -> {
-            OpenTsdbTopology topology = new OpenTsdbTopology(makeLaunchEnvironment());
+            // This test expects to see 2 POST requests to OpenTsdb, but if batch.size > 1 OtsdbBolt will send
+            // 1 request with 2 metrics instead of 2 requests with 1 metric.
+            // So next property forces OtsdbBolt to send 2 requests.
+            Properties properties = new Properties();
+            properties.put("opentsdb.batch.size", "1");
+
+            OpenTsdbTopology topology = new OpenTsdbTopology(makeLaunchEnvironment(properties));
 
             sources.addMockData(OpenTsdbTopology.OTSDB_SPOUT_ID,
                     new Values(null, datapoint1), new Values(null, datapoint2));
