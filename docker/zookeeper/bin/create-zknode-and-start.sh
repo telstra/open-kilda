@@ -73,6 +73,8 @@ done
 /opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/server42-stats-app/server42-stats-app-run-id "v3r\$i0n"
 
 # add server42 control storm stub zkNodes
-
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/server42-control-storm-stub ""
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/server42-control-storm-stub/server42-control-storm-stub-run-id ""
+/opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/server42-control-storm-stub/server42-control-storm-stub-run-id "v3r\$i0n"
 
 fg %1
