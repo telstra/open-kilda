@@ -237,6 +237,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         when: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
         def portDown = antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(islToBreak).state == IslChangeType.FAILED }
 
         then: "Flow is switched to protected path"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -366,6 +367,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         and: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
         def portDown = antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(islToBreak).state == IslChangeType.FAILED }
 
         then: "Flow is switched to protected path"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -979,6 +981,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         when: "Break ISL on the main path (bring port down) for changing the flow state to DOWN"
         antiflap.portDown(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(currentIsls[0]).state == IslChangeType.FAILED }
 
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
