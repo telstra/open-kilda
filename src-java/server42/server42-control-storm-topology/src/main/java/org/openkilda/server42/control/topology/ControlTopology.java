@@ -115,6 +115,7 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
     }
 
     private void lcm(TopologyBuilder topology, ControlTopologyConfig topologyConfig) {
-        topology.setBolt(TickBolt.BOLT_ID, new TickBolt(topologyConfig.getFlowRttSyncIntervalSeconds()));
+        TickBolt tickBolt = new TickBolt(topologyConfig.getFlowRttSyncIntervalSeconds());
+        declareBolt(topology, tickBolt, TickBolt.BOLT_ID);
     }
 }
