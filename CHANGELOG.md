@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.81.0 (30/12/2020)
+## v1.81.0 (14/01/2021)
 
 ### Features:
 -  [#3844](https://github.com/telstra/open-kilda/pull/3844) Added ability to run Kilda in blue and green modes locally 
@@ -19,6 +19,7 @@
 
 ### Improvements:
 -  [#3909](https://github.com/telstra/open-kilda/pull/3909)  Improvement in world map popup info for maximize and minimize the window (Issue: [#3855](https://github.com/telstra/open-kilda/issues/3855)) [**gui**]
+-  [#3984](https://github.com/telstra/open-kilda/pull/3984) HotFix: Change default parallelism for otsdb and flow hs topologies [**storm-topologies**]
 -  [#3925](https://github.com/telstra/open-kilda/pull/3925) Remove some unused classes in network topology [**storm-topologies**]
 -  [#3928](https://github.com/telstra/open-kilda/pull/3928) Test/improvements [**tests**]
 -  [#3929](https://github.com/telstra/open-kilda/pull/3929) Fix multi-reroute spec [**tests**]
@@ -40,7 +41,7 @@
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.80.0...v1.81.0).
 
 ### Affected Components:
-grpc, gui, flow-hs, fl, stats, nb, network
+nb, flow-hs, otsdb, fl, network, grpc, stats, gui
 
 ---
 
