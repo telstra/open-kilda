@@ -1,10 +1,11 @@
 # Changelog
 
-## v1.81.0 (14/01/2021)
+## v1.81.0 (18/01/2021)
 
 ### Features:
 -  [#3844](https://github.com/telstra/open-kilda/pull/3844) Added ability to run Kilda in blue and green modes locally 
 -  [#3910](https://github.com/telstra/open-kilda/pull/3910) Handle deserialization messages in KafkaVersioning [**storm-topologies**]
+-  [#3986](https://github.com/telstra/open-kilda/pull/3986) Added parallelism properties for server42-control topology 
 -  [#3962](https://github.com/telstra/open-kilda/pull/3962) Run make build-stable by default to run kilda 
 -  [#3872](https://github.com/telstra/open-kilda/pull/3872) Added kafka message versioning with ZooKeeper [**floodlight**][**northbound**][**storm-topologies**]
 -  [#3948](https://github.com/telstra/open-kilda/pull/3948) Added health check API for GRPC 
@@ -41,7 +42,7 @@
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.80.0...v1.81.0).
 
 ### Affected Components:
-nb, flow-hs, otsdb, fl, network, grpc, stats, gui
+stats, nb, fl, flow-hs, grpc, gui, otsdb, network
 
 ---
 
