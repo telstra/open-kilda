@@ -104,6 +104,10 @@ compile-common: check-java-version
 unit: update-props
 	cd src-java && ./gradlew test --stacktrace
 
+.PHONY: checkstyle
+checkstyle: update-props
+	cd src-java && ./gradlew checkstyleMain checkstyleTest
+
 .PHONY: sonar
 sonar: update-props
 	cd src-java && ./gradlew check jacocoTestReport sonarqube --stacktrace

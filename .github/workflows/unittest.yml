@@ -30,6 +30,12 @@ jobs:
         echo "org.gradle.console=plain" >> $HOME/.gradle/gradle.properties
         rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
         rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+    - name: Run checkstyle
+      run: |
+        export TRAVIS=true
+        export PATH="$PATH:/opt/confd/bin"
+        export MAVEN_OPTS="$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+        make checkstyle
     - name: Run unittests
       run: |
         export PATH="$PATH:/opt/confd/bin"
