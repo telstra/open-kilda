@@ -54,7 +54,7 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
             spec.addListener(new AbstractRunListener() {
                 @Override
                 void afterSpec(SpecInfo runningSpec) {
-                    log.info("Running cleanup verifier for '$runningSpec.name'")
+                    log.debug("Running cleanup verifier for '$runningSpec.name'")
                     runVerfications()
                 }
             })
@@ -64,7 +64,7 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
                     @Override
                     void intercept(IMethodInvocation invocation) throws Throwable {
                         invocation.proceed()
-                        log.info("Running cleanup verifier for '$invocation.feature.name'")
+                        log.debug("Running cleanup verifier for '$invocation.feature.name'")
                         runVerfications()
                     }
                 })
