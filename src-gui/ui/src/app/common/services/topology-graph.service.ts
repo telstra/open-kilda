@@ -43,6 +43,7 @@ export class TopologyGraphService {
   }
 
   loadworldMapGraph(data,svgElement,width,height,graph_loader){
+    this.linksSourceArr = [];
     this.graph_data = data;
     this.svgElement = d3.select("#"+svgElement)
 	.append("svg")
@@ -179,7 +180,7 @@ export class TopologyGraphService {
 	  });
   }
 
-  zoomFit = () => {
+  zoomFit = (widthTrans=null,heightTrans=null) => {
     var bounds = this.g.node().getBBox();
     var parent = this.g.node().parentElement;
     var fullWidth = $(parent).width(),
@@ -189,22 +190,30 @@ export class TopologyGraphService {
 
     var midX = (bounds.x + width) / 2,
       midY = (bounds.y + height) / 2;
+      if(widthTrans && heightTrans){
+        console.log('widthTrans',widthTrans,'heightTrans',heightTrans);
+        let newtranformation = d3.zoomIdentity
+        .scale(0.50)
+        .translate(widthTrans + (0.5 * widthTrans ),heightTrans + (0.5 * heightTrans )); 
+        console.log('newtranformation',newtranformation);
+        this.svgElement.transition().duration(300).call(this.zoom.transform, newtranformation);
+        return;
+      }
     if (width == 0 || height == 0) return;
-
     if(this.graph_data.nodes.length >=50){
       let newtranformation = d3.zoomIdentity
       .scale(this.scaleLimit)
      .translate(
-      (fullWidth/2 - this.scaleLimit*midX)/this.scaleLimit,
-      (fullHeight/2 - this.scaleLimit*midY)/this.scaleLimit
+      (fullWidth/2 + this.scaleLimit*(fullWidth/2)),
+      (fullHeight/2 +  this.scaleLimit*(fullHeight/2))
       ); 
       this.svgElement.transition().duration(300).call(this.zoom.transform, newtranformation);
     }else{
       let newtranformation = d3.zoomIdentity
       .scale(this.min_zoom)
      .translate(
-      (fullWidth/2 - this.min_zoom*midX),
-      (fullHeight/2 - this.min_zoom*midY)
+      (fullWidth/2 + this.min_zoom*(fullWidth/2)),
+      (fullHeight/2 + this.min_zoom*(fullHeight/2))
       ); 
       this.svgElement.transition().duration(300).call(this.zoom.transform, newtranformation);
     }

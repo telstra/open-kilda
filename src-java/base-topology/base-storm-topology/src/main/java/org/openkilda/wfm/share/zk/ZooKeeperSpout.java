@@ -32,6 +32,8 @@ import org.apache.storm.topology.base.BaseRichSpout;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.Queue;
 import java.util.UUID;
@@ -39,13 +41,14 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Slf4j
 public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
-    public static final String BOLT_ID = "zookeeper.spout";
+    public static final String SPOUT_ID = "zookeeper.spout";
     public static final String FIELD_ID_LIFECYCLE_EVENT = "lifecycle.event";
 
     public static final String FIELD_ID_CONTEXT = AbstractBolt.FIELD_ID_CONTEXT;
     private String id;
     private String serviceName;
     private String connectionString;
+    private Instant zooKeeperConnectionTimestamp = Instant.MIN;
     private transient Queue<Signal> signals;
     private transient ZkWatchDog watchDog;
     private transient SpoutOutputCollector collector;
@@ -70,6 +73,11 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
         watchDog.subscribe(this);
     }
 
+    protected boolean isZooKeeperConnectTimeoutPassed() {
+        return zooKeeperConnectionTimestamp.plus(10, ChronoUnit.SECONDS)
+                .isBefore(Instant.now());
+    }
+
     @Override
     public void nextTuple() {
         Signal signal = signals.poll();
@@ -82,9 +90,13 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
         } else {
             org.apache.storm.utils.Utils.sleep(1L);
         }
-        if (!watchDog.isActive()) {
-            log.info("Service {} with run_id {} tries to reconnect to ZooKeeper {}", serviceName, id, connectionString);
-            watchDog.safeRefreshConnection();
+        if (!watchDog.isConnectedAndValidated()) {
+            if (isZooKeeperConnectTimeoutPassed()) {
+                log.info("Service {} with run_id {} tries to reconnect to ZooKeeper {}",
+                        serviceName, id, connectionString);
+                watchDog.safeRefreshConnection();
+                zooKeeperConnectionTimestamp = Instant.now();
+            }
         }
     }
 

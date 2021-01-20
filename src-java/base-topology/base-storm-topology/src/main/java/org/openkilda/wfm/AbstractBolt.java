@@ -63,7 +63,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
     @Setter(AccessLevel.PROTECTED)
     private transient CommandContext commandContext;
 
-    private transient String lifeCycleEventSourceComponent;
+    private String lifeCycleEventSourceComponent;
 
     public AbstractBolt() {
     }
@@ -127,14 +127,30 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
     protected void handleLifeCycleEvent(LifecycleEvent event) {
         if (Signal.START.equals(event.getSignal())) {
-            active = true;
             emit(ZkStreams.ZK.toString(), currentTuple, new Values(event, commandContext));
+            try {
+                activate();
+            } finally {
+                active = true;
+            }
         } else if (Signal.SHUTDOWN.equals(event.getSignal())) {
-            active = false;
             emit(ZkStreams.ZK.toString(), currentTuple, new Values(event, commandContext));
+            try {
+                deactivate();
+            } finally {
+                active = false;
+            }
         } else {
             log.error("Unsupported signal received: {}", event.getSignal());
         }
+    }
+
+    protected void activate() {
+        // no actions required
+    }
+
+    protected void deactivate() {
+        // no actions required
     }
 
     protected void handleException(Exception e) throws Exception {

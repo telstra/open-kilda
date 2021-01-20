@@ -62,56 +62,43 @@ import io.grpc.noviflow.ShowPacketInOutStats;
 import io.grpc.noviflow.ShowRemoteLogServer;
 import io.grpc.noviflow.StatusSwitch;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 
+import java.io.Closeable;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 /**
  * The GRPC client session.
  */
 @Slf4j
-public class GrpcSession {
+public class GrpcSession implements Closeable {
     private static final int PORT = 50051;
-
-    @Value("${grpc.speaker.session.termination.timeout}")
-    private int sessionTerminationTimeout;
 
     private final NoviflowResponseMapper mapper;
 
-    private ManagedChannel channel;
-    private NoviFlowGrpcGrpc.NoviFlowGrpcStub stub;
-    private String address;
+    private final ManagedChannel channel;
+    private final NoviFlowGrpcGrpc.NoviFlowGrpcStub stub;
+    private final String address;
+
+    private CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
 
     public GrpcSession(NoviflowResponseMapper mapper, String address) {
         this.mapper = mapper;
-
-        if (!InetAddresses.isInetAddress(address) && !InetAddresses.isUriInetAddress(address)) {
-            log.warn("IP address '{}' of switch is not valid", address);
-            throw new GrpcRequestFailureException(ErrorCode.ERRNO_23.getCode(), ErrorCode.ERRNO_23.getMessage(),
-                    ErrorType.REQUEST_INVALID);
-        }
         this.address = address;
-        this.channel = ManagedChannelBuilder.forAddress(address, PORT)
-                .usePlaintext()
-                .build();
+        this.channel = makeChannel(address);
         this.stub = NoviFlowGrpcGrpc.newStub(channel);
     }
 
     /**
-     * Initiates async session shutdown.
+     * Plan GRPC channel close.
      */
-    public void shutdown() {
-        log.debug("Perform messaging channel shutdown for switch {}", address);
-        channel.shutdown();
-        try {
-            channel.awaitTermination(sessionTerminationTimeout, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            log.error(String.format("Unable to shutdown GRPC session with switch '%s'", address), e);
-        }
+    public void close() {
+        extendChain(() -> {
+            log.debug("Perform messaging channel shutdown for switch {}", address);
+            channel.shutdownNow();
+        }, CompletableFuture.completedFuture(null));
     }
 
     /**
@@ -130,11 +117,11 @@ public class GrpcSession {
                 .setPassword(pass)
                 .build();
 
-        log.debug("Performs auth user request to switch {} with user {}", address, user);
-
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, LOGIN);
-
-        stub.setLoginDetails(authUser, observer);
+        extendChain(() -> {
+            log.debug("Performs auth user request to switch {} with user {}", address, user);
+            stub.setLoginDetails(authUser, observer);
+        }, observer.future);
         return observer.future;
     }
 
@@ -144,11 +131,10 @@ public class GrpcSession {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<Optional<StatusSwitch>> showSwitchStatus() {
-        GrpcResponseObserver<StatusSwitch> observer = new GrpcResponseObserver<>(address, SHOW_SWITCH_STATUS);
-
         log.info("Getting switch status for switch {}", address);
 
-        stub.showStatusSwitch(StatusSwitch.newBuilder().build(), observer);
+        GrpcResponseObserver<StatusSwitch> observer = new GrpcResponseObserver<>(address, SHOW_SWITCH_STATUS);
+        extendChain(() -> stub.showStatusSwitch(StatusSwitch.newBuilder().build(), observer), observer.future);
         return observer.future
                 .thenApply(responses -> responses.stream().findFirst());
     }
@@ -172,8 +158,7 @@ public class GrpcSession {
         log.info("About to create logical port: {}", request);
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, SET_LOGICAL_PORT);
-
-        stub.setConfigLogicalPort(request, observer);
+        extendChain(() -> stub.setConfigLogicalPort(request, observer), observer.future);
         return observer.future;
     }
 
@@ -192,8 +177,7 @@ public class GrpcSession {
         log.info("Reading logical port {} from the switch: {}", port, address);
 
         GrpcResponseObserver<LogicalPort> observer = new GrpcResponseObserver<>(address, SHOW_CONFIG_LOGICAL_PORT);
-        stub.showConfigLogicalPort(request, observer);
-
+        extendChain(() -> stub.showConfigLogicalPort(request, observer), observer.future);
         return observer.future
                 .thenApply(responses -> responses.stream().findFirst());
     }
@@ -204,13 +188,13 @@ public class GrpcSession {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<List<LogicalPort>> dumpLogicalPorts() {
-        LogicalPort request = LogicalPort.newBuilder().build();
-
         log.info("Getting all logical ports for switch: {}", address);
 
         GrpcResponseObserver<LogicalPort> observer = new GrpcResponseObserver<>(address, DUMP_LOGICAL_PORTS);
-        stub.showConfigLogicalPort(request, observer);
-
+        extendChain(() -> {
+            LogicalPort request = LogicalPort.newBuilder().build();
+            stub.showConfigLogicalPort(request, observer);
+        }, observer.future);
         return observer.future;
     }
 
@@ -230,8 +214,7 @@ public class GrpcSession {
         log.info("Deleting logical port for switch {}", address);
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, DELETE_LOGICAL_PORT);
-        stub.delConfigLogicalPort(logicalPort, observer);
-
+        extendChain(() -> stub.delConfigLogicalPort(logicalPort, observer), observer.future);
         return observer.future
                 .thenApply(responses -> responses.stream().findFirst());
     }
@@ -243,15 +226,13 @@ public class GrpcSession {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<Optional<CliReply>> setLogMessagesStatus(LogMessagesDto logMessagesDto) {
-        LogMessages logMessages = LogMessages.newBuilder()
-                .setStatus(OnOff.forNumber(logMessagesDto.getState().getNumber()))
-                .build();
-
         log.info("Change enabling status of log messages for switch {}", address);
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, SET_LOG_MESSAGES_STATUS);
-        stub.setLogMessages(logMessages, observer);
-
+        LogMessages logMessages = LogMessages.newBuilder()
+                .setStatus(OnOff.forNumber(logMessagesDto.getState().getNumber()))
+                .build();
+        extendChain(() -> stub.setLogMessages(logMessages, observer), observer.future);
         return observer.future
                 .thenApply(responses -> responses.stream().findFirst());
     }
@@ -262,16 +243,14 @@ public class GrpcSession {
      * @param logOferrorsDto log oferrors data.
      * @return {@link CompletableFuture} with operation result.
      */
-    public CompletableFuture<Optional<CliReply>> setLogOferrorsStatus(LogOferrorsDto logOferrorsDto) {
-        LogOferrors logOferrors = LogOferrors.newBuilder()
-                .setStatus(OnOff.forNumber(logOferrorsDto.getState().getNumber()))
-                .build();
-
+    public CompletableFuture<Optional<CliReply>> setLogOfErrorsStatus(LogOferrorsDto logOferrorsDto) {
         log.info("Change enabling status of log OF errors for switch {}", address);
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, SET_LOG_OF_ERRORS_STATUS);
-        stub.setLogOferrors(logOferrors, observer);
-
+        LogOferrors logOferrors = LogOferrors.newBuilder()
+                .setStatus(OnOff.forNumber(logOferrorsDto.getState().getNumber()))
+                .build();
+        extendChain(() -> stub.setLogOferrors(logOferrors, observer), observer.future);
         return observer.future
                 .thenApply(responses -> responses.stream().findFirst());
     }
@@ -288,7 +267,7 @@ public class GrpcSession {
 
         GrpcResponseObserver<RemoteLogServer> observer = new GrpcResponseObserver<>(
                 address, SHOW_CONFIG_REMOTE_LOG_SERVER);
-        stub.showConfigRemoteLogServer(showRemoteLogServer, observer);
+        extendChain(() -> stub.showConfigRemoteLogServer(showRemoteLogServer, observer), observer.future);
         return observer.future
                 .thenApply(responses -> responses.stream().findFirst());
     }
@@ -303,14 +282,14 @@ public class GrpcSession {
         Objects.requireNonNull(remoteServer.getIpAddress(), "IP Address must not be null");
         Objects.requireNonNull(remoteServer.getPort(), "Port must not be null");
 
+        log.info("Set remote log server for switch {}", address);
+        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, SET_CONFIG_REMOTE_LOG_SERVER);
+
         RemoteLogServer logServer = RemoteLogServer.newBuilder()
                 .setIpaddr(remoteServer.getIpAddress())
                 .setPort(remoteServer.getPort())
                 .build();
-
-        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, SET_CONFIG_REMOTE_LOG_SERVER);
-        log.info("Set remote log server for switch {}", address);
-        stub.setConfigRemoteLogServer(logServer, observer);
+        extendChain(() -> stub.setConfigRemoteLogServer(logServer, observer), observer.future);
 
         return observer.future
                 .thenApply(responses -> responses.stream().findFirst());
@@ -322,12 +301,11 @@ public class GrpcSession {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<Optional<CliReply>> deleteConfigRemoteLogServer() {
-        RemoteLogServer logServer = RemoteLogServer.newBuilder().build();
+        log.info("Delete remote log server for switch {}", address);
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, DELETE_CONFIG_REMOTE_LOG_SERVER);
-        log.info("Delete remote log server for switch {}", address);
-        stub.delConfigRemoteLogServer(logServer, observer);
-
+        RemoteLogServer logServer = RemoteLogServer.newBuilder().build();
+        extendChain(() -> stub.delConfigRemoteLogServer(logServer, observer), observer.future);
         return observer.future
                 .thenApply(responses -> responses.stream().findFirst());
     }
@@ -340,6 +318,8 @@ public class GrpcSession {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<Optional<CliReply>> setPortConfig(Integer portNumber, PortConfigDto config) {
+        log.info("Set port {} configuration for switch {}", portNumber, address);
+
         PortConfig.Builder builder = PortConfig.newBuilder()
                 .setPortno(portNumber);
         if (config.getQueueId() != null) {
@@ -380,10 +360,7 @@ public class GrpcSession {
         }
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, SET_PORT_CONFIG);
-        log.info("Set port {} configuration for switch {}", portNumber, address);
-
-        stub.setConfigPort(builder.build(), observer);
-
+        extendChain(() -> stub.setConfigPort(builder.build(), observer), observer.future);
         return observer.future
                 .thenApply(responses -> responses.stream().findFirst());
     }
@@ -395,6 +372,8 @@ public class GrpcSession {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<Optional<CliReply>> setConfigLicense(LicenseDto licenseDto) {
+        log.info("Set license for switch {}", address);
+
         License.Builder licenseBuilder = License.newBuilder();
         if (licenseDto.getLicenseFileName() != null) {
             licenseBuilder.setLicensefile(licenseDto.getLicenseFileName());
@@ -404,10 +383,7 @@ public class GrpcSession {
         }
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, SET_CONFIG_LICENSE);
-        log.info("Set license for switch {}", address);
-
-        stub.setConfigLicense(licenseBuilder.build(), observer);
-
+        extendChain(() -> stub.setConfigLicense(licenseBuilder.build(), observer), observer.future);
         return observer.future
                 .thenApply(responses -> responses.stream().findFirst());
     }
@@ -418,9 +394,36 @@ public class GrpcSession {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<Optional<PacketInOutStats>> getPacketInOutStats() {
-        GrpcResponseObserver<PacketInOutStats> observer = new GrpcResponseObserver<>(address, GET_PACKET_IN_OUT_STATS);
         log.info("Getting packet in out stats for switch {}", address);
-        stub.showStatsPacketInOut(ShowPacketInOutStats.newBuilder().build(), observer);
-        return observer.future.thenApply(responses -> responses.stream().findFirst());
+
+        GrpcResponseObserver<PacketInOutStats> observer = new GrpcResponseObserver<>(address, GET_PACKET_IN_OUT_STATS);
+        extendChain(
+                () -> stub.showStatsPacketInOut(ShowPacketInOutStats.newBuilder().build(), observer),
+                observer.future);
+        return observer.future
+                .thenApply(responses -> responses.stream().findFirst());
+    }
+
+    private synchronized void extendChain(Runnable action, CompletableFuture<?> operation) {
+        chain = CompletableFuture.allOf(
+                chain.whenComplete((v, e) -> action.run()), operation)
+                .handle((dummy, e) -> {
+                    // clean exceptional status
+                    return null;
+                });
+    }
+
+    private static ManagedChannel makeChannel(String address) {
+        return ManagedChannelBuilder.forAddress(verifyHostAddress(address), PORT)
+                .usePlaintext()
+                .build();
+    }
+
+    private static String verifyHostAddress(String address) {
+        if (!InetAddresses.isInetAddress(address) && !InetAddresses.isUriInetAddress(address)) {
+            throw new GrpcRequestFailureException(ErrorCode.ERRNO_23.getCode(), ErrorCode.ERRNO_23.getMessage(),
+                    ErrorType.REQUEST_INVALID);
+        }
+        return address;
     }
 }

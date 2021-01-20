@@ -22,4 +22,8 @@ public interface IDecisionMakerCarrier {
     void linkDiscovered(IslInfoData discoveryEvent);
 
     void linkDestroyed(Endpoint endpoint);
+
+    void linkRoundTripActive(Endpoint endpoint);
+
+    void linkRoundTripInactive(Endpoint endpoint);
 }

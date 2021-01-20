@@ -17,7 +17,7 @@ package org.openkilda.wfm.kafka;
 
 import static java.lang.String.format;
 
-import org.openkilda.messaging.info.ErrorInfoData;
+import org.openkilda.messaging.info.DeserializationErrorInfoData;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.wfm.topology.utils.SerializationUtils;
 
@@ -43,8 +43,10 @@ public class InfoDataDeserializer implements Deserializer<InfoData> {
             return SerializationUtils.MAPPER.readValue(data, InfoData.class);
         } catch (IOException e) {
             String message = StringUtils.toEncodedString(data, Charset.defaultCharset());
-            log.error(format("Failed to deserialize data: %s from topic %s", message, topic), e);
-            return new ErrorInfoData("Failed to deserialize data", message);
+            if (log.isDebugEnabled()) {
+                log.debug(format("Failed to deserialize data: %s from topic %s", message, topic), e);
+            }
+            return new DeserializationErrorInfoData("Failed to deserialize data", message);
         }
     }
 

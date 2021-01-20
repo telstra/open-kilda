@@ -416,6 +416,11 @@ public class DatabaseSupportImpl implements Database {
     }
 
     @Override
+    public List<org.openkilda.model.Isl> getAllIsls() {
+        return new ArrayList<>(transactionManager.doInTransaction(islRepository::findAll));
+    }
+
+    @Override
     public List<Object> dumpAllNodes() {
         return transactionManager.doInTransaction(() ->
                 repositoryFactory.getGraphFactory().getGraph()

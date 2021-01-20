@@ -53,6 +53,8 @@ public interface Database {
 
     Instant getIslTimeUnstable(Isl isl);
 
+    List<org.openkilda.model.Isl> getAllIsls();
+
     // Switches
 
     Switch getSwitch(SwitchId switchId);

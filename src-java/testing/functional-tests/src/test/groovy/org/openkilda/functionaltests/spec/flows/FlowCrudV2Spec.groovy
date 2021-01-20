@@ -502,8 +502,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
             antiflap.portUp(isolatedSwitch.dpId, port)
         }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED }
+        wait(discoveryInterval + WAIT_OFFSET) {
+            northbound.getAllLinks().each { assert it.state == DISCOVERED }
         }
         database.resetCosts()
 
@@ -1138,7 +1138,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         and: "Update the flow: vlanId on the src endpoint"
         def updatedFlowSrcEndpoint = flow.jacksonCopy().tap {
-            it.source.vlanId = flow.destination.vlanId + 1
+            it.source.vlanId = flow.destination.vlanId - 1
         }
         flowHelperV2.updateFlow(flow.flowId, updatedFlowSrcEndpoint)
 
@@ -1155,7 +1155,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         when: "Update the flow: vlanId on the dst endpoint"
         def updatedFlowDstEndpoint = flow.jacksonCopy().tap {
-            it.destination.vlanId = flow.source.vlanId + 1
+            it.destination.vlanId = flow.source.vlanId - 1
         }
         flowHelperV2.updateFlow(flow.flowId, updatedFlowDstEndpoint)
 
@@ -1173,9 +1173,9 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         then: "Update the flow: port number and vlanId on the src/dst endpoints"
         def updatedFlow = flow.jacksonCopy().tap {
             it.source.portNumber = activeTraffGens.find { it.switchConnected.dpId == switchPair.src.dpId}.switchPort
-            it.source.vlanId = updatedFlowDstEndpoint.source.vlanId + 1
+            it.source.vlanId = updatedFlowDstEndpoint.source.vlanId - 1
             it.destination.portNumber = activeTraffGens.find { it.switchConnected.dpId == switchPair.dst.dpId}.switchPort
-            it.destination.vlanId = updatedFlowDstEndpoint.destination.vlanId + 1
+            it.destination.vlanId = updatedFlowDstEndpoint.destination.vlanId - 1
         }
         flowHelperV2.updateFlow(flow.flowId, updatedFlow)
 

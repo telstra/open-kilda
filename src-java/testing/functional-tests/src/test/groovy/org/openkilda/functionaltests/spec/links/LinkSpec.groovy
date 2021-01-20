@@ -232,6 +232,7 @@ class LinkSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
             assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
         }
+        database.resetCosts()
     }
 
     @Tidy

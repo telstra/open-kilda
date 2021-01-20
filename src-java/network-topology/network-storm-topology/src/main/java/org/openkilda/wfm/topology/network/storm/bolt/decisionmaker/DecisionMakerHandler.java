@@ -16,19 +16,23 @@
 package org.openkilda.wfm.topology.network.storm.bolt.decisionmaker;
 
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.model.IslStatus;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
+import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.service.IDecisionMakerCarrier;
 import org.openkilda.wfm.topology.network.service.NetworkDecisionMakerService;
+import org.openkilda.wfm.topology.network.service.NetworkRoundTripDecisionMakerService;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
 import org.openkilda.wfm.topology.network.storm.bolt.decisionmaker.command.DecisionMakerCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortDiscoveryCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortFailCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortRoundTripStatusCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.WatcherHandler;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -48,12 +52,12 @@ public class DecisionMakerHandler extends AbstractBolt implements IDecisionMaker
 
     private final NetworkOptions options;
 
-    private transient NetworkDecisionMakerService service;
+    private transient NetworkDecisionMakerService oneWayDiscoveryService;
+    private transient NetworkRoundTripDecisionMakerService roundTripDiscoveryService;
 
     public DecisionMakerHandler(NetworkOptions options) {
         this.options = options;
     }
-
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
@@ -68,7 +72,8 @@ public class DecisionMakerHandler extends AbstractBolt implements IDecisionMaker
     }
 
     private void handleTimer(Tuple input) {
-        service.tick();
+        oneWayDiscoveryService.tick();
+        roundTripDiscoveryService.tick();
     }
 
     private void handleCommand(Tuple input) throws PipelineException {
@@ -78,8 +83,9 @@ public class DecisionMakerHandler extends AbstractBolt implements IDecisionMaker
 
     @Override
     protected void init() {
-        service = new NetworkDecisionMakerService(this,
-                                                  options.getDiscoveryTimeout(), options.getDiscoveryPacketTtl());
+        oneWayDiscoveryService = new NetworkDecisionMakerService(
+                this, options.getDiscoveryTimeout().toNanos(), options.getDiscoveryPacketTtl());
+        roundTripDiscoveryService = new NetworkRoundTripDecisionMakerService(this, options.getDiscoveryTimeout());
     }
 
     @Override
@@ -99,18 +105,35 @@ public class DecisionMakerHandler extends AbstractBolt implements IDecisionMaker
         emit(getCurrentTuple(), makeDefaultTuple(new PortFailCommand(endpoint)));
     }
 
+    @Override
+    public void linkRoundTripActive(Endpoint endpoint) {
+        emit(getCurrentTuple(),
+                makeDefaultTuple(new PortRoundTripStatusCommand(new RoundTripStatus(endpoint, IslStatus.ACTIVE))));
+    }
+
+    @Override
+    public void linkRoundTripInactive(Endpoint endpoint) {
+        emit(getCurrentTuple(),
+                makeDefaultTuple(new PortRoundTripStatusCommand(new RoundTripStatus(endpoint, IslStatus.INACTIVE))));
+    }
+
     // DecisionMakerCommand
 
     public void processClear(Endpoint endpoint) {
-        service.clear(endpoint);
+        oneWayDiscoveryService.clear(endpoint);
+        roundTripDiscoveryService.clear(endpoint);
     }
 
-    public void processDiscovered(Endpoint endpoint, long packetId, IslInfoData discoveryEvent) {
-        service.discovered(endpoint, packetId, discoveryEvent);
+    public void processOneWayDiscovery(Endpoint endpoint, long packetId, IslInfoData discoveryEvent) {
+        oneWayDiscoveryService.discovered(endpoint, packetId, discoveryEvent);
     }
 
-    public void processFailed(Endpoint endpoint, long packetId) {
-        service.failed(endpoint, packetId);
+    public void processRoundTripDiscovery(Endpoint endpoint, long packetId) {
+        roundTripDiscoveryService.discovered(endpoint, packetId);
+    }
+
+    public void processOneWayFailure(Endpoint endpoint, long packetId) {
+        oneWayDiscoveryService.failed(endpoint, packetId);
     }
 
     // Private

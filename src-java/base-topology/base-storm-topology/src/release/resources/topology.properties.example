@@ -74,7 +74,6 @@ logger.level = INFO
 discovery.generic.interval = 3
 discovery.exhausted.interval = 60
 discovery.auxiliary.interval = 30
-discovery.round.trip.status.interval = 1
 discovery.packet.ttl = 5
 discovery.timeout = 15
 discovery.db.write.repeats.time.frame = 30
@@ -130,3 +129,5 @@ flow.delete.speaker.timeout.seconds = 10
 flow.delete.speaker.command.retries = 3
 
 server42.control.flowrtt.sync.interval.seconds = 60
+
+blue.green.mode = blue
