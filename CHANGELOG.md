@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.81.1 (21/01/2021)
+
+### Bug Fixes:
+-  [#3995](https://github.com/telstra/open-kilda/pull/3995) Increased port count in metadata from 128 to 4096 [**floodlight**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.81.0...v1.81.1).
+
+### Affected Components:
+fl
+
+---
+
 ## v1.81.0 (18/01/2021)
 
 ### Features:
@@ -78,7 +90,7 @@ For the complete list of changes, check out [the commit log](https://github.com/
 ### Affected Components:
 nbworker, ping, network, isllatency, swmanager, stats, nb, flow-hs, grpc, connected, router, stats-router, portstate, otsdb, reroute, fl
 
---
+---
 
 ## v1.79.0 (07/12/2020)
 

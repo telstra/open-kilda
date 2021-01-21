@@ -31,7 +31,7 @@ public class RoutingMetadataTest extends MetadataBaseTest {
     @Test
     public void testInputPortMetadata() {
         int offset = 16;
-        for (int port = 0; port <= 127; port++) {
+        for (int port = 0; port <= 4095; port++) {
             RoutingMetadata metadata = RoutingMetadata.builder().inputPort(port).build(new HashSet<>());
             long withoutType = ~TYPE_FIELD.getMask() & metadata.getValue().getValue();
             assertEquals(port, withoutType >> offset);
