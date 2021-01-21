@@ -19,7 +19,6 @@ import org.openkilda.constants.IConstants;
 import org.openkilda.integration.converter.FlowConverter;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
-import org.openkilda.integration.exception.StoreIntegrationException;
 import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowStatus;
 import org.openkilda.integration.model.response.FlowPayload;
@@ -47,6 +46,7 @@ import org.apache.log4j.Logger;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.usermanagement.exception.RequestValidationException;
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
 
@@ -228,17 +228,22 @@ public class FlowService {
             flow = flowsIntegrationService.getFlowById(flowId);
         } catch (InvalidResponseException ex) {
             LOGGER.error("Error occurred while retrieving flows from controller", ex);
+            if (controller) {
+                throw new InvalidResponseException(ex.getCode(), ex.getResponse());
+            }
         }
         Map<String, String> csNames = switchIntegrationService.getSwitchNames();
         if (flow != null) {
             flowInfo = flowConverter.toFlowInfo(flow, csNames);
         }
         UserInfo userInfo = userService.getLoggedInUserInfo();
-        if (!controller && userInfo.getPermissions().contains(IConstants.Permission.FW_FLOW_INVENTORY)) {
-            if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
-                try {
+        try {
+            if (!controller && userInfo.getPermissions().contains(IConstants.Permission.FW_FLOW_INVENTORY)) {
+                if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
                     InventoryFlow inventoryFlow = flowStoreService.getFlowById(flowId);
-                    if (flow != null && inventoryFlow != null) {
+                    if (flow == null && inventoryFlow.getId() == null) {
+                        throw new RequestValidationException("Can not get flow: Flow " + flowId + " not found");
+                    } else if (flow != null && inventoryFlow.getId() != null) {
                         flowInfo.setState(inventoryFlow.getState());
                         FlowDiscrepancy discrepancy = new FlowDiscrepancy();
                         discrepancy.setControllerDiscrepancy(false);
@@ -264,7 +269,7 @@ public class FlowService {
                         }
                         flowInfo.setInventoryFlow(true);
                         flowInfo.setDiscrepancy(discrepancy);
-                    } else if (inventoryFlow == null && flow != null) {
+                    } else if (inventoryFlow.getId() == null && flow != null) {
                         FlowDiscrepancy discrepancy = new FlowDiscrepancy();
                         discrepancy.setInventoryDiscrepancy(true);
                         discrepancy.setControllerDiscrepancy(false);
@@ -285,11 +290,14 @@ public class FlowService {
                     } else {
                         flowConverter.toFlowInfo(flowInfo, inventoryFlow, csNames);
                     }
-                } catch (Exception ex) {
-                    LOGGER.error("Error occurred while retrieving flows from store", ex);
-                    throw new StoreIntegrationException("Error occurred while retrieving flows from store");
-                }
+                } 
+            } 
+            if (flow == null) {
+                throw new RequestValidationException("Can not get flow: Flow " + flowId + " not found");
             }
+        } catch (Exception ex) {
+            LOGGER.error("Error occurred while retrieving flows from store", ex);
+            throw new RequestValidationException(ex.getMessage());
         }
         return flowInfo;
     }
