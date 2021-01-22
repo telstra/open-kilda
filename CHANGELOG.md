@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.81.2 (22/01/2021)
+
+### Bug Fixes:
+-  [#4000](https://github.com/telstra/open-kilda/pull/4000) Fix one switch flow update [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.81.1...v1.81.2).
+
+### Affected Components:
+flow-hs
+
+---
+
 ## v1.81.1 (21/01/2021)
 
 ### Bug Fixes:
