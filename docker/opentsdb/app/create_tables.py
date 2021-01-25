@@ -39,19 +39,19 @@ def create_table(table):
     else:
         sys.exit("Unknown table {} was requested.".format(table))
 
-    print "Creating {}".format(table)
+    print("Creating %s" % table)
     connection.create_table(table, families)
-    if table not in connection.tables():
+    if bytes(table, 'utf-8') not in connection.tables():
         sys.exit("Could not create {}".format(table))
 
 
 for table in new_tables[:]:
     if table in existing_tables:
-        print "{} exist".format(table)
+        print("%s exist" % table)
         new_tables.remove(table)
 
 if len(new_tables) > 0:
     for table in new_tables:
         create_table(table)
 else:
-    print "All OpenTSDB tables already created"
+    print("All OpenTSDB tables already created")
