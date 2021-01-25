@@ -20,18 +20,18 @@ task cloneLoxigenRepo {
     if (repo.exists()) {
         try {
             def grgit = Grgit.open(currentDir: repo.absolutePath)
-            grgit.checkout(branch: 'STABLE')
+            grgit.checkout(branch: 'python3_update')
             grgit.pull(rebase: false)
             grgit.close()
         } catch (Exception e) {
             logger.warn("Failed to fetch loxigen from git: {}", e.getMessage())
         }
     } else {
-        def repoUri = 'https://github.com/kilda/loxigen.git'
+        def repoUri = 'https://github.com/timofei-durakov/loxigen.git'
         if (project.hasProperty("loxigenGitRepo")) {
             repoUri = project.property("loxigenGitRepo")
         }
-        def grgit = Grgit.clone(dir: repo.absolutePath, uri: repoUri, refToCheckout: 'STABLE')
+        def grgit = Grgit.clone(dir: repo.absolutePath, uri: repoUri, refToCheckout: 'python3_update')
         grgit.close()
     }
 }
