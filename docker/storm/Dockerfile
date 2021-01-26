@@ -27,6 +27,7 @@ RUN    wget -q https://archive.apache.org/dist/storm/apache-storm-1.2.1/$PACKAGE
     && md5sum -c $PACKAGE.tar.gz.md5 \
     && tar -xzf $PACKAGE.tar.gz --directory /opt/ \
     && ln -s /opt/$PACKAGE /opt/storm \
+    && ln -s /usr/bin/python3 /usr/bin/python \
     && rm -rfv /tmp/*
 
 WORKDIR /opt/storm/
