@@ -56,10 +56,6 @@ public interface KafkaTopicsConfig {
     @Default("kilda.otsdb")
     String getOtsdbTopic();
 
-    @Key("simulator")
-    @Default("kilda.simulator")
-    String getSimulatorTopic();
-
     @Key("speaker")
     @FallbackKey("kafka.speaker.topic")
     @Default("kilda.speaker.storm")

@@ -6,7 +6,6 @@
 <suppressions>
     <suppress files="src/main/.*Fsm\.java$" checks="JavadocMethod" />
     <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
-    <suppress files="src/main/java/org/openkilda/simulator/SimulatorTopology.java" lines="96" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/ctrl/RouteBolt.java" lines="47" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/ctrl/CtrlAction.java" lines="94" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/error/MessageFormatException.java" lines="21" checks="MutableException"/>

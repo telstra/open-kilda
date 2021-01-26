@@ -21,7 +21,6 @@ kafka.topic.flow.status = kilda.flow.status
 kafka.topic.ping = kilda.ping
 kafka.topic.northbound = kilda.northbound
 kafka.topic.opentsdb = kilda.otsdb
-kafka.topic.simulator = kilda.simulator
 kafka.topic.speaker = kilda.speaker
 kafka.topic.speaker.disco = kilda.speaker.disco
 kafka.topic.speaker.flow = kilda.speaker.flow

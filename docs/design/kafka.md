@@ -106,7 +106,6 @@ Example message:
 * CacheTopology--CacheBolt (W)
 
 #### `kilda.speaker`
-#### `kilda-simulator` 
 
 #### `opentsdb-topic` 
 * (R) OpenTSDBTopology - OpenTSDBFilterBolt
