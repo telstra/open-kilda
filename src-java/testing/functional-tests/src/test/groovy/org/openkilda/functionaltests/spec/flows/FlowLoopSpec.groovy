@@ -26,7 +26,6 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -99,13 +98,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         and: "The src switch is valid"
         northbound.validateSwitch(switchPair.src.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
 
-        and: "Flow is not pingable"
-        //it works, because the 'pingFlow' endpoint doesn't verify terminating switch
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            forward.pingSuccess
-            reverse.pingSuccess
-        }
-
         when: "Send traffic via flow in the forward direction"
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam)
@@ -114,6 +106,8 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         then: "Flow doesn't allow traffic, because it is grubbed by flowLoop rules"
         !traffExam.waitExam(exam.forward).hasTraffic()
+        //rtretiak: sometimes we receive an additional packet after exam is finished. wait for it for better stability
+        sleep(1000)
 
         and: "Counter only on the forward flowLoop rule is increased"
         def flowInfo = database.getFlow(flow.flowId)
@@ -139,6 +133,8 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         then: "Flow doesn't allow traffic, because it is grubbed by flowLoop rules"
         !traffExam.waitExam(exam.reverse).hasTraffic()
+        //rtretiak: sometimes we receive an additional packet after exam is finished. wait for it for better stability
+        sleep(1000)
 
         and: "Counter only on the reverse flowLoop rule is increased"
         def rulesOnSrcSw_2 = northbound.getSwitchRules(switchPair.src.dpId).flowEntries
@@ -151,8 +147,8 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "Counter on the simple(ingress/egress) flow rules is increased on the dst switch"
         with(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) {
-            it.findAll { it.cookie in [forwardCookie, reverseCookie] }*.packetCount.every {
-                it == reverseLoopPacketCount_2
+            it.findAll { it.cookie in [forwardCookie, reverseCookie] }*.packetCount.each {
+                assert it == reverseLoopPacketCount_2
             }
         }
 

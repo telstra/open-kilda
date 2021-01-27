@@ -370,6 +370,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         when: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
         def portDown = antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(islToBreak).state == IslChangeType.FAILED }
 
         then: "Flows are switched to protected paths"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
