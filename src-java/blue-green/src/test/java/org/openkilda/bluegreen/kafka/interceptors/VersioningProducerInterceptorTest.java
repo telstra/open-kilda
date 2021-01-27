@@ -15,16 +15,24 @@
 
 package org.openkilda.bluegreen.kafka.interceptors;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.openkilda.bluegreen.kafka.Utils.MESSAGE_VERSION_HEADER;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+
+import org.openkilda.bluegreen.ZkWatchDog;
 
 import com.google.common.collect.Lists;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.util.HashMap;
 import java.util.List;
@@ -77,14 +85,51 @@ public class VersioningProducerInterceptorTest {
         Assert.assertEquals(VERSION_2, new String(versionHeaders.get(0).value()));
     }
 
-    private VersioningProducerInterceptor<String, String> createInterceptor() {
+    @Test(expected = IllegalArgumentException.class)
+    public void missedConnectionStringTest() {
+        VersioningProducerInterceptor<String, String> interceptor = createInterceptor();
+        interceptor.configure(new HashMap<>());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void missedRunIdTest() {
+        Map<String, String> config = new HashMap<>();
+        config.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, "test");
+
+        VersioningProducerInterceptor<String, String> interceptor = createInterceptor();
+        interceptor.configure(config);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void missedComponentNameTest() {
+        Map<String, String> config = new HashMap<>();
+        config.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, "test");
+        config.put(PRODUCER_RUN_ID_PROPERTY, "run_id");
+
+        VersioningProducerInterceptor<String, String> interceptor = createInterceptor();
+        interceptor.configure(config);
+    }
+
+    @Test
+    public void configureTest() {
         Map<String, String> config = new HashMap<>();
         config.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, "test");
         config.put(PRODUCER_RUN_ID_PROPERTY, "run_id");
         config.put(PRODUCER_COMPONENT_NAME_PROPERTY, "name");
 
-        VersioningProducerInterceptor<String, String> interceptor = new VersioningProducerInterceptor<>();
+        VersioningProducerInterceptor<String, String> interceptor = Mockito.mock(VersioningProducerInterceptor.class);
+        doCallRealMethod().when(interceptor).configure(any());
+
         interceptor.configure(config);
+        verify(interceptor, times(1)).initWatchDog();
+    }
+
+    private VersioningProducerInterceptor<String, String> createInterceptor() {
+        ZkWatchDog watchDog = Mockito.mock(ZkWatchDog.class);
+        when(watchDog.isConnectedAndValidated()).thenReturn(true);
+
+        VersioningProducerInterceptor<String, String> interceptor = new VersioningProducerInterceptor<>();
+        interceptor.watchDog = watchDog;
         return interceptor;
     }
 }
