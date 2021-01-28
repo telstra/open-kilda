@@ -90,6 +90,13 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
     }
 
     /**
+     * Synchronous get of buildVersion.
+     */
+    public byte[] getVersionSync() throws KeeperException, InterruptedException {
+        return zookeeper.getData(buildVersionPath, false, null);
+    }
+
+    /**
      * Subscribe for events.
      */
     public void subscribe(LifeCycleObserver observer) {

@@ -124,6 +124,8 @@ public class VersioningConsumerInterceptor<K, V> extends VersioningInterceptorBa
         log.info("Configuring VersioningConsumerInterceptor for component {} with id {} and connection string {}",
                 componentName, runId, connectionString);
         initWatchDog();
+        log.info("Consumer interceptor was configured for component {} and id {} with kafka messaging version '{}'",
+                componentName, runId, getVersionAsString());
     }
 
     @Override
