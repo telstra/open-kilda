@@ -21,7 +21,6 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.ARP_POST_INGR
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ARP_VXLAN_UDP_SRC;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.POST_INGRESS_TABLE_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.VXLAN_UDP_DST;
-import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE;
 
@@ -58,7 +57,7 @@ public class ArpPostIngressVxlanFlowGenerator extends ArpFlowGenerator {
     OFFlowMod getArpFlowMod(IOFSwitch sw, OFInstructionMeter meter, List<OFAction> actionList) {
         OFFactory ofFactory = sw.getOFFactory();
         Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
-        if (!(features.contains(NOVIFLOW_PUSH_POP_VXLAN) && features.contains(NOVIFLOW_COPY_FIELD))) {
+        if (!features.contains(NOVIFLOW_PUSH_POP_VXLAN)) {
             return null;
         }
 

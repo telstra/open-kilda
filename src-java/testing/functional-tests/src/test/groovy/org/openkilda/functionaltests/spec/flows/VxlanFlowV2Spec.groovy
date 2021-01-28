@@ -461,7 +461,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
                 def involvedSwitches = pathHelper.getInvolvedSwitches(it)
                 if(involvedSwitches.size() > 2) {
                     vxlanSw = involvedSwitches.find {
-                        it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
+                        it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
                     }
                     return vxlanSw
                 }
@@ -471,7 +471,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             //2 switches for src/dst + 1 transit sw with vxlan. Need at least one more
             def enoughSwitches = it.paths.collectMany { pathHelper.getInvolvedSwitches(it) }.unique().size() > 3
             return vxlanPath && enoughSwitches &&
-                    [it.src, it.dst].every { it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
+                    [it.src, it.dst].every { it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) }
         }
         assumeTrue("Wasn't able to find enough VXLAN-enabled switches", switchPair as boolean)
         def initVxlanSwProps = northbound.getSwitchProperties(vxlanSw.dpId)

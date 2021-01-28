@@ -111,7 +111,7 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
     public void setSupportedTransitEncapsulation(Set<FlowEncapsulationType> supportedTransitEncapsulation) {
         if (supportedTransitEncapsulation != null
                 && supportedTransitEncapsulation.contains(FlowEncapsulationType.VXLAN)) {
-            validateProp(SwitchFeature.NOVIFLOW_COPY_FIELD);
+            validateProp(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN);
         }
         data.setSupportedTransitEncapsulation(supportedTransitEncapsulation);
     }
