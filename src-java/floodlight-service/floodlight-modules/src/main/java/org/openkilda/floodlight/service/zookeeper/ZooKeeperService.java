@@ -32,6 +32,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import net.jodah.failsafe.SyncFailsafe;
+import org.apache.zookeeper.KeeperException;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -49,6 +50,7 @@ public class ZooKeeperService implements IService, LifeCycleObserver {
     private ZkStateTracker zooKeeperStateTracker;
     private ZkWriter zkWriter;
     private ZkWatchDog watchDog;
+    private String region;
 
     private LifecycleEvent event;
 
@@ -57,7 +59,7 @@ public class ZooKeeperService implements IService, LifeCycleObserver {
     @Override
     public void setup(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
         KafkaChannel kafkaChannel = moduleContext.getServiceImpl(KafkaUtilityService.class).getKafkaChannel();
-        String region = kafkaChannel.getRegion();
+        region = kafkaChannel.getRegion();
         String connectionString = kafkaChannel.getConfig().getZooKeeperConnectString();
         zkWriter = ZkWriter.builder().id(region).serviceName(ZK_COMPONENT_NAME)
                 .connectionString(connectionString).build();
@@ -83,6 +85,7 @@ public class ZooKeeperService implements IService, LifeCycleObserver {
                 .onRetry(e -> log.error("Failed to init zk clients, retrying...", e))
                 .onRetriesExceeded(e -> log.error("Failure in zookeeper initialization. No more retries", e));
         failsafe.run(() -> verifyAndRefreshZk());
+        forceReadSignal();
     }
 
     private void verifyAndRefreshZk() {
@@ -104,6 +107,7 @@ public class ZooKeeperService implements IService, LifeCycleObserver {
 
     @Override
     public synchronized void handle(Signal signal) {
+        log.info("Component {} with id {} received signal {}", ZK_COMPONENT_NAME, region, signal);
         this.event = LifecycleEvent.builder()
                 .signal(signal)
                 .uuid(UUID.randomUUID())
@@ -125,5 +129,21 @@ public class ZooKeeperService implements IService, LifeCycleObserver {
 
     public synchronized void unsubscribe(ZooKeeperEventObserver observer) {
         observers.remove(observer);
+    }
+
+    private void forceReadSignal() {
+        Signal signal = null;
+        try {
+            signal = watchDog.getSignalSync();
+        } catch (KeeperException | InterruptedException e) {
+            log.error(String.format("Couldn't get signal for component %s and id %s. Error: %s",
+                    ZK_COMPONENT_NAME, region, e.getMessage()), e);
+        }
+
+        if (signal == null) {
+            log.error("Couldn't get signal for component {} and id {}. Signal is null.", ZK_COMPONENT_NAME, region);
+        } else {
+            handle(signal);
+        }
     }
 }
