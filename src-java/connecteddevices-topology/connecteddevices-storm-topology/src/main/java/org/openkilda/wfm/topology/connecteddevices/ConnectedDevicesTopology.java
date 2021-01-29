@@ -68,8 +68,7 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
     }
 
     private void createSpout(TopologyBuilder builder) {
-        declareKafkaSpout(builder, topologyConfig.getKafkaTopoConnectedDevicesTopic(), CONNECTED_DEVICES_SPOUT_ID,
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        declareKafkaSpout(builder, topologyConfig.getKafkaTopoConnectedDevicesTopic(), CONNECTED_DEVICES_SPOUT_ID);
     }
 
     private void createZkBolt(TopologyBuilder builder) {

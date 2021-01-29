@@ -134,8 +134,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     }
 
     private void inputSpout(TopologyBuilder topologyBuilder) {
-        declareKafkaSpout(topologyBuilder, getConfig().getKafkaFlowHsTopic(), ComponentId.FLOW_SPOUT.name(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        declareKafkaSpout(topologyBuilder, getConfig().getKafkaFlowHsTopic(), ComponentId.FLOW_SPOUT.name());
     }
 
     private void inputRouter(TopologyBuilder topologyBuilder) {
@@ -290,7 +289,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
     private void speakerSpout(TopologyBuilder topologyBuilder) {
         declareKafkaSpoutForAbstractMessage(topologyBuilder, getConfig().getKafkaFlowSpeakerWorkerTopic(),
-                ComponentId.SPEAKER_WORKER_SPOUT.name(), getZkTopoName(), getConfig().getBlueGreenMode());
+                ComponentId.SPEAKER_WORKER_SPOUT.name());
     }
 
     private void flowCreateSpeakerWorker(TopologyBuilder topologyBuilder) {
@@ -375,8 +374,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
     private void speakerOutput(TopologyBuilder topologyBuilder) {
         KafkaBolt<String, AbstractMessage> flKafkaBolt = makeKafkaBolt(
-                getConfig().getKafkaSpeakerFlowTopic(), AbstractMessageSerializer.class, getZkTopoName(),
-                        getConfig().getBlueGreenMode());
+                getConfig().getKafkaSpeakerFlowTopic(), AbstractMessageSerializer.class);
         declareBolt(topologyBuilder, flKafkaBolt, ComponentId.SPEAKER_REQUEST_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_CREATE_SPEAKER_WORKER.name(),
                         Stream.SPEAKER_WORKER_REQUEST_SENDER.name())
@@ -413,8 +411,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     }
 
     private void northboundOutput(TopologyBuilder topologyBuilder) {
-        KafkaBolt nbKafkaBolt = buildKafkaBolt(getConfig().getKafkaNorthboundTopic(), getZkTopoName(),
-                topologyConfig.getBlueGreenMode());
+        KafkaBolt nbKafkaBolt = buildKafkaBolt(getConfig().getKafkaNorthboundTopic());
         declareBolt(topologyBuilder, nbKafkaBolt, ComponentId.NB_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_UPDATE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
@@ -425,16 +422,14 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     }
 
     private void rerouteTopologyOutput(TopologyBuilder topologyBuilder) {
-        KafkaBolt rerouteKafkaBolt = buildKafkaBolt(getConfig().getKafkaRerouteTopic(), getZkTopoName(),
-                topologyConfig.getBlueGreenMode());
+        KafkaBolt rerouteKafkaBolt = buildKafkaBolt(getConfig().getKafkaRerouteTopic());
         declareBolt(topologyBuilder, rerouteKafkaBolt, ComponentId.REROUTE_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_REROUTE_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_REROUTE_RESPONSE_SENDER.name());
     }
 
     private void pingOutput(TopologyBuilder topologyBuilder) {
-        KafkaBolt pingKafkaBolt = buildKafkaBolt(getConfig().getKafkaPingTopic(), getZkTopoName(),
-                topologyConfig.getBlueGreenMode());
+        KafkaBolt pingKafkaBolt = buildKafkaBolt(getConfig().getKafkaPingTopic());
         declareBolt(topologyBuilder, pingKafkaBolt, ComponentId.FLOW_PING_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_UPDATE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
@@ -444,8 +439,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     }
 
     private void server42ControlTopologyOutput(TopologyBuilder topologyBuilder) {
-        KafkaBolt server42ControlKafkaBolt = buildKafkaBolt(getConfig().getKafkaFlowHsServer42StormNotifyTopic(),
-                getZkTopoName(), topologyConfig.getBlueGreenMode());
+        KafkaBolt server42ControlKafkaBolt = buildKafkaBolt(getConfig().getKafkaFlowHsServer42StormNotifyTopic());
         declareBolt(topologyBuilder, server42ControlKafkaBolt, ComponentId.SERVER42_CONTROL_TOPOLOGY_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(),
                         Stream.HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER.name())

@@ -126,8 +126,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
     }
 
     private void input(TopologyBuilder topology) {
-        declareKafkaSpout(topology, topologyConfig.getKafkaPingTopic(), ComponentId.INPUT.toString(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        declareKafkaSpout(topology, topologyConfig.getKafkaPingTopic(), ComponentId.INPUT.toString());
     }
 
     private void inputRouter(TopologyBuilder topology) {
@@ -242,8 +241,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
         declareBolt(topology, bolt, FlowStatusEncoder.BOLT_ID)
                 .shuffleGrouping(FailReporter.BOLT_ID);
 
-        KafkaBolt output = buildKafkaBolt(topologyConfig.getKafkaFlowStatusTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt output = buildKafkaBolt(topologyConfig.getKafkaFlowStatusTopic());
         declareBolt(topology, output, ComponentId.FLOW_STATUS_OUTPUT.toString())
                 .shuffleGrouping(FlowStatusEncoder.BOLT_ID);
     }
@@ -253,8 +251,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
         declareBolt(topology, bolt, OtsdbEncoder.BOLT_ID)
                 .shuffleGrouping(StatsProducer.BOLT_ID);
 
-        KafkaBolt output = createKafkaBolt(topologyConfig.getKafkaOtsdbTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt output = createKafkaBolt(topologyConfig.getKafkaOtsdbTopic());
         declareBolt(topology, output, ComponentId.OTSDB_OUTPUT.toString())
                 .shuffleGrouping(OtsdbEncoder.BOLT_ID);
     }
@@ -264,8 +261,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
         declareBolt(topology, bolt, SpeakerEncoder.BOLT_ID)
                 .shuffleGrouping(TimeoutManager.BOLT_ID, TimeoutManager.STREAM_REQUEST_ID);
 
-        KafkaBolt output = buildKafkaBolt(topologyConfig.getKafkaSpeakerFlowPingTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt output = buildKafkaBolt(topologyConfig.getKafkaSpeakerFlowPingTopic());
         declareBolt(topology, output, ComponentId.SPEAKER_OUTPUT.toString())
                 .shuffleGrouping(SpeakerEncoder.BOLT_ID);
     }
@@ -276,8 +272,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
                 .shuffleGrouping(FlowFetcher.BOLT_ID, FlowFetcher.STREAM_ON_DEMAND_RESPONSE_ID)
                 .shuffleGrouping(OnDemandResultManager.BOLT_ID);
 
-        KafkaBolt output = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt output = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         declareBolt(topology, output, ComponentId.NORTHBOUND_OUTPUT.toString())
                 .shuffleGrouping(NorthboundEncoder.BOLT_ID);
     }
