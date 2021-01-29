@@ -45,7 +45,7 @@ You also need to increase the maven RAM limit at least up to 1G.
 ```export MAVEN_OPTS="-Xmx1g -XX:MaxPermSize=128m"```
 
 #### Python
-Ensure that you have Python2 installed since some of build steps depends on it. 
+Ensure that you have Python2 installed since some of build steps depends on it. Test
 Possible option for that using virtual environment (`virtualenv`) with python interpreter version provided:
 
 ```
