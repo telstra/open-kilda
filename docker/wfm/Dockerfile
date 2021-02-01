@@ -21,7 +21,7 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN \
     pip \
         install \
-            kafka &&
+            kafka && \
     echo "PATH=$PATH:/opt/storm/bin" >> ~/.bashrc
 
 WORKDIR /app
