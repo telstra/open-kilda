@@ -20,7 +20,10 @@ ENV PACKAGE apache-storm-1.2.1
 
 WORKDIR /tmp/
 
-RUN    wget -q https://archive.apache.org/dist/storm/apache-storm-1.2.1/$PACKAGE.tar.gz \
+RUN    \
+    apt -y update \
+    && apt -y install net-tools \
+    && wget -q https://archive.apache.org/dist/storm/apache-storm-1.2.1/$PACKAGE.tar.gz \
     && wget -q https://archive.apache.org/dist/storm/apache-storm-1.2.1/$PACKAGE.tar.gz.md5 \
     && sed 's/\ //g' $PACKAGE.tar.gz.md5 > $PACKAGE.tmp.md5 \
     && awk -F ":" '{print $2 " " $1}' $PACKAGE.tmp.md5 > $PACKAGE.tar.gz.md5 \
@@ -30,8 +33,11 @@ RUN    wget -q https://archive.apache.org/dist/storm/apache-storm-1.2.1/$PACKAGE
     && ln -s /usr/bin/python3 /usr/bin/python \
     && rm -rfv /tmp/*
 
+
+
 WORKDIR /opt/storm/
 
 COPY storm.yaml /opt/storm/conf/storm.yaml
 COPY log4j2 /opt/storm/log4j2
 COPY lib/*.jar /opt/storm/lib/
+COPY simple-storm-healthcheck.sh /simple-storm-healthcheck.sh

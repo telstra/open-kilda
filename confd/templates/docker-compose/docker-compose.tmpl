@@ -326,7 +326,7 @@ services:
       - "6714:6714"
       - "8001:8000"
     healthcheck:
-      test: ["CMD-SHELL", "jps | grep --silent Supervisor"]
+      test: ["CMD-SHELL", "/simple-storm-healthcheck.sh"]
       interval: 30s
       timeout: 10s
       retries: 3
