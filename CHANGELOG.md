@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.82.0 (27/01/2021)
+
+### Improvements:
+-  [#4007](https://github.com/telstra/open-kilda/pull/4007) Update base image to 20.04 
+-  [#3991](https://github.com/telstra/open-kilda/pull/3991) Make sw validation stop ignoring default rules in other than 'proper' sections 
+
+### Bug Fixes:
+-  [#4012](https://github.com/telstra/open-kilda/pull/3012) Wait for kafka version
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.81.2...v1.82.0).
+
+---
+
 ## v1.81.2 (22/01/2021)
 
 ### Bug Fixes:
