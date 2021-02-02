@@ -255,7 +255,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 requests.add(makeEgressSegmentRequest(context, path, encapsulation, lastSegment, egressSide,
                         ingressSide));
             }
-        } else if (doIngress) {
+        } else if (flow.isOneSwitchFlow()) {
             // one switch flow (path without path segments)
             requests.add(makeOneSwitchRequest(context, path, ingressSide, egressSide, rulesContext));
             if (singleSwitchLoopRuleRequired(flow)) {
