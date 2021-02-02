@@ -22,7 +22,7 @@ WORKDIR /tmp/
 
 RUN    \
     apt -y update \
-    && apt -y install net-tools \
+    && apt -y install net-tools jq \
     && wget -q https://archive.apache.org/dist/storm/apache-storm-1.2.1/$PACKAGE.tar.gz \
     && wget -q https://archive.apache.org/dist/storm/apache-storm-1.2.1/$PACKAGE.tar.gz.md5 \
     && sed 's/\ //g' $PACKAGE.tar.gz.md5 > $PACKAGE.tmp.md5 \
