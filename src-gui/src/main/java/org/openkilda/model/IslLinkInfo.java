@@ -97,6 +97,9 @@ public class IslLinkInfo implements Serializable {
     @JsonProperty("enable_bfd")
     private boolean enableBfd;
     
+    @JsonProperty("bfd_session_status")
+    private String bfdSessionStatus;
+    
     public String getCost() {
         return cost;
     }
