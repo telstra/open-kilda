@@ -130,6 +130,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
      * reroute and expect no packet loss.
      */
     @Tidy
+    @Tags([HARDWARE]) //hw only due to instability on virtual env. reproduces rarely only on jenkins env though
     def "Intentional flow reroute is not causing any packet loss"() {
         given: "An unmetered flow going through a long not preferable path(reroute potential)"
         //will be available on virtual as soon as we get the latest iperf installed in lab-service images

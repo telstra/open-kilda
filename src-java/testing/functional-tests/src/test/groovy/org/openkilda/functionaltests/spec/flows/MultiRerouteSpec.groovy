@@ -63,7 +63,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
 
         then: "Half of the flows are hosted on the preferable path"
         def flowsOnPrefPath
-        wait(WAIT_OFFSET * 2) {
+        wait(WAIT_OFFSET * 3) {
             def assertions = new SoftAssertions()
             flowsOnPrefPath = flows.findAll {
                 pathHelper.convert(northbound.getFlowPath(it.flowId)) == prefPath

@@ -348,10 +348,7 @@ class SwitchHelper {
                     def cookie = new Cookie(it)
                     !cookie.serviceFlag && cookie.type != CookieType.SHARED_OF_FLOW }.empty
             } else {
-                assert switchValidateInfo.rules."$section".findAll {
-                    def cookie = new Cookie(it)
-                    cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES || !cookie.serviceFlag
-                }.empty
+                assert switchValidateInfo.rules."$section".empty
             }
         }
     }
@@ -377,14 +374,7 @@ class SwitchHelper {
                 defaultCookies.each { defaultHexCookies.add(Long.toHexString(it)) }
                 assert switchValidateInfo.rules.properHex.findAll { !(it in defaultHexCookies) }.empty
             } else {
-                def defaultCookies = switchValidateInfo.rules."$section".findAll {
-                    def cookie = new Cookie(it)
-                    cookie.serviceFlag || cookie.type != CookieType.MULTI_TABLE_INGRESS_RULES
-                }
-
-                def defaultHexCookies = []
-                defaultCookies.each { defaultHexCookies.add(Long.toHexString(it)) }
-                assert switchValidateInfo.rules."$section".findAll { !(it in defaultHexCookies) }.empty
+                assert switchValidateInfo.rules."$section".empty
             }
         }
     }

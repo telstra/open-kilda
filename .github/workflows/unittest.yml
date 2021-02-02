@@ -1,0 +1,37 @@
+name: unittests
+on: [pull_request]
+jobs:
+  unittests:
+    runs-on: ubuntu-16.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up JDK 1.8
+      uses: actions/setup-java@v1
+      with:
+        java-version: 1.8
+    - name: Install confd
+      run: |
+        sudo apt-get install wget
+        wget https://github.com/kelseyhightower/confd/releases/download/v0.16.0/confd-0.16.0-linux-amd64
+        mkdir -p /opt/confd/bin
+        mv confd-0.16.0-linux-amd64 /opt/confd/bin/confd
+        chmod +x /opt/confd/bin/confd
+    - name: Gradle cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.gradle/caches
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+        restore-keys: ${{ runner.os }}-gradle-
+    - name: Prepare gradle props
+      run: |
+        mkdir -p $HOME/.gradle
+        echo "org.gradle.jvmargs=-Xmx4096M" >> $HOME/.gradle/gradle.properties
+        echo "org.gradle.console=plain" >> $HOME/.gradle/gradle.properties
+        rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
+        rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+    - name: Run unittests
+      run: |
+        export PATH="$PATH:/opt/confd/bin"
+        export MAVEN_OPTS="$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+        make unit
