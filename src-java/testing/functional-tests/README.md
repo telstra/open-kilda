@@ -1,16 +1,75 @@
 # Functional tests
 This module holds functional tests designed to be run against staging OR virtual environment.
-- [A word about the testing approach](#a-word-about-the-testing-approach)
-  - [Single topology for the whole test suite](#single-topology-for-the-whole-test-suite)
-  - [Failfast with no cleanup](#failfast-with-no-cleanup)
 - [How to run](#how-to-run)
 	- [Virtual (local Kilda)](#virtual-local-kilda)
 	- [Hardware (Staging)](#hardware-remote-kilda-staging)
 	- [Test suites](#test-suites)
 	- [Artifacts](#artifacts)
+- [A word about the testing approach](#a-word-about-the-testing-approach)
+  - [Single topology for the whole test suite](#single-topology-for-the-whole-test-suite)
+  - [Failfast with no cleanup](#failfast-with-no-cleanup)
 - [How to create a test](#how-to-create-a-test)
 	- [Best Practices](#best-practices)
 - [Other](#other)
+
+# How to run
+### Virtual (local Kilda)
+- Build Kilda `make build-stable`
+- Deploy Kilda locally `make up-test-mode`
+- Run all tests `make func-tests` or just create a test topology to play with `make test-topology`
+> Note that the above command will overwrite any existing kilda.properties and topology.yaml 
+files with default ones
+>
+##### Partial Kilda deployment
+If you have limited resources available, it is possible to not deploy some optional Kilda components, for example
+deploy 1 Floodlight instead of 3 (default). Though this will disable some of the tests. 
+In order to achieve this look into `confd/vars/docker-compose.yaml`. If you deploy only 1 Floodlight make sure to:
+- adjust `kilda.properties` values for `floodlight.controllers` and `floodlight.regions`
+- in `topology.yaml` check that no switches try to connect to 'region: 2'  
+
+Make relative changes for any other properties related to not deployed components.
+
+### Hardware (remote Kilda, Staging)
+- Ensure that `topology.yaml` and
+`kilda.properties` files are present in the root of the functional-tests module.
+- Check your `kilda.properties`. It should point to your environment.  
+`spring.profiles.active` should be set to `hardware`.  
+Note that other properties should 
+correspond to actual Kilda properties that were used for deployment of the target env.
+- Check your `topology.yaml`. It should represent your actual expected hardware topology. You can automatically generate 
+`topology.yaml` based on currently discovered topology, but be aware that this will prevent you from catching
+some switch/isl discovery-related issues: `make test-topology PARAMS="--tests GenerateTopologyConfig"` && `cp functional-tests/build/topology.yaml functional-tests/`.
+ This will also not generate information about 'a-switch' and traffgens.
+- Now you can run tests by executing the following command in the terminal:  
+`make func-tests`.
+
+### General info
+- Framework requires `topology.yaml` and `kilda.properties` files. Custom locations can be specified via
+`-Dtopology.definition.file=custom/topology.yaml` and `-Dkilda.config.file=custom/kilda.properties`
+- Tests can be run via gradle (given we in the `src-java` dir)
+`./gradlew :functional-tests:functionalTest`.
+If you want to run a single test, you can use the following command:  
+`./gradlew :functional-tests:functionalTest --info --tests <test_file>."<test_name>"`.
+For example:  
+`./gradlew :functional-tests:functionalTest --info --tests LinkSpec."Unable to delete an active link"`
+- Tests can be run as regular JUnit tests from your IDE
+- To exclude certain tests pass 'excludeTests' param:  
+`./gradlew :functional-tests:functionalTest -DexcludeTests='Server42RttSpec'`
+
+## Test suites
+We leverage test suites by first tagging tests and then supplying a required `tag experession` when starting a test run.
+More info on how to form a tag expression can be found in javadoc here `org.openkilda.functionaltests.extension.tags.TagExtension`.  
+Common usages:  
+`./gradlew :functional-tests:functionalTest -Dtags='smoke'` #shorten suite of most valuable test cases
+`./gradlew :functional-tests:functionalTest -Dtags='topology_dependent or hardware'`
+`./gradlew :functional-tests:functionalTest -Dtags='smoke_switches'` #focus on switch-related tests (e.g. smoke test integration with new switch firmware)
+`./gradlew :functional-tests:functionalTest -Dtags='not low_priority'` #exclude regression low-value tests. This suite is used to run
+func tests for each PR on github 
+
+## Artifacts
+* Logs - ```build/logs```
+  * `logs` - casual test log including DEBUG+ messages
+* Reports - ```build/reports```
 
 # A word about the testing approach
 ### Single topology for the whole test suite
@@ -36,63 +95,6 @@ are __not__ marked as `@Tidy`, failure of such tests will abort further executio
 On the other hand, if the test is supplied with a bullet-proof cleanup code, then it should have a
 `@Tidy` annotation above it, meaning that in case of failure no 'failfast' policy should be applied, allowing
 execution of subsequent tests.
-
-# How to run
-### Virtual (local Kilda)
-- Build Kilda `make build-stable`
-- Deploy Kilda locally `make up-test-mode`
-- Run tests `make func-tests`
-> Note that the above command will overwrite any existing kilda.properties and topology.yaml 
-files with default ones
->
-##### Partial Kilda deployment
-If you have limited resources available, it is possible to not deploy some optional Kilda components, for example
-deploy 1 Floodlight instead of 3 (default). Though this will disable some of the tests. 
-In order to achieve this look into `confd/vars/docker-compose.yaml`. If you deploy only 1 Floodlight make sure to:
-- adjust `kilda.properties` values for `floodlight.controllers` and `floodlight.regions`
-- in `topology.yaml` check that no switches try to connect to 'region: 2'  
-
-Make relative changes for any other properties related to not deployed components.
-
-### Hardware (remote Kilda, Staging)
-- Ensure that `topology.yaml` and
-`kilda.properties` files are present in the root of the functional-tests module.
-- Check your `kilda.properties`. It should point to your staging environment.  
-`spring.profiles.active` should be set to `hardware`.  
-Note that other properties should 
-correspond to actual Kilda properties that were used for deployment of the target env.
-- Check your `topology.yaml`. It should represent your actual expected hardware topology. You can automatically generate 
-`topology.yaml` based on currently discovered topology, but be aware that this will prevent you from catching
-some switch/isl discovery-related issues: `make test-topology PARAMS="--tests GenerateTopologyConfig"` && `cp functional-tests/build/topology.yaml functional-tests/`.
- This will also not generate information about 'a-switch' and traffgens.
-- Now you can run tests by executing the following command in the terminal:  
-`make func-tests`.
-
-### General info
-- Framework requires `topology.yaml` and `kilda.properties` files. Custom locations can be specified via
-`-Dtopology.definition.file=custom/topology.yaml` and `-Dkilda.config.file=custom/kilda.properties`
-- Tests can be run via gradle (given we in the `src-java` dir)
-`./gradlew :functional-tests:functionalTest`.
-If you want to run a single test, you can use the following command:  
-`./gradlew :functional-tests:functionalTest --info --tests <test_file>."<test_name>"`.
-For example:  
-`./gradlew :functional-tests:functionalTest --info --tests LinkSpec."Unable to delete an active link"`
-- Tests can be run as regular JUnit tests from your IDE
-
-## Test suites
-We leverage test suites by first tagging tests and then supplying a required `tag experession` when starting a test run.
-More info on how to form a tag expression can be found in javadoc here `org.openkilda.functionaltests.extension.tags.TagExtension`.  
-Common usages:  
-`./gradlew :functional-tests:functionalTest -Dtags='smoke'` #shorten suite of most valuable test cases
-`./gradlew :functional-tests:functionalTest -Dtags='topology_dependent or hardware'`
-`./gradlew :functional-tests:functionalTest -Dtags='smoke_switches'` #focus on switch-related tests (e.g. smoke test integration with new switch firmware)
-`./gradlew :functional-tests:functionalTest -Dtags='not low_priority'` #exclude regression low-value tests. This suite is used to run
-func tests for each PR on github 
-
-## Artifacts
-* Logs - ```build/logs```
-  * `logs` - casual test log including DEBUG+ messages
-* Reports - ```build/reports```
 
 # How to create a test
 - Get understanding of what [SpockFramework](http://spockframework.org/) and [Groovy](http://groovy-lang.org/) is.
@@ -127,14 +129,8 @@ test case at the end.
   - revert any changes made to the system: topology, database, switches etc.;
   - take care of doing all the proper waits after your test has finished to be sure that all your reverts actually took
   place.
-- Make sure your test is stable. Run it multiple times before committing. Cases that can often be unstable
-(list is not exhaustive, just for an example purpose):
-  - flow creation, deletion and reroute may require additional waits for flow rules to be actually installed
-  on switches, since floodlight needs some time to install them, while Northbound responds that everything's done.
-  Thus knocking out switch right after flow create/delete command is a dangerous operation;
-  - switches knockout/revive operations should have proper waits to ensure that their actual status has changed.
-  Same for ISLs.
-- keep in mind that the same test will be also run against a staging env (not only local Kilda) with hardware switches, longer delays and different Kilda environment properties.
+- Make sure your test is stable. Run it multiple times before committing.
+- Keep in mind that the same test will be also run against a staging env (not only local Kilda) with hardware switches, longer delays and different Kilda environment properties.
 
 # Other
 ### How to create a markdown report with test-cases from specifications
