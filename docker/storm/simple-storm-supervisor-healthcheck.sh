@@ -18,7 +18,7 @@ D=$(date)
 echo "${D} PORTS_NUMBER_IN_LOGS=${PORTS_NUMBER_IN_LOGS} PORTS_NUBER_IN_CONFIG=${PORTS_NUBER_IN_CONFIG}" >> /simple-storm-supervisor-healthcheck.log
 
 
-if [ "${PORTS_NUMBER_IN_LOGS}" -ge "6"];
+if [ "${PORTS_NUMBER_IN_LOGS}" -ge "6" ];
 then
     exit 0
 fi
