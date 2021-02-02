@@ -185,3 +185,5 @@ kilda_server42_stats_run_id: "server42-stats-app-run-id"
 
 kilda_server42_control_storm_stub_http_port: 9001
 kilda_server42_control_storm_stub_kafka_group_id: "server42-control-storm-stub"
+kilda_server42_control_storm_stub_component_name: "server42-control-storm-stub"
+kilda_server42_control_storm_stub_run_id: "server42-control-storm-stub-run-id"
