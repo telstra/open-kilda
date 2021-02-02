@@ -24,6 +24,8 @@ import com.sabre.oss.conf4j.annotation.Key;
 
 @Configuration
 public interface KafkaNorthboundConfig extends KafkaConsumerGroupConfig {
+    String NORTHBOUND_COMPONENT_NAME = "northbound";
+
     @Key("kafka.groupid")
     @Default("northbound-consumer")
     @Mapping(target = KAFKA_CONSUMER_GROUP_MAPPING)
