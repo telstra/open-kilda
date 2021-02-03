@@ -100,5 +100,6 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
             assert it.availableBandwidth == it.speed
             assert it.cost == Constants.DEFAULT_COST || it.cost == 0
         }
+        assert northbound.getAllLinkProps().empty
     }
 }

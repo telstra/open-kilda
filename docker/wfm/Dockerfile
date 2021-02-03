@@ -18,8 +18,11 @@ FROM ${base_image}
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN pip install kafka
-RUN echo "PATH=$PATH:/opt/storm/bin" >> ~/.bashrc
+RUN \
+    pip \
+        install \
+            kafka && \
+    echo "PATH=$PATH:/opt/storm/bin" >> ~/.bashrc
 
 WORKDIR /app
 ADD wfm/app /app

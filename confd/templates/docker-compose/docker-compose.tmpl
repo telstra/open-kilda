@@ -284,10 +284,10 @@ services:
     ports:
       - "8888:8080"
     healthcheck:
-      test: ["CMD-SHELL", "jps | grep --silent core"]
-      interval: 30s
+      test: ["CMD-SHELL", "/simple-storm-ui-healthcheck.sh"]
+      interval: 10s
       timeout: 10s
-      retries: 3
+      retries: 30
     networks:
       default:
         aliases:
@@ -305,7 +305,7 @@ services:
       storm-nimbus:
         condition: service_healthy
 {{if not (exists "/no_logstash")}}      logstash:
-        condition: service_started
+        condition: service_healthy
 {{end}}{{if not (exists "/no_opentsdb")}}      opentsdb:
         condition: service_started
 {{end}}    ports:
@@ -361,10 +361,10 @@ services:
       - "6749:6749"
       - "8001:8000"
     healthcheck:
-      test: ["CMD-SHELL", "jps | grep --silent Supervisor"]
-      interval: 30s
+      test: ["CMD-SHELL", "/simple-storm-supervisor-healthcheck.sh"]
+      interval: 10s
       timeout: 10s
-      retries: 3
+      retries: 30
     networks:
       default:
         aliases:
@@ -388,7 +388,7 @@ services:
       kafka:
         condition: service_healthy
 {{if not (exists "/no_logstash")}}      logstash:
-        condition: service_started
+        condition: service_healthy
 {{end}}    cap_add:
       - NET_ADMIN
     networks:
@@ -417,7 +417,7 @@ services:
       kafka:
         condition: service_healthy
 {{if not (exists "/no_logstash")}}      logstash:
-        condition: service_started
+        condition: service_healthy
 {{end}}    cap_add:
       - NET_ADMIN
     networks:
@@ -447,7 +447,7 @@ services:
       kafka:
         condition: service_healthy
 {{if not (exists "/no_logstash")}}      logstash:
-        condition: service_started
+        condition: service_healthy
 {{end}}    cap_add:
       - NET_ADMIN
     networks:
@@ -473,7 +473,7 @@ services:
       kafka:
         condition: service_healthy
 {{if not (exists "/no_logstash")}}      logstash:
-        condition: service_started
+        condition: service_healthy
 {{end}}      db_migration:
         condition: service_healthy
     networks:
@@ -498,7 +498,7 @@ services:
       kafka:
         condition: service_healthy
 {{if not (exists "/no_logstash")}}      logstash:
-        condition: service_started
+        condition: service_healthy
 {{end}}      odb1:
         condition: service_healthy
     networks:
@@ -522,7 +522,7 @@ services:
       kafka:
         condition: service_healthy
 {{if not (exists "/no_logstash")}}      logstash:
-        condition: service_started
+        condition: service_healthy
 {{end}}    networks:
       default:
         aliases:
@@ -543,7 +543,7 @@ services:
       kafka:
         condition: service_healthy
   {{if not (exists "/no_logstash")}}    logstash:
-        condition: service_started
+        condition: service_healthy
   {{end}}  networks:
       default:
         aliases:
@@ -642,6 +642,11 @@ services:
       # remove default 500m heap size in /usr/share/logstash/vendor/jruby/bin/jruby
       JAVA_MEM: " "
     mem_limit: ${LOGSTASH_MEM_LIMIT:-1073741824}
+    healthcheck:
+      test: ["CMD-SHELL", "/simple-logstash-healthcheck.sh"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
 {{end}}
 {{if not (exists "/no_server42_control")}}
   server42-control:

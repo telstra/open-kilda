@@ -60,9 +60,10 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         allFlowPaths.findAll { it != flowPath }.each { altFlowIsls.addAll(pathHelper.getInvolvedIsls(it)) }
         def islToFail = flowIsls.find { !(it in altFlowIsls) && !(it.reversed in altFlowIsls) }
         antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        wait(WAIT_OFFSET) { northbound.getLink(islToFail).state == FAILED }
 
         then: "The flow was rerouted after reroute delay"
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+        wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
         }
@@ -70,7 +71,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         cleanup: "Revive the ISL back (bring switch port up) and delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
         database.resetCosts()
@@ -527,9 +528,8 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
             //check that system doesn't retry to reroute the firstFlow (its src is down, no need to retry)
             assert !firstFlowHistory.find { it.taskId =~ /.+ : retry #1/ }
             def secondFlowHistory = northbound.getFlowHistory(secondFlow.flowId).findAll { it.action == REROUTE_ACTION }
-            assert secondFlowHistory.findAll { it.taskId =~ /.+ : retry #2/ }.size() >= 1
-            /*there should be original reroute + 3 retries. We are not checking the #3 retry directly, since it may
-            have its reason changed to 'isl timeout' because ISL is about to fail due to a disconnected switch*/
+            /*there should be original reroute + 3 retries. We are not checking the 'retry #' messages directly,
+            since system may have their reasons changed to 'isl timeout' during reroute merge*/
             assert secondFlowHistory.size() == 4
             withPool {
                 [firstFlow.flowId, secondFlow.flowId].eachParallel { String flowId ->

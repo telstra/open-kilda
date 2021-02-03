@@ -116,7 +116,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         when: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
         def blockData = switchHelper.knockoutSwitch(sw, RW, true)
         Wrappers.retry(2, 1) {
-            isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
+            Wrappers.silent { isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) } }
             def links = northbound.getAllLinks()
             isls.each { assert !islUtils.getIslInfo(links, it).present }
         }
