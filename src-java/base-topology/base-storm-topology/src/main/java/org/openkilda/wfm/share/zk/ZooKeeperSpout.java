@@ -31,6 +31,7 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichSpout;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
+import org.apache.zookeeper.KeeperException;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -71,6 +72,7 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
                 .build();
         watchDog.subscribe(this);
         watchDog.init();
+        forceReadSignal();
     }
 
     protected boolean isZooKeeperConnectTimeoutPassed() {
@@ -122,5 +124,21 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
     public void handle(Signal signal) {
         log.info("Received signal {}", signal);
         signals.add(signal);
+    }
+
+    private void forceReadSignal() {
+        Signal signal = null;
+        try {
+            signal = watchDog.getSignalSync();
+        } catch (KeeperException | InterruptedException e) {
+            log.error(String.format("Couldn't get signal for component %s and id %s. Error: %s",
+                    serviceName, id, e.getMessage()), e);
+        }
+
+        if (signal == null) {
+            log.error("Couldn't get signal for component {} and id {}. Signal is null.", serviceName, id);
+        } else {
+            handle(signal);
+        }
     }
 }
