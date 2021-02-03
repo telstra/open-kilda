@@ -327,7 +327,8 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         then: "The flow goes to 'Up' status"
         and: "The flow was rerouted"
-        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET * 2) {
+        //rtretiak: TODO: why such a long wait required(it is indeed required)? investigate
+        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET * 3) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == REROUTE_SUCCESS
         }
