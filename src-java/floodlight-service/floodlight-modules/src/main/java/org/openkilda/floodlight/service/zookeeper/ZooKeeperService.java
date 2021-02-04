@@ -50,6 +50,7 @@ public class ZooKeeperService implements IService, LifeCycleObserver {
     private ZkStateTracker zooKeeperStateTracker;
     private ZkWriter zkWriter;
     private ZkWatchDog watchDog;
+    @Getter
     private String region;
 
     private LifecycleEvent event;
