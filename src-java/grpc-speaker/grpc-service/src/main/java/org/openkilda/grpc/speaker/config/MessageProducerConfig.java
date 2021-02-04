@@ -15,11 +15,10 @@
 
 package org.openkilda.grpc.speaker.config;
 
-import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_NAME;
-import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_RUN_ID;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.grpc.speaker.config.KafkaGrpcSpeakerConfig.GRPC_COMPONENT_NAME;
 
 import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
 import org.openkilda.messaging.Message;
@@ -51,6 +50,12 @@ public class MessageProducerConfig {
     private String kafkaHosts;
 
     /**
+     * Kilda blue green-mode.
+     */
+    @Value("${BLUE_GREEN_MODE:blue}")
+    private String blueGreenMode;
+
+    /**
      * ZooKeeper hosts.
      */
     @Value("${zookeeper.connect_string:'zookeeper.pendev/kilda'}")
@@ -71,8 +76,8 @@ public class MessageProducerConfig {
         props.put(ProducerConfig.RETRIES_CONFIG, 0);
         props.put(ProducerConfig.ACKS_CONFIG, "all");
         props.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningProducerInterceptor.class.getName());
-        props.put(PRODUCER_COMPONENT_NAME_PROPERTY, COMMON_COMPONENT_NAME);
-        props.put(PRODUCER_RUN_ID_PROPERTY, COMMON_COMPONENT_RUN_ID);
+        props.put(PRODUCER_COMPONENT_NAME_PROPERTY, GRPC_COMPONENT_NAME);
+        props.put(PRODUCER_RUN_ID_PROPERTY, blueGreenMode);
         props.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, zookeeperConnectString);
 
         return props;

@@ -70,6 +70,12 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
                 new HashSet<>(Optional.ofNullable(context.getAffectedIsl()).orElse(emptySet()));
         dashboardLogger.onFlowPathReroute(flowId, affectedIsl, context.isForceReroute());
 
+        String rerouteReason = context.getRerouteReason();
+        stateMachine.saveNewEventToHistory("Started flow validation", FlowEventData.Event.REROUTE,
+                rerouteReason == null ? FlowEventData.Initiator.NB : FlowEventData.Initiator.AUTO,
+                rerouteReason == null ? null : "Reason: " + rerouteReason);
+        stateMachine.setRerouteReason(rerouteReason);
+
         Flow flow = transactionManager.doInTransaction(() -> {
             Flow foundFlow = getFlow(flowId);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
@@ -158,14 +164,11 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
                     format("Flow %s is pinned, fail to reroute its protected paths", flowId));
         }
 
-        String rerouteReason = context.getRerouteReason();
-        stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.REROUTE,
-                rerouteReason == null ? FlowEventData.Initiator.NB : FlowEventData.Initiator.AUTO,
-                rerouteReason == null ? null : "Reason: " + rerouteReason);
-        stateMachine.setRerouteReason(rerouteReason);
         stateMachine.setAffectedIsls(context.getAffectedIsl());
         stateMachine.setForceReroute(context.isForceReroute());
         stateMachine.setIgnoreBandwidth(context.isIgnoreBandwidth());
+
+        stateMachine.saveActionToHistory("Flow was validated successfully");
 
         return Optional.empty();
     }

@@ -399,6 +399,7 @@ and at least 1 path must remain safe"
         wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
     }
 

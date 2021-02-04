@@ -234,10 +234,10 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
     }
 
     private FlowLoopOperation detectFlowLoopOperation(RequestedFlow originalFlow, RequestedFlow targetFlow) {
-        if (originalFlow.getLoopSwitchId() == targetFlow.getLoopSwitchId()) {
+        if (originalFlow.getLoopSwitchId() == null && targetFlow.getLoopSwitchId() == null) {
             return FlowLoopOperation.NONE;
         }
-        if (originalFlow.getLoopSwitchId() != null) {
+        if (targetFlow.getLoopSwitchId() == null) {
             return FlowLoopOperation.DELETE;
         } else {
             return FlowLoopOperation.CREATE;

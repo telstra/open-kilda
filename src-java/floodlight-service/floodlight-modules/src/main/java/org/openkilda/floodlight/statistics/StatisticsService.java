@@ -251,7 +251,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                 logger.info("Receive switch {} stats response(s) from {}", type, switchId);
                 InfoMessage infoMessage = new InfoMessage(transform.apply(data),
                         System.currentTimeMillis(), correlationId, Destination.WFM_STATS, region);
-                producerService.sendMessageAndTrack(statisticsTopic, infoMessage);
+                producerService.sendMessageAndTrackWithZk(statisticsTopic, infoMessage);
             }
         }
 

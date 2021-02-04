@@ -62,14 +62,14 @@ public class ZkStateTracker {
     private void handleShutdown(LifecycleEvent event) {
         if (shutdownUuid != null) {
             if (shutdownUuid.equals(event.getUuid())) {
-                active--;
+                active = active > 0 ? --active : 0;
             } else {
                 log.error("Unknown lifecycle shutdown event received uuid: {}, expected: {}",
                         event.getUuid(), shutdownUuid);
             }
         } else {
             shutdownUuid = event.getUuid();
-            active--;
+            active = active > 0 ? --active : 0;
         }
     }
 

@@ -15,14 +15,13 @@
 
 package org.openkilda.floodlight;
 
-import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_NAME;
-import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_RUN_ID;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.floodlight.service.zookeeper.ZooKeeperService.ZK_COMPONENT_NAME;
 
 import org.openkilda.bluegreen.kafka.interceptors.VersioningConsumerInterceptor;
 import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
@@ -72,8 +71,8 @@ public interface KafkaChannelConfig extends KafkaConsumerGroupConfig {
         properties.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
 
         properties.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName());
-        properties.put(CONSUMER_COMPONENT_NAME_PROPERTY, COMMON_COMPONENT_NAME);
-        properties.put(CONSUMER_RUN_ID_PROPERTY, COMMON_COMPONENT_RUN_ID);
+        properties.put(CONSUMER_COMPONENT_NAME_PROPERTY, ZK_COMPONENT_NAME);
+        properties.put(CONSUMER_RUN_ID_PROPERTY, getFloodlightRegion());
         properties.put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, getZooKeeperConnectString());
 
         return properties;
@@ -97,8 +96,8 @@ public interface KafkaChannelConfig extends KafkaConsumerGroupConfig {
 
         properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG,
                 VersioningProducerInterceptor.class.getName());
-        properties.put(PRODUCER_COMPONENT_NAME_PROPERTY, COMMON_COMPONENT_NAME);
-        properties.put(PRODUCER_RUN_ID_PROPERTY, COMMON_COMPONENT_RUN_ID);
+        properties.put(PRODUCER_COMPONENT_NAME_PROPERTY, ZK_COMPONENT_NAME);
+        properties.put(PRODUCER_RUN_ID_PROPERTY, getFloodlightRegion());
         properties.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, getZooKeeperConnectString());
 
         return properties;

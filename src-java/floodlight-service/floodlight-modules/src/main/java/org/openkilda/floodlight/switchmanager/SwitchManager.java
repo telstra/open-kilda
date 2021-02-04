@@ -376,7 +376,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     System.currentTimeMillis(), CorrelationContext.getId(), Destination.WFM_TRANSACTION);
             // TODO: Most/all commands are flow related, but not all. 'kilda.flow' might
             // not be the best place to send a generic error.
-            producerService.sendMessageAndTrack("kilda.flow", error);
+            producerService.sendMessageAndTrackWithZk("kilda.flow", error);
         }
         return Command.CONTINUE;
     }

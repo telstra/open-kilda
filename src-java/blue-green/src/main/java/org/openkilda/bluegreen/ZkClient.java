@@ -157,7 +157,7 @@ public abstract class ZkClient implements Watcher {
                 zookeeper.create(nodePath, value,
                         Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             } catch (Exception e) {
-                log.error("Failed to ensure node: {}", nodePath);
+                log.error(String.format("Failed to ensure node: %s. Error: %s", nodePath, e.getMessage()), e);
             }
         }
         if (zookeeper.exists(nodePath, false) == null) {
