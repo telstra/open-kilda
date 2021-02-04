@@ -60,7 +60,8 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
             })
         } else { //run verifier after each feature
             spec.features.each {
-                it.addInterceptor(new IMethodInterceptor() {
+                //push cleanup interceptor to the start of the list, so that it's run AFTER TestFixture interceptor
+                it.interceptors.push(new IMethodInterceptor() {
                     @Override
                     void intercept(IMethodInvocation invocation) throws Throwable {
                         invocation.proceed()
