@@ -62,6 +62,14 @@ public class ExpirableMap<K, V extends Expirable<K>> {
     }
 
     /**
+     * Clear records.
+     */
+    public void clear() {
+        queue.clear();
+        map.clear();
+    }
+
+    /**
      * Iterate over list until meet not expired record. Remove passed records.
      */
     public List<V> expire(long edge) {
