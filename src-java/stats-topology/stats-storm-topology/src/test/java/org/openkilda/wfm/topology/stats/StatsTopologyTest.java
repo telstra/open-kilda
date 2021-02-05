@@ -15,16 +15,19 @@
 
 package org.openkilda.wfm.topology.stats;
 
+import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 import static org.apache.storm.utils.Utils.sleep;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.openkilda.bluegreen.ZkWatchDog.DEFAULT_BUILD_VERSION;
 import static org.openkilda.model.FlowPathDirection.FORWARD;
 import static org.openkilda.model.FlowPathDirection.REVERSE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 
+import org.openkilda.bluegreen.Signal;
 import org.openkilda.floodlight.api.request.EgressFlowSegmentInstallRequest;
 import org.openkilda.floodlight.api.request.IngressFlowSegmentInstallRequest;
 import org.openkilda.floodlight.api.request.IngressFlowSegmentRemoveRequest;
@@ -81,6 +84,8 @@ import com.google.common.collect.ImmutableList;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZooKeeper;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
@@ -136,6 +141,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     @BeforeClass
     public static void setupOnce() throws Exception {
         AbstractStormTest.startZooKafka();
+        setStartSignal();
         AbstractStormTest.startStorm(COMPONENT_NAME, RUN_ID);
 
         LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
@@ -164,6 +170,16 @@ public class StatsTopologyTest extends AbstractStormTest {
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
 
         sleep(TOPOLOGY_START_TIMEOUT);
+    }
+
+    private static void setStartSignal() throws IOException, KeeperException, InterruptedException {
+        ZooKeeper zooKeeper = new ZooKeeper("localhost", 3000, event -> { });
+
+        setNode(zooKeeper, "/kilda", "");
+        setNode(zooKeeper, format("/kilda/%s", COMPONENT_NAME), "");
+        setNode(zooKeeper, format("/kilda/%s/%s", COMPONENT_NAME, RUN_ID), "");
+        setNode(zooKeeper, format("/kilda/%s/%s/signal", COMPONENT_NAME, RUN_ID), Signal.START.toString());
+        setNode(zooKeeper, format("/kilda/%s/%s/build-version", COMPONENT_NAME, RUN_ID), DEFAULT_BUILD_VERSION);
     }
 
     @AfterClass
@@ -429,6 +445,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     @Test
     public void flowStatsSwapPathTest() throws Exception {
+
         // install 3 rules on src switch 1
         sendInstallIngressCommand(MAIN_FORWARD_COOKIE);
         sendInstallEgressCommand(MAIN_REVERSE_COOKIE, SWITCH_ID_1, PORT_2);
@@ -534,7 +551,7 @@ public class StatsTopologyTest extends AbstractStormTest {
                     assertEquals(direction, datapoint.getTags().get("direction"));
                     break;
                 default:
-                    throw new AssertionError(String.format("Unknown metric: %s", datapoint.getMetric()));
+                    throw new AssertionError(format("Unknown metric: %s", datapoint.getMetric()));
             }
         });
     }
@@ -610,7 +627,7 @@ public class StatsTopologyTest extends AbstractStormTest {
             } else if (Objects.equals(2, entry.getValue())) {
                 Assert.assertEquals("unknown", tags.get("flowid"));
             } else {
-                Assert.fail(String.format("Unexpected metric value: %s", entry));
+                Assert.fail(format("Unexpected metric value: %s", entry));
             }
         }
     }
@@ -642,7 +659,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    public void flowRttTest() throws IOException {
+    public void flowRttTest() throws IOException, InterruptedException {
         FlowRttStatsData flowRttStatsData = FlowRttStatsData.builder()
                 .flowId(flowId)
                 .direction("forward")
@@ -847,23 +864,23 @@ public class StatsTopologyTest extends AbstractStormTest {
             try {
                 record = otsdbConsumer.pollMessage(POLL_TIMEOUT);
                 if (record == null) {
-                    throw new AssertionError(String.format(POLL_DATAPOINT_ASSERT_MESSAGE,
+                    throw new AssertionError(format(POLL_DATAPOINT_ASSERT_MESSAGE,
                             expectedDatapointCount, datapoints.size()));
                 }
                 Datapoint datapoint = objectMapper.readValue(record.value(), Datapoint.class);
                 datapoints.add(datapoint);
             } catch (InterruptedException e) {
-                throw new AssertionError(String.format(POLL_DATAPOINT_ASSERT_MESSAGE,
+                throw new AssertionError(format(POLL_DATAPOINT_ASSERT_MESSAGE,
                         expectedDatapointCount, datapoints.size()));
             } catch (IOException e) {
-                throw new AssertionError(String.format("Could not parse datapoint object: '%s'", record.value()));
+                throw new AssertionError(format("Could not parse datapoint object: '%s'", record.value()));
             }
         }
         try {
             // ensure that we received exact expected count of records
             ConsumerRecord<String, String> record = otsdbConsumer.pollMessage(POLL_TIMEOUT);
             if (record != null) {
-                throw new AssertionError(String.format(
+                throw new AssertionError(format(
                         "Got more then %d records. Extra record '%s'", expectedDatapointCount, record));
             }
         } catch (InterruptedException e) {

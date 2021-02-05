@@ -21,6 +21,8 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.utils.JsonKafkaTranslator;
 
@@ -33,6 +35,10 @@ import org.apache.storm.tuple.Values;
 import java.io.IOException;
 
 public class SpeakerRequestDecoderBolt extends AbstractBolt {
+    public static final String ZOOKEEPER_STREAM = ZkStreams.ZK.toString();
+    public static final Fields ZOOKEEPER_STREAM_FIELDS = new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+            ZooKeeperBolt.FIELD_ID_CONTEXT);
+
     public static final String BOLT_ID = StatsComponentType.SPEAKER_REQUEST_DECODER.toString();
 
     public static final String FIELD_ID_KEY = JsonKafkaTranslator.FIELD_ID_KEY;
@@ -42,17 +48,23 @@ public class SpeakerRequestDecoderBolt extends AbstractBolt {
     public static final String STREAM_HUB_AND_SPOKE_ID = "hs";
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
+    public SpeakerRequestDecoderBolt(String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
+    }
+
     @Override
     protected void handleInput(Tuple input) throws PipelineException {
-        String payload = pullValue(input, JsonKafkaTranslator.FIELD_ID_PAYLOAD, String.class);
-        try {
+        if (active) {
+            String payload = pullValue(input, JsonKafkaTranslator.FIELD_ID_PAYLOAD, String.class);
             try {
-                handleDecoded(Utils.MAPPER.readValue(payload, AbstractMessage.class));
-            } catch (JsonMappingException e) {
-                handleDecoded(Utils.MAPPER.readValue(payload, Message.class));
+                try {
+                    handleDecoded(Utils.MAPPER.readValue(payload, AbstractMessage.class));
+                } catch (JsonMappingException e) {
+                    handleDecoded(Utils.MAPPER.readValue(payload, Message.class));
+                }
+            } catch (IOException e) {
+                log.error("Unable to decode JSON message - error:{} json:\"{}\"", e, payload);
             }
-        } catch (IOException e) {
-            log.error("Unable to decode JSON message - error:{} json:\"{}\"", e, payload);
         }
     }
 
@@ -76,5 +88,6 @@ public class SpeakerRequestDecoderBolt extends AbstractBolt {
     public void declareOutputFields(OutputFieldsDeclarer streamManager) {
         streamManager.declareStream(STREAM_GENERIC_ID, STREAM_FIELDS);
         streamManager.declareStream(STREAM_HUB_AND_SPOKE_ID, STREAM_FIELDS);
+        streamManager.declareStream(ZOOKEEPER_STREAM, ZOOKEEPER_STREAM_FIELDS);
     }
 }
