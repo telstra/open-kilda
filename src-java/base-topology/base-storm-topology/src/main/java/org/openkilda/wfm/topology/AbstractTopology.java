@@ -214,16 +214,6 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         return errorCode;
     }
 
-    /**
-     * //TODO(zero_down_time) Remove when zero down time feature will be completed.
-     *
-     * @deprecated use getKafkaProducerProperties with parameters (component name, run id)
-     */
-    @Deprecated
-    private Properties getKafkaProducerProperties() {
-        return getKafkaProducerProperties(COMMON_COMPONENT_NAME, COMMON_COMPONENT_RUN_ID);
-    }
-
     private Properties getKafkaProducerProperties(String componentName, String runId) {
         Properties kafka = new Properties();
 
@@ -445,10 +435,13 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      * Creates Kafka bolt, that uses {@link ObjectSerializer} in order to serialize an object.
      *
      * @param topic Kafka topic
+     * @param componentName component name for zookeeper node
+     * @param runId run id (blue or green) for zookeeper nodes
      * @return {@link KafkaBolt}
      */
-    protected KafkaBolt<String, Object> buildKafkaBoltWithRawObject(final String topic) {
-        Properties properties = getKafkaProducerProperties();
+    protected KafkaBolt<String, Object> buildKafkaBoltWithRawObject(
+            final String topic, String componentName, String runId) {
+        Properties properties = getKafkaProducerProperties(componentName, runId);
         properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ObjectSerializer.class.getName());
 
         return new KafkaBolt<String, Object>()

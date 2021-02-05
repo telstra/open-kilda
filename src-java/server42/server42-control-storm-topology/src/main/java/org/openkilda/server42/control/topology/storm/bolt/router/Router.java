@@ -37,6 +37,8 @@ import org.openkilda.server42.control.topology.storm.bolt.flow.command.FlowComma
 import org.openkilda.server42.control.topology.storm.bolt.flow.command.SendFlowListOnSwitchCommand;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.extern.slf4j.Slf4j;
@@ -63,7 +65,8 @@ public class Router extends AbstractBolt
     private transient RouterService service;
 
 
-    public Router(PersistenceManager persistenceManager) {
+    public Router(PersistenceManager persistenceManager, String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
         this.persistenceManager = persistenceManager;
     }
 
@@ -73,6 +76,10 @@ public class Router extends AbstractBolt
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
+        if (!active) {
+            return;
+        }
+
         String source = input.getSourceComponent();
         if (ComponentId.INPUT_FLOW_HS.toString().equals(source) || ComponentId.INPUT_NB.toString().equals(source)) {
             Message message = pullValue(input, FIELD_ID_INPUT, Message.class);
@@ -130,6 +137,8 @@ public class Router extends AbstractBolt
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         outputFieldsDeclarer.declareStream(STREAM_FLOW_ID, STREAM_FLOW_FIELDS);
+        outputFieldsDeclarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+                ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 
     @Override
