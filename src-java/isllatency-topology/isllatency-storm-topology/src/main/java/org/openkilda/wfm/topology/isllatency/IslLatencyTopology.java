@@ -18,6 +18,9 @@ package org.openkilda.wfm.topology.isllatency;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
+import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.isllatency.bolts.CacheBolt;
 import org.openkilda.wfm.topology.isllatency.bolts.IslLatencyBolt;
@@ -63,6 +66,7 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
 
         TopologyBuilder builder = new TopologyBuilder();
 
+        createZooKeeperSpout(builder);
         createSpouts(builder);
 
         createIslStatusUpdateBolt(builder);
@@ -79,12 +83,28 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
 
         createOpenTsdbBolt(builder);
 
+        createZooKeeperBolt(builder);
+
         return builder.createTopology();
+    }
+
+    private void createZooKeeperSpout(TopologyBuilder builder) {
+        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig().getConnectString());
+        declareSpout(builder, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
+    }
+
+    private void createZooKeeperBolt(TopologyBuilder builder) {
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig().getConnectString());
+        declareBolt(builder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
+                .allGrouping(ROUTER_BOLT_ID, ZkStreams.ZK.toString())
+                .allGrouping(ISL_STATUS_UPDATE_BOLT_ID, ZkStreams.ZK.toString());
     }
 
     private void createOpenTsdbBolt(TopologyBuilder builder) {
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
-        KafkaBolt openTsdbBolt = createKafkaBolt(openTsdbTopic);
+        KafkaBolt openTsdbBolt = createKafkaBolt(openTsdbTopic, getZkTopoName(), getConfig().getBlueGreenMode());
         declareBolt(builder, openTsdbBolt, ISL_LATENCY_OTSDB_BOLT_ID)
                 .shuffleGrouping(ISL_STATS_BOLT_ID);
     }
@@ -126,23 +146,32 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
     }
 
     private void createIslStatusUpdateBolt(TopologyBuilder builder) {
-        IslStatusUpdateBolt islStatusUpdateBolt = new IslStatusUpdateBolt();
+        IslStatusUpdateBolt islStatusUpdateBolt = new IslStatusUpdateBolt(ZooKeeperSpout.SPOUT_ID);
         declareBolt(builder, islStatusUpdateBolt, ISL_STATUS_UPDATE_BOLT_ID)
-                .shuffleGrouping(ISL_STATUS_SPOUT_ID);
+                .shuffleGrouping(ISL_STATUS_SPOUT_ID)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
     private void createRouterBolt(TopologyBuilder builder) {
-        RouterBolt routerBolt = new RouterBolt();
+        RouterBolt routerBolt = new RouterBolt(ZooKeeperSpout.SPOUT_ID);
         declareBolt(builder, routerBolt, ROUTER_BOLT_ID)
-                .shuffleGrouping(ISL_LATENCY_SPOUT_ID);
+                .shuffleGrouping(ISL_LATENCY_SPOUT_ID)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
     private void createSpouts(TopologyBuilder builder) {
         String topoIslLatencyTopic = topologyConfig.getKafkaTopoIslLatencyTopic();
 
         logger.debug("connecting to {} topic", topoIslLatencyTopic);
-        declareKafkaSpout(builder, topoIslLatencyTopic, ISL_LATENCY_SPOUT_ID);
-        declareKafkaSpout(builder, topologyConfig.getKafkaNetworkIslStatusTopic(), ISL_STATUS_SPOUT_ID);
+        declareKafkaSpout(builder, topoIslLatencyTopic, ISL_LATENCY_SPOUT_ID,
+                getZkTopoName(), getConfig().getBlueGreenMode());
+        declareKafkaSpout(builder, topologyConfig.getKafkaNetworkIslStatusTopic(), ISL_STATUS_SPOUT_ID,
+                getZkTopoName(), getConfig().getBlueGreenMode());
+    }
+
+    @Override
+    protected String getZkTopoName() {
+        return "isllatency";
     }
 
     /**
