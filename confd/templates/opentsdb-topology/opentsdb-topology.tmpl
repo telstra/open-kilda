@@ -7,6 +7,8 @@ config:
 spouts:
   - id: "kilda.otsdb-spout"
     parallelism: {{ getv "/kilda_opentsdb_num_spouts" }}
+  - id: "zookeeper.spout"
+    parallelism: 1
 
 # bolt definitions
 bolts:
@@ -18,3 +20,5 @@ bolts:
   - id: "otsdb-bolt"
     parallelism: {{ getv "/kilda_opentsdb_num_opentsdbbolt" }}
     numTasks: {{ getv "/kilda_opentsdb_workers_opentsdbolt" }}
+  - id: "zookeeper.bolt"
+    parallelism: 1
