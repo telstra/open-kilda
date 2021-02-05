@@ -40,7 +40,6 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
-import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.pce.GetPathsResult;
@@ -343,15 +342,15 @@ public abstract class AbstractFlowTest extends InMemoryGraphBasedTest {
                         .destSwitchId(SWITCH_SOURCE)
                         .segments(reverseSegments)
                         .build())
-                .usedStrategy(PathComputationStrategy.COST)
+                .backUpPathComputationWayUsed(false)
                 .build();
     }
 
     protected GetPathsResult make3SwitchesPathPair() {
-        return make3SwitchesPathPair(PathComputationStrategy.COST);
+        return make3SwitchesPathPair(false);
     }
 
-    protected GetPathsResult make3SwitchesPathPair(PathComputationStrategy pathComputationStrategy) {
+    protected GetPathsResult make3SwitchesPathPair(boolean backUpPathComputationWayUsed) {
         List<Segment> forwardSegments = ImmutableList.of(
                 makePathSegment(islSourceTransit),
                 makePathSegment(islTransitDest));
@@ -370,7 +369,7 @@ public abstract class AbstractFlowTest extends InMemoryGraphBasedTest {
                         .destSwitchId(SWITCH_SOURCE)
                         .segments(reverseSegments)
                         .build())
-                .usedStrategy(pathComputationStrategy)
+                .backUpPathComputationWayUsed(backUpPathComputationWayUsed)
                 .build();
     }
 

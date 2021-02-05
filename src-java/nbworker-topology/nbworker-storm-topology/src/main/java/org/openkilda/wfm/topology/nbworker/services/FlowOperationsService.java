@@ -385,11 +385,13 @@ public class FlowOperationsService {
                 && !flowPatch.getPathComputationStrategy().equals(flow.getPathComputationStrategy());
         boolean changedMaxLatency = flowPatch.getMaxLatency() != null
                 && !flowPatch.getMaxLatency().equals(flow.getMaxLatency());
+        boolean changedMaxLatencyTier2 = flowPatch.getMaxLatencyTier2() != null
+                && !flowPatch.getMaxLatencyTier2().equals(flow.getMaxLatencyTier2());
         boolean strategyIsMaxLatency =
                 PathComputationStrategy.MAX_LATENCY.equals(flowPatch.getPathComputationStrategy())
                         || flowPatch.getPathComputationStrategy() == null
                         && PathComputationStrategy.MAX_LATENCY.equals(flow.getPathComputationStrategy());
-        return changedStrategy || changedMaxLatency && strategyIsMaxLatency;
+        return changedStrategy || (strategyIsMaxLatency && (changedMaxLatency || changedMaxLatencyTier2));
     }
 
     private boolean updateRequiredBySource(FlowPatch flowPatch, Flow flow) {

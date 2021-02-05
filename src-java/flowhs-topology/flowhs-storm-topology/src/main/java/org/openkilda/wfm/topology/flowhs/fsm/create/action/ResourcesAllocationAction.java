@@ -223,6 +223,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
     private void allocateMainPath(FlowCreateFsm stateMachine) throws UnroutableFlowException,
             RecoverableException, ResourceAllocationException {
         GetPathsResult paths = pathComputer.getPath(getFlow(stateMachine.getFlowId()));
+        stateMachine.setBackUpPrimaryPathComputationWayUsed(paths.isBackUpPathComputationWayUsed());
 
         log.debug("Creating the primary path {} for flow {}", paths, stateMachine.getFlowId());
 
@@ -266,6 +267,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         tmpFlow.setGroupId(flowRepository.getOrCreateFlowGroupId(flowId)
                 .orElseThrow(() -> new FlowNotFoundException(flowId)));
         GetPathsResult protectedPath = pathComputer.getPath(tmpFlow);
+        stateMachine.setBackUpProtectedPathComputationWayUsed(protectedPath.isBackUpPathComputationWayUsed());
 
         boolean overlappingProtectedPathFound =
                 flowPathBuilder.arePathsOverlapped(protectedPath.getForward(), tmpFlow.getForwardPath())
