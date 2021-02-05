@@ -1,4 +1,4 @@
-# Functional tests
+# Functional testss
 This module holds functional tests designed to be run against staging OR virtual environment.
 - [How to run](#how-to-run)
 	- [Virtual (local Kilda)](#virtual-local-kilda)
