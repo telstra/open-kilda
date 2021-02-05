@@ -46,6 +46,8 @@ public class FlowPathSwapService {
     private final FlowPathSwapHubCarrier carrier;
     private final FlowEventRepository flowEventRepository;
 
+    private boolean active;
+
     public FlowPathSwapService(FlowPathSwapHubCarrier carrier,
                                PersistenceManager persistenceManager,
                                int speakerCommandRetriesLimit, FlowResourcesManager flowResourcesManager) {
@@ -136,6 +138,28 @@ public class FlowPathSwapService {
             fsms.remove(key);
 
             carrier.cancelTimeoutCallback(key);
+
+            if (!active && fsms.isEmpty()) {
+                carrier.sendInactive();
+            }
         }
+    }
+
+    /**
+     * Handles deactivate command.
+     */
+    public boolean deactivate() {
+        active = false;
+        if (fsms.isEmpty()) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Handles activate command.
+     */
+    public void activate() {
+        active = true;
     }
 }
