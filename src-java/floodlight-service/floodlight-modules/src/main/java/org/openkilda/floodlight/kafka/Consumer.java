@@ -18,6 +18,7 @@ package org.openkilda.floodlight.kafka;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.openkilda.floodlight.service.zookeeper.ZooKeeperService.ZK_COMPONENT_NAME;
 
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.bluegreen.Signal;
@@ -138,13 +139,14 @@ public class Consumer implements Runnable, ZooKeeperEventObserver {
                 Thread.currentThread().interrupt();
             } catch (Exception e) {
                 // Just log the exception, and start processing again with a new consumer.
-                logger.error("Exception received during main kafka consumer loop: {}", e);
+                logger.error(format("Exception received during main kafka consumer loop: %s", e.getMessage()), e);
             }
         }
     }
 
     @Override
     public void handleLifecycleEvent(LifecycleEvent event) {
+        logger.info("Component {} with id {} got lifecycle event {}", ZK_COMPONENT_NAME, zkService.getRegion(), event);
         if (Signal.START.equals(event.getSignal())) {
             active.set(true);
             zkService.getZooKeeperStateTracker().processLifecycleEvent(event);

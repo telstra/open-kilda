@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.service.kafka;
 
+import static org.openkilda.floodlight.service.zookeeper.ZooKeeperService.ZK_COMPONENT_NAME;
+
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.bluegreen.Signal;
 import org.openkilda.floodlight.service.zookeeper.ZooKeeperEventObserver;
@@ -94,6 +96,7 @@ public class KafkaProducerService implements IKafkaProducerService, ZooKeeperEve
 
     @Override
     public void handleLifecycleEvent(LifecycleEvent event) {
+        logger.info("Component {} with id {} got lifecycle event {}", ZK_COMPONENT_NAME, zkService.getRegion(), event);
         if (Signal.START.equals(event.getSignal())) {
             active.set(true);
             this.zkService.getZooKeeperStateTracker().processLifecycleEvent(event);
