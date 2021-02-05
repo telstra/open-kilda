@@ -90,6 +90,7 @@ class RoundTripIslSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(allLinks, isl).get().roundTripStatus == DISCOVERED
             assert islUtils.getIslInfo(allLinks, isl.reversed).get().roundTripStatus == DISCOVERED
         }
+        database.resetCosts()
 
         where:
         bfd << [false, true]
@@ -148,6 +149,7 @@ for ISL alive confirmation)"
                 }.size() == topology.islsForActiveSwitches.size() * 2
             }
         }
+        database.resetCosts()
     }
 
     @Tidy
@@ -193,6 +195,7 @@ on both switches)"
                 assert islUtils.getIslInfo(allLinks, roundTripIsl.reversed).get().roundTripStatus == DISCOVERED
             }
         }
+        database.resetCosts()
     }
 
     @Tidy
@@ -293,6 +296,7 @@ round trip latency rule is removed on the dst switch"() {
                 assert northbound.validateSwitch(dstSw.dpId).rules.missing.empty
             }
         }
+        database.resetCosts()
     }
 
     @Tidy
