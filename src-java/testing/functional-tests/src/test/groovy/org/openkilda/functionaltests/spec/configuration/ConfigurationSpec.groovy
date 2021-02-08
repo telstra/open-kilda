@@ -28,6 +28,8 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 
+import java.util.concurrent.TimeUnit
+
 @Narrative("""
 Kilda configuration is a special lever that allows to change default flow encapsulation type while creating.
 This spec assumes that 'transit_vlan' is always default type
@@ -126,11 +128,12 @@ class ConfigurationSpec extends HealthCheckSpecification {
         }
         def portDiscoveryIsEnabled = false
         def blockData = switchHelper.knockoutSwitch(sw, RW, true)
+        isls.each { islUtils.changePortDiscovery(it, false) }
+        TimeUnit.SECONDS.sleep(discoveryInterval)
         isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
-        wait(WAIT_OFFSET) {
+        Wrappers.wait(WAIT_OFFSET) {
             def links = northbound.getAllLinks()
-            isls.each {
-                assert !islUtils.getIslInfo(links, it).present
+            isls.each {assert !islUtils.getIslInfo(links, it).present
                 assert !islUtils.getIslInfo(links, it.reversed).present
             }
         }
@@ -144,25 +147,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
 
         and: "New switch connects"
         switchHelper.reviveSwitch(sw, blockData, false)
-        withPool {
-            isls.eachParallel { Isl isl ->
-                northboundV2.updatePortProperties(isl.srcSwitch.dpId, isl.srcPort,
-                        new PortPropertiesDto(discoveryEnabled: true))
-                northboundV2.updatePortProperties(isl.dstSwitch.dpId,isl.dstPort,
-                        new PortPropertiesDto(discoveryEnabled: true))
-            }
-        }
-        wait(discoveryInterval + WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            withPool {
-                isls.eachParallel { Isl isl ->
-                    assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
-                    assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
-                }
-            }
-        }
-        def switchIsActivated = true
-        portDiscoveryIsEnabled = true
+        isls.each { islUtils.changePortDiscovery(it, true) }
 
         then: "Switch is added with switch property according to the kilda configuration"
         northbound.getSwitchProperties(sw.dpId).multiTable == newMultiTableValue
@@ -185,8 +170,12 @@ class ConfigurationSpec extends HealthCheckSpecification {
         wait(RULES_INSTALLATION_TIME) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
         }
-        wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+        Wrappers.wait(WAIT_OFFSET) {
+            def allIsls = northbound.getAllLinks()
+            isls.each {
+                assert islUtils.getIslInfo(allIsls, it).get().state == IslChangeType.DISCOVERED
+                assert islUtils.getIslInfo(allIsls, it.reversed).get().state == IslChangeType.DISCOVERED
+            }
         }
     }
 }

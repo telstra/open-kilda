@@ -371,10 +371,9 @@ class LinkSpec extends HealthCheckSpecification {
         assumeTrue(isl as boolean, "Unable to locate $islDescription ISL for this test")
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         def portIsDown = true
-        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getLink(isl).actualState == FAILED
-        }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(isl).actualState == FAILED }
+        islUtils.changePortDiscovery(isl, false)
+        TimeUnit.SECONDS.sleep(discoveryInterval)
 
         when: "Try to delete the link"
         def response = northbound.deleteLink(islUtils.toLinkParameters(isl))
@@ -385,6 +384,7 @@ class LinkSpec extends HealthCheckSpecification {
         !islUtils.getIslInfo(isl.reversed)
 
         when: "Removed link becomes active again (port brought UP)"
+        islUtils.changePortDiscovery(isl, true)
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         portIsDown = false
 
@@ -731,7 +731,6 @@ class LinkSpec extends HealthCheckSpecification {
 
         def isl = pathHelper.getInvolvedIsls(flowPath)[0]
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getLink(isl).actualState == FAILED
         }
@@ -831,18 +830,18 @@ class LinkSpec extends HealthCheckSpecification {
         def aSwitchReverseRuleIsDeleted = true
 
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == FAILED
-            assert islUtils.getIslInfo(links, isl.reversed).get().state == FAILED
+            assert northbound.getLink(isl).state == FAILED
+            assert northbound.getLink(isl.reversed).state == FAILED
         }
-
+        islUtils.changePortDiscovery(isl, false)
+        def discoveryOff = true
+        TimeUnit.SECONDS.sleep(discoveryInterval)
         northbound.deleteLink(islUtils.toLinkParameters(isl))
-        Wrappers.wait(WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            assert !islUtils.getIslInfo(links, isl).present
-        }
+        Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(isl).present }
 
         when: "Add a-switch rules for discovering ISL in one direction only"
+        islUtils.changePortDiscovery(isl, true)
+        discoveryOff = false
         lockKeeper.addFlows([isl.aswitch])
         aSwitchForwardRuleIsDeleted = false
 
@@ -871,6 +870,7 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         cleanup:
+        discoveryOff && islUtils.changePortDiscovery(isl, true)
         aSwitchForwardRuleIsDeleted && lockKeeper.addFlows([isl.aswitch])
         aSwitchReverseRuleIsDeleted && lockKeeper.addFlows([isl.aswitch.reversed])
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
