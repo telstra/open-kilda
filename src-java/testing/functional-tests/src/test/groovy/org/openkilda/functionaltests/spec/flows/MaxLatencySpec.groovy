@@ -24,7 +24,7 @@ import spock.lang.Shared
 import spock.lang.Unroll
 
 @See("https://github.com/telstra/open-kilda/blob/develop/docs/design/pce/design.md")
-class ProtectedPathMaxLatencySpec extends HealthCheckSpecification {
+class MaxLatencySpec extends HealthCheckSpecification {
     @Shared List<PathNode> mainPath, alternativePath
     @Shared List<Isl> mainIsls, alternativeIsls, islsToBreak
     @Shared SwitchPair switchPair
