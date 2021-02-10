@@ -169,7 +169,10 @@ get /kilda/ping/blue/build-version
 get /kilda/portstate/blue/build-version
 get /kilda/stats/blue/build-version
 get /kilda/server42-control/blue/build-version
-get /kilda/common_component/common_run_id/build-version
+get /kilda/server42-control-app/server42-control-app-run-id/build-version
+get /kilda/server42-stats-app/server42-stats-app-run-id/build-version
+get /kilda/server42-control-storm-stub/server42-control-storm-stub-run-id/build-version
+get /kilda/func_test/func_test_run_id/build-version
 ```
 
 #### Create a topology or run func tests
@@ -235,7 +238,10 @@ set /kilda/server42-control/green/signal START
 #### Turn off blue network and turn on green network
 
 ```
-set /kilda/common_component/common_run_id/build-version green
+set /kilda/func_test/func_test_run_id/build-version green
+set /kilda/server42-control-app/server42-control-app-run-id/build-version green
+set /kilda/server42-stats-app/server42-stats-app-run-id/build-version green
+set /kilda/server42-control-storm-stub/server42-control-storm-stub-run-id/build-version green
 set /kilda/network/blue/signal SHUTDOWN
 set /kilda/network/green/signal START
 ```
