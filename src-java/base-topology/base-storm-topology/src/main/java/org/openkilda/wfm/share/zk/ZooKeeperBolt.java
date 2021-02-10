@@ -35,17 +35,19 @@ public class ZooKeeperBolt extends AbstractBolt {
     public static final String FIELD_ID_STATE = "lifecycle.state";
 
     public static final String FIELD_ID_CONTEXT = AbstractBolt.FIELD_ID_CONTEXT;
-    private String id;
-    private String serviceName;
-    private String connectionString;
+    private final String id;
+    private final String serviceName;
+    private final String connectionString;
+    private final int expectedState;
     private Instant zooKeeperConnectionTimestamp = Instant.MIN;
     private transient ZkWriter zkWriter;
     private transient ZkStateTracker zkStateTracker;
 
-    public ZooKeeperBolt(String id, String serviceName, String connectionString) {
+    public ZooKeeperBolt(String id, String serviceName, String connectionString, int expectedState) {
         this.id = id;
         this.serviceName = serviceName;
         this.connectionString = connectionString;
+        this.expectedState = expectedState;
     }
 
 
@@ -86,7 +88,8 @@ public class ZooKeeperBolt extends AbstractBolt {
     private void initZk() {
         zkWriter = ZkWriter.builder().id(id).serviceName(serviceName)
                 .connectionRefreshInterval(ZkClient.DEFAULT_CONNECTION_REFRESH_INTERVAL)
-                .connectionString(connectionString).build();
+                .connectionString(connectionString)
+                .expectedState(expectedState).build();
         zkWriter.initAndWaitConnection();
         zkStateTracker = new ZkStateTracker(zkWriter);
     }

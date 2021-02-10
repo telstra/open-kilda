@@ -428,7 +428,9 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
 
     private void zookeeperBolt(TopologyBuilder topology) {
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(topologyConfig.getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString());
+                getZookeeperConfig().getConnectString(), getBoltInstancesCount(SpeakerRouter.BOLT_ID,
+                WatcherHandler.BOLT_ID, WatchListHandler.BOLT_ID, DecisionMakerHandler.BOLT_ID, PortHandler.BOLT_ID,
+                NetworkHistoryHandler.BOLT_ID));
         declareBolt(topology, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(SpeakerRouter.BOLT_ID, SpeakerRouter.STREAM_ZOOKEEPER_ID)
                 .allGrouping(WatcherHandler.BOLT_ID, WatcherHandler.STREAM_ZOOKEEPER_ID)

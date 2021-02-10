@@ -123,7 +123,11 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
     private void zkBolt(TopologyBuilder topologyBuilder) {
         String zkString = getZookeeperConfig().getConnectString();
-        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(), zkString);
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(), zkString,
+                getBoltInstancesCount(ComponentId.FLOW_CREATE_HUB.name(), ComponentId.FLOW_UPDATE_HUB.name(),
+                        ComponentId.FLOW_DELETE_HUB.name(), ComponentId.FLOW_PATH_SWAP_HUB.name(),
+                        ComponentId.FLOW_REROUTE_HUB.name(), ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(),
+                        ComponentId.FLOW_ROUTER_BOLT.name()));
         declareBolt(topologyBuilder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(ComponentId.FLOW_CREATE_HUB.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.FLOW_UPDATE_HUB.name(), ZkStreams.ZK.toString())

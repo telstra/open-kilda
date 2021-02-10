@@ -125,6 +125,7 @@ public abstract class AbstractStormTest {
         setNode(zooKeeper, format("/%s", root), "");
         setNode(zooKeeper, format("/%s/%s", root, name), "");
         setNode(zooKeeper, format("/%s/%s/%s", root, name, id), "");
+        setNode(zooKeeper, format("/%s/%s/%s/expected_state", root, name, id), "");
         setNode(zooKeeper, format("/%s/%s/%s/signal", root, name, id), Signal.START.toString());
         setNode(zooKeeper, format("/%s/%s/%s/build-version", root, name, id), DEFAULT_BUILD_VERSION);
     }

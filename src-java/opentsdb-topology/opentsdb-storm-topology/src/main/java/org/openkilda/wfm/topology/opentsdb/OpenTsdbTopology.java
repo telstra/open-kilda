@@ -66,7 +66,7 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
 
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString());
+                getZookeeperConfig().getConnectString(), getBoltInstancesCount(OTSDB_PARSE_BOLT_ID));
         declareBolt(tb, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(OTSDB_PARSE_BOLT_ID, ZkStreams.ZK.toString());
 

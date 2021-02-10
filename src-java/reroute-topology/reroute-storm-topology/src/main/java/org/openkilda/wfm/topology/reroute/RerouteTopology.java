@@ -101,7 +101,8 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
 
     private void zkBolt(TopologyBuilder topologyBuilder) {
         String zkString = getZookeeperConfig().getConnectString();
-        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(), zkString);
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(), zkString,
+                getBoltInstancesCount(RerouteBolt.BOLT_ID, OperationQueueBolt.BOLT_ID));
         declareBolt(topologyBuilder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(RerouteBolt.BOLT_ID, ZkStreams.ZK.toString())
                 .allGrouping(OperationQueueBolt.BOLT_ID, ZkStreams.ZK.toString());
