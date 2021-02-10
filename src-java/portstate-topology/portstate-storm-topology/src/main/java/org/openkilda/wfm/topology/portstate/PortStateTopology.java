@@ -81,7 +81,7 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
         // Setup spout and bolt for TOPO_DISCO_SPOUT line
         String topoDiscoTopic = topologyConfig.getKafkaTopoDiscoTopic();
         logger.debug("connecting to {} topic", topoDiscoTopic);
-        declareKafkaSpout(builder, topoDiscoTopic, TOPO_DISCO_SPOUT, getZkTopoName(), getConfig().getBlueGreenMode());
+        declareKafkaSpout(builder, topoDiscoTopic, TOPO_DISCO_SPOUT);
 
         TopoDiscoParseBolt topoDiscoParseBolt = new TopoDiscoParseBolt(ZooKeeperSpout.SPOUT_ID);
         declareBolt(builder, topoDiscoParseBolt, TOPO_DISCO_PARSE_BOLT_NAME)
@@ -94,14 +94,14 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
                 .shuffleGrouping(WFM_STATS_PARSE_BOLT_NAME, WfmStatsParseBolt.WFM_TO_PARSE_PORT_INFO_STREAM);
 
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
-        KafkaBolt openTsdbBolt = createKafkaBolt(openTsdbTopic, getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt openTsdbBolt = createKafkaBolt(openTsdbTopic);
         declareBolt(builder, openTsdbBolt, OTSDB_KAFKA_BOLT_NAME)
                 .shuffleGrouping(PARSE_PORT_INFO_BOLT_NAME);
 
         // Setup spout and bolt for WFM_STATS_SPOUT line
         String wfmStatsTopic = topologyConfig.getKafkaStatsTopic();
         logger.debug("connecting to {} topic", wfmStatsTopic);
-        declareKafkaSpout(builder, wfmStatsTopic, WFM_STATS_SPOUT, getZkTopoName(), getConfig().getBlueGreenMode());
+        declareKafkaSpout(builder, wfmStatsTopic, WFM_STATS_SPOUT);
 
         WfmStatsParseBolt wfmStatsParseBolt = new WfmStatsParseBolt(ZooKeeperSpout.SPOUT_ID);
         declareBolt(builder, wfmStatsParseBolt, WFM_STATS_PARSE_BOLT_NAME)
@@ -118,7 +118,7 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
 
         String speakerTopic = topologyConfig.getKafkaSpeakerTopic();
-        KafkaBolt speakerBolt = buildKafkaBolt(speakerTopic, getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt speakerBolt = buildKafkaBolt(speakerTopic);
         declareBolt(builder, speakerBolt, SPEAKER_KAFKA_BOLT_NAME)
                 .shuffleGrouping(REQUEST_SPEAKER_BOLT_NAME);
 

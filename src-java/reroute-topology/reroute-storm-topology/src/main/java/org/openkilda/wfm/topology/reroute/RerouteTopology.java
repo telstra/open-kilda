@@ -69,8 +69,7 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
 
         coordinator(topologyBuilder);
 
-        declareKafkaSpout(topologyBuilder, topologyConfig.getKafkaTopoRerouteTopic(), SPOUT_ID_REROUTE,
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        declareKafkaSpout(topologyBuilder, topologyConfig.getKafkaTopoRerouteTopic(), SPOUT_ID_REROUTE);
 
         PersistenceManager persistenceManager = PersistenceProvider.getInstance()
                 .getPersistenceManager(configurationProvider);
@@ -81,13 +80,11 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
 
         operationQueue(topologyBuilder);
 
-        KafkaBolt<String, Message> kafkaFlowHsBolt = buildKafkaBolt(topologyConfig.getKafkaFlowHsTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt<String, Message> kafkaFlowHsBolt = buildKafkaBolt(topologyConfig.getKafkaFlowHsTopic());
         declareBolt(topologyBuilder, kafkaFlowHsBolt, BOLT_ID_KAFKA_FLOWHS)
                 .shuffleGrouping(OperationQueueBolt.BOLT_ID);
 
-        KafkaBolt<String, Message> kafkaNorthboundBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt<String, Message> kafkaNorthboundBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         declareBolt(topologyBuilder, kafkaNorthboundBolt, BOLT_ID_KAFKA_NB)
                 .shuffleGrouping(FlowRerouteQueueBolt.BOLT_ID, STREAM_NORTHBOUND_ID);
         zkBolt(topologyBuilder);

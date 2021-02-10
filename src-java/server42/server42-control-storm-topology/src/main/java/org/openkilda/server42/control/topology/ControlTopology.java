@@ -97,19 +97,19 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
     private void inputFlowHs(TopologyBuilder topology) {
         declareKafkaSpout(topology,
                 topologyConfig.getKafkaTopics().getFlowHsServer42StormNotifyTopic(),
-                ComponentId.INPUT_FLOW_HS.toString(), getZkTopoName(), topologyConfig.getBlueGreenMode());
+                ComponentId.INPUT_FLOW_HS.toString());
     }
 
     private void inputNbWorker(TopologyBuilder topology) {
         declareKafkaSpout(topology,
                 topologyConfig.getKafkaTopics().getNbWorkerServer42StormNotifyTopic(),
-                ComponentId.INPUT_NB.toString(), getZkTopoName(), topologyConfig.getBlueGreenMode());
+                ComponentId.INPUT_NB.toString());
     }
 
     private void inputControl(TopologyBuilder topology) {
         declareKafkaSpout(topology,
                 topologyConfig.getKafkaTopics().getServer42ControlCommandsReplyTopic(),
-                ComponentId.INPUT_SERVER42_CONTROL.toString(), getZkTopoName(), topologyConfig.getBlueGreenMode());
+                ComponentId.INPUT_SERVER42_CONTROL.toString());
     }
 
     private void router(TopologyBuilder topology) {
@@ -130,8 +130,7 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
     }
 
     private void outputSpeaker(TopologyBuilder topology) {
-        KafkaBolt output = buildKafkaBoltWithRawObject(topologyConfig.getKafkaTopics().getServer42StormCommandsTopic(),
-                getZkTopoName(), topologyConfig.getBlueGreenMode());
+        KafkaBolt output = buildKafkaBoltWithRawObject(topologyConfig.getKafkaTopics().getServer42StormCommandsTopic());
         declareBolt(topology, output, ComponentId.OUTPUT_SERVER42_CONTROL.toString())
                 .shuffleGrouping(FlowHandler.BOLT_ID, FlowHandler.STREAM_CONTROL_COMMANDS_ID);
     }
