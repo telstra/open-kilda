@@ -1,5 +1,6 @@
 plugins {
     id 'groovy'
+    id 'com.adarshr.test-logger' version '2.1.1'
 }
 
 description = 'Functional-Tests'
@@ -70,4 +71,22 @@ task runTest(type: Test) {
 
 tasks.withType(Test) {
     outputs.upToDateWhen { false } //never cache results of functional tests
+}
+
+testlogger {
+    theme 'mocha'
+    showExceptions true
+    showStackTraces true
+    showFullStackTraces true
+    showCauses true
+    slowThreshold 90 * 1000
+    showSummary true
+    showSimpleNames true
+    showPassed true
+    showSkipped true
+    showFailed true
+    showStandardStreams true
+    showPassedStandardStreams false
+    showSkippedStandardStreams true
+    showFailedStandardStreams true
 }
