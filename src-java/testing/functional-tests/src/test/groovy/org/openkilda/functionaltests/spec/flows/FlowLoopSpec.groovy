@@ -564,7 +564,9 @@ class FlowLoopSpec extends HealthCheckSpecification {
         !northboundV2.getFlow(flow.flowId).loopSwitchId
 
         and: "FlowLoop rules are deleted from the switch"
-        assert getFlowLoopRules(sw.dpId).empty
+        Wrappers.wait(RULES_DELETION_TIME) {
+            assert getFlowLoopRules(sw.dpId).empty
+        }
 
         and: "Flow is UP and valid"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
