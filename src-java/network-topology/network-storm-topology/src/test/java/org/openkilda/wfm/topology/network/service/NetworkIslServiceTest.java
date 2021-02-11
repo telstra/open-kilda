@@ -34,6 +34,7 @@ import static org.mockito.Mockito.when;
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
+import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
 import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
 import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.messaging.info.event.PathNode;
@@ -64,6 +65,7 @@ import org.openkilda.stubs.ManualClock;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
+import org.openkilda.wfm.topology.network.error.IslControllerNotFoundException;
 import org.openkilda.wfm.topology.network.model.BfdStatusUpdate;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
@@ -102,6 +104,7 @@ public class NetworkIslServiceTest {
     private final ManualClock clock = new ManualClock();
 
     private final StubIslStorage islStorage = new StubIslStorage();
+    private final Map<SwitchId, Switch> switchStorage = new HashMap<>();
 
     private final Endpoint endpointAlpha1 = Endpoint.of(new SwitchId(1), 1);
     private final Endpoint endpointBeta2 = Endpoint.of(new SwitchId(2), 2);
@@ -747,8 +750,7 @@ public class NetworkIslServiceTest {
                                     referenceBeta.getSource().getDatapath(),
                                     referenceBeta.getSource().getPortNumber(), 0),
                             entry.getPathNode())));
-            // one extra invocation was inside {@code prepareActiveIsl()}
-            verify(carrier, times(i + 2)).triggerReroute(argThat(
+            verify(carrier, times(i + 1)).triggerReroute(argThat(
                     entry -> entry instanceof RerouteInactiveFlows && Objects.equals(
                             new PathNode(
                                     referenceAlpha.getSource().getDatapath(),
@@ -856,6 +858,124 @@ public class NetworkIslServiceTest {
         verifyNoMoreInteractions(dashboardLogger);
     }
 
+    @Test
+    public void resurrectAfterRemoval() {
+        IslReference reference = prepareResurrection();
+        service.islUp(reference.getSource(), reference, new IslDataHolder(1000, 1000, 1000));
+        testResurrection(reference, true);
+    }
+
+    @Test
+    public void noResurrectOnPollFail() {
+        IslReference reference = prepareResurrection();
+        service.islDown(reference.getSource(), reference, IslDownReason.POLL_TIMEOUT);
+        testResurrection(reference, false);
+    }
+
+    @Test
+    public void resurrectOnRoundTripDiscovery() {
+        IslReference reference = prepareResurrection();
+        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), IslStatus.ACTIVE));
+        testResurrection(reference, true);
+    }
+
+    @Test
+    public void noResurrectOnRoundTripFail() {
+        IslReference reference = prepareResurrection();
+        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), IslStatus.INACTIVE));
+        testResurrection(reference, false);
+    }
+
+    @Test
+    public void noResurrectOnBfdUp() {
+        IslReference reference = prepareResurrection();
+        service.bfdStatusUpdate(reference.getSource(), reference, BfdStatusUpdate.UP);
+        testResurrection(reference, false);
+    }
+
+    @Test
+    public void noResurrectOnBfdDown() {
+        IslReference reference = prepareResurrection();
+        service.bfdStatusUpdate(reference.getSource(), reference, BfdStatusUpdate.DOWN);
+        testResurrection(reference, false);
+    }
+
+    @Test
+    public void noResurrectOnBfdFail() {
+        IslReference reference = prepareResurrection();
+        service.bfdStatusUpdate(reference.getSource(), reference, BfdStatusUpdate.FAIL);
+        testResurrection(reference, false);
+    }
+
+    @Test
+    public void noResurrectOnBfdKill() {
+        IslReference reference = prepareResurrection();
+        service.bfdStatusUpdate(reference.getSource(), reference, BfdStatusUpdate.KILL);
+        testResurrection(reference, false);
+    }
+
+    private IslReference prepareResurrection() {
+        setupIslStorageStub();
+
+        IslReference reference = prepareActiveIsl(true);
+
+        final Endpoint alphaEnd = reference.getSource();
+        final Endpoint zetaEnd = reference.getDest();
+
+        service.islDown(alphaEnd, reference, IslDownReason.POLL_TIMEOUT);
+        service.islDown(zetaEnd, reference, IslDownReason.POLL_TIMEOUT);
+
+        reset(carrier);
+        service.remove(reference);
+
+        verify(carrier).islDefaultRulesDelete(eq(alphaEnd), eq(zetaEnd));
+        verify(carrier).islDefaultRulesDelete(eq(zetaEnd), eq(alphaEnd));
+        verify(carrier).bfdDisableRequest(eq(alphaEnd));
+        verify(carrier).bfdDisableRequest(eq(zetaEnd));
+        verify(carrier).auxiliaryPollModeUpdateRequest(alphaEnd, false);
+        verify(carrier).auxiliaryPollModeUpdateRequest(zetaEnd, false);
+        verifyNoMoreInteractions(carrier);
+        Assert.assertTrue(islStorage.lookup(alphaEnd, zetaEnd).isPresent());
+
+        return reference;
+    }
+
+    private void testResurrection(IslReference reference, boolean shouldResurrect) {
+        final Endpoint alphaEnd = reference.getSource();
+        final Endpoint zetaEnd = reference.getDest();
+
+        reset(carrier);
+        service.islDefaultRuleDeleted(reference, new RemoveIslDefaultRulesResult(
+                alphaEnd.getDatapath(), alphaEnd.getPortNumber(),
+                zetaEnd.getDatapath(), zetaEnd.getPortNumber(),
+                true));
+        service.islDefaultRuleDeleted(reference, new RemoveIslDefaultRulesResult(
+                zetaEnd.getDatapath(), zetaEnd.getPortNumber(),
+                alphaEnd.getDatapath(), alphaEnd.getPortNumber(),
+                true));
+
+        if (!shouldResurrect) {
+            verify(carrier).islRemovedNotification(eq(alphaEnd), eq(reference));
+            verify(carrier).islRemovedNotification(eq(zetaEnd), eq(reference));
+        }
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void noIslCreationOnIslDown() {
+        setupIslStorageStub();
+
+        IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
+        for (IslDownReason reason : IslDownReason.values()) {
+            try {
+                service.islDown(reference.getSource(), reference, reason);
+                Assert.fail("No expected exception IslControllerNotFoundException");
+            } catch (IslControllerNotFoundException e) {
+                // expected
+            }
+        }
+    }
+
     private IslReference preparePortDownStatusReset() {
         setupIslStorageStub();
         IslReference reference = prepareActiveIsl();
@@ -877,9 +997,13 @@ public class NetworkIslServiceTest {
     }
 
     private IslReference prepareActiveIsl() {
+        return prepareActiveIsl(false);
+    }
+
+    private IslReference prepareActiveIsl(boolean isMultitable) {
         // prepare data
-        final Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2, false).build();
-        final Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1, false).build();
+        final Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2, isMultitable).build();
+        final Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1, isMultitable).build();
 
         // setup alpha -> beta half
         IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
@@ -889,8 +1013,20 @@ public class NetworkIslServiceTest {
         // setup beta -> alpha half
         service.islUp(endpointBeta2, reference, new IslDataHolder(islBetaAlpha));
 
+        if (isMultitable) {
+            service.islDefaultRuleInstalled(reference, new InstallIslDefaultRulesResult(
+                    endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
+                    endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
+                    true));
+            service.islDefaultRuleInstalled(reference, new InstallIslDefaultRulesResult(
+                    endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
+                    endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
+                    true));
+        }
+
         verify(dashboardLogger).onIslUp(eq(reference), any());
         reset(dashboardLogger);
+        reset(carrier);
 
         return reference;
     }

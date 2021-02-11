@@ -94,7 +94,7 @@ CLEAN_UP_RESOURCES : isl-rule-removed [both endpoints are valid] / emit isl-remo
 CLEAN_UP_RESOURCES : isl-rule-timeout [has attempts] / emit remove isl rules for timeout endpoint
 CLEAN_UP_RESOURCES : isl-rule-timeout [!has attempts] / emit isl-remove-finished
 CLEAN_UP_RESOURCES --> DELETED : _resources_done
-CLEAN_UP_RESOURCES --> OPERATIONAL : isl-(up|down|move)|bfd-(up|down|kill)|round-trip-status
+CLEAN_UP_RESOURCES --> OPERATIONAL : isl-(up|move)|round-trip-status[status!=down]
 
 DELETED -> [*]
 DELETED : enter / emit isl-removed-notification
