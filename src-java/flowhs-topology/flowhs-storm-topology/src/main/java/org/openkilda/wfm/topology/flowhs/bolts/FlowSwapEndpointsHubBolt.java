@@ -22,6 +22,8 @@ import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_KE
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 import static org.openkilda.wfm.topology.utils.MessageKafkaTranslator.STREAM_FIELDS;
 
+import org.openkilda.bluegreen.LifecycleEvent;
+import org.openkilda.bluegreen.Signal;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
@@ -33,11 +35,14 @@ import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
 import org.openkilda.wfm.topology.flowhs.service.FlowSwapEndpointsHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowSwapEndpointsHubService;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
@@ -47,6 +52,8 @@ public class FlowSwapEndpointsHubBolt extends HubBolt implements FlowSwapEndpoin
     private transient FlowSwapEndpointsHubService service;
     private String currentKey;
 
+    private LifecycleEvent deferedShutdownEvent;
+
     public FlowSwapEndpointsHubBolt(Config config, PersistenceManager persistenceManager) {
         super(config);
         this.persistenceManager = persistenceManager;
@@ -55,6 +62,22 @@ public class FlowSwapEndpointsHubBolt extends HubBolt implements FlowSwapEndpoin
     @Override
     public void init() {
         service = new FlowSwapEndpointsHubService(this, persistenceManager);
+    }
+
+    @Override
+    protected void handleLifeCycleEvent(LifecycleEvent event) {
+        if (event.getSignal().equals(Signal.SHUTDOWN)) {
+            if (service.deactivate()) {
+                emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
+            } else {
+                deferedShutdownEvent = event;
+            }
+        } else if (event.getSignal().equals(Signal.START)) {
+            service.activate();
+            emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
+        } else {
+            log.info("Received signal info {}", event.getSignal());
+        }
     }
 
     @Override
@@ -75,6 +98,12 @@ public class FlowSwapEndpointsHubBolt extends HubBolt implements FlowSwapEndpoin
     public void onTimeout(String key, Tuple tuple) {
         currentKey = key;
         service.handleTaskTimeout(key);
+    }
+
+    @Override
+    public void sendInactive() {
+        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferedShutdownEvent, getCommandContext()));
+        deferedShutdownEvent = null;
     }
 
     @Override
@@ -118,5 +147,7 @@ public class FlowSwapEndpointsHubBolt extends HubBolt implements FlowSwapEndpoin
         declarer.declareStream(SWAP_ENDPOINTS_HUB_TO_ROUTER_BOLT.name(), STREAM_FIELDS);
         declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), STREAM_FIELDS);
         declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), STREAM_FIELDS);
+        declarer.declareStream(ZkStreams.ZK.toString(),
+                new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 }

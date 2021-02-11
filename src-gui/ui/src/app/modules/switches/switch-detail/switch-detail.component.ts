@@ -187,7 +187,9 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
       this.isLoaderActive = false;
     }
   }
-
+  refreshSwitchFlows(){
+    this.loadSwitchFlows(this.switchDetail.switch_id,true);
+  }
   loadSwitchFlows(switchId,loader){
     if(loader){
       this.loaderService.show('Loading Flows..');
@@ -195,19 +197,20 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
     var filter = this.switchFlowFlag =='inventory' ;
     this.loadswitchFlows = false;
     this.flowBandwidthFlag = true;
+    this.flowBandwidthSum = 0;
     this.switchService.getSwitchFlows(switchId,filter,null).subscribe(data=>{
       this.switchFlows = data;
       if(this.switchFlows && this.switchFlows.length){
         for(let flow of this.switchFlows){
-            this.flowBandwidthSum = this.flowBandwidthSum + (flow.maximum_bandwidth / 1000);
+            this.flowBandwidthSum = parseFloat(this.flowBandwidthSum) + (flow.maximum_bandwidth / 1000);
         }
       }else{
         if(this.switchFlows == null){
           this.switchFlows = [];
         }
       }
-      if(this.flowBandwidthSum){
-        this.flowBandwidthSum = this.flowBandwidthSum.toFixed(3);
+      if(this.flowBandwidthSum && parseFloat(this.flowBandwidthSum)){
+        this.flowBandwidthSum = parseFloat(this.flowBandwidthSum).toFixed(3);
       }
       this.loadswitchFlows = true;
       this.loaderService.hide();

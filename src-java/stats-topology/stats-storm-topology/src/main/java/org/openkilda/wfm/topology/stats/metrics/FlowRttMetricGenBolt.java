@@ -19,38 +19,45 @@ import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowRttStatsData;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class FlowRttMetricGenBolt extends MetricGenBolt {
+    public static final String ZOOKEEPER_STREAM = ZkStreams.ZK.toString();
 
     public static final long TEN_TO_NINE = 1_000_000_000;
 
-    public FlowRttMetricGenBolt(String metricPrefix) {
-        super(metricPrefix);
+    public FlowRttMetricGenBolt(String metricPrefix, String lifeCycleEventSourceComponent) {
+        super(metricPrefix, lifeCycleEventSourceComponent);
     }
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        InfoMessage message = (InfoMessage) input.getValueByField(MESSAGE_FIELD);
-        FlowRttStatsData data = (FlowRttStatsData) message.getData();
-        Map<String, String> tags = ImmutableMap.of(
-                "direction", data.getDirection(),
-                "flowid", data.getFlowId()
-        );
+        if (active) {
+            InfoMessage message = (InfoMessage) input.getValueByField(MESSAGE_FIELD);
+            FlowRttStatsData data = (FlowRttStatsData) message.getData();
+            Map<String, String> tags = ImmutableMap.of(
+                    "direction", data.getDirection(),
+                    "flowid", data.getFlowId()
+            );
 
-        long t0 = noviflowTimestamp(data.getT0());
-        long t1 = noviflowTimestamp(data.getT1());
+            long t0 = noviflowTimestamp(data.getT0());
+            long t1 = noviflowTimestamp(data.getT1());
 
-        // We decided to use t1 time as a timestamp for Datapoint.
-        long timestamp = TimeUnit.NANOSECONDS.toMillis(t1);
+            // We decided to use t1 time as a timestamp for Datapoint.
+            long timestamp = TimeUnit.NANOSECONDS.toMillis(t1);
 
-        emitMetric("flow.rtt", timestamp, t1 - t0, tags);
+            emitMetric("flow.rtt", timestamp, t1 - t0, tags);
+        }
     }
 
     @VisibleForTesting
@@ -58,5 +65,12 @@ public class FlowRttMetricGenBolt extends MetricGenBolt {
         long seconds = (v >> 32);
         long nanoseconds = (v & 0xFFFFFFFFL);
         return seconds * TEN_TO_NINE + nanoseconds;
+    }
+
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        super.declareOutputFields(declarer);
+        declarer.declareStream(ZOOKEEPER_STREAM, new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+                ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 }

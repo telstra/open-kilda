@@ -8,6 +8,7 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 
 description = 'Flow H&S Storm Topology'
 dependencies {
+    implementation project(':blue-green')
     implementation project(':flowhs-messaging')
     implementation project(':ping-messaging')
     implementation project(':reroute-messaging')

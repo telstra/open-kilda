@@ -24,6 +24,8 @@ import org.openkilda.wfm.kafka.MessageSerializer;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
+import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
@@ -39,6 +41,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.BfdHub;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.worker.BfdWorker;
 import org.openkilda.wfm.topology.network.storm.bolt.decisionmaker.DecisionMakerHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.history.HistoryHandler;
+import org.openkilda.wfm.topology.network.storm.bolt.history.NetworkHistoryHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.port.PortHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
@@ -50,7 +53,6 @@ import org.openkilda.wfm.topology.network.storm.bolt.swmanager.SwitchManagerWork
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.UniIslHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.WatcherHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.WatchListHandler;
-import org.openkilda.wfm.topology.network.storm.spout.NetworkHistory;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.generated.StormTopology;
@@ -80,6 +82,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
     public StormTopology createTopology() {
         TopologyBuilder topology = new TopologyBuilder();
 
+        zookeeperSpout(topology);
         inputSwitchManager(topology);
         switchManagerRouter(topology);
         workerSwitchManager(topology);
@@ -117,6 +120,8 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
 
         historyBolt(topology);
 
+        zookeeperBolt(topology);
+
         return topology.createTopology();
     }
 
@@ -128,6 +133,12 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
                 .allGrouping(CoordinatorSpout.ID)
                 .fieldsGrouping(BfdWorker.BOLT_ID, CoordinatorBolt.INCOME_STREAM, keyGrouping)
                 .fieldsGrouping(SwitchManagerWorker.BOLT_ID, CoordinatorBolt.INCOME_STREAM, keyGrouping);
+    }
+
+    private void zookeeperSpout(TopologyBuilder topology) {
+        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig().getConnectString());
+        declareSpout(topology, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
     }
 
     private void inputSpeaker(TopologyBuilder topology) {
@@ -164,9 +175,10 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
 
     private void speakerRouter(TopologyBuilder topology) {
         Fields keyGrouping = new Fields(MessageKafkaTranslator.KEY_FIELD);
-        SpeakerRouter bolt = new SpeakerRouter();
+        SpeakerRouter bolt = new SpeakerRouter(ZooKeeperSpout.SPOUT_ID);
         declareBolt(topology, bolt, SpeakerRouter.BOLT_ID)
-                .fieldsGrouping(ComponentId.INPUT_SPEAKER.toString(), keyGrouping);
+                .fieldsGrouping(ComponentId.INPUT_SPEAKER.toString(), keyGrouping)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
     private void inputGrpc(TopologyBuilder topology) {
@@ -212,38 +224,42 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
     }
 
     private void networkHistory(TopologyBuilder topology) {
-        NetworkHistory spout = new NetworkHistory(persistenceManager);
-        declareSpout(topology, spout, NetworkHistory.SPOUT_ID);
+        NetworkHistoryHandler spout = new NetworkHistoryHandler(persistenceManager, ZooKeeperSpout.SPOUT_ID);
+        declareBolt(topology, spout, NetworkHistoryHandler.BOLT_ID)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
     private void watchList(TopologyBuilder topology) {
-        WatchListHandler bolt = new WatchListHandler(options);
+        WatchListHandler bolt = new WatchListHandler(options, ZooKeeperSpout.SPOUT_ID);
         Fields portGrouping = new Fields(PortHandler.FIELD_ID_DATAPATH, PortHandler.FIELD_ID_PORT_NUMBER);
         Fields uniIslGrouping = new Fields(UniIslHandler.FIELD_ID_DATAPATH, UniIslHandler.FIELD_ID_PORT_NUMBER);
         Fields islGrouping = new Fields(IslHandler.FIELD_ID_DATAPATH, IslHandler.FIELD_ID_PORT_NUMBER);
         declareBolt(topology, bolt, WatchListHandler.BOLT_ID)
                 .allGrouping(CoordinatorSpout.ID)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID)
                 .fieldsGrouping(PortHandler.BOLT_ID, PortHandler.STREAM_POLL_ID, portGrouping)
                 .fieldsGrouping(UniIslHandler.BOLT_ID, UniIslHandler.STREAM_POLL_ID, uniIslGrouping)
                 .fieldsGrouping(IslHandler.BOLT_ID, IslHandler.STREAM_POLL_ID, islGrouping);
     }
 
     private void watcher(TopologyBuilder topology) {
-        WatcherHandler bolt = new WatcherHandler(options);
+        WatcherHandler bolt = new WatcherHandler(options, ZooKeeperSpout.SPOUT_ID);
         Fields watchListGrouping = new Fields(WatchListHandler.FIELD_ID_DATAPATH,
                 WatchListHandler.FIELD_ID_PORT_NUMBER);
         Fields speakerGrouping = new Fields(SpeakerRouter.FIELD_ID_DATAPATH, SpeakerRouter.FIELD_ID_PORT_NUMBER);
         declareBolt(topology, bolt, WatcherHandler.BOLT_ID)
                 .allGrouping(CoordinatorSpout.ID)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID)
                 .fieldsGrouping(WatchListHandler.BOLT_ID, watchListGrouping)
                 .fieldsGrouping(SpeakerRouter.BOLT_ID, SpeakerRouter.STREAM_WATCHER_ID, speakerGrouping);
     }
 
     private void decisionMaker(TopologyBuilder topology) {
-        DecisionMakerHandler bolt = new DecisionMakerHandler(options);
+        DecisionMakerHandler bolt = new DecisionMakerHandler(options, ZooKeeperSpout.SPOUT_ID);
         Fields watcherGrouping = new Fields(WatcherHandler.FIELD_ID_DATAPATH, WatcherHandler.FIELD_ID_PORT_NUMBER);
         declareBolt(topology, bolt, DecisionMakerHandler.BOLT_ID)
                 .allGrouping(CoordinatorSpout.ID)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID)
                 .fieldsGrouping(WatcherHandler.BOLT_ID, watcherGrouping);
     }
 
@@ -251,18 +267,19 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         SwitchHandler bolt = new SwitchHandler(options, persistenceManager);
         Fields grouping = new Fields(SpeakerRouter.FIELD_ID_DATAPATH);
         declareBolt(topology, bolt, SwitchHandler.BOLT_ID)
-                .fieldsGrouping(NetworkHistory.SPOUT_ID, grouping)
+                .fieldsGrouping(NetworkHistoryHandler.BOLT_ID, grouping)
                 .fieldsGrouping(SpeakerRouter.BOLT_ID, grouping)
                 .directGrouping(SwitchManagerWorker.BOLT_ID, SwitchManagerWorker.STREAM_HUB_ID);
     }
 
     private void portHandler(TopologyBuilder topology) {
-        PortHandler bolt = new PortHandler(options, persistenceManager);
+        PortHandler bolt = new PortHandler(options, persistenceManager, ZooKeeperSpout.SPOUT_ID);
         Fields endpointGrouping = new Fields(SwitchHandler.FIELD_ID_DATAPATH, SwitchHandler.FIELD_ID_PORT_NUMBER);
         Fields decisionMakerGrouping = new Fields(DecisionMakerHandler.FIELD_ID_DATAPATH,
                 DecisionMakerHandler.FIELD_ID_PORT_NUMBER);
         declareBolt(topology, bolt, PortHandler.BOLT_ID)
                 .allGrouping(CoordinatorSpout.ID)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID)
                 .fieldsGrouping(SwitchHandler.BOLT_ID, SwitchHandler.STREAM_PORT_ID, endpointGrouping)
                 .fieldsGrouping(DecisionMakerHandler.BOLT_ID, decisionMakerGrouping)
                 .fieldsGrouping(SpeakerRouter.BOLT_ID, SpeakerRouter.STREAM_PORT_ID, endpointGrouping);
@@ -394,6 +411,23 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         HistoryHandler bolt = new HistoryHandler(persistenceManager);
         declareBolt(topology, bolt, ComponentId.HISTORY_HANDLER.toString())
                 .shuffleGrouping(PortHandler.BOLT_ID, PortHandler.STREAM_HISTORY_ID);
+    }
+
+    private void zookeeperBolt(TopologyBuilder topology) {
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(topologyConfig.getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig().getConnectString());
+        declareBolt(topology, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
+                .allGrouping(SpeakerRouter.BOLT_ID, SpeakerRouter.STREAM_ZOOKEEPER_ID)
+                .allGrouping(WatcherHandler.BOLT_ID, WatcherHandler.STREAM_ZOOKEEPER_ID)
+                .allGrouping(WatchListHandler.BOLT_ID, WatchListHandler.STREAM_ZOOKEEPER_ID)
+                .allGrouping(DecisionMakerHandler.BOLT_ID, DecisionMakerHandler.STREAM_ZOOKEEPER_ID)
+                .allGrouping(PortHandler.BOLT_ID, PortHandler.STREAM_ZOOKEEPER_ID)
+                .allGrouping(NetworkHistoryHandler.BOLT_ID, NetworkHistoryHandler.STREAM_ZOOKEEPER_ID);
+    }
+
+    @Override
+    protected String getZkTopoName() {
+        return "network";
     }
 
     /**

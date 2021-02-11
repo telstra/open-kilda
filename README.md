@@ -67,6 +67,12 @@ wget https://github.com/kelseyhightower/confd/releases/download/v0.16.0/confd-0.
 chmod +x /usr/local/bin/confd
 ```
 
+#### /etc/hosts
+Following entry has to be added to /etc/hosts for _local_ Kilda to work properly
+```
+127.0.0.1 localhost kafka.pendev logstash.pendev
+```
+
 ### How to build Kilda Controller
 
 From the base directory run the following command:
@@ -95,6 +101,11 @@ From the base directory run the following command:
 
 ```
 make up-test-mode
+```
+
+### How to create a virtual topology for test
+```
+make test-topology
 ```
 
 ### How to run Kilda Controller in blue-green mode

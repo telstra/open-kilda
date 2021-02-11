@@ -29,6 +29,9 @@ import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
+import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.reroute.bolts.FlowRerouteQueueBolt;
 import org.openkilda.wfm.topology.reroute.bolts.OperationQueueBolt;
@@ -84,15 +87,32 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
         KafkaBolt<String, Message> kafkaNorthboundBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         declareBolt(topologyBuilder, kafkaNorthboundBolt, BOLT_ID_KAFKA_NB)
                 .shuffleGrouping(FlowRerouteQueueBolt.BOLT_ID, STREAM_NORTHBOUND_ID);
+        zkBolt(topologyBuilder);
+        zkSpout(topologyBuilder);
 
         return topologyBuilder.createTopology();
     }
 
+    private void zkSpout(TopologyBuilder topologyBuilder) {
+        String zkString = getZookeeperConfig().getConnectString();
+        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(), zkString);
+        declareSpout(topologyBuilder, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
+    }
+
+    private void zkBolt(TopologyBuilder topologyBuilder) {
+        String zkString = getZookeeperConfig().getConnectString();
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(), zkString);
+        declareBolt(topologyBuilder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
+                .allGrouping(RerouteBolt.BOLT_ID, ZkStreams.ZK.toString())
+                .allGrouping(OperationQueueBolt.BOLT_ID, ZkStreams.ZK.toString());
+    }
+
     private void rerouteBolt(TopologyBuilder topologyBuilder,
                              PersistenceManager persistenceManager) {
-        RerouteBolt rerouteBolt = new RerouteBolt(persistenceManager);
+        RerouteBolt rerouteBolt = new RerouteBolt(persistenceManager, ZooKeeperSpout.SPOUT_ID);
         declareBolt(topologyBuilder, rerouteBolt, RerouteBolt.BOLT_ID)
-                .shuffleGrouping(SPOUT_ID_REROUTE);
+                .shuffleGrouping(SPOUT_ID_REROUTE)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
     private void rerouteQueueBolt(TopologyBuilder topologyBuilder,
@@ -130,13 +150,20 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
 
     private void operationQueue(TopologyBuilder topologyBuilder) {
         OperationQueueBolt operationQueueBolt =
-                new OperationQueueBolt((int) TimeUnit.SECONDS.toMillis(topologyConfig.getRerouteTimeoutSeconds()));
+                new OperationQueueBolt((int) TimeUnit.SECONDS.toMillis(topologyConfig.getRerouteTimeoutSeconds()),
+                        ZooKeeperSpout.SPOUT_ID);
         declareBolt(topologyBuilder, operationQueueBolt, OperationQueueBolt.BOLT_ID)
                 .fieldsGrouping(RerouteBolt.BOLT_ID, RerouteBolt.STREAM_OPERATION_QUEUE_ID,
                         new Fields(RerouteBolt.FLOW_ID_FIELD))
                 .fieldsGrouping(FlowRerouteQueueBolt.BOLT_ID, FlowRerouteQueueBolt.STREAM_OPERATION_QUEUE_ID,
                         new Fields(FlowRerouteQueueBolt.FLOW_ID_FIELD))
-                .directGrouping(CoordinatorBolt.ID);
+                .directGrouping(CoordinatorBolt.ID)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
+    }
+
+    @Override
+    protected String getZkTopoName() {
+        return "reroute";
     }
 
     /**

@@ -1,5 +1,128 @@
 # Changelog
 
+## v1.83.0 (04/02/2021)
+
+### Features:
+-  [#3970](https://github.com/telstra/open-kilda/pull/3970) Add design for flow SLA monitoring (Issue: [#3968](https://github.com/telstra/open-kilda/issues/3968)) [**docs**]
+-  [#3981](https://github.com/telstra/open-kilda/pull/3981) Added missed server42 ZK nodes 
+-  [#3982](https://github.com/telstra/open-kilda/pull/3982) Added Versioning for server42 storm stub 
+-  [#3983](https://github.com/telstra/open-kilda/pull/3983) Fix zookeeper spout initialization steps 
+-  [#3927](https://github.com/telstra/open-kilda/pull/3927) Adding feature to ping flows from switch detail (Issue: [#3842](https://github.com/telstra/open-kilda/issues/3842)) [**gui**]
+-  [#3864](https://github.com/telstra/open-kilda/pull/3864) FL 0-Downtime PoC [**floodlight**]
+-  [#3931](https://github.com/telstra/open-kilda/pull/3931) NB and GRPC zero downtime upgrade [**northbound**]
+-  [#3880](https://github.com/telstra/open-kilda/pull/3880) Connected devices zero-downtime 
+-  [#3965](https://github.com/telstra/open-kilda/pull/3965) add healthCheck to GrpcBaseSpecification [**tests**]
+-  [#4030](https://github.com/telstra/open-kilda/pull/4030) Added missed zkNodes for NB, GRPC, server42 
+
+### Bug Fixes:
+-  [#3975](https://github.com/telstra/open-kilda/pull/3975) Prevention of decreasing the zk status below zero. 
+-  [#3987](https://github.com/telstra/open-kilda/pull/3987) Fix second create flow loop request removes loop rules (Issue: [#3960](https://github.com/telstra/open-kilda/issues/3960)) 
+-  [#3938](https://github.com/telstra/open-kilda/pull/3938) Fix history writing for a reroute operation. 
+-  [#4012](https://github.com/telstra/open-kilda/pull/4012) Added waiting for messaging version from ZooKeeper 
+
+### Improvements:
+-  [#3971](https://github.com/telstra/open-kilda/pull/3971) Improvement of zero downtime doc [**docs**]
+-  [#3980](https://github.com/telstra/open-kilda/pull/3980) Update readmes with more relevant information [**docs**][**tests**]
+-  [#3992](https://github.com/telstra/open-kilda/pull/3992) Enable checkstyle run before unit tests in make unit 
+-  [#3994](https://github.com/telstra/open-kilda/pull/3994) Make log4j config for tests omit persistence logs [**tests**]
+-  [#3867](https://github.com/telstra/open-kilda/pull/3867) tests for rtl ISL and portDiscovery [**tests**]
+-  [#3999](https://github.com/telstra/open-kilda/pull/3999) add test for partialUpdate + singleSwFlow [**tests**]
+-  [#4013](https://github.com/telstra/open-kilda/pull/4013) Remove SimulatorTopology 
+-  [#4017](https://github.com/telstra/open-kilda/pull/4017) Read signal for FL and ZKSpout 
+-  [#4023](https://github.com/telstra/open-kilda/pull/4023) Increase storm slots for storm workers from 30 to 50 [**storm-topologies**]
+-  [#4028](https://github.com/telstra/open-kilda/pull/4028) [Snyk] Security upgrade jinja2 from 2.10.1 to 2.11.3 
+-  [#3967](https://github.com/telstra/open-kilda/pull/3967) Adding bfd session status in isl detail (Issue: [#3918](https://github.com/telstra/open-kilda/issues/3918)) [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.82.0...v1.83.0).
+
+### Affected Components:
+connected, grpc, fl, nb, gui, flow-hs
+
+---
+
+## v1.82.0 (27/01/2021)
+
+### Improvements:
+-  [#4007](https://github.com/telstra/open-kilda/pull/4007) Update base image to 20.04 
+-  [#3991](https://github.com/telstra/open-kilda/pull/3991) Make sw validation stop ignoring default rules in other than 'proper' sections 
+
+### Bug Fixes:
+-  [#4012](https://github.com/telstra/open-kilda/pull/3012) Wait for kafka version
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.81.2...v1.82.0).
+
+---
+
+## v1.81.2 (22/01/2021)
+
+### Bug Fixes:
+-  [#4000](https://github.com/telstra/open-kilda/pull/4000) Fix one switch flow update [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.81.1...v1.81.2).
+
+### Affected Components:
+flow-hs
+
+---
+
+## v1.81.1 (21/01/2021)
+
+### Bug Fixes:
+-  [#3995](https://github.com/telstra/open-kilda/pull/3995) Increased port count in metadata from 128 to 4096 [**floodlight**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.81.0...v1.81.1).
+
+### Affected Components:
+fl
+
+---
+
+## v1.81.0 (18/01/2021)
+
+### Features:
+-  [#3844](https://github.com/telstra/open-kilda/pull/3844) Added ability to run Kilda in blue and green modes locally 
+-  [#3910](https://github.com/telstra/open-kilda/pull/3910) Handle deserialization messages in KafkaVersioning [**storm-topologies**]
+-  [#3986](https://github.com/telstra/open-kilda/pull/3986) Added parallelism properties for server42-control topology 
+-  [#3962](https://github.com/telstra/open-kilda/pull/3962) Run make build-stable by default to run kilda 
+-  [#3872](https://github.com/telstra/open-kilda/pull/3872) Added kafka message versioning with ZooKeeper [**floodlight**][**northbound**][**storm-topologies**]
+-  [#3948](https://github.com/telstra/open-kilda/pull/3948) Added health check API for GRPC 
+
+### Bug Fixes:
+-  [#3917](https://github.com/telstra/open-kilda/pull/3917) Remove transient from abstract bolt config field 
+-  [#3933](https://github.com/telstra/open-kilda/pull/3933) Added FL role and region to local FL logs [**floodlight**]
+-  [#3936](https://github.com/telstra/open-kilda/pull/3936)  adding missing db script file for world map (Issue: [#3935](https://github.com/telstra/open-kilda/issues/3935)) [**gui**]
+-  [#3877](https://github.com/telstra/open-kilda/pull/3877) Reimplement round trip discovery event processing [**storm-topologies**]
+-  [#3949](https://github.com/telstra/open-kilda/pull/3949) Added retries for ZK connectiong during initialization 
+-  [#3950](https://github.com/telstra/open-kilda/pull/3950) Fix for unit tests caused by system properties 
+
+### Improvements:
+-  [#3909](https://github.com/telstra/open-kilda/pull/3909)  Improvement in world map popup info for maximize and minimize the window (Issue: [#3855](https://github.com/telstra/open-kilda/issues/3855)) [**gui**]
+-  [#3984](https://github.com/telstra/open-kilda/pull/3984) HotFix: Change default parallelism for otsdb and flow hs topologies [**storm-topologies**]
+-  [#3925](https://github.com/telstra/open-kilda/pull/3925) Remove some unused classes in network topology [**storm-topologies**]
+-  [#3928](https://github.com/telstra/open-kilda/pull/3928) Test/improvements [**tests**]
+-  [#3929](https://github.com/telstra/open-kilda/pull/3929) Fix multi-reroute spec [**tests**]
+-  [#3943](https://github.com/telstra/open-kilda/pull/3943) Minor fixes in zookeeper event handling. 
+-  [#3947](https://github.com/telstra/open-kilda/pull/3947) Add topology_name to ContextMap for logging purposes 
+-  [#3951](https://github.com/telstra/open-kilda/pull/3951) Added comments for creating ZK nodes [**docs**]
+-  [#3952](https://github.com/telstra/open-kilda/pull/3952) Restore getZkTopoName() for topologies 
+-  [#3953](https://github.com/telstra/open-kilda/pull/3953) Added default value for blue green mode 
+-  [#3890](https://github.com/telstra/open-kilda/pull/3890) turn on the multiTable mode by default for func tests [**tests**]
+-  [#3823](https://github.com/telstra/open-kilda/pull/3823) Lock GRPC low level particularity into a single wrapper 
+-  [#3892](https://github.com/telstra/open-kilda/pull/3892) Fix swap endpoints for looped flows (Issue: [#3846](https://github.com/telstra/open-kilda/issues/3846)) 
+-  [#3955](https://github.com/telstra/open-kilda/pull/3955) Restore make compile 
+-  [#3956](https://github.com/telstra/open-kilda/pull/3956) Fix some cleanups in functional tests to increase test stability (Issue: [#3960](https://github.com/telstra/open-kilda/issues/3960)) [**tests**]
+-  [#3957](https://github.com/telstra/open-kilda/pull/3957) Create KildaWallpaper.png [**docs**]
+-  [#3898](https://github.com/telstra/open-kilda/pull/3898) Add flow-id for attendant traffic stat entries [**storm-topologies**]
+-  [#3963](https://github.com/telstra/open-kilda/pull/3963) Create common ZK nodes by default 
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.80.0...v1.81.0).
+
+### Affected Components:
+stats, nb, fl, flow-hs, grpc, gui, otsdb, network
+
+---
+
 ## v1.80.0 (22/12/2020)
 
 ### Features:
@@ -32,7 +155,7 @@ For the complete list of changes, check out [the commit log](https://github.com/
 ### Affected Components:
 nbworker, ping, network, isllatency, swmanager, stats, nb, flow-hs, grpc, connected, router, stats-router, portstate, otsdb, reroute, fl
 
---
+---
 
 ## v1.79.0 (07/12/2020)
 

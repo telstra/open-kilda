@@ -18,26 +18,22 @@ package org.openkilda.wfm.topology.utils;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.MessageException;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.base.BaseRichBolt;
+public abstract class AbstractKafkaParserBolt extends AbstractBolt {
 
-import java.util.Map;
+    public AbstractKafkaParserBolt() {
+    }
 
-public abstract class AbstractKafkaParserBolt extends BaseRichBolt {
-    protected OutputCollector collector;
+    public AbstractKafkaParserBolt(String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
+    }
 
     protected InfoData getInfoData(Message message) throws MessageException {
         if (!(message instanceof InfoMessage)) {
             throw new MessageException(message.getClass().getName() + " is not an InfoMessage");
         }
         return ((InfoMessage) message).getData();
-    }
-
-    @Override
-    public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
-        this.collector = outputCollector;
     }
 }

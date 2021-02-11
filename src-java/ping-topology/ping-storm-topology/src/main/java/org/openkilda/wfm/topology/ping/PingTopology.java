@@ -19,6 +19,8 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
+import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.ping.bolt.Blacklist;
 import org.openkilda.wfm.topology.ping.bolt.ComponentId;
@@ -64,6 +66,9 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
     public StormTopology createTopology() {
         TopologyBuilder topology = new TopologyBuilder();
 
+        zooKeeperSpout(topology);
+        zooKeeperBolt(topology);
+
         monotonicTick(topology);
         tickDeduplicator(topology);
 
@@ -91,6 +96,20 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
         return topology.createTopology();
     }
 
+    private void zooKeeperSpout(TopologyBuilder topology) {
+        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig().getConnectString());
+        declareSpout(topology, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
+    }
+
+    private void zooKeeperBolt(TopologyBuilder topology) {
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig().getConnectString());
+        declareBolt(topology, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
+                .allGrouping(InputRouter.BOLT_ID, InputRouter.STREAM_ZOOKEEPER)
+                .allGrouping(TickDeduplicator.BOLT_ID, TickDeduplicator.STREAM_ZOOKEEPER);
+    }
+
     private void monotonicTick(TopologyBuilder topology) {
         MonotonicTick bolt = new MonotonicTick(
                 new MonotonicTick.ClockConfig()
@@ -100,8 +119,10 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
     }
 
     private void tickDeduplicator(TopologyBuilder topology) {
-        declareBolt(topology, new TickDeduplicator(1, TimeUnit.SECONDS), TickDeduplicator.BOLT_ID)
-                .globalGrouping(MonotonicTick.BOLT_ID);
+        declareBolt(topology, new TickDeduplicator(1, TimeUnit.SECONDS, ZooKeeperSpout.SPOUT_ID),
+                TickDeduplicator.BOLT_ID)
+                .globalGrouping(MonotonicTick.BOLT_ID)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
     private void input(TopologyBuilder topology) {
@@ -109,9 +130,10 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
     }
 
     private void inputRouter(TopologyBuilder topology) {
-        InputRouter bolt = new InputRouter();
+        InputRouter bolt = new InputRouter(ZooKeeperSpout.SPOUT_ID);
         declareBolt(topology, bolt, InputRouter.BOLT_ID)
-                .shuffleGrouping(ComponentId.INPUT.toString());
+                .shuffleGrouping(ComponentId.INPUT.toString())
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
     private void flowFetcher(TopologyBuilder topology) {
@@ -160,10 +182,11 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
     }
 
     private void timeoutManager(TopologyBuilder topology) {
-        TimeoutManager bolt = new TimeoutManager(topologyConfig.getTimeout());
+        TimeoutManager bolt = new TimeoutManager(topologyConfig.getTimeout(), ZooKeeperSpout.SPOUT_ID);
         final Fields pingIdGrouping = new Fields(PingRouter.FIELD_ID_PING_ID);
         declareBolt(topology, bolt, TimeoutManager.BOLT_ID)
                 .allGrouping(TickDeduplicator.BOLT_ID)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID)
                 .fieldsGrouping(PingRouter.BOLT_ID, PingRouter.STREAM_REQUEST_ID, pingIdGrouping)
                 .fieldsGrouping(PingRouter.BOLT_ID, PingRouter.STREAM_RESPONSE_ID, pingIdGrouping);
     }
@@ -252,6 +275,11 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
         KafkaBolt output = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         declareBolt(topology, output, ComponentId.NORTHBOUND_OUTPUT.toString())
                 .shuffleGrouping(NorthboundEncoder.BOLT_ID);
+    }
+
+    @Override
+    protected String getZkTopoName() {
+        return "ping";
     }
 
     /**

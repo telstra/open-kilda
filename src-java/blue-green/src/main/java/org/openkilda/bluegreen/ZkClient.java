@@ -16,6 +16,7 @@
 package org.openkilda.bluegreen;
 
 import com.google.common.annotations.VisibleForTesting;
+import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.zookeeper.CreateMode;
@@ -37,7 +38,9 @@ public abstract class ZkClient implements Watcher {
     private static final int DEFAULT_SESSION_TIMEOUT = 30000;
     public static final long DEFAULT_CONNECTION_REFRESH_INTERVAL = 10;
 
+    @Getter
     protected String id;
+    @Getter
     protected String serviceName;
     protected volatile ZooKeeper zookeeper;
     protected final String connectionString;
@@ -157,7 +160,7 @@ public abstract class ZkClient implements Watcher {
                 zookeeper.create(nodePath, value,
                         Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             } catch (Exception e) {
-                log.error("Failed to ensure node: {}", nodePath);
+                log.error(String.format("Failed to ensure node: %s. Error: %s", nodePath, e.getMessage()), e);
             }
         }
         if (zookeeper.exists(nodePath, false) == null) {

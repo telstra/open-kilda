@@ -104,6 +104,10 @@ compile-common: check-java-version
 unit: update-props
 	cd src-java && ./gradlew test --stacktrace
 
+.PHONY: checkstyle
+checkstyle: update-props
+	cd src-java && ./gradlew checkstyleMain checkstyleTest
+
 .PHONY: sonar
 sonar: update-props
 	cd src-java && ./gradlew check jacocoTestReport sonarqube --stacktrace
@@ -129,7 +133,7 @@ copy-test-props: $(FUNC_TESTS)/kilda.properties $(FUNC_TESTS)/topology.yaml
 
 .PHONY: run-func-tests func-tests test-topology
 run-func-tests:
-	cd src-java && ./gradlew :functional-tests:$(TASK) --info $(PARAMS)
+	cd src-java && ./gradlew :functional-tests:$(TASK) $(PARAMS)
 
 # EXAMPLES:
 #   make func-tests  // run all functional tests

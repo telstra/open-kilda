@@ -119,7 +119,7 @@ public class NetworkDiscoveryEmitter {
 
         DiscoPacketSendingConfirmation confirmation = new DiscoPacketSendingConfirmation(
                 new NetworkEndpoint(request.getSwitchId(), request.getPortNumber()), request.getPacketId());
-        kafkaProducerService.sendMessageAndTrack(confirmationTopic, request.getSwitchId().toString(),
+        kafkaProducerService.sendMessageAndTrackWithZk(confirmationTopic, request.getSwitchId().toString(),
                 new InfoMessage(confirmation, System.currentTimeMillis(), discovery.getCorrelationId(), region));
     }
 

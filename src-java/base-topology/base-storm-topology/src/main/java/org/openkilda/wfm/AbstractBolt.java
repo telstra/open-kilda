@@ -117,6 +117,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
     protected void dispatch(Tuple input) throws Exception {
         if (input.getSourceComponent().equals(lifeCycleEventSourceComponent)) {
             LifecycleEvent event = (LifecycleEvent) input.getValueByField(FIELD_ID_LIFECYCLE_EVENT);
+            log.info("Received lifecycle event {}", event);
             handleLifeCycleEvent(event);
         } else {
             handleInput(input);

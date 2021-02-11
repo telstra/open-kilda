@@ -16,8 +16,12 @@
 package org.openkilda.wfm.topology.portstate;
 
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
+import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.portstate.bolt.ParsePortInfoBolt;
+import org.openkilda.wfm.topology.portstate.bolt.RequestSpeakerBolt;
 import org.openkilda.wfm.topology.portstate.bolt.TopoDiscoParseBolt;
 import org.openkilda.wfm.topology.portstate.bolt.WfmStatsParseBolt;
 import org.openkilda.wfm.topology.portstate.spout.SwitchPortsSpout;
@@ -36,6 +40,7 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
     private static final String SWITCH_PORTS_SPOUT_NAME = SwitchPortsSpout.class.getSimpleName();
     private static final String WFM_STATS_PARSE_BOLT_NAME = WfmStatsParseBolt.class.getSimpleName();
     private static final String SPEAKER_KAFKA_BOLT_NAME = "speaker.kafka.bolt";
+    private static final String REQUEST_SPEAKER_BOLT_NAME = "speaker.bolt";
     private static final String OTSDB_KAFKA_BOLT_NAME = "otsdb.kafka.bolt";
 
     protected PortStateTopology(LaunchEnvironment env) {
@@ -61,14 +66,27 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
          *
          */
 
+        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(),
+                getZkTopoName(), getZookeeperConfig().getConnectString());
+        declareSpout(builder, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
+
+
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(),
+                getZkTopoName(), getZookeeperConfig().getConnectString());
+        declareBolt(builder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
+                .allGrouping(TOPO_DISCO_PARSE_BOLT_NAME, ZkStreams.ZK.toString())
+                .allGrouping(WFM_STATS_PARSE_BOLT_NAME, ZkStreams.ZK.toString())
+                .allGrouping(REQUEST_SPEAKER_BOLT_NAME, ZkStreams.ZK.toString());
+
         // Setup spout and bolt for TOPO_DISCO_SPOUT line
         String topoDiscoTopic = topologyConfig.getKafkaTopoDiscoTopic();
         logger.debug("connecting to {} topic", topoDiscoTopic);
         declareKafkaSpout(builder, topoDiscoTopic, TOPO_DISCO_SPOUT);
 
-        TopoDiscoParseBolt topoDiscoParseBolt = new TopoDiscoParseBolt();
+        TopoDiscoParseBolt topoDiscoParseBolt = new TopoDiscoParseBolt(ZooKeeperSpout.SPOUT_ID);
         declareBolt(builder, topoDiscoParseBolt, TOPO_DISCO_PARSE_BOLT_NAME)
-                .shuffleGrouping(TOPO_DISCO_SPOUT);
+                .shuffleGrouping(TOPO_DISCO_SPOUT)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
 
         ParsePortInfoBolt parsePortInfoBolt = new ParsePortInfoBolt(topologyConfig.getMetricPrefix());
         declareBolt(builder, parsePortInfoBolt, PARSE_PORT_INFO_BOLT_NAME)
@@ -85,20 +103,31 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
         logger.debug("connecting to {} topic", wfmStatsTopic);
         declareKafkaSpout(builder, wfmStatsTopic, WFM_STATS_SPOUT);
 
-        WfmStatsParseBolt wfmStatsParseBolt = new WfmStatsParseBolt();
+        WfmStatsParseBolt wfmStatsParseBolt = new WfmStatsParseBolt(ZooKeeperSpout.SPOUT_ID);
         declareBolt(builder, wfmStatsParseBolt, WFM_STATS_PARSE_BOLT_NAME)
-                .shuffleGrouping(WFM_STATS_SPOUT);
+                .shuffleGrouping(WFM_STATS_SPOUT)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
 
         // Setup spout and bolt for sending SwitchPortsCommand every frequency seconds
         SwitchPortsSpout switchPortsSpout = new SwitchPortsSpout(JANITOR_REFRESH);
         declareSpout(builder, switchPortsSpout, SWITCH_PORTS_SPOUT_NAME);
 
+        RequestSpeakerBolt bolt = new RequestSpeakerBolt(ZooKeeperSpout.SPOUT_ID);
+        declareBolt(builder, bolt, REQUEST_SPEAKER_BOLT_NAME)
+                .shuffleGrouping(SWITCH_PORTS_SPOUT_NAME)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
+
         String speakerTopic = topologyConfig.getKafkaSpeakerTopic();
-        KafkaBolt speakerBolt = createKafkaBolt(speakerTopic);
+        KafkaBolt speakerBolt = buildKafkaBolt(speakerTopic);
         declareBolt(builder, speakerBolt, SPEAKER_KAFKA_BOLT_NAME)
-                .shuffleGrouping(SWITCH_PORTS_SPOUT_NAME);
+                .shuffleGrouping(REQUEST_SPEAKER_BOLT_NAME);
 
         return builder.createTopology();
+    }
+
+    @Override
+    protected String getZkTopoName() {
+        return "portstate";
     }
 
     /**

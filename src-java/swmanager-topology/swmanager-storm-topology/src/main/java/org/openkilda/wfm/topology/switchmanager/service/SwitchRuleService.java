@@ -42,4 +42,9 @@ public interface SwitchRuleService {
      */
     void installRules(String key, SwitchRulesInstallRequest data);
 
+    void activate();
+
+    boolean deactivate();
+
+    boolean isAllOperationsCompleted();
 }

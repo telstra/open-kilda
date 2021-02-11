@@ -18,6 +18,9 @@ package org.openkilda.wfm.topology.connecteddevices;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
+import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.connecteddevices.bolts.PacketBolt;
 
@@ -41,20 +44,43 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
         PersistenceManager persistenceManager =
                 PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
 
+        createZkSpout(builder);
+
         createSpout(builder);
         createPacketBolt(builder, persistenceManager);
+
+        createZkBolt(builder);
 
         return builder.createTopology();
     }
 
+    private void createZkSpout(TopologyBuilder builder) {
+        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig().getConnectString());
+        declareSpout(builder, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
+    }
+
     private void createPacketBolt(TopologyBuilder builder, PersistenceManager persistenceManager) {
-        PacketBolt routerBolt = new PacketBolt(persistenceManager);
+        PacketBolt routerBolt = new PacketBolt(persistenceManager, ZooKeeperSpout.SPOUT_ID);
         declareBolt(builder, routerBolt, PACKET_BOLT_ID)
-                .shuffleGrouping(CONNECTED_DEVICES_SPOUT_ID);
+                .shuffleGrouping(CONNECTED_DEVICES_SPOUT_ID)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
     private void createSpout(TopologyBuilder builder) {
         declareKafkaSpout(builder, topologyConfig.getKafkaTopoConnectedDevicesTopic(), CONNECTED_DEVICES_SPOUT_ID);
+    }
+
+    private void createZkBolt(TopologyBuilder builder) {
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig().getConnectString());
+        declareBolt(builder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
+                .allGrouping(PACKET_BOLT_ID, ZkStreams.ZK.toString());
+    }
+
+    @Override
+    protected String getZkTopoName() {
+        return "connecteddevices";
     }
 
     /**

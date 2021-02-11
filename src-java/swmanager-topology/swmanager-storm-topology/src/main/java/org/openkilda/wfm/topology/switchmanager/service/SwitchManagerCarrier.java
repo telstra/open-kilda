@@ -31,4 +31,6 @@ public interface SwitchManagerCarrier {
     void cancelTimeoutCallback(String key);
 
     void runSwitchSync(String key, SwitchValidateRequest request, ValidationResult validationResult);
+
+    void sendInactive();
 }

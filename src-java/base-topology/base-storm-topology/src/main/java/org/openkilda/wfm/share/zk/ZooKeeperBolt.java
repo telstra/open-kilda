@@ -65,6 +65,8 @@ public class ZooKeeperBolt extends AbstractBolt {
         try {
             LifecycleEvent event = (LifecycleEvent) input.getValueByField(FIELD_ID_STATE);
             if (event != null) {
+                log.info("Handling lifecycle event {} for component {} with id {} from {}",
+                        event, serviceName, id, input.getSourceComponent());
                 zkStateTracker.processLifecycleEvent(event);
             } else {
                 log.error("Received null value as a lifecycle-event");

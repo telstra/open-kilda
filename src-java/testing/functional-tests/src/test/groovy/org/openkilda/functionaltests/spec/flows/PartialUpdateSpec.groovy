@@ -597,6 +597,71 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
+    @Unroll
+    @Tags(LOW_PRIORITY)
+    def "Able to update a flow endpoint for a #flowDescription flow using partial update"() {
+        given: "An active flow"
+        def sw = topology.activeSwitches.first()
+        def flow = flowHelperV2."$flowType"(sw)
+        flowHelperV2.addFlow(flow)
+
+        when: "Update the flow: port number and vlanId on the src endpoint"
+        def flowInfoFromDb = database.getFlow(flow.flowId)
+        def ingressCookie = flowInfoFromDb.forwardPath.cookie.value
+        def egressCookie = flowInfoFromDb.reversePath.cookie.value
+        def newPortNumber = topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
+            it.dpId == flow.source.switchId
+        }).last()
+        def newVlanId = flow.source.vlanId + 1
+        flowHelperV2.partialUpdate(flow.flowId, new FlowPatchV2().tap {
+            source = new FlowPatchEndpoint().tap {
+                portNumber = newPortNumber
+                vlanId = newVlanId
+            }
+        })
+
+        then: "Flow is really updated"
+        with(northboundV2.getFlow(flow.flowId)) {
+            it.source.portNumber == newPortNumber
+            it.source.vlanId == newVlanId
+        }
+
+        and: "Flow is valid"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
+        and: "The ingress/egress rules are really updated"
+        Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
+            def swRules = northbound.getSwitchRules(flow.source.switchId).flowEntries
+            with(swRules.find { it.cookie == ingressCookie }) {
+                it.match.inPort == newPortNumber.toString()
+                it.instructions.applyActions.flowOutput == flow.destination.portNumber.toString()
+                it.instructions.applyActions.setFieldActions*.fieldValue.contains(flow.destination.vlanId.toString())
+            }
+            with(swRules.find { it.cookie == egressCookie }) {
+                it.match.inPort == flow.destination.portNumber.toString()
+                it.instructions.applyActions.flowOutput == newPortNumber.toString()
+                it.instructions.applyActions.setFieldActions*.fieldValue.contains(newVlanId.toString())
+            }
+        }
+
+        and: "The switch passes switch validation"
+        with(northbound.validateSwitch(flow.source.switchId)) { validation ->
+            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        }
+        def switchIsFine = true
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        !switchIsFine && northbound.synchronizeSwitch(flow.source.switchId, true)
+
+        where:
+        flowDescription             | flowType
+        "single-switch"             | "singleSwitchFlow"
+        "single-switch single-port" | "singleSwitchSinglePortFlow"
+    }
+
     @Shared
     def getPortViolationError = { String endpoint, int port, SwitchId swId ->
         "The port $port on the switch '$swId' is occupied by an ISL ($endpoint endpoint collision)."

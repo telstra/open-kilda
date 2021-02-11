@@ -101,6 +101,7 @@ import { SamlEditComponent } from './modules/settings/saml-edit/saml-edit.compon
 import { SamlListTableComponent } from './modules/settings/saml-list-table/saml-list-table.component';
 import { SwitchupdatemodalComponent } from './common/components/switchupdatemodal/switchupdatemodal.component';
 import { UseractivityListComponent } from './modules/useractivity/useractivity-list/useractivity-list.component';
+import { FlowPingModalComponent } from './common/components/flow-ping-modal/flow-ping-modal.component';
 
 @NgModule({
   declarations: [
@@ -188,6 +189,7 @@ import { UseractivityListComponent } from './modules/useractivity/useractivity-l
     SamlListTableComponent,
     SwitchupdatemodalComponent,
     UseractivityListComponent,
+    FlowPingModalComponent,
   ],
   imports: [
     HttpClientModule,
@@ -231,6 +233,7 @@ import { UseractivityListComponent } from './modules/useractivity/useractivity-l
     ExportTopologySettingComponent,
     IslmaintenancemodalComponent,
     SwitchupdatemodalComponent,
+    FlowPingModalComponent,
   ]
 })
 export class AppModule { }

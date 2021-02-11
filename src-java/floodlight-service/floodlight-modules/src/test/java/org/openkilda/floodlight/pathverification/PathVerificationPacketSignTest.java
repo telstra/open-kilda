@@ -87,7 +87,7 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
 
     @Test
     public void testSignPacketPositive() throws Exception {
-        producerService.sendMessageAndTrack(anyObject(), anyObject(), anyObject(Message.class));
+        producerService.sendMessageAndTrackWithZk(anyObject(), anyObject(), anyObject(Message.class));
         expectLastCall().times(2);
         replay(producerService);
 

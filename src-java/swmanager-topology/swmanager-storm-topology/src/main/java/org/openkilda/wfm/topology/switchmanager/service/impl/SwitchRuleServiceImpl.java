@@ -54,6 +54,10 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
     private IslRepository islRepository;
     private SwitchRepository switchRepository;
 
+    private boolean active = true;
+
+    private boolean isOperationCompleted = true;
+
     public SwitchRuleServiceImpl(SwitchManagerCarrier carrier, RepositoryFactory repositoryFactory) {
         flowPathRepository = repositoryFactory.createFlowPathRepository();
         switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
@@ -65,6 +69,7 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
 
     @Override
     public void deleteRules(String key, SwitchRulesDeleteRequest data) {
+        isOperationCompleted = false;
         SwitchId switchId = data.getSwitchId();
         if (!switchRepository.exists(switchId)) {
             ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, format("Switch %s not found", switchId),
@@ -109,6 +114,7 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
 
     @Override
     public void installRules(String key, SwitchRulesInstallRequest data) {
+        isOperationCompleted = false;
         SwitchId switchId = data.getSwitchId();
         if (!switchRepository.exists(switchId)) {
             ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, format("Switch %s not found", switchId),
@@ -195,5 +201,27 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
         InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), key);
 
         carrier.response(key, message);
+
+        isOperationCompleted = true;
+
+        if (!active) {
+            carrier.sendInactive();
+        }
+    }
+
+    @Override
+    public void activate() {
+        active = true;
+    }
+
+    @Override
+    public boolean deactivate() {
+        active = false;
+        return isAllOperationsCompleted();
+    }
+
+    @Override
+    public boolean isAllOperationsCompleted() {
+        return isOperationCompleted;
     }
 }

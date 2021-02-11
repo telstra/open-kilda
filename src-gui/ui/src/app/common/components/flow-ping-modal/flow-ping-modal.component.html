@@ -1,0 +1,40 @@
+<div class="modal-header">
+  <h4 class="modal-title">{{title}}</h4>
+  <button [disabled]="selectedFlowList.length != 0" type="button" class="close" aria-label="Close" (click)="activeModal.close('Close click')">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+<div class="modal-body">
+  <table class="row-border hover dataTable no-footer">
+    <thead>
+      <tr class="tableHeading">
+          <th>FlowID</th>
+          <th>Status</th>
+          <th>Response</th>
+      </tr>
+      
+    </thead>
+    <tbody>
+      <tr *ngFor="let row of responseData; let i = index" >
+        <td style="width:10%">{{row}}</td>
+        <td style="width:30%">
+         <div class="col-md-12">
+            Forward Ping:<ngb-progressbar  showValue="true" [height]="progressHeight" [type]="pingFlowIndex[row]['forwardtype']" [max]="100"  [value]="pingFlowIndex[row]['forwardprogress']"></ngb-progressbar>
+         </div>
+         <div class="col-md-12">
+          Reverse Ping:<ngb-progressbar  showValue="true" [height]="progressHeight" [type]="pingFlowIndex[row]['reversetype']" [max]="100"  [value]="pingFlowIndex[row]['reverseprogress']"></ngb-progressbar>
+      
+       </div>
+        </td>
+        <td style="width:30%">
+          <div class="mb-3" *ngIf="pingFlowIndex[row]['forwardprogress']== 100">{{pingFlowIndex[row]['forwardmessage']}}</div>
+          <div *ngIf="pingFlowIndex[row]['reverseprogress'] == 100">{{pingFlowIndex[row]['reversemessage']}}</div>
+          <div *ngIf="pingFlowIndex[row]['error']">({{pingFlowIndex[row]['message']}})</div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<div class="modal-footer">
+  <button type="button" [disabled]="selectedFlowList.length != 0 " class="btn kilda_btn" (click)="activeModal.close('Close click')">Close</button>
+</div>

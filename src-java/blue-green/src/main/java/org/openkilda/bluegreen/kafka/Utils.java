@@ -22,11 +22,6 @@ public final class Utils {
         throw new UnsupportedOperationException();
     }
 
-    // TODO(zero_down_time) remove when Zero Down Time feature will be implemented
-    public static final String COMMON_COMPONENT_NAME = "common_component";
-    // TODO(zero_down_time) remove when Zero Down Time feature will be implemented
-    public static final String COMMON_COMPONENT_RUN_ID = "common_run_id";
-
     /**
      * Kafka message header to specify message version.
      */

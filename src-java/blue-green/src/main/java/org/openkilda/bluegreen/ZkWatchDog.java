@@ -90,6 +90,30 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
     }
 
     /**
+     * Synchronous get of buildVersion.
+     */
+    public byte[] getVersionSync() throws KeeperException, InterruptedException {
+        return zookeeper.getData(buildVersionPath, false, null);
+    }
+
+    /**
+     * Synchronous get of signal.
+     */
+    public Signal getSignalSync() throws KeeperException, InterruptedException {
+        byte[] data = zookeeper.getData(signalPath, false, null);
+        if (data == null || data.length == 0) {
+            return null;
+        }
+        String signalString = new String(data);
+        try {
+            return Signal.valueOf(signalString);
+        } catch (Exception e) {
+            log.error("Received unknown signal: {}", signalString, e);
+        }
+        return null;
+    }
+
+    /**
      * Subscribe for events.
      */
     public void subscribe(LifeCycleObserver observer) {

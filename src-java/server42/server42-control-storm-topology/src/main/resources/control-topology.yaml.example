@@ -1,0 +1,12 @@
+# topology configuration
+config:
+  topology.parallelism: 2
+  topology.workers: 1
+
+# spout definitions
+# spouts:
+
+# bolt definitions
+bolts:
+  - id: "tick.bolt"
+    parallelism: 1

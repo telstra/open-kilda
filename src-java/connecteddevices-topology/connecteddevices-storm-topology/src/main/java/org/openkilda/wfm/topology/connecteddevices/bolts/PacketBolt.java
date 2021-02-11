@@ -25,11 +25,14 @@ import org.openkilda.messaging.info.event.LldpInfoData;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.connecteddevices.service.PacketService;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 @Slf4j
@@ -37,7 +40,8 @@ public class PacketBolt extends AbstractBolt {
     private final PersistenceManager persistenceManager;
     private transient PacketService packetService;
 
-    public PacketBolt(PersistenceManager persistenceManager) {
+    public PacketBolt(PersistenceManager persistenceManager, String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
         this.persistenceManager = persistenceManager;
     }
 
@@ -48,25 +52,29 @@ public class PacketBolt extends AbstractBolt {
 
     @Override
     protected void handleInput(Tuple input) throws PipelineException {
-        Message message = pullValue(input, FIELD_ID_PAYLOAD, Message.class);
+        if (active) {
+            Message message = pullValue(input, FIELD_ID_PAYLOAD, Message.class);
 
-        if (message instanceof InfoMessage) {
-            log.debug("Received info message {}", message);
-            InfoData data = ((InfoMessage) message).getData();
-            if (data instanceof LldpInfoData) {
-                packetService.handleLldpData((LldpInfoData) data);
-            } else if (data instanceof ArpInfoData) {
-                packetService.handleArpData((ArpInfoData) data);
+            if (message instanceof InfoMessage) {
+                log.debug("Received info message {}", message);
+                InfoData data = ((InfoMessage) message).getData();
+                if (data instanceof LldpInfoData) {
+                    packetService.handleLldpData((LldpInfoData) data);
+                } else if (data instanceof ArpInfoData) {
+                    packetService.handleArpData((ArpInfoData) data);
+                } else {
+                    unhandledInput(input);
+                }
             } else {
                 unhandledInput(input);
             }
-        } else {
-            unhandledInput(input);
         }
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(AbstractTopology.fieldMessage);
+        declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+                ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 }
