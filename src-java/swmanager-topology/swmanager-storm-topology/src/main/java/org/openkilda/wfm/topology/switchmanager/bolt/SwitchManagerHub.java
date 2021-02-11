@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.switchmanager.bolt;
 
+import org.openkilda.bluegreen.LifecycleEvent;
+import org.openkilda.bluegreen.Signal;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -43,6 +45,8 @@ import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.switchmanager.StreamType;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
@@ -74,12 +78,18 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     public static final Fields NORTHBOUND_STREAM_FIELDS = new Fields(
             MessageKafkaTranslator.FIELD_ID_KEY, MessageKafkaTranslator.FIELD_ID_PAYLOAD);
 
+    public static final String ZOOKEEPER_STREAM_ID = ZkStreams.ZK.toString();
+    public static final Fields ZOOKEEPER_STREAM_FIELDS = new Fields(
+            ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT);
+
     private final PersistenceManager persistenceManager;
     private final FlowResourcesConfig flowResourcesConfig;
     private final SwitchManagerTopologyConfig topologyConfig;
     private transient SwitchValidateService validateService;
     private transient SwitchSyncService syncService;
     private transient SwitchRuleService switchRuleService;
+
+    private LifecycleEvent differedShutdownEvent;
 
     public SwitchManagerHub(HubBolt.Config hubConfig, PersistenceManager persistenceManager,
                             SwitchManagerTopologyConfig topologyConfig,
@@ -102,6 +112,11 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
 
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
+        if (!active) {
+            log.info("Switch Manager Topology is inactive");
+            return;
+        }
+
         String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
         CommandMessage message = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, CommandMessage.class);
 
@@ -173,6 +188,26 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     }
 
     @Override
+    protected void handleLifeCycleEvent(LifecycleEvent event) {
+        if (event.getSignal().equals(Signal.SHUTDOWN)) {
+            if (validateService.deactivate() && syncService.deactivate() && switchRuleService.deactivate()) {
+                emitWithContext(ZOOKEEPER_STREAM_ID, getCurrentTuple(), new Values(event));
+            } else {
+                differedShutdownEvent = event;
+            }
+            active = false;
+        } else if (event.getSignal().equals(Signal.START)) {
+            validateService.activate();
+            syncService.activate();
+            switchRuleService.activate();
+            active = true;
+            emitWithContext(ZOOKEEPER_STREAM_ID, getCurrentTuple(), new Values(event));
+        } else {
+            log.info("Received signal info {}", event.getSignal());
+        }
+    }
+
+    @Override
     public void cancelTimeoutCallback(String key) {
         cancelCallback(key);
     }
@@ -199,11 +234,21 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     }
 
     @Override
+    public void sendInactive() {
+        if (validateService.isAllOperationsCompleted()
+                && syncService.isAllOperationsCompleted()
+                && switchRuleService.isAllOperationsCompleted()) {
+            getOutput().emit(ZOOKEEPER_STREAM_ID, new Values(differedShutdownEvent, getCommandContext()));
+            differedShutdownEvent = null;
+        }
+    }
+
+    @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
         declarer.declareStream(SpeakerWorkerBolt.INCOME_STREAM, MessageKafkaTranslator.STREAM_FIELDS);
-
         declarer.declareStream(NORTHBOUND_STREAM_ID, NORTHBOUND_STREAM_FIELDS);
+        declarer.declareStream(ZOOKEEPER_STREAM_ID, ZOOKEEPER_STREAM_FIELDS);
     }
 
     private Values makeWorkerTuple(String key, CommandData payload) {

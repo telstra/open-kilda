@@ -35,6 +35,8 @@ import org.openkilda.messaging.nbtopology.request.MeterModifyRequest;
 import org.openkilda.messaging.nbtopology.request.SwitchesBaseRequest;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
@@ -45,19 +47,24 @@ import org.apache.storm.tuple.Values;
 
 public class RouterBolt extends AbstractBolt {
 
+    public RouterBolt(String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
+    }
+
     @Override
     protected void handleInput(Tuple input) throws PipelineException {
         String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
         Message message = pullValue(input, FIELD_ID_PAYLOAD, Message.class);
-
         if (message instanceof CommandMessage) {
-            log.debug("Received command message {}", message);
-            CommandMessage command = (CommandMessage) message;
-            CommandData data = command.getData();
+            if (active) {
+                log.debug("Received command message {}", message);
+                CommandMessage command = (CommandMessage) message;
+                CommandData data = command.getData();
 
-            if (data instanceof BaseRequest) {
-                BaseRequest baseRequest = (BaseRequest) data;
-                processRequest(input, key, baseRequest);
+                if (data instanceof BaseRequest) {
+                    BaseRequest baseRequest = (BaseRequest) data;
+                    processRequest(input, key, baseRequest);
+                }
             }
         } else if (message instanceof InfoMessage || message instanceof ErrorMessage) {
             log.debug("Received hub response message {}", message);
@@ -65,7 +72,6 @@ public class RouterBolt extends AbstractBolt {
         } else {
             unhandledInput(input);
         }
-
     }
 
     private void processRequest(Tuple input, String key, BaseRequest request) {
@@ -117,5 +123,7 @@ public class RouterBolt extends AbstractBolt {
         declarer.declareStream(FlowValidationHubBolt.INCOME_STREAM, MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(FlowMeterModifyHubBolt.INCOME_STREAM, MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(SpeakerWorkerBolt.INCOME_STREAM, MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+                ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 }

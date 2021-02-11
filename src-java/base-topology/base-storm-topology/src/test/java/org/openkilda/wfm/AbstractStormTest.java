@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm;
 
-import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_NAME;
-import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_RUN_ID;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
@@ -38,6 +36,10 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZooDefs.Ids;
+import org.apache.zookeeper.ZooKeeper;
 import org.junit.ClassRule;
 import org.junit.rules.TemporaryFolder;
 import org.kohsuke.args4j.CmdLineException;
@@ -69,19 +71,20 @@ public abstract class AbstractStormTest {
         return properties;
     }
 
-    protected static Properties kafkaProducerProperties() throws CmdLineException, ConfigurationException {
+    protected static Properties kafkaProducerProperties(String componentName, String runId)
+            throws CmdLineException, ConfigurationException {
         Properties properties = commonKafkaProperties();
         properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, STRING_SERIALIZER);
         properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, STRING_SERIALIZER);
         properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningProducerInterceptor.class.getName());
-        properties.put(PRODUCER_COMPONENT_NAME_PROPERTY, COMMON_COMPONENT_NAME);
-        properties.put(PRODUCER_RUN_ID_PROPERTY, COMMON_COMPONENT_RUN_ID);
+        properties.put(PRODUCER_COMPONENT_NAME_PROPERTY, componentName);
+        properties.put(PRODUCER_RUN_ID_PROPERTY, runId);
         properties.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY,
                 makeUnboundConfig(ZookeeperConfig.class).getConnectString());
         return properties;
     }
 
-    protected static Properties kafkaConsumerProperties(final String groupId)
+    protected static Properties kafkaConsumerProperties(final String groupId, String componentName, String runId)
             throws ConfigurationException, CmdLineException {
         Properties properties = commonKafkaProperties();
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
@@ -89,8 +92,8 @@ public abstract class AbstractStormTest {
         properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, STRING_DESERIALIZER);
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         properties.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName());
-        properties.put(CONSUMER_COMPONENT_NAME_PROPERTY, COMMON_COMPONENT_NAME);
-        properties.put(CONSUMER_RUN_ID_PROPERTY, COMMON_COMPONENT_RUN_ID);
+        properties.put(CONSUMER_COMPONENT_NAME_PROPERTY, componentName);
+        properties.put(CONSUMER_RUN_ID_PROPERTY, runId);
         properties.put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY,
                 makeUnboundConfig(ZookeeperConfig.class).getConnectString());
         return properties;
@@ -104,7 +107,7 @@ public abstract class AbstractStormTest {
         return config;
     }
 
-    protected static void startZooKafkaAndStorm() throws Exception {
+    protected static void startZooKafka() throws Exception {
         log.info("Starting Zookeeper and Kafka...");
 
         makeConfigFile();
@@ -113,10 +116,13 @@ public abstract class AbstractStormTest {
         server.start();
 
         log.info("Zookeeper and Kafka started.");
+    }
+
+    protected static void startStorm(String componentName, String runId) throws Exception {
         log.info("Starting local Storm cluster...");
 
         cluster = new LocalCluster();
-        kProducer = new TestKafkaProducer(kafkaProducerProperties());
+        kProducer = new TestKafkaProducer(kafkaProducerProperties(componentName, runId));
 
         log.info("Storm started.");
     }
@@ -176,5 +182,12 @@ public abstract class AbstractStormTest {
 
     protected static Properties makeConfigOverlay() {
         return new Properties();
+    }
+
+    protected static void setNode(ZooKeeper zooKeeper, String path, String value)
+            throws KeeperException, InterruptedException  {
+        if (zooKeeper.exists(path, false) == null) {
+            zooKeeper.create(path, value.getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        }
     }
 }

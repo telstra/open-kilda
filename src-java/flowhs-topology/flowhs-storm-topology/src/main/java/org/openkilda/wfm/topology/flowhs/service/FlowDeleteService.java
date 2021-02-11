@@ -45,6 +45,8 @@ public class FlowDeleteService {
     private final FlowDeleteHubCarrier carrier;
     private final FlowEventRepository flowEventRepository;
 
+    private boolean active;
+
     public FlowDeleteService(FlowDeleteHubCarrier carrier, PersistenceManager persistenceManager,
                              FlowResourcesManager flowResourcesManager,
                              int speakerCommandRetriesLimit) {
@@ -132,6 +134,27 @@ public class FlowDeleteService {
             fsms.remove(key);
 
             carrier.cancelTimeoutCallback(key);
+            if (!active && fsms.isEmpty()) {
+                carrier.sendInactive();
+            }
         }
+    }
+
+    /**
+     * Handles deactivate command.
+     */
+    public boolean deactivate() {
+        active = false;
+        if (fsms.isEmpty()) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Handles activate command.
+     */
+    public void activate() {
+        active = true;
     }
 }

@@ -25,9 +25,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openkilda.wfm.AbstractBolt.FIELD_ID_CONTEXT;
+import static org.openkilda.wfm.share.zk.ZooKeeperSpout.FIELD_ID_LIFECYCLE_EVENT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.GRPC_REQUEST;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.STATS_REQUEST;
 
+import org.openkilda.bluegreen.LifecycleEvent;
+import org.openkilda.bluegreen.Signal;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.grpc.GetPacketInOutStatsRequest;
 import org.openkilda.model.FeatureToggles;
@@ -37,6 +40,8 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 
 import org.apache.storm.task.OutputCollector;
@@ -71,6 +76,8 @@ public class StatsRequesterBoltTest {
     private OutputCollector output;
     @Mock
     private Tuple input;
+    @Mock
+    private Tuple startTuple;
 
 
     @Before
@@ -81,8 +88,11 @@ public class StatsRequesterBoltTest {
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
         when(input.getSourceComponent()).thenReturn(StatsComponentType.TICK_BOLT.name());
         when(input.getFields()).thenReturn(new Fields());
-        when(input.getFields()).thenReturn(new Fields());
         when(input.getValueByField(FIELD_ID_CONTEXT)).thenReturn("123");
+        when(startTuple.getSourceComponent()).thenReturn(ZooKeeperSpout.SPOUT_ID);
+        when(startTuple.getValueByField(FIELD_ID_LIFECYCLE_EVENT))
+                .thenReturn(LifecycleEvent.builder().signal(Signal.START).build());
+        when(startTuple.getFields()).thenReturn(new Fields());
     }
 
     @Test
@@ -125,8 +135,11 @@ public class StatsRequesterBoltTest {
     }
 
     private void runDoNotRequestGrpcStatsTest() {
-        StatsRequesterBolt statsRequesterBolt = new StatsRequesterBolt(persistenceManager);
+        StatsRequesterBolt statsRequesterBolt = new StatsRequesterBolt(persistenceManager, ZooKeeperSpout.SPOUT_ID);
         statsRequesterBolt.prepare(Collections.emptyMap(), topologyContext, output);
+        statsRequesterBolt.execute(startTuple);
+        verify(output).emit(eq(ZkStreams.ZK.toString()), any(Tuple.class), anyList());
+
         statsRequesterBolt.execute(input);
 
         verify(output, times(1)).emit(eq(STATS_REQUEST.name()), any(Tuple.class), anyList());
@@ -147,8 +160,11 @@ public class StatsRequesterBoltTest {
         when(switchRepository.findActive()).thenReturn(Collections.singleton(sw));
         when(featureTogglesRepository.getOrDefault()).thenReturn(featureToggles);
 
-        StatsRequesterBolt statsRequesterBolt = new StatsRequesterBolt(persistenceManager);
+        StatsRequesterBolt statsRequesterBolt = new StatsRequesterBolt(persistenceManager, ZooKeeperSpout.SPOUT_ID);
         statsRequesterBolt.prepare(Collections.emptyMap(), topologyContext, output);
+        statsRequesterBolt.execute(startTuple);
+        verify(output).emit(eq(ZkStreams.ZK.toString()), any(Tuple.class), anyList());
+
         statsRequesterBolt.execute(input);
 
         ArgumentCaptor<Values> values = ArgumentCaptor.forClass(Values.class);

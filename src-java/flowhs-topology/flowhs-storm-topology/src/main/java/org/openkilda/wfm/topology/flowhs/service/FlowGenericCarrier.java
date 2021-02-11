@@ -56,4 +56,6 @@ public interface FlowGenericCarrier {
      * @param flow requested flow
      */
     default void sendDeactivateFlowMonitoring(String flow, SwitchId srcSwitchId, SwitchId dstSwitchId) {}
+
+    void sendInactive();
 }

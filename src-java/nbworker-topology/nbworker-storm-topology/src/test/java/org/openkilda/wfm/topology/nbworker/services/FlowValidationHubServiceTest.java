@@ -47,7 +47,7 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
     @BeforeClass
     public static void setUpOnce() {
         FlowValidationTestBase.setUpOnce();
-        flowValidationHubService = new FlowValidationHubService(persistenceManager, flowResourcesConfig);
+        flowValidationHubService = new FlowValidationHubService(persistenceManager, flowResourcesConfig, null);
         flowValidationService = new FlowValidationService(persistenceManager, flowResourcesConfig,
                 MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
     }
@@ -92,6 +92,11 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
             @Override
             public void endProcessing(String key) {
                 assertEquals(TEST_KEY, key);
+            }
+
+            @Override
+            public void sendInactive() {
+
             }
 
             @Override
@@ -152,6 +157,11 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
             }
 
             @Override
+            public void sendInactive() {
+
+            }
+
+            @Override
             public long getFlowMeterMinBurstSizeInKbits() {
                 return MIN_BURST_SIZE_IN_KBITS;
             }
@@ -201,6 +211,11 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
             @Override
             public void endProcessing(String key) {
                 assertEquals(TEST_KEY, key);
+            }
+
+            @Override
+            public void sendInactive() {
+
             }
 
             @Override

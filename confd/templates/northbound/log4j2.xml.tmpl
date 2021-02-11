@@ -15,6 +15,7 @@ Do not change this file, all changes will be lost. Change corresponding template
            <JsonLayout compact="true" eventEol="true" properties="true">
                 <KeyValuePair key="correlation_id" value="${ctx:correlation_id}"/>
                 <KeyValuePair key="timeMillis" value="$${timeMillis:}"/>
+                <KeyValuePair key="blue_green_mode" value="$${env:BLUE_GREEN_MODE}"/>
            </JsonLayout>
            <Policies>
             <SizeBasedTriggeringPolicy size="100 MB"/> <!-- Or every 100 MB -->
@@ -27,6 +28,7 @@ Do not change this file, all changes will be lost. Change corresponding template
            <JsonLayout compact="true" eventEol="true" properties="true">
                 <KeyValuePair key="correlation_id" value="${ctx:correlation_id}"/>
                 <KeyValuePair key="timeMillis" value="$${timeMillis:}"/>
+                <KeyValuePair key="blue_green_mode" value="$${env:BLUE_GREEN_MODE}"/>
            </JsonLayout>
         </Socket>
 {{- end }}

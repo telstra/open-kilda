@@ -46,9 +46,9 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
     public static final String FIELD_ID_LIFECYCLE_EVENT = "lifecycle.event";
 
     public static final String FIELD_ID_CONTEXT = AbstractBolt.FIELD_ID_CONTEXT;
-    private String id;
-    private String serviceName;
-    private String connectionString;
+    private final String id;
+    private final String serviceName;
+    private final String connectionString;
     private Instant zooKeeperConnectionTimestamp = Instant.MIN;
     private transient Queue<Signal> signals;
     private transient ZkWatchDog watchDog;
@@ -88,6 +88,8 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
                     .signal(signal)
                     .uuid(UUID.randomUUID())
                     .messageId(messageId++).build();
+            log.info("Component {} with id {} received signal {} from zookeeper. Sending event {}",
+                    serviceName, id, signal, event);
             collector.emit(new Values(event, new CommandContext()), messageId);
         } else {
             org.apache.storm.utils.Utils.sleep(1L);

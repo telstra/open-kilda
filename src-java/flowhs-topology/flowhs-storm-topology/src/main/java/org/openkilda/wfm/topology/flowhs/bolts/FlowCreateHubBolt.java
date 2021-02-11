@@ -22,6 +22,8 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_SER
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_SPEAKER_WORKER;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
+import org.openkilda.bluegreen.LifecycleEvent;
+import org.openkilda.bluegreen.Signal;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.messaging.Message;
@@ -41,6 +43,8 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
@@ -51,6 +55,7 @@ import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 import lombok.Builder;
 import lombok.Getter;
 import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
@@ -63,6 +68,8 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
 
     private transient FlowCreateService service;
     private String currentKey;
+
+    private LifecycleEvent deferedShutdownEvent;
 
     public FlowCreateHubBolt(FlowCreateConfig config, PersistenceManager persistenceManager,
                              PathComputerConfig pathComputerConfig, FlowResourcesConfig flowResourcesConfig) {
@@ -85,6 +92,22 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
         service = new FlowCreateService(this, persistenceManager, pathComputer, resourcesManager,
                 config.getFlowCreationRetriesLimit(), config.getPathAllocationRetriesLimit(),
                 config.getPathAllocationRetryDelay(), config.getSpeakerCommandRetriesLimit());
+    }
+
+    @Override
+    protected void handleLifeCycleEvent(LifecycleEvent event) {
+        if (event.getSignal().equals(Signal.SHUTDOWN)) {
+            if (service.deactivate()) {
+                emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
+            } else {
+                deferedShutdownEvent = event;
+            }
+        } else if (event.getSignal().equals(Signal.START)) {
+            service.activate();
+            emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
+        } else {
+            log.info("Received signal info {}", event.getSignal());
+        }
     }
 
     @Override
@@ -132,6 +155,12 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
     }
 
     @Override
+    public void sendInactive() {
+        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferedShutdownEvent, getCommandContext()));
+        deferedShutdownEvent = null;
+    }
+
+    @Override
     public void sendPeriodicPingNotification(String flowId, boolean enabled) {
         PeriodicPingCommand payload = new PeriodicPingCommand(flowId, enabled);
         Message message = new CommandMessage(payload, getCommandContext().getCreateTime(),
@@ -159,6 +188,8 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
         declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_PING_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(ZkStreams.ZK.toString(),
+                new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 
     @Getter
@@ -169,10 +200,11 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
         private int speakerCommandRetriesLimit;
 
         @Builder(builderMethodName = "flowCreateBuilder", builderClassName = "flowCreateBuild")
-        public FlowCreateConfig(String requestSenderComponent, String workerComponent, int timeoutMs, boolean autoAck,
+        public FlowCreateConfig(String requestSenderComponent, String workerComponent, String lifeCycleEventComponent,
+                                int timeoutMs, boolean autoAck,
                                 int flowCreationRetriesLimit, int pathAllocationRetriesLimit,
                                 int pathAllocationRetryDelay, int speakerCommandRetriesLimit) {
-            super(requestSenderComponent, workerComponent, null, timeoutMs, autoAck);
+            super(requestSenderComponent, workerComponent, lifeCycleEventComponent, timeoutMs, autoAck);
             this.flowCreationRetriesLimit = flowCreationRetriesLimit;
             this.pathAllocationRetriesLimit = pathAllocationRetriesLimit;
             this.pathAllocationRetryDelay = pathAllocationRetryDelay;

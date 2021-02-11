@@ -16,14 +16,12 @@
 package org.openkilda.wfm.topology.portstate.spout;
 
 import static java.lang.String.format;
+import static org.openkilda.wfm.AbstractBolt.FIELD_ID_CONTEXT;
 
-import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.discovery.PortsCommandData;
+import org.openkilda.wfm.share.bolt.KafkaEncoder;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.spout.SpoutOutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -67,14 +65,11 @@ public class SwitchPortsSpout extends BaseRichSpout {
     public void nextTuple() {
         final long now = now();
         if (now - lastTickTime > frequency) {
-            Message message = buildPortsCommand();
-            logger.debug("emitting PortsCommandData: {}", message);
-            try {
-                Values values = new Values(null, Utils.MAPPER.writeValueAsString(message));
-                collector.emit(values);
-            } catch (JsonProcessingException e) {
-                logger.error("Error on json serialization", e);
-            }
+            CommandData data = new PortsCommandData(REQUESTER);
+            logger.debug("emitting PortsCommandData: {}", data);
+
+            String correlationId = format("SwitchPortsSpout-%s", UUID.randomUUID().toString());
+            collector.emit(new Values(correlationId, data, correlationId));
 
             if (now - lastTickTime > frequency * 2) {
                 logger.warn("long tick for PortsCommandData - {}ms", now - lastTickTime);
@@ -85,14 +80,8 @@ public class SwitchPortsSpout extends BaseRichSpout {
         org.apache.storm.utils.Utils.sleep(1);
     }
 
-    private Message buildPortsCommand() {
-        String correlationId = format("SwitchPortsSpout-%s", UUID.randomUUID().toString());
-        return new CommandMessage(new PortsCommandData(REQUESTER), now(), correlationId,
-                Destination.CONTROLLER);
-    }
-
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("key", "message"));
+        declarer.declare(new Fields(KafkaEncoder.FIELD_ID_KEY, KafkaEncoder.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
     }
 }

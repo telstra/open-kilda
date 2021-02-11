@@ -28,6 +28,8 @@ import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.SwitchTableStatsData;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
 import org.openkilda.wfm.topology.stats.StatsTopology;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -44,6 +46,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SpeakerBolt extends AbstractBolt {
+    public static final String ZOOKEEPER_STREAM = ZkStreams.ZK.toString();
+
     private static final Logger logger = LoggerFactory.getLogger(SpeakerBolt.class);
     private static final String PORT_STATS_STREAM = StatsStreamType.PORT_STATS.toString();
     private static final String METER_CFG_STATS_STREAM = StatsStreamType.METER_CONFIG_STATS.toString();
@@ -52,41 +56,48 @@ public class SpeakerBolt extends AbstractBolt {
     private static final String TABLE_STATS_STREAM = StatsStreamType.TABLE_STATS.toString();
     private static final String PACKET_IN_OUT_STATS_STREAM = StatsStreamType.PACKET_IN_OUT_STATS.toString();
 
+    public SpeakerBolt(String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
+    }
+
     @Override
     protected void handleInput(Tuple tuple) throws Exception {
         logger.debug("Ingoing tuple: {}", tuple);
 
-        Message message = pullValue(tuple, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Message.class);
-        if (!(message instanceof InfoMessage)) {
-            return;
-        }
-        InfoMessage infoMessage = (InfoMessage) message;
-        final InfoData data = infoMessage.getData();
-        if (data instanceof PortStatsData) {
-            logger.debug("Port stats message: {}", infoMessage);
-            emitWithContext(PORT_STATS_STREAM, tuple, new Values(infoMessage));
-        } else if (data instanceof MeterConfigStatsData) {
-            logger.debug("Meter config stats message: {}", infoMessage);
-            emitWithContext(METER_CFG_STATS_STREAM, tuple, new Values(infoMessage));
-        } else if (data instanceof MeterStatsData) {
-            logger.debug("Meter stats message: {}", infoMessage);
-            emitWithContext(CACHE_STREAM, tuple, new Values(data));
-        } else if (data instanceof FlowStatsData) {
-            logger.debug("Flow stats message: {}", infoMessage);
-            ImmutablePair<FlowStatsData, FlowStatsData> splitData =
-                    splitSystemRuleStatsAndFlowStats((FlowStatsData) data);
+        if (active) {
+            Message message = pullValue(tuple, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Message.class);
+            if (!(message instanceof InfoMessage)) {
+                return;
+            }
+            InfoMessage infoMessage = (InfoMessage) message;
+            final InfoData data = infoMessage.getData();
+            if (data instanceof PortStatsData) {
+                logger.debug("Port stats message: {}", infoMessage);
+                emitWithContext(PORT_STATS_STREAM, tuple, new Values(infoMessage));
+            } else if (data instanceof MeterConfigStatsData) {
+                logger.debug("Meter config stats message: {}", infoMessage);
+                emitWithContext(METER_CFG_STATS_STREAM, tuple, new Values(infoMessage));
+            } else if (data instanceof MeterStatsData) {
+                logger.debug("Meter stats message: {}", infoMessage);
+                emitWithContext(CACHE_STREAM, tuple, new Values(data));
+            } else if (data instanceof FlowStatsData) {
+                logger.debug("Flow stats message: {}", infoMessage);
+                ImmutablePair<FlowStatsData, FlowStatsData> splitData =
+                        splitSystemRuleStatsAndFlowStats((FlowStatsData) data);
 
-            emitWithContext(SYSTEM_RULES_STATS_STREAM, tuple, new Values(splitData.getKey()));
-            emitWithContext(CACHE_STREAM, tuple, new Values(splitData.getValue()));
-        } else if (data instanceof SwitchTableStatsData) {
-            logger.debug("Table stats message: {}", infoMessage);
-            emitWithContext(TABLE_STATS_STREAM, tuple, new Values(data));
-        } else if (data instanceof GetPacketInOutStatsResponse) {
-            logger.debug("Packet in out stats message: {}", infoMessage);
-            emitWithContext(PACKET_IN_OUT_STATS_STREAM, tuple, new Values(data));
-        } else {
-            //FIXME (ncherevko): we might receive few unexpected messages here, need to fix it and uncomment below line
-            //unhandledInput(tuple);
+                emitWithContext(SYSTEM_RULES_STATS_STREAM, tuple, new Values(splitData.getKey()));
+                emitWithContext(CACHE_STREAM, tuple, new Values(splitData.getValue()));
+            } else if (data instanceof SwitchTableStatsData) {
+                logger.debug("Table stats message: {}", infoMessage);
+                emitWithContext(TABLE_STATS_STREAM, tuple, new Values(data));
+            } else if (data instanceof GetPacketInOutStatsResponse) {
+                logger.debug("Packet in out stats message: {}", infoMessage);
+                emitWithContext(PACKET_IN_OUT_STATS_STREAM, tuple, new Values(data));
+            } else {
+                //FIXME (ncherevko): we might receive few unexpected messages here,
+                // need to fix it and uncomment below line
+                //unhandledInput(tuple);
+            }
         }
     }
 
@@ -121,5 +132,7 @@ public class SpeakerBolt extends AbstractBolt {
         outputFieldsDeclarer.declareStream(SYSTEM_RULES_STATS_STREAM, statsFields);
         outputFieldsDeclarer.declareStream(TABLE_STATS_STREAM, statsFields);
         outputFieldsDeclarer.declareStream(PACKET_IN_OUT_STATS_STREAM, statsFields);
+        outputFieldsDeclarer.declareStream(ZOOKEEPER_STREAM, new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+                ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 }

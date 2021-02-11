@@ -13,6 +13,7 @@ dependencies {
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     implementation project(':kilda-reporting')
     runtimeClasspath project(':kilda-persistence-orientdb')
+    implementation project(':blue-green')
 
     implementation('org.apache.storm:storm-opentsdb:1.2.1') {
         exclude(group: 'org.apache.httpcomponents', module: 'httpclient')

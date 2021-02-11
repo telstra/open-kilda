@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.84.0 (09/02/2021)
+
+### Features:
+-  [#3905](https://github.com/telstra/open-kilda/pull/3905) Stats topology zero-downtime upgrade [**storm-topologies**]
+-  [#3914](https://github.com/telstra/open-kilda/pull/3914) Ping zero-downtime upgrade [**storm-topologies**]
+-  [#3922](https://github.com/telstra/open-kilda/pull/3922) Port state zero-downtime upgrade [**storm-topologies**]
+-  [#3861](https://github.com/telstra/open-kilda/pull/3861) Zero downtime nb worker [**storm-topologies**]
+-  [#3862](https://github.com/telstra/open-kilda/pull/3862) Zero downtime floodlight router [**storm-topologies**]
+-  [#3863](https://github.com/telstra/open-kilda/pull/3863) Network 0-Downtime PoC [**storm-topologies**]
+-  [#3930](https://github.com/telstra/open-kilda/pull/3930) IslLatency topology zero-downtime upgrade [**storm-topologies**]
+-  [#3932](https://github.com/telstra/open-kilda/pull/3932) OpenTSDB topology zero-downtime upgrade 
+-  [#3879](https://github.com/telstra/open-kilda/pull/3879) Zero downtime Switch Manager [**storm-topologies**]
+-  [#3944](https://github.com/telstra/open-kilda/pull/3944) Zero downtime logs for NB and GRPC [**northbound**]
+-  [#3886](https://github.com/telstra/open-kilda/pull/3886) Zero downtime reroute [**storm-topologies**]
+-  [#3888](https://github.com/telstra/open-kilda/pull/3888) Zero Downtime for Flow HS 
+-  [#3959](https://github.com/telstra/open-kilda/pull/3959) Zero Downtime server42 control topology 
+
+### Bug Fixes:
+-  [#4037](https://github.com/telstra/open-kilda/pull/4037) Removed typo grouping from flr zero-downtime [**storm-topologies**]
+
+### Improvements:
+-  [#4035](https://github.com/telstra/open-kilda/pull/4035) Added logs to track ZK state 
+-  [#4001](https://github.com/telstra/open-kilda/pull/4001) improve "cleanup" in roundTripLatencySpec [**tests**]
+-  [#3557](https://github.com/telstra/open-kilda/pull/3557) Continuous ISL replug unit test [**tests**]
+-  [#4006](https://github.com/telstra/open-kilda/pull/4006) add test for RTL a-switcl link + antiflap [**tests**]
+-  [#4031](https://github.com/telstra/open-kilda/pull/4031) Improve some waits in func tests [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.83.0...v1.84.0).
+
+### Affected Components:
+network, otsdb, grpc, router, portstate, stats, nb, swmanager, nbworker, flow-hs, isllatency, reroute, ping
+
+---
+
 ## v1.83.0 (04/02/2021)
 
 ### Features:

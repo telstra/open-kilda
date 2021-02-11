@@ -37,6 +37,11 @@ public abstract class MetricGenBolt extends AbstractBolt {
         this.metricFormatter = new MetricFormatter(metricPrefix);
     }
 
+    public MetricGenBolt(String metricPrefix, String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
+        this.metricFormatter = new MetricFormatter(metricPrefix);
+    }
+
     protected static List<Object> tuple(String metric, long timestamp, Number value, Map<String, String> tag)
             throws JsonEncodeException {
         Datapoint datapoint = new Datapoint(metric, timestamp, tag, value);

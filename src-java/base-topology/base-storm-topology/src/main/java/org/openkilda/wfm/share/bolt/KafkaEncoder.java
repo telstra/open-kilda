@@ -39,6 +39,13 @@ public abstract class KafkaEncoder extends AbstractBolt {
 
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD);
 
+    public KafkaEncoder() {
+    }
+
+    public KafkaEncoder(String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
+    }
+
     @Override
     protected void handleInput(Tuple input) throws Exception {
         MessageData payload = pullPayload(input);

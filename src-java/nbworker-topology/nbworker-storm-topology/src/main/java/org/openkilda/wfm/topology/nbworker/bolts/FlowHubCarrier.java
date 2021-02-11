@@ -30,4 +30,6 @@ public interface FlowHubCarrier {
     void sendToMessageEncoder(String key, ErrorData errorData);
 
     void endProcessing(String key);
+
+    void sendInactive();
 }

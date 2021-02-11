@@ -13,13 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.storm.spout;
+package org.openkilda.wfm.topology.network.storm.bolt.history;
 
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.context.PersistenceContextRequired;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.network.model.facts.HistoryFacts;
 import org.openkilda.wfm.topology.network.service.ISwitchPrepopulateCarrier;
 import org.openkilda.wfm.topology.network.service.NetworkHistoryService;
@@ -27,17 +28,15 @@ import org.openkilda.wfm.topology.network.storm.ComponentId;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
 import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchHistoryCommand;
 
-import org.apache.storm.spout.SpoutOutputCollector;
-import org.apache.storm.task.TopologyContext;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseRichSpout;
 import org.apache.storm.tuple.Fields;
+import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.Map;
-
-public class NetworkHistory extends BaseRichSpout implements ISwitchPrepopulateCarrier {
-    public static final String SPOUT_ID = ComponentId.NETWORK_HISTORY.toString();
+@Slf4j
+public class NetworkHistoryHandler extends AbstractBolt implements ISwitchPrepopulateCarrier {
+    public static final String BOLT_ID = ComponentId.NETWORK_HISTORY.toString();
 
     public static final String FIELD_ID_DATAPATH = SpeakerRouter.FIELD_ID_DATAPATH;
     public static final String FIELD_ID_PAYLOAD = "switch-init";
@@ -45,40 +44,45 @@ public class NetworkHistory extends BaseRichSpout implements ISwitchPrepopulateC
 
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
+    public static final String STREAM_ZOOKEEPER_ID = ZkStreams.ZK.toString();
+    public static final Fields STREAM_ZOOKEEPER_FIELDS = new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+            ZooKeeperBolt.FIELD_ID_CONTEXT);
+
     private final PersistenceManager persistenceManager;
 
     private transient NetworkHistoryService service;
-    private transient SpoutOutputCollector output;
 
-    private final CommandContext rootContext = new CommandContext();
-
-    private boolean workDone = false;
-
-    public NetworkHistory(PersistenceManager persistenceManager) {
+    public NetworkHistoryHandler(PersistenceManager persistenceManager, String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
         this.persistenceManager = persistenceManager;
     }
 
     @Override
-    @PersistenceContextRequired(requiresNew = true)
-    public void nextTuple() {
-        if (workDone) {
-            org.apache.storm.utils.Utils.sleep(1L);
-            return;
-        }
-        workDone = true;
-
-        service.applyHistory();
+    protected void handleInput(Tuple input) {
+        unhandledInput(input);
     }
 
     @Override
-    public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
-        output = collector;
+    protected void activate() {
+        if (!active) {
+            // Every new START signal will cause history reading
+            log.info("Allying history events");
+            service.applyHistory();
+        } else {
+            log.info("Skip history events");
+        }
+    }
+
+    @Override
+    protected void init() {
+        super.init();
         service = new NetworkHistoryService(this, persistenceManager);
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer streamManager) {
         streamManager.declare(STREAM_FIELDS);
+        streamManager.declareStream(STREAM_ZOOKEEPER_ID, STREAM_ZOOKEEPER_FIELDS);
     }
 
     /**
@@ -89,7 +93,7 @@ public class NetworkHistory extends BaseRichSpout implements ISwitchPrepopulateC
         SwitchHistoryCommand command = new SwitchHistoryCommand(historyFacts);
         SwitchId switchId = command.getDatapath();
 
-        CommandContext context = rootContext.fork(switchId.toOtsdFormat());
-        output.emit(new Values(switchId, command, context));
+        CommandContext context = getCommandContext().fork(switchId.toOtsdFormat());
+        getOutput().emit(new Values(switchId, command, context));
     }
 }
