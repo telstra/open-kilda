@@ -33,7 +33,6 @@ import java.util.Optional;
 
 @Slf4j
 public class UpdateFlowStatusAction extends FlowProcessingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
-    private static final String DEGRADED_FLOW_STATUS_INFO = "Couldn't find non overlapping protected path";
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public UpdateFlowStatusAction(PersistenceManager persistenceManager,
@@ -53,9 +52,9 @@ public class UpdateFlowStatusAction extends FlowProcessingAction<FlowUpdateFsm, 
             if (flowStatus != flow.getStatus() && stateMachine.getBulkUpdateFlowIds().isEmpty()) {
                 dashboardLogger.onFlowStatusUpdate(flowId, flowStatus);
                 flow.setStatus(flowStatus);
-                flow.setStatusInfo(getFlowStatusInfo(flowStatus, stateMachine));
+                flow.setStatusInfo(getFlowStatusInfo(flow, flowStatus, stateMachine));
             } else if (FlowStatus.DEGRADED.equals(flowStatus)) {
-                flow.setStatusInfo(DEGRADED_FLOW_STATUS_INFO);
+                flow.setStatusInfo(getDegradedFlowStatusInfo(flow, stateMachine));
             }
             stateMachine.setNewFlowStatus(flowStatus);
             return flowStatus;
@@ -66,14 +65,24 @@ public class UpdateFlowStatusAction extends FlowProcessingAction<FlowUpdateFsm, 
         }
     }
 
-    private String getFlowStatusInfo(FlowStatus flowStatus, FlowUpdateFsm stateMachine) {
+    private String getFlowStatusInfo(Flow flow, FlowStatus flowStatus, FlowUpdateFsm stateMachine) {
         String flowStatusInfo = null;
         if (!FlowStatus.UP.equals(flowStatus) && !flowStatus.equals(stateMachine.getOriginalFlowStatus())) {
             flowStatusInfo = stateMachine.getErrorReason();
-            if (FlowStatus.DEGRADED.equals(flowStatus)) {
-                flowStatusInfo = DEGRADED_FLOW_STATUS_INFO;
-            }
+        }
+        if (FlowStatus.DEGRADED.equals(flowStatus)) {
+            flowStatusInfo = getDegradedFlowStatusInfo(flow, stateMachine);
         }
         return flowStatusInfo;
+    }
+
+    private String getDegradedFlowStatusInfo(Flow flow, FlowUpdateFsm stateMachine) {
+        boolean isBackUpPathComputationWayUsed = stateMachine.isBackUpPrimaryPathComputationWayUsed()
+                || (flow.isAllocateProtectedPath() && stateMachine.isBackUpProtectedPathComputationWayUsed());
+        if (isBackUpPathComputationWayUsed) {
+            return "An alternative way (back up strategy or max_latency_tier2 value) of building the path was used";
+        } else {
+            return "Couldn't find non overlapping protected path";
+        }
     }
 }

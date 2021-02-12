@@ -40,10 +40,17 @@ public class CompleteFlowPathInstallationAction extends
         PathId newPrimaryForward = stateMachine.getNewPrimaryForwardPath();
         PathId newPrimaryReverse = stateMachine.getNewPrimaryReversePath();
 
+        FlowPathStatus primaryPathStatus;
+        if (stateMachine.isBackUpPrimaryPathComputationWayUsed()) {
+            primaryPathStatus = FlowPathStatus.DEGRADED;
+        } else {
+            primaryPathStatus = FlowPathStatus.ACTIVE;
+        }
         log.debug("Completing installation of the flow primary path {} / {}", newPrimaryForward, newPrimaryReverse);
+
         transactionManager.doInTransaction(() -> {
-            flowPathRepository.updateStatus(newPrimaryForward, FlowPathStatus.ACTIVE);
-            flowPathRepository.updateStatus(newPrimaryReverse, FlowPathStatus.ACTIVE);
+            flowPathRepository.updateStatus(newPrimaryForward, primaryPathStatus);
+            flowPathRepository.updateStatus(newPrimaryReverse, primaryPathStatus);
         });
 
         stateMachine.saveActionToHistory("Flow paths were installed",
@@ -54,10 +61,17 @@ public class CompleteFlowPathInstallationAction extends
             PathId newForward = stateMachine.getNewProtectedForwardPath();
             PathId newReverse = stateMachine.getNewProtectedReversePath();
 
+            FlowPathStatus protectedPathStatus;
+            if (stateMachine.isBackUpProtectedPathComputationWayUsed()) {
+                protectedPathStatus = FlowPathStatus.DEGRADED;
+            } else {
+                protectedPathStatus = FlowPathStatus.ACTIVE;
+            }
             log.debug("Completing installation of the flow protected path {} / {}", newForward, newReverse);
+
             transactionManager.doInTransaction(() -> {
-                flowPathRepository.updateStatus(newForward, FlowPathStatus.ACTIVE);
-                flowPathRepository.updateStatus(newReverse, FlowPathStatus.ACTIVE);
+                flowPathRepository.updateStatus(newForward, protectedPathStatus);
+                flowPathRepository.updateStatus(newReverse, protectedPathStatus);
             });
 
             stateMachine.saveActionToHistory("Flow paths were installed",

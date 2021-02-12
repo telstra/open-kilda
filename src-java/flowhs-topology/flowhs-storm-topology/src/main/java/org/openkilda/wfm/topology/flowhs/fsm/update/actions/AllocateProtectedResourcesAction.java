@@ -76,6 +76,7 @@ public class AllocateProtectedResourcesAction extends
         log.debug("Finding a new protected path for flow {}", flowId);
         List<PathId> pathIdsToReuse = pathsToReuse.stream().map(FlowPath::getPathId).collect(Collectors.toList());
         GetPathsResult potentialPath = pathComputer.getPath(tmpFlow, pathIdsToReuse);
+        stateMachine.setBackUpProtectedPathComputationWayUsed(potentialPath.isBackUpPathComputationWayUsed());
 
         PathId newPrimaryForwardPathId = stateMachine.getNewPrimaryForwardPath();
         FlowPath primaryForwardPath = getFlowPath(tmpFlow, newPrimaryForwardPathId);
