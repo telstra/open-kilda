@@ -178,6 +178,7 @@ public class FlowConverter {
         flowInfo.setDescription(inventoryFlow.getDescription());
         flowInfo.setMaximumBandwidth(inventoryFlow.getMaximumBandwidth());
         flowInfo.setState(inventoryFlow.getState());
+        flowInfo.setInventoryFlow(true);
         return flowInfo;
     }
 
