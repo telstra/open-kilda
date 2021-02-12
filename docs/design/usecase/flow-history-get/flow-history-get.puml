@@ -1,0 +1,75 @@
+@startuml
+title Get flow history
+
+participant Client
+
+participant Northbound
+
+control kilda.northbound
+control kilda.topo.nb
+
+box NbWorkerTopology #LightGreen
+    participant HistoryOperationsBolt
+end box
+
+participant OrientDB
+
+== Get flow history ==
+
+Client -> Northbound : GET /flows/:flow_id/history\nRequest params:\nflow_id, time_from, time_to, max_count
+
+activate Northbound
+Northbound -> kilda.topo.nb : CommandMessage\nGetFlowHistoryRequest
+kilda.topo.nb -> HistoryOperationsBolt : CommandMessage\nGetFlowHistoryRequest
+activate HistoryOperationsBolt
+
+alt
+
+    HistoryOperationsBolt -> OrientDB : Get flow events
+    activate OrientDB
+    OrientDB -> HistoryOperationsBolt : List of flow events
+    deactivate OrientDB
+
+    HistoryOperationsBolt -> kilda.northbound : InfoData\nList of FlowHistoryEntry
+    kilda.northbound -> Northbound : InfoData\nList of FlowHistoryEntry
+    Northbound -> Client : List of FlowHistoryEntry
+
+else error
+
+HistoryOperationsBolt -> kilda.northbound : ErrorMessage
+deactivate HistoryOperationsBolt
+kilda.northbound -> Northbound : ErrorMessage
+Northbound -> Client : ErrorMessage
+deactivate Northbound
+end
+
+== Get flow status timestamps ==
+
+Client -> Northbound : GET /flows/:flow_id/history/statuses\nRequest params:\nflow_id, time_from, time_to, max_count
+
+activate Northbound
+Northbound -> kilda.topo.nb : CommandMessage\nGetFlowStatusTimestampsRequest
+kilda.topo.nb -> HistoryOperationsBolt : CommandMessage\nGetFlowStatusTimestampsRequest
+activate HistoryOperationsBolt
+
+alt
+
+    HistoryOperationsBolt -> OrientDB : Get status actions and\ntimestamps from history
+    activate OrientDB
+    OrientDB -> HistoryOperationsBolt : List of status actions and \ntimestamps
+    deactivate OrientDB
+
+    HistoryOperationsBolt -> kilda.northbound : InfoData\nList of FlowStatusTimestampEntry
+    kilda.northbound -> Northbound : InfoData\nList of FlowStatusTimestampEntry
+    Northbound -> Client : List of FlowStatusTimestampEntry
+
+else error
+
+HistoryOperationsBolt -> kilda.northbound : ErrorMessage
+deactivate HistoryOperationsBolt
+kilda.northbound -> Northbound : ErrorMessage
+Northbound -> Client : ErrorMessage
+deactivate Northbound
+end
+
+@enduml
