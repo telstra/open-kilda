@@ -75,9 +75,8 @@ public class AllocateProtectedResourcesAction extends
         log.debug("Finding a new protected path for flow {}", flowId);
         GetPathsResult potentialPath = pathComputer.getPath(tmpFlowCopy,
                 Stream.of(tmpFlowCopy.getProtectedForwardPathId(), tmpFlowCopy.getProtectedReversePathId())
-                        .filter(Objects::nonNull).collect(Collectors.toList()),
-                getBackUpStrategies(tmpFlowCopy.getPathComputationStrategy()));
-        stateMachine.setNewProtectedPathComputationStrategy(potentialPath.getUsedStrategy());
+                        .filter(Objects::nonNull).collect(Collectors.toList()));
+        stateMachine.setBackUpProtectedPathComputationWayUsed(potentialPath.isBackUpPathComputationWayUsed());
 
         FlowPath primaryForwardPath = tmpFlowCopy.getPath(stateMachine.getNewPrimaryForwardPath())
                 .orElse(tmpFlowCopy.getForwardPath());

@@ -25,7 +25,6 @@ import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
-import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
@@ -326,12 +325,5 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
         Optional.ofNullable(stateMachine.getNewProtectedForwardPath()).ifPresent(pathIds::add);
         Optional.ofNullable(stateMachine.getNewProtectedReversePath()).ifPresent(pathIds::add);
         return pathIds;
-    }
-
-    protected PathComputationStrategy[] getBackUpStrategies(PathComputationStrategy strategy) {
-        if (PathComputationStrategy.MAX_LATENCY.equals(strategy)) {
-            return new PathComputationStrategy[] {PathComputationStrategy.LATENCY};
-        }
-        return new PathComputationStrategy[0];
     }
 }

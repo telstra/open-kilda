@@ -469,7 +469,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         transactionManager.doInTransaction(() ->
                 repositoryFactory.createFlowRepository().updateStatus(origin.getFlowId(), FlowStatus.DOWN));
 
-        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair(origin.getPathComputationStrategy()));
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
         FlowRerouteService service = makeService();
         FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, false,
@@ -584,7 +584,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         origin.setTargetPathComputationStrategy(LATENCY);
         setupFlowRepositorySpy().findById(origin.getFlowId())
                 .ifPresent(foundPath -> foundPath.setTargetPathComputationStrategy(LATENCY));
-        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair(origin.getTargetPathComputationStrategy()));
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
         FlowRerouteService service = makeService();
         IslEndpoint affectedEndpoint = extractIslEndpoint(origin);
@@ -611,8 +611,6 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         FlowRerouteService service = makeService();
         IslEndpoint affectedEndpoint = extractIslEndpoint(origin);
-        IslEndpoint notAffectedEndpoint = new IslEndpoint(
-                affectedEndpoint.getSwitchId(), affectedEndpoint.getPortNumber() + 1);
 
         FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, true,
                 false, Collections.singleton(affectedEndpoint), null);
@@ -629,8 +627,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         setupFlowRepositorySpy().findById(origin.getFlowId())
                 .ifPresent(foundPath -> foundPath.setTargetPathComputationStrategy(MAX_LATENCY));
         when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()),
-                any(Collection.class), eq(LATENCY)))
-                .thenReturn(make3SwitchesPathPair(LATENCY));
+                any(Collection.class))).thenReturn(make3SwitchesPathPair(true));
 
         FlowRerouteService service = makeService();
         IslEndpoint affectedEndpoint = extractIslEndpoint(origin);

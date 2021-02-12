@@ -65,24 +65,23 @@ public class UpdateFlowStatusAction extends FlowProcessingAction<FlowRerouteFsm,
         String flowStatusInfo = null;
         if (!FlowStatus.UP.equals(flowStatus) && !flowStatus.equals(stateMachine.getOriginalFlowStatus())) {
             flowStatusInfo = stateMachine.getErrorReason();
-            if (FlowStatus.DEGRADED.equals(flowStatus)) {
-                flowStatusInfo = getDegradedFlowStatusInfo(flow, stateMachine);
-            }
+        }
+        if (FlowStatus.DEGRADED.equals(flowStatus)) {
+            flowStatusInfo = getDegradedFlowStatusInfo(flow, stateMachine);
         }
         return flowStatusInfo;
     }
 
     private String getDegradedFlowStatusInfo(Flow flow, FlowRerouteFsm stateMachine) {
         boolean ignoreBandwidth = stateMachine.isIgnoreBandwidth();
-        boolean ignoreLatency = stateMachine.getNewPrimaryPathComputationStrategy() != flow.getPathComputationStrategy()
-                || (flow.isAllocateProtectedPath()
-                && stateMachine.getNewProtectedPathComputationStrategy() != flow.getPathComputationStrategy());
-        if (ignoreBandwidth && ignoreLatency) {
-            return "Couldn't find path with required bandwidth and latency";
+        boolean isBackUpPathComputationWayUsed = stateMachine.isBackUpPrimaryPathComputationWayUsed()
+                || (flow.isAllocateProtectedPath() && stateMachine.isBackUpProtectedPathComputationWayUsed());
+        if (ignoreBandwidth && isBackUpPathComputationWayUsed) {
+            return "Couldn't find path with required bandwidth and backup way was used to build the path";
         } else if (ignoreBandwidth) {
             return "Couldn't find path with required bandwidth";
-        } else if (ignoreLatency) {
-            return "Couldn't find path with required latency";
+        } else if (isBackUpPathComputationWayUsed) {
+            return "An alternative way (back up strategy or max_latency_tier2 value) of building the path was used";
         } else {
             return "Couldn't find non overlapping protected path";
         }

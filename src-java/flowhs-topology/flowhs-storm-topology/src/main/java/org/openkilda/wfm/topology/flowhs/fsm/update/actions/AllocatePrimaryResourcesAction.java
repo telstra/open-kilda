@@ -77,6 +77,7 @@ public class AllocatePrimaryResourcesAction extends
         log.debug("Finding a new primary path for flow {}", flowId);
         List<PathId> pathIdsToReuse = pathsToReuse.stream().map(FlowPath::getPathId).collect(Collectors.toList());
         final GetPathsResult potentialPath = pathComputer.getPath(tmpFlow, pathIdsToReuse);
+        stateMachine.setBackUpPrimaryPathComputationWayUsed(potentialPath.isBackUpPathComputationWayUsed());
 
         FlowPathPair createdPaths = transactionManager.doInTransaction(() -> {
             log.debug("Allocating resources for a new primary path of flow {}", flowId);

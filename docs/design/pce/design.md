@@ -86,6 +86,9 @@ Automatically calculated value for each link. Separate maintenance/unstable pena
 
 * Max latency
 
-The same as Latency strategy but modified algorithm is used to find a path with latency as close as possible but less then max_latency param.
+This strategy uses the same weight function as Latency strategy but uses a modified algorithm to find a path. 
+This algorithm finds a path with latency as close as possible but less than `maxWeight` param. 
+The value of the `maxWeight` parameter is the `maxLatency` field, but if the path was not found, 
+then the `maxLatencyTier2` field is used as the `maxWeight` parameter.
 
 For more info see [PCE with weights computation strategies](../solutions/pce-weights-strategies/pce-weights-strategies.md).
