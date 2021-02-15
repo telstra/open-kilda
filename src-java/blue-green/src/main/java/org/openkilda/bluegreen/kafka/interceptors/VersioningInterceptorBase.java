@@ -74,23 +74,7 @@ public abstract class VersioningInterceptorBase implements BuildVersionObserver 
                 .connectionRefreshInterval(ZkClient.DEFAULT_CONNECTION_REFRESH_INTERVAL)
                 .build();
         watchDog.subscribe(this);
-
-        for (int i = 1; !watchDog.isConnectedAndValidated(); i++) {
-            if (isInitConnectionTimeoutPassed()) {
-                log.info("Component {} with id {} string to reconnect to ZooKeeper {} Attempt: {}",
-                        componentName, runId, connectionString, i);
-                initConnectionTimestamp = Instant.now();
-            }
-            watchDog.init();
-
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                log.debug(format("Component %s with id %s and connection string %s caught exception during "
-                                + "waiting for zookeeper watchdog initialized",
-                        componentName, runId, connectionString), e);
-            }
-        }
+        watchDog.initAndWaitConnection();
 
         try {
             version = watchDog.getVersionSync();
