@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,23 +13,27 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.stats.metrics;
+package org.openkilda.wfm.topology.flowmonitoring.model;
 
-import static org.junit.Assert.assertEquals;
-import static org.openkilda.wfm.topology.stats.metrics.FlowRttMetricGenBolt.noviflowTimestamp;
+import org.openkilda.model.SwitchId;
 
-import org.junit.Test;
+import lombok.Builder;
+import lombok.Data;
 
-public class FlowRttMetricGenBoltTest {
+@Data
+@Builder
+public class Link {
 
-    @Test
-    public void testNoviflowTimstampToLong() {
+    private SwitchId srcSwitchId;
+    private int srcPort;
+    private SwitchId destSwitchId;
+    private int destPort;
 
-        long seconds = 123456789;
-        long nanoseconds = 987654321;
+    public boolean srcEquals(SwitchId switchId, int port) {
+        return srcSwitchId.equals(switchId) && srcPort == port;
+    }
 
-        long timestampNovi = (seconds << 32) + nanoseconds;
-
-        assertEquals(123456789_987654321L, noviflowTimestamp(timestampNovi));
+    public boolean destEquals(SwitchId switchId, int port) {
+        return destSwitchId.equals(switchId) && destPort == port;
     }
 }

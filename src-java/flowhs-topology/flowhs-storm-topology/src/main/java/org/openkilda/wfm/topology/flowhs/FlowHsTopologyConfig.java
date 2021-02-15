@@ -49,6 +49,10 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getFlowHsServer42StormNotifyTopic();
     }
 
+    default String getFlowHsFlowMonitoringNotifyTopic() {
+        return getKafkaTopics().getFlowHsFlowMonitoringNotifyTopic();
+    }
+
 
     @Key("flow.path.allocation.retries")
     @Default("10")

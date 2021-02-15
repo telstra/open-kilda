@@ -355,4 +355,9 @@ public class NetworkIntegrationCarrier
     public void islRemovedNotification(Endpoint srcEndpoint, IslReference reference) {
         // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
     }
+
+    @Override
+    public void islChangedNotifyFlowMonitor(IslReference reference) {
+        // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
+    }
 }

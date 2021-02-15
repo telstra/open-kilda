@@ -30,6 +30,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
@@ -229,7 +230,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
             builder.transition().from(State.RESOURCE_ALLOCATION_COMPLETED).to(State.INSTALLING_NON_INGRESS_RULES)
                     .on(Event.NEXT)
                     .perform(new InstallNonIngressRulesAction(persistenceManager, resourcesManager));
-            builder.transition().from(State.RESOURCE_ALLOCATION_COMPLETED).to(State.FINISHED_WITH_ERROR)
+            builder.transition().from(State.RESOURCE_ALLOCATION_COMPLETED).to(State.NOTIFY_FLOW_MONITOR_WITH_ERROR)
                     .on(Event.REROUTE_IS_SKIPPED)
                     .perform(new RevertFlowStatusAction(persistenceManager));
             builder.transitions().from(State.RESOURCE_ALLOCATION_COMPLETED)
@@ -352,8 +353,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
             builder.transition().from(State.UPDATING_FLOW_STATUS).to(State.FLOW_STATUS_UPDATED).on(Event.NEXT)
                     .perform(new UpdateFlowStatusAction(persistenceManager, dashboardLogger));
 
-            builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED).on(Event.NEXT);
-            builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
+            builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.NOTIFY_FLOW_MONITOR).on(Event.NEXT);
+            builder.transition().from(State.FLOW_STATUS_UPDATED)
+                    .to(State.NOTIFY_FLOW_MONITOR_WITH_ERROR).on(Event.ERROR);
 
             builder.transition().from(State.MARKING_FLOW_DOWN_OR_DEGRADED).to(State.REVERTING_ALLOCATED_RESOURCES)
                     .on(Event.NEXT)
@@ -401,9 +403,20 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
             builder.onEntry(State.REVERTING_FLOW_STATUS)
                     .perform(reportErrorAction);
             builder.transitions().from(State.REVERTING_FLOW_STATUS)
-                    .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
+                    .toAmong(State.NOTIFY_FLOW_MONITOR_WITH_ERROR, State.NOTIFY_FLOW_MONITOR_WITH_ERROR)
                     .onEach(Event.NEXT, Event.ERROR)
                     .perform(new RevertFlowStatusAction(persistenceManager));
+
+            builder.transition()
+                    .from(State.NOTIFY_FLOW_MONITOR)
+                    .to(State.FINISHED)
+                    .on(Event.NEXT)
+                    .perform(new NotifyFlowMonitorAction<>(persistenceManager, carrier));
+            builder.transition()
+                    .from(State.NOTIFY_FLOW_MONITOR_WITH_ERROR)
+                    .to(State.FINISHED_WITH_ERROR)
+                    .on(Event.NEXT)
+                    .perform(new NotifyFlowMonitorAction<>(persistenceManager, carrier));
 
             builder.defineFinalState(State.FINISHED)
                     .addEntryAction(new OnFinishedAction(dashboardLogger, carrier));
@@ -460,7 +473,10 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
         RESOURCES_ALLOCATION_REVERTED,
         REVERTING_FLOW_STATUS,
 
-        FINISHED_WITH_ERROR
+        FINISHED_WITH_ERROR,
+
+        NOTIFY_FLOW_MONITOR,
+        NOTIFY_FLOW_MONITOR_WITH_ERROR
     }
 
     public enum Event {

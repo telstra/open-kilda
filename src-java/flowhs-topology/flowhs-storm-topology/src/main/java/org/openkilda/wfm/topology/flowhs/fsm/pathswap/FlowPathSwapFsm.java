@@ -21,6 +21,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.State;
@@ -203,11 +204,24 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
                             dashboardLogger));
 
             builder.transitions().from(State.REVERTING_FLOW_STATUS)
-                    .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
+                    .toAmong(State.NOTIFY_FLOW_MONITOR_WITH_ERROR, State.NOTIFY_FLOW_MONITOR_WITH_ERROR)
                     .onEach(Event.ERROR, Event.NEXT);
 
-            builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED).on(Event.NEXT);
-            builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
+            builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.NOTIFY_FLOW_MONITOR).on(Event.NEXT);
+            builder.transition().from(State.FLOW_STATUS_UPDATED)
+                    .to(State.NOTIFY_FLOW_MONITOR_WITH_ERROR).on(Event.ERROR);
+
+            builder.transition()
+                    .from(State.NOTIFY_FLOW_MONITOR)
+                    .to(State.FINISHED)
+                    .on(Event.NEXT)
+                    .perform(new NotifyFlowMonitorAction<>(persistenceManager, carrier));
+            builder.transition()
+                    .from(State.NOTIFY_FLOW_MONITOR_WITH_ERROR)
+                    .to(State.FINISHED_WITH_ERROR)
+                    .on(Event.NEXT)
+                    .perform(new NotifyFlowMonitorAction<>(persistenceManager, carrier));
+
             builder.defineFinalState(State.FINISHED_WITH_ERROR)
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
             builder.defineFinalState(State.FINISHED)
@@ -251,7 +265,10 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
         REVERTING_FLOW_STATUS,
         REVERTING_FLOW,
 
-        FINISHED_WITH_ERROR
+        FINISHED_WITH_ERROR,
+
+        NOTIFY_FLOW_MONITOR,
+        NOTIFY_FLOW_MONITOR_WITH_ERROR
     }
 
     public enum Event {
