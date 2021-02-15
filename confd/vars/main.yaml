@@ -4,7 +4,7 @@ kilda_environment_naming_prefix: ""
 kilda_environment_role: "devel"
 kilda_test_profile: "virtual"
 
-kilda_orientdb_hosts: "odb1.pendev,odb2.pendev,odb3.pendev"
+kilda_orientdb_hosts: "odb1.pendev"
 kilda_orientdb_hosts_single: "odb1.pendev"
 kilda_orientdb_user: "kilda"
 kilda_orientdb_password: "kilda"

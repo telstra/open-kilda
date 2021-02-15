@@ -18,7 +18,7 @@
         <handler class="com.orientechnologies.orient.server.handler.OAutomaticBackup">
             <parameters>
                 <parameter value="false" name="enabled"/>
-                <parameter value="${ORIENTDB_HOME}/config-shared/automatic-backup.json" name="config"/>
+                <parameter value="${ORIENTDB_HOME}/config/automatic-backup.json" name="config"/>
             </parameters>
         </handler>
         <handler class="com.orientechnologies.orient.server.handler.OServerSideScriptInterpreter">
@@ -85,7 +85,7 @@
     <properties>
         <entry value="1" name="db.pool.min"/>
         <entry value="50" name="db.pool.max"/>
-        <entry value="true" name="profiler.enabled"/>
+        <entry value="false" name="profiler.enabled"/>
         <entry value="1024" name="storage.diskCache.bufferSize"/>
     </properties>
     <isAfterFirstTime>true</isAfterFirstTime>

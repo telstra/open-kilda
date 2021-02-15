@@ -43,7 +43,7 @@ services:
   odb1:
     container_name: odb1
     hostname: odb1.pendev
-    image: orientdb:3.0.34
+    image: orientdb:3.1.10
     command: dserver.sh
     volumes:
       - ./docker/orientdb/config/odb1:/orientdb/config
@@ -70,7 +70,7 @@ services:
   odb2:
     container_name: odb2
     hostname: odb2.pendev
-    image: orientdb:3.0.34
+    image: orientdb:3.1.10
     command: dserver.sh
     volumes:
       - ./docker/orientdb/config/odb2:/orientdb/config
@@ -92,32 +92,6 @@ services:
       default:
         aliases:
           - odb2.pendev
-
-  odb3:
-    container_name: odb3
-    hostname: odb3.pendev
-    image: orientdb:3.0.34
-    command: dserver.sh
-    volumes:
-      - ./docker/orientdb/config/odb3:/orientdb/config
-      - ./docker/orientdb/config/shared:/orientdb/config-shared
-      - odb3_data:/orientdb/databases
-    environment:
-      ORIENTDB_ROOT_PASSWORD: root
-      ORIENTDB_NODE_NAME: odb3.pendev
-    ports:
-      - 2426:2424
-      - 2482:2480
-    healthcheck:
-      test: ["CMD-SHELL", "curl --fail http://localhost:2480/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
-    networks:
-      default:
-        aliases:
-          - odb3.pendev
 {{end}}
 
   db_migration:
@@ -129,8 +103,6 @@ services:
         condition: service_healthy
 {{if not (exists "/single_orientdb")}}
       odb2:
-        condition: service_healthy
-      odb3:
         condition: service_healthy
 {{end}}
     healthcheck:
@@ -748,5 +720,4 @@ volumes:
   odb1_data:
 {{if not (exists "/single_orientdb")}}
   odb2_data:
-  odb3_data:
 {{end}}

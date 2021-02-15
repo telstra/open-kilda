@@ -1,18 +1,24 @@
 {
   "autoDeploy": true,
+  "hotAlignment": true,
+  "executionMode": "undefined",
   "readQuorum": 1,
   "writeQuorum": "majority",
-  "executionMode": "undefined",
   "readYourWrites": true,
+  "failureAvailableNodesLessQuorum": true,
   "newNodeStrategy": "static",
   "servers": {
-    "*": "master"
+    "odb1": "MASTER",
+	"*": "REPLICA"
   },
   "clusters": {
     "internal": {
     },
+    "index": {
+    },
     "*": {
-      "servers": ["<NEW_NODE>"]
+      "owner": "odb1",
+      "servers": ["odb1", "<NEW_NODE>"]
     }
   }
 }
