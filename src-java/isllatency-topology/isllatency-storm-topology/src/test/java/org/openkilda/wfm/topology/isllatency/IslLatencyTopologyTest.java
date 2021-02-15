@@ -19,11 +19,11 @@ import static java.lang.String.format;
 import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.openkilda.bluegreen.ZkWatchDog.DEFAULT_BUILD_VERSION;
+import static org.openkilda.wfm.config.KafkaConfig.ISL_LATENCY_TOPOLOGY_TEST_KAFKA_PORT;
+import static org.openkilda.wfm.config.ZookeeperConfig.ISL_LATENCY_TOPOLOGY_TEST_ZOOKEEPER_PORT;
 import static org.openkilda.wfm.topology.isllatency.bolts.IslStatsBolt.LATENCY_METRIC_NAME;
 import static org.openkilda.wfm.topology.isllatency.service.OneWayLatencyManipulationService.ONE_WAY_LATENCY_MULTIPLIER;
 
-import org.openkilda.bluegreen.Signal;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
@@ -49,8 +49,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.ZooKeeper;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -77,6 +75,7 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     public static final String COMPONENT_NAME = "isllatency";
     public static final String RUN_ID = "blue";
+    public static final String ROOT_NODE = "kilda";
     private static IslLatencyTopologyConfig islLatencyTopologyConfig;
     private static TestKafkaConsumer otsdbConsumer;
     private static InMemoryGraphPersistenceManager persistenceManager;
@@ -85,14 +84,15 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
 
     @BeforeClass
     public static void setupOnce() throws Exception {
-        AbstractStormTest.startZooKafka();
-        setStartSignal();
+        Properties configOverlay = getZooKeeperProperties(ISL_LATENCY_TOPOLOGY_TEST_ZOOKEEPER_PORT, ROOT_NODE);
+        configOverlay.putAll(getKafkaProperties(ISL_LATENCY_TOPOLOGY_TEST_KAFKA_PORT));
+        configOverlay.setProperty("opentsdb.metric.prefix", METRIC_PREFIX);
+
+        AbstractStormTest.startZooKafka(configOverlay);
+        setStartSignal(ISL_LATENCY_TOPOLOGY_TEST_ZOOKEEPER_PORT, ROOT_NODE, COMPONENT_NAME, RUN_ID);
         AbstractStormTest.startStorm(COMPONENT_NAME, RUN_ID);
 
         LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
-        Properties configOverlay = new Properties();
-        configOverlay.setProperty("opentsdb.metric.prefix", METRIC_PREFIX);
-
         launchEnvironment.setupOverlay(configOverlay);
         MultiPrefixConfigurationProvider configurationProvider = launchEnvironment.getConfigurationProvider();
 
@@ -115,16 +115,6 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
         islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
 
         sleep(TOPOLOGY_START_TIMEOUT);
-    }
-
-    private static void setStartSignal() throws IOException, InterruptedException, KeeperException {
-        ZooKeeper zooKeeper = new ZooKeeper("localhost", 3000, event -> { });
-
-        setNode(zooKeeper, "/kilda", "");
-        setNode(zooKeeper, format("/kilda/%s", COMPONENT_NAME), "");
-        setNode(zooKeeper, format("/kilda/%s/%s", COMPONENT_NAME, RUN_ID), "");
-        setNode(zooKeeper, format("/kilda/%s/%s/signal", COMPONENT_NAME, RUN_ID), Signal.START.toString());
-        setNode(zooKeeper, format("/kilda/%s/%s/build-version", COMPONENT_NAME, RUN_ID), DEFAULT_BUILD_VERSION);
     }
 
     @AfterClass

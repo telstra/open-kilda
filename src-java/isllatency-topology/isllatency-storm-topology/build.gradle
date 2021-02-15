@@ -54,7 +54,3 @@ shadowJar {
 artifacts {
     archives shadowJar
 }
-
-test {
-    maxParallelForks = 1
-}
