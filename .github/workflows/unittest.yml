@@ -28,6 +28,7 @@ jobs:
         mkdir -p $HOME/.gradle
         echo "org.gradle.jvmargs=-Xmx4096M" >> $HOME/.gradle/gradle.properties
         echo "org.gradle.console=plain" >> $HOME/.gradle/gradle.properties
+        echo "org.gradle.parallel=true" >> $HOME/.gradle/gradle.properties
         rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
         rm -fr $HOME/.gradle/caches/*/plugin-resolution/
     - name: Run checkstyle

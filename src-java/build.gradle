@@ -247,3 +247,12 @@ configure(subprojects.findAll { it.name.endsWith("-topology") }) {
         }
     }
 }
+
+subprojects {
+    // run stats-storm-topology tasks as earlier as possible because it is the most long running task
+    if (name != 'stats-storm-topology') {
+        tasks.all { task ->
+            task.shouldRunAfter { project(':stats-storm-topology').tasks }
+        }
+    }
+}
