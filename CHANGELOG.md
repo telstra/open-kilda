@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.85.0 (15/02/2021)
+
+### Features:
+-  [#4046](https://github.com/telstra/open-kilda/pull/4046) Implement logic for the `max_latency_tier2` field (Issue: [#4029](https://github.com/telstra/open-kilda/issues/4029)) [**storm-topologies**]
+-  [#4018](https://github.com/telstra/open-kilda/pull/4018) Zero Downtime cleanup Part 1: Removed common vars and deprecated methods
+-  [#4022](https://github.com/telstra/open-kilda/pull/4022) Zero Downtime cleanup Part 2: remove component name and runid
+
+### Bug Fixes:
+-  [#4047](https://github.com/telstra/open-kilda/pull/4047) Added missed lifeCycleEventComponent into update hub config
+
+### Improvements:
+-  [#4032](https://github.com/telstra/open-kilda/pull/4032) minor improvements in ConfigurationSpec and FlowLoopSpec [**tests**]
+-  [#4041](https://github.com/telstra/open-kilda/pull/4041) Not handling duplicate lifecycle signals
+-  [#4044](https://github.com/telstra/open-kilda/pull/4044) ignore test acording to 4043 [**tests**]
+-  [#3997](https://github.com/telstra/open-kilda/pull/3997) Improvement/flow search and user activity (Issue: [#3979](https://github.com/telstra/open-kilda/issues/3979)) [**gui**]
+-  [#4018](https://github.com/telstra/open-kilda/pull/4018) Zero Downtime cleanup Part 1: Removed common vars and deprecated methods
+
+### Other changes:
+-  [#4036](https://github.com/telstra/open-kilda/pull/4036) Run cleanup verifier after testFixture cleanup instead of before [**tests**]
+-  [#4039](https://github.com/telstra/open-kilda/pull/4039) Improve some protected path tests with additional verifications (Issue: [#4038](https://github.com/telstra/open-kilda/issues/4038)) [**tests**]
+-  [#4048](https://github.com/telstra/open-kilda/pull/4048) Rely on port history when manipulating ports to workaround antiflap [**tests**]
+-  [#4051](https://github.com/telstra/open-kilda/pull/4051) Ignore protected path test due to #4034 [**tests**]
+-  [#4057](https://github.com/telstra/open-kilda/pull/4057) More tests ignored according to existing defects (Issues: [#4055](https://github.com/telstra/open-kilda/issues/4055) [#4056](https://github.com/telstra/open-kilda/issues/4056)) [**tests**]
+-  [#4011](https://github.com/telstra/open-kilda/pull/4011) Update lombok, gradle and plugins versions to improve build time [**floodlight**][**northbound**][**storm-topologies**][**tests**]
+-  [#4016](https://github.com/telstra/open-kilda/pull/4016) Update console output format for func tests [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.84.0...v1.85.0).
+
+### Affected Components:
+gui, reroute, fl, stats-router, portstate, nbworker, ping, swmanager, nb, flow-hs, connected, grpc, router, isllatency, stats, otsdb, network
+
+---
+
 ## v1.84.0 (09/02/2021)
 
 ### Features:
