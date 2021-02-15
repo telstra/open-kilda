@@ -15,10 +15,6 @@ floodlight.modes={{ getv "/kilda_floodlight_modes" }}
 floodlight.alive.timeout={{ getv "/kilda_floodlight_alive_timeout" }}
 floodlight.alive.interval={{ getv "/kilda_floodlight_alive_interval" }}
 
-neo.uri=bolt://{{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
-neo.user={{ getv "/kilda_neo4j_user" }}
-neo.password={{ getv "/kilda_neo4j_password" }}
-
 {{if not (exists "/single_orientdb")}}
 orientdb.url=remote:{{ getv "/kilda_orientdb_hosts" }}/{{ getv "/kilda_orientdb_database" }}
 {{else}}

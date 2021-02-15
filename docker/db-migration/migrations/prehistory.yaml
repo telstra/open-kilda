@@ -18,12 +18,12 @@ databaseChangeLog:
         - sql: "CREATE INDEX kilda_configuration.unique UNIQUE_HASH_INDEX"
 
   - changeSet:
-      id: feature_toggles
+      id: config
       author: surabujin
       changes:
-        - sql: "CREATE CLASS feature_toggles IF NOT EXISTS EXTENDS V"
-        - sql: "CREATE PROPERTY feature_toggles.unique IF NOT EXISTS STRING"
-        - sql: "CREATE INDEX feature_toggles.unique UNIQUE_HASH_INDEX"
+        - sql: "CREATE CLASS config IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY config.unique IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX config.unique UNIQUE_HASH_INDEX"
 
   - changeSet:
       id: switch
