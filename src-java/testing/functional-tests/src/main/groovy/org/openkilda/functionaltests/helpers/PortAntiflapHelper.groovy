@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 import org.openkilda.functionaltests.helpers.model.PortHistoryEvent
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -31,7 +33,9 @@ class PortAntiflapHelper {
         def swPort = new Tuple2(swId, portNo)
         def lastEvent = history.get(swPort)
         if (lastEvent) {
-            sleep(lastEvent + antiflapCooldown * 1100 - System.currentTimeMillis())
+            Wrappers.wait(antiflapCooldown + WAIT_OFFSET) {
+                assertPortIsStable(swId, portNo, lastEvent)
+            }
             history.remove(swPort)
         }
         northbound.portUp(swId, portNo)
@@ -47,8 +51,8 @@ class PortAntiflapHelper {
     /**
      * Verify whether current port is in a stable state (deactivated antiflap) by analyzing its history.
      */
-    void assertPortIsStable(SwitchId swId, int portNo) {
-        def history = northboundV2.getPortHistory(swId, portNo)
+    void assertPortIsStable(SwitchId swId, int portNo, Long since = 0) {
+        def history = northboundV2.getPortHistory(swId, portNo, since, Long.MAX_VALUE)
         if(!history.empty) {
             def antiflapEvents = history.collect {PortHistoryEvent.valueOf(it.event) }.findAll {
                 it in [PortHistoryEvent.ANTI_FLAP_ACTIVATED, PortHistoryEvent.ANTI_FLAP_DEACTIVATED]

@@ -75,15 +75,13 @@ public class AllocatePrimaryResourcesAction extends
         if (stateMachine.isIgnoreBandwidth()) {
             boolean originalIgnoreBandwidth = tmpFlowCopy.isIgnoreBandwidth();
             tmpFlowCopy.setIgnoreBandwidth(true);
-            potentialPath = pathComputer.getPath(tmpFlowCopy,
-                    getBackUpStrategies(tmpFlowCopy.getPathComputationStrategy()));
+            potentialPath = pathComputer.getPath(tmpFlowCopy);
             tmpFlowCopy.setIgnoreBandwidth(originalIgnoreBandwidth);
         } else {
-            potentialPath = pathComputer.getPath(tmpFlowCopy, tmpFlowCopy.getPathIds(),
-                    getBackUpStrategies(tmpFlowCopy.getPathComputationStrategy()));
+            potentialPath = pathComputer.getPath(tmpFlowCopy, tmpFlowCopy.getPathIds());
         }
 
-        stateMachine.setNewPrimaryPathComputationStrategy(potentialPath.getUsedStrategy());
+        stateMachine.setBackUpPrimaryPathComputationWayUsed(potentialPath.isBackUpPathComputationWayUsed());
         FlowPathPair oldPaths = FlowPathPair.builder()
                 .forward(tmpFlowCopy.getForwardPath())
                 .reverse(tmpFlowCopy.getReversePath())

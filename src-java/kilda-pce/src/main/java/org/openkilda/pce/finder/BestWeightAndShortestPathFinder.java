@@ -23,6 +23,8 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.impl.AvailableNetwork;
 import org.openkilda.pce.model.Edge;
+import org.openkilda.pce.model.FindOneDirectionPathResult;
+import org.openkilda.pce.model.FindPathResult;
 import org.openkilda.pce.model.Node;
 import org.openkilda.pce.model.PathWeight;
 import org.openkilda.pce.model.WeightFunction;
@@ -38,6 +40,7 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -75,27 +78,28 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
     }
 
     @Override
-    public Pair<List<Edge>, List<Edge>> findPathInNetwork(AvailableNetwork network,
-                                                          SwitchId startSwitchId, SwitchId endSwitchId,
-                                                          WeightFunction weightFunction)
+    public FindPathResult findPathInNetwork(AvailableNetwork network,
+                                            SwitchId startSwitchId, SwitchId endSwitchId,
+                                            WeightFunction weightFunction)
             throws UnroutableFlowException {
         Node start = network.getSwitch(startSwitchId);
         Node end = network.getSwitch(endSwitchId);
-        return findPath(network, startSwitchId, endSwitchId, () -> getPath(start, end, weightFunction));
+        return findPath(network, startSwitchId, endSwitchId, () -> findOneDirectionPath(start, end, weightFunction));
     }
 
     @Override
-    public Pair<List<Edge>, List<Edge>> findPathInNetwork(AvailableNetwork network,
-                                                          SwitchId startSwitchId, SwitchId endSwitchId,
-                                                          WeightFunction weightFunction, long maxWeight)
+    public FindPathResult findPathInNetwork(AvailableNetwork network,
+                                            SwitchId startSwitchId, SwitchId endSwitchId,
+                                            WeightFunction weightFunction, long maxWeight, long backUpMaxWeight)
             throws UnroutableFlowException {
         Node start = network.getSwitch(startSwitchId);
         Node end = network.getSwitch(endSwitchId);
-        return findPath(network, startSwitchId, endSwitchId, () -> getPath(start, end, weightFunction, maxWeight));
+        return findPath(network, startSwitchId, endSwitchId,
+                () -> findOneDirectionPath(start, end, weightFunction, maxWeight, backUpMaxWeight));
     }
 
-    private Pair<List<Edge>, List<Edge>> findPath(AvailableNetwork network, SwitchId startSwitchId,
-                                                  SwitchId endSwitchId, Supplier<List<Edge>> getPath)
+    private FindPathResult findPath(AvailableNetwork network, SwitchId startSwitchId,
+                                    SwitchId endSwitchId, Supplier<FindOneDirectionPathResult> getPath)
             throws UnroutableFlowException {
         Node start = network.getSwitch(startSwitchId);
         Node end = network.getSwitch(endSwitchId);
@@ -104,7 +108,8 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                     start == null ? startSwitchId : endSwitchId));
         }
 
-        List<Edge> forwardPath = getPath.get();
+        FindOneDirectionPathResult pathFindResult = getPath.get();
+        List<Edge> forwardPath = pathFindResult.getFoundPath();
         if (forwardPath.isEmpty()) {
             throw new UnroutableFlowException(format("Can't find a path from %s to %s", start, end));
         }
@@ -115,7 +120,10 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                     end, start, StringUtils.join(forwardPath, ", ")));
         }
 
-        return Pair.of(forwardPath, reversePath);
+        return FindPathResult.builder()
+                .foundPath(Pair.of(forwardPath, reversePath))
+                .backUpPathComputationWayUsed(pathFindResult.isBackUpPathComputationWayUsed())
+                .build();
     }
 
     /**
@@ -140,7 +148,8 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         bestPaths.add(getPath(start, end, weightFunction));
 
         // Initialize the set to store the potential kth shortest path.
-        Set<List<Edge>> potentialKthShortestPaths = new HashSet<>();
+        // Use LinkedHashSet to have deterministic results.
+        Set<List<Edge>> potentialKthShortestPaths = new LinkedHashSet<>();
 
         for (int k = 1; k < count; k++) {
             List<Edge> bestPath = bestPaths.get(k - 1);
@@ -247,6 +256,29 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         Edge reverseEdge = edge.swap();
         reverseEdge.getSrcSwitch().getOutgoingLinks().add(reverseEdge);
         reverseEdge.getDestSwitch().getIncomingLinks().add(reverseEdge);
+    }
+
+    private FindOneDirectionPathResult findOneDirectionPath(Node start, Node end, WeightFunction weightFunction) {
+        return FindOneDirectionPathResult.builder()
+                .foundPath(getPath(start, end, weightFunction))
+                .backUpPathComputationWayUsed(false)
+                .build();
+    }
+
+    private FindOneDirectionPathResult findOneDirectionPath(Node start, Node end, WeightFunction weightFunction,
+                                                            long maxWeight, long backUpMaxWeight) {
+        List<Edge> foundPath = getPath(start, end, weightFunction, maxWeight);
+        boolean backUpPathComputationWayUsed = false;
+
+        if (foundPath.isEmpty()) {
+            foundPath = getPath(start, end, weightFunction, backUpMaxWeight);
+            backUpPathComputationWayUsed = true;
+        }
+
+        return FindOneDirectionPathResult.builder()
+                .foundPath(foundPath)
+                .backUpPathComputationWayUsed(backUpPathComputationWayUsed)
+                .build();
     }
 
     /**

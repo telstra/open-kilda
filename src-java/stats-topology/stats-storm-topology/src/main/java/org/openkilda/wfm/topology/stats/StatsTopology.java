@@ -100,8 +100,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         declareSpout(builder, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
 
         final String kafkaSpoutId = StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString();
-        declareKafkaSpout(builder, topologyConfig.getKafkaStatsTopic(), kafkaSpoutId, getZkTopoName(),
-                getConfig().getBlueGreenMode());
+        declareKafkaSpout(builder, topologyConfig.getKafkaStatsTopic(), kafkaSpoutId);
 
         SpeakerBolt speakerBolt = new SpeakerBolt(ZooKeeperSpout.SPOUT_ID);
         final String statsOfsBolt = StatsComponentType.STATS_OFS_BOLT.toString();
@@ -151,15 +150,13 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 .shuffleGrouping(TICK_BOLT.name())
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
 
-        declareBolt(builder, buildKafkaBolt(topologyConfig.getSpeakerTopic(), getZkTopoName(),
-                getConfig().getBlueGreenMode()), STATS_KILDA_SPEAKER_BOLT.name())
+        declareBolt(builder, buildKafkaBolt(topologyConfig.getSpeakerTopic()), STATS_KILDA_SPEAKER_BOLT.name())
                 .shuffleGrouping(STATS_REQUESTER_BOLT.name(), STATS_REQUEST.name());
-        declareBolt(builder, buildKafkaBolt(topologyConfig.getGrpcSpeakerTopic(), getZkTopoName(),
-                getConfig().getBlueGreenMode()), STATS_GRPC_SPEAKER_BOLT.name())
+        declareBolt(builder, buildKafkaBolt(topologyConfig.getGrpcSpeakerTopic()), STATS_GRPC_SPEAKER_BOLT.name())
                 .shuffleGrouping(STATS_REQUESTER_BOLT.name(), GRPC_REQUEST.name());
 
         declareKafkaSpout(builder, topologyConfig.getServer42StatsFlowRttTopic(),
-                SERVER42_STATS_FLOW_RTT_SPOUT.name(), getZkTopoName(), getConfig().getBlueGreenMode());
+                SERVER42_STATS_FLOW_RTT_SPOUT.name());
 
         declareBolt(builder,
                 new FlowRttMetricGenBolt(topologyConfig.getMetricPrefix(), ZooKeeperSpout.SPOUT_ID),
@@ -168,7 +165,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
 
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
-        declareBolt(builder, createKafkaBolt(openTsdbTopic, getZkTopoName(), getConfig().getBlueGreenMode()),
+        declareBolt(builder, createKafkaBolt(openTsdbTopic),
                 "stats-opentsdb")
                 .shuffleGrouping(PORT_STATS_METRIC_GEN.name())
                 .shuffleGrouping(METER_STATS_METRIC_GEN.name())
@@ -197,8 +194,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         String id = STATS_KILDA_SPEAKER_SPOUT.name();
         KafkaTopicsConfig topics = topologyConfig.getKafkaTopics();
         KafkaSpoutConfig<String, String> config = makeKafkaSpoutConfig(
-                ImmutableList.of(topics.getSpeakerFlowHsTopic()), id, StringDeserializer.class, getZkTopoName(),
-                getConfig().getBlueGreenMode())
+                ImmutableList.of(topics.getSpeakerFlowHsTopic()), id, StringDeserializer.class)
                 .setRecordTranslator(new JsonKafkaTranslator())
                 .build();
         declareSpout(topology, new KafkaSpout<>(config), id);

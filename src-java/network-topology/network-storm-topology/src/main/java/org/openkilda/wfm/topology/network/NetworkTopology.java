@@ -143,20 +143,17 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
 
     private void inputSpeaker(TopologyBuilder topology) {
         declareKafkaSpout(topology,
-                kafkaTopics.getTopoDiscoTopic(), ComponentId.INPUT_SPEAKER.toString(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+                kafkaTopics.getTopoDiscoTopic(), ComponentId.INPUT_SPEAKER.toString());
     }
 
     private void inputSwitchManager(TopologyBuilder topology) {
         declareKafkaSpout(topology,
-                kafkaTopics.getNorthboundTopic(), ComponentId.INPUT_SWMANAGER.toString(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+                kafkaTopics.getNorthboundTopic(), ComponentId.INPUT_SWMANAGER.toString());
     }
 
     private void inputSpeakerRules(TopologyBuilder topology) {
         declareKafkaSpout(topology,
-                kafkaTopics.getTopoSwitchManagerTopic(), ComponentId.INPUT_SPEAKER_RULES.toString(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+                kafkaTopics.getTopoSwitchManagerTopic(), ComponentId.INPUT_SPEAKER_RULES.toString());
     }
 
     private void workerSpeakerRules(TopologyBuilder topology) {
@@ -186,8 +183,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
 
     private void inputGrpc(TopologyBuilder topology) {
         declareKafkaSpout(topology,
-                kafkaTopics.getGrpcResponseTopic(), ComponentId.INPUT_GRPC.toString(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+                kafkaTopics.getGrpcResponseTopic(), ComponentId.INPUT_GRPC.toString());
     }
 
     private void routeGrpc(TopologyBuilder topology) {
@@ -344,8 +340,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
                 .shuffleGrouping(WatcherHandler.BOLT_ID, WatcherHandler.STREAM_SPEAKER_ID)
                 .shuffleGrouping(BfdWorker.BOLT_ID, BfdWorker.STREAM_SPEAKER_ID);
 
-        KafkaBolt output = buildKafkaBolt(kafkaTopics.getSpeakerDiscoTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt output = buildKafkaBolt(kafkaTopics.getSpeakerDiscoTopic());
         declareBolt(topology, output, ComponentId.SPEAKER_OUTPUT.toString())
                 .shuffleGrouping(SpeakerEncoder.BOLT_ID);
     }
@@ -355,8 +350,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         declareBolt(topology, bolt, SwitchManagerEncoder.BOLT_ID)
                 .shuffleGrouping(SwitchManagerWorker.BOLT_ID);
 
-        KafkaBolt output = buildKafkaBolt(kafkaTopics.getTopoSwitchManagerNetworkTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt output = buildKafkaBolt(kafkaTopics.getTopoSwitchManagerNetworkTopic());
         declareBolt(topology, output, ComponentId.SWMANAGER_OUTPUT.toString())
                 .shuffleGrouping(SwitchManagerEncoder.BOLT_ID);
     }
@@ -366,8 +360,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         declareBolt(topology, encoderRules, SpeakerRulesEncoder.BOLT_ID)
                 .shuffleGrouping(SpeakerRulesWorker.BOLT_ID);
 
-        KafkaBolt outputRules = buildKafkaBolt(kafkaTopics.getSpeakerTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt outputRules = buildKafkaBolt(kafkaTopics.getSpeakerTopic());
         declareBolt(topology, outputRules, ComponentId.SPEAKER_RULES_OUTPUT.toString())
                 .shuffleGrouping(SpeakerRulesEncoder.BOLT_ID);
 
@@ -379,8 +372,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
                 .shuffleGrouping(IslHandler.BOLT_ID, IslHandler.STREAM_REROUTE_ID)
                 .shuffleGrouping(SwitchHandler.BOLT_ID, SwitchHandler.STREAM_REROUTE_ID);
 
-        KafkaBolt output = buildKafkaBolt(kafkaTopics.getTopoRerouteTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt output = buildKafkaBolt(kafkaTopics.getTopoRerouteTopic());
         declareBolt(topology, output, ComponentId.REROUTE_OUTPUT.toString())
                 .shuffleGrouping(RerouteEncoder.BOLT_ID);
     }
@@ -390,8 +382,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         declareBolt(topology, bolt, StatusEncoder.BOLT_ID)
                 .shuffleGrouping(IslHandler.BOLT_ID, IslHandler.STREAM_STATUS_ID);
 
-        KafkaBolt output = buildKafkaBolt(kafkaTopics.getNetworkIslStatusTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt output = buildKafkaBolt(kafkaTopics.getNetworkIslStatusTopic());
         declareBolt(topology, output, ComponentId.STATUS_OUTPUT.toString())
                 .shuffleGrouping(StatusEncoder.BOLT_ID);
     }
@@ -401,8 +392,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         declareBolt(topology, bolt, NorthboundEncoder.BOLT_ID)
                 .shuffleGrouping(PortHandler.BOLT_ID, PortHandler.STREAM_NORTHBOUND_ID);
 
-        KafkaBolt kafkaNorthboundBolt = buildKafkaBolt(kafkaTopics.getNorthboundTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt kafkaNorthboundBolt = buildKafkaBolt(kafkaTopics.getNorthboundTopic());
         declareBolt(topology, kafkaNorthboundBolt, ComponentId.NB_OUTPUT.toString())
                 .shuffleGrouping(NorthboundEncoder.BOLT_ID);
     }
@@ -412,8 +402,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         declareBolt(topology, encoder, GrpcEncoder.BOLT_ID)
                 .shuffleGrouping(BfdWorker.BOLT_ID, BfdWorker.STREAM_GRPC_ID);
 
-        KafkaBolt<String, Message> output = makeKafkaBolt(kafkaTopics.getGrpcSpeakerTopic(), MessageSerializer.class,
-                getZkTopoName(), topologyConfig.getBlueGreenMode());
+        KafkaBolt<String, Message> output = makeKafkaBolt(kafkaTopics.getGrpcSpeakerTopic(), MessageSerializer.class);
         declareBolt(topology, output, ComponentId.GRPC_OUTPUT.toString())
                 .shuffleGrouping(GrpcEncoder.BOLT_ID);
     }

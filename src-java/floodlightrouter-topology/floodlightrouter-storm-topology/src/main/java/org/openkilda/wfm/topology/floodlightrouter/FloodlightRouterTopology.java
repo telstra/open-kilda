@@ -135,8 +135,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
 
     private void speakerToNetwork(TopologyBuilder topology, TopologyOutput output) {
         declareKafkaSpout(topology,
-                makeRegionTopics(kafkaTopics.getTopoDiscoRegionTopic()), ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT,
-                getZkTopoName(), getConfig().getBlueGreenMode());
+                makeRegionTopics(kafkaTopics.getTopoDiscoRegionTopic()), ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT);
         SpeakerToNetworkProxyBolt proxy = new SpeakerToNetworkProxyBolt(
                 kafkaTopics.getTopoDiscoTopic(), Duration.ofSeconds(topologyConfig.getSwitchMappingRemoveDelay()));
         declareBolt(topology, proxy, SpeakerToNetworkProxyBolt.BOLT_ID)
@@ -157,8 +156,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
 
     private void speakerToFlowHs(TopologyBuilder topology, TopologyOutput output) {
         declareKafkaSpoutForAbstractMessage(topology,
-                makeRegionTopics(kafkaTopics.getFlowHsSpeakerRegionTopic()), ComponentType.KILDA_FLOW_HS_KAFKA_SPOUT,
-                getZkTopoName(), getConfig().getBlueGreenMode());
+                makeRegionTopics(kafkaTopics.getFlowHsSpeakerRegionTopic()), ComponentType.KILDA_FLOW_HS_KAFKA_SPOUT);
         declareSpeakerToControllerProxy(
                 topology, kafkaTopics.getFlowHsSpeakerTopic(),
                 ComponentType.KILDA_FLOW_HS_KAFKA_SPOUT, ComponentType.KILDA_FLOW_HS_REPLY_BOLT,
@@ -167,8 +165,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
 
     private void flowHsToSpeaker(TopologyBuilder topology, TopologyOutput output) {
         declareKafkaSpoutForAbstractMessage(topology,
-                kafkaTopics.getSpeakerFlowHsTopic(), ComponentType.SPEAKER_FLOW_HS_KAFKA_SPOUT,
-                getZkTopoName(), getConfig().getBlueGreenMode());
+                kafkaTopics.getSpeakerFlowHsTopic(), ComponentType.SPEAKER_FLOW_HS_KAFKA_SPOUT);
 
         declareControllerToSpeakerProxy(
                 topology, kafkaTopics.getSpeakerFlowRegionTopic(),
@@ -236,8 +233,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
             TopologyBuilder topology, TopologyOutput output) {
         BoltDeclarer kafkaProducer = output.getKafkaGenericOutput();
 
-        declareKafkaSpout(topology, kafkaTopics.getSpeakerTopic(), ComponentType.SPEAKER_KAFKA_SPOUT, getZkTopoName(),
-                getConfig().getBlueGreenMode());
+        declareKafkaSpout(topology, kafkaTopics.getSpeakerTopic(), ComponentType.SPEAKER_KAFKA_SPOUT);
 
         ControllerToSpeakerProxyBolt proxy = new ControllerToSpeakerSharedProxyBolt(
                 kafkaTopics.getSpeakerRegionTopic(), regions, kafkaTopics,
@@ -289,11 +285,11 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     private TopologyOutput kafkaOutput(TopologyBuilder topology) {
         RegionAwareKafkaTopicSelector topicSelector = new RegionAwareKafkaTopicSelector();
         BoltDeclarer generic = declareBolt(topology,
-                makeKafkaBolt(MessageSerializer.class, getZkTopoName(), getConfig().getBlueGreenMode())
+                makeKafkaBolt(MessageSerializer.class)
                         .withTopicSelector(topicSelector),
                 ComponentType.KAFKA_GENERIC_OUTPUT);
         BoltDeclarer hs = declareBolt(topology,
-                makeKafkaBolt(AbstractMessageSerializer.class, getZkTopoName(), getConfig().getBlueGreenMode())
+                makeKafkaBolt(AbstractMessageSerializer.class)
                         .withTopicSelector(topicSelector),
                 ComponentType.KAFKA_HS_OUTPUT);
 
@@ -303,8 +299,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     private void declareSpeakerToControllerProxy(
             TopologyBuilder topology, String speakerTopicsSeed, String controllerTopic, String spoutId,
             String proxyBoltId, BoltDeclarer output) {
-        declareKafkaSpout(topology, makeRegionTopics(speakerTopicsSeed), spoutId,
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        declareKafkaSpout(topology, makeRegionTopics(speakerTopicsSeed), spoutId);
 
         declareSpeakerToControllerProxy(topology, controllerTopic, spoutId, proxyBoltId, output);
     }
@@ -324,7 +319,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     private void declareControllerToSpeakerProxy(
             TopologyBuilder topology, String speakerTopicsSeed, String controllerTopic, String spoutId,
             String proxyBoltId, BoltDeclarer output) {
-        declareKafkaSpout(topology, controllerTopic, spoutId, getZkTopoName(), getConfig().getBlueGreenMode());
+        declareKafkaSpout(topology, controllerTopic, spoutId);
 
         declareControllerToSpeakerProxy(
                 topology, speakerTopicsSeed, spoutId, proxyBoltId, output);

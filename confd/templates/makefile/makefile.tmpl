@@ -133,7 +133,7 @@ copy-test-props: $(FUNC_TESTS)/kilda.properties $(FUNC_TESTS)/topology.yaml
 
 .PHONY: run-func-tests func-tests test-topology
 run-func-tests:
-	cd src-java && ./gradlew :functional-tests:$(TASK) --info $(PARAMS)
+	cd src-java && ./gradlew :functional-tests:$(TASK) $(PARAMS)
 
 # EXAMPLES:
 #   make func-tests  // run all functional tests

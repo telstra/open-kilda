@@ -115,8 +115,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .fieldsGrouping(FlowMeterModifyHubBolt.ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
                 .fieldsGrouping(METER_MODIFY_WORKER_BOLT, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
 
-        declareKafkaSpout(tb, topologyConfig.getKafkaTopoNbTopic(), NB_SPOUT_ID, getZkTopoName(),
-                getConfig().getBlueGreenMode());
+        declareKafkaSpout(tb, topologyConfig.getKafkaTopoNbTopic(), NB_SPOUT_ID);
 
         RouterBolt router = new RouterBolt(ZooKeeperSpout.SPOUT_ID);
         declareBolt(tb, router, ROUTER_BOLT_NAME)
@@ -260,35 +259,29 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.DISCO.toString())
                 .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME, FeatureTogglesBolt.STREAM_NOTIFICATION_ID);
 
-        KafkaBolt kafkaNbBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt kafkaNbBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         declareBolt(tb, kafkaNbBolt, NB_KAFKA_BOLT_NAME)
                 .shuffleGrouping(SPLITTER_BOLT_NAME)
                 .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.ERROR.toString());
 
-        KafkaBolt kafkaFlowHsBolt = buildKafkaBolt(topologyConfig.getKafkaFlowHsTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt kafkaFlowHsBolt = buildKafkaBolt(topologyConfig.getKafkaFlowHsTopic());
         declareBolt(tb, kafkaFlowHsBolt, FLOW_HS_KAFKA_BOLT_NAME)
                 .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.FLOWHS.toString())
                 .shuffleGrouping(FLOW_PATCH_BOLT_NAME, StreamType.FLOWHS.toString());
 
-        KafkaBolt kafkaDiscoBolt = buildKafkaBolt(topologyConfig.getKafkaDiscoTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt kafkaDiscoBolt = buildKafkaBolt(topologyConfig.getKafkaDiscoTopic());
         declareBolt(tb, kafkaDiscoBolt, DISCO_KAFKA_BOLT_NAME)
                 .shuffleGrouping(DISCOVERY_ENCODER_BOLT_NAME);
 
-        KafkaBolt kafkaPingBolt = buildKafkaBolt(topologyConfig.getKafkaPingTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt kafkaPingBolt = buildKafkaBolt(topologyConfig.getKafkaPingTopic());
         declareBolt(tb, kafkaPingBolt, PING_KAFKA_BOLT_NAME)
                 .shuffleGrouping(FLOW_PATCH_BOLT_NAME, StreamType.PING.toString());
 
-        declareBolt(tb, buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic(), getZkTopoName(),
-                topologyConfig.getBlueGreenMode()), SPEAKER_KAFKA_BOLT)
+        declareBolt(tb, buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic()), SPEAKER_KAFKA_BOLT)
                 .shuffleGrouping(VALIDATION_WORKER_BOLT, StreamType.TO_SPEAKER.toString())
                 .shuffleGrouping(METER_MODIFY_WORKER_BOLT, StreamType.TO_SPEAKER.toString());
 
-        declareBolt(tb, buildKafkaBolt(topologyConfig.getKafkaSwitchManagerTopic(), getZkTopoName(),
-                topologyConfig.getBlueGreenMode()), SWITCH_MANAGER_KAFKA_BOLT)
+        declareBolt(tb, buildKafkaBolt(topologyConfig.getKafkaSwitchManagerTopic()), SWITCH_MANAGER_KAFKA_BOLT)
                 .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.TO_SWITCH_MANAGER.toString());
 
         Server42EncoderBolt server42EncoderBolt = new Server42EncoderBolt();
@@ -296,12 +289,10 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.TO_SERVER42.toString())
                 .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME, FeatureTogglesBolt.STREAM_NOTIFICATION_ID);
 
-        declareBolt(tb, buildKafkaBolt(topologyConfig.getKafkaServer42StormNotifyTopic(), getZkTopoName(),
-                getConfig().getBlueGreenMode()), SERVER42_KAFKA_BOLT)
+        declareBolt(tb, buildKafkaBolt(topologyConfig.getKafkaServer42StormNotifyTopic()), SERVER42_KAFKA_BOLT)
                 .shuffleGrouping(SERVER42_ENCODER_BOLT_NAME);
 
-        declareBolt(tb, buildKafkaBolt(topologyConfig.getKafkaRerouteTopic(),
-                getZkTopoName(), getConfig().getBlueGreenMode()), REROUTE_KAFKA_BOLT)
+        declareBolt(tb, buildKafkaBolt(topologyConfig.getKafkaRerouteTopic()), REROUTE_KAFKA_BOLT)
                 .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.REROUTE.toString());
 
         return tb.createTopology();

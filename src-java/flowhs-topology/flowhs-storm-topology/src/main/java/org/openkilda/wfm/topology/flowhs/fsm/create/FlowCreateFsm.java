@@ -85,6 +85,8 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
     private PathId protectedForwardPathId;
     private PathId protectedReversePathId;
     private boolean pathsBeenAllocated;
+    private boolean backUpPrimaryPathComputationWayUsed;
+    private boolean backUpProtectedPathComputationWayUsed;
 
     private List<FlowSegmentRequestFactory> sentCommands = new ArrayList<>();
     private Map<UUID, SpeakerCommandObserver> pendingCommands = new HashMap<>();

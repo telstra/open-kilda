@@ -104,7 +104,7 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
 
     private void createOpenTsdbBolt(TopologyBuilder builder) {
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
-        KafkaBolt openTsdbBolt = createKafkaBolt(openTsdbTopic, getZkTopoName(), getConfig().getBlueGreenMode());
+        KafkaBolt openTsdbBolt = createKafkaBolt(openTsdbTopic);
         declareBolt(builder, openTsdbBolt, ISL_LATENCY_OTSDB_BOLT_ID)
                 .shuffleGrouping(ISL_STATS_BOLT_ID);
     }
@@ -163,10 +163,8 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
         String topoIslLatencyTopic = topologyConfig.getKafkaTopoIslLatencyTopic();
 
         logger.debug("connecting to {} topic", topoIslLatencyTopic);
-        declareKafkaSpout(builder, topoIslLatencyTopic, ISL_LATENCY_SPOUT_ID,
-                getZkTopoName(), getConfig().getBlueGreenMode());
-        declareKafkaSpout(builder, topologyConfig.getKafkaNetworkIslStatusTopic(), ISL_STATUS_SPOUT_ID,
-                getZkTopoName(), getConfig().getBlueGreenMode());
+        declareKafkaSpout(builder, topoIslLatencyTopic, ISL_LATENCY_SPOUT_ID);
+        declareKafkaSpout(builder, topologyConfig.getKafkaNetworkIslStatusTopic(), ISL_STATUS_SPOUT_ID);
     }
 
     @Override

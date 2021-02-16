@@ -49,17 +49,43 @@ public class CompleteFlowCreateAction extends FlowProcessingAction<FlowCreateFsm
                     "Couldn't complete flow creation. The flow was deleted");
         }
 
-        transactionManager.doInTransaction(() -> {
-            flowPathRepository.updateStatus(stateMachine.getForwardPathId(), FlowPathStatus.ACTIVE);
-            flowPathRepository.updateStatus(stateMachine.getReversePathId(), FlowPathStatus.ACTIVE);
+        FlowStatus flowStatus = transactionManager.doInTransaction(() -> {
+            FlowStatus status = FlowStatus.UP;
+            FlowPathStatus primaryPathStatus;
+            if (stateMachine.isBackUpPrimaryPathComputationWayUsed()) {
+                primaryPathStatus = FlowPathStatus.DEGRADED;
+                status = FlowStatus.DEGRADED;
+            } else {
+                primaryPathStatus = FlowPathStatus.ACTIVE;
+            }
+
+            flowPathRepository.updateStatus(stateMachine.getForwardPathId(), primaryPathStatus);
+            flowPathRepository.updateStatus(stateMachine.getReversePathId(), primaryPathStatus);
+
             if (stateMachine.getProtectedForwardPathId() != null
                     && stateMachine.getProtectedReversePathId() != null) {
-                flowPathRepository.updateStatus(stateMachine.getProtectedForwardPathId(), FlowPathStatus.ACTIVE);
-                flowPathRepository.updateStatus(stateMachine.getProtectedReversePathId(), FlowPathStatus.ACTIVE);
+                FlowPathStatus protectedPathStatus;
+                if (stateMachine.isBackUpProtectedPathComputationWayUsed()) {
+                    protectedPathStatus = FlowPathStatus.DEGRADED;
+                    status = FlowStatus.DEGRADED;
+                } else {
+                    protectedPathStatus = FlowPathStatus.ACTIVE;
+                }
+
+                flowPathRepository.updateStatus(stateMachine.getProtectedForwardPathId(), protectedPathStatus);
+                flowPathRepository.updateStatus(stateMachine.getProtectedReversePathId(), protectedPathStatus);
             }
-            flowRepository.updateStatus(flowId, FlowStatus.UP);
+
+            flowRepository.updateStatus(flowId, status);
+            if (FlowStatus.DEGRADED.equals(status)) {
+                flowRepository.updateStatusInfo(flowId, "An alternative way "
+                        + "(back up strategy or max_latency_tier2 value) of building the path was used.");
+            }
+
+            return status;
         });
-        dashboardLogger.onFlowStatusUpdate(flowId, FlowStatus.UP);
-        stateMachine.saveActionToHistory(format("The flow status was set to %s", FlowStatus.UP));
+
+        dashboardLogger.onFlowStatusUpdate(flowId, flowStatus);
+        stateMachine.saveActionToHistory(format("The flow status was set to %s", flowStatus));
     }
 }
