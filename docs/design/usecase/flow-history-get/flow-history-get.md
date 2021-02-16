@@ -66,28 +66,26 @@ with request params:
 * `time_to` - End time to search flow status timestamps (default: now).
 * `max_count` - Number of records viewed (default: 100).
 
-Examples of possible responses to the request:
-* First option:
-```
-[{
-  timestamp: 1613128414950,
-  status: UP
-}, 
-{
-  timestamp: 1613128438625,
-  status: DEGRADED
-}, 
-{
-  timestamp: 1613128459951,
-  status: DELETED
-}]
-```
-
-* Second option:
+Example of response to the request:
 ```
 {
-  "1613128414950": "UP",
-  "1613128438625": "DEGRADED",
-  "1613128459951": "DELETED"
+  "history_statuses": [
+    {
+      "timestamp": "2021-03-01T11:10:28.842Z",
+      "status_become": "UP"
+    },
+    {
+      "timestamp": "2021-03-01T11:10:37.175Z",
+      "status_become": "DEGRADED"
+    },
+    {
+      "timestamp": "2021-03-01T11:10:48.718Z",
+      "status_become": "DOWN"
+    },
+    {
+      "timestamp": "2021-03-01T11:10:49.497Z",
+      "status_become": "DELETED"
+    }
+  ]
 }
 ```
