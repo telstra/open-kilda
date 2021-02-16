@@ -93,14 +93,16 @@ public class SpeakerToControllerProxyBolt extends AbstractBolt {
         InfoData payload = envelope.getData();
         if (payload instanceof IslInfoData) {
             proxyOnlyIfActiveRegion(key, envelope, (IslInfoData) payload);
-        } else if (payload instanceof PortInfoData) {
-            proxyOnlyIfActiveRegion(key, envelope, (PortInfoData) payload);
         } else if (payload instanceof IslOneWayLatency) {
             proxyOnlyIfActiveRegion(key, envelope, (IslOneWayLatency) payload);
         } else if (payload instanceof IslBaseLatency) {
             proxyOnlyIfActiveRegion(key, envelope, (IslBaseLatency) payload);
         } else if (payload instanceof ConnectedDevicePacketBase) {
             proxyOnlyIfActiveRegion(key, envelope, (ConnectedDevicePacketBase) payload);
+        } else if (payload instanceof PortInfoData) {
+            log.error(
+                    "Drop Port status update event {}, it must not be handled by generic proxy, it must be handled "
+                            + "by network specific handler", payload);
         } else {
             proxyOther(key, envelope);
         }
@@ -113,10 +115,6 @@ public class SpeakerToControllerProxyBolt extends AbstractBolt {
     private void proxyOnlyIfActiveRegion(String key, InfoMessage envelope, IslInfoData payload) {
         SwitchId switchId = payload.getDestination().getSwitchId();
         proxyOnlyIfActiveRegion(key, envelope, switchId);
-    }
-
-    private void proxyOnlyIfActiveRegion(String key, InfoMessage envelope, PortInfoData payload) {
-        proxyOnlyIfActiveRegion(key, envelope, payload.getSwitchId());
     }
 
     private void proxyOnlyIfActiveRegion(String key, InfoMessage envelope, IslOneWayLatency payload) {

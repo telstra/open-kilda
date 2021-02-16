@@ -20,6 +20,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
+import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractBolt;
@@ -71,7 +72,7 @@ public class SwitchMonitorBolt extends AbstractBolt implements SwitchMonitorCarr
         } else if (RegionTrackerBolt.BOLT_ID.equals(source) && active) {
             handleRegionOfflineNotification(input);
         } else if (SpeakerToNetworkProxyBolt.BOLT_ID.equals(source) && active) {
-            handleSwitchConnectionNotification(input);
+            handleNetworkUpdateNotification(input);
         } else if (active) {
             unhandledInput(input);
         }
@@ -81,13 +82,15 @@ public class SwitchMonitorBolt extends AbstractBolt implements SwitchMonitorCarr
         service.handleRegionOfflineNotification(pullRegion(input));
     }
 
-    private void handleSwitchConnectionNotification(Tuple input) throws PipelineException {
+    private void handleNetworkUpdateNotification(Tuple input) throws PipelineException {
         String region = pullRegion(input);
         InfoData payload = pullValue(input, SpeakerToNetworkProxyBolt.FIELD_ID_PAYLOAD, InfoData.class);
         if (payload instanceof SwitchInfoData) {
             service.handleStatusUpdateNotification((SwitchInfoData) payload, region);
         } else if (payload instanceof NetworkDumpSwitchData) {
             service.handleNetworkDumpResponse((NetworkDumpSwitchData) payload, region);
+        } else if (payload instanceof PortInfoData) {
+            service.handlePortStatusUpdateNotification((PortInfoData) payload, region);
         } else {
             unhandledInput(input);
         }
@@ -102,7 +105,7 @@ public class SwitchMonitorBolt extends AbstractBolt implements SwitchMonitorCarr
     }
 
     @Override
-    public void switchStatusUpdateNotification(SwitchId switchId, InfoData notification) {
+    public void networkStatusUpdateNotification(SwitchId switchId, InfoData notification) {
         InfoMessage message = new InfoMessage(
                 notification, clock.instant().toEpochMilli(), getCommandContext().getCorrelationId());
         getOutput().emit(STREAM_NETWORK_ID, getCurrentTuple(), makeNetworkTuple(switchId.toString(), message));

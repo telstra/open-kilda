@@ -60,13 +60,13 @@ public abstract class SwitchReadWriteConnectMonitorTest {
 
         subject.handleSwitchStatusNotification(connectEvent, REGION_A);
         verify(carrier, times(1))
-                .switchStatusUpdateNotification(eq(connectEvent.getSwitchId()), eq(connectEvent));
+                .networkStatusUpdateNotification(eq(connectEvent.getSwitchId()), eq(connectEvent));
         verify(carrier).regionUpdateNotification(
                 eq(new RegionMappingSet(connectEvent.getSwitchId(), REGION_A, subject.isReadWriteMode())));
 
         subject.handleSwitchStatusNotification(connectEvent, REGION_B);
         verify(carrier, times(1))
-                .switchStatusUpdateNotification(eq(connectEvent.getSwitchId()), eq(connectEvent));
+                .networkStatusUpdateNotification(eq(connectEvent.getSwitchId()), eq(connectEvent));
         verify(carrier, never()).regionUpdateNotification(
                 eq(new RegionMappingSet(connectEvent.getSwitchId(), REGION_B, subject.isReadWriteMode())));
     }
@@ -77,7 +77,7 @@ public abstract class SwitchReadWriteConnectMonitorTest {
         SwitchInfoData connectEvent = makeConnectNotification(SWITCH_ALPHA);
 
         subject.handleSwitchStatusNotification(connectEvent, REGION_A);
-        verify(carrier).switchStatusUpdateNotification(eq(connectEvent.getSwitchId()), eq(connectEvent));
+        verify(carrier).networkStatusUpdateNotification(eq(connectEvent.getSwitchId()), eq(connectEvent));
         verify(carrier).regionUpdateNotification(
                 eq(new RegionMappingSet(connectEvent.getSwitchId(), REGION_A, subject.isReadWriteMode())));
 
@@ -87,7 +87,7 @@ public abstract class SwitchReadWriteConnectMonitorTest {
 
         SwitchInfoData disconnectEvent = makeDisconnectNotification(connectEvent.getSwitchId());
         subject.handleSwitchStatusNotification(disconnectEvent, REGION_A);
-        verify(carrier).switchStatusUpdateNotification(
+        verify(carrier).networkStatusUpdateNotification(
                 eq(disconnectEvent.getSwitchId()), ArgumentMatchers.eq(disconnectEvent));
         Assert.assertFalse(subject.isAvailable());
         Assert.assertEquals(now, subject.getBecomeUnavailableAt());
@@ -116,7 +116,7 @@ public abstract class SwitchReadWriteConnectMonitorTest {
         Assert.assertFalse(subject.isAvailable());
         Assert.assertEquals(failedAt, subject.getBecomeUnavailableAt());
 
-        verify(carrier).switchStatusUpdateNotification(eq(disconnectEvent.getSwitchId()), eq(disconnectEvent));
+        verify(carrier).networkStatusUpdateNotification(eq(disconnectEvent.getSwitchId()), eq(disconnectEvent));
         verify(carrier).regionUpdateNotification(
                 eq(new RegionMappingRemove(disconnectEvent.getSwitchId(), null, subject.isReadWriteMode())));
         verifyNoMoreInteractions(carrier);
