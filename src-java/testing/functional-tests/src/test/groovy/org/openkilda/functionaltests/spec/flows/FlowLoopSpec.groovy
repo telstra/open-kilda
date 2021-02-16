@@ -216,13 +216,14 @@ class FlowLoopSpec extends HealthCheckSpecification {
                          },
                          flowTap        : { FlowRequestV2 fl -> fl.allocateProtectedPath = true }
                  ],
-                 [
-                         flowDescription: "vxlan",
-                         switchPair     : { List<SwitchId> switchIds ->
-                             getSwPairConnectedToTraffGenForVxlanFlow(switchIds)
-                         },
-                         flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
-                 ],
+                 //https://github.com/telstra/open-kilda/issues/4072
+//                 [
+//                         flowDescription: "vxlan",
+//                         switchPair     : { List<SwitchId> switchIds ->
+//                             getSwPairConnectedToTraffGenForVxlanFlow(switchIds)
+//                         },
+//                         flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
+//                 ],
                  [
                          flowDescription: "qinq",
                          switchPair     : { List<SwitchId> switchIds ->
