@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,15 +19,18 @@ import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Key;
 
 @Configuration
-@Key("zookeeper")
-public interface ZookeeperConfig {
-    // To be able to run tests in parallel we must use different ports for zookeeper hosts in each test
-    int STATS_TOPOLOGY_TEST_ZOOKEEPER_PORT = 9093;
-    int ISL_LATENCY_TOPOLOGY_TEST_ZOOKEEPER_PORT = 9094;
+@Key("kafka")
+public interface KafkaConfig {
+    // To be able to run tests in parallel we must use different ports for kafka hosts in each test
+    int STATS_TOPOLOGY_TEST_KAFKA_PORT = 2182;
+    int ISL_LATENCY_TOPOLOGY_TEST_KAFKA_PORT = 2183;
 
     @Key("hosts")
     String getHosts();
 
-    @Key("connect_string")
-    String getConnectString();
+    @Key("listeners")
+    String getListeners();
+
+    @Key("advertised.listeners")
+    String getAdvertisedListeners();
 }
