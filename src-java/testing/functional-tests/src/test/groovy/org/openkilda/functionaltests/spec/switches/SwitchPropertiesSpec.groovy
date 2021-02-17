@@ -30,7 +30,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to manipulate with switch properties"() {
         given: "A switch that supports VXLAN"
-        def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
+        def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) }
         assumeTrue("Wasn't able to find vxlan-enabled switch", sw as boolean)
         def initSwitchProperties = northbound.getSwitchProperties(sw.dpId)
         assert initSwitchProperties.multiTable != null
@@ -224,7 +224,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "System forbids to turn on VXLAN encap type on switch that does not support it"() {
         given: "Switch that does not support VXLAN feature"
-        def sw = topology.activeSwitches.find { !it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
+        def sw = topology.activeSwitches.find { !it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) }
         assumeTrue("There is no non-vxlan switch in the topology", sw as boolean)
 
         when: "Try to turn on VXLAN encap type on that switch"
@@ -237,7 +237,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.BAD_REQUEST
         e.responseBodyAsString.to(MessageError).errorDescription ==
-                "Switch $sw.dpId doesn't support requested feature NOVIFLOW_COPY_FIELD"
+                "Switch $sw.dpId doesn't support requested feature NOVIFLOW_PUSH_POP_VXLAN"
 
         cleanup:
         !e && SwitchHelper.updateSwitchProperties(sw, initProps)
