@@ -656,8 +656,8 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         } as List<SwitchPair>
     }
 
-    void isVxlanEnabled(SwitchId switchId) {
-        northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
+    def isVxlanEnabled(SwitchId switchId) {
+        return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
                 .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 }
