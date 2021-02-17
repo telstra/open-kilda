@@ -21,6 +21,7 @@ import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.bluegreen.Signal;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.share.zk.ZooKeeperSpout;
@@ -38,7 +39,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -86,10 +86,10 @@ public class DatapointParseBolt extends BaseRichBolt {
     protected void handleLifeCycleEvent(Tuple tuple, LifecycleEvent event) {
         if (Signal.START.equals(event.getSignal())) {
             active = true;
-            collector.emit(ZkStreams.ZK.toString(), tuple, new Values(event, UUID.randomUUID()));
+            collector.emit(ZkStreams.ZK.toString(), tuple, new Values(event, new CommandContext()));
         } else if (Signal.SHUTDOWN.equals(event.getSignal())) {
             active = false;
-            collector.emit(ZkStreams.ZK.toString(), tuple, new Values(event, UUID.randomUUID()));
+            collector.emit(ZkStreams.ZK.toString(), tuple, new Values(event, new CommandContext()));
         } else {
             LOGGER.error("Unsupported signal received: {}", event.getSignal());
         }
