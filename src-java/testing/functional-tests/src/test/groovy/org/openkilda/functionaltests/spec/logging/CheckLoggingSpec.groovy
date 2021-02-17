@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.logging
 
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -16,7 +15,6 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 
 @Slf4j
@@ -49,7 +47,6 @@ class CheckLoggingSpec extends HealthCheckSpecification {
         result.hits.hits.any { hit -> hit.source.message.toLowerCase().contains(discoveryMsg) }
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/4056")
     def "Check Northbound logging"() {
         when: "A non-existent switch is requested"
         northbound.getSwitch(NON_EXISTENT_SWITCH_ID)
