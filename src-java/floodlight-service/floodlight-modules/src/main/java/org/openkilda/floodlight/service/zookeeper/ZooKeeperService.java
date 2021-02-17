@@ -46,7 +46,6 @@ public class ZooKeeperService implements IService, LifeCycleObserver {
 
     private final Set<ZooKeeperEventObserver> observers = new HashSet<>();
 
-    @Getter
     private ZkStateTracker zooKeeperStateTracker;
     private ZkWriter zkWriter;
     private ZkWatchDog watchDog;
@@ -69,12 +68,13 @@ public class ZooKeeperService implements IService, LifeCycleObserver {
         watchDog = ZkWatchDog.builder().id(region).serviceName(ZK_COMPONENT_NAME)
                 .connectionString(connectionString).build();
         watchDog.subscribe(this);
+        initZookeeper();
     }
 
     /**
      * Connects to zookeeper.
      */
-    public void initZookeeper() {
+    private void initZookeeper() {
         zkWriter.init();
         watchDog.init();
 
@@ -130,6 +130,10 @@ public class ZooKeeperService implements IService, LifeCycleObserver {
 
     public synchronized void unsubscribe(ZooKeeperEventObserver observer) {
         observers.remove(observer);
+    }
+
+    public synchronized void processLifecycleEvent(LifecycleEvent event) {
+        zooKeeperStateTracker.processLifecycleEvent(event);
     }
 
     private void forceReadSignal() {
