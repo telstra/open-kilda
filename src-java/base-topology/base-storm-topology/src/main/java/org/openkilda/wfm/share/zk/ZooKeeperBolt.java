@@ -87,7 +87,7 @@ public class ZooKeeperBolt extends AbstractBolt {
         zkWriter = ZkWriter.builder().id(id).serviceName(serviceName)
                 .connectionRefreshInterval(ZkClient.DEFAULT_CONNECTION_REFRESH_INTERVAL)
                 .connectionString(connectionString).build();
-        zkWriter.init();
+        zkWriter.initAndWaitConnection();
         zkStateTracker = new ZkStateTracker(zkWriter);
     }
 

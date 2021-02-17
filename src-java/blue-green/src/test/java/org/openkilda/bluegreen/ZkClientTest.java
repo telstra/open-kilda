@@ -55,8 +55,8 @@ public class ZkClientTest {
         doCallRealMethod().when(client).initZk();
         when(client.isRefreshIntervalPassed()).thenReturn(true);
         when(client.getZk()).thenReturn(zkMock);
-        when(client.refreshConnection(any())).thenCallRealMethod();
-        assertTrue(client.refreshConnection(KeeperState.Expired));
+        when(client.refreshConnectionIfNeeded(any())).thenCallRealMethod();
+        assertTrue(client.refreshConnectionIfNeeded(KeeperState.Expired));
         verify(client, Mockito.times(1)).safeRefreshConnection();
     }
 
@@ -67,9 +67,28 @@ public class ZkClientTest {
         doCallRealMethod().when(client).initZk();
         when(client.isRefreshIntervalPassed()).thenReturn(true);
         when(client.getZk()).thenReturn(zkMock);
-        when(client.refreshConnection(any())).thenCallRealMethod();
-        assertTrue(client.refreshConnection(KeeperState.Disconnected));
+        when(client.refreshConnectionIfNeeded(any())).thenCallRealMethod();
+        assertTrue(client.refreshConnectionIfNeeded(KeeperState.Disconnected));
         verify(client, Mockito.times(1)).safeRefreshConnection();
+    }
+
+    @Test
+    public void testRefreshConnectionConnected() throws IOException {
+        ZkClient client = Mockito.mock(ZkClient.class);
+        when(client.isConnected()).thenReturn(true);
+        doCallRealMethod().when(client).refreshConnection();
+        client.refreshConnection();
+        verify(client, Mockito.times(1)).init();
+    }
+
+    @Test
+    public void testRefreshConnectionCloseZk() throws IOException {
+        ZkClient client = Mockito.mock(ZkClient.class);
+        when(client.isConnected()).thenReturn(false);
+        doCallRealMethod().when(client).refreshConnection();
+        client.refreshConnection();
+        verify(client, Mockito.times(1)).closeZk();
+        verify(client, Mockito.times(1)).init();
     }
 
     @Test
@@ -77,13 +96,13 @@ public class ZkClientTest {
         ZkClient client = Mockito.mock(ZkClient.class);
         ZooKeeper zkMock = Mockito.mock(ZooKeeper.class);
         when(client.getZk()).thenReturn(zkMock);
-        when(client.refreshConnection(any())).thenCallRealMethod();
+        when(client.refreshConnectionIfNeeded(any())).thenCallRealMethod();
 
         Set<KeeperState> states = new HashSet<>(Arrays.asList(KeeperState.values()));
         states.remove(KeeperState.Disconnected);
         states.remove(KeeperState.Expired);
         for (KeeperState state : states) {
-            assertFalse(client.refreshConnection(state));
+            assertFalse(client.refreshConnectionIfNeeded(state));
             verify(client, Mockito.times(0)).getZk();
             verify(client, Mockito.times(0)).init();
         }

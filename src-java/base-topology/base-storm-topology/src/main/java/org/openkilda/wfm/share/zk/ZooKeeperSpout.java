@@ -71,7 +71,7 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
                 .connectionRefreshInterval(ZkClient.DEFAULT_CONNECTION_REFRESH_INTERVAL)
                 .build();
         watchDog.subscribe(this);
-        watchDog.init();
+        watchDog.initAndWaitConnection();
         forceReadSignal();
     }
 

@@ -144,7 +144,7 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
     @Override
     public void process(WatchedEvent event) {
         log.info("Received event: {}", event);
-        if (!refreshConnection(event.getState())) {
+        if (!refreshConnectionIfNeeded(event.getState())) {
             if (signalPath.equals(event.getPath())) {
                 subscribeSignal();
             }
