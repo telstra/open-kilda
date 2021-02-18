@@ -15,6 +15,10 @@
 
 package org.openkilda.floodlight;
 
+import org.openkilda.config.converter.EnumLowerCaseConverter;
+import org.openkilda.floodlight.model.FloodlightRole;
+
+import com.sabre.oss.conf4j.annotation.Converter;
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
@@ -48,4 +52,9 @@ public interface KildaCoreConfig {
     @Key("server42-upd-port-offset")
     @Default("5000")
     int getServer42UdpPortOffset();
+
+    @Key("role")
+    @Default("management")
+    @Converter(EnumLowerCaseConverter.class)
+    FloodlightRole getRole();
 }
