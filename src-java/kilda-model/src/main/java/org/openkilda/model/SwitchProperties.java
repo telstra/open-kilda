@@ -68,7 +68,7 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
      * @param entityToClone the entity to copy entity data from.
      */
     public SwitchProperties(@NonNull SwitchProperties entityToClone) {
-        data = SwitchPropertiesCloner.INSTANCE.copy(entityToClone.getData());
+        data = SwitchPropertiesCloner.INSTANCE.deepCopy(entityToClone.getData());
     }
 
     @Builder
@@ -111,7 +111,7 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
     public void setSupportedTransitEncapsulation(Set<FlowEncapsulationType> supportedTransitEncapsulation) {
         if (supportedTransitEncapsulation != null
                 && supportedTransitEncapsulation.contains(FlowEncapsulationType.VXLAN)) {
-            validateProp(SwitchFeature.NOVIFLOW_COPY_FIELD);
+            validateProp(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN);
         }
         data.setSupportedTransitEncapsulation(supportedTransitEncapsulation);
     }
@@ -267,17 +267,17 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
 
         void copy(SwitchPropertiesData source, @MappingTarget SwitchPropertiesData target);
 
+        @Mapping(target = "switchObj", ignore = true)
+        void copyWithoutSwitch(SwitchPropertiesData source, @MappingTarget SwitchPropertiesData target);
+
         /**
          * Performs deep copy of entity data.
          */
-        default SwitchPropertiesData copy(SwitchPropertiesData source) {
+        default SwitchPropertiesData deepCopy(SwitchPropertiesData source) {
             SwitchPropertiesData result = new SwitchPropertiesDataImpl();
             result.setSwitchObj(new Switch(source.getSwitchObj()));
             copyWithoutSwitch(source, result);
             return result;
         }
-
-        @Mapping(target = "switchObj", ignore = true)
-        void copyWithoutSwitch(SwitchPropertiesData source, @MappingTarget SwitchPropertiesData target);
     }
 }

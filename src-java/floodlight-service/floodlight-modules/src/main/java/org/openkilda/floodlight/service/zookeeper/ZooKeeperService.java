@@ -29,15 +29,11 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
-import net.jodah.failsafe.SyncFailsafe;
 import org.apache.zookeeper.KeeperException;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class ZooKeeperService implements IService, LifeCycleObserver {
@@ -46,7 +42,6 @@ public class ZooKeeperService implements IService, LifeCycleObserver {
 
     private final Set<ZooKeeperEventObserver> observers = new HashSet<>();
 
-    @Getter
     private ZkStateTracker zooKeeperStateTracker;
     private ZkWriter zkWriter;
     private ZkWatchDog watchDog;
@@ -69,41 +64,16 @@ public class ZooKeeperService implements IService, LifeCycleObserver {
         watchDog = ZkWatchDog.builder().id(region).serviceName(ZK_COMPONENT_NAME)
                 .connectionString(connectionString).build();
         watchDog.subscribe(this);
+        initZookeeper();
     }
 
     /**
      * Connects to zookeeper.
      */
-    public void initZookeeper() {
-        zkWriter.init();
-        watchDog.init();
-
-        RetryPolicy retryPolicy = new RetryPolicy()
-                .retryOn(IllegalStateException.class)
-                .withDelay(100, TimeUnit.MILLISECONDS);
-
-        SyncFailsafe failsafe = Failsafe.with(retryPolicy)
-                .onRetry(e -> log.error("Failed to init zk clients, retrying...", e))
-                .onRetriesExceeded(e -> log.error("Failure in zookeeper initialization. No more retries", e));
-        failsafe.run(() -> verifyAndRefreshZk());
+    private void initZookeeper() {
+        zkWriter.initAndWaitConnection();
+        watchDog.initAndWaitConnection();
         forceReadSignal();
-    }
-
-    private void verifyAndRefreshZk() {
-        boolean retry = false;
-        if (!zkWriter.isConnectedAndValidated()) {
-            retry = true;
-            zkWriter.safeRefreshConnection();
-        }
-
-        if (!watchDog.isConnectedAndValidated()) {
-            retry = true;
-            watchDog.safeRefreshConnection();
-        }
-
-        if (retry) {
-            throw new IllegalStateException("Failed to validate zookeeper connection/state");
-        }
     }
 
     @Override
@@ -130,6 +100,10 @@ public class ZooKeeperService implements IService, LifeCycleObserver {
 
     public synchronized void unsubscribe(ZooKeeperEventObserver observer) {
         observers.remove(observer);
+    }
+
+    public synchronized void processLifecycleEvent(LifecycleEvent event) {
+        zooKeeperStateTracker.processLifecycleEvent(event);
     }
 
     private void forceReadSignal() {

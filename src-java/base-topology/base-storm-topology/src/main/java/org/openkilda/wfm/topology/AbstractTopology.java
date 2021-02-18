@@ -54,6 +54,7 @@ import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.flux.model.BoltDef;
+import org.apache.storm.flux.model.PropertyDef;
 import org.apache.storm.flux.model.SpoutDef;
 import org.apache.storm.flux.model.TopologyDef;
 import org.apache.storm.flux.parser.FluxParser;
@@ -84,6 +85,12 @@ import java.util.Properties;
  */
 public abstract class AbstractTopology<T extends AbstractTopologyConfig> implements Topology {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private static final String TOPOLOGY_PARALLELISM_TOPOLOGY_DEF_KEY = "topology.parallelism";
+    private static final String TOPOLOGY_WORKERS_TOPOLOGY_DEF_KEY = "topology.workers";
+    private static final String SPOUT_PARALLELISM_TOPOLOGY_DEF_KEY = "topology.spouts.parallelism";
+    private static final String BOLT_PARALLELISM_TOPOLOGY_DEF_KEY = "topology.bolts.parallelism";
+    private static final String MAX_SPOUT_PENDING_SPOUT_DEF_KEY = "max.spout.pending";
 
     public static final String BOLT_ID_CTRL_ROUTE = "ctrl.route";
 
@@ -145,14 +152,14 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
 
     private Optional<Integer> getTopologyParallelism() {
         if (topologyDef != null && topologyDef.getConfig() != null) {
-            return Optional.of((Integer) topologyDef.getConfig().get("topology.parallelism"));
+            return Optional.of((Integer) topologyDef.getConfig().get(TOPOLOGY_PARALLELISM_TOPOLOGY_DEF_KEY));
         }
         return Optional.empty();
     }
 
     private Optional<Integer> getTopologyWorkers() {
         if (topologyDef != null && topologyDef.getConfig() != null) {
-            return Optional.of((Integer) topologyDef.getConfig().get("topology.workers"));
+            return Optional.of((Integer) topologyDef.getConfig().get(TOPOLOGY_WORKERS_TOPOLOGY_DEF_KEY));
         }
         return Optional.empty();
     }
@@ -285,6 +292,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     protected SpoutDeclarer declareSpout(TopologyBuilder builder, IRichSpout spout, String spoutId) {
         Integer spoutParallelism = null;
         Integer spoutNumTasks = null;
+        Integer spoutMaxSpoutPending = null;
         if (topologyDef != null) {
             SpoutDef spoutDef = topologyDef.getSpoutDef(spoutId);
             if (spoutDef != null) {
@@ -292,11 +300,19 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
                 if (spoutDef.getNumTasks() > 0) {
                     spoutNumTasks = spoutDef.getNumTasks();
                 }
+                if (spoutDef.getProperties() != null) {
+                    for (PropertyDef propertyDef : spoutDef.getProperties()) {
+                        if (MAX_SPOUT_PENDING_SPOUT_DEF_KEY.equals(propertyDef.getName())) {
+                            spoutMaxSpoutPending = (Integer) propertyDef.getValue();
+                            break;
+                        }
+                    }
+                }
             }
         }
         if (spoutParallelism == null) {
             if (topologyDef != null && topologyDef.getConfig() != null) {
-                spoutParallelism = (Integer) topologyDef.getConfig().get("topology.spouts.parallelism");
+                spoutParallelism = (Integer) topologyDef.getConfig().get(SPOUT_PARALLELISM_TOPOLOGY_DEF_KEY);
             }
             if (spoutParallelism == null) {
                 spoutParallelism = getTopologyParallelism().orElse(null);
@@ -305,6 +321,9 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         SpoutDeclarer spoutDeclarer = builder.setSpout(spoutId, spout, spoutParallelism);
         if (spoutNumTasks != null) {
             spoutDeclarer.setNumTasks(spoutNumTasks);
+        }
+        if (spoutMaxSpoutPending != null) {
+            spoutDeclarer.setMaxSpoutPending(spoutMaxSpoutPending);
         }
         return spoutDeclarer;
     }
@@ -432,7 +451,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         }
         if (boltParallelism == null) {
             if (topologyDef != null && topologyDef.getConfig() != null) {
-                boltParallelism = (Integer) topologyDef.getConfig().get("topology.bolts.parallelism");
+                boltParallelism = (Integer) topologyDef.getConfig().get(BOLT_PARALLELISM_TOPOLOGY_DEF_KEY);
             }
             if (boltParallelism == null) {
                 boltParallelism = getTopologyParallelism().orElse(null);

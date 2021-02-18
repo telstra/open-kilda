@@ -23,7 +23,7 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.INPUT_TABLE_I
 import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_UDP_SRC;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.VERIFICATION_RULE_VXLAN_PRIORITY;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
-import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 
 import org.openkilda.floodlight.KildaCore;
@@ -62,9 +62,8 @@ public class UnicastVerificationVxlanRuleGenerator extends MeteredFlowGenerator 
 
     @Override
     public SwitchFlowTuple generateFlow(IOFSwitch sw) {
-        // NOTE(tdurakov): reusing copy field feature here, since only switches with it supports pop/push vxlan's
         // should be replaced with fair feature detection based on ActionId's during handshake
-        if (!featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_COPY_FIELD)) {
+        if (!featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_PUSH_POP_VXLAN)) {
             return SwitchFlowTuple.EMPTY;
         }
 

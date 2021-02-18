@@ -546,8 +546,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
-    void isVxlanEnabled(SwitchId switchId) {
-        northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
+    def isVxlanEnabled(SwitchId switchId) {
+        return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
                 .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 }

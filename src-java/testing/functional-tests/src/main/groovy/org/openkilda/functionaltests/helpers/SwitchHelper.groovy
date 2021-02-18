@@ -132,12 +132,11 @@ class SwitchHelper {
                     MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
                     MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE,
                     ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE]
-            if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
-                    && sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
+            if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
                 multiTableRules.addAll([LLDP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE])
             }
             northbound.getLinks(sw.dpId, null, null, null).each {
-                if (sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
+                if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
                     multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES, it.source.portNo).getValue())
                     multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES, it.source.portNo).getValue())
                 }
@@ -207,7 +206,7 @@ class SwitchHelper {
         List<MeterId> result = []
         result << MeterId.createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE) //2
         result << MeterId.createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE) //3
-        if (sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
+        if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
             result << MeterId.createMeterIdForDefaultRule(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE) //7
         }
         if (swProps.multiTable) {
@@ -215,8 +214,7 @@ class SwitchHelper {
             result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE) //18
             result << MeterId.createMeterIdForDefaultRule(ARP_POST_INGRESS_COOKIE) //22
             result << MeterId.createMeterIdForDefaultRule(ARP_POST_INGRESS_ONE_SWITCH_COOKIE) //24
-            if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
-                    && sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
+            if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
                 result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_VXLAN_COOKIE) //17
                 result << MeterId.createMeterIdForDefaultRule(ARP_POST_INGRESS_VXLAN_COOKIE) //23
             }

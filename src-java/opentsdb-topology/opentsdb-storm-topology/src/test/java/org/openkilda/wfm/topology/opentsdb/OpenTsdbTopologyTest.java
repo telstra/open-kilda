@@ -43,6 +43,7 @@ import java.util.Properties;
 
 public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     private static final long timestamp = System.currentTimeMillis();
+    private static final int OPENTSDB_PORT = 4243;
     private static ClientAndServer mockServer;
     private static final HttpRequest REQUEST = HttpRequest.request().withMethod("POST").withPath("/api/put");
 
@@ -50,7 +51,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     public static void setupOnce() throws Exception {
         StableAbstractStormTest.startCompleteTopology();
 
-        mockServer = startClientAndServer(4242);
+        mockServer = startClientAndServer(OPENTSDB_PORT);
     }
 
     @Before
@@ -70,7 +71,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
 
         MockedSources sources = new MockedSources();
         Testing.withTrackedCluster(clusterParam, (cluster) -> {
-            OpenTsdbTopology topology = new OpenTsdbTopology(makeLaunchEnvironment());
+            OpenTsdbTopology topology = new OpenTsdbTopology(makeLaunchEnvironment(getProperties()));
 
             sources.addMockData(ZooKeeperSpout.SPOUT_ID,
                     new Values(LifecycleEvent.builder().signal(Signal.NONE).build(), null));
@@ -95,7 +96,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
         MockedSources sources = new MockedSources();
 
         Testing.withTrackedCluster(clusterParam, (cluster) -> {
-            OpenTsdbTopology topology = new OpenTsdbTopology(makeLaunchEnvironment());
+            OpenTsdbTopology topology = new OpenTsdbTopology(makeLaunchEnvironment(getProperties()));
 
             sources.addMockData(ZooKeeperSpout.SPOUT_ID,
                     new Values(LifecycleEvent.builder().signal(Signal.NONE).build(), null));
@@ -123,7 +124,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
             // This test expects to see 2 POST requests to OpenTsdb, but if batch.size > 1 OtsdbBolt will send
             // 1 request with 2 metrics instead of 2 requests with 1 metric.
             // So next property forces OtsdbBolt to send 2 requests.
-            Properties properties = new Properties();
+            Properties properties = getProperties();
             properties.put("opentsdb.batch.size", "1");
 
             OpenTsdbTopology topology = new OpenTsdbTopology(makeLaunchEnvironment(properties));
@@ -141,5 +142,11 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
         });
         //verify that request is sent to OpenTSDB server once
         mockServer.verify(REQUEST, VerificationTimes.exactly(2));
+    }
+
+    private Properties getProperties() {
+        Properties properties = new Properties();
+        properties.setProperty("opentsdb.hosts", String.format("http://localhost:%d", OPENTSDB_PORT));
+        return properties;
     }
 }

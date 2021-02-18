@@ -22,12 +22,12 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
-import static org.openkilda.bluegreen.ZkWatchDog.DEFAULT_BUILD_VERSION;
 import static org.openkilda.model.FlowPathDirection.FORWARD;
 import static org.openkilda.model.FlowPathDirection.REVERSE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
+import static org.openkilda.wfm.config.KafkaConfig.STATS_TOPOLOGY_TEST_KAFKA_PORT;
+import static org.openkilda.wfm.config.ZookeeperConfig.STATS_TOPOLOGY_TEST_ZOOKEEPER_PORT;
 
-import org.openkilda.bluegreen.Signal;
 import org.openkilda.floodlight.api.request.EgressFlowSegmentInstallRequest;
 import org.openkilda.floodlight.api.request.IngressFlowSegmentInstallRequest;
 import org.openkilda.floodlight.api.request.IngressFlowSegmentRemoveRequest;
@@ -84,8 +84,6 @@ import com.google.common.collect.ImmutableList;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.ZooKeeper;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
@@ -119,6 +117,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     public static final String COMPONENT_NAME = "stats";
     public static final String RUN_ID = "blue";
+    public static final String ROOT_NODE = "kilda";
     private static InMemoryGraphPersistenceManager persistenceManager;
     private static StatsTopologyConfig statsTopologyConfig;
     private static TestKafkaConsumer otsdbConsumer;
@@ -140,14 +139,15 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     @BeforeClass
     public static void setupOnce() throws Exception {
-        AbstractStormTest.startZooKafka();
-        setStartSignal();
+        Properties configOverlay = getZooKeeperProperties(STATS_TOPOLOGY_TEST_ZOOKEEPER_PORT, ROOT_NODE);
+        configOverlay.putAll(getKafkaProperties(STATS_TOPOLOGY_TEST_KAFKA_PORT));
+        configOverlay.setProperty("opentsdb.metric.prefix", METRIC_PREFIX);
+
+        AbstractStormTest.startZooKafka(configOverlay);
+        setStartSignal(STATS_TOPOLOGY_TEST_ZOOKEEPER_PORT, ROOT_NODE, COMPONENT_NAME, RUN_ID);
         AbstractStormTest.startStorm(COMPONENT_NAME, RUN_ID);
 
         LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
-        Properties configOverlay = new Properties();
-        configOverlay.setProperty("opentsdb.metric.prefix", METRIC_PREFIX);
-
         launchEnvironment.setupOverlay(configOverlay);
 
         MultiPrefixConfigurationProvider configurationProvider = launchEnvironment.getConfigurationProvider();
@@ -170,16 +170,6 @@ public class StatsTopologyTest extends AbstractStormTest {
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
 
         sleep(TOPOLOGY_START_TIMEOUT);
-    }
-
-    private static void setStartSignal() throws IOException, KeeperException, InterruptedException {
-        ZooKeeper zooKeeper = new ZooKeeper("localhost", 3000, event -> { });
-
-        setNode(zooKeeper, "/kilda", "");
-        setNode(zooKeeper, format("/kilda/%s", COMPONENT_NAME), "");
-        setNode(zooKeeper, format("/kilda/%s/%s", COMPONENT_NAME, RUN_ID), "");
-        setNode(zooKeeper, format("/kilda/%s/%s/signal", COMPONENT_NAME, RUN_ID), Signal.START.toString());
-        setNode(zooKeeper, format("/kilda/%s/%s/build-version", COMPONENT_NAME, RUN_ID), DEFAULT_BUILD_VERSION);
     }
 
     @AfterClass

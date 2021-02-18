@@ -83,7 +83,6 @@ public class Consumer implements Runnable, ZooKeeperEventObserver {
 
         zkService = moduleContext.getServiceImpl(ZooKeeperService.class);
         zkService.subscribe(this);
-        zkService.initZookeeper();
     }
 
     @Override
@@ -117,7 +116,7 @@ public class Consumer implements Runnable, ZooKeeperEventObserver {
                             }
                             tasks.removeAll(toRemove);
                         } else if (deferedShutdownEvent != null && !active.get()) {
-                            zkService.getZooKeeperStateTracker().processLifecycleEvent(deferedShutdownEvent);
+                            zkService.processLifecycleEvent(deferedShutdownEvent);
                             deferedShutdownEvent = null;
                         }
 
@@ -148,9 +147,17 @@ public class Consumer implements Runnable, ZooKeeperEventObserver {
     public void handleLifecycleEvent(LifecycleEvent event) {
         logger.info("Component {} with id {} got lifecycle event {}", ZK_COMPONENT_NAME, zkService.getRegion(), event);
         if (Signal.START.equals(event.getSignal())) {
+            if (active.get()) {
+                logger.info("Component is already in active state, skipping START signal");
+                return;
+            }
             active.set(true);
-            zkService.getZooKeeperStateTracker().processLifecycleEvent(event);
+            zkService.processLifecycleEvent(event);
         } else if (Signal.SHUTDOWN.equals(event.getSignal())) {
+            if (!active.get()) {
+                logger.info("Component is already in inactive state, skipping SHUTDOWN signal");
+                return;
+            }
             deferedShutdownEvent = event;
             active.set(false);
         } else {

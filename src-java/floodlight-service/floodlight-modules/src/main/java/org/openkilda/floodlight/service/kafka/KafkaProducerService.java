@@ -57,7 +57,6 @@ public class KafkaProducerService implements IKafkaProducerService, ZooKeeperEve
         producer = moduleContext.getServiceImpl(KafkaUtilityService.class).makeProducer();
         zkService = moduleContext.getServiceImpl(ZooKeeperService.class);
         zkService.subscribe(this);
-        zkService.initZookeeper();
     }
 
     @Override
@@ -98,11 +97,19 @@ public class KafkaProducerService implements IKafkaProducerService, ZooKeeperEve
     public void handleLifecycleEvent(LifecycleEvent event) {
         logger.info("Component {} with id {} got lifecycle event {}", ZK_COMPONENT_NAME, zkService.getRegion(), event);
         if (Signal.START.equals(event.getSignal())) {
+            if (active.get()) {
+                logger.info("Component is already in active state, skipping START signal");
+                return;
+            }
             active.set(true);
-            this.zkService.getZooKeeperStateTracker().processLifecycleEvent(event);
+            this.zkService.processLifecycleEvent(event);
         } else if (Signal.SHUTDOWN.equals(event.getSignal())) {
+            if (!active.get()) {
+                logger.info("Component is already in inactive state, skipping SHUTDOWN signal");
+                return;
+            }
             active.set(false);
-            this.zkService.getZooKeeperStateTracker().processLifecycleEvent(event);
+            this.zkService.processLifecycleEvent(event);
         } else {
             logger.error("Unsupported signal received: {}", event.getSignal());
         }
