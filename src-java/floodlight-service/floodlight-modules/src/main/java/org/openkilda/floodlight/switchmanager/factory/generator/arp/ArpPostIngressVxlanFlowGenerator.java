@@ -26,6 +26,7 @@ import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE;
 
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.SwitchManagerConfig;
+import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
 import org.openkilda.model.SwitchFeature;
 
 import com.google.common.collect.ImmutableList;
@@ -38,8 +39,8 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyAct
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
+import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.TransportPort;
 
 import java.util.List;
@@ -61,9 +62,9 @@ public class ArpPostIngressVxlanFlowGenerator extends ArpFlowGenerator {
             return null;
         }
 
-        // TODO(snikitin): add match by metadata after fixing of https://github.com/telstra/open-kilda/issues/3199
+        RoutingMetadata metadata = buildMetadata(RoutingMetadata.builder().arpFlag(true), sw);
         Match match = ofFactory.buildMatch()
-                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                .setMasked(MatchField.METADATA, OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
                 .setExact(MatchField.UDP_SRC, TransportPort.of(ARP_VXLAN_UDP_SRC))
                 .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST))
