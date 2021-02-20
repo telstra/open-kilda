@@ -91,11 +91,12 @@ public class OrientDbIslRepository extends FermaIslRepository {
                     SwitchFrame.FRAME_LABEL, SwitchFrame.STATUS_PROPERTY);
 
     private static final String QUERY_FETCH_SWITCHES_BY_STATUS_AND_ENCAPSULATION =
-            format("SELECT %s, %s FROM %s WHERE %s = ? AND out('%s').%s CONTAINS ?",
-                    SwitchFrame.SWITCH_ID_PROPERTY, SwitchFrame.POP_PROPERTY,
-                    SwitchFrame.FRAME_LABEL, SwitchFrame.STATUS_PROPERTY,
+            format("SELECT FROM (SELECT %s, %s, %s, out('%s').%s as sup_enc FROM %s UNWIND sup_enc) "
+                            + "WHERE %s = ? AND sup_enc CONTAINS ?",
+                    SwitchFrame.SWITCH_ID_PROPERTY, SwitchFrame.POP_PROPERTY, SwitchFrame.STATUS_PROPERTY,
                     SwitchPropertiesFrame.HAS_BY_EDGE,
-                    SwitchPropertiesFrame.SUPPORTED_TRANSIT_ENCAPSULATION_PROPERTY);
+                    SwitchPropertiesFrame.SUPPORTED_TRANSIT_ENCAPSULATION_PROPERTY,
+                    SwitchFrame.FRAME_LABEL, SwitchFrame.STATUS_PROPERTY);
 
     private final OrientDbGraphFactory orientDbGraphFactory;
 
