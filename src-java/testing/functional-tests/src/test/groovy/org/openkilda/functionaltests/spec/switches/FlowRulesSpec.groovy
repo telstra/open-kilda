@@ -257,7 +257,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         when: "Delete switch rules by #data.identifier"
-        def ruleToDelete = getFlowRules(data.switch).first()
+        //exclude the "SERVER_42_INPUT" rule, this rule has less priority than usual flow rule
+        def ruleToDelete = getFlowRules(data.switch).find { !new Cookie(it.cookie).serviceFlag }
         def expectedDeletedRules = northbound.getSwitchRules(data.switch.dpId).flowEntries
                 .findAll { it."$data.identifier" ==  ruleToDelete."$data.identifier" &&
                 !new Cookie(it.cookie).serviceFlag }
