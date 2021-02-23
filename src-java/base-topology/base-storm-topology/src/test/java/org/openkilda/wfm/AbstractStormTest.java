@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm;
 
+import static java.lang.String.format;
+import static org.openkilda.bluegreen.ZkWatchDog.DEFAULT_BUILD_VERSION;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
@@ -22,9 +24,10 @@ import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPER
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
 
+import org.openkilda.bluegreen.Signal;
 import org.openkilda.bluegreen.kafka.interceptors.VersioningConsumerInterceptor;
 import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
-import org.openkilda.config.KafkaConfig;
+import org.openkilda.wfm.config.KafkaConfig;
 import org.openkilda.wfm.config.ZookeeperConfig;
 import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.error.ConfigurationException;
@@ -99,6 +102,33 @@ public abstract class AbstractStormTest {
         return properties;
     }
 
+    protected static Properties getZooKeeperProperties(int zookeeperPort, String rootNode) {
+        Properties properties = new Properties();
+        properties.setProperty("zookeeper.hosts", format("localhost:%d", zookeeperPort));
+        properties.setProperty("zookeeper.connect_string", format("localhost:%d/%s", zookeeperPort, rootNode));
+        return properties;
+    }
+
+    protected static Properties getKafkaProperties(int kafkaPort) {
+        Properties properties = new Properties();
+        properties.setProperty("kafka.hosts", format("localhost:%d", kafkaPort));
+        properties.setProperty("kafka.listeners", format("PLAINTEXT://:%d", kafkaPort));
+        properties.setProperty("kafka.advertised.listeners", format("PLAINTEXT://localhost:%d", kafkaPort));
+        return properties;
+    }
+
+    protected static void setStartSignal(int zooKeeperPort, String root, String name, String id)
+            throws IOException, KeeperException, InterruptedException {
+        ZooKeeper zooKeeper = new ZooKeeper(getZooKeeperProperties(zooKeeperPort, root).getProperty("zookeeper.hosts"),
+                3000, event -> { });
+
+        setNode(zooKeeper, format("/%s", root), "");
+        setNode(zooKeeper, format("/%s/%s", root, name), "");
+        setNode(zooKeeper, format("/%s/%s/%s", root, name, id), "");
+        setNode(zooKeeper, format("/%s/%s/%s/signal", root, name, id), Signal.START.toString());
+        setNode(zooKeeper, format("/%s/%s/%s/build-version", root, name, id), DEFAULT_BUILD_VERSION);
+    }
+
     protected static Config stormConfig() {
         Config config = new Config();
         config.setDebug(false);
@@ -107,12 +137,13 @@ public abstract class AbstractStormTest {
         return config;
     }
 
-    protected static void startZooKafka() throws Exception {
+    protected static void startZooKafka(Properties overlay) throws Exception {
         log.info("Starting Zookeeper and Kafka...");
 
-        makeConfigFile();
+        makeConfigFile(overlay, CONFIG_NAME);
 
-        server = new TestUtils.KafkaTestFixture(makeUnboundConfig(ZookeeperConfig.class));
+        server = new TestUtils.KafkaTestFixture(
+                makeUnboundConfig(ZookeeperConfig.class), makeUnboundConfig(KafkaConfig.class));
         server.start();
 
         log.info("Zookeeper and Kafka started.");

@@ -63,7 +63,7 @@ public class IngressFlowSegmentInstallCommand extends IngressFlowSegmentCommand 
     protected Set<SwitchFeature> getRequiredFeatures() {
         Set<SwitchFeature> required = super.getRequiredFeatures();
         if (encapsulation.getType() == FlowEncapsulationType.VXLAN) {
-            required.add(SwitchFeature.NOVIFLOW_COPY_FIELD);
+            required.add(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN);
         }
         if (metadata.isMultiTable()) {
             required.add(SwitchFeature.MULTI_TABLE);

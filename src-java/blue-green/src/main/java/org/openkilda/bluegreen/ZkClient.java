@@ -15,10 +15,15 @@
 
 package org.openkilda.bluegreen;
 
+import static java.lang.String.format;
+
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
+import net.jodah.failsafe.SyncFailsafe;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Watcher;
@@ -30,6 +35,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @SuperBuilder
@@ -37,6 +43,7 @@ public abstract class ZkClient implements Watcher {
     private static final String ROOT = "/";
     private static final int DEFAULT_SESSION_TIMEOUT = 30000;
     public static final long DEFAULT_CONNECTION_REFRESH_INTERVAL = 10;
+    public static final int RECONNECT_DELAY_MS = 100;
 
     @Getter
     protected String id;
@@ -64,15 +71,53 @@ public abstract class ZkClient implements Watcher {
     }
 
     /**
+     * Init client and try to reconnect if needed.
+     */
+    public synchronized void initAndWaitConnection() {
+        init();
+
+        RetryPolicy retryPolicy = new RetryPolicy()
+                .retryOn(IllegalStateException.class)
+                .withDelay(RECONNECT_DELAY_MS, TimeUnit.MILLISECONDS);
+
+        final int[] attempt = {1}; // need to be final to be used in lambda
+        SyncFailsafe<Object> failsafe = Failsafe.with(retryPolicy)
+                .onRetry(e -> {
+                    String message = format("Failed to init zk client, retrying... Attempt: %d", attempt[0]++);
+                    if (attempt[0] <= 10) {
+                        log.info(message, e);
+                    } else if (attempt[0] <= 20) {
+                        log.warn(message, e);
+                    } else {
+                        log.error(message, e);
+                    }
+                });
+        failsafe.run(this::reconnect);
+    }
+
+    private void reconnect() {
+        if (isConnectedAndValidated()) {
+            return;
+        }
+        refreshConnection();
+
+        if (!isConnectedAndValidated()) {
+            throw new IllegalStateException(format(
+                    "Failed to validate zookeeper connection/state for component %s with id %s", serviceName, id));
+        }
+    }
+
+    /**
      * Init client.
      */
-    public void init() {
+    @VisibleForTesting
+    void init() {
         try {
             if (!isAlive()) {
                 initZk();
             }
         } catch (IOException e) {
-            log.error(String.format("Couldn't init ZooKeeper for component %s with run id %s and "
+            log.error(format("Couldn't init ZooKeeper for component %s with run id %s and "
                     + "connection string %s. Error: %s", serviceName, id, connectionString, e.getMessage()), e);
             closeZk();
         }
@@ -80,7 +125,7 @@ public abstract class ZkClient implements Watcher {
             try {
                 validateZNodes();
             } catch (KeeperException | InterruptedException | IllegalStateException e) {
-                log.error(String.format("Couldn't validate nodes for component %s with run id %s and "
+                log.error(format("Couldn't validate nodes for component %s with run id %s and "
                         + "connection string %s. Error: %s", serviceName, id, connectionString, e.getMessage()), e);
 
             }
@@ -92,7 +137,10 @@ public abstract class ZkClient implements Watcher {
         return Paths.get(ROOT, paths).toString();
     }
 
-    boolean refreshConnection(KeeperState state) {
+    /**
+     * Refreshes connection if state shows that connection is broken and refresh interval passed.
+     */
+    boolean refreshConnectionIfNeeded(KeeperState state) {
         if ((state == KeeperState.Disconnected || state == KeeperState.Expired) && isRefreshIntervalPassed()) {
             safeRefreshConnection();
             return true;
@@ -111,7 +159,7 @@ public abstract class ZkClient implements Watcher {
                 log.info("Going to close zookeeper connection 0x{}", Long.toHexString(zookeeper.getSessionId()));
                 zookeeper.close();
             } catch (InterruptedException e) {
-                log.warn(String.format("Failed to close connection to zk %s", connectionString), e);
+                log.warn(format("Failed to close connection to zk %s", connectionString), e);
             }
         }
     }
@@ -126,23 +174,29 @@ public abstract class ZkClient implements Watcher {
         return new ZooKeeper(connectionString, sessionTimeout, this);
     }
 
+    /**
+     * Attempt to refresh connection.
+     */
+    @VisibleForTesting
+    synchronized void refreshConnection() {
+        if (!isConnected()) {
+            log.info("Closing connection for session 0x{} due to state active={}",
+                    zookeeper != null ? Long.toHexString(zookeeper.getSessionId()) : 0L, isConnected());
+            closeZk();
+        }
+        init();
+    }
 
     /**
      * Attempt to refresh connection after specified interval of time.
      */
     public synchronized void safeRefreshConnection() {
         if (!isConnectedAndValidated() && isRefreshIntervalPassed()) {
-            if (!isConnected()) {
-                log.info("Closing connection for session 0x{} due to state active={}",
-                        zookeeper != null ? Long.toHexString(zookeeper.getSessionId()) : 0L,
-                        isConnected());
-                closeZk();
-            }
-            init();
+            refreshConnection();
             lastRefreshAttempt = Instant.now();
         } else {
             if (log.isTraceEnabled()) {
-                log.trace("Skipping connection {} refresh for zookeeper client {}/{}", connectionString,
+                log.trace("Skipping connection {} safe refresh for zookeeper client {}/{}", connectionString,
                         serviceName, id);
             }
         }
@@ -160,11 +214,11 @@ public abstract class ZkClient implements Watcher {
                 zookeeper.create(nodePath, value,
                         Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             } catch (Exception e) {
-                log.error(String.format("Failed to ensure node: %s. Error: %s", nodePath, e.getMessage()), e);
+                log.error(format("Failed to ensure node: %s. Error: %s", nodePath, e.getMessage()), e);
             }
         }
         if (zookeeper.exists(nodePath, false) == null) {
-            String message = String.format("Zk node %s still does not exists", nodePath);
+            String message = format("Zk node %s still does not exists", nodePath);
             log.error(message);
             throw new IllegalStateException(message);
         }

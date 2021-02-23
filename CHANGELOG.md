@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.86.0 (23/02/2021)
+
+### Bug Fixes:
+-  [#4069](https://github.com/telstra/open-kilda/pull/4069) Move initZookeeper for fl into service setup [**floodlight**]
+-  [#4075](https://github.com/telstra/open-kilda/pull/4075) Fix for CommandContext in Otsdb DataPointParserBolt 
+-  [#4076](https://github.com/telstra/open-kilda/pull/4076) Get rid of timeMillis in json layout for nb logs (Issue: [#4056](https://github.com/telstra/open-kilda/issues/4056)) [**northbound**]
+-  [#4077](https://github.com/telstra/open-kilda/pull/4077) Changed match for arp vxlan rule (Issues: [#3199](https://github.com/telstra/open-kilda/issues/3199) [#4019](https://github.com/telstra/open-kilda/issues/4019)) [**floodlight**]
+-  [#4081](https://github.com/telstra/open-kilda/pull/4081) Fix PCE data fetching for switches with multiple encapsulation types [**storm-topologies**]
+
+### Improvements:
+-  [#4064](https://github.com/telstra/open-kilda/pull/4064) Added waiting for connection into zkClient 
+-  [#4066](https://github.com/telstra/open-kilda/pull/4066) Added ability to run integrational tests in parallel [**tests**]
+-  [#4071](https://github.com/telstra/open-kilda/pull/4071) fix the "isVxlanEnabled" method in vxlan specs [**tests**]
+-  [#4020](https://github.com/telstra/open-kilda/pull/4020) Allow VXLAN rules on WB switches (Issue: [#4019](https://github.com/telstra/open-kilda/issues/4019)) [**floodlight**]
+-  [#4059](https://github.com/telstra/open-kilda/pull/4059) Improve performance of H&S flow operations: data model and graph super-nodes [**storm-topologies**]
+-  [#4060](https://github.com/telstra/open-kilda/pull/4060) Improve performance of H&S flow operations: PCE [**storm-topologies**]
+-  [#4061](https://github.com/telstra/open-kilda/pull/4061) Improve performance of H&S flow operations: back-pressure on FLOW spout 
+
+### Other changes:
+-  [#4057](https://github.com/telstra/open-kilda/pull/4057) More tests ignored according to existing defects (Issues: [#4055](https://github.com/telstra/open-kilda/issues/4055) [#4056](https://github.com/telstra/open-kilda/issues/4056)) [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.85.0...v1.86.0).
+
+### Affected Components:
+ping, reroute, network, otsdb, swmanager, nb, fl, nbworker, flow-hs
+
+---
+
 ## v1.85.0 (15/02/2021)
 
 ### Features:

@@ -60,6 +60,6 @@ public class ZkWriter extends ZkClient {
     @Override
     public void process(WatchedEvent event) {
         log.info("Received event: {}", event);
-        refreshConnection(event.getState());
+        refreshConnectionIfNeeded(event.getState());
     }
 }

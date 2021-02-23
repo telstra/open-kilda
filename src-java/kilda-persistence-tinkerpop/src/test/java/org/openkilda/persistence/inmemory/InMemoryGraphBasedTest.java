@@ -58,9 +58,13 @@ public abstract class InMemoryGraphBasedTest {
     }
 
     protected Switch createTestSwitch(long switchId) {
+        return createTestSwitch(new SwitchId(switchId));
+    }
+
+    protected Switch createTestSwitch(SwitchId switchId) {
         try {
             Switch sw = Switch.builder()
-                    .switchId(new SwitchId(switchId))
+                    .switchId(switchId)
                     .description("test_description")
                     .socketAddress(new InetSocketAddress(InetAddress.getByName("10.0.0.1"), 30070))
                     .controller("test_ctrl")
