@@ -741,7 +741,7 @@ class LinkSpec extends HealthCheckSpecification {
         linkIsDeleted = false
 
         then: "The link is rediscovered in both directions"
-        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
+        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET*2) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
             assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED

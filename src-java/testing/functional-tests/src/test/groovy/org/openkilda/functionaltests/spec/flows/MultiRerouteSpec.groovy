@@ -77,7 +77,9 @@ class MultiRerouteSpec extends HealthCheckSpecification {
 
         and: "Rest of the flows are hosted on another alternative path"
         def restFlows = flows.findAll { !flowsOnPrefPath*.flowId.contains(it.flowId) }
-        def restFlowsPath = pathHelper.convert(northbound.getFlowPath(restFlows[0].flowId))
+        def exampleFlow = restFlows[0].flowId
+        wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(exampleFlow).status == FlowState.UP }
+        def restFlowsPath = pathHelper.convert(northbound.getFlowPath(exampleFlow))
         restFlowsPath != prefPath
         wait(WAIT_OFFSET) {
             def assertions = new SoftAssertions()
