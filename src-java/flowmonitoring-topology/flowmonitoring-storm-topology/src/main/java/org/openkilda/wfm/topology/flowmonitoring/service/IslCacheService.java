@@ -27,6 +27,7 @@ import org.openkilda.wfm.topology.flowmonitoring.model.LinkState;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -35,10 +36,12 @@ import java.util.stream.Collectors;
 @Slf4j
 public class IslCacheService {
 
+    private Clock clock;
     private long islRttLatencyExpiration;
     private Map<Link, LinkState> linkStates;
 
-    public IslCacheService(PersistenceManager persistenceManager, long islRttLatencyExpiration) {
+    public IslCacheService(PersistenceManager persistenceManager, Clock clock, long islRttLatencyExpiration) {
+        this.clock = clock;
         this.islRttLatencyExpiration = islRttLatencyExpiration;
 
         IslRepository islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
@@ -74,7 +77,7 @@ public class IslCacheService {
         List<Link> links = linkStates.keySet().stream()
                 .filter(link -> link.srcEquals(data.getSrcSwitchId(), data.getSrcPortNo()))
                 .collect(Collectors.toList());
-        long currentTimeMillis = System.currentTimeMillis();
+        long currentTimeMillis = clock.millis();
         links.forEach(link -> {
             LinkState linkState = linkStates.get(link);
             if (linkState == null) {
@@ -93,7 +96,7 @@ public class IslCacheService {
      * Calculate latency by path.
      */
     public long calculateLatencyForPath(List<Link> path) {
-        long currentTimeMillis = System.currentTimeMillis();
+        long currentTimeMillis = clock.millis();
         return path.stream()
                 .map(link -> linkStates.get(link))
                 .filter(Objects::nonNull)
