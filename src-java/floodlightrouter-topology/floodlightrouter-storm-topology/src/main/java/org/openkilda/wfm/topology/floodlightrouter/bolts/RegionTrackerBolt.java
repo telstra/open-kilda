@@ -93,7 +93,9 @@ public class RegionTrackerBolt extends AbstractBolt implements RegionMonitorCarr
         String source = input.getSourceComponent();
         if (ZooKeeperSpout.SPOUT_ID.equals(input.getSourceComponent())) {
             LifecycleEvent event = (LifecycleEvent) input.getValueByField(ZooKeeperSpout.FIELD_ID_LIFECYCLE_EVENT);
-            handleLifeCycleEvent(event);
+            if (event != null && shouldHandleLifeCycleEvent(event.getSignal())) {
+                handleLifeCycleEvent(event);
+            }
         } else if (active && monotonicTickMatch.isTick(input)) {
             handleTick();
         } else if (active && SpeakerToNetworkProxyBolt.BOLT_ID.equals(source)) {

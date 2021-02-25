@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
-import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
@@ -26,7 +25,6 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
-import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.floodlightrouter.ComponentType;
 import org.openkilda.wfm.topology.floodlightrouter.RegionAwareKafkaTopicSelector;
 import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingUpdate;
@@ -56,17 +54,15 @@ public class SwitchMonitorBolt extends AbstractBolt implements SwitchMonitorCarr
     private transient Clock clock;
     private transient SwitchMonitorService service;
 
-    public SwitchMonitorBolt(String kafkaNetworkTopic) {
+    public SwitchMonitorBolt(String lifeCycleEventSourceComponent, String kafkaNetworkTopic) {
+        super(lifeCycleEventSourceComponent);
         this.kafkaNetworkTopic = kafkaNetworkTopic;
     }
 
     @Override
     protected void handleInput(Tuple input) throws PipelineException {
         String source = input.getSourceComponent();
-        if (ZooKeeperSpout.SPOUT_ID.equals(input.getSourceComponent())) {
-            LifecycleEvent event = (LifecycleEvent) input.getValueByField(ZooKeeperSpout.FIELD_ID_LIFECYCLE_EVENT);
-            handleLifeCycleEvent(event);
-        } else if (MonotonicTick.BOLT_ID.equals(source) && active) {
+        if (MonotonicTick.BOLT_ID.equals(source) && active) {
             service.handleTimerTick();
         } else if (RegionTrackerBolt.BOLT_ID.equals(source) && active) {
             handleRegionOfflineNotification(input);

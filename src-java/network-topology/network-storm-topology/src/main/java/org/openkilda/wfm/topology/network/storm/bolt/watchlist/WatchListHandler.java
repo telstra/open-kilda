@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.watchlist;
 
+import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
@@ -111,8 +112,9 @@ public class WatchListHandler extends AbstractBolt implements IWatchListCarrier 
     }
 
     @Override
-    protected void deactivate() {
+    protected boolean deactivate(LifecycleEvent event) {
         service.deactivate();
+        return true;
     }
 
     @Override

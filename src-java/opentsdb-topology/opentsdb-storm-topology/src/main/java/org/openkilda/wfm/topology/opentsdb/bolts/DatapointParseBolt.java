@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+// NOTE(tdurakov) this bolt can't be extended from Abstract bolt, due to auto-ack limitations.
 public class DatapointParseBolt extends BaseRichBolt {
     private static final Logger LOGGER = LoggerFactory.getLogger(DatapointParseBolt.class);
     private transient OutputCollector collector;
@@ -54,11 +55,26 @@ public class DatapointParseBolt extends BaseRichBolt {
         this.collector = collector;
     }
 
+    private final boolean shouldHandleLifeCycleEvent(Signal signal) {
+        if (Signal.START.equals(signal) && active) {
+            LOGGER.info("Component is already in active state, skipping START signal");
+            return false;
+        }
+        if (Signal.SHUTDOWN.equals(signal) && !active) {
+            LOGGER.info("Component is already in inactive state, skipping SHUTDOWN signal");
+            return false;
+        }
+        return true;
+    }
+
+
     @Override
     public void execute(Tuple tuple) {
         if (ZooKeeperSpout.SPOUT_ID.equals(tuple.getSourceComponent())) {
             LifecycleEvent event = (LifecycleEvent) tuple.getValueByField(FIELD_ID_LIFECYCLE_EVENT);
-            handleLifeCycleEvent(tuple, event);
+            if (event != null && shouldHandleLifeCycleEvent(event.getSignal())) {
+                handleLifeCycleEvent(tuple, event);
+            }
             collector.ack(tuple);
         } else if (active) {
             InfoData data = (InfoData) tuple.getValueByField(MessageKafkaTranslator.FIELD_ID_PAYLOAD);

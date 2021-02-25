@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.decisionmaker;
 
+import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.IslStatus;
 import org.openkilda.wfm.AbstractBolt;
@@ -90,9 +91,10 @@ public class DecisionMakerHandler extends AbstractBolt implements IDecisionMaker
     }
 
     @Override
-    protected void deactivate() {
+    protected boolean deactivate(LifecycleEvent event) {
         oneWayDiscoveryService.deactivate();
         roundTripDiscoveryService.deactivate();
+        return true;
     }
 
     private void handleCommand(Tuple input) throws PipelineException {

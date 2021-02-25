@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.watcher;
 
+import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -115,8 +116,9 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
     }
 
     @Override
-    protected void deactivate() {
+    protected boolean deactivate(LifecycleEvent event) {
         service.deactivate();
+        return true;
     }
 
     @Override

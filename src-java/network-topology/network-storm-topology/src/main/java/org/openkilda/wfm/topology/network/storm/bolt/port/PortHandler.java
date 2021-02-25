@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.network.storm.bolt.port;
 
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
+import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -171,8 +172,9 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     }
 
     @Override
-    protected void deactivate() {
+    protected boolean deactivate(LifecycleEvent event) {
         antiFlapService.deactivate();
+        return true;
     }
 
     @Override

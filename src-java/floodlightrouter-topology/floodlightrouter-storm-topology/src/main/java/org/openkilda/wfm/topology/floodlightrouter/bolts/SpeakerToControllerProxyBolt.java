@@ -61,7 +61,9 @@ public class SpeakerToControllerProxyBolt extends AbstractBolt {
     protected void dispatch(Tuple input) throws Exception {
         if (ZooKeeperSpout.SPOUT_ID.equals(input.getSourceComponent())) {
             LifecycleEvent event = (LifecycleEvent) input.getValueByField(ZooKeeperSpout.FIELD_ID_LIFECYCLE_EVENT);
-            handleLifeCycleEvent(event);
+            if (event != null && shouldHandleLifeCycleEvent(event.getSignal())) {
+                handleLifeCycleEvent(event);
+            }
         } else if (active && SwitchMonitorBolt.BOLT_ID.equals(input.getSourceComponent())) {
             handleSwitchMappingUpdate(input);
         } else if (active) {
