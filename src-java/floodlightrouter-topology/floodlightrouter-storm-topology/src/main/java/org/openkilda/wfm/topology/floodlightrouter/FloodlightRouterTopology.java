@@ -266,7 +266,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     private void switchMonitor(TopologyBuilder topology, TopologyOutput output) {
         Fields switchIdGrouping = new Fields(SpeakerToNetworkProxyBolt.FIELD_ID_SWITCH_ID);
 
-        SwitchMonitorBolt bolt = new SwitchMonitorBolt(kafkaTopics.getTopoDiscoTopic());
+        SwitchMonitorBolt bolt = new SwitchMonitorBolt(ZooKeeperSpout.SPOUT_ID, kafkaTopics.getTopoDiscoTopic());
         declareBolt(topology, bolt, SwitchMonitorBolt.BOLT_ID)
                 .allGrouping(MonotonicTick.BOLT_ID)
                 .allGrouping(RegionTrackerBolt.BOLT_ID, RegionTrackerBolt.STREAM_REGION_NOTIFICATION_ID)

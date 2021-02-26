@@ -23,7 +23,6 @@ import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PA
 import static org.openkilda.wfm.topology.utils.MessageKafkaTranslator.STREAM_FIELDS;
 
 import org.openkilda.bluegreen.LifecycleEvent;
-import org.openkilda.bluegreen.Signal;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
@@ -52,7 +51,7 @@ public class FlowSwapEndpointsHubBolt extends HubBolt implements FlowSwapEndpoin
     private transient FlowSwapEndpointsHubService service;
     private String currentKey;
 
-    private LifecycleEvent deferedShutdownEvent;
+    private LifecycleEvent deferredShutdownEvent;
 
     public FlowSwapEndpointsHubBolt(Config config, PersistenceManager persistenceManager) {
         super(config);
@@ -64,21 +63,21 @@ public class FlowSwapEndpointsHubBolt extends HubBolt implements FlowSwapEndpoin
         service = new FlowSwapEndpointsHubService(this, persistenceManager);
     }
 
+
     @Override
-    protected void handleLifeCycleEvent(LifecycleEvent event) {
-        if (event.getSignal().equals(Signal.SHUTDOWN)) {
-            if (service.deactivate()) {
-                emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
-            } else {
-                deferedShutdownEvent = event;
-            }
-        } else if (event.getSignal().equals(Signal.START)) {
-            service.activate();
-            emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
-        } else {
-            log.info("Received signal info {}", event.getSignal());
+    protected boolean deactivate(LifecycleEvent event) {
+        if (service.deactivate()) {
+            return true;
         }
+        deferredShutdownEvent = event;
+        return false;
     }
+
+    @Override
+    protected void activate() {
+        service.activate();
+    }
+
 
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
@@ -102,8 +101,8 @@ public class FlowSwapEndpointsHubBolt extends HubBolt implements FlowSwapEndpoin
 
     @Override
     public void sendInactive() {
-        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferedShutdownEvent, getCommandContext()));
-        deferedShutdownEvent = null;
+        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferredShutdownEvent, getCommandContext()));
+        deferredShutdownEvent = null;
     }
 
     @Override

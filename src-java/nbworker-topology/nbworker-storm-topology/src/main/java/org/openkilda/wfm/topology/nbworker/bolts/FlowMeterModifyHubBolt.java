@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.bluegreen.LifecycleEvent;
-import org.openkilda.bluegreen.Signal;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.error.ErrorData;
@@ -48,7 +47,7 @@ public class FlowMeterModifyHubBolt extends HubBolt {
 
     private final PersistenceManager persistenceManager;
     private transient FlowMeterModifyHubService service;
-    private LifecycleEvent deferedShutdownEvent;
+    private LifecycleEvent deferredShutdownEvent;
 
     public FlowMeterModifyHubBolt(Config config, PersistenceManager persistenceManager) {
         super(config);
@@ -74,19 +73,17 @@ public class FlowMeterModifyHubBolt extends HubBolt {
     }
 
     @Override
-    protected void handleLifeCycleEvent(LifecycleEvent event) {
-        if (event.getSignal().equals(Signal.SHUTDOWN)) {
-            if (service.deactivate()) {
-                emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
-            } else {
-                deferedShutdownEvent = event;
-            }
-        } else if (event.getSignal().equals(Signal.START)) {
-            service.activate();
-            emit(ZkStreams.ZK.toString(), new Values(event, getCommandContext()));
-        } else {
-            log.info("Received signal info {}", event.getSignal());
+    protected boolean deactivate(LifecycleEvent event) {
+        if (service.deactivate()) {
+            return true;
         }
+        deferredShutdownEvent = event;
+        return false;
+    }
+
+    @Override
+    protected void activate() {
+        service.activate();
     }
 
     @Override
@@ -143,8 +140,8 @@ public class FlowMeterModifyHubBolt extends HubBolt {
 
         @Override
         public void sendInactive() {
-            getOutput().emit(ZkStreams.ZK.toString(), new Values(deferedShutdownEvent, getCommandContext()));
-            deferedShutdownEvent = null;
+            getOutput().emit(ZkStreams.ZK.toString(), new Values(deferredShutdownEvent, getCommandContext()));
+            deferredShutdownEvent = null;
         }
     }
 }

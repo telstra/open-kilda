@@ -19,7 +19,6 @@ import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_KE
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.bluegreen.LifecycleEvent;
-import org.openkilda.bluegreen.Signal;
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -51,7 +50,7 @@ public class OperationQueueBolt extends CoordinatedBolt implements OperationQueu
 
     public static final Fields FLOW_HS_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD);
 
-    private LifecycleEvent deferedShutdownEvent;
+    private LifecycleEvent deferredShutdownEvent;
 
     private transient OperationQueueService service;
 
@@ -87,19 +86,17 @@ public class OperationQueueBolt extends CoordinatedBolt implements OperationQueu
     }
 
     @Override
-    protected void handleLifeCycleEvent(LifecycleEvent event) {
-        if (event.getSignal().equals(Signal.SHUTDOWN)) {
-            if (service.deactivate()) {
-                emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
-            } else {
-                deferedShutdownEvent = event;
-            }
-        } else if (event.getSignal().equals(Signal.START)) {
-            service.activate();
-            emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
-        } else {
-            log.info("Received signal info {}", event.getSignal());
+    protected boolean deactivate(LifecycleEvent event) {
+        if (service.deactivate()) {
+            return true;
         }
+        deferredShutdownEvent = event;
+        return false;
+    }
+
+    @Override
+    protected void activate() {
+        service.activate();
     }
 
     @Override
@@ -125,8 +122,8 @@ public class OperationQueueBolt extends CoordinatedBolt implements OperationQueu
 
     @Override
     public void sendInactive() {
-        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferedShutdownEvent, getCommandContext()));
-        deferedShutdownEvent = null;
+        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferredShutdownEvent, getCommandContext()));
+        deferredShutdownEvent = null;
 
     }
 

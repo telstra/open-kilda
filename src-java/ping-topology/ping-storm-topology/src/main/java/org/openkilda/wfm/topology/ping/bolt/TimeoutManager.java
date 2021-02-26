@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.ping.bolt;
 
 import org.openkilda.bluegreen.LifecycleEvent;
-import org.openkilda.bluegreen.Signal;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.floodlight.response.PingResponse;
@@ -132,12 +131,9 @@ public class TimeoutManager extends Abstract {
     }
 
     @Override
-    protected void handleLifeCycleEvent(LifecycleEvent event) {
-        if (Signal.SHUTDOWN.equals(event.getSignal())) {
-            pendingPings.clear();
-        } else if (!Signal.START.equals(event.getSignal())) {
-            log.error("Unsupported signal received: {}", event.getSignal());
-        }
+    protected boolean deactivate(LifecycleEvent event) {
+        pendingPings.clear();
+        return true;
     }
 
     private void cancelTimeout(TimeoutDescriptor descriptor) {

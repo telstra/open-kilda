@@ -23,7 +23,6 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_SPE
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.bluegreen.LifecycleEvent;
-import org.openkilda.bluegreen.Signal;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.messaging.Message;
@@ -63,7 +62,7 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
     private transient FlowDeleteService service;
     private String currentKey;
 
-    private LifecycleEvent deferedShutdownEvent;
+    private LifecycleEvent deferredShutdownEvent;
 
     public FlowDeleteHubBolt(FlowDeleteConfig config, PersistenceManager persistenceManager,
                              FlowResourcesConfig flowResourcesConfig) {
@@ -83,19 +82,17 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
 
 
     @Override
-    protected void handleLifeCycleEvent(LifecycleEvent event) {
-        if (event.getSignal().equals(Signal.SHUTDOWN)) {
-            if (service.deactivate()) {
-                emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
-            } else {
-                deferedShutdownEvent = event;
-            }
-        } else if (event.getSignal().equals(Signal.START)) {
-            service.activate();
-            emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
-        } else {
-            log.info("Received signal info {}", event.getSignal());
+    protected boolean deactivate(LifecycleEvent event) {
+        if (service.deactivate()) {
+            return true;
         }
+        deferredShutdownEvent = event;
+        return false;
+    }
+
+    @Override
+    protected void activate() {
+        service.activate();
     }
 
 
@@ -165,8 +162,8 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
 
     @Override
     public void sendInactive() {
-        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferedShutdownEvent, getCommandContext()));
-        deferedShutdownEvent = null;
+        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferredShutdownEvent, getCommandContext()));
+        deferredShutdownEvent = null;
     }
 
     @Override

@@ -24,7 +24,6 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.UPDATE_HUB
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.bluegreen.LifecycleEvent;
-import org.openkilda.bluegreen.Signal;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.messaging.Message;
@@ -74,7 +73,7 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     private transient FlowUpdateService service;
     private String currentKey;
 
-    private LifecycleEvent deferedShutdownEvent;
+    private LifecycleEvent deferredShutdownEvent;
 
     public FlowUpdateHubBolt(FlowUpdateConfig config, PersistenceManager persistenceManager,
                              PathComputerConfig pathComputerConfig, FlowResourcesConfig flowResourcesConfig) {
@@ -100,20 +99,19 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     }
 
     @Override
-    protected void handleLifeCycleEvent(LifecycleEvent event) {
-        if (event.getSignal().equals(Signal.SHUTDOWN)) {
-            if (service.deactivate()) {
-                emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
-            } else {
-                deferedShutdownEvent = event;
-            }
-        } else if (event.getSignal().equals(Signal.START)) {
-            service.activate();
-            emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
-        } else {
-            log.info("Received signal info {}", event.getSignal());
+    protected boolean deactivate(LifecycleEvent event) {
+        if (service.deactivate()) {
+            return true;
         }
+        deferredShutdownEvent = event;
+        return false;
     }
+
+    @Override
+    protected void activate() {
+        service.activate();
+    }
+
 
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
@@ -208,8 +206,8 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
 
     @Override
     public void sendInactive() {
-        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferedShutdownEvent, getCommandContext()));
-        deferedShutdownEvent = null;
+        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferredShutdownEvent, getCommandContext()));
+        deferredShutdownEvent = null;
     }
 
     @Override
