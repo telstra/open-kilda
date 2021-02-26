@@ -187,8 +187,8 @@ class SwitchHelper {
                      VERIFICATION_UNICAST_VXLAN_RULE_COOKIE] + multiTableRules + devicesRules + server42Rules)
         } else if((sw.noviflow || sw.nbFormat().manufacturer == "E") && sw.wb5164){
             return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
-                     VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE,
-                     CATCH_BFD_RULE_COOKIE] + multiTableRules + devicesRules + server42Rules)
+                     VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
+                     VERIFICATION_UNICAST_VXLAN_RULE_COOKIE] + multiTableRules + devicesRules + server42Rules)
         } else if (sw.ofVersion == "OF_12") {
             return [VERIFICATION_BROADCAST_RULE_COOKIE]
         } else {

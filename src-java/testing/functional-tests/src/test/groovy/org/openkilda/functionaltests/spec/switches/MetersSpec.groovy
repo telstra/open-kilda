@@ -10,8 +10,10 @@ import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule
 import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_COOKIE
 import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_ONE_SWITCH_COOKIE
+import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE
+import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
@@ -176,9 +178,11 @@ class MetersSpec extends HealthCheckSpecification {
         burstSize * packet_size * 8 / 1024,
         where burstSize - 4096, packet_size: lldp - 300, arp - 100, unicast/multicast - 250 */
         List<Long> arpMeters = [ createMeterIdForDefaultRule(ARP_POST_INGRESS_COOKIE).getValue(),
-                                 createMeterIdForDefaultRule(ARP_POST_INGRESS_ONE_SWITCH_COOKIE).getValue() ] //22, 24
+                                 createMeterIdForDefaultRule(ARP_POST_INGRESS_VXLAN_COOKIE).getValue(),
+                                 createMeterIdForDefaultRule(ARP_POST_INGRESS_ONE_SWITCH_COOKIE).getValue() ] //22, 23, 24
         List<Long> lldpMeters = [ createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE).getValue(),
-                                  createMeterIdForDefaultRule(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE).getValue() ] //16, 18
+                                  createMeterIdForDefaultRule(LLDP_POST_INGRESS_VXLAN_COOKIE).getValue(),
+                                  createMeterIdForDefaultRule(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE).getValue() ] //16, 17, 18
 
         meters.meterEntries.each { meter ->
             if (meter.meterId in arpMeters) {
