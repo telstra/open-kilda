@@ -393,7 +393,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "Flows are rerouted"
         response.containsAll([flow1, flow2]*.flowId)
-        Wrappers.wait(PATH_INSTALLATION_TIME) {
+        Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
             [flow1, flow2].each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
             assert PathHelper.convert(northbound.getFlowPath(flow1.flowId)) != flow1Path
             assert PathHelper.convert(northbound.getFlowPath(flow2.flowId)) != flow2Path
