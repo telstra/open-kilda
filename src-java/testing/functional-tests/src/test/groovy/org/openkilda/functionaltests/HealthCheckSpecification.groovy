@@ -1,8 +1,11 @@
 package org.openkilda.functionaltests
 
+import static org.openkilda.bluegreen.Signal.SHUTDOWN
+import static org.openkilda.bluegreen.Signal.START
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
+import org.openkilda.bluegreen.Signal
 import org.openkilda.functionaltests.exception.IslNotFoundException
 import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -11,7 +14,7 @@ import org.openkilda.model.SwitchFeature
 import org.openkilda.testing.model.topology.TopologyDefinition.Status
 import org.openkilda.testing.tools.SoftAssertions
 
-import org.springframework.beans.factory.annotation.Value
+import org.apache.zookeeper.ZooKeeper
 
 class HealthCheckSpecification extends BaseSpecification {
 
@@ -19,6 +22,23 @@ class HealthCheckSpecification extends BaseSpecification {
     def "Kilda is UP and topology is clean"() {
         expect: "Kilda's health check request is successful"
         northbound.getHealthCheck().components["kafka"] == "operational"
+
+        and: "All zookeeper nodes are in expected state"
+        def zk = new ZooKeeper(zkConnectString, 5000, {})
+        def activeColor = getActiveNetworkColor(zk)
+        def zkAssertions = new SoftAssertions()
+        ["connecteddevices", "floodlightrouter", "flowhs", "isllatency", "nbworker", "network", "flowmonitoring",
+         "opentsdb", "ping", "portstate", "reroute", "server42-control", "stats", "swmanager"].each { component ->
+            def expected = new String(zk.getData("/$component/$activeColor/expected_state", null, null))
+            def actual = new String(zk.getData("/$component/$activeColor/state", null, null))
+            zkAssertions.checkSucceeds { assert actual == expected, component }
+        }
+        flHelper.getFls()*.region.each { region ->
+            def expected = new String(zk.getData("/floodlight/$region/expected_state", null, null))
+            def actual = new String(zk.getData("/floodlight/$region/state", null, null))
+            zkAssertions.checkSucceeds { assert actual == expected, region }
+        }
+        zkAssertions.verify()
 
         and: "All switches and links are active. No flows and link props are present"
         def links = null
@@ -89,5 +109,16 @@ class HealthCheckSpecification extends BaseSpecification {
                 //server42 props can be either on or off
             }
         }
+    }
+
+    String getActiveNetworkColor(ZooKeeper zk) {
+        def blue = zk.exists("/network/blue/signal", false)
+                ? Signal.valueOf(new String(zk.getData("/network/blue/signal", null, null)))
+                : SHUTDOWN
+        def green = zk.exists("/network/green/signal", false)
+                ? Signal.valueOf(new String(zk.getData("/network/green/signal", null, null)))
+                : SHUTDOWN
+        assert [blue, green].count { it == START } == 1
+        return blue == START ? "blue" : "green"
     }
 }
