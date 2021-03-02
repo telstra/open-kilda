@@ -33,6 +33,7 @@ import org.openkilda.persistence.ferma.frames.converters.IslStatusConverter;
 import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchStatusConverter;
+import org.openkilda.persistence.ferma.repositories.FermaFlowPathRepository;
 import org.openkilda.persistence.ferma.repositories.FermaIslRepository;
 import org.openkilda.persistence.orientdb.OrientDbGraphFactory;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -101,8 +102,9 @@ public class OrientDbIslRepository extends FermaIslRepository {
     private final OrientDbGraphFactory orientDbGraphFactory;
 
     public OrientDbIslRepository(OrientDbGraphFactory orientDbGraphFactory,
-                                 TransactionManager transactionManager, IslConfig islConfig) {
-        super(orientDbGraphFactory, transactionManager, islConfig);
+                                 TransactionManager transactionManager, FermaFlowPathRepository flowPathRepository,
+                                 IslConfig islConfig) {
+        super(orientDbGraphFactory, transactionManager, flowPathRepository, islConfig);
         this.orientDbGraphFactory = orientDbGraphFactory;
     }
 
@@ -145,10 +147,11 @@ public class OrientDbIslRepository extends FermaIslRepository {
         segments.keySet().forEach(endpoint -> {
             try (OGremlinResultSet results = orientGraph.querySql(
                     QUERY_FETCH_ISLS_BY_ENDPOINTS_AND_BANDWIDTH,
-                    endpoint.getSrcSwitch(), endpoint.getSrcPort(), endpoint.getDstSwitch(), endpoint.getDstPort(),
+                    endpoint.getSrcSwitch(), endpoint.getSrcPort(),
+                    endpoint.getDestSwitch(), endpoint.getDestPort(),
                     islStatusAsStr, requiredBandwidth - segments.get(endpoint))) {
                 results.forEach(gs -> isls.add(mapToIslImmutableView(gs,
-                        switches.get(endpoint.getSrcSwitch()), switches.get(endpoint.getDstSwitch()))));
+                        switches.get(endpoint.getSrcSwitch()), switches.get(endpoint.getDestSwitch()))));
             }
         });
         return isls;

@@ -51,6 +51,7 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -448,7 +449,9 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
         Isl isl = createIsl(switchA, 1, switchB, 2, IslStatus.ACTIVE, 100L);
         isl.setMaxBandwidth(100L);
 
-        islRepository.updateAvailableBandwidth(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2, 33);
+        createPathWithSegment(TEST_FLOW_ID, switchA, 1, switchB, 2, 33L);
+
+        islRepository.updateAvailableBandwidth(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2);
 
         Isl islAfter = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2).get();
         assertEquals(67, islAfter.getAvailableBandwidth());
@@ -460,7 +463,8 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
         isl.setMaxBandwidth(100L);
 
         try {
-            islRepository.updateAvailableBandwidth(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 3, 33);
+            createPathWithSegment(TEST_FLOW_ID + "_1", switchA, 1, switchB, 3, 33L);
+            islRepository.updateAvailableBandwidth(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 3);
             fail();
         } catch (PersistenceException ex) {
             // expected
@@ -470,7 +474,8 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
         assertEquals(100, islAfter.getAvailableBandwidth());
 
         try {
-            islRepository.updateAvailableBandwidth(TEST_SWITCH_A_ID, 2, TEST_SWITCH_B_ID, 2, 33);
+            createPathWithSegment(TEST_FLOW_ID + "_2", switchA, 2, switchB, 2, 33L);
+            islRepository.updateAvailableBandwidth(TEST_SWITCH_A_ID, 2, TEST_SWITCH_B_ID, 2);
             fail();
         } catch (PersistenceException ex) {
             // expected
@@ -480,7 +485,8 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
         assertEquals(100, islAfter.getAvailableBandwidth());
 
         try {
-            islRepository.updateAvailableBandwidth(TEST_SWITCH_C_ID, 1, TEST_SWITCH_B_ID, 2, 33);
+            createPathWithSegment(TEST_FLOW_ID + "_3", switchC, 1, switchB, 2, 33L);
+            islRepository.updateAvailableBandwidth(TEST_SWITCH_C_ID, 1, TEST_SWITCH_B_ID, 2);
             fail();
         } catch (PersistenceException ex) {
             // expected
@@ -490,13 +496,42 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
         assertEquals(100, islAfter.getAvailableBandwidth());
 
         try {
-            islRepository.updateAvailableBandwidth(TEST_SWITCH_A_ID, 1, TEST_SWITCH_C_ID, 2, 33);
+            createPathWithSegment(TEST_FLOW_ID + "_4", switchA, 1, switchC, 2, 33L);
+            islRepository.updateAvailableBandwidth(TEST_SWITCH_A_ID, 1, TEST_SWITCH_C_ID, 2);
             fail();
         } catch (PersistenceException ex) {
             // expected
         }
 
         islAfter = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2).get();
+        assertEquals(100, islAfter.getAvailableBandwidth());
+    }
+
+    @Test
+    public void shouldUpdateAvailableBandwidthByPath() {
+        Isl isl = createIsl(switchA, 1, switchB, 2, IslStatus.ACTIVE, 100L);
+        isl.setMaxBandwidth(100L);
+
+        createPathWithSegment(TEST_FLOW_ID, switchA, 1, switchB, 2, 33L);
+
+        islRepository.updateAvailableBandwidthOnIslsOccupiedByPath(new PathId(TEST_FLOW_ID));
+
+        Isl islAfter = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2).get();
+        assertEquals(67, islAfter.getAvailableBandwidth());
+    }
+
+    @Test
+    public void shouldNotUpdateAvailableBandwidthByPathIfDoesntMatch() {
+        Isl isl = createIsl(switchA, 1, switchB, 2, IslStatus.ACTIVE, 100L);
+        isl.setMaxBandwidth(100L);
+
+        createPathWithSegment(TEST_FLOW_ID + "_1", switchA, 1, switchB, 2, 33L);
+
+        Collection<?> updatedIsls = islRepository.updateAvailableBandwidthOnIslsOccupiedByPath(
+                new PathId(TEST_FLOW_ID + "_faked")).values();
+        assertThat(updatedIsls, Matchers.empty());
+
+        Isl islAfter = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2).get();
         assertEquals(100, islAfter.getAvailableBandwidth());
     }
 
@@ -530,6 +565,26 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
         Isl isl = islBuilder.build();
         islRepository.add(isl);
         return isl;
+    }
+
+    private FlowPath createPathWithSegment(String pathId, Switch srcSwitch, Integer srcPort,
+                                           Switch destSwitch, Integer destPort, long bandwidth) {
+        PathId pathIdAsObj = new PathId(pathId);
+        FlowPath path = FlowPath.builder()
+                .srcSwitch(srcSwitch)
+                .destSwitch(destSwitch)
+                .pathId(pathIdAsObj)
+                .bandwidth(bandwidth)
+                .segments(Collections.singletonList(PathSegment.builder()
+                        .pathId(pathIdAsObj)
+                        .srcSwitch(srcSwitch)
+                        .srcPort(srcPort)
+                        .destSwitch(destSwitch)
+                        .destPort(destPort)
+                        .build()))
+                .build();
+        flowPathRepository.add(path);
+        return path;
     }
 
     private Flow createFlowWithPath(int forwardBandwidth, int reverseBandwidth) {
