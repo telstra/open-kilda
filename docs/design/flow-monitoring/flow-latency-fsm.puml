@@ -1,0 +1,43 @@
+@startuml
+title FlowLatency FSM
+
+legend top left
+    process tick:
+        if last event is timed out
+            send corresponding stable-* event
+endlegend
+
+[*] --> Healthy : flow latency within SLA
+[*] --> Tier1Failed: flow latency SLA tier 1 is violated
+[*] --> Tier2Failed: flow latency SLA tier 2 is violated
+
+Healthy: enter / save current flow latency to DB
+Healthy: tick / save current flow latency to DB
+Healthy: healthy / update current latency
+
+Healthy --> Unstable : tier1failed / tier2failed
+
+Tier1Failed: enter / save current flow latency to DB
+Tier1Failed: tick / save current flow latency to DB
+Tier1Failed: tier1failed / update current latency
+
+Tier1Failed --> Unstable : healthy / tier2failed
+
+Tier2Failed: enter / save current flow latency to DB
+Tier2Failed: tick / save current flow latency to DB
+Tier2Failed: down / update current latency
+
+Tier2Failed --> Unstable : healthy / tier1failed
+
+Unstable: enter / save last event type and time
+Unstable: healthy / save last event type and time
+Unstable: tier1Failed / save last event type and time
+Unstable: tier2Failed / save last event type and time
+Unstable: tick / process tick
+Unstable: stable-* / send reroute or sync request if needed
+
+Unstable --> Healthy : stable-healthy
+Unstable --> Tier1Failed : stable-tier1failed
+Unstable --> Tier2Failed : stable-tier2failed
+
+@enduml
