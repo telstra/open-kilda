@@ -334,8 +334,9 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         def uniquePathCount = switchPair.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size()
 
         when: "Create 5 flows with protected paths"
-        List<FlowRequestV2> flows = (1..5).collect {
-            flowHelperV2.randomFlow(switchPair).tap {
+        List<FlowRequestV2> flows = []
+        5.times {
+            flows << flowHelperV2.randomFlow(switchPair, false, flows).tap {
                 maximumBandwidth = bandwidth
                 ignoreBandwidth = bandwidth == 0
                 allocateProtectedPath = true
