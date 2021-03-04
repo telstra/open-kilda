@@ -211,8 +211,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .perform(new AllocateProtectedResourcesAction(persistenceManager,
                             pathAllocationRetriesLimit, pathAllocationRetryDelay,
                             pathComputer, resourcesManager, dashboardLogger));
-            builder.transition().from(State.PRIMARY_RESOURCES_ALLOCATED).to(State.MARKING_FLOW_DOWN_OR_DEGRADED)
-                    .on(Event.NO_PATH_FOUND);
+            builder.transition().from(State.PRIMARY_RESOURCES_ALLOCATED).to(State.REVERTING_ALLOCATED_RESOURCES)
+                    .on(Event.NO_PATH_FOUND)
+                    .perform(new OnNoPathFoundAction(persistenceManager, dashboardLogger, true));
             builder.transitions().from(State.PRIMARY_RESOURCES_ALLOCATED)
                     .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
                     .onEach(Event.TIMEOUT, Event.ERROR);
@@ -220,8 +221,12 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
             builder.transition().from(State.PROTECTED_RESOURCES_ALLOCATED).to(State.RESOURCE_ALLOCATION_COMPLETED)
                     .on(Event.NEXT)
                     .perform(new PostResourceAllocationAction(persistenceManager, dashboardLogger));
-            builder.transition().from(State.PROTECTED_RESOURCES_ALLOCATED).to(State.MARKING_FLOW_DOWN_OR_DEGRADED)
-                    .on(Event.NO_PATH_FOUND);
+            builder.transition().from(State.PROTECTED_RESOURCES_ALLOCATED).to(State.MARKED_FLOW_DOWN_OR_DEGRADED)
+                    .on(Event.NO_PATH_FOUND)
+                    .perform(new OnNoPathFoundAction(persistenceManager, dashboardLogger, false));
+            builder.transition().from(State.MARKED_FLOW_DOWN_OR_DEGRADED).to(State.RESOURCE_ALLOCATION_COMPLETED)
+                    .on(Event.NEXT)
+                    .perform(new PostResourceAllocationAction(persistenceManager, dashboardLogger));
             builder.transitions().from(State.PROTECTED_RESOURCES_ALLOCATED)
                     .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
                     .onEach(Event.TIMEOUT, Event.ERROR);
@@ -355,10 +360,6 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
             builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED).on(Event.NEXT);
             builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
 
-            builder.transition().from(State.MARKING_FLOW_DOWN_OR_DEGRADED).to(State.REVERTING_ALLOCATED_RESOURCES)
-                    .on(Event.NEXT)
-                    .perform(new OnNoPathFoundAction(persistenceManager, dashboardLogger));
-
             builder.onEntry(State.REVERTING_PATHS_SWAP)
                     .perform(reportErrorAction);
             builder.transition().from(State.REVERTING_PATHS_SWAP).to(State.PATHS_SWAP_REVERTED)
@@ -455,7 +456,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
         REVERTING_NEW_RULES,
         NEW_RULES_REVERTED,
 
-        MARKING_FLOW_DOWN_OR_DEGRADED,
+        MARKED_FLOW_DOWN_OR_DEGRADED,
         REVERTING_ALLOCATED_RESOURCES,
         RESOURCES_ALLOCATION_REVERTED,
         REVERTING_FLOW_STATUS,
