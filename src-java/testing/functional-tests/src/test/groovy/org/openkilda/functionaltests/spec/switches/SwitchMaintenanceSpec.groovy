@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.junit.Assume.assumeTrue
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -78,8 +78,8 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
                     it.paths.findAll { it != aPath }.find { !pathHelper.getInvolvedSwitches(it).contains(aSw) }
                 }
             }
-        } ?: assumeTrue("No suiting switches found. Need a switch pair with at least 2 paths and one of the " +
-        "paths should not use the maintenance switch", false)
+        } ?: assumeTrue(false, "No suiting switches found. Need a switch pair with at least 2 paths and one of the " +
+        "paths should not use the maintenance switch")
         switchPair.paths.findAll { it != path }.each { pathHelper.makePathMorePreferable(path, it) }
 
         and: "Create a couple of flows going through these switches"

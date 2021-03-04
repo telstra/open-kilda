@@ -1,7 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.junit.Assume.assumeTrue
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -29,7 +29,6 @@ import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.See
-import spock.lang.Unroll
 
 import java.util.concurrent.TimeUnit
 
@@ -43,7 +42,7 @@ class LinkSpec extends HealthCheckSpecification {
         given: "A link going through a-switch"
         def isl = topology.islsForActiveSwitches.find {
             it.aswitch?.inPort && it.aswitch?.outPort
-        } ?: assumeTrue("Wasn't able to find suitable link", false)
+        } ?: assumeTrue(false, "Wasn't able to find suitable link")
 
         double interval = discoveryTimeout * 0.2
         double waitTime = discoveryTimeout - interval
@@ -240,7 +239,6 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     def "Unable to get flows for NOT existing link (#item doesn't exist)"() {
         when: "Get flows for NOT existing link"
         northbound.getLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -260,7 +258,6 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     def "Unable to get flows with specifying invalid query parameters (#item is invalid)"() {
         when: "Get flows with specifying invalid #item"
         northbound.getLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -278,7 +275,6 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     def "Unable to get flows without full specifying a particular link (#item is missing)"() {
         when: "Get flows without specifying #item"
         northbound.getLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -323,10 +319,9 @@ class LinkSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.contains("ISL must NOT be in active state")
     }
 
-    @Unroll
     def "Able to delete an inactive #islDescription link and re-discover it back afterwards"() {
         given: "An inactive link"
-        assumeTrue("Unable to locate $islDescription ISL for this test", isl as boolean)
+        assumeTrue(isl as boolean, "Unable to locate $islDescription ISL for this test")
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
         Wrappers.wait(WAIT_OFFSET) {
@@ -364,7 +359,7 @@ class LinkSpec extends HealthCheckSpecification {
     def "Reroute all flows going through a particular link"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
-                assumeTrue("No suiting switches found", false)
+                assumeTrue(false, "No suiting switches found")
 
         and: "Make the first path more preferable than others by setting corresponding link props"
         switchPair.paths[1..-1].each { pathHelper.makePathMorePreferable(switchPair.paths.first(), it) }
@@ -405,7 +400,6 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     def "Unable to reroute flows with specifying NOT existing link (#item doesn't exist)"() {
         when: "Reroute flows with specifying NOT existing link"
         northbound.rerouteLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -425,7 +419,6 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     def "Unable to reroute flows with specifying invalid query parameters (#item is invalid)"() {
         when: "Reroute flows with specifying invalid #item"
         northbound.rerouteLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -443,7 +436,6 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     def "Unable to reroute flows without full specifying a particular link (#item is missing)"() {
         when: "Reroute flows without specifying #item"
         northbound.rerouteLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -462,7 +454,6 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     def "Get links with specifying query parameters"() {
         when: "Get links with specifying query parameters"
         def links = northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -480,7 +471,6 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     def "Get links with specifying NOT existing query parameters (#item doesn't exist)"() {
         when: "Get links with specifying NOT existing query parameters"
         def links = northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -497,7 +487,6 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     def "Unable to get links with specifying invalid query parameters (#item is invalid)"() {
         when: "Get links with specifying invalid #item"
         northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -637,7 +626,6 @@ class LinkSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Unroll
     def "Unable to update max bandwidth with specifying invalid query parameters (#item is invalid)"() {
         when: "Update max bandwidth with specifying invalid #item"
         northbound.updateLinkMaxBandwidth(srcSwId, srcSwPort, dstSwId, dstSwPort, 1000000)
@@ -654,7 +642,6 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
     }
 
-    @Unroll
     def "Unable to update max bandwidth without full specifying a particular link (#item is missing)"() {
         when: "Update max bandwidth without specifying #item"
         northbound.updateLinkMaxBandwidth(srcSwId, srcSwPort, dstSwId, dstSwPort, 1000000)
@@ -711,7 +698,7 @@ class LinkSpec extends HealthCheckSpecification {
         given: "Two active neighboring switches and two possible paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
             it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue("No suiting switches found", false)
+        } ?: assumeTrue(false, "No suiting switches found")
 
         and: "An active link with flow on it"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -776,7 +763,7 @@ class LinkSpec extends HealthCheckSpecification {
         given: "A deleted a-switch ISL"
         def isl = topology.islsForActiveSwitches.find {
             it.aswitch?.inPort && it.aswitch?.outPort
-        } ?: assumeTrue("Wasn't able to find suitable link", false)
+        } ?: assumeTrue(false, "Wasn't able to find suitable link")
         lockKeeper.removeFlows([isl.aswitch])
         lockKeeper.removeFlows([isl.aswitch.reversed])
         def aSwitchForwardRuleIsDeleted = true

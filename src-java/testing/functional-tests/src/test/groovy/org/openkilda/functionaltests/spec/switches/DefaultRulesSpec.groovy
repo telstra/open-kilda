@@ -1,7 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
-import static org.junit.Assume.assumeTrue
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -58,7 +58,6 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to install default rule on an #sw.ofVersion switch(#sw.dpId, install-action=#data.installRulesAction)"(
             Map data, Switch sw) {
@@ -133,13 +132,12 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to install default multitable rule on an #sw.ofVersion \
 switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) {
         given: "A switch without rules"
-        assumeTrue("Multi table should be enabled on the switch",
-                northbound.getSwitchProperties(sw.dpId).multiTable)
+        assumeTrue(northbound.getSwitchProperties(sw.dpId).multiTable,
+"Multi table should be enabled on the switch")
         def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
         assert defaultRules*.cookie.sort() == sw.defaultCookies.sort()
 
@@ -194,7 +192,6 @@ switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) 
         ].combinations()
     }
 
-    @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Able to install default rules on an #sw.ofVersion switch(#sw.dpId, install-action=INSTALL_DEFAULTS)"() {
         given: "A switch without any rules"
@@ -220,7 +217,6 @@ switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) 
     }
 
     @Tidy
-    @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Able to delete default rule from an #sw.ofVersion switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(
             Map data, Switch sw) {
@@ -286,13 +282,12 @@ switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) 
     }
 
     @Tidy
-    @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to delete default multitable rule from an #sw.ofVersion \
 switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
         when: "Delete rule from the switch"
-        assumeTrue("Multi table should be enabled on the switch",
-                northbound.getSwitchProperties(sw.dpId).multiTable)
+        assumeTrue(northbound.getSwitchProperties(sw.dpId).multiTable,
+"Multi table should be enabled on the switch")
         def defaultRules
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
@@ -361,7 +356,7 @@ switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
     def "Able to delete/install the server42 turning rule on a switch"() {
         setup: "Select a switch which support server42 turning rule"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST) } ?:
-                assumeTrue("No suiting switch found", false)
+                assumeTrue(false, "No suiting switch found")
 
         and: "Server42 is enabled in feature toggle"
         def initFeatureToggle = northbound.getFeatureToggles()

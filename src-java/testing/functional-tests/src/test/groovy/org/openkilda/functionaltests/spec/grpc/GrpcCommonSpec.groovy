@@ -8,12 +8,10 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpServerErrorException
 import spock.lang.Ignore
-import spock.lang.Unroll
 
 class GrpcCommonSpec extends GrpcBaseSpecification {
 
     @Tidy
-    @Unroll
     def "Able to get switch status on the #switches.switchId switch"() {
         when: "Get switch status"
         def response = grpc.getSwitchStatus(switches.address)
@@ -33,7 +31,6 @@ class GrpcCommonSpec extends GrpcBaseSpecification {
     }
 
     @Tidy
-    @Unroll
     def "Able to get switch packet in out stats"() {
         when: "Get switch packet in out stats"
         def response = grpc.getPacketInOutStats(switches.address)

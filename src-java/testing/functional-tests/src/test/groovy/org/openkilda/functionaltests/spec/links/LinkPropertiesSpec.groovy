@@ -14,7 +14,6 @@ import org.openkilda.northbound.dto.v1.links.LinkPropsDto
 import org.openkilda.testing.Constants
 
 import spock.lang.Shared
-import spock.lang.Unroll
 
 import java.util.concurrent.TimeUnit
 
@@ -29,7 +28,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
             new LinkPropsDto("00:00:00:00:00:00:00:02", 1, "00:00:00:00:00:00:00:01", 1, [:])
     ]
 
-    def setupOnce() {
+    def setupSpec() {
         //clear any existing properties before tests start
         def allLinkProps = northbound.getAllLinkProps()
         northbound.deleteLinkProps(allLinkProps)
@@ -74,7 +73,6 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         response.messages.first() == "Can not parse input string: \"${linkProp.srcSwitch}\""
     }
 
-    @Unroll
     def "Unable to create link property with non-numeric value for #key"() {
         when: "Try creating link property with non-numeric values"
         def linkProp = new LinkPropsDto("00:00:00:00:00:00:00:01", 1, "00:00:00:00:00:00:00:02", 1, [(key): "1000L"])
@@ -89,7 +87,6 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     @TestFixture(setup = "prepareLinkPropsForSearch", cleanup = "cleanLinkPropsAfterSearch")
     def "Searching for link props with #data.descr"() {
         when: "Get link properties with search query"

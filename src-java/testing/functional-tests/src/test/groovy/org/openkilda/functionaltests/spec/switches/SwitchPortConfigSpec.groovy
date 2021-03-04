@@ -16,7 +16,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
-import spock.lang.Unroll
 
 @Narrative("Verify that Kilda allows to properly control port state on switches (bring ports up or down).")
 @Tags([SMOKE_SWITCHES])
@@ -29,7 +28,6 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
     def otsdbPortDown = 0
 
     @Tidy
-    @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE])
     def "Able to bring ISL-busy port down/up on an #isl.srcSwitch.ofVersion switch(#isl.srcSwitch.dpId)"() {
         when: "Bring port down on the switch"
@@ -87,7 +85,6 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     @Tags([HARDWARE, TOPOLOGY_DEPENDENT])
     def "Able to bring ISL-free port down/up on an #sw.ofVersion switch(#sw.dpId)"() {
         // Not checking OTSDB here, since Kilda won't log into OTSDB for isl-free ports, this is expected.

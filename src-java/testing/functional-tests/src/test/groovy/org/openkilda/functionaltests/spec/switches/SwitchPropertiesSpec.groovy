@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.junit.Assume.assumeTrue
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
@@ -18,7 +18,6 @@ import groovy.transform.AutoClone
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
-import spock.lang.Unroll
 
 @Narrative("""Switch properties are created automatically once switch is connected to the controller
 and deleted once switch is deleted.
@@ -31,7 +30,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
     def "Able to manipulate with switch properties"() {
         given: "A switch that supports VXLAN"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) }
-        assumeTrue("Wasn't able to find vxlan-enabled switch", sw as boolean)
+        assumeTrue(sw as boolean, "Wasn't able to find vxlan-enabled switch")
         def initSwitchProperties = northbound.getSwitchProperties(sw.dpId)
         assert initSwitchProperties.multiTable != null
         assert !initSwitchProperties.supportedTransitEncapsulation.empty
@@ -108,7 +107,6 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     def "Error is returned when trying to #data.desc"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
@@ -225,7 +223,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
     def "System forbids to turn on VXLAN encap type on switch that does not support it"() {
         given: "Switch that does not support VXLAN feature"
         def sw = topology.activeSwitches.find { !it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) }
-        assumeTrue("There is no non-vxlan switch in the topology", sw as boolean)
+        assumeTrue(sw as boolean, "There is no non-vxlan switch in the topology")
 
         when: "Try to turn on VXLAN encap type on that switch"
         def initProps = northbound.getSwitchProperties(sw.dpId)

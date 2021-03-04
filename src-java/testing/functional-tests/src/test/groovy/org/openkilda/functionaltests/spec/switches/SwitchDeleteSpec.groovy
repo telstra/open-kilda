@@ -15,7 +15,6 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Unroll
 
 import java.util.concurrent.TimeUnit
 
@@ -97,7 +96,6 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
-    @Unroll
     @Tidy
     @IterationTags([@IterationTag(tags = [LOW_PRIORITY], take = 1)])
     def "Unable to delete an inactive switch with a #flowType flow assigned"() {
