@@ -399,6 +399,7 @@ public class NetworkIslServiceTest {
         IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
         verify(carrier).islRemovedNotification(endpointAlpha1, reference);
         verify(carrier).islRemovedNotification(endpointBeta2, reference);
+        verify(carrier).islChangedNotifyFlowMonitor(IslReference.of(endpointAlpha1));
 
         verifyNoMoreInteractions(carrier);
     }

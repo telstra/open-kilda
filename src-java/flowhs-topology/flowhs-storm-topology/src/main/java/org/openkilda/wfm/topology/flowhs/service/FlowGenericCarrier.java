@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.flow.UpdateFlowInfo;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
@@ -58,4 +59,10 @@ public interface FlowGenericCarrier {
     default void sendDeactivateFlowMonitoring(String flow, SwitchId srcSwitchId, SwitchId dstSwitchId) {}
 
     void sendInactive();
+
+    /**
+     * Sends UpdateFlowInfo to flow-monitoring topology.
+     * @param flowInfo message to send
+     */
+    default void sendNotifyFlowMonitor(UpdateFlowInfo flowInfo) {}
 }

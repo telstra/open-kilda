@@ -58,7 +58,10 @@ public enum ComponentId {
     NB_OUTPUT("nb.output"),
 
     GRPC_ENCODER("grpc.encoder"),
-    GRPC_OUTPUT("grpc.output");
+    GRPC_OUTPUT("grpc.output"),
+
+    FLOW_MONITORING_ENCODER("flow.monitoring.encoder"),
+    FLOW_MONITORING_OUTPUT("flow.monitoring.output");
 
     private final String value;
 

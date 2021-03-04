@@ -105,6 +105,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         rerouteTopologyOutput(tb);
         pingOutput(tb);
         server42ControlTopologyOutput(tb);
+        flowMonitoringTopologyOutput(tb);
 
         history(tb, persistenceManager);
 
@@ -449,6 +450,21 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                         Stream.HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER.name());
     }
 
+    private void flowMonitoringTopologyOutput(TopologyBuilder topologyBuilder) {
+        KafkaBolt flowMonitoringKafkaBolt = buildKafkaBolt(getConfig().getFlowHsFlowMonitoringNotifyTopic());
+        declareBolt(topologyBuilder, flowMonitoringKafkaBolt, ComponentId.FLOW_MONITORING_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(),
+                        Stream.HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_UPDATE_HUB.name(),
+                        Stream.HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(),
+                        Stream.HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_REROUTE_HUB.name(),
+                        Stream.HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(),
+                        Stream.HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name());
+    }
+
     private void history(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         HistoryBolt historyBolt = new HistoryBolt(persistenceManager);
         declareBolt(topologyBuilder, historyBolt, ComponentId.HISTORY_BOLT.name())
@@ -488,6 +504,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         RESPONSE_SENDER("response.kafka.bolt"),
         FLOW_PING_SENDER("ping.kafka.bolt"),
         SERVER42_CONTROL_TOPOLOGY_SENDER("server42.control.kafka.bolt"),
+        FLOW_MONITORING_TOPOLOGY_SENDER("flow.monitoring.kafka.bolt"),
 
         SPEAKER_REQUEST_SENDER("speaker.kafka.bolt"),
 
@@ -531,7 +548,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         HUB_TO_REROUTE_RESPONSE_SENDER,
         HUB_TO_RESPONSE_SENDER,
         HUB_TO_PING_SENDER,
-        HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER
+        HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER,
+        HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER
     }
 
     /**
