@@ -170,7 +170,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
         DatapointParseBolt datapointParseBolt = (DatapointParseBolt) inputStream.readObject();
 
         // activate bolt
-        datapointParseBolt.active = true;
+        datapointParseBolt.activate();
 
         // serialize bolt
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();

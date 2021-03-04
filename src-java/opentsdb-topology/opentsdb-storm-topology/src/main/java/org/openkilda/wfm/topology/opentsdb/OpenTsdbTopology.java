@@ -75,7 +75,7 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
         OpenTsdbConfig openTsdbConfig = topologyConfig.getOpenTsdbConfig();
 
-        declareBolt(tb, new DatapointParseBolt(), OTSDB_PARSE_BOLT_ID)
+        declareBolt(tb, new DatapointParseBolt(ZooKeeperSpout.SPOUT_ID), OTSDB_PARSE_BOLT_ID)
                 .shuffleGrouping(OTSDB_SPOUT_ID)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
 
