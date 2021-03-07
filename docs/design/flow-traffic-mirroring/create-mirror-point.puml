@@ -1,0 +1,71 @@
+@startuml
+title Create flow traffic mirror point
+
+boundary Northbound
+participant FlowMirroringHub
+participant OrientDB
+participant FlowValidator
+participant PathComputer
+participant FlowResourcesManager
+participant CommandBuilder
+database OrientDB
+participant SpeakerWorker
+
+Northbound -> FlowMirroringHub : Create flow mirror point
+activate FlowMirroringHub
+ ==Validation==
+FlowMirroringHub -> FlowValidator : Validate flow
+FlowValidator -> FlowValidator : Validate flow
+FlowMirroringHub <- FlowValidator : Flow validation result
+alt error
+    Northbound <- FlowMirroringHub : Flow mirror point creation error
+end
+
+ == Path calculation and resource allocation ==
+FlowMirroringHub -> PathComputer : Find path
+FlowMirroringHub <- PathComputer : Mirror path
+alt Path is not found
+    Northbound <- FlowMirroringHub : Flow mirror point creation error
+else Path is found
+    Northbound <- FlowMirroringHub : Flow creation\n is in progress
+end
+
+FlowMirroringHub -> FlowResourcesManager : Allocate resources
+activate FlowResourcesManager
+FlowResourcesManager -> OrientDB : Allocate resources
+FlowResourcesManager <- OrientDB : Cookie and vlan
+FlowMirroringHub <- FlowResourcesManager : Allocated resources
+deactivate FlowResourcesManager
+
+FlowMirroringHub -> OrientDB : Save flow mirror path
+FlowMirroringHub -> OrientDB : Save flow segments
+FlowMirroringHub -> OrientDB : Update ISLs available bandwidth
+
+ == Flow installation ==
+FlowMirroringHub -> CommandBuilder : Create Switch Rules
+CommandBuilder -> CommandBuilder : Build commands
+
+FlowMirroringHub <- CommandBuilder: Flow mirroring path installation commands
+loop for each command in commands
+    FlowMirroringHub -> SpeakerWorker : Send install rule command
+end
+deactivate FlowMirroringHub
+
+loop for each installed rule
+    FlowMirroringHub <- SpeakerWorker : a rule has been installed
+    activate FlowMirroringHub
+    FlowMirroringHub -> FlowMirroringHub : mark corresponding rule as installed
+end
+
+loop for each installed rule
+    FlowMirroringHub -> SpeakerWorker : Validate 
+end
+deactivate FlowMirroringHub
+
+loop for each validated rule
+    FlowMirroringHub <- SpeakerWorker : Rule are installed and valid
+end
+
+deactivate FlowMirroringHub
+
+@enduml
