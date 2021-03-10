@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.87.0 (10/03/2021)
+
+### Features:
+-  [#4050](https://github.com/telstra/open-kilda/pull/4050) add tests for "max_latency_tier2" [**tests**]
+-  [#4065](https://github.com/telstra/open-kilda/pull/4065) Add flow monitoring feature implementation (Issue: [#3968](https://github.com/telstra/open-kilda/issues/3968)) [**storm-topologies**]
+-  [#4070](https://github.com/telstra/open-kilda/pull/4070) Add flow history statuses endpoint (Issue: [#4058](https://github.com/telstra/open-kilda/issues/4058)) [**northbound**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#3998](https://github.com/telstra/open-kilda/pull/3998) Fix feature toggles class name (Issue: [#3939](https://github.com/telstra/open-kilda/issues/3939)) 
+-  [#4088](https://github.com/telstra/open-kilda/pull/4088) Clean up lifecycle events for hub bolts [**storm-topologies**]
+
+### Improvements:
+-  [#4098](https://github.com/telstra/open-kilda/pull/4098) avoid "conflict" flows in ProtectedPathV2Spec [**tests**]
+-  [#3921](https://github.com/telstra/open-kilda/pull/3921) Kilda gui gradle build structure (Issue: [#3841](https://github.com/telstra/open-kilda/issues/3841)) [**gui**]
+-  [#4062](https://github.com/telstra/open-kilda/pull/4062) Improve performance of H&S flow operations: ISL bandwidth updates 
+-  [#4073](https://github.com/telstra/open-kilda/pull/4073) ignore tests according to the issues [**tests**]
+-  [#4009](https://github.com/telstra/open-kilda/pull/4009) unignore test according to #3987 [**tests**]
+-  [#4083](https://github.com/telstra/open-kilda/pull/4083) fix test:"Able to delete switch rules by cookie/priority" [**tests**]
+-  [#4085](https://github.com/telstra/open-kilda/pull/4085) adjust MetersSpec and SwitchHelper according to vxlan on wb [**tests**]
+-  [#4089](https://github.com/telstra/open-kilda/pull/4089) remove "neo4j" from templates 
+-  [#4091](https://github.com/telstra/open-kilda/pull/4091) improve PartialUpdateSpec(avoid singleSwSinglePort flow after updating) [**tests**]
+
+### Other changes:
+-  [#4058](https://github.com/telstra/open-kilda/pull/4058) Flow status timestamps design [**docs**]
+-  [#4084](https://github.com/telstra/open-kilda/pull/4084) Add retry for unstable ping verification in func tests [**tests**]
+-  [#4092](https://github.com/telstra/open-kilda/pull/4092) Increase some timeout timers and make devices test to wait for rules [**tests**]
+
+---
+
 ## v1.86.0 (23/02/2021)
 
 ### Bug Fixes:
