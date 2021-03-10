@@ -126,7 +126,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
         }
     }
 
-    private boolean shouldHandleLifeCycleEvent(Signal signal) {
+    protected final boolean shouldHandleLifeCycleEvent(Signal signal) {
         if (Signal.START.equals(signal) && active) {
             log.info("Component is already in active state, skipping START signal");
             return false;
@@ -140,7 +140,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
     protected abstract void handleInput(Tuple input) throws Exception;
 
-    protected void handleLifeCycleEvent(LifecycleEvent event) {
+    protected final void handleLifeCycleEvent(LifecycleEvent event) {
         if (Signal.START.equals(event.getSignal())) {
             emit(ZkStreams.ZK.toString(), currentTuple, new Values(event, commandContext));
             try {
@@ -149,9 +149,11 @@ public abstract class AbstractBolt extends BaseRichBolt {
                 active = true;
             }
         } else if (Signal.SHUTDOWN.equals(event.getSignal())) {
-            emit(ZkStreams.ZK.toString(), currentTuple, new Values(event, commandContext));
+
             try {
-                deactivate();
+                if (deactivate(event)) {
+                    emit(ZkStreams.ZK.toString(), currentTuple, new Values(event, commandContext));
+                }
             } finally {
                 active = false;
             }
@@ -164,8 +166,8 @@ public abstract class AbstractBolt extends BaseRichBolt {
         // no actions required
     }
 
-    protected void deactivate() {
-        // no actions required
+    protected boolean deactivate(LifecycleEvent event) {
+        return true;
     }
 
     protected void handleException(Exception e) throws Exception {

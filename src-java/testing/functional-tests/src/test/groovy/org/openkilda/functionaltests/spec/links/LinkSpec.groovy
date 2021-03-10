@@ -393,7 +393,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "Flows are rerouted"
         response.containsAll([flow1, flow2]*.flowId)
-        Wrappers.wait(PATH_INSTALLATION_TIME) {
+        Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
             [flow1, flow2].each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
             assert PathHelper.convert(northbound.getFlowPath(flow1.flowId)) != flow1Path
             assert PathHelper.convert(northbound.getFlowPath(flow2.flowId)) != flow2Path
@@ -741,7 +741,7 @@ class LinkSpec extends HealthCheckSpecification {
         linkIsDeleted = false
 
         then: "The link is rediscovered in both directions"
-        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
+        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET*2) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
             assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED

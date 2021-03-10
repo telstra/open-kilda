@@ -1,8 +1,8 @@
 # WFM topology management
 
-TOPOLOGY := network flowhs stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control
-BLUE_TOPOLOGY := network flowhs stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control
-GREEN_TOPOLOGY := network flowhs stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control
+TOPOLOGY := network flowhs flowmonitoring stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control
+BLUE_TOPOLOGY := network flowhs flowmonitoring stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control
+GREEN_TOPOLOGY := network flowhs flowmonitoring stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control
 
 TOPOLOGY_JAR := target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar
 TOPOLOGY_CONFIG := topology.properties

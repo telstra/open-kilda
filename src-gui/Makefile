@@ -2,10 +2,10 @@ APP := openkilda-gui
 
 rebuild: clean clean-java build
 
-build: clean target/${APP}.jar
+build:  clean-cache build/libs/${APP}.war
 
-target/${APP}.jar: .deps/node .deps/resources
-	mvn -B clean install
+build/libs/${APP}.war: .deps/node .deps/resources
+	./gradlew build
 
 .deps/node: .deps
 	docker run --rm -e LOCAL_UID=`id -u $(USER)` -e LOCAL_GID=`id -g $(USER)` -v $(CURDIR)/src:/app/src -v $(CURDIR)/ui:/app/ui node:10-alpine \
@@ -13,23 +13,25 @@ target/${APP}.jar: .deps/node .deps/resources
 	touch $@
 
 .deps/resources: .deps
-	mkdir -p src/main/resources/lib/css/
-	mkdir -p src/main/resources/lib/javascript/
-	wget -O src/main/resources/lib/css/roboto.css https://fonts.googleapis.com/css?family=Roboto:100,100i,300,300i,400,400i,500,500i,700,700i
-	wget -O src/main/resources/lib/css/bootstrap.min.css https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css
-	wget -O src/main/resources/lib/javascript/bootstrap.min.js https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js
-	wget -O src/main/resources/lib/javascript/jquery-3.5.1.min.js https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.js
+	mkdir -p src/main/webapp/lib/css/
+	mkdir -p src/main/webapp/lib/javascript/
+	wget -O src/main/webapp/lib/css/roboto.css https://fonts.googleapis.com/css?family=Roboto:100,100i,300,300i,400,400i,500,500i,700,700i
+	wget -O src/main/webapp/lib/css/bootstrap.min.css https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css
+	wget -O src/main/webapp/lib/javascript/bootstrap.min.js https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js
+	wget -O src/main/webapp/lib/javascript/jquery-3.5.1.min.js https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.js
 	touch $@
 
 .deps:
 	mkdir -p .deps
 	mkdir -p tmp
-	
+
+clean-cache: clean
+
 clean:
 	rm -f .deps/node
 	rm -f .deps/resources
 
 clean-java:
-	mvn clean
+	./gradlew clean
 
 .PHONY: rebuild clean clean-java

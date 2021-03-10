@@ -117,6 +117,7 @@ set /kilda/floodlight/2/signal START
 set /kilda/floodlightrouter/blue/signal START
 set /kilda/network/blue/signal START
 set /kilda/flowhs/blue/signal START
+set /kilda/flowmonitoring/blue/signal START
 set /kilda/reroute/blue/signal START
 set /kilda/connecteddevices/blue/signal START
 set /kilda/swmanager/blue/signal START
@@ -137,6 +138,7 @@ get /kilda/floodlight/2/state
 get /kilda/floodlightrouter/blue/state
 get /kilda/network/blue/state
 get /kilda/flowhs/blue/state
+get /kilda/flowmonitoring/blue/state
 get /kilda/reroute/blue/state
 get /kilda/connecteddevices/blue/state
 get /kilda/swmanager/blue/state
@@ -159,6 +161,7 @@ get /kilda/floodlight/2/build-version
 get /kilda/floodlightrouter/blue/build-version
 get /kilda/network/blue/build-version
 get /kilda/flowhs/blue/build-version
+get /kilda/flowmonitoring/blue/build-version
 get /kilda/reroute/blue/build-version
 get /kilda/connecteddevices/blue/build-version
 get /kilda/swmanager/blue/build-version
@@ -205,6 +208,7 @@ set /kilda/floodlight/2/build-version green
 set /kilda/floodlightrouter/green/build-version green
 set /kilda/network/green/build-version green
 set /kilda/flowhs/green/build-version green
+set /kilda/flowmonitoring/green/build-version green
 set /kilda/reroute/green/build-version green
 set /kilda/connecteddevices/green/build-version green
 set /kilda/swmanager/green/build-version green
@@ -223,6 +227,7 @@ set /kilda/server42-control/green/build-version green
 set /kilda/floodlight/2/signal START
 set /kilda/floodlightrouter/green/signal START
 set /kilda/flowhs/green/signal START
+set /kilda/flowmonitoring/green/signal START
 set /kilda/reroute/green/signal START
 set /kilda/connecteddevices/green/signal START
 set /kilda/swmanager/green/signal START
@@ -252,6 +257,7 @@ set /kilda/network/green/signal START
 set /kilda/floodlight/1/signal SHUTDOWN
 set /kilda/floodlightrouter/blue/signal SHUTDOWN
 set /kilda/flowhs/blue/signal SHUTDOWN
+set /kilda/flowmonitoring/blue/signal SHUTDOWN
 set /kilda/reroute/blue/signal SHUTDOWN
 set /kilda/connecteddevices/blue/signal SHUTDOWN
 set /kilda/swmanager/blue/signal SHUTDOWN
@@ -271,6 +277,7 @@ get /kilda/floodlight/1/state
 get /kilda/floodlightrouter/blue/state
 get /kilda/network/blue/state
 get /kilda/flowhs/blue/state
+get /kilda/flowmonitoring/blue/state
 get /kilda/reroute/blue/state
 get /kilda/connecteddevices/blue/state
 get /kilda/swmanager/blue/state

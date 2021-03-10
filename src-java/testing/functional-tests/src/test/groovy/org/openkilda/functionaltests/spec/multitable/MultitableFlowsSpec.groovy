@@ -975,12 +975,12 @@ mode with existing flows and hold flows of different table-mode types"() {
 //        }
 
         when: "Delete the flow"
-        northboundV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Flow rules are deleted"
-        Wrappers.wait(RULES_DELETION_TIME) {
+        Wrappers.wait(WAIT_OFFSET) {
             involvedSwitches.each { sw ->
-                northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
+                assert northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
                     def cookie = new Cookie(it.cookie)
                     cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES || !cookie.serviceFlag
                 }.empty

@@ -52,6 +52,12 @@ COPY BUILD/flowhs-storm-topology/build.gradle                   /app/flowhs-stor
 
 
 
+#flowmonitoring
+COPY BUILD/flowmonitoring-storm-topology/libs/*                 /app/flowmonitoring-storm-topology/libs/
+COPY BUILD/flowmonitoring-storm-topology/build.gradle           /app/flowmonitoring-storm-topology/
+
+
+
 #isllatency
 COPY BUILD/isllatency-storm-topology/libs/*                     /app/isllatency-storm-topology/libs/
 COPY BUILD/isllatency-storm-topology/build.gradle               /app/isllatency-storm-topology/

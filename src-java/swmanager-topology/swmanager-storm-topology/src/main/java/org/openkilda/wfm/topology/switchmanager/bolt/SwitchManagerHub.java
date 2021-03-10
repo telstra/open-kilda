@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.switchmanager.bolt;
 
 import org.openkilda.bluegreen.LifecycleEvent;
-import org.openkilda.bluegreen.Signal;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -89,7 +88,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     private transient SwitchSyncService syncService;
     private transient SwitchRuleService switchRuleService;
 
-    private LifecycleEvent differedShutdownEvent;
+    private LifecycleEvent deferredShutdownEvent;
 
     public SwitchManagerHub(HubBolt.Config hubConfig, PersistenceManager persistenceManager,
                             SwitchManagerTopologyConfig topologyConfig,
@@ -188,23 +187,19 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     }
 
     @Override
-    protected void handleLifeCycleEvent(LifecycleEvent event) {
-        if (event.getSignal().equals(Signal.SHUTDOWN)) {
-            if (validateService.deactivate() && syncService.deactivate() && switchRuleService.deactivate()) {
-                emitWithContext(ZOOKEEPER_STREAM_ID, getCurrentTuple(), new Values(event));
-            } else {
-                differedShutdownEvent = event;
-            }
-            active = false;
-        } else if (event.getSignal().equals(Signal.START)) {
-            validateService.activate();
-            syncService.activate();
-            switchRuleService.activate();
-            active = true;
-            emitWithContext(ZOOKEEPER_STREAM_ID, getCurrentTuple(), new Values(event));
-        } else {
-            log.info("Received signal info {}", event.getSignal());
+    protected boolean deactivate(LifecycleEvent event) {
+        if (validateService.deactivate() && syncService.deactivate() && switchRuleService.deactivate()) {
+            return true;
         }
+        deferredShutdownEvent = event;
+        return false;
+    }
+
+    @Override
+    protected void activate() {
+        validateService.activate();
+        syncService.activate();
+        switchRuleService.activate();
     }
 
     @Override
@@ -238,8 +233,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
         if (validateService.isAllOperationsCompleted()
                 && syncService.isAllOperationsCompleted()
                 && switchRuleService.isAllOperationsCompleted()) {
-            getOutput().emit(ZOOKEEPER_STREAM_ID, new Values(differedShutdownEvent, getCommandContext()));
-            differedShutdownEvent = null;
+            getOutput().emit(ZOOKEEPER_STREAM_ID, new Values(deferredShutdownEvent, getCommandContext()));
+            deferredShutdownEvent = null;
         }
     }
 

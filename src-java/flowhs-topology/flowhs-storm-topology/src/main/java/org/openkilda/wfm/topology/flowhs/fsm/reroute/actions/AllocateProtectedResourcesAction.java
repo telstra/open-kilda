@@ -107,6 +107,7 @@ public class AllocateProtectedResourcesAction extends
             stateMachine.setOriginalFlowStatus(null);
 
             stateMachine.saveActionToHistory("Couldn't find non overlapping protected path. Skipped creating it");
+            stateMachine.saveActionToHistory(String.format("The flow status was set to %s", flowStatus));
         } else {
             FlowPathPair oldPaths = FlowPathPair.builder()
                     .forward(tmpFlowCopy.getProtectedForwardPath())

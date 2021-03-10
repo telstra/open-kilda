@@ -48,6 +48,7 @@ import org.openkilda.messaging.nbtopology.request.FlowsDumpRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowLoopsRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowStatusTimestampsRequest;
 import org.openkilda.messaging.nbtopology.request.MeterModifyRequest;
 import org.openkilda.messaging.nbtopology.response.FlowLoopsResponse;
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
@@ -63,6 +64,7 @@ import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
+import org.openkilda.messaging.payload.history.FlowStatusTimestampsEntry;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.FlowMapper;
@@ -73,6 +75,7 @@ import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
+import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
@@ -670,6 +673,30 @@ public class FlowServiceImpl implements FlowService {
                 .thenApply(result -> result.stream()
                         .map(FlowHistoryEntry.class::cast)
                         .collect(Collectors.toList()));
+    }
+
+    @Override
+    public CompletableFuture<FlowHistoryStatusesResponse> getFlowStatuses(String flowId, long timestampFrom,
+                                                                          long timestampTo, int maxCount) {
+        if (maxCount < 1) {
+            throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
+                    ErrorType.PARAMETERS_INVALID, format("Invalid `max_count` argument '%s'.", maxCount),
+                    "`max_count` argument must be positive.");
+        }
+        String correlationId = RequestCorrelationId.getId();
+        GetFlowStatusTimestampsRequest request = GetFlowStatusTimestampsRequest.builder()
+                .flowId(flowId)
+                .timestampFrom(timestampFrom)
+                .timestampTo(timestampTo)
+                .maxCount(maxCount)
+                .build();
+        CommandMessage command = new CommandMessage(request, System.currentTimeMillis(), correlationId);
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, command)
+                .thenApply(result -> result.stream()
+                        .map(FlowStatusTimestampsEntry.class::cast)
+                        .map(flowMapper::toFlowHistoryStatus)
+                        .collect(Collectors.toList()))
+                .thenApply(FlowHistoryStatusesResponse::new);
     }
 
     /**

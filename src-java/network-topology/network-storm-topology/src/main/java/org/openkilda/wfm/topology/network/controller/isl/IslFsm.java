@@ -237,6 +237,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         sendBfdPropertiesUpdate(context.getOutput());
 
         triggerDownFlowReroute(context);
+        sendIslChangedNotification(context.getOutput());
     }
 
     public void inactiveEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -255,6 +256,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         disableAuxiliaryPollMode(context.getOutput());
         sendIslStatusUpdateNotification(context, IslStatus.MOVED);
         triggerAffectedFlowReroute(context);
+        sendIslChangedNotification(context.getOutput());
     }
 
     public void cleanUpResourcesEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -353,6 +355,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private void sendIslRemovedNotification(IIslCarrier carrier) {
         carrier.islRemovedNotification(reference.getSource(), reference);
         carrier.islRemovedNotification(reference.getDest(), reference);
+        carrier.islChangedNotifyFlowMonitor(IslReference.of(reference.getSource()));
     }
 
     private void sendRemoveMultiTable(IIslCarrier carrier) {
@@ -408,6 +411,10 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 reference.getDest().getDatapath(), reference.getDest().getPortNumber(),
                 status);
         context.getOutput().islStatusUpdateNotification(trigger);
+    }
+
+    private void sendIslChangedNotification(IIslCarrier carrier) {
+        carrier.islChangedNotifyFlowMonitor(reference);
     }
 
     /**

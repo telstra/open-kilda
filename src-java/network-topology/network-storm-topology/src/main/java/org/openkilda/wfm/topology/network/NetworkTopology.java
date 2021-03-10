@@ -29,6 +29,7 @@ import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
+import org.openkilda.wfm.topology.network.storm.bolt.FlowMonitoringEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.GrpcEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.GrpcRouter;
 import org.openkilda.wfm.topology.network.storm.bolt.NorthboundEncoder;
@@ -117,6 +118,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         outputStatus(topology);
         outputNorthbound(topology);
         outputGrpc(topology);
+        outputFlowMonitoring(topology);
 
         historyBolt(topology);
 
@@ -405,6 +407,17 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         KafkaBolt<String, Message> output = makeKafkaBolt(kafkaTopics.getGrpcSpeakerTopic(), MessageSerializer.class);
         declareBolt(topology, output, ComponentId.GRPC_OUTPUT.toString())
                 .shuffleGrouping(GrpcEncoder.BOLT_ID);
+    }
+
+    private void outputFlowMonitoring(TopologyBuilder topology) {
+        FlowMonitoringEncoder encoder = new FlowMonitoringEncoder();
+        declareBolt(topology, encoder, FlowMonitoringEncoder.BOLT_ID)
+                .shuffleGrouping(IslHandler.BOLT_ID, IslHandler.STREAM_FLOW_MONITORING_ID);
+
+        KafkaBolt<String, Message> output = makeKafkaBolt(kafkaTopics.getNetworkFlowMonitoringNotifyTopic(),
+                MessageSerializer.class);
+        declareBolt(topology, output, ComponentId.FLOW_MONITORING_OUTPUT.toString())
+                .shuffleGrouping(FlowMonitoringEncoder.BOLT_ID);
     }
 
     private void historyBolt(TopologyBuilder topology) {

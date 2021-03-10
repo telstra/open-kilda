@@ -802,9 +802,12 @@ triggering one more reroute of the current path"
         }
 
         and: "Flow is pingable"
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
+        Wrappers.retry(3, 0) { //Was unstable on Jenkins builds. Fresh env problem?
+            with(northbound.pingFlow(flow.flowId, new PingInput())) {
+                it.forward.pingSuccess
+                it.reverse.pingSuccess
+            }
+            true
         }
 
         cleanup:

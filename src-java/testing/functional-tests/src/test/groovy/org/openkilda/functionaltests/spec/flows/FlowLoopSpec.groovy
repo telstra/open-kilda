@@ -34,7 +34,6 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Unroll
@@ -216,13 +215,14 @@ class FlowLoopSpec extends HealthCheckSpecification {
                          },
                          flowTap        : { FlowRequestV2 fl -> fl.allocateProtectedPath = true }
                  ],
-                 [
-                         flowDescription: "vxlan",
-                         switchPair     : { List<SwitchId> switchIds ->
-                             getSwPairConnectedToTraffGenForVxlanFlow(switchIds)
-                         },
-                         flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
-                 ],
+                 //https://github.com/telstra/open-kilda/issues/4072
+//                 [
+//                         flowDescription: "vxlan",
+//                         switchPair     : { List<SwitchId> switchIds ->
+//                             getSwPairConnectedToTraffGenForVxlanFlow(switchIds)
+//                         },
+//                         flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
+//                 ],
                  [
                          flowDescription: "qinq",
                          switchPair     : { List<SwitchId> switchIds ->
@@ -628,7 +628,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(LOW_PRIORITY)
-    @Ignore("https://github.com/telstra/open-kilda/issues/3960")
     def "Attempt to create the exact same flowLoop twice just reinstalls the rules"() {
         given: "An active multi switch flow with created flowLoop on the src switch"
         def switchPair = topologyHelper.getNeighboringSwitchPair()

@@ -342,8 +342,8 @@ We have confd for managing config/properties files from templates. Confd configs
 5. run: `make update-props` for applying templates
 
 #### Common use cases
-An example, you already have neo4j server, and want to use it instead of dockerized neo4j. 
-You can add neo4j endpoints to confd/vars/main.yaml and create properties template for services which use neo4j:
+An example, you already have orientdb server, and want to use it instead of dockerized orientdb.
+You can add orientdb endpoints to confd/vars/main.yaml and create properties template for services which use orientdb:
 
 confd/conf.d/base-storm-topology.topologies.toml:
 ```
@@ -356,17 +356,22 @@ mode = "0644"
 
 confd/vars/main.yaml:
 ```
-kilda_neo4j_host: "neo4j"
-kilda_neo4j_user: "neo4j"
-kilda_neo4j_password: "temppass"
+kilda_orientdb_hosts: "odb1.pendev,odb2.pendev,odb3.pendev"
+kilda_orientdb_hosts_single: "odb1.pendev"
+kilda_orientdb_user: "kilda"
+kilda_orientdb_password: "kilda"
 ```
 
 confd/templates/base-storm-topology/topology.properties.tmpl
 ```
 ...
-neo4j.uri = bolt://{{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
-neo4j.user = {{ getv "/kilda_neo4j_user" }}
-neo4j.password = {{ getv "/kilda_neo4j_password" }}
+{{if not (exists "/single_orientdb")}}
+orientdb.url=remote:{{ getv "/kilda_orientdb_hosts" }}/{{ getv "/kilda_orientdb_database" }}
+{{else}}
+orientdb.url=remote:{{ getv "/kilda_orientdb_hosts_single" }}/{{ getv "/kilda_orientdb_database" }}
+{{end}}
+orientdb.user = {{ getv "/kilda_orientdb_user" }}
+orientdb.password = {{ getv "/kilda_orientdb_password" }}
 ...
 ```
 

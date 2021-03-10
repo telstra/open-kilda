@@ -13,6 +13,8 @@ import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_TRANSIT_COOKIE
+import static org.openkilda.model.cookie.CookieBase.CookieType.ARP_INPUT_CUSTOMER_TYPE
+import static org.openkilda.model.cookie.CookieBase.CookieType.LLDP_INPUT_CUSTOMER_TYPE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -98,8 +100,8 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         validateFlowAndSwitches(createdFlow)
 
         and: "LLDP meters must be installed"
-        validateLldpMeters(createdFlow, true)
-        validateLldpMeters(createdFlow, false)
+        validateLldpMeters(createdFlow)
+        waitForDevicesInputRules(createdFlow)
 
         when: "Devices send lldp and arp packets on each flow endpoint"
         def srcLldpData = LldpData.buildRandom()
@@ -210,8 +212,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         validateFlowAndSwitches(updatedFlow)
 
         and: "LLDP meters must be installed"
-        validateLldpMeters(updatedFlow, true)
-        validateLldpMeters(updatedFlow, false)
+        validateLldpMeters(updatedFlow)
+        waitForDevicesInputRules(updatedFlow)
 
         when: "Devices send lldp and arp packets on each flow endpoint"
         def srcLldpData = LldpData.buildRandom()
@@ -330,8 +332,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         validateFlowAndSwitches(swappedFlow)
 
         and: "LLDP meters must be installed"
-        validateLldpMeters(swappedFlow, true)
-        validateLldpMeters(swappedFlow, false)
+        validateLldpMeters(swappedFlow)
+        waitForDevicesInputRules(swappedFlow)
 
         when: "Devices send lldp and arp packets on each flow endpoint"
         def srcLldpData = LldpData.buildRandom()
@@ -911,6 +913,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "A flow with enbaled connected devices, #descr"
         flowHelper.addFlow(flow)
+        waitForDevicesInputRules(database.getFlow(flow.id))
 
         when: "Devices send lldp and arp packets on each flow endpoint"
         def srcLldpData = LldpData.buildRandom()
@@ -1106,8 +1109,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         validateFlowAndSwitches(createdFlow)
 
         and: "LLDP meters must be installed"
-        validateLldpMeters(createdFlow, true)
-        validateLldpMeters(createdFlow, false)
+        validateLldpMeters(createdFlow)
+        waitForDevicesInputRules(createdFlow)
 
         when: "Devices send lldp and arp packets on each flow endpoint"
         def srcLldpData = LldpData.buildRandom()
@@ -1200,6 +1203,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def initialDstProps = enableMultiTableIfNeeded(false, swP.dst.dpId)
 
         flowHelperV2.addFlow(flow)
+        waitForDevicesInputRules(database.getFlow(flow.flowId))
 
         when: "Devices send lldp and arp packets on src flow endpoint and match outerVlan only"
         def srcLldpData = LldpData.buildRandom()
@@ -1473,6 +1477,27 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
     }
 
+    private void waitForSrcDevicesInputRules(Flow flow) {
+        def ruleTypes = northbound.getSwitchRules(flow.srcSwitch.switchId).flowEntries.collect { new Cookie(it.cookie).type }
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            assert !flow.detectConnectedDevices.srcArp ^ ruleTypes.contains(ARP_INPUT_CUSTOMER_TYPE)
+            assert !flow.detectConnectedDevices.srcLldp ^ ruleTypes.contains(LLDP_INPUT_CUSTOMER_TYPE)
+        }
+    }
+
+    private void waitForDstDevicesInputRules(Flow flow) {
+        def ruleTypes = northbound.getSwitchRules(flow.destSwitch.switchId).flowEntries.collect { new Cookie(it.cookie).type }
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            assert !flow.detectConnectedDevices.dstArp ^ ruleTypes.contains(ARP_INPUT_CUSTOMER_TYPE)
+            assert !flow.detectConnectedDevices.dstLldp ^ ruleTypes.contains(LLDP_INPUT_CUSTOMER_TYPE)
+        }
+    }
+
+    private void waitForDevicesInputRules(Flow flow) {
+        waitForSrcDevicesInputRules(flow)
+        waitForDstDevicesInputRules(flow)
+    }
+
     //TODO: This is a candidate to be removed from this spec after default meters validation is released
     private void validateLldpMeters(Flow flow, boolean source) {
         def sw = source ? flow.srcSwitch : flow.destSwitch
@@ -1503,6 +1528,11 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         } == switchLldpMeterCount
         assert meters.count { it == createMeterIdForDefaultRule(LLDP_TRANSIT_COOKIE).value } == switchLldpMeterCount
         assert meters.count { it == createMeterIdForDefaultRule(LLDP_INGRESS_COOKIE).value } == switchLldpMeterCount
+    }
+
+    private void validateLldpMeters(Flow flow) {
+        validateLldpMeters(flow, true)
+        validateLldpMeters(flow, false)
     }
 
     private void validateSwitchHasNoFlowRulesAndMeters(SwitchId switchId) {

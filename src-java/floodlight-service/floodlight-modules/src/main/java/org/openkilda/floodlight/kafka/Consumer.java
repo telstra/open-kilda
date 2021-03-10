@@ -63,7 +63,7 @@ public class Consumer implements Runnable, ZooKeeperEventObserver {
     private final Set<Future<?>> tasks = new HashSet<>();
 
     private final ZooKeeperService zkService;
-    private LifecycleEvent deferedShutdownEvent;
+    private LifecycleEvent deferredShutdownEvent;
     private final AtomicBoolean active = new AtomicBoolean(false);
 
     public Consumer(FloodlightModuleContext moduleContext, ExecutorService handlersPool,
@@ -115,9 +115,9 @@ public class Consumer implements Runnable, ZooKeeperEventObserver {
                                 }
                             }
                             tasks.removeAll(toRemove);
-                        } else if (deferedShutdownEvent != null && !active.get()) {
-                            zkService.processLifecycleEvent(deferedShutdownEvent);
-                            deferedShutdownEvent = null;
+                        } else if (deferredShutdownEvent != null && !active.get()) {
+                            zkService.processLifecycleEvent(deferredShutdownEvent);
+                            deferredShutdownEvent = null;
                         }
 
                         ConsumerRecords<String, String> batch = consumer.poll(pollTimeout);
@@ -158,7 +158,7 @@ public class Consumer implements Runnable, ZooKeeperEventObserver {
                 logger.info("Component is already in inactive state, skipping SHUTDOWN signal");
                 return;
             }
-            deferedShutdownEvent = event;
+            deferredShutdownEvent = event;
             active.set(false);
         } else {
             logger.error("Unsupported signal received: {}", event.getSignal());

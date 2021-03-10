@@ -3,6 +3,7 @@ import { HttpClient } from "@angular/common/http";
 import { environment } from "../../../environments/environment";
 import { Observable, Subject, BehaviorSubject } from "rxjs";
 import { catchError } from "rxjs/operators";
+import * as moment from 'moment';
 
 
 @Injectable({
@@ -541,7 +542,7 @@ export class DygraphService {
     }
     return { labels: labels, data: maxtrixArray, color: color };
   }
-
+  
   computeFlowGraphDataForISL(data, startDate, endDate, timezone,direction) {
     let maxtrixArray = [];
     var labels =["Date"];
@@ -573,6 +574,7 @@ export class DygraphService {
           var dataValues = typeof data[j] !== "undefined" ? data[j].dps : null;
           
           var metric = typeof data[j] !== "undefined" ? data[j].metric : "";
+            //metric = metric + "(switchid=" + data[j].tags.switchid + ", direction="+ direction +", flowid="+data[j].tags['flowid']+")";
             metric = metric + "(flowid="+data[j].tags['flowid']+")";
             labels.push(metric);
             var colorCode = this.getColorCode(j, color);
@@ -587,8 +589,7 @@ export class DygraphService {
                 cookiesChecked[data[j].tags['flowid']] = [];
               cookiesChecked[data[j].tags['flowid']][data[j].tags.switchid]=colorCode;
               color.push(colorCode);
-              }
-              
+              }              
             }
             if(dataValues){
               timestampArray = timestampArray.concat(Object.keys(dataValues));

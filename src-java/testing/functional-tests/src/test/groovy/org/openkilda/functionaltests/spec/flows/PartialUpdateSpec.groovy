@@ -328,13 +328,18 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         assumeTrue("Unable to find three active switches", allSwitches.size() >= 3)
         def srcSwitch = allSwitches[0]
         def dstSwitch = allSwitches[1]
+        def newDstSwitch = allSwitches[2]
 
         and: "A vlan flow"
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch, false)
+        //pick a port that is free both on current dst switch and on future updated dst switch
+        def port = topology.getAllowedPortsForSwitch(dstSwitch)
+                .intersect(topology.getAllowedPortsForSwitch(newDstSwitch)).first()
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch, false).tap {
+            it.destination.portNumber = port
+        }
         flowHelperV2.addFlow(flow)
 
         when: "Update the flow: switch id on the dst endpoint"
-        def newDstSwitch = allSwitches[2]
         flowHelperV2.partialUpdate(flow.flowId, new FlowPatchV2().tap {
             destination = new FlowPatchEndpoint().tap {
                 switchId = newDstSwitch.dpId
@@ -627,7 +632,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         def egressCookie = flowInfoFromDb.reversePath.cookie.value
         def newPortNumber = (topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
             it.dpId == flow.source.switchId
-        }) - flow.source.portNumber).last()
+        }) - flow.source.portNumber - flow.destination.portNumber).last()
         def newVlanId = flow.source.vlanId - 1
         flowHelperV2.partialUpdate(flow.flowId, new FlowPatchV2().tap {
             source = new FlowPatchEndpoint().tap {

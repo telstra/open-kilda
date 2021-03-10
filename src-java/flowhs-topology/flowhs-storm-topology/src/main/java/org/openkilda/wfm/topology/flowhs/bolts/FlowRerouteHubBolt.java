@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.bolts;
 
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_HISTORY_BOLT;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_NB_RESPONSE_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_PING_SENDER;
@@ -23,7 +24,6 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_SPE
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.bluegreen.LifecycleEvent;
-import org.openkilda.bluegreen.Signal;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.messaging.Message;
@@ -31,6 +31,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.flow.UpdateFlowInfo;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.pce.AvailableNetworkFactory;
@@ -68,7 +69,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     private transient FlowRerouteService service;
     private String currentKey;
 
-    private LifecycleEvent deferedShutdownEvent;
+    private LifecycleEvent deferredShutdownEvent;
 
     public FlowRerouteHubBolt(FlowRerouteConfig config, PersistenceManager persistenceManager,
                               PathComputerConfig pathComputerConfig, FlowResourcesConfig flowResourcesConfig) {
@@ -94,19 +95,17 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     }
 
     @Override
-    protected void handleLifeCycleEvent(LifecycleEvent event) {
-        if (event.getSignal().equals(Signal.SHUTDOWN)) {
-            if (service.deactivate()) {
-                emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
-            } else {
-                deferedShutdownEvent = event;
-            }
-        } else if (event.getSignal().equals(Signal.START)) {
-            service.activate();
-            emit(ZkStreams.ZK.toString(), getCurrentTuple(), new Values(event, getCommandContext()));
-        } else {
-            log.info("Received signal info {}", event.getSignal());
+    protected boolean deactivate(LifecycleEvent event) {
+        if (service.deactivate()) {
+            return true;
         }
+        deferredShutdownEvent = event;
+        return false;
+    }
+
+    @Override
+    protected void activate() {
+        service.activate();
     }
 
     @Override
@@ -132,8 +131,8 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
 
     @Override
     public void sendInactive() {
-        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferedShutdownEvent, getCommandContext()));
-        deferedShutdownEvent = null;
+        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferredShutdownEvent, getCommandContext()));
+        deferredShutdownEvent = null;
     }
 
     @Override
@@ -160,6 +159,16 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
         Message message = new CommandMessage(payload, getCommandContext().getCreateTime(),
                 getCommandContext().getCorrelationId());
         emitWithContext(Stream.HUB_TO_PING_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
+    }
+
+    @Override
+    public void sendNotifyFlowMonitor(UpdateFlowInfo flowInfo) {
+        String correlationId = getCommandContext().getCorrelationId();
+        Message message = new InfoMessage(flowInfo, System.currentTimeMillis(), correlationId);
+
+        emitWithContext(HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(flowInfo.getFlowId(), message));
+
     }
 
     @Override
@@ -190,6 +199,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
         declarer.declareStream(HUB_TO_PING_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(ZkStreams.ZK.toString(),
                 new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
+        declarer.declareStream(HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
     }
 
     @Getter
