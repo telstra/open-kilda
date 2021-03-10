@@ -17,8 +17,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.FlowPathStatus;
-import org.openkilda.model.FlowStatus;
 import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.exception.RecoverableException;
@@ -87,27 +85,8 @@ public class AllocateProtectedResourcesAction extends
                 || primaryReversePath != null
                 && flowPathBuilder.arePathsOverlapped(potentialPath.getReverse(), primaryReversePath);
         if (overlappingProtectedPathFound) {
-            // Update the status here as no reroute is going to be performed for the protected.
-            FlowPath protectedForwardPath = tmpFlowCopy.getProtectedForwardPath();
-            if (protectedForwardPath != null) {
-                protectedForwardPath.setStatus(FlowPathStatus.INACTIVE);
-            }
-
-            FlowPath protectedReversePath = tmpFlowCopy.getProtectedReversePath();
-            if (protectedReversePath != null) {
-                protectedReversePath.setStatus(FlowPathStatus.INACTIVE);
-            }
-
-            FlowStatus flowStatus = tmpFlowCopy.computeFlowStatus();
-            if (flowStatus != tmpFlowCopy.getStatus()) {
-                dashboardLogger.onFlowStatusUpdate(flowId, flowStatus);
-                flowRepository.updateStatus(flowId, flowStatus);
-            }
-            stateMachine.setNewFlowStatus(flowStatus);
-            stateMachine.setOriginalFlowStatus(null);
-
             stateMachine.saveActionToHistory("Couldn't find non overlapping protected path. Skipped creating it");
-            stateMachine.saveActionToHistory(String.format("The flow status was set to %s", flowStatus));
+            stateMachine.fireNoPathFound("Couldn't find non overlapping protected path");
         } else {
             FlowPathPair oldPaths = FlowPathPair.builder()
                     .forward(tmpFlowCopy.getProtectedForwardPath())

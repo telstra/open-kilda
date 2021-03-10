@@ -474,7 +474,6 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/4038")
     def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute(no path)"() {
         given: "Two switches with 2 diverse paths at least"
         def switchPair = topologyHelper.switchPairs.find {
@@ -510,7 +509,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
                 status == FlowState.DEGRADED.toString()
                 flowStatusDetails.mainFlowPathStatus == "Up"
                 flowStatusDetails.protectedFlowPathStatus == "Down"
-                statusInfo.startsWith("Not enough bandwidth or no path found. Failed to find path with requested bandwidth=$flow.maximumBandwidth")
+                statusInfo == "Couldn't find non overlapping protected path"
             }
         }
 
@@ -955,7 +954,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             verifyAll(northbound.getFlow(flow.flowId)) {
                 status == FlowState.DEGRADED.toString()
-                statusInfo == "Reroute is unsuccessful. Couldn't find new path(s)"
+                statusInfo == "Couldn't find non overlapping protected path"
             }
             assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
         }

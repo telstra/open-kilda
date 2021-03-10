@@ -31,10 +31,13 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final FlowOperationsDashboardLogger dashboardLogger;
+    private final boolean primaryPathNotFound;
 
-    public OnNoPathFoundAction(PersistenceManager persistenceManager, FlowOperationsDashboardLogger dashboardLogger) {
+    public OnNoPathFoundAction(PersistenceManager persistenceManager, FlowOperationsDashboardLogger dashboardLogger,
+                               boolean primaryPathNotFound) {
         super(persistenceManager);
         this.dashboardLogger = dashboardLogger;
+        this.primaryPathNotFound = primaryPathNotFound;
     }
 
     @Override
@@ -46,7 +49,8 @@ public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, St
             stateMachine.setOriginalFlowStatus(null);
 
             Flow flow = getFlow(flowId);
-            if (stateMachine.isReroutePrimary() && stateMachine.getNewPrimaryForwardPath() == null
+            if (primaryPathNotFound && stateMachine.isReroutePrimary()
+                    && stateMachine.getNewPrimaryForwardPath() == null
                     && stateMachine.getNewPrimaryReversePath() == null) {
                 if (flow.getForwardPathId() == null && flow.getReversePathId() == null) {
                     log.debug("Skip marking flow path statuses as inactive: flow {} doesn't have main paths", flowId);
@@ -62,7 +66,8 @@ public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, St
                 }
             }
 
-            if (stateMachine.isRerouteProtected() && stateMachine.getNewProtectedForwardPath() == null
+            if (stateMachine.isRerouteProtected()
+                    && stateMachine.getNewProtectedForwardPath() == null
                     && stateMachine.getNewProtectedReversePath() == null) {
                 if (flow.getProtectedForwardPathId() == null && flow.getProtectedReversePathId() == null) {
                     log.debug("Skip marking flow path statuses as inactive: flow {} doesn't have protected paths",
@@ -88,6 +93,7 @@ public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, St
             log.debug("Setting the flow status of {} to {}", flowId, newFlowStatus);
             dashboardLogger.onFlowStatusUpdate(flowId, newFlowStatus);
             flow.setStatus(newFlowStatus);
+            flow.setStatusInfo(stateMachine.getErrorReason());
             stateMachine.setNewFlowStatus(newFlowStatus);
             return newFlowStatus;
         });
