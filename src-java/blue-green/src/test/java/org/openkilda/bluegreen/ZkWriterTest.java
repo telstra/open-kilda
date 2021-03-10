@@ -35,7 +35,7 @@ public class ZkWriterTest {
         doCallRealMethod().when(writer).validateZNodes();
         doCallRealMethod().when(writer).validateNodes();
         writer.validateZNodes();
-        verify(writer, Mockito.times(3)).ensureZNode(any());
+        verify(writer, Mockito.times(4)).ensureZNode(any());
     }
 
     @Test

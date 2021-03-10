@@ -130,6 +130,8 @@ public abstract class ZkClient implements Watcher {
 
             }
             subscribeNodes();
+        } else {
+            log.info("Skip zk nodes validation for component {} with run id {}", serviceName, id);
         }
     }
 

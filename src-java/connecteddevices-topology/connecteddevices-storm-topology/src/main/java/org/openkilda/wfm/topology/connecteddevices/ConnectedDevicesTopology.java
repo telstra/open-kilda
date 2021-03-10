@@ -73,7 +73,7 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
 
     private void createZkBolt(TopologyBuilder builder) {
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString());
+                getZookeeperConfig().getConnectString(), getBoltInstancesCount(PACKET_BOLT_ID));
         declareBolt(builder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(PACKET_BOLT_ID, ZkStreams.ZK.toString());
     }

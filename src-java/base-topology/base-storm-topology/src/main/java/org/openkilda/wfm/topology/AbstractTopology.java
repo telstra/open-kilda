@@ -438,30 +438,61 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     }
 
     protected BoltDeclarer declareBolt(TopologyBuilder builder, IRichBolt bolt, String boltId) {
-        Integer boltParallelism = null;
-        Integer boltNumTasks = null;
-        if (topologyDef != null) {
-            BoltDef boltDef = topologyDef.getBoltDef(boltId);
-            if (boltDef != null) {
-                boltParallelism = boltDef.getParallelism();
-                if (boltDef.getNumTasks() > 0) {
-                    boltNumTasks = boltDef.getNumTasks();
-                }
-            }
-        }
-        if (boltParallelism == null) {
-            if (topologyDef != null && topologyDef.getConfig() != null) {
-                boltParallelism = (Integer) topologyDef.getConfig().get(BOLT_PARALLELISM_TOPOLOGY_DEF_KEY);
-            }
-            if (boltParallelism == null) {
-                boltParallelism = getTopologyParallelism().orElse(null);
-            }
-        }
-        BoltDeclarer boltDeclarer = builder.setBolt(boltId, bolt, boltParallelism);
+        BoltDeclarer boltDeclarer = builder.setBolt(boltId, bolt, getBoltParallelism(boltId));
+        Integer boltNumTasks = getBoltNumTasks(boltId);
         if (boltNumTasks != null) {
             boltDeclarer.setNumTasks(boltNumTasks);
         }
         return boltDeclarer;
+    }
+
+    @VisibleForTesting
+    Integer getBoltParallelism(String boltId) {
+        if (topologyDef != null) {
+            BoltDef boltDef = topologyDef.getBoltDef(boltId);
+            if (boltDef != null) {
+                return boltDef.getParallelism();
+            }
+            if (topologyDef.getConfig() != null && topologyDef.getConfig()
+                    .containsKey(BOLT_PARALLELISM_TOPOLOGY_DEF_KEY)) {
+                return (Integer) topologyDef.getConfig().get(BOLT_PARALLELISM_TOPOLOGY_DEF_KEY);
+            }
+        }
+        return getTopologyParallelism().orElse(null);
+    }
+
+    @VisibleForTesting
+    Integer getBoltNumTasks(String boltId) {
+        if (topologyDef != null) {
+            BoltDef boltDef = topologyDef.getBoltDef(boltId);
+            if (boltDef != null && boltDef.getNumTasks() > 0) {
+                return boltDef.getNumTasks();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Counts how many instances of bolt will be run in storm.
+     */
+    @VisibleForTesting
+    int getBoltInstancesCount(String boltId) {
+        Integer boltNumTasks = getBoltNumTasks(boltId);
+        if (boltNumTasks != null) {
+            return boltNumTasks;
+        }
+        return Optional.ofNullable(getBoltParallelism(boltId)).orElse(1);
+    }
+
+    /**
+     * Counts how many instances of bolts will be run in storm.
+     */
+    protected int getBoltInstancesCount(String... boltIds) {
+        int count = 0;
+        for (String boltId : boltIds) {
+            count += getBoltInstancesCount(boltId);
+        }
+        return count;
     }
 
     protected ZookeeperConfig getZookeeperConfig() {
