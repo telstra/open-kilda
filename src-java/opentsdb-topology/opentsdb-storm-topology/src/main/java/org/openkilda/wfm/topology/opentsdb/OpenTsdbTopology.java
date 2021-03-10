@@ -24,7 +24,7 @@ import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.opentsdb.OpenTsdbTopologyConfig.OpenTsdbConfig;
 import org.openkilda.wfm.topology.opentsdb.bolts.DatapointParseBolt;
-import org.openkilda.wfm.topology.opentsdb.bolts.OpenTSDBFilterBolt;
+import org.openkilda.wfm.topology.opentsdb.bolts.OpenTsdbFilterBolt;
 import org.openkilda.wfm.topology.utils.InfoDataTranslator;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -51,8 +51,9 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
     @VisibleForTesting
     static final String OTSDB_SPOUT_ID = "kilda.otsdb-spout";
     private static final String OTSDB_BOLT_ID = "otsdb-bolt";
-    private static final String OTSDB_FILTER_BOLT_ID = OpenTSDBFilterBolt.class.getSimpleName();
+    private static final String OTSDB_FILTER_BOLT_ID = OpenTsdbFilterBolt.class.getSimpleName();
     private static final String OTSDB_PARSE_BOLT_ID = DatapointParseBolt.class.getSimpleName();
+    public static final String DATAPOINT_STREAM = "datapoints";
 
     @Override
     public StormTopology createTopology() {
@@ -78,7 +79,7 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
                 .shuffleGrouping(OTSDB_SPOUT_ID)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
 
-        declareBolt(tb, new OpenTSDBFilterBolt(), OTSDB_FILTER_BOLT_ID)
+        declareBolt(tb, new OpenTsdbFilterBolt(ZooKeeperSpout.SPOUT_ID), OTSDB_FILTER_BOLT_ID)
                 .fieldsGrouping(OTSDB_PARSE_BOLT_ID, new Fields("hash"));
 
         OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
