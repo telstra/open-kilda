@@ -324,7 +324,6 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
     @Tidy
     @Unroll
-    @Ignore("https://github.com/telstra/open-kilda/issues/4034")
     def "System is able to switch #flowDescription flows to protected paths"() {
         given: "Two active not neighboring switches with three diverse paths at least"
         def initialIsls = northbound.getAllLinks()
