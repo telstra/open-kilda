@@ -37,7 +37,9 @@ public class RequestedFlowMapperTest {
     public static final Integer DST_PORT = 2;
     public static final int SRC_VLAN = 3;
     public static final int DST_VLAN = 4;
-    public static final Integer PRIORITY = 5;
+    public static final int SRC_INNER_VLAN = 5;
+    public static final int DST_INNER_VLAN = 6;
+    public static final Integer PRIORITY = 7;
     public static final String DESCRIPTION = "description";
     public static final int BANDWIDTH = 1000;
     public static final Long MAX_LATENCY = 200L;
@@ -48,9 +50,11 @@ public class RequestedFlowMapperTest {
             .srcSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
             .srcPort(SRC_PORT)
             .srcVlan(SRC_VLAN)
+            .srcInnerVlan(SRC_INNER_VLAN)
             .destSwitch(Switch.builder().switchId(DST_SWITCH_ID).build())
             .destPort(DST_PORT)
             .destVlan(DST_VLAN)
+            .destInnerVlan(DST_INNER_VLAN)
             .priority(PRIORITY)
             .description(DESCRIPTION)
             .bandwidth(BANDWIDTH)
@@ -74,9 +78,11 @@ public class RequestedFlowMapperTest {
         assertEquals(SRC_SWITCH_ID, flowRequest.getSource().getSwitchId());
         assertEquals(SRC_PORT, flowRequest.getSource().getPortNumber());
         assertEquals(SRC_VLAN, flowRequest.getSource().getOuterVlanId());
+        assertEquals(SRC_INNER_VLAN, flowRequest.getSource().getInnerVlanId());
         assertEquals(DST_SWITCH_ID, flowRequest.getDestination().getSwitchId());
         assertEquals(DST_PORT, flowRequest.getDestination().getPortNumber());
         assertEquals(DST_VLAN, flowRequest.getDestination().getOuterVlanId());
+        assertEquals(DST_INNER_VLAN, flowRequest.getDestination().getInnerVlanId());
         assertEquals(PRIORITY, flowRequest.getPriority());
         assertEquals(DESCRIPTION, flowRequest.getDescription());
         assertEquals(BANDWIDTH, flowRequest.getBandwidth());
