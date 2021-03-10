@@ -62,6 +62,7 @@ net.floodlightcontroller.topology.TopologyManager.maxPathsToCompute=3
 #org.openkilda.floodlight.KildaCore.command-processor-workers-limit = 32
 org.openkilda.floodlight.KildaCore.command-processor-deferred-requests-limit = {{ getv "/kilda_floodlight_command_processor_deferred_requests_limit" }}
 #org.openkilda.floodlight.KildaCore.command-processor-idle-workers-keep-alive-seconds = 300
+org.openkilda.floodlight.KildaCore.role = stats
 org.openkilda.floodlight.KafkaChannel.environment-naming-prefix={{ getv "/kilda_environment_naming_prefix" }}
 org.openkilda.floodlight.KafkaChannel.bootstrap-servers={{ getv "/kilda_kafka_hosts" }}
 org.openkilda.floodlight.KafkaChannel.zookeeper-connect-string={{ getv "/kilda_zookeeper_hosts"}}/{{ getv "/kilda_zookeeper_state_root" }}
