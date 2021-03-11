@@ -106,6 +106,7 @@ import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.InstallTransitLoopFlow;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.ReinstallServer42FlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
@@ -455,7 +456,16 @@ class RecordHandler implements Runnable {
             Set<Long> removedFlows = new HashSet<>(processDeleteFlow(command, dpid));
 
             for (Long removedFlow : removedFlows) {
-                Long installedFlow = processInstallDefaultFlowByCookie(switchId, removedFlow);
+                Long installedFlow;
+
+                if (request instanceof ReinstallServer42FlowForSwitchManagerRequest) {
+                    ReinstallServer42FlowForSwitchManagerRequest server42Request =
+                            (ReinstallServer42FlowForSwitchManagerRequest) request;
+                    installedFlow = processInstallServer42Rule(switchId, cookie, server42Request.getServer42Port(),
+                            server42Request.getServer42Vlan(), server42Request.getServer42MacAddress());
+                } else {
+                    installedFlow = processInstallDefaultFlowByCookie(switchId, removedFlow);
+                }
 
                 InfoMessage response = new InfoMessage(new FlowReinstallResponse(removedFlow, installedFlow),
                         System.currentTimeMillis(), message.getCorrelationId());
@@ -475,24 +485,39 @@ class RecordHandler implements Runnable {
     }
 
     private void processInstallServer42Rule(InstallServer42Flow command) throws SwitchOperationException {
-        ISwitchManager switchManager = context.getSwitchManager();
-        DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
         long cookie = command.getCookie();
+        int server42Port;
 
-        if (cookie == SERVER_42_OUTPUT_VLAN_COOKIE) {
-            switchManager.installServer42OutputVlanFlow(
-                    dpid, command.getOutputPort(), command.getServer42Vlan(), command.getServer42MacAddress());
-        } else if (cookie == SERVER_42_OUTPUT_VXLAN_COOKIE) {
-            switchManager.installServer42OutputVxlanFlow(
-                    dpid, command.getOutputPort(), command.getServer42Vlan(), command.getServer42MacAddress());
+        if (cookie == SERVER_42_OUTPUT_VLAN_COOKIE || cookie == SERVER_42_OUTPUT_VXLAN_COOKIE) {
+            server42Port = command.getOutputPort();
         } else if (new Cookie(cookie).getType() == CookieType.SERVER_42_INPUT) {
-            PortColourCookie portColourCookie = new PortColourCookie(cookie);
-            int customerPort = portColourCookie.getPortNumber();
-            switchManager.installServer42InputFlow(
-                    dpid, command.getInputPort(), customerPort, command.getServer42MacAddress());
+            server42Port = command.getInputPort();
         } else {
             logger.warn("Skipping the installation of unexpected server 42 switch rule {} for switch {}",
                     Long.toHexString(cookie), command.getSwitchId());
+            return;
+        }
+        processInstallServer42Rule(command.getSwitchId(), command.getCookie(), server42Port,
+                command.getServer42Vlan(), command.getServer42MacAddress());
+    }
+
+    private Long processInstallServer42Rule(SwitchId switchId, long cookie, int server42Port, int server42Vlan,
+                                            MacAddress server42MacAddress) throws SwitchOperationException {
+        ISwitchManager switchManager = context.getSwitchManager();
+        DatapathId dpid = DatapathId.of(switchId.toLong());
+
+        if (cookie == SERVER_42_OUTPUT_VLAN_COOKIE) {
+            return switchManager.installServer42OutputVlanFlow(dpid, server42Port, server42Vlan, server42MacAddress);
+        } else if (cookie == SERVER_42_OUTPUT_VXLAN_COOKIE) {
+            return switchManager.installServer42OutputVxlanFlow(dpid, server42Port, server42Vlan, server42MacAddress);
+        } else if (new Cookie(cookie).getType() == CookieType.SERVER_42_INPUT) {
+            PortColourCookie portColourCookie = new PortColourCookie(cookie);
+            int customerPort = portColourCookie.getPortNumber();
+            return switchManager.installServer42InputFlow(dpid, server42Port, customerPort, server42MacAddress);
+        } else {
+            logger.warn("Skipping the installation of unexpected server 42 switch rule {} for switch {}",
+                    Long.toHexString(cookie), switchId);
+            return null;
         }
     }
 

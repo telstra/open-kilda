@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.openkilda.model.cookie.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.command.flow.BaseFlow;
@@ -31,6 +32,8 @@ import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
+import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.ReinstallServer42FlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
@@ -41,6 +44,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
+import org.openkilda.model.MacAddress;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
@@ -57,6 +61,7 @@ import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 
+import com.google.common.collect.Lists;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -75,6 +80,9 @@ public class CommandBuilderImplTest {
     private static final SwitchId SWITCH_ID_A = new SwitchId("00:10");
     private static final SwitchId SWITCH_ID_B = new SwitchId("00:20");
     private static final SwitchId SWITCH_ID_C = new SwitchId("00:30");
+    private static final MacAddress SERVER42_MAC_ADDRESS = new MacAddress("42:42:42:42:42:42");
+    private static final int SERVER42_PORT = 1;
+    private static final int SERVER42_VLAN = 2;
 
     private static CommandBuilderImpl commandBuilder;
 
@@ -164,7 +172,12 @@ public class CommandBuilderImplTest {
             when(transitVlanRepository.findByPathId(eq(forwardPath.getPathId()), any()))
                     .thenReturn(singleton(transitVlanEntity));
             when(switchPropertiesRepository.findBySwitchId(any()))
-                    .thenReturn(Optional.ofNullable(SwitchProperties.builder().build()));
+                    .thenReturn(Optional.ofNullable(SwitchProperties.builder()
+                            .server42FlowRtt(true)
+                            .server42MacAddress(SERVER42_MAC_ADDRESS)
+                            .server42Port(SERVER42_PORT)
+                            .server42Vlan(SERVER42_VLAN)
+                            .build()));
 
             return forwardPath;
         }
@@ -278,6 +291,31 @@ public class CommandBuilderImplTest {
         assertEquals(Integer.valueOf(inPort), criteria.getInPort());
         assertEquals(Integer.valueOf(tunnelId), criteria.getEncapsulationId());
         assertEquals(Integer.valueOf(outPort), criteria.getOutPort());
+    }
+
+    @Test
+    public void reinstallDefaultRuleTest() {
+        List<ReinstallDefaultFlowForSwitchManagerRequest> commands = commandBuilder.buildCommandsToReinstallRules(
+                SWITCH_ID_A, Lists.newArrayList(ROUND_TRIP_LATENCY_RULE_COOKIE));
+
+        assertEquals(1, commands.size());
+        assertEquals(ROUND_TRIP_LATENCY_RULE_COOKIE, commands.get(0).getCookie());
+        assertEquals(SWITCH_ID_A, commands.get(0).getSwitchId());
+    }
+
+    @Test
+    public void reinstallServer42RuleTest() {
+        List<ReinstallDefaultFlowForSwitchManagerRequest> commands = commandBuilder.buildCommandsToReinstallRules(
+                SWITCH_ID_A, Lists.newArrayList(Cookie.SERVER_42_OUTPUT_VLAN_COOKIE));
+
+        assertEquals(1, commands.size());
+        assertEquals(ReinstallServer42FlowForSwitchManagerRequest.class, commands.get(0).getClass());
+        ReinstallServer42FlowForSwitchManagerRequest server42Command =
+                (ReinstallServer42FlowForSwitchManagerRequest) commands.get(0);
+
+        assertEquals(SERVER42_MAC_ADDRESS, server42Command.getServer42MacAddress());
+        assertEquals(SERVER42_PORT, server42Command.getServer42Port());
+        assertEquals(SERVER42_VLAN, server42Command.getServer42Vlan());
     }
 
     private FlowEntry buildFlowEntry(Long cookie, String inPort, String inVlan, String outPort,

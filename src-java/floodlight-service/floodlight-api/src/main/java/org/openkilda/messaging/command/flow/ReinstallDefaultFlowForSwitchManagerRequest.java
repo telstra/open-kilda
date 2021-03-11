@@ -20,10 +20,10 @@ import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Value;
 
-@Value
+@Data
 @Builder
 @EqualsAndHashCode(callSuper = false)
 public class ReinstallDefaultFlowForSwitchManagerRequest extends CommandData {
