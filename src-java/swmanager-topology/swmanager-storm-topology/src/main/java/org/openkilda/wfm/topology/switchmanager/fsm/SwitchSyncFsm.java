@@ -26,6 +26,7 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchS
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.RULES_SYNCHRONIZED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.TIMEOUT;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_INSTALL_RULES;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_REINSTALL_RULES;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_REMOVE_METERS;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_REMOVE_RULES;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.FINISHED;
@@ -88,6 +89,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     private List<Long> removeDefaultRules = new ArrayList<>();
 
     private List<BaseFlow> missingRules = emptyList();
+    private List<ReinstallDefaultFlowForSwitchManagerRequest> misconfiguredRules = emptyList();
     private List<RemoveFlow> excessRules = emptyList();
     private List<Long> excessMeters = emptyList();
 
@@ -129,7 +131,12 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         builder.externalTransition().from(COMPUTE_INSTALL_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(COMPUTE_INSTALL_RULES).to(COMPUTE_REMOVE_RULES).on(NEXT)
+        builder.externalTransition().from(COMPUTE_INSTALL_RULES).to(COMPUTE_REINSTALL_RULES).on(NEXT)
+                .callMethod("computeReinstallRules");
+        builder.externalTransition().from(COMPUTE_REINSTALL_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
+                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
+
+        builder.externalTransition().from(COMPUTE_REINSTALL_RULES).to(COMPUTE_REMOVE_RULES).on(NEXT)
                 .callMethod("computeRemoveRules");
         builder.externalTransition().from(COMPUTE_REMOVE_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
@@ -182,6 +189,19 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
             log.info("Compute install rules (switch={}, key={})", switchId, key);
             try {
                 missingRules = commandBuilder.buildCommandsToSyncMissingRules(switchId, installRules);
+            } catch (Exception e) {
+                sendException(e);
+            }
+        }
+    }
+
+    protected void computeReinstallRules(SwitchSyncState from, SwitchSyncState to,
+                                         SwitchSyncEvent event, Object context) {
+        List<Long> reinstallRules = getReinstallDefaultRules();
+        if (!reinstallRules.isEmpty()) {
+            log.info("Compute reinstall default rules (switch={}, key={})", switchId, key);
+            try {
+                misconfiguredRules = commandBuilder.buildCommandsToReinstallRules(switchId, reinstallRules);
             } catch (Exception e) {
                 sendException(e);
             }
@@ -246,13 +266,12 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
             }
         }
 
-        List<Long> reinstallRules = getReinstallDefaultRules();
-        if (!reinstallRules.isEmpty()) {
+        if (!misconfiguredRules.isEmpty()) {
             log.info("Request to reinstall default switch rules has been sent (switch={}, key={})", switchId, key);
-            reinstallDefaultRulesPendingResponsesCount = reinstallRules.size();
+            reinstallDefaultRulesPendingResponsesCount = misconfiguredRules.size();
 
-            for (Long rule : reinstallRules) {
-                carrier.sendCommandToSpeaker(key, new ReinstallDefaultFlowForSwitchManagerRequest(switchId, rule));
+            for (ReinstallDefaultFlowForSwitchManagerRequest command : misconfiguredRules) {
+                carrier.sendCommandToSpeaker(key, command);
             }
         }
 
@@ -396,6 +415,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     public enum SwitchSyncState {
         INITIALIZED,
         COMPUTE_INSTALL_RULES,
+        COMPUTE_REINSTALL_RULES,
         COMPUTE_REMOVE_RULES,
         COMPUTE_REMOVE_METERS,
         RULES_COMMANDS_SEND,

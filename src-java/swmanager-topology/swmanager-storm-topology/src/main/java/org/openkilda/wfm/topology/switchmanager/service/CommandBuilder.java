@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.switchmanager.service;
 
 import org.openkilda.messaging.command.flow.BaseFlow;
+import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.model.SwitchId;
@@ -29,4 +30,7 @@ public interface CommandBuilder {
     List<RemoveFlow> buildCommandsToRemoveExcessRules(SwitchId switchId,
                                                       List<FlowEntry> flows,
                                                       List<Long> excessRulesCookies);
+
+    List<ReinstallDefaultFlowForSwitchManagerRequest> buildCommandsToReinstallRules(
+            SwitchId switchId, List<Long> reinstallRulesCookies);
 }
