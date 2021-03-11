@@ -61,7 +61,9 @@ public enum ActivityType {
     DELETE_SWITCH(40L),
     UPDATE_ISL_BFD_FLAG(41L),
     UPDATE_SW_PORT_PROPERTIES(42L),
-    UPDATE_SWITCH_LOCATION(43L);
+    UPDATE_SWITCH_LOCATION(43L),
+    UPDATE_ISL_BFD_PROPERTIES(44L),
+    DELETE_ISL_BFD(45L);
     private Long id;
     private ActivityTypeEntity activityTypeEntity;
 
