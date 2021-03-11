@@ -958,6 +958,7 @@ public class NetworkIslServiceTest {
         if (!shouldResurrect) {
             verify(carrier).islRemovedNotification(eq(alphaEnd), eq(reference));
             verify(carrier).islRemovedNotification(eq(zetaEnd), eq(reference));
+            verify(carrier).islChangedNotifyFlowMonitor(any(IslReference.class));
         }
         verifyNoMoreInteractions(carrier);
     }
