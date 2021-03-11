@@ -64,7 +64,7 @@ public class FlowPathBuilderTest {
             return Optional.of(SwitchProperties.builder().switchObj(sw).multiTable(false)
                     .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES).build());
         });
-        builder = new FlowPathBuilder(switchRepository, switchPropertiesRepository, kildaConfigurationRepository);
+        builder = new FlowPathBuilder(switchPropertiesRepository, kildaConfigurationRepository);
     }
 
     @Test
