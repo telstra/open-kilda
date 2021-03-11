@@ -1,0 +1,5 @@
+[template]
+src = "flowmonitoring-topology/flowmonitoring-topology.tmpl"
+dest = "src-java/flowmonitoring-topology/flowmonitoring-storm-topology/src/main/resources/flowmonitoring-topology.yaml"
+keys = [ "/" ]
+mode = "0644"

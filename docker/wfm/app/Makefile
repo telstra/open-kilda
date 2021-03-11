@@ -4,9 +4,6 @@ TOPOLOGY := network flowhs flowmonitoring stats isllatency opentsdb portstate nb
 BLUE_TOPOLOGY := network flowhs flowmonitoring stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control
 GREEN_TOPOLOGY := network flowhs flowmonitoring stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control
 
-TOPOLOGY_JAR := target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar
-TOPOLOGY_CONFIG := topology.properties
-
 STORM := /opt/storm/bin/storm
 
 status_location := topology-state
@@ -36,7 +33,7 @@ $(status_location)/$(prefix)%.alive:
 	touch $@
 
 $(deploy_targets) $(deploy_blue_targets) $(deploy_green_targets):
-	./deploy_single_topology.sh "$(deploy_topology_name)" "${TOPOLOGY_CONFIG}" "$(prefix)" "$(deployment_mode)"
+	./deploy_single_topology.sh "$(deploy_topology_name)" "$(prefix)" "$(deployment_mode)"
 
 $(kill_targets) $(kill_blue_targets) $(kill_green_targets): alive-list
 	if [ -e $(status_location)/$(prefix)$(kill_topology_name)$(deployment_mode).alive ]; \
