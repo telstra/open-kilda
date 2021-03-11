@@ -174,6 +174,8 @@ public abstract class IConstants {
         public static final String GET_SWITCH_PORT_PROPERTY = VERSION_TWO + "/switches/{switch_id}"
                 + "/ports/{port}/properties";
         public static final String UPDATE_SWITCH_LOCATION = VERSION_TWO + "/switches/{switch_id}";
+        public static final String GET_LINK_BFD_PROPERTIES = VERSION_TWO 
+                + "/links/{src-switch}_{src-port}/{dst-switch}_{dst-port}/bfd";
     }
     
     public final class OpenTsDbUrl {
@@ -299,11 +301,15 @@ public abstract class IConstants {
         
         public static final String SW_SWITCH_METERS = "sw_switch_meters";
         
-        public static final String SW_SWITCH_LOCATION_UPDATE = "sw_switch_location_update";
-
         public static final String SAML_SETTING = "saml_setting";
         
+        public static final String SW_SWITCH_LOCATION_UPDATE = "sw_switch_location_update";
+        
         public static final String TOPOLOGY_WORLD_MAP_VIEW = "topology_world_map_view";
+		
+        public static final String ISL_UPDATE_BFD_PROPERTIES = "isl_update_bfd_properties";
+        
+        public static final String ISL_DELETE_BFD = "isl_delete_bfd";
     }
 
     public final class Settings {
