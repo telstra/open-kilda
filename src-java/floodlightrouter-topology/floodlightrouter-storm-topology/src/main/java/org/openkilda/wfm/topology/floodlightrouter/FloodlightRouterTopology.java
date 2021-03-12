@@ -37,6 +37,7 @@ import org.openkilda.wfm.topology.floodlightrouter.bolts.SwitchMonitorBolt;
 import joptsimple.internal.Strings;
 import lombok.Value;
 import org.apache.storm.generated.StormTopology;
+import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
@@ -282,7 +283,9 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                         SpeakerToNetworkProxyBolt.BOLT_ID, SpeakerToNetworkProxyBolt.STREAM_CONNECT_NOTIFICATION_ID,
                         switchIdGrouping);
 
-        output.getKafkaGenericOutput().shuffleGrouping(SwitchMonitorBolt.BOLT_ID, SwitchMonitorBolt.STREAM_NETWORK_ID);
+        Fields keyGrouping = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_KEY);
+        output.getKafkaGenericOutput()
+                .fieldsGrouping(SwitchMonitorBolt.BOLT_ID, SwitchMonitorBolt.STREAM_NETWORK_ID, keyGrouping);
     }
 
     private void clock(TopologyBuilder topology) {
