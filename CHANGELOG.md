@@ -1,5 +1,41 @@
 # Changelog
 
+## v1.88.0 (12/03/2021)
+
+### Bug Fixes:
+-  [#4096](https://github.com/telstra/open-kilda/pull/4096) Set active=false for DatapointParseBolt by default [**storm-topologies**]
+-  [#4099](https://github.com/telstra/open-kilda/pull/4099) Fix wrong protected path status in a case of failed reroute and degraded flow (Issue: [#4038](https://github.com/telstra/open-kilda/issues/4038)) [**storm-topologies**] 
+-  [#4110](https://github.com/telstra/open-kilda/pull/4110) Added inner vlan into RequestedFlowMapper (Issue: [#4106](https://github.com/telstra/open-kilda/issues/4106)) [**storm-topologies**]
+-  [#4114](https://github.com/telstra/open-kilda/pull/4114) Fix serialization of persistent entity in FlowFetcher [**storm-topologies**]
+-  [#4053](https://github.com/telstra/open-kilda/pull/4053) Move reroute commands emitting out of transaction (Issue: [#4034](https://github.com/telstra/open-kilda/issues/4034)) [**storm-topologies**]
+-  [#4074](https://github.com/telstra/open-kilda/pull/4074) Fight port vs switch dump events race condition (Issue: [#3990](https://github.com/telstra/open-kilda/issues/3990)) [**storm-topologies**]
+
+### Improvements:
+-  [#4111](https://github.com/telstra/open-kilda/pull/4111) Send inactive only on fsm terminated for flow create [**storm-topologies**]
+-  [#4116](https://github.com/telstra/open-kilda/pull/4116) Remove stale option [**configuration**]
+-  [#4054](https://github.com/telstra/open-kilda/pull/4054) Do not create isl on isl fail events [**storm-topologies**]
+-  [#4052](https://github.com/telstra/open-kilda/pull/4052) Added expected state for storm components into ZooKeeper [**storm-topologies**] 
+-  [#4063](https://github.com/telstra/open-kilda/pull/4063) Improve performance of H&S flow operations: improve parallelism (Issue: [#3605](https://github.com/telstra/open-kilda/issues/3605)) [**storm-topologies**]
+-  [#4010](https://github.com/telstra/open-kilda/pull/4010) Accept topology definition file as an argument on topology submission. [**storm-topologies**]
+-  [#3946](https://github.com/telstra/open-kilda/pull/3946) Move flow endpoints multitable flag to flow path level (Issues: [#3341](https://github.com/telstra/open-kilda/issues/3341) [#3940](https://github.com/telstra/open-kilda/issues/3940) [#3941](https://github.com/telstra/open-kilda/issues/3941)) [**storm-topologies**] 
+-  [#4078](https://github.com/telstra/open-kilda/pull/4078) Added expected state for Floodlight (Issue: [#4052](https://github.com/telstra/open-kilda/issues/4052)) [**floodlight**] 
+
+### Other changes:
+-  [#4102](https://github.com/telstra/open-kilda/pull/4102) Updated gitignore file issue in kildagui to fix untracked files (Issue: [#4094](https://github.com/telstra/open-kilda/issues/4094)) [**gui**]
+-  [#4103](https://github.com/telstra/open-kilda/pull/4103) Update the issue reference which blocks ContentionV2Spec tests for parallel delete requests [**tests**]
+-  [#4108](https://github.com/telstra/open-kilda/pull/4108) Increase wait in ThrottlingRerouteSpec [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.87.0...v1.88.0).
+
+### Affected Components:
+ping, nbworker, isllatency, reroute, orientdb, connected, swmanager, portstate, router, network, stats-router, gui, stats, flow-hs, otsdb, fl
+
+### Upgrade notes:
+If you have an older version of Kilda installed, then you must migrate the data stored in OrientDB
+before you deploy and start this version. Follow the [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
 ## v1.87.0 (10/03/2021)
 
 ### Features:
@@ -392,8 +428,6 @@ For the complete list of changes, check out [the commit log](https://github.com/
 ### Affected Components:
 nb, nbworker, network
 
-### Upgrade notes:
-
 ---
 
 ## v1.75.0 (27/10/2020)
@@ -659,8 +693,6 @@ For the complete list of changes, check out [the commit log](https://github.com/
 ### Affected Components:
 flow-hs, gui, reroute
 
-### Upgrade notes:
-
 ---
 
 ## v1.69.0 (13/08/2020)
@@ -925,8 +957,6 @@ For the complete list of changes, check out [the commit log](https://github.com/
 
 ### Affected Components:
 grpc, router, otsdb, connected, isllatency, stats, flow-hs, nbworker, stats-router, portstate, reroute, ping, swmanager, network, fl, nb
-
-### Upgrade notes:
 
 ---
 
@@ -1247,8 +1277,6 @@ For the complete list of changes, check out [the commit log](https://github.com/
 
 ### Affected Components:
 flow-hs, network, grpc, fl, nbworker, stats, nb
-
-### Upgrade notes:
 
 ---
 
