@@ -6,6 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -93,6 +94,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     @Tags(VIRTUAL)
     def "System takes into account default multi table value while connecting a new switch"() {
         assumeTrue("Multi table is not enabled in kilda configuration", useMultitable)
@@ -113,9 +115,9 @@ class ConfigurationSpec extends HealthCheckSpecification {
 
         when: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
         def blockData = switchHelper.knockoutSwitch(sw, RW, true)
-        Wrappers.retry(2, 1) {
-            Wrappers.silent {
-                isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
+        Wrappers.retry(2, 1) { //https://github.com/telstra/open-kilda/issues/4130
+            Wrappers.silent { isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) } }
+            Wrappers.wait(WAIT_OFFSET) {
                 def links = northbound.getAllLinks()
                 isls.each {
                     assert !islUtils.getIslInfo(links, it).present
@@ -133,11 +135,13 @@ class ConfigurationSpec extends HealthCheckSpecification {
 
         and: "New switch connects"
         switchHelper.reviveSwitch(sw, blockData, true)
+        def switchIsActivated = true
 
         then: "Switch is added with switch property according to the kilda configuration"
         northbound.getSwitchProperties(sw.dpId).multiTable == newMultiTableValue
 
         cleanup: "Revert system to origin state"
+        blockData && !switchIsActivated && switchHelper.reviveSwitch(sw, blockData, true)
         northbound.updateKildaConfiguration(initConf)
         northbound.updateSwitchProperties(sw.dpId, northbound.getSwitchProperties(sw.dpId).tap {
             multiTable = initConf.useMultiTable
