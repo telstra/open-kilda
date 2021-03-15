@@ -90,22 +90,23 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
     @Override
     public void emitCalculateFlowLatencyRequest(String flowId, FlowDirection direction,
                                                 List<Link> flowPath, Long maxLatency, Long maxLatencyTier2) {
-        emit(getCurrentTuple(), new Values(flowId, direction, flowPath, maxLatency, maxLatencyTier2));
+        emit(getCurrentTuple(), new Values(flowId, direction, flowPath, maxLatency, maxLatencyTier2,
+                getCommandContext()));
     }
 
     @Override
     public void emitCheckFlowLatencyRequest(String flowId, FlowDirection direction, long latency,
                                             Long maxLatency, Long maxLatencyTier2) {
         emit(ACTION_STREAM_ID.name(), getCurrentTuple(), new Values(flowId, direction, latency,
-                maxLatency, maxLatencyTier2));
+                maxLatency, maxLatencyTier2, getCommandContext()));
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields(FLOW_ID_FIELD, FLOW_DIRECTION_FIELD,
-                FLOW_PATH_FIELD, MAX_LATENCY_FIELD, MAX_LATENCY_TIER_2_FIELD));
+                FLOW_PATH_FIELD, MAX_LATENCY_FIELD, MAX_LATENCY_TIER_2_FIELD, FIELD_ID_CONTEXT));
         declarer.declareStream(ACTION_STREAM_ID.name(), new Fields(FLOW_ID_FIELD, FLOW_DIRECTION_FIELD,
-                LATENCY_FIELD, MAX_LATENCY_FIELD, MAX_LATENCY_TIER_2_FIELD));
+                LATENCY_FIELD, MAX_LATENCY_FIELD, MAX_LATENCY_TIER_2_FIELD, FIELD_ID_CONTEXT));
         declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
                 ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
