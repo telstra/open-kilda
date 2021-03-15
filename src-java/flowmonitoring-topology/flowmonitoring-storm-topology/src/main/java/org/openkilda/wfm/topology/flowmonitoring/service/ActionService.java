@@ -19,6 +19,8 @@ import org.openkilda.server42.messaging.FlowDirection;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.concurrent.TimeUnit;
+
 @Slf4j
 public class ActionService {
 
@@ -27,9 +29,9 @@ public class ActionService {
      */
     public void checkFlowSla(String flowId, FlowDirection direction, long latency,
                              Long maxLatency, Long maxLatencyTier2) {
-        if (maxLatency != null && latency > maxLatency) {
-            long latencyMs = latency / 1000;
-            long maxLatencyMs = maxLatency / 1000;
+        if (maxLatency != null && maxLatency > 0 && latency > maxLatency) {
+            long latencyMs = TimeUnit.NANOSECONDS.toMillis(latency);
+            long maxLatencyMs = TimeUnit.NANOSECONDS.toMillis(maxLatency);
             log.warn("{} path for flow '{}' violates latency SLA {}/{} ms",
                     direction.name(), flowId, latencyMs, maxLatencyMs);
         }
