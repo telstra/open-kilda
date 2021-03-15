@@ -5,8 +5,6 @@ config:
 
 # spout definitions
 spouts:
-  - id: "coordinator.spout"
-    parallelism: 1
   - id: "zookeeper.spout"
     parallelism: 1
 
@@ -14,9 +12,9 @@ spouts:
 bolts:
   - id: "zookeeper.bolt"
     parallelism: 1
-  - id: "tick.bolt"
+  - id: "TICK_BOLT"
     parallelism: 1
-  - id: "flow.cache.bolt"
+  - id: "FLOW_CACHE_BOLT"
     parallelism: 1
-  - id: "isl.cache.bolt"
+  - id: "ISL_CACHE_BOLT"
     parallelism: 1
