@@ -18,17 +18,17 @@ package org.openkilda.wfm.topology.switchmanager.fsm;
 import static java.util.Collections.emptyList;
 import static org.apache.storm.shade.org.apache.commons.collections.ListUtils.union;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.ERROR;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.EXCESS_RULES_REMOVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.METERS_REMOVED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.MISCONFIGURED_RULES_REINSTALLED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.MISSING_RULES_INSTALLED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.NEXT;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.RULES_INSTALLED;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.RULES_REINSTALLED;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.RULES_REMOVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.RULES_SYNCHRONIZED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.TIMEOUT;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_INSTALL_RULES;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_REINSTALL_RULES;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_REMOVE_METERS;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_REMOVE_RULES;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_EXCESS_METERS;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_EXCESS_RULES;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_MISCONFIGURED_RULES;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_MISSING_RULES;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.FINISHED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.FINISHED_WITH_ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.INITIALIZED;
@@ -82,11 +82,11 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     private final SwitchValidateRequest request;
     private final SwitchManagerCarrier carrier;
     private final CommandBuilder commandBuilder;
-    private SwitchId switchId;
-    private ValidationResult validationResult;
-    private List<Long> installRules;
-    private List<Long> removeFlowRules;
-    private List<Long> removeDefaultRules = new ArrayList<>();
+    private final SwitchId switchId;
+    private final ValidationResult validationResult;
+    private List<Long> installedRulesCookies;
+    private List<Long> removedFlowRulesCookies;
+    private List<Long> removedDefaultRulesCookies = new ArrayList<>();
 
     private List<BaseFlow> missingRules = emptyList();
     private List<ReinstallDefaultFlowForSwitchManagerRequest> misconfiguredRules = emptyList();
@@ -126,32 +126,34 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                         ValidationResult.class);
 
         builder.onEntry(INITIALIZED).callMethod("initialized");
-        builder.externalTransition().from(INITIALIZED).to(COMPUTE_INSTALL_RULES).on(NEXT)
-                .callMethod("computeInstallRules");
-        builder.externalTransition().from(COMPUTE_INSTALL_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
+        builder.externalTransition().from(INITIALIZED).to(COMPUTE_MISSING_RULES).on(NEXT)
+                .callMethod("computeMissingRules");
+        builder.externalTransition().from(COMPUTE_MISSING_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(COMPUTE_INSTALL_RULES).to(COMPUTE_REINSTALL_RULES).on(NEXT)
-                .callMethod("computeReinstallRules");
-        builder.externalTransition().from(COMPUTE_REINSTALL_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
+        builder.externalTransition().from(COMPUTE_MISSING_RULES).to(COMPUTE_MISCONFIGURED_RULES).on(NEXT)
+                .callMethod("computeMisconfiguredRules");
+        builder.externalTransition().from(COMPUTE_MISCONFIGURED_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(COMPUTE_REINSTALL_RULES).to(COMPUTE_REMOVE_RULES).on(NEXT)
-                .callMethod("computeRemoveRules");
-        builder.externalTransition().from(COMPUTE_REMOVE_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
+        builder.externalTransition().from(COMPUTE_MISCONFIGURED_RULES).to(COMPUTE_EXCESS_RULES).on(NEXT)
+                .callMethod("computeExcessRules");
+        builder.externalTransition().from(COMPUTE_EXCESS_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(COMPUTE_REMOVE_RULES).to(COMPUTE_REMOVE_METERS).on(NEXT)
-                .callMethod("computeRemoveMeters");
-        builder.externalTransition().from(COMPUTE_REMOVE_METERS).to(FINISHED_WITH_ERROR).on(ERROR)
+        builder.externalTransition().from(COMPUTE_EXCESS_RULES).to(COMPUTE_EXCESS_METERS).on(NEXT)
+                .callMethod("computeExcessMeters");
+        builder.externalTransition().from(COMPUTE_EXCESS_METERS).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(COMPUTE_REMOVE_METERS).to(RULES_COMMANDS_SEND).on(NEXT)
+        builder.externalTransition().from(COMPUTE_EXCESS_METERS).to(RULES_COMMANDS_SEND).on(NEXT)
                 .callMethod("sendRulesCommands");
-        builder.internalTransition().within(RULES_COMMANDS_SEND).on(RULES_INSTALLED).callMethod("ruleInstalled");
-        builder.internalTransition().within(RULES_COMMANDS_SEND).on(RULES_REMOVED).callMethod("ruleRemoved");
-        builder.internalTransition().within(RULES_COMMANDS_SEND).on(RULES_REINSTALLED)
-                .callMethod("defaultRuleReinstalled");
+        builder.internalTransition().within(RULES_COMMANDS_SEND).on(MISSING_RULES_INSTALLED)
+                .callMethod("missingRuleInstalled");
+        builder.internalTransition().within(RULES_COMMANDS_SEND).on(EXCESS_RULES_REMOVED)
+                .callMethod("excessRuleRemoved");
+        builder.internalTransition().within(RULES_COMMANDS_SEND).on(MISCONFIGURED_RULES_REINSTALLED)
+                .callMethod("misconfiguredRuleReinstalled");
 
         builder.externalTransition().from(RULES_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(TIMEOUT)
                 .callMethod("commandsProcessingFailedByTimeout");
@@ -181,22 +183,22 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         log.info("The switch sync process for {} has been started (key={})", switchId, key);
     }
 
-    protected void computeInstallRules(SwitchSyncState from, SwitchSyncState to,
+    protected void computeMissingRules(SwitchSyncState from, SwitchSyncState to,
                                        SwitchSyncEvent event, Object context) {
-        installRules = new ArrayList<>(validationResult.getValidateRulesResult().getMissingRules());
+        installedRulesCookies = new ArrayList<>(validationResult.getValidateRulesResult().getMissingRules());
 
-        if (!installRules.isEmpty()) {
+        if (!installedRulesCookies.isEmpty()) {
             log.info("Compute install rules (switch={}, key={})", switchId, key);
             try {
-                missingRules = commandBuilder.buildCommandsToSyncMissingRules(switchId, installRules);
+                missingRules = commandBuilder.buildCommandsToSyncMissingRules(switchId, installedRulesCookies);
             } catch (Exception e) {
                 sendException(e);
             }
         }
     }
 
-    protected void computeReinstallRules(SwitchSyncState from, SwitchSyncState to,
-                                         SwitchSyncEvent event, Object context) {
+    protected void computeMisconfiguredRules(SwitchSyncState from, SwitchSyncState to,
+                                             SwitchSyncEvent event, Object context) {
         List<Long> reinstallRules = getReinstallDefaultRules();
         if (!reinstallRules.isEmpty()) {
             log.info("Compute reinstall default rules (switch={}, key={})", switchId, key);
@@ -208,22 +210,22 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         }
     }
 
-    protected void computeRemoveRules(SwitchSyncState from, SwitchSyncState to,
+    protected void computeExcessRules(SwitchSyncState from, SwitchSyncState to,
                                       SwitchSyncEvent event, Object context) {
-        removeFlowRules = new ArrayList<>(validationResult.getValidateRulesResult().getExcessRules());
+        removedFlowRulesCookies = new ArrayList<>(validationResult.getValidateRulesResult().getExcessRules());
 
-        if (request.isRemoveExcess() && !removeFlowRules.isEmpty()) {
+        if (request.isRemoveExcess() && !removedFlowRulesCookies.isEmpty()) {
             log.info("Compute remove rules (switch={}, key={})", switchId, key);
             try {
                 excessRules = commandBuilder.buildCommandsToRemoveExcessRules(
-                        switchId, validationResult.getFlowEntries(), removeFlowRules);
+                        switchId, validationResult.getFlowEntries(), removedFlowRulesCookies);
             } catch (Exception e) {
                 sendException(e);
             }
         }
     }
 
-    protected void computeRemoveMeters(SwitchSyncState from, SwitchSyncState to,
+    protected void computeExcessMeters(SwitchSyncState from, SwitchSyncState to,
                                        SwitchSyncEvent event, Object context) {
         if (request.isRemoveExcess() && validationResult.isProcessMeters()) {
             ValidateMetersResult validateMetersResult = validationResult.getValidateMetersResult();
@@ -242,7 +244,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     }
 
     protected void sendRulesCommands(SwitchSyncState from, SwitchSyncState to,
-                                SwitchSyncEvent event, Object context) {
+                                     SwitchSyncEvent event, Object context) {
         if (missingRules.isEmpty() && excessRules.isEmpty()) {
             log.info("Nothing to do with rules (switch={}, key={})", switchId, key);
             fire(NEXT);
@@ -280,10 +282,9 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     private List<Long> getReinstallDefaultRules() {
         ValidateRulesResult validateRulesResult = validationResult.getValidateRulesResult();
-        List<Long> reinstallRules = validateRulesResult.getMisconfiguredRules().stream()
+        return validateRulesResult.getMisconfiguredRules().stream()
                 .filter(Cookie::isDefaultRule)
                 .collect(Collectors.toList());
-        return reinstallRules;
     }
 
     protected void sendMetersCommands(SwitchSyncState from, SwitchSyncState to,
@@ -301,33 +302,33 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         }
     }
 
-    protected void ruleInstalled(SwitchSyncState from, SwitchSyncState to,
-                                 SwitchSyncEvent event, Object context) {
+    protected void missingRuleInstalled(SwitchSyncState from, SwitchSyncState to,
+                                        SwitchSyncEvent event, Object context) {
         log.info("Switch rule installed (switch={}, key={})", switchId, key);
         missingRulesPendingResponsesCount--;
         continueIfRulesSynchronized();
     }
 
-    protected void ruleRemoved(SwitchSyncState from, SwitchSyncState to,
-                               SwitchSyncEvent event, Object context) {
+    protected void excessRuleRemoved(SwitchSyncState from, SwitchSyncState to,
+                                     SwitchSyncEvent event, Object context) {
         log.info("Switch rule removed (switch={}, key={})", switchId, key);
         excessRulesPendingResponsesCount--;
         continueIfRulesSynchronized();
     }
 
-    protected void defaultRuleReinstalled(SwitchSyncState from, SwitchSyncState to,
-                                          SwitchSyncEvent event, Object context) {
+    protected void misconfiguredRuleReinstalled(SwitchSyncState from, SwitchSyncState to,
+                                                SwitchSyncEvent event, Object context) {
         log.info("Default switch rule reinstalled (switch={}, key={})", switchId, key);
         FlowReinstallResponse response = (FlowReinstallResponse) context;
 
         Long removedRule = response.getRemovedRule();
-        if (removedRule != null && !removeDefaultRules.contains(removedRule)) {
-            removeDefaultRules.add(removedRule);
+        if (removedRule != null && !removedDefaultRulesCookies.contains(removedRule)) {
+            removedDefaultRulesCookies.add(removedRule);
         }
 
         Long installedRule = response.getInstalledRule();
-        if (installedRule != null && !installRules.contains(installedRule)) {
-            installRules.add(installedRule);
+        if (installedRule != null && !installedRulesCookies.contains(installedRule)) {
+            installedRulesCookies.add(installedRule);
         }
 
         reinstallDefaultRulesPendingResponsesCount--;
@@ -374,8 +375,9 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                 validateRulesResult.getMisconfiguredRules(),
                 validateRulesResult.getProperRules(),
                 validateRulesResult.getExcessRules(),
-                installRules,
-                request.isRemoveExcess() ? union(removeFlowRules, removeDefaultRules) : removeDefaultRules);
+                installedRulesCookies,
+                request.isRemoveExcess() ? union(removedFlowRulesCookies, removedDefaultRulesCookies)
+                        : removedDefaultRulesCookies);
 
         MetersSyncEntry metersEntry = null;
         if (validationResult.isProcessMeters()) {
@@ -414,10 +416,10 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     public enum SwitchSyncState {
         INITIALIZED,
-        COMPUTE_INSTALL_RULES,
-        COMPUTE_REINSTALL_RULES,
-        COMPUTE_REMOVE_RULES,
-        COMPUTE_REMOVE_METERS,
+        COMPUTE_MISSING_RULES,
+        COMPUTE_MISCONFIGURED_RULES,
+        COMPUTE_EXCESS_RULES,
+        COMPUTE_EXCESS_METERS,
         RULES_COMMANDS_SEND,
         METERS_COMMANDS_SEND,
         FINISHED_WITH_ERROR,
@@ -426,13 +428,12 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     public enum SwitchSyncEvent {
         NEXT,
-        RULES_INSTALLED,
-        RULES_REMOVED,
-        RULES_REINSTALLED,
+        MISSING_RULES_INSTALLED,
+        EXCESS_RULES_REMOVED,
+        MISCONFIGURED_RULES_REINSTALLED,
         RULES_SYNCHRONIZED,
         METERS_REMOVED,
         TIMEOUT,
-        ERROR,
-        FINISH
+        ERROR
     }
 }

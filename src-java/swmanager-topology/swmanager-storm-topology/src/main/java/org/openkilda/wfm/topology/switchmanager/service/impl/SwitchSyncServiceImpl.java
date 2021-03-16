@@ -75,7 +75,7 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
             return;
         }
 
-        fsm.fire(SwitchSyncEvent.RULES_INSTALLED);
+        fsm.fire(SwitchSyncEvent.MISSING_RULES_INSTALLED);
         process(fsm);
     }
 
@@ -87,7 +87,7 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
             return;
         }
 
-        fsm.fire(SwitchSyncEvent.RULES_REMOVED);
+        fsm.fire(SwitchSyncEvent.EXCESS_RULES_REMOVED);
         process(fsm);
     }
 
@@ -99,7 +99,7 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
             return;
         }
 
-        fsm.fire(SwitchSyncEvent.RULES_REINSTALLED, response);
+        fsm.fire(SwitchSyncEvent.MISCONFIGURED_RULES_REINSTALLED, response);
         process(fsm);
     }
 
