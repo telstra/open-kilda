@@ -26,9 +26,24 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
+import java.util.UUID;
+
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class DeserializationErrorMessage extends ErrorMessage implements DeserializationError {
+
+    /**
+     * Create {@link DeserializationErrorMessage} instance using data from deserialization exception.
+     */
+    public static DeserializationErrorMessage createFromException(
+            String topic, Class<?> baseClass, String rawData, Exception error) {
+        String errorMessage = String.format(
+                "Failed to deserialize message in kafka-topic \"%s\" using base class %s: %s",
+                topic, baseClass.getName(), error.getMessage());
+        return new DeserializationErrorMessage(
+                new ErrorData(ErrorType.INTERNAL_ERROR, errorMessage, rawData),
+                System.currentTimeMillis(), UUID.randomUUID().toString());
+    }
 
     @JsonCreator
     public DeserializationErrorMessage(@JsonProperty(PAYLOAD) final ErrorData data,

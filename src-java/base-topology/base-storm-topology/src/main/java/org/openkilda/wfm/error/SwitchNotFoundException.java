@@ -17,12 +17,18 @@ package org.openkilda.wfm.error;
 
 import org.openkilda.model.SwitchId;
 
+import lombok.Getter;
+
 public class SwitchNotFoundException extends Exception {
+    @Getter
+    private final SwitchId switchId;
+
     public SwitchNotFoundException(SwitchId switchId) {
-        super(String.format("Switch %s not found.", switchId));
+        this(switchId, String.format("Switch %s not found.", switchId));
     }
 
-    protected SwitchNotFoundException(String message) {
+    protected SwitchNotFoundException(SwitchId switchId, String message) {
         super(message);
+        this.switchId = switchId;
     }
 }

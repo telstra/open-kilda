@@ -17,6 +17,10 @@ dependencies {
     runtimeClasspath project(':kilda-persistence-orientdb')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
 
+    implementation 'org.mapstruct:mapstruct'
+    implementation 'org.mapstruct:mapstruct-processor'
+    annotationProcessor 'org.mapstruct:mapstruct-processor'
+
     compileOnly('org.apache.storm:storm-core')
     testImplementation('org.apache.storm:storm-core')
 

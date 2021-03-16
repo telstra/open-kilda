@@ -31,7 +31,6 @@ import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSo
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -67,7 +66,7 @@ public class FermaBfdSessionRepository extends FermaGenericRepository<BfdSession
     public Optional<BfdSession> findBySwitchIdAndPort(SwitchId switchId, int port) {
         return makeOneOrZeroResults(framedGraph()
                 .traverse(g -> makeLogicalPortTraverse(g, switchId, port))
-                .toListExplicit(BfdSessionFrame.class));
+                .toListExplicit(BfdSessionFrame.class)).map(BfdSession::new);
     }
 
     @Override
@@ -75,7 +74,7 @@ public class FermaBfdSessionRepository extends FermaGenericRepository<BfdSession
         return makeOneOrZeroResults(framedGraph()
                 .traverse(g -> makeGenericTraverse(g, switchId)
                         .has(BfdSessionFrame.PHYSICAL_PORT_PROPERTY, physicalPort))
-                .toListExplicit(BfdSessionFrame.class));
+                .toListExplicit(BfdSessionFrame.class)).map(BfdSession::new);
     }
 
     @Override
@@ -94,15 +93,6 @@ public class FermaBfdSessionRepository extends FermaGenericRepository<BfdSession
     @Override
     protected BfdSessionData doDetach(BfdSession entity, BfdSessionFrame frame) {
         return BfdSession.BfdSessionCloner.INSTANCE.deepCopy(frame);
-    }
-
-    private Optional<BfdSession> makeOneOrZeroResults(List<? extends BfdSessionFrame> results) {
-        if (results.size() > 1) {
-            throw new PersistenceException(String.format("Found more than 1 BfdSession entity: %s", results));
-        }
-        return results.isEmpty()
-                ? Optional.empty()
-                : Optional.of(results.get(0)).map(BfdSession::new);
     }
 
     private GraphTraversal<Vertex, Vertex> makeLogicalPortTraverse(

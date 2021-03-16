@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,13 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.error;
+package org.openkilda.persistence.repositories;
 
-import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.model.Speaker;
 
-public class SwitchReferenceLookupException extends SwitchNotFoundException {
-    public SwitchReferenceLookupException(SwitchId switchId, String reason) {
-        super(switchId, String.format("Unable to make switch reference for %s - %s", switchId, reason));
-    }
+import java.util.Optional;
+
+public interface SpeakerRepository extends Repository<Speaker> {
+    Optional<Speaker> findByName(String name);
 }

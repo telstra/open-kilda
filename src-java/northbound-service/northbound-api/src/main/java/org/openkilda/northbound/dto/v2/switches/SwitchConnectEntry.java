@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,13 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.error;
+package org.openkilda.northbound.dto.v2.switches;
 
-import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.error.SwitchNotFoundException;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Builder;
+import lombok.Value;
 
-public class SwitchReferenceLookupException extends SwitchNotFoundException {
-    public SwitchReferenceLookupException(SwitchId switchId, String reason) {
-        super(switchId, String.format("Unable to make switch reference for %s - %s", switchId, reason));
-    }
+@Value
+@Builder
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class SwitchConnectEntry {
+    String regionName;
+    String connectMode;
+
+    boolean master;
+    String connectedAt;
+
+    String switchAddress;
+    String speakerAddress;
 }

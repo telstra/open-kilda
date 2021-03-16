@@ -10,6 +10,7 @@ Input signals:
 * port-del
 * port-up
 * port-down
+* connections-update
 
 Output signals:
 * online
@@ -30,6 +31,7 @@ endlegend
 
 INIT --> SYNC : online
 INIT --> PENDING : history
+INIT : connections-update / save connections in DB
 
 PENDING : enter / setup port workers
 PENDING --> SYNC : online / init ports from history
@@ -39,9 +41,11 @@ SYNC : enter / init attempts count from config
 SYNC : enter / save speaker data
 SYNC : enter / create or update DB record
 SYNC : enter / save features
+SYNC : enter / save connections in DB
 SYNC : sync-response [!sync-ended] / process sync response
 SYNC : sync-error [!sync-ended] / process error response
 SYNC : sync-timeout [!sync-ended] / process timeout
+SYNC : connections-update / save connections in DB
 SYNC --> SETUP : sync-ended
 SYNC --> OFFLINE : offline
 
@@ -61,12 +65,15 @@ ONLINE : port-add / emit port-up/down
 ONLINE : port-del / kill port FSM
 ONLINE : port-up / proxy
 ONLINE : port-down / proxy
+ONLINE : connections-update / save connections in DB
 ONLINE : online / update ports status
 ONLINE --> OFFLINE : offline
 
 OFFLINE : enter / update status in DB
+OFFLINE : enter / save connections in DB
 OFFLINE : enter / emit offline for portAll()
 OFFLINE : enter / emit switch changed notification
+OFFLINE : connections-update / save connections in DB
 OFFLINE --> SYNC : online
 OFFLINE --> DELETED: switch-remove / kill ports FSM
 DELETED -> [*]
