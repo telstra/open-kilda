@@ -75,7 +75,12 @@ subprojects {
             annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
             testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
 
-            implementation 'org.slf4j:slf4j-api:1.7.30'
+            implementation('org.slf4j:slf4j-api'){
+                version {
+                    // Limited to 1.7.x by slf4j-impl provided by Storm. Can't be upgraded to 1.8 or higher.
+                    strictly '1.7.30'
+                }
+            }
             testRuntimeOnly 'org.slf4j:slf4j-simple:1.7.30'
             implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.10.0'
             testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl:2.10.0'
