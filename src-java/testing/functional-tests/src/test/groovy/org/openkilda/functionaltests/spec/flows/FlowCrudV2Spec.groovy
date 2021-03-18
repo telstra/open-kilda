@@ -853,6 +853,19 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
             }
         }
 
+        def srcProps = northbound.getSwitchProperties(swPair.src.dpId)
+        def dstProps = northbound.getSwitchProperties(swPair.dst.dpId)
+        def endpointName = "source"
+
+        def swWithoutVxlan = swPair.src
+        def encapsTypesWithoutVxlan = srcProps.supportedTransitEncapsulation.collect {it.toString().toUpperCase()}
+
+        if (srcProps.supportedTransitEncapsulation.contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())) {
+            swWithoutVxlan = swPair.dst
+            encapsTypesWithoutVxlan = dstProps.supportedTransitEncapsulation.collect {it.toString().toUpperCase()}
+            endpointName = "destination"
+        }
+
         when: "Create a flow with not supported encapsulation type on the switches"
         def flow = flowHelperV2.randomFlow(swPair)
         flow.ignoreBandwidth = true
@@ -862,13 +875,12 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.NOT_FOUND
-        //TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
+        exc.statusCode == HttpStatus.BAD_REQUEST
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == "Not enough bandwidth or no path found. " +
-                "Failed to find path with requested bandwidth= ignored: Switch $swPair.src.dpId" +
-                " doesn't have links with enough bandwidth"
+        errorDetails.errorDescription == "Flow's $endpointName endpoint $swWithoutVxlan.dpId doesn't support " +
+                "requested encapsulation type $FlowEncapsulationType.VXLAN. Choose one of the supported encapsulation " +
+                "types $encapsTypesWithoutVxlan or update switch properties and add needed encapsulation type."
 
         cleanup:
         !exc && flowHelperV2.deleteFlow(flow.flowId)

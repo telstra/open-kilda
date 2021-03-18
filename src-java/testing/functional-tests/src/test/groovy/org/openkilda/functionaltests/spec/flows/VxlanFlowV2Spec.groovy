@@ -415,13 +415,11 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def createError = thrown(HttpClientErrorException)
-        createError.rawStatusCode == 404
-        // TODO(andriidovhan)fix errorMessage when the 2587 issue is fixed
+        createError.rawStatusCode == 400
         def createErrorDetails = createError.responseBodyAsString.to(MessageError)
         createErrorDetails.errorMessage == "Could not create flow"
-        createErrorDetails.errorDescription == "Not enough bandwidth or no path found. " +
-                "Failed to find path with requested bandwidth=$flow.maximumBandwidth: Switch $switchPair.src.dpId" +
-                " doesn't have links with enough bandwidth"
+        createErrorDetails.errorDescription == getUnsupportedVxlanErrorDescription("source", switchPair.src.dpId,
+                [FlowEncapsulationType.TRANSIT_VLAN])
 
         when: "Create a VLAN flow"
         flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN.toString()
@@ -432,13 +430,11 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def updateError = thrown(HttpClientErrorException)
-        updateError.rawStatusCode == 404
-        //TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
+        updateError.rawStatusCode == 400
         def updateErrorDetails = updateError.responseBodyAsString.to(MessageError)
         updateErrorDetails.errorMessage == "Could not update flow"
-        createErrorDetails.errorDescription == "Not enough bandwidth or no path found. " +
-                "Failed to find path with requested bandwidth=$flow.maximumBandwidth: Switch $switchPair.src.dpId" +
-                " doesn't have links with enough bandwidth"
+        createErrorDetails.errorDescription == getUnsupportedVxlanErrorDescription("source", switchPair.src.dpId,
+                [FlowEncapsulationType.TRANSIT_VLAN])
 
 
         cleanup:
@@ -519,6 +515,8 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             isVxlanEnabled(it.src.dpId) && !isVxlanEnabled(it.dst.dpId)
         }
         assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
+        def dstSupportedEncapsulationTypes = northbound.getSwitchProperties(switchPair.dst.dpId)
+                .supportedTransitEncapsulation.collect { it.toUpperCase() }
 
         when: "Try to create a flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -527,13 +525,11 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        // TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
+        exc.rawStatusCode == 400
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == "Not enough bandwidth or no path found. Failed to find path with " +
-                "requested bandwidth=$flow.maximumBandwidth: " +
-                "Switch $switchPair.dst.dpId doesn't have links with enough bandwidth"
+        errorDetails.errorDescription == getUnsupportedVxlanErrorDescription("destination", switchPair.dst.dpId,
+                dstSupportedEncapsulationTypes)
 
         cleanup:
         !exc && flowHelperV2.deleteFlow(flow.flowId)
@@ -656,5 +652,11 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
     def isVxlanEnabled(SwitchId switchId) {
         return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
                 .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+    }
+
+    def getUnsupportedVxlanErrorDescription(endpointName, dpId, supportedEncapsulationTypes) {
+        return "Flow's $endpointName endpoint $dpId doesn't support requested encapsulation type " +
+                "$FlowEncapsulationType.VXLAN. Choose one of the supported encapsulation types " +
+                "$supportedEncapsulationTypes or update switch properties and add needed encapsulation type."
     }
 }

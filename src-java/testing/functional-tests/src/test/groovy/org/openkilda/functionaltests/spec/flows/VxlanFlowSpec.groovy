@@ -12,6 +12,7 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
@@ -367,7 +368,9 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
             [swP.src, swP.dst].every { sw -> !isVxlanEnabled(sw.dpId) }
         }
-        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
+        assumeTrue("Unable to find required switches in topology", switchPair as boolean)
+        def srcEncapsulationTypes = northbound.getSwitchProperties(switchPair.src.dpId).supportedTransitEncapsulation
+                .collect { it.toString().toUpperCase() }
 
         when: "Try to create a flow"
         def flow = flowHelper.randomFlow(switchPair)
@@ -376,8 +379,11 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        // TODO(andriidovhan)fix errorMessage when the 2587 issue is fixed
+        exc.rawStatusCode == 400
+        def createErrorDetails = exc.responseBodyAsString.to(MessageError)
+        createErrorDetails.errorMessage == "Could not create flow"
+        createErrorDetails.errorDescription == getUnsupportedVxlanErrorDescription(
+                "source", switchPair.src.dpId, srcEncapsulationTypes)
 
         cleanup:
         !exc && flowHelper.deleteFlow(flow.id)
@@ -435,7 +441,9 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
             isVxlanEnabled(it.src.dpId) && !isVxlanEnabled(it.dst.dpId)
         }
-        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
+        assumeTrue("Unable to find required switches in topology", switchPair as boolean)
+        def dstEncapsulationTypes = northbound.getSwitchProperties(switchPair.dst.dpId).supportedTransitEncapsulation
+                .collect { it.toString().toUpperCase() }
 
         when: "Try to create a flow"
         def flow = flowHelper.randomFlow(switchPair)
@@ -444,8 +452,11 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        // TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
+        exc.rawStatusCode == 400
+        def createErrorDetails = exc.responseBodyAsString.to(MessageError)
+        createErrorDetails.errorMessage == "Could not create flow"
+        createErrorDetails.errorDescription == getUnsupportedVxlanErrorDescription(
+                "destination", switchPair.dst.dpId, dstEncapsulationTypes)
 
         cleanup:
         !exc && flowHelper.deleteFlow(flow.id)
@@ -527,6 +538,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
             [swP.src, swP.dst].every { sw -> !isVxlanEnabled(sw.dpId) }
         }
+        def srcEncapsulationTypes = northbound.getSwitchProperties(switchPair.src.dpId).supportedTransitEncapsulation
+                .collect { it.toString().toUpperCase() }
         def flow = flowHelper.randomFlow(switchPair)
         flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
         flowHelper.addFlow(flow)
@@ -536,8 +549,11 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        //TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
+        exc.rawStatusCode == 400
+        def createErrorDetails = exc.responseBodyAsString.to(MessageError)
+        createErrorDetails.errorMessage == "Could not update flow"
+        createErrorDetails.errorDescription == getUnsupportedVxlanErrorDescription(
+                "source", switchPair.src.dpId, srcEncapsulationTypes)
 
         cleanup:
         flowHelper.deleteFlow(flow.id)
@@ -546,5 +562,11 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     def isVxlanEnabled(SwitchId switchId) {
         return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
                 .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+    }
+
+    def getUnsupportedVxlanErrorDescription(endpointName, dpId, supportedEncapsulationTypes) {
+        return "Flow's $endpointName endpoint $dpId doesn't support requested encapsulation type " +
+                "$FlowEncapsulationType.VXLAN. Choose one of the supported encapsulation types " +
+                "$supportedEncapsulationTypes or update switch properties and add needed encapsulation type."
     }
 }

@@ -21,6 +21,7 @@ import org.openkilda.adapter.FlowDestAdapter;
 import org.openkilda.adapter.FlowSourceAdapter;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -118,7 +119,17 @@ public class FlowValidator {
         for (EndpointDescriptor descriptor : new EndpointDescriptor[]{
                 EndpointDescriptor.makeSource(source),
                 EndpointDescriptor.makeDestination(destination)}) {
-            checkForMultiTableRequirement(descriptor);
+            SwitchId switchId = descriptor.endpoint.getSwitchId();
+            SwitchProperties properties = switchPropertiesRepository.findBySwitchId(switchId)
+                    .orElseThrow(() -> new InvalidFlowException(
+                            format("Couldn't get switch properties for %s switch %s.", descriptor.name, switchId),
+                            ErrorType.DATA_INVALID));
+
+            // skip encapsulation type check for one switch flow
+            if (!source.getSwitchId().equals(destination.getSwitchId())) {
+                checkForEncapsulationTypeRequirement(descriptor, properties, flow.getFlowEncapsulationType());
+            }
+            checkForMultiTableRequirement(descriptor, properties);
             checkFlowForIslConflicts(descriptor);
             checkFlowForFlowConflicts(flow.getFlowId(), descriptor, bulkUpdateFlowIds);
         }
@@ -356,15 +367,13 @@ public class FlowValidator {
         return flowEndpoints;
     }
 
-    private void checkForMultiTableRequirement(EndpointDescriptor descriptor) throws InvalidFlowException {
+    private void checkForMultiTableRequirement(EndpointDescriptor descriptor, SwitchProperties switchProperties)
+            throws InvalidFlowException {
         FlowEndpoint endpoint = descriptor.getEndpoint();
         if (endpoint.getVlanStack().size() < 2) {
             return;
         }
 
-        SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(
-                endpoint.getSwitchId())
-                .orElseGet(() -> SwitchProperties.builder().build());
         if (! switchProperties.isMultiTable()) {
             final String errorMessage = format(
                     "Flow's %s endpoint is double VLAN tagged, switch %s is not capable to support such endpoint "
@@ -374,13 +383,32 @@ public class FlowValidator {
         }
     }
 
+    @VisibleForTesting
+    void checkForEncapsulationTypeRequirement(
+            EndpointDescriptor descriptor, SwitchProperties switchProperties, FlowEncapsulationType encapsulationType)
+            throws InvalidFlowException {
+
+        Set<FlowEncapsulationType> supportedEncapsulationTypes = Optional.ofNullable(
+                switchProperties.getSupportedTransitEncapsulation()).orElse(new HashSet<>());
+        if (encapsulationType != null && !supportedEncapsulationTypes.contains(encapsulationType)) {
+            final String errorMessage = format(
+                    "Flow's %s endpoint %s doesn't support requested encapsulation type %s. Choose one of the supported"
+                            + " encapsulation types %s or update switch properties and add needed encapsulation type.",
+                    descriptor.getName(), descriptor.endpoint.getSwitchId(), encapsulationType,
+                    switchProperties.getSupportedTransitEncapsulation());
+            throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
+        }
+    }
+
     @Getter
     @AllArgsConstructor(access = AccessLevel.PRIVATE)
-    private static class EndpointDescriptor {
+    @VisibleForTesting
+    static class EndpointDescriptor {
         private final FlowEndpoint endpoint;
         private final String name;
 
-        private static EndpointDescriptor makeSource(FlowEndpoint endpoint) {
+        @VisibleForTesting
+        static EndpointDescriptor makeSource(FlowEndpoint endpoint) {
             return new EndpointDescriptor(endpoint, "source");
         }
 
