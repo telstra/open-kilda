@@ -20,7 +20,6 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
@@ -258,7 +257,6 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/2996")
     @Tags(HARDWARE)
     def "Intentional flow reroute with VXLAN encapsulation is not causing any packet loss"() {
         given: "A vxlan flow"

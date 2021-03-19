@@ -38,11 +38,11 @@ import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
+import groovy.transform.Memoized
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 
 import java.time.Instant
@@ -60,7 +60,6 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
     Provider<TraffExamService> traffExamProvider
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/2995")
     @Tags(HARDWARE)
     @IterationTags([
             @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /TRANSIT_VLAN -> VXLAN/)
@@ -649,6 +648,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         } as List<SwitchPair>
     }
 
+    @Memoized
     def isVxlanEnabled(SwitchId switchId) {
         return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
                 .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
