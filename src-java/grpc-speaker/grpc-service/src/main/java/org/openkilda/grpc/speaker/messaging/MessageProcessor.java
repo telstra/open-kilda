@@ -69,8 +69,6 @@ public class MessageProcessor {
     @Value("#{kafkaTopicsConfig.getStatsTopic()}")
     private String statsTopic;
 
-    // TODO error handling
-
     /**
      * Process request.
      *
@@ -107,34 +105,40 @@ public class MessageProcessor {
     }
 
     private CompletableFuture<Response> handleCreateLogicalPortRequest(CreateLogicalPortRequest request) {
-        log.info("Creating logical port {} on switch {}", request.getLogicalPortNumber(), request.getAddress());
-        return makeResponse(service.createLogicalPort(request.getAddress(), requestMapper.toLogicalPort(request))
-                .thenApply(result -> new CreateLogicalPortResponse(request.getAddress(), result, true)));
+        CompletableFuture<InfoData> future = service
+                .createLogicalPort(request.getAddress(), requestMapper.toLogicalPort(request))
+                .thenApply(result -> new CreateLogicalPortResponse(request.getAddress(), result, true));
+        return makeResponse(future, String.format(
+                "Creating logical port %s on switch %s", request.getLogicalPortNumber(), request.getAddress()));
     }
 
     private CompletableFuture<Response> handleDumpLogicalPortsRequest(DumpLogicalPortsRequest request) {
-        log.debug("Dumping logical ports on switch {}", request.getAddress());
-        return makeResponse(service.dumpLogicalPorts(request.getAddress())
-                .thenApply(result -> new DumpLogicalPortsResponse(request.getAddress(), result)));
-    }
-
-    private CompletableFuture<Response> handleGetSwitchInfoRequest(GetSwitchInfoRequest request) {
-        log.debug("Getting switch info for switch {}", request.getAddress());
-        return makeResponse(service.getSwitchStatus(request.getAddress())
-                .thenApply(result -> new GetSwitchInfoResponse(request.getAddress(), result)));
-    }
-
-    private CompletableFuture<Response> handleGetPacketInOutStatsRequest(GetPacketInOutStatsRequest request) {
-        log.debug("Getting switch packet in out stats for switch {}", request.getAddress());
-        CompletableFuture<InfoData> future = service.getPacketInOutStats(request.getAddress())
-                .thenApply(stats -> new GetPacketInOutStatsResponse(request.getSwitchId(), responseMapper.map(stats)));
-        return makeResponse(future, statsTopic);
+        CompletableFuture<InfoData> future = service.dumpLogicalPorts(request.getAddress())
+                .thenApply(result -> new DumpLogicalPortsResponse(request.getAddress(), result));
+        return makeResponse(future, String.format("Dumping logical ports on switch %s", request.getAddress()));
     }
 
     private CompletableFuture<Response> handleDeleteLogicalPortRequest(DeleteLogicalPortRequest command) {
-        return makeResponse(service.deleteConfigLogicalPort(command.getAddress(), command.getLogicalPortNumber())
+        CompletableFuture<InfoData> future = service
+                .deleteConfigLogicalPort(command.getAddress(), command.getLogicalPortNumber())
                 .thenApply(result -> new DeleteLogicalPortResponse(
-                        command.getAddress(), command.getLogicalPortNumber(), result.getDeleted())));
+                        command.getAddress(), command.getLogicalPortNumber(), result.getDeleted()));
+        return makeResponse(future, String.format(
+                "Delete logical port %s on switch %s", command.getLogicalPortNumber(), command.getAddress()));
+    }
+
+    private CompletableFuture<Response> handleGetSwitchInfoRequest(GetSwitchInfoRequest request) {
+        CompletableFuture<InfoData> future = service.getSwitchStatus(request.getAddress())
+                .thenApply(result -> new GetSwitchInfoResponse(request.getAddress(), result));
+        return makeResponse(future, String.format("Getting switch info for switch %s", request.getAddress()));
+    }
+
+    private CompletableFuture<Response> handleGetPacketInOutStatsRequest(GetPacketInOutStatsRequest request) {
+        CompletableFuture<InfoData> future = service.getPacketInOutStats(request.getAddress())
+                .thenApply(stats -> new GetPacketInOutStatsResponse(request.getSwitchId(), responseMapper.map(stats)));
+        return makeResponse(
+                future, String.format("Getting switch packet in/out stats for switch %s", request.getAddress()),
+                true, statsTopic);
     }
 
     private CompletableFuture<Response> unhandledMessage(Message message) {
@@ -146,31 +150,38 @@ public class MessageProcessor {
         return CompletableFuture.completedFuture(new Response(payload, grpcResponseTopic));
     }
 
-    private CompletableFuture<Response> makeResponse(CompletableFuture<InfoData> future) {
-        return makeResponse(future, grpcResponseTopic);
+    private CompletableFuture<Response> makeResponse(
+            CompletableFuture<InfoData> future, String actionDefinition) {
+        return makeResponse(future, actionDefinition, false, grpcResponseTopic);
     }
 
-    private CompletableFuture<Response> makeResponse(CompletableFuture<InfoData> future, String topic) {
+    private CompletableFuture<Response> makeResponse(
+            CompletableFuture<InfoData> future, String actionDefinition, boolean isQuiet, String topic) {
         return future
-                .handle(this::handleResult)
+                .handle((result, error) -> handleResult(result, error, actionDefinition, isQuiet))
                 .thenApply(payload -> new Response(payload, topic));
     }
 
-    private MessageData handleResult(InfoData result, Throwable error) {
+    private MessageData handleResult(InfoData result, Throwable error, String actionDefinition, boolean isQuiet) {
         if (error != null) {
-            return handleError(error);
+            return handleError(error, actionDefinition);
         }
+
+        reportSuccess(actionDefinition, isQuiet);
         return result;
     }
 
-    private MessageData handleError(Throwable error) {
+    private MessageData handleError(Throwable error, String actionDefinition) {
         try {
             throw error;
         } catch (GrpcRequestFailureException e) {
+            reportFailure(actionDefinition, String.format(
+                    "type=%s code=%s %s", e.getErrorType(), e.getCode(), e.getMessage()));
             return new ErrorData(e.getErrorType(), e.getMessage(), "");
         } catch (CompletionException e) {
-            return handleError(e.getCause());
+            return handleError(e.getCause(), actionDefinition);
         } catch (Throwable e) {
+            reportFailure(actionDefinition, e);
             return new ErrorData(ErrorType.INTERNAL_ERROR, e.getMessage(), "");
         }
     }
@@ -189,6 +200,22 @@ public class MessageProcessor {
             throw new IllegalArgumentException(String.format(
                     "Unexpected/unsupported message payload type: %s", payload.getClass().getName()));
         }
+    }
+
+    private void reportSuccess(String actionDefinition, boolean isQuiet) {
+        if (isQuiet) {
+            log.debug("{} - success", actionDefinition);
+        } else {
+            log.info("{} - success", actionDefinition);
+        }
+    }
+
+    private void reportFailure(String actionDefinition, String description) {
+        log.error("{} - failure - {}", actionDefinition, description);
+    }
+
+    private void reportFailure(String actionDefinition, Throwable error) {
+        log.error("{} - failure - internal error {}", actionDefinition, error.getMessage(), error);
     }
 
     @lombok.Value

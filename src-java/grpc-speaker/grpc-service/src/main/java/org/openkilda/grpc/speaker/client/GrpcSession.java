@@ -155,7 +155,9 @@ public class GrpcSession implements Closeable {
                 .setLogicalporttype(mapper.map(port.getType()))
                 .build();
 
-        log.info("About to create logical port: {}", request);
+        log.info(
+                "About to create logical port={} type={} target-physical-port={} on switch {}",
+                port.getLogicalPortNumber(), port.getType(), port.getPortNumbers(), address);
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, SET_LOGICAL_PORT);
         extendChain(() -> stub.setConfigLogicalPort(request, observer), observer.future);
@@ -174,7 +176,7 @@ public class GrpcSession implements Closeable {
                 .setLogicalportno(port)
                 .build();
 
-        log.info("Reading logical port {} from the switch: {}", port, address);
+        log.info("Reading logical port {} details from the switch {}", port, address);
 
         GrpcResponseObserver<LogicalPort> observer = new GrpcResponseObserver<>(address, SHOW_CONFIG_LOGICAL_PORT);
         extendChain(() -> stub.showConfigLogicalPort(request, observer), observer.future);
@@ -188,7 +190,7 @@ public class GrpcSession implements Closeable {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<List<LogicalPort>> dumpLogicalPorts() {
-        log.info("Getting all logical ports for switch: {}", address);
+        log.info("Getting all logical ports on switch {}", address);
 
         GrpcResponseObserver<LogicalPort> observer = new GrpcResponseObserver<>(address, DUMP_LOGICAL_PORTS);
         extendChain(() -> {
@@ -211,7 +213,7 @@ public class GrpcSession implements Closeable {
                 .setLogicalportno(port)
                 .build();
 
-        log.info("Deleting logical port for switch {}", address);
+        log.info("Deleting logical port {} on switch {}", port, address);
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, DELETE_LOGICAL_PORT);
         extendChain(() -> stub.delConfigLogicalPort(logicalPort, observer), observer.future);
@@ -394,7 +396,7 @@ public class GrpcSession implements Closeable {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<Optional<PacketInOutStats>> getPacketInOutStats() {
-        log.info("Getting packet in out stats for switch {}", address);
+        log.info("Getting packet in/out stats for switch {}", address);
 
         GrpcResponseObserver<PacketInOutStats> observer = new GrpcResponseObserver<>(address, GET_PACKET_IN_OUT_STATS);
         extendChain(
