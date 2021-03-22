@@ -16,6 +16,8 @@
 package org.openkilda.northbound.service.impl;
 
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.network.PathsInfoData;
 import org.openkilda.messaging.nbtopology.request.GetPathsRequest;
 import org.openkilda.messaging.payload.network.PathDto;
@@ -33,7 +35,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -54,10 +58,22 @@ public class NetworkServiceImpl implements NetworkService {
     @Override
     public CompletableFuture<PathsDto> getPaths(
             SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType encapsulationType,
-            PathComputationStrategy pathComputationStrategy) {
+            PathComputationStrategy pathComputationStrategy, Long maxLatency, Long maxLatencyTier2) {
         String correlationId = RequestCorrelationId.getId();
 
-        GetPathsRequest request = new GetPathsRequest(srcSwitch, dstSwitch, encapsulationType, pathComputationStrategy);
+        if (PathComputationStrategy.MAX_LATENCY.equals(pathComputationStrategy) && maxLatency == null) {
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.PARAMETERS_INVALID,
+                    "Missed max_latency parameter.", "MAX_LATENCY path computation strategy requires non null "
+                    + "max_latency parameter. If max_latency will be equal to 0 LATENCY strategy will be used instead "
+                    + "of MAX_LATENCY.");
+        }
+
+        // convert milliseconds to nanoseconds
+        maxLatency = Optional.ofNullable(maxLatency).map(TimeUnit.MILLISECONDS::toNanos).orElse(null);
+        maxLatencyTier2 = Optional.ofNullable(maxLatencyTier2).map(TimeUnit.MILLISECONDS::toNanos).orElse(null);
+
+        GetPathsRequest request = new GetPathsRequest(srcSwitch, dstSwitch, encapsulationType, pathComputationStrategy,
+                maxLatency, maxLatencyTier2);
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
 
         return messagingChannel.sendAndGetChunked(nbworkerTopic, message)

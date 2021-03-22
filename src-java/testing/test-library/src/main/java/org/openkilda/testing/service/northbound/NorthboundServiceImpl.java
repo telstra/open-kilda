@@ -633,7 +633,7 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType flowEncapsulationType,
-                             PathComputationStrategy pathComputationStrategy) {
+                             PathComputationStrategy pathComputationStrategy, Long maxLatency, Long maxLatencyTier2) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/network/paths");
         if (srcSwitch != null) {
             uriBuilder.queryParam("src_switch", srcSwitch);
@@ -646,6 +646,12 @@ public class NorthboundServiceImpl implements NorthboundService {
         }
         if (pathComputationStrategy != null) {
             uriBuilder.queryParam("path_computation_strategy", pathComputationStrategy);
+        }
+        if (maxLatency != null) {
+            uriBuilder.queryParam("max_latency", maxLatency);
+        }
+        if (maxLatencyTier2 != null) {
+            uriBuilder.queryParam("max_latency_tier2", maxLatencyTier2);
         }
 
         return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,

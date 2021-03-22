@@ -10,6 +10,7 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.PathComputationStrategy
 
 import org.springframework.web.client.HttpClientErrorException
 
@@ -24,7 +25,7 @@ class PathsSpec extends HealthCheckSpecification {
         def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair))
 
         when: "Get paths between switches"
-        def paths = northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId, null, null)
+        def paths = northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId, null, null, null, null)
 
         then: "Paths will be sorted by bandwidth (descending order) and then by latency (ascending order)"
         paths.paths.size() > 0
@@ -50,7 +51,7 @@ class PathsSpec extends HealthCheckSpecification {
         def sw = topology.getActiveSwitches()[0]
 
         when: "Try to get paths between one switch"
-        northbound.getPaths(sw.dpId, sw.dpId, null, null)
+        northbound.getPaths(sw.dpId, sw.dpId, null, null, null, null)
 
         then: "Get 400 BadRequest error because request is invalid"
         def exc = thrown(HttpClientErrorException)
@@ -63,11 +64,25 @@ class PathsSpec extends HealthCheckSpecification {
         def sw = topology.getActiveSwitches()[0]
 
         when: "Try to get paths between real switch and nonexistent switch"
-        northbound.getPaths(sw.dpId, NON_EXISTENT_SWITCH_ID, null, null)
+        northbound.getPaths(sw.dpId, NON_EXISTENT_SWITCH_ID, null, null, null, null)
 
         then: "Get 404 NotFound error"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
+    }
+
+    @Tidy
+    def "Unable to get paths with max_latency strategy without max latency parameter"() {
+        given: "Two active not neighboring switches"
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+
+        when: "Try to get paths between switches with max_latency stragy but without max_latency parameter"
+        northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId, null, PathComputationStrategy.MAX_LATENCY,
+                null, null)
+
+        then: "Get 400 BadRequest error because request is invalid"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
     }
 
     @Tags(LOW_PRIORITY)
@@ -83,7 +98,7 @@ class PathsSpec extends HealthCheckSpecification {
         assumeTrue("Unable to find required switches in topology", switchPair as boolean)
 
         when: "Try to get a path for a 'vxlan' flowEncapsulationType between the given switches"
-        northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId, FlowEncapsulationType.VXLAN, null)
+        northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId, FlowEncapsulationType.VXLAN, null, null, null)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)

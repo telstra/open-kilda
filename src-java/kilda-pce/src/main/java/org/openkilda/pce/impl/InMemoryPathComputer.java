@@ -17,6 +17,8 @@ package org.openkilda.pce.impl;
 
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
+import static org.openkilda.model.PathComputationStrategy.LATENCY;
+import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -123,9 +125,9 @@ public class InMemoryPathComputer implements PathComputer {
                                              PathComputationStrategy strategy)
             throws UnroutableFlowException {
 
-        if (PathComputationStrategy.MAX_LATENCY.equals(strategy)
+        if (MAX_LATENCY.equals(strategy)
                 && (flow.getMaxLatency() == null || flow.getMaxLatency() == 0)) {
-            strategy = PathComputationStrategy.LATENCY;
+            strategy = LATENCY;
         }
 
         switch (strategy) {
@@ -146,7 +148,7 @@ public class InMemoryPathComputer implements PathComputer {
     @Override
     public List<Path> getNPaths(SwitchId srcSwitchId, SwitchId dstSwitchId, int count,
                                 FlowEncapsulationType flowEncapsulationType,
-                                PathComputationStrategy pathComputationStrategy)
+                                PathComputationStrategy pathComputationStrategy, Long maxLatency, Long maxLatencyTier2)
             throws RecoverableException, UnroutableFlowException {
         Flow flow = Flow.builder()
                 .flowId("") // just any id, as not used.
@@ -155,18 +157,47 @@ public class InMemoryPathComputer implements PathComputer {
                 .ignoreBandwidth(false)
                 .encapsulationType(flowEncapsulationType)
                 .bandwidth(1) // to get ISLs with non zero available bandwidth
+                .maxLatency(maxLatency)
+                .maxLatencyTier2(maxLatencyTier2)
                 .build();
 
         AvailableNetwork availableNetwork = availableNetworkFactory.getAvailableNetwork(flow, Collections.emptyList());
 
-        List<List<Edge>> paths =
-                pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitchId, dstSwitchId, count,
+        if (MAX_LATENCY.equals(pathComputationStrategy)
+                && (flow.getMaxLatency() == null || flow.getMaxLatency() == 0)) {
+            pathComputationStrategy = LATENCY;
+        }
+
+        List<List<Edge>> paths;
+        switch (pathComputationStrategy) {
+            case COST:
+            case LATENCY:
+            case COST_AND_AVAILABLE_BANDWIDTH:
+                paths = pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitchId, dstSwitchId, count,
                         getWeightFunctionByStrategy(pathComputationStrategy));
+                break;
+            case MAX_LATENCY:
+                paths = pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitchId, dstSwitchId, count,
+                        getWeightFunctionByStrategy(pathComputationStrategy),
+                        Optional.ofNullable(maxLatency).orElse(0L),
+                        Optional.ofNullable(maxLatencyTier2).orElse(0L));
+                break;
+            default:
+                throw new UnsupportedOperationException(String.format(
+                        "Unsupported strategy type %s", pathComputationStrategy));
+        }
+        Comparator<Path> comparator;
+        if (pathComputationStrategy == LATENCY || pathComputationStrategy == MAX_LATENCY) {
+            comparator = Comparator.comparing(Path::getLatency)
+                    .thenComparing(Comparator.comparing(Path::getMinAvailableBandwidth).reversed());
+        } else {
+            comparator = Comparator.comparing(Path::getMinAvailableBandwidth).reversed()
+                    .thenComparing(Path::getLatency);
+        }
+
         return paths.stream()
                 .map(edges -> convertToPath(srcSwitchId, dstSwitchId, edges))
-                .sorted(Comparator.comparing(Path::getMinAvailableBandwidth)
-                        .reversed()
-                        .thenComparing(Path::getLatency))
+                .sorted(comparator)
                 .limit(count)
                 .collect(Collectors.toList());
     }
