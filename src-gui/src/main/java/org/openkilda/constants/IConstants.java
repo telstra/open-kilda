@@ -74,10 +74,33 @@ public abstract class IConstants {
         public static Integer DEFAULT_TIME_IN_MINUTE = 45;
     }
     
+    public static final class InvalidLoginAttempt {
+        private InvalidLoginAttempt() {
+
+        }
+    
+        public static Integer INVALID_LOGIN_ATTEMPTS_COUNT;
+    
+        public static Integer DEFAULT_INVALID_LOGIN_ATTEMPTS_COUNT = 5;
+    }
+    
+    public static final class UserAccUnlockTime {
+        private UserAccUnlockTime() {
+
+        }
+    
+        public static Integer USER_ACCOUNT_UNLOCK_TIME;
+    
+        public static Integer DEFAULT_USER_ACCOUNT_UNLOCK_TIME = 60;
+    }
+    
+    
     public enum ApplicationSetting {
 
         SESSION_TIMEOUT(String.valueOf(SessionTimeout.DEFAULT_TIME_IN_MINUTE)), SWITCH_NAME_STORAGE_TYPE(
-                StorageType.FILE_STORAGE.name());
+                StorageType.FILE_STORAGE.name()), INVALID_LOGIN_ATTEMPT(String.valueOf(InvalidLoginAttempt
+                        .DEFAULT_INVALID_LOGIN_ATTEMPTS_COUNT)), USER_ACCOUNT_UNLOCK_TIME(
+                        String.valueOf(UserAccUnlockTime.DEFAULT_USER_ACCOUNT_UNLOCK_TIME));
 
         final String value;
 
@@ -174,6 +197,8 @@ public abstract class IConstants {
         public static final String GET_SWITCH_PORT_PROPERTY = VERSION_TWO + "/switches/{switch_id}"
                 + "/ports/{port}/properties";
         public static final String UPDATE_SWITCH_LOCATION = VERSION_TWO + "/switches/{switch_id}";
+        public static final String GET_LINK_BFD_PROPERTIES = VERSION_TWO 
+                + "/links/{src-switch}_{src-port}/{dst-switch}_{dst-port}/bfd";
     }
     
     public final class OpenTsDbUrl {
@@ -299,11 +324,17 @@ public abstract class IConstants {
         
         public static final String SW_SWITCH_METERS = "sw_switch_meters";
         
-        public static final String SW_SWITCH_LOCATION_UPDATE = "sw_switch_location_update";
+        public static final String UM_USER_ACCOUNT_UNLOCK = "um_user_account_unlock";
 
         public static final String SAML_SETTING = "saml_setting";
         
+        public static final String SW_SWITCH_LOCATION_UPDATE = "sw_switch_location_update";
+        
         public static final String TOPOLOGY_WORLD_MAP_VIEW = "topology_world_map_view";
+
+        public static final String ISL_UPDATE_BFD_PROPERTIES = "isl_update_bfd_properties";
+        
+        public static final String ISL_DELETE_BFD = "isl_delete_bfd";
     }
 
     public final class Settings {

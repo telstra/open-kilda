@@ -64,6 +64,26 @@ public class ApplicationSettingsValidator {
                 throw new RequestValidationException(messageUtil
                         .getAttributeNotvalid(ApplicationSetting.SWITCH_NAME_STORAGE_TYPE.name()));
             }
+        } else if (type == ApplicationSetting.INVALID_LOGIN_ATTEMPT) {
+            try {
+                if (Integer.valueOf(value) < 1) {
+                    throw new RequestValidationException(messageUtil
+                        .getAttributeNotvalid(ApplicationSetting.INVALID_LOGIN_ATTEMPT.name()));
+                }
+            } catch (NumberFormatException ex) {
+                throw new RequestValidationException(messageUtil
+                        .getAttributeNotvalid(ApplicationSetting.INVALID_LOGIN_ATTEMPT.name()));
+            }
+        } else if (type == ApplicationSetting.USER_ACCOUNT_UNLOCK_TIME) {
+            try {
+                if (Integer.valueOf(value) < 1) {
+                    throw new RequestValidationException(messageUtil
+                        .getAttributeNotvalid(ApplicationSetting.USER_ACCOUNT_UNLOCK_TIME.name()));
+                }
+            } catch (NumberFormatException ex) {
+                throw new RequestValidationException(messageUtil
+                        .getAttributeNotvalid(ApplicationSetting.USER_ACCOUNT_UNLOCK_TIME.name()));
+            }
         }
     }
 }

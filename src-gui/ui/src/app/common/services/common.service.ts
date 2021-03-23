@@ -172,6 +172,12 @@ export class CommonService {
   saveSwitchNameSourceSettings(value){
     return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/SWITCH_NAME_STORAGE_TYPE`,value);
   }
+  saveInvalidLoginAttemptSettings(value){
+    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/INVALID_LOGIN_ATTEMPT`,value);
+  }
+  saveUserAccountUnlockTimeSettings(value){
+    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/USER_ACCOUNT_UNLOCK_TIME`,value);
+  }
   getAllSettings(){
     return this.httpClient.get<any>(`${environment.apiEndPoint}/settings`);
   }
