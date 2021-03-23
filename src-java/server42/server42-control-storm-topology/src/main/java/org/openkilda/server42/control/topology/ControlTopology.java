@@ -89,7 +89,7 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
 
     private void zooKeeperBolt(TopologyBuilder topology) {
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString());
+                getZookeeperConfig().getConnectString(), getBoltInstancesCount(Router.BOLT_ID));
         declareBolt(topology, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(Router.BOLT_ID, ZkStreams.ZK.toString());
     }

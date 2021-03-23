@@ -75,6 +75,7 @@ import org.kohsuke.args4j.CmdLineException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.InputStream;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -108,16 +109,14 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     protected final TopologyDef topologyDef;
     protected final T topologyConfig;
     private final KafkaConfig kafkaConfig;
-
-
-
     private final ZookeeperConfig zookeeperConfig;
 
     protected AbstractTopology(LaunchEnvironment env, String topologyDefinitionName, Class<T> topologyConfigClass) {
         kafkaNamingStrategy = env.getKafkaNamingStrategy();
         topoNamingStrategy = env.getTopologyNamingStrategy();
 
-        topologyDef = loadTopologyDef(topologyDefinitionName, env.getProperties()).orElse(null);
+        topologyDef = Optional.ofNullable(env.getTopologyDefinition())
+                .orElseGet(() -> loadTopologyDef(topologyDefinitionName, env.getProperties()).orElse(null));
 
         String defaultTopologyName = getClass().getSimpleName().toLowerCase();
         // Use the default topology name with naming strategy applied only if no specific name provided via CLI.
@@ -136,16 +135,18 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     }
 
     private Optional<TopologyDef> loadTopologyDef(String topologyDefinitionName, Properties properties) {
+        String yamlResource = format("/%s.yaml", topologyDefinitionName);
         try {
             // Check the definition in resources for existence.
-            String yamlResource = format("/%s.yaml", topologyDefinitionName);
-            if (FluxParser.class.getResourceAsStream(yamlResource) == null) {
-                return Optional.empty();
+            try (InputStream stream = this.getClass().getResourceAsStream(yamlResource)) {
+                if (stream == null) {
+                    return Optional.empty();
+                }
             }
 
             return Optional.of(FluxParser.parseResource(yamlResource, false, true, properties, false));
         } catch (Exception e) {
-            logger.info("Unable to load topology configuration (definition) file", e);
+            logger.info("Unable to load topology definition file {}", yamlResource, e);
             return Optional.empty();
         }
     }
@@ -438,30 +439,61 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     }
 
     protected BoltDeclarer declareBolt(TopologyBuilder builder, IRichBolt bolt, String boltId) {
-        Integer boltParallelism = null;
-        Integer boltNumTasks = null;
-        if (topologyDef != null) {
-            BoltDef boltDef = topologyDef.getBoltDef(boltId);
-            if (boltDef != null) {
-                boltParallelism = boltDef.getParallelism();
-                if (boltDef.getNumTasks() > 0) {
-                    boltNumTasks = boltDef.getNumTasks();
-                }
-            }
-        }
-        if (boltParallelism == null) {
-            if (topologyDef != null && topologyDef.getConfig() != null) {
-                boltParallelism = (Integer) topologyDef.getConfig().get(BOLT_PARALLELISM_TOPOLOGY_DEF_KEY);
-            }
-            if (boltParallelism == null) {
-                boltParallelism = getTopologyParallelism().orElse(null);
-            }
-        }
-        BoltDeclarer boltDeclarer = builder.setBolt(boltId, bolt, boltParallelism);
+        BoltDeclarer boltDeclarer = builder.setBolt(boltId, bolt, getBoltParallelism(boltId));
+        Integer boltNumTasks = getBoltNumTasks(boltId);
         if (boltNumTasks != null) {
             boltDeclarer.setNumTasks(boltNumTasks);
         }
         return boltDeclarer;
+    }
+
+    @VisibleForTesting
+    Integer getBoltParallelism(String boltId) {
+        if (topologyDef != null) {
+            BoltDef boltDef = topologyDef.getBoltDef(boltId);
+            if (boltDef != null) {
+                return boltDef.getParallelism();
+            }
+            if (topologyDef.getConfig() != null && topologyDef.getConfig()
+                    .containsKey(BOLT_PARALLELISM_TOPOLOGY_DEF_KEY)) {
+                return (Integer) topologyDef.getConfig().get(BOLT_PARALLELISM_TOPOLOGY_DEF_KEY);
+            }
+        }
+        return getTopologyParallelism().orElse(null);
+    }
+
+    @VisibleForTesting
+    Integer getBoltNumTasks(String boltId) {
+        if (topologyDef != null) {
+            BoltDef boltDef = topologyDef.getBoltDef(boltId);
+            if (boltDef != null && boltDef.getNumTasks() > 0) {
+                return boltDef.getNumTasks();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Counts how many instances of bolt will be run in storm.
+     */
+    @VisibleForTesting
+    int getBoltInstancesCount(String boltId) {
+        Integer boltNumTasks = getBoltNumTasks(boltId);
+        if (boltNumTasks != null) {
+            return boltNumTasks;
+        }
+        return Optional.ofNullable(getBoltParallelism(boltId)).orElse(1);
+    }
+
+    /**
+     * Counts how many instances of bolts will be run in storm.
+     */
+    protected int getBoltInstancesCount(String... boltIds) {
+        int count = 0;
+        for (String boltId : boltIds) {
+            count += getBoltInstancesCount(boltId);
+        }
+        return count;
     }
 
     protected ZookeeperConfig getZookeeperConfig() {

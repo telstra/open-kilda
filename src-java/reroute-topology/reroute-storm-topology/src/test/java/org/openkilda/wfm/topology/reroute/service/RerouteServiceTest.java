@@ -53,6 +53,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.tx.TransactionCallback;
 import org.openkilda.persistence.tx.TransactionCallbackWithoutResult;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.topology.reroute.bolts.MessageSender;
@@ -109,6 +110,11 @@ public class RerouteServiceTest {
             arg.doInTransaction();
             return null;
         }).when(transactionManager).doInTransaction(Mockito.<TransactionCallbackWithoutResult<?>>any());
+
+        doAnswer(invocation -> {
+            TransactionCallback<?, ?> arg = invocation.getArgument(0);
+            return arg.doInTransaction();
+        }).when(transactionManager).doInTransaction(Mockito.<TransactionCallback<?, ?>>any());
 
         pinnedFlow = Flow.builder().flowId(FLOW_ID).srcSwitch(SWITCH_A)
                 .destSwitch(SWITCH_C).pinned(true).build();
@@ -226,7 +232,7 @@ public class RerouteServiceTest {
 
 
     @Test
-    public void testRerouteInactivePinnedFlowsOneFailedSegment() {
+    public void testRerouteInactivePinnedFlowsOneFailedSegment() throws Throwable {
         pinnedFlow.setStatus(FlowStatus.DOWN);
         for (FlowPath flowPath : pinnedFlow.getPaths()) {
             flowPath.setStatus(FlowPathStatus.INACTIVE);
@@ -255,10 +261,9 @@ public class RerouteServiceTest {
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
         TransactionManager transactionManager = mock(TransactionManager.class);
         doAnswer(invocation -> {
-            TransactionCallbackWithoutResult arg = invocation.getArgument(0);
-            arg.doInTransaction();
-            return null;
-        }).when(transactionManager).doInTransaction(Mockito.<TransactionCallbackWithoutResult>any());
+            TransactionCallback<?, ?> arg = invocation.getArgument(0);
+            return arg.doInTransaction();
+        }).when(transactionManager).doInTransaction(Mockito.<TransactionCallback<?, ?>>any());
         when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
         RerouteService rerouteService = new RerouteService(persistenceManager);
         rerouteService.rerouteInactiveFlows(messageSender, CORRELATION_ID,

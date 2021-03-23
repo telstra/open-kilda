@@ -37,6 +37,7 @@ import org.openkilda.wfm.topology.floodlightrouter.bolts.SwitchMonitorBolt;
 import joptsimple.internal.Strings;
 import lombok.Value;
 import org.apache.storm.generated.StormTopology;
+import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
@@ -115,7 +116,14 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
 
     private void zkBolt(TopologyBuilder topology) {
         String zkString = getZookeeperConfig().getConnectString();
-        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(topologyConfig.getBlueGreenMode(), getZkTopoName(), zkString);
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(topologyConfig.getBlueGreenMode(), getZkTopoName(), zkString,
+                getBoltInstancesCount(SpeakerToNetworkProxyBolt.BOLT_ID, ComponentType.SPEAKER_DISCO_REQUEST_BOLT,
+                ComponentType.KILDA_FLOW_HS_REPLY_BOLT, ComponentType.SPEAKER_FLOW_REQUEST_BOLT,
+                ComponentType.KILDA_PING_REPLY_BOLT, ComponentType.KILDA_STATS_REPLY_BOLT,
+                ComponentType.KILDA_ISL_LATENCY_REPLY_BOLT, ComponentType.KILDA_CONNECTED_DEVICES_REPLY_BOLT,
+                ComponentType.KILDA_SWITCH_MANAGER_REPLY_BOLT, ComponentType.NORTHBOUND_REPLY_BOLT,
+                ComponentType.KILDA_NB_WORKER_REPLY_BOLT, ComponentType.SPEAKER_REQUEST_BOLT,
+                RegionTrackerBolt.BOLT_ID, SwitchMonitorBolt.BOLT_ID));
         declareBolt(topology, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(SpeakerToNetworkProxyBolt.BOLT_ID, ZkStreams.ZK.toString())
                 .allGrouping(ComponentType.SPEAKER_DISCO_REQUEST_BOLT, ZkStreams.ZK.toString())
@@ -275,7 +283,9 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                         SpeakerToNetworkProxyBolt.BOLT_ID, SpeakerToNetworkProxyBolt.STREAM_CONNECT_NOTIFICATION_ID,
                         switchIdGrouping);
 
-        output.getKafkaGenericOutput().shuffleGrouping(SwitchMonitorBolt.BOLT_ID, SwitchMonitorBolt.STREAM_NETWORK_ID);
+        Fields keyGrouping = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_KEY);
+        output.getKafkaGenericOutput()
+                .fieldsGrouping(SwitchMonitorBolt.BOLT_ID, SwitchMonitorBolt.STREAM_NETWORK_ID, keyGrouping);
     }
 
     private void clock(TopologyBuilder topology) {

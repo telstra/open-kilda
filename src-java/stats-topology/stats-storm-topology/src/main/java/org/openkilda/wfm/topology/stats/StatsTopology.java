@@ -177,7 +177,8 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 .shuffleGrouping(SERVER42_STATS_FLOW_RTT_METRIC_GEN.name());
 
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString());
+                getZookeeperConfig().getConnectString(), getBoltInstancesCount(STATS_REQUESTER_BOLT.name(),
+                STATS_OFS_BOLT.name(), SERVER42_STATS_FLOW_RTT_METRIC_GEN.name(), SpeakerRequestDecoderBolt.BOLT_ID));
         declareBolt(builder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(STATS_REQUESTER_BOLT.name(), StatsRequesterBolt.ZOOKEEPER_STREAM)
                 .allGrouping(STATS_OFS_BOLT.name(), SpeakerBolt.ZOOKEEPER_STREAM)

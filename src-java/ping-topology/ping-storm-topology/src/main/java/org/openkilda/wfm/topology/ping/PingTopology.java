@@ -104,7 +104,8 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
 
     private void zooKeeperBolt(TopologyBuilder topology) {
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString());
+                getZookeeperConfig().getConnectString(), getBoltInstancesCount(
+                        InputRouter.BOLT_ID, TickDeduplicator.BOLT_ID));
         declareBolt(topology, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(InputRouter.BOLT_ID, InputRouter.STREAM_ZOOKEEPER)
                 .allGrouping(TickDeduplicator.BOLT_ID, TickDeduplicator.STREAM_ZOOKEEPER);

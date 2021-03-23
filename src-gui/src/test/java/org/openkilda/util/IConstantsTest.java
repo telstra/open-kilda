@@ -24,7 +24,7 @@ package org.openkilda.util;
 public interface IConstantsTest {
 
     /** The Constant CLASSPATH. */
-    static final String CLASSPATH = "src/main/resources";
+    static final String CLASSPATH = "src/main/webapp";
 
     /** The Constant CSS_PATH. */
     static final String CSS_PATH = "/lib/css/";
@@ -42,6 +42,6 @@ public interface IConstantsTest {
     static final String JQUERY_FILE = "jquery.min.js";
 
     /** The Constant JQUERY_MIN_FILE. */
-    static final String JQUERY_MIN_FILE = "jquery-3.2.1.min.js";
+    static final String JQUERY_MIN_FILE = "jquery-3.5.1.min.js";
 
 }

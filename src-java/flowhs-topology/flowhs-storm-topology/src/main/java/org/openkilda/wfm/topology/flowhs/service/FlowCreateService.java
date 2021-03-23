@@ -157,9 +157,9 @@ public class FlowCreateService {
             fsms.remove(key);
 
             carrier.cancelTimeoutCallback(key);
-        }
-        if (!active && fsms.isEmpty()) {
-            carrier.sendInactive();
+            if (!active && fsms.isEmpty()) {
+                carrier.sendInactive();
+            }
         }
     }
 

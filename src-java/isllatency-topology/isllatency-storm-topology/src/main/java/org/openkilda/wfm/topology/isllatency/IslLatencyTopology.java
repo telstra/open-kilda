@@ -96,7 +96,8 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
 
     private void createZooKeeperBolt(TopologyBuilder builder) {
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString());
+                getZookeeperConfig().getConnectString(), getBoltInstancesCount(ROUTER_BOLT_ID,
+                ISL_STATUS_UPDATE_BOLT_ID));
         declareBolt(builder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(ROUTER_BOLT_ID, ZkStreams.ZK.toString())
                 .allGrouping(ISL_STATUS_UPDATE_BOLT_ID, ZkStreams.ZK.toString());

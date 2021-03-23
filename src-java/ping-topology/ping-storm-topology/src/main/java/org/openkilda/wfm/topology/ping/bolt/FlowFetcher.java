@@ -99,8 +99,10 @@ public class FlowFetcher extends Abstract {
         PeriodicPingCommand periodicPingCommand = pullPeriodicPingRequest(input);
         if (periodicPingCommand.isEnable()) {
             flowRepository.findById(periodicPingCommand.getFlowId())
-                    .flatMap(this::getFlowWithTransitEncapsulation)
-                    .map(v -> new FlowWithTransitEncapsulation(new Flow(v.flow), v.transitEncapsulation))
+                    .flatMap(flow -> {
+                        flowRepository.detach(flow);
+                        return getFlowWithTransitEncapsulation(flow);
+                    })
                     .ifPresent(flowsSet::add);
         } else {
             flowsSet.removeIf(flowWithTransitEncapsulation ->
@@ -112,6 +114,7 @@ public class FlowFetcher extends Abstract {
         log.debug("Handle periodic ping request");
         Set<FlowWithTransitEncapsulation> flowsWithTransitEncapsulation =
                 flowRepository.findWithPeriodicPingsEnabled().stream()
+                        .peek(flowRepository::detach)
                         .map(this::getFlowWithTransitEncapsulation)
                         .flatMap(o -> o.isPresent() ? Stream.of(o.get()) : Stream.empty())
                         .collect(Collectors.toSet());

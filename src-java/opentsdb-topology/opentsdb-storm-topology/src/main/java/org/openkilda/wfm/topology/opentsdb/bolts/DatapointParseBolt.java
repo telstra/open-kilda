@@ -27,6 +27,7 @@ import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -47,8 +48,8 @@ public class DatapointParseBolt extends BaseRichBolt {
     private static final Logger LOGGER = LoggerFactory.getLogger(DatapointParseBolt.class);
     private transient OutputCollector collector;
 
-    // True for testing
-    private boolean active = true;
+    @VisibleForTesting
+    public boolean active;
 
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector collector) {

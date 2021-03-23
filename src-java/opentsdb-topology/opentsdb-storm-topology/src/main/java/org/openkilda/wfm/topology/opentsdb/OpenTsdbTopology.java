@@ -52,7 +52,8 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
     static final String OTSDB_SPOUT_ID = "kilda.otsdb-spout";
     private static final String OTSDB_BOLT_ID = "otsdb-bolt";
     private static final String OTSDB_FILTER_BOLT_ID = OpenTSDBFilterBolt.class.getSimpleName();
-    private static final String OTSDB_PARSE_BOLT_ID = DatapointParseBolt.class.getSimpleName();
+    @VisibleForTesting
+    static final String OTSDB_PARSE_BOLT_ID = DatapointParseBolt.class.getSimpleName();
 
     @Override
     public StormTopology createTopology() {
@@ -66,7 +67,7 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
 
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString());
+                getZookeeperConfig().getConnectString(), getBoltInstancesCount(OTSDB_PARSE_BOLT_ID));
         declareBolt(tb, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(OTSDB_PARSE_BOLT_ID, ZkStreams.ZK.toString());
 

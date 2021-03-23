@@ -86,7 +86,6 @@ discovery.db.write.repeats.time.frame = 30
 # multi-FL
 floodlight.alive.timeout = 10
 floodlight.alive.interval = 2
-message.blacklist.timeout = 180
 floodlight.regions = 1,1.stats,2
 # floodlight.switch.mapping.remove.delay.seconds = 900
 
