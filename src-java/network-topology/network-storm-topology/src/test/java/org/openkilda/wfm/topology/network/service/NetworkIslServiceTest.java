@@ -402,7 +402,7 @@ public class NetworkIslServiceTest {
         IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
         verify(carrier).islRemovedNotification(endpointAlpha1, reference);
         verify(carrier).islRemovedNotification(endpointBeta2, reference);
-        verify(carrier).islChangedNotifyFlowMonitor(IslReference.of(endpointAlpha1));
+        verify(carrier).islChangedNotifyFlowMonitor(reference, true);
 
         verifyNoMoreInteractions(carrier);
     }
@@ -958,7 +958,7 @@ public class NetworkIslServiceTest {
         if (!shouldResurrect) {
             verify(carrier).islRemovedNotification(eq(alphaEnd), eq(reference));
             verify(carrier).islRemovedNotification(eq(zetaEnd), eq(reference));
-            verify(carrier).islChangedNotifyFlowMonitor(any(IslReference.class));
+            verify(carrier).islChangedNotifyFlowMonitor(any(IslReference.class), eq(true));
         }
         verifyNoMoreInteractions(carrier);
     }

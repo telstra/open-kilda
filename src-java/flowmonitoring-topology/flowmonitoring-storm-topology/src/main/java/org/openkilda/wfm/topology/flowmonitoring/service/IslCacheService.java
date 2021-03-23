@@ -106,9 +106,9 @@ public class IslCacheService {
      */
     public void handleIslChangedData(IslChangedInfoData data) {
         cleanUpLinkStatesByEndpoint(data.getSource().getDatapath(), data.getSource().getPortNumber());
-        if (data.getDestination() != null) {
-            // Handle moved ISL
-            cleanUpLinkStatesByEndpoint(data.getDestination().getDatapath(), data.getDestination().getPortNumber());
+        cleanUpLinkStatesByEndpoint(data.getDestination().getDatapath(), data.getDestination().getPortNumber());
+        if (!data.isRemoved()) {
+            // Handle moved or added ISL
             linkStates.put(Link.builder()
                             .srcSwitchId(data.getSource().getDatapath())
                             .srcPort(data.getSource().getPortNumber())
