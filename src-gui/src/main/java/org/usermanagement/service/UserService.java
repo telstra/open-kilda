@@ -582,6 +582,20 @@ public class UserService implements UserDetailsService {
         userInfo.setPermissions(requestContext.getPermissions());
         return userInfo;
     }
+
+    /**
+     * Unlock user account.
+     *
+     * @param userId the user id
+     */
+    public void unlockUserAccount(Long userId) {
+        UserEntity userEntity = userValidator.validateUserId(userId);
+        userEntity.setStatusEntity(Status.ACTIVE.getStatusEntity());
+        userEntity.setFailedLoginCount(null);
+        userEntity.setUnlockTime(null);
+        userEntity.setLoginTime(new Timestamp(System.currentTimeMillis()));
+        userRepository.save(userEntity);
+    }
     
     /**
      * Adds user information in session.

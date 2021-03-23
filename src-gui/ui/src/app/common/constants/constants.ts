@@ -70,6 +70,10 @@ export const MessageObj = {
     session_setting_saved:"Session setting saved",
     saving_switch_name_store_setting:"Saving switch name source setting",
     switch_name_store_setting_saved:"Switch name source saved",
+    user_unlock_time_setting_saved:"User unlock time setting saved",
+    saving_unlock_time_setting:"Saving user unlock time setting",
+    saving_login_attempt_setting:"Saving login attempt setting",
+    user_login_attempt_setting_saved:"User login attempt setting saved",
     loading_switch_store:"Loading switch store settings",
     saving_switch_store:"Saving switch store settings",
     saved_switch_store:"Switch store settings saved successfully",
@@ -144,5 +148,12 @@ export const MessageObj = {
     provider_deleted_success:"Provider deleted successfully",
     switch_updated_success:"Switch location updated successfully.",
     switch_updated_error:"Error in updating switch location.",
+    delete_bfd_properties:"Deleting BFD properties.",
+    updating_bfd_properties:'Updating BFD properties values.',
+    updating_bfd_properties_success:'BFD Properties updated successfully.',
+    updating_bfd_properties_error:"Error in updating BFD properties.",
+    BFD_properties_deleted:"BFD properties deleted successfully.",
+    error_BFD_properties_delete:"Error in deleting BFD properties.",
+    delete_isl_bfd_not_authorised:"You are not authorised to delete the ISL BFD Properties."
 
 }
