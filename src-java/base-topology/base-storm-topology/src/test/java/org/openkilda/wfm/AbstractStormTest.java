@@ -50,7 +50,10 @@ import org.kohsuke.args4j.CmdLineException;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Properties;
+import java.util.stream.Stream;
 
 @Slf4j
 public abstract class AbstractStormTest {
@@ -192,15 +195,11 @@ public abstract class AbstractStormTest {
     }
 
     protected static String[] makeLaunchArgs(String... extraConfig) {
-        String[] args = new String[extraConfig.length + 1];
-
-        File root = fsData.getRoot();
-        args[0] = new File(root, CONFIG_NAME).toString();
-        for (int idx = 0; idx < extraConfig.length; idx += 1) {
-            args[idx + 1] = new File(root, extraConfig[idx]).toString();
-        }
-
-        return args;
+        String root = fsData.getRoot().getPath();
+        return Stream.concat(Stream.of(CONFIG_NAME), Arrays.stream(extraConfig))
+                .map(f -> Paths.get(root, f).toString())
+                .flatMap(f -> Stream.of("--topology-config", f))
+                .toArray(String[]::new);
     }
 
     protected static void makeConfigFile() throws IOException {

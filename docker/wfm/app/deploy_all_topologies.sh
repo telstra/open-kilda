@@ -47,6 +47,7 @@ for TOPOLOGY in $(find . -name "*-topology" -type d); do
         --jars \
         "${COMMA_SEPARATED_DEPENDENCY_LIST}" \
         --name ${TOPOLOGY_NAME} \
-        /app/topology.properties || true
+        --topology-config /app/topology.properties \
+        --topology-definition /app/${TOPOLOGY_NAME}-storm-topology/topology-definition.yaml || true
 done
 

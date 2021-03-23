@@ -19,6 +19,7 @@ import org.openkilda.messaging.AliveResponse;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
+import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractBolt;
@@ -64,9 +65,11 @@ public class SpeakerToNetworkProxyBolt extends SpeakerToControllerProxyBolt {
         if (payload instanceof AliveResponse) {
             emitRegionNotification(envelope.getRegion(), (AliveResponse) payload);
         } else if (payload instanceof SwitchInfoData) {
-            emitConnectNotification(envelope.getRegion(), (SwitchInfoData) payload);
+            emitNetworkNotification(envelope.getRegion(), (SwitchInfoData) payload);
         } else if (payload instanceof NetworkDumpSwitchData) {
-            emitConnectNotification(envelope.getRegion(), (NetworkDumpSwitchData) payload);
+            emitNetworkNotification(envelope.getRegion(), (NetworkDumpSwitchData) payload);
+        } else if (payload instanceof PortInfoData) {
+            emitNetworkNotification(envelope.getRegion(), (PortInfoData) payload);
         } else {
             super.proxyInfoMessage(key, envelope);
         }
@@ -84,15 +87,19 @@ public class SpeakerToNetworkProxyBolt extends SpeakerToControllerProxyBolt {
                 makeRegionNotificationTuple(region, response));
     }
 
-    private void emitConnectNotification(String region, SwitchInfoData payload) {
-        emitConnectNotification(region, payload.getSwitchId(), payload);
+    private void emitNetworkNotification(String region, SwitchInfoData payload) {
+        emitNetworkNotification(region, payload.getSwitchId(), payload);
     }
 
-    private void emitConnectNotification(String region, NetworkDumpSwitchData payload) {
-        emitConnectNotification(region, payload.getSwitchView().getDatapath(), payload);
+    private void emitNetworkNotification(String region, NetworkDumpSwitchData payload) {
+        emitNetworkNotification(region, payload.getSwitchView().getDatapath(), payload);
     }
 
-    private void emitConnectNotification(String region, SwitchId switchId, InfoData payload) {
+    private void emitNetworkNotification(String region, PortInfoData payload) {
+        emitNetworkNotification(region, payload.getSwitchId(), payload);
+    }
+
+    private void emitNetworkNotification(String region, SwitchId switchId, InfoData payload) {
         getOutput().emit(
                 STREAM_CONNECT_NOTIFICATION_ID, getCurrentTuple(),
                 makeConnectNotificationTuple(region, switchId, payload));
