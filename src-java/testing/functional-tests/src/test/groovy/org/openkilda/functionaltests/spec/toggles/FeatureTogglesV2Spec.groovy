@@ -326,6 +326,7 @@ feature toogle"() {
             assert northbound.getFlowHistory(flow.flowId).find {
                 it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
             }?.payload?.last()?.action == REROUTE_FAIL
+            assert northboundV2.getFlowHistoryStatuses(flow.flowId, 1).historyStatuses*.statusBecome == ["DOWN"]
         }
         wait(WAIT_OFFSET) {
             def prevHistorySize = northbound.getFlowHistory(flow.flowId).size()

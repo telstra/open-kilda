@@ -957,6 +957,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
                 statusInfo == "Couldn't find non overlapping protected path"
             }
             assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
+            assert northboundV2.getFlowHistoryStatuses(flow.flowId, 1).historyStatuses*.statusBecome == ["DEGRADED"]
         }
 
         when: "Update flow: disable protected path(allocateProtectedPath=false)"

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
@@ -198,6 +199,14 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         then: "History is still available for the deleted flow"
         northbound.getFlowHistory(flow.flowId, specStartTime, timestampAfterUpdate).size() == 2
 
+        and: "Flow history statuses returns all flow statuses for the whole life cycle"
+        //create, update, delete
+        northboundV2.getFlowHistoryStatuses(flow.flowId).historyStatuses*.statusBecome == ["UP", "UP", "DELETED"]
+        //check custom timeLine and the 'count' option
+        northboundV2.getFlowHistoryStatuses(flow.flowId, specStartTime, timestampAfterUpdate)
+            .historyStatuses*.statusBecome == ["UP", "UP"]
+        northboundV2.getFlowHistoryStatuses(flow.flowId, 1).historyStatuses*.statusBecome == ["DELETED"]
+
         cleanup:
         !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
@@ -235,6 +244,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(LOW_PRIORITY)
     def "History max_count cannot be <1"() {
         when: "Try to get history with max_count 0"
         northbound.getFlowHistory(flowWithHistory, 0)
@@ -250,6 +260,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
 
     @Tidy
     @Unroll
+    @Tags(LOW_PRIORITY)
     def "Check history: #data.descr"() {
         expect: "#data.descr"
         northbound.getFlowHistory(*data.params) == data.expectedHistory
