@@ -1,7 +1,7 @@
 package org.openkilda.functionaltests.spec.server42
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.STATS_FROM_SERVER42_LOGGING_TIMEOUT
@@ -12,6 +12,8 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.model.system.FeatureTogglesDto
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.time.TimeCategory
@@ -22,7 +24,6 @@ import spock.util.mop.Use
 
 import java.util.concurrent.TimeUnit
 
-@Tags(HARDWARE) //unstable on jenkins, fix ASAP
 @Use(TimeCategory)
 @Narrative("Verify that statistic is collected from server42 Rtt")
 /* On local environment these tests will use stubs without sending real rtt packets across the network.
@@ -84,7 +85,19 @@ class Server42RttSpec extends HealthCheckSpecification {
         and: "Create a reversed flow for backward metric"
         def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed).tap { it.flowId = it.flowId.take(25) }
         flowHelperV2.addFlow(reversedFlow)
-        then: "Involved switches pass switch validation"
+
+        then: "Server42 input/ingress rules are installed"
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            [switchPair.src, switchPair.dst].each {
+                //one rule of each type for one flow
+                def amountOfRules = useMultitable ? 4 : 2 //no SERVER_42_INPUT cookie in singleTable
+                assert northbound.getSwitchRules(it.dpId).flowEntries.findAll {
+                    new Cookie(it.cookie).getType() in  [CookieType.SERVER_42_INPUT, CookieType.SERVER_42_INGRESS]
+                }.size() == amountOfRules
+            }
+        }
+
+        and: "Involved switches pass switch validation"
         pathHelper.getInvolvedSwitches(flow.flowId).each { sw ->
             verifyAll(northbound.validateSwitch(sw.dpId)) {
                 rules.missing.empty
@@ -134,14 +147,16 @@ class Server42RttSpec extends HealthCheckSpecification {
         def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed).tap { it.flowId = it.flowId.take(25) }
         flowHelperV2.addFlow(reversedFlow)
         expect: "Involved switches pass switch validation"
-        pathHelper.getInvolvedSwitches(flow.flowId).each { sw ->
-            verifyAll(northbound.validateSwitch(sw.dpId)) {
-                rules.missing.empty
-                rules.excess.empty
-                rules.misconfigured.empty
-                meters.missing.empty
-                meters.excess.empty
-                meters.misconfigured.empty
+        Wrappers.wait(RULES_INSTALLATION_TIME) { //wait for s42 rules
+            pathHelper.getInvolvedSwitches(flow.flowId).each { sw ->
+                verifyAll(northbound.validateSwitch(sw.dpId)) {
+                    rules.missing.empty
+                    rules.excess.empty
+                    rules.misconfigured.empty
+                    meters.missing.empty
+                    meters.excess.empty
+                    meters.misconfigured.empty
+                }
             }
         }
         when: "Wait for several seconds"
@@ -238,14 +253,16 @@ class Server42RttSpec extends HealthCheckSpecification {
         def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
         flowHelperV2.addFlow(flow)
         then: "Involved switches pass switch validation"
-        pathHelper.getInvolvedSwitches(flow.flowId).each { sw ->
-            verifyAll(northbound.validateSwitch(sw.dpId)) {
-                rules.missing.empty
-                rules.excess.empty
-                rules.misconfigured.empty
-                meters.missing.empty
-                meters.excess.empty
-                meters.misconfigured.empty
+        Wrappers.wait(RULES_INSTALLATION_TIME) {  //wait for s42 rules
+            pathHelper.getInvolvedSwitches(flow.flowId).each { sw ->
+                verifyAll(northbound.validateSwitch(sw.dpId)) {
+                    rules.missing.empty
+                    rules.excess.empty
+                    rules.misconfigured.empty
+                    meters.missing.empty
+                    meters.excess.empty
+                    meters.misconfigured.empty
+                }
             }
         }
         and: "Stats for both directions are available"
@@ -300,9 +317,20 @@ class Server42RttSpec extends HealthCheckSpecification {
         return originalState
     }
     def revertToOrigin(flows,  flowRttFeatureStartState, initialSwitchRtt) {
-        flowRttFeatureStartState != null && changeFlowRttToggle(flowRttFeatureStartState)
-        initialSwitchRtt.each { sw, state -> changeFlowRttSwitch(sw, state)  }
         flows.each { flowHelperV2.deleteFlow(it.flowId) }
+        //make sure that s42 rules are deleted
+        withPool {
+            Wrappers.wait(RULES_INSTALLATION_TIME) {
+                initialSwitchRtt.keySet().eachParallel { sw ->
+                    assert northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
+                        new Cookie(it.cookie).getType() in [CookieType.SERVER_42_INPUT, CookieType.SERVER_42_INGRESS]
+                    }.empty
+                }
+            }
+        }
+        flowRttFeatureStartState != null && changeFlowRttToggle(flowRttFeatureStartState)
+        sleep(5000) //due to instability on jenkins
+        initialSwitchRtt.each { sw, state -> changeFlowRttSwitch(sw, state)  }
         initialSwitchRtt.keySet().each { sw ->
             Wrappers.wait(RULES_INSTALLATION_TIME) {
                 assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
