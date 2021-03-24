@@ -18,5 +18,7 @@ package org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast;
 import org.openkilda.model.FeatureToggles;
 
 public interface ISpeakerBcastConsumer {
+    void activationStatusUpdate(boolean isActive);
+
     void processFeatureTogglesUpdate(FeatureToggles toggles);
 }

@@ -22,6 +22,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.metrics.TimedExecution;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.PathSwappingRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
@@ -45,6 +46,7 @@ public class RemoveOldRulesAction extends
         super(persistenceManager, resourcesManager);
     }
 
+    @TimedExecution("fsm.remove_old_rules")
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         FlowEncapsulationType encapsulationType = stateMachine.getOriginalEncapsulationType();
@@ -97,22 +99,22 @@ public class RemoveOldRulesAction extends
                     stateMachine.getCommandContext(), originalFlow, oldReverse));
         }
 
-        Map<UUID, FlowSegmentRequestFactory> requestsStorage = stateMachine.getRemoveCommands();
-        for (FlowSegmentRequestFactory factory : factories) {
-            FlowSegmentRequest request = factory.makeRemoveRequest(commandIdGenerator.generate());
-            // TODO ensure no conflicts
-            requestsStorage.put(request.getCommandId(), factory);
-            stateMachine.getCarrier().sendSpeakerRequest(request);
-        }
-
-        requestsStorage.forEach((key, value) -> stateMachine.getPendingCommands().put(key, value.getSwitchId()));
-        stateMachine.getRetriedCommands().clear();
+        stateMachine.clearPendingAndRetriedAndFailedCommands();
 
         if (factories.isEmpty()) {
             stateMachine.saveActionToHistory("No need to remove old rules");
 
             stateMachine.fire(Event.RULES_REMOVED);
         } else {
+            Map<UUID, FlowSegmentRequestFactory> requestsStorage = stateMachine.getRemoveCommands();
+            for (FlowSegmentRequestFactory factory : factories) {
+                FlowSegmentRequest request = factory.makeRemoveRequest(commandIdGenerator.generate());
+                // TODO ensure no conflicts
+                requestsStorage.put(request.getCommandId(), factory);
+                stateMachine.getCarrier().sendSpeakerRequest(request);
+            }
+            requestsStorage.forEach((key, value) -> stateMachine.addPendingCommand(key, value.getSwitchId()));
+
             stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
         }
     }

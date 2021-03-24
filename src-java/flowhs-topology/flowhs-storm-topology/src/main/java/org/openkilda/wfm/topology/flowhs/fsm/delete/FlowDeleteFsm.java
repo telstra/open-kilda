@@ -25,6 +25,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
+import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
@@ -45,6 +46,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.RevertFlowStatusActi
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.ValidateFlowAction;
 import org.openkilda.wfm.topology.flowhs.service.FlowDeleteHubCarrier;
 
+import io.micrometer.core.instrument.LongTaskTimer;
+import io.micrometer.core.instrument.LongTaskTimer.Sample;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -58,6 +61,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Getter
 @Slf4j
@@ -109,6 +113,33 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
         }
 
         fire(errorEvent);
+    }
+
+    public void clearPendingCommands() {
+        pendingCommands.clear();
+    }
+
+    public boolean removePendingCommand(UUID key) {
+        return pendingCommands.remove(key);
+    }
+
+    public void clearRetriedCommands() {
+        retriedCommands.clear();
+    }
+
+    public int doRetryForCommand(UUID key) {
+        int attempt = retriedCommands.getOrDefault(key, 0) + 1;
+        retriedCommands.put(key, attempt);
+        return attempt;
+    }
+
+    public void clearPendingAndRetriedCommands() {
+        clearPendingCommands();
+        clearRetriedCommands();
+    }
+
+    public void addFailedCommand(UUID key, FlowErrorResponse errorResponse) {
+        failedCommands.put(key, errorResponse);
     }
 
     @Override
@@ -190,9 +221,9 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
 
             builder.onEntry(State.REVERTING_FLOW_STATUS)
                     .perform(reportErrorAction);
-            builder.transitions().from(State.REVERTING_FLOW_STATUS)
-                    .toAmong(State.NOTIFY_FLOW_MONITOR_WITH_ERROR, State.NOTIFY_FLOW_MONITOR_WITH_ERROR)
-                    .onEach(Event.NEXT, Event.ERROR)
+            builder.transition().from(State.REVERTING_FLOW_STATUS)
+                    .to(State.NOTIFY_FLOW_MONITOR_WITH_ERROR)
+                    .on(Event.NEXT)
                     .perform(new RevertFlowStatusAction(persistenceManager));
 
             builder.onEntry(State.FINISHED_WITH_ERROR)
@@ -216,7 +247,23 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
         }
 
         public FlowDeleteFsm newInstance(CommandContext commandContext, String flowId) {
-            return builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
+            FlowDeleteFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
+            MeterRegistryHolder.getRegistry().ifPresent(registry -> {
+                Sample sample = LongTaskTimer.builder("fsm.active_execution")
+                        .register(registry)
+                        .start();
+                fsm.addTerminateListener(e -> {
+                    long duration = sample.stop();
+                    if (fsm.getCurrentState() == State.FINISHED) {
+                        registry.timer("fsm.execution.success")
+                                .record(duration, TimeUnit.NANOSECONDS);
+                    } else if (fsm.getCurrentState() == State.FINISHED_WITH_ERROR) {
+                        registry.timer("fsm.execution.failed")
+                                .record(duration, TimeUnit.NANOSECONDS);
+                    }
+                });
+            });
+            return fsm;
         }
     }
 

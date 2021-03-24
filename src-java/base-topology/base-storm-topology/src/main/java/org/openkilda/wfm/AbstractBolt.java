@@ -21,13 +21,18 @@ import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.bluegreen.Signal;
 import org.openkilda.persistence.context.PersistenceContextRequired;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
+import org.openkilda.wfm.share.metrics.PushToStreamMeterRegistry;
 import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.topology.AbstractTopology;
 
 import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
@@ -45,7 +50,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
     protected transient Logger log = makeLog();
 
-    protected transient boolean active;
+    protected boolean active = false;
 
     @Getter(AccessLevel.PROTECTED)
     private transient OutputCollector output;
@@ -65,11 +70,21 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
     private String lifeCycleEventSourceComponent;
 
+    private String meterNamePrefix;
+    private String meterOutputStream;
+    private transient PushToStreamMeterRegistry meterRegistry;
+
     public AbstractBolt() {
+        this(null);
     }
 
     public AbstractBolt(String lifeCycleEventSourceComponent) {
         this.lifeCycleEventSourceComponent = lifeCycleEventSourceComponent;
+    }
+
+    protected final void enableMeterRegistry(@NonNull String meterNamePrefix, @NonNull String meterOutputStream) {
+        this.meterNamePrefix = meterNamePrefix;
+        this.meterOutputStream = meterOutputStream;
     }
 
     @Override
@@ -122,7 +137,18 @@ public abstract class AbstractBolt extends BaseRichBolt {
                 handleLifeCycleEvent(event);
             }
         } else {
-            handleInput(input);
+            if (meterRegistry != null) {
+                MeterRegistryHolder.setRegistry(meterRegistry);
+            }
+            try {
+                handleInput(input);
+            } finally {
+                MeterRegistryHolder.removeRegistry();
+                if (meterRegistry != null && meterOutputStream != null) {
+                    log.debug("Pushing MeterRegistry data to {} stream", meterOutputStream);
+                    meterRegistry.pushMeters(getOutput(), meterOutputStream);
+                }
+            }
         }
     }
 
@@ -200,7 +226,16 @@ public abstract class AbstractBolt extends BaseRichBolt {
         this.taskId = context.getThisTaskId();
         this.componentId = String.format("%s:%d", context.getThisComponentId(), this.taskId);
 
+        initMeterRegistry();
+
         init();
+    }
+
+    private void initMeterRegistry() {
+        if (meterNamePrefix != null) {
+            meterRegistry = new PushToStreamMeterRegistry(meterNamePrefix);
+            meterRegistry.config().commonTags("bolt_id", this.getComponentId());
+        }
     }
 
     protected void init() {
@@ -286,5 +321,12 @@ public abstract class AbstractBolt extends BaseRichBolt {
         }
 
         return payload.toString();
+    }
+
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        if (meterOutputStream != null) {
+            declarer.declareStream(meterOutputStream, AbstractTopology.fieldMessage);
+        }
     }
 }

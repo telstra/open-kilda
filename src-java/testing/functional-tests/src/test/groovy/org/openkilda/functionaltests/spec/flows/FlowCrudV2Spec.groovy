@@ -6,11 +6,11 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
-import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -1225,6 +1225,50 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         !involvedSwitchesPassSwValidation && currentPath*.switchId.each { SwitchId swId ->
             northbound.synchronizeSwitch(swId, true)
         }
+    }
+
+    @Tidy
+    @Tags([VIRTUAL, LOW_PRIORITY]) //VIRTUAL -> TOPOLOGY_DEPENDENT, https://github.com/telstra/open-kilda/issues/3413
+    def "System allows to update single switch flow to multi switch flow"() {
+        given: "A single switch flow"
+        def swPair = topologyHelper.getNeighboringSwitchPair()
+        def flow = flowHelperV2.singleSwitchFlow(swPair.src)
+        flowHelperV2.addFlow(flow)
+
+        when: "Update the dst endpoint to make this flow as multi switch flow"
+        def newPortNumber = topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
+            it.dpId == swPair.dst.dpId }
+        ).first()
+        flowHelperV2.updateFlow(flow.flowId, flow.tap {
+            it.destination.switchId = swPair.dst.dpId
+            it.destination.portNumber = newPortNumber
+        })
+
+        then: "Flow is really updated"
+        with(northboundV2.getFlow(flow.flowId)) {
+            it.destination.switchId == swPair.dst.dpId
+            it.destination.portNumber == newPortNumber
+        }
+
+        and: "Flow is valid and pingable"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        with(northbound.pingFlow(flow.flowId, new PingInput())) {
+            it.forward.pingSuccess
+            it.reverse.pingSuccess
+        }
+
+        and: "Involved switches pass switch validation"
+        [swPair.src, swPair.dst].each {
+            with(northbound.validateSwitch(it.dpId)) { validation ->
+                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            }
+        }
+        def isSwitchValid = true
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        !isSwitchValid && [swPair.src, swPair.dst].each { northbound.synchronizeSwitch(it.dpId, true) }
     }
 
     @Shared

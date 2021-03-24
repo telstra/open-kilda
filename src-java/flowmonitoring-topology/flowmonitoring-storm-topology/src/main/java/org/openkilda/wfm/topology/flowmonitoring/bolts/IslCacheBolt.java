@@ -117,7 +117,8 @@ public class IslCacheBolt extends AbstractBolt {
 
             long latency = islCacheService.calculateLatencyForPath(flowPath);
 
-            emit(ACTION_STREAM_ID.name(), input, new Values(flowId, direction, latency, maxLatency, maxLatencyTier2));
+            emit(ACTION_STREAM_ID.name(), input, new Values(flowId, direction, latency, maxLatency, maxLatencyTier2,
+                    getCommandContext()));
         } else {
             unhandledInput(input);
         }
@@ -126,7 +127,7 @@ public class IslCacheBolt extends AbstractBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declareStream(ACTION_STREAM_ID.name(), new Fields(FLOW_ID_FIELD, FLOW_DIRECTION_FIELD,
-                LATENCY_FIELD, MAX_LATENCY_FIELD, MAX_LATENCY_TIER_2_FIELD));
+                LATENCY_FIELD, MAX_LATENCY_FIELD, MAX_LATENCY_TIER_2_FIELD, FIELD_ID_CONTEXT));
         declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
                 ZooKeeperBolt.FIELD_ID_CONTEXT));
     }

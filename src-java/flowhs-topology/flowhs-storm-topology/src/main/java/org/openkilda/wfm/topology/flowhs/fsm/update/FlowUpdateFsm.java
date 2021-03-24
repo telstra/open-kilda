@@ -23,6 +23,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
+import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
@@ -63,6 +64,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.actions.ValidateNonIngressRu
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowUpdateHubCarrier;
 
+import io.micrometer.core.instrument.LongTaskTimer;
+import io.micrometer.core.instrument.LongTaskTimer.Sample;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -70,6 +73,7 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 @Getter
 @Setter
@@ -343,9 +347,9 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
 
             builder.onEntry(State.PATHS_SWAP_REVERTED)
                     .perform(reportErrorAction);
-            builder.transitions().from(State.PATHS_SWAP_REVERTED)
-                    .toAmong(State.REVERTING_NEW_RULES, State.REVERTING_NEW_RULES)
-                    .onEach(Event.NEXT, Event.ERROR)
+            builder.transition().from(State.PATHS_SWAP_REVERTED)
+                    .to(State.REVERTING_NEW_RULES)
+                    .on(Event.NEXT)
                     .perform(new RevertNewRulesAction(persistenceManager, resourcesManager));
 
             builder.internalTransition().within(State.REVERTING_NEW_RULES).on(Event.RESPONSE_RECEIVED)
@@ -360,15 +364,14 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .perform(new HandleNotCompletedCommandsAction());
 
             builder.transitions().from(State.NEW_RULES_REVERTED)
-                    .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES,
-                            State.REVERTING_FLOW)
-                    .onEach(Event.NEXT, Event.ERROR, Event.UPDATE_ENDPOINT_RULES_ONLY);
+                    .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_FLOW)
+                    .onEach(Event.NEXT, Event.UPDATE_ENDPOINT_RULES_ONLY);
 
             builder.onEntry(State.REVERTING_ALLOCATED_RESOURCES)
                     .perform(reportErrorAction);
             builder.transitions().from(State.REVERTING_ALLOCATED_RESOURCES)
-                    .toAmong(State.RESOURCES_ALLOCATION_REVERTED, State.RESOURCES_ALLOCATION_REVERTED)
-                    .onEach(Event.NEXT, Event.ERROR)
+                    .toAmong(State.RESOURCES_ALLOCATION_REVERTED)
+                    .onEach(Event.NEXT)
                     .perform(new RevertResourceAllocationAction(persistenceManager, resourcesManager));
             builder.transition().from(State.RESOURCES_ALLOCATION_REVERTED).to(State.REVERTING_FLOW).on(Event.NEXT);
             builder.transition().from(State.RESOURCES_ALLOCATION_REVERTED).to(State.REVERTING_FLOW)
@@ -377,16 +380,16 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
 
             builder.onEntry(State.REVERTING_FLOW)
                     .perform(reportErrorAction);
-            builder.transitions().from(State.REVERTING_FLOW)
-                    .toAmong(State.REVERTING_FLOW_STATUS, State.REVERTING_FLOW_STATUS)
-                    .onEach(Event.NEXT, Event.ERROR)
+            builder.transition().from(State.REVERTING_FLOW)
+                    .to(State.REVERTING_FLOW_STATUS)
+                    .on(Event.NEXT)
                     .perform(new RevertFlowAction(persistenceManager));
 
             builder.onEntry(State.REVERTING_FLOW_STATUS)
                     .perform(reportErrorAction);
-            builder.transitions().from(State.REVERTING_FLOW_STATUS)
-                    .toAmong(State.NOTIFY_FLOW_MONITOR_WITH_ERROR, State.NOTIFY_FLOW_MONITOR_WITH_ERROR)
-                    .onEach(Event.NEXT, Event.ERROR)
+            builder.transition().from(State.REVERTING_FLOW_STATUS)
+                    .to(State.NOTIFY_FLOW_MONITOR_WITH_ERROR)
+                    .on(Event.NEXT)
                     .perform(new RevertFlowStatusAction(persistenceManager));
 
             builder.onEntry(State.FINISHED_WITH_ERROR)
@@ -410,7 +413,23 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
         }
 
         public FlowUpdateFsm newInstance(CommandContext commandContext, String flowId) {
-            return builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
+            FlowUpdateFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
+            MeterRegistryHolder.getRegistry().ifPresent(registry -> {
+                Sample sample = LongTaskTimer.builder("fsm.active_execution")
+                        .register(registry)
+                        .start();
+                fsm.addTerminateListener(e -> {
+                    long duration = sample.stop();
+                    if (fsm.getCurrentState() == State.FINISHED) {
+                        registry.timer("fsm.execution.success")
+                                .record(duration, TimeUnit.NANOSECONDS);
+                    } else if (fsm.getCurrentState() == State.FINISHED_WITH_ERROR) {
+                        registry.timer("fsm.execution.failed")
+                                .record(duration, TimeUnit.NANOSECONDS);
+                    }
+                });
+            });
+            return fsm;
         }
     }
 
