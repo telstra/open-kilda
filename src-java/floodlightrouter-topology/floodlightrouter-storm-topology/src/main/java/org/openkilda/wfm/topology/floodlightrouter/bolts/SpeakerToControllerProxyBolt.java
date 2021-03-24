@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
+import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.ConnectedDevicePacketBase;
@@ -25,6 +26,9 @@ import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
+import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.floodlightrouter.RegionAwareKafkaTopicSelector;
 import org.openkilda.wfm.topology.floodlightrouter.model.RegionMapping;
 import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingUpdate;
@@ -55,9 +59,14 @@ public class SpeakerToControllerProxyBolt extends AbstractBolt {
 
     @Override
     protected void dispatch(Tuple input) throws Exception {
-        if (SwitchMonitorBolt.BOLT_ID.equals(input.getSourceComponent())) {
+        if (ZooKeeperSpout.SPOUT_ID.equals(input.getSourceComponent())) {
+            LifecycleEvent event = (LifecycleEvent) input.getValueByField(ZooKeeperSpout.FIELD_ID_LIFECYCLE_EVENT);
+            if (event != null && shouldHandleLifeCycleEvent(event.getSignal())) {
+                handleLifeCycleEvent(event);
+            }
+        } else if (active && SwitchMonitorBolt.BOLT_ID.equals(input.getSourceComponent())) {
             handleSwitchMappingUpdate(input);
-        } else {
+        } else if (active) {
             super.dispatch(input);
         }
     }
@@ -86,14 +95,16 @@ public class SpeakerToControllerProxyBolt extends AbstractBolt {
         InfoData payload = envelope.getData();
         if (payload instanceof IslInfoData) {
             proxyOnlyIfActiveRegion(key, envelope, (IslInfoData) payload);
-        } else if (payload instanceof PortInfoData) {
-            proxyOnlyIfActiveRegion(key, envelope, (PortInfoData) payload);
         } else if (payload instanceof IslOneWayLatency) {
             proxyOnlyIfActiveRegion(key, envelope, (IslOneWayLatency) payload);
         } else if (payload instanceof IslBaseLatency) {
             proxyOnlyIfActiveRegion(key, envelope, (IslBaseLatency) payload);
         } else if (payload instanceof ConnectedDevicePacketBase) {
             proxyOnlyIfActiveRegion(key, envelope, (ConnectedDevicePacketBase) payload);
+        } else if (payload instanceof PortInfoData) {
+            log.error(
+                    "Drop Port status update event {}, it must not be handled by generic proxy, it must be handled "
+                            + "by network specific handler", payload);
         } else {
             proxyOther(key, envelope);
         }
@@ -106,10 +117,6 @@ public class SpeakerToControllerProxyBolt extends AbstractBolt {
     private void proxyOnlyIfActiveRegion(String key, InfoMessage envelope, IslInfoData payload) {
         SwitchId switchId = payload.getDestination().getSwitchId();
         proxyOnlyIfActiveRegion(key, envelope, switchId);
-    }
-
-    private void proxyOnlyIfActiveRegion(String key, InfoMessage envelope, PortInfoData payload) {
-        proxyOnlyIfActiveRegion(key, envelope, payload.getSwitchId());
     }
 
     private void proxyOnlyIfActiveRegion(String key, InfoMessage envelope, IslOneWayLatency payload) {
@@ -150,6 +157,8 @@ public class SpeakerToControllerProxyBolt extends AbstractBolt {
                 FieldNameBasedTupleToKafkaMapper.BOLT_KEY, FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE,
                 RegionAwareKafkaTopicSelector.FIELD_ID_TOPIC, RegionAwareKafkaTopicSelector.FIELD_ID_REGION);
         outputFieldsDeclarer.declare(fields);
+        outputFieldsDeclarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+                ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 
     protected Values makeDefaultTuple(String key, Object payload) {

@@ -22,6 +22,7 @@ import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_KE
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 import static org.openkilda.wfm.topology.utils.MessageKafkaTranslator.STREAM_FIELDS;
 
+import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
@@ -33,11 +34,14 @@ import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
 import org.openkilda.wfm.topology.flowhs.service.FlowSwapEndpointsHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowSwapEndpointsHubService;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
@@ -46,6 +50,8 @@ public class FlowSwapEndpointsHubBolt extends HubBolt implements FlowSwapEndpoin
     private final PersistenceManager persistenceManager;
     private transient FlowSwapEndpointsHubService service;
     private String currentKey;
+
+    private LifecycleEvent deferredShutdownEvent;
 
     public FlowSwapEndpointsHubBolt(Config config, PersistenceManager persistenceManager) {
         super(config);
@@ -56,6 +62,22 @@ public class FlowSwapEndpointsHubBolt extends HubBolt implements FlowSwapEndpoin
     public void init() {
         service = new FlowSwapEndpointsHubService(this, persistenceManager);
     }
+
+
+    @Override
+    protected boolean deactivate(LifecycleEvent event) {
+        if (service.deactivate()) {
+            return true;
+        }
+        deferredShutdownEvent = event;
+        return false;
+    }
+
+    @Override
+    protected void activate() {
+        service.activate();
+    }
+
 
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
@@ -75,6 +97,12 @@ public class FlowSwapEndpointsHubBolt extends HubBolt implements FlowSwapEndpoin
     public void onTimeout(String key, Tuple tuple) {
         currentKey = key;
         service.handleTaskTimeout(key);
+    }
+
+    @Override
+    public void sendInactive() {
+        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferredShutdownEvent, getCommandContext()));
+        deferredShutdownEvent = null;
     }
 
     @Override
@@ -118,5 +146,7 @@ public class FlowSwapEndpointsHubBolt extends HubBolt implements FlowSwapEndpoin
         declarer.declareStream(SWAP_ENDPOINTS_HUB_TO_ROUTER_BOLT.name(), STREAM_FIELDS);
         declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), STREAM_FIELDS);
         declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), STREAM_FIELDS);
+        declarer.declareStream(ZkStreams.ZK.toString(),
+                new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 }

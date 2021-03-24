@@ -20,6 +20,7 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.model.SwitchFeature
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import spock.lang.See
@@ -89,6 +90,7 @@ class RoundTripIslSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(allLinks, isl).get().roundTripStatus == DISCOVERED
             assert islUtils.getIslInfo(allLinks, isl.reversed).get().roundTripStatus == DISCOVERED
         }
+        database.resetCosts()
 
         where:
         bfd << [false, true]
@@ -147,6 +149,7 @@ for ISL alive confirmation)"
                 }.size() == topology.islsForActiveSwitches.size() * 2
             }
         }
+        database.resetCosts()
     }
 
     @Tidy
@@ -192,6 +195,7 @@ on both switches)"
                 assert islUtils.getIslInfo(allLinks, roundTripIsl.reversed).get().roundTripStatus == DISCOVERED
             }
         }
+        database.resetCosts()
     }
 
     @Tidy
@@ -290,6 +294,161 @@ round trip latency rule is removed on the dst switch"() {
                 assert islUtils.getIslInfo(allLinks, roundTripIsl).get().roundTripStatus == DISCOVERED
                 assert islUtils.getIslInfo(allLinks, roundTripIsl.reversed).get().roundTripStatus == DISCOVERED
                 assert northbound.validateSwitch(dstSw.dpId).rules.missing.empty
+            }
+        }
+        database.resetCosts()
+    }
+
+    @Tidy
+    @Tags([SMOKE_SWITCHES])
+    def "A round trip latency ISL goes down when portDiscovery property is disabled on the src/dst ports"() {
+        given: "A round trip latency ISL"
+        Isl roundTripIsl = topology.islsForActiveSwitches.find {
+            it.srcSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) &&
+                    it.dstSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
+        } ?: assumeTrue("Wasn't able to find a suitable link", false)
+
+        when: "Disable portDiscovery on the srcPort"
+        northboundV2.updatePortProperties(roundTripIsl.srcSwitch.dpId, roundTripIsl.srcPort,
+                new PortPropertiesDto(discoveryEnabled: false))
+        def portDiscoveryIsEnabledOnSrcPort = false
+
+        then: "Isl is still DISCOVERED"
+        Wrappers.wait(WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            def islInfoForward = islUtils.getIslInfo(links, roundTripIsl,).get()
+            def islInfoReverse = islUtils.getIslInfo(links, roundTripIsl.reversed).get()
+            assert islInfoForward.state == DISCOVERED
+            assert islInfoForward.actualState == FAILED
+            assert islInfoReverse.state == DISCOVERED
+            assert islInfoReverse.actualState == DISCOVERED
+        }
+
+        when: "Disable portDiscovery property on the dstPort"
+        northboundV2.updatePortProperties(roundTripIsl.dstSwitch.dpId, roundTripIsl.dstPort,
+                new PortPropertiesDto(discoveryEnabled: false))
+        def portDiscoveryIsEnabledOnDstPort = false
+
+        then: "Status of the link is changed to FAILED"
+        //don't need to wait discoveryTimeout, disablePortDiscovery(on src/dst sides) == portDown
+        Wrappers.wait(WAIT_OFFSET) {
+            def allLinks = northbound.getAllLinks()
+            def islInfoForward = islUtils.getIslInfo(allLinks, roundTripIsl).get()
+            def islInfoReverse = islUtils.getIslInfo(allLinks, roundTripIsl.reversed).get()
+            assert islInfoForward.state == FAILED
+            assert islInfoForward.actualState == FAILED
+            assert islInfoReverse.state == FAILED
+            assert islInfoReverse.actualState == FAILED
+        }
+
+        when: "Enable portDiscovery on the src/dst ports"
+        northboundV2.updatePortProperties(roundTripIsl.srcSwitch.dpId, roundTripIsl.srcPort,
+                new PortPropertiesDto(discoveryEnabled: true))
+        northboundV2.updatePortProperties(roundTripIsl.dstSwitch.dpId, roundTripIsl.dstPort,
+                new PortPropertiesDto(discoveryEnabled: true))
+        portDiscoveryIsEnabledOnSrcPort = true
+        portDiscoveryIsEnabledOnDstPort = true
+
+        then: "ISL is rediscovered"
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            def islInfoForward = islUtils.getIslInfo(links, roundTripIsl).get()
+            def islInfoReverse = islUtils.getIslInfo(links, roundTripIsl.reversed).get()
+            assert islInfoForward.state == DISCOVERED
+            assert islInfoForward.actualState == DISCOVERED
+            assert islInfoReverse.state == DISCOVERED
+            assert islInfoReverse.actualState == DISCOVERED
+        }
+
+        cleanup:
+        !portDiscoveryIsEnabledOnSrcPort && northboundV2.updatePortProperties(roundTripIsl.srcSwitch.dpId,
+                roundTripIsl.srcPort, new PortPropertiesDto(discoveryEnabled: true))
+        !portDiscoveryIsEnabledOnDstPort && northboundV2.updatePortProperties(roundTripIsl.dstSwitch.dpId,
+                roundTripIsl.dstPort, new PortPropertiesDto(discoveryEnabled: true))
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            assert islUtils.getIslInfo(roundTripIsl).get().state == DISCOVERED
+            assert islUtils.getIslInfo(roundTripIsl.reversed).get().state == DISCOVERED
+        }
+    }
+
+    @Tidy
+    def "Able to delete failed ISL without force if it was discovered with disabled portDiscovery on a switch"() {
+        given: "A deleted round trip latency ISL"
+        Isl roundTripIsl = topology.islsForActiveSwitches.find {
+            it.srcSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) &&
+                    it.dstSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
+        } ?: assumeTrue("Wasn't able to find a suitable link", false)
+
+        antiflap.portDown(roundTripIsl.srcSwitch.dpId, roundTripIsl.srcPort)
+        Wrappers.wait(WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, roundTripIsl).get().state == FAILED
+            assert islUtils.getIslInfo(links, roundTripIsl.reversed).get().state == FAILED
+        }
+        def portIsUp = false
+        northbound.deleteLink(islUtils.toLinkParameters(roundTripIsl))
+        Wrappers.wait(WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert !islUtils.getIslInfo(links, roundTripIsl).present
+        }
+
+        when: "Disable portDiscovery on the srcPort"
+        northboundV2.updatePortProperties(roundTripIsl.srcSwitch.dpId, roundTripIsl.srcPort,
+                new PortPropertiesDto(discoveryEnabled: false))
+        def portDiscoveryIsEnabledOnSrcPort = false
+
+        and: "Revive the ISL back (bring switch port up)"
+        antiflap.portUp(roundTripIsl.srcSwitch.dpId, roundTripIsl.srcPort)
+        portIsUp = true
+
+        then: "The ISL is rediscovered"
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, roundTripIsl).get().state == DISCOVERED
+            assert islUtils.getIslInfo(links, roundTripIsl.reversed).get().state == DISCOVERED
+        }
+
+        and: "The src/dst switches are valid"
+        //https://github.com/telstra/open-kilda/issues/3906
+//        [roundTripIsl.srcSwitch, roundTripIsl.dstSwitch].each {
+//            def validateInfo = northbound.validateSwitch(it.dpId).rules
+//            assert validateInfo.missing.empty
+//            assert validateInfo.excess.empty
+//            assert validateInfo.misconfigured.empty
+//        }
+
+        when: "Disable portDiscovery on the dstPort"
+        northboundV2.updatePortProperties(roundTripIsl.dstSwitch.dpId, roundTripIsl.dstPort,
+                new PortPropertiesDto(discoveryEnabled: false))
+        def portDiscoveryIsEnabledOnDstPort = false
+
+        then: "The ISL is failed"
+        Wrappers.wait(WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, roundTripIsl).get().state == FAILED
+            assert islUtils.getIslInfo(links, roundTripIsl.reversed).get().state == FAILED
+        }
+
+        when: "Delete the ISL without the 'force' option"
+        northbound.deleteLink(islUtils.toLinkParameters(roundTripIsl))
+
+        then: "The ISL is deleted"
+        Wrappers.wait(WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert !islUtils.getIslInfo(links, roundTripIsl).present
+        }
+
+        cleanup:
+        if (roundTripIsl) {
+            !portDiscoveryIsEnabledOnSrcPort && northboundV2.updatePortProperties(roundTripIsl.srcSwitch.dpId,
+                    roundTripIsl.srcPort, new PortPropertiesDto(discoveryEnabled: true))
+            !portDiscoveryIsEnabledOnDstPort && northboundV2.updatePortProperties(roundTripIsl.dstSwitch.dpId,
+                    roundTripIsl.dstPort, new PortPropertiesDto(discoveryEnabled: true))
+            !portIsUp && antiflap.portUp(roundTripIsl.srcSwitch.dpId, roundTripIsl.srcPort)
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+                def links = northbound.getAllLinks()
+                assert islUtils.getIslInfo(links, roundTripIsl).get().state == DISCOVERED
+                assert islUtils.getIslInfo(links, roundTripIsl.reversed).get().state == DISCOVERED
             }
         }
     }

@@ -6,7 +6,6 @@ plugins {
 group = 'org.projectfloodlight'
 
 
-import com.sun.security.auth.module.UnixSystem
 import org.ajoberstar.grgit.Grgit
 
 configurations {
@@ -45,22 +44,14 @@ clean.dependsOn(cleanSources)
 task generateSources(type: Exec, dependsOn: cloneLoxigenRepo) {
     outputs.dir('loxigen/loxi_output/openflowj')
     workingDir 'loxigen'
-
-    if (System.getenv('TRAVIS') == 'true') {
-        commandLine 'make', 'java'
-    }
-    else {
-        def uid = new UnixSystem().getUid()
-        def gid = new UnixSystem().getGid()
-        commandLine 'docker', 'run', '--rm', '-v', "$workingDir:$workingDir", '-w', "$workingDir", '-u', "$uid:$gid", 'kilda/base-ubuntu', 'make', 'java'
-    }
+    commandLine 'make', 'java'
 }
 
 task compileMavenProject(type: Exec, dependsOn: generateSources) {
     inputs.file('loxigen/loxi_output/openflowj/pom.xml')
     inputs.dir('loxigen/loxi_output/openflowj/gen-src')
     inputs.dir('loxigen/loxi_output/openflowj/src')
-    outputs.file('loxigen/loxi_output/openflowj/target/openflowj-3.2.0-kilda-2.jar')
+    outputs.file('loxigen/loxi_output/openflowj/target/openflowj-3.5.0-kilda-2.jar')
 
     workingDir 'loxigen/loxi_output/openflowj'
     // Install is invoked to share the result artifact with the floodlight build.
@@ -68,7 +59,7 @@ task compileMavenProject(type: Exec, dependsOn: generateSources) {
 }
 
 task copyJar(type: Copy, dependsOn: compileMavenProject) {
-    ext.destFile = file("$buildDir/libs/openflowj-3.2.0-kilda-2.jar")
+    ext.destFile = file("$buildDir/libs/openflowj-3.5.0-kilda-2.jar")
 
     from(compileMavenProject)
     into "$buildDir/libs"

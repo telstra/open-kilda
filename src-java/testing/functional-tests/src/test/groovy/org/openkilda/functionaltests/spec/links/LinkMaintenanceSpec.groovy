@@ -71,7 +71,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
 
         then: "Flows are evacuated (rerouted)"
         def flow1PathUpdated, flow2PathUpdated
-        Wrappers.wait(PATH_INSTALLATION_TIME) {
+        Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
             [flow1, flow2].each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
 
             flow1PathUpdated = PathHelper.convert(northbound.getFlowPath(flow1.flowId))
@@ -135,7 +135,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         antiflap.portDown(flow1Path.first().switchId, flow1Path.first().portNo)
 
         then: "Flows are rerouted to alternative path with link under maintenance"
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+        Wrappers.wait(rerouteDelay + WAIT_OFFSET*2) {
             [flow1, flow2].each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
 
             def flow1PathUpdated = PathHelper.convert(northbound.getFlowPath(flow1.flowId))

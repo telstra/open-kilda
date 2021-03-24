@@ -15,9 +15,12 @@
 
 package org.openkilda.wfm.topology.isllatency;
 
+import static java.lang.String.format;
 import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.openkilda.wfm.config.KafkaConfig.ISL_LATENCY_TOPOLOGY_TEST_KAFKA_PORT;
+import static org.openkilda.wfm.config.ZookeeperConfig.ISL_LATENCY_TOPOLOGY_TEST_ZOOKEEPER_PORT;
 import static org.openkilda.wfm.topology.isllatency.bolts.IslStatsBolt.LATENCY_METRIC_NAME;
 import static org.openkilda.wfm.topology.isllatency.service.OneWayLatencyManipulationService.ONE_WAY_LATENCY_MULTIPLIER;
 
@@ -70,6 +73,9 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
     private static final IslKey FORWARD_ISL = new IslKey(SWITCH_ID_1, PORT_1, SWITCH_ID_2, PORT_2);
     private static final IslKey REVERSE_ISL = new IslKey(SWITCH_ID_2, PORT_2, SWITCH_ID_1, PORT_1);
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    public static final String COMPONENT_NAME = "isllatency";
+    public static final String RUN_ID = "blue";
+    public static final String ROOT_NODE = "kilda";
     private static IslLatencyTopologyConfig islLatencyTopologyConfig;
     private static TestKafkaConsumer otsdbConsumer;
     private static InMemoryGraphPersistenceManager persistenceManager;
@@ -78,12 +84,15 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
 
     @BeforeClass
     public static void setupOnce() throws Exception {
-        AbstractStormTest.startZooKafkaAndStorm();
-
-        LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
-        Properties configOverlay = new Properties();
+        Properties configOverlay = getZooKeeperProperties(ISL_LATENCY_TOPOLOGY_TEST_ZOOKEEPER_PORT, ROOT_NODE);
+        configOverlay.putAll(getKafkaProperties(ISL_LATENCY_TOPOLOGY_TEST_KAFKA_PORT));
         configOverlay.setProperty("opentsdb.metric.prefix", METRIC_PREFIX);
 
+        AbstractStormTest.startZooKafka(configOverlay);
+        setStartSignal(ISL_LATENCY_TOPOLOGY_TEST_ZOOKEEPER_PORT, ROOT_NODE, COMPONENT_NAME, RUN_ID);
+        AbstractStormTest.startStorm(COMPONENT_NAME, RUN_ID);
+
+        LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
         launchEnvironment.setupOverlay(configOverlay);
         MultiPrefixConfigurationProvider configurationProvider = launchEnvironment.getConfigurationProvider();
 
@@ -99,7 +108,7 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
         cluster.submitTopology(IslLatencyTopologyTest.class.getSimpleName(), config, stormTopology);
 
         otsdbConsumer = new TestKafkaConsumer(islLatencyTopologyConfig.getKafkaOtsdbTopic(),
-                kafkaConsumerProperties(UUID.randomUUID().toString()));
+                kafkaConsumerProperties(UUID.randomUUID().toString(), COMPONENT_NAME, RUN_ID));
         otsdbConsumer.start();
 
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
@@ -203,7 +212,7 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
         } catch (InterruptedException e) {
             throw new AssertionError(POLL_DATAPOINT_ASSERT_MESSAGE);
         } catch (IOException e) {
-            throw new AssertionError(String.format("Could not parse datapoint object: '%s'", record.value()));
+            throw new AssertionError(format("Could not parse datapoint object: '%s'", record.value()));
         }
     }
 

@@ -15,8 +15,6 @@
 
 package org.openkilda.pce;
 
-import org.openkilda.model.PathComputationStrategy;
-
 import lombok.Builder;
 import lombok.Value;
 
@@ -28,5 +26,5 @@ public class GetPathsResult implements Serializable {
     private static final long serialVersionUID = 2217277881039083324L;
     Path forward;
     Path reverse;
-    PathComputationStrategy usedStrategy;
+    boolean backUpPathComputationWayUsed;
 }

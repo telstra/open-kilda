@@ -14,6 +14,7 @@ dependencies {
     implementation project(':network-messaging')
     implementation project(':nbworker-messaging')
     implementation project(':floodlight-api')
+    implementation project(':blue-green')
     runtimeClasspath project(':kilda-persistence-orientdb')
 
     compileOnly('org.apache.storm:storm-core')
@@ -22,6 +23,8 @@ dependencies {
     testCompileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
 }
 
 jar {

@@ -115,6 +115,9 @@ public class NetworkRoundTripDecisionMakerServiceTest {
     }
 
     private NetworkRoundTripDecisionMakerService makeService() {
-        return new NetworkRoundTripDecisionMakerService(clock, carrier, EXPIRE_DELAY);
+        NetworkRoundTripDecisionMakerService service = new NetworkRoundTripDecisionMakerService(
+                clock, carrier, EXPIRE_DELAY);
+        service.activate();
+        return service;
     }
 }

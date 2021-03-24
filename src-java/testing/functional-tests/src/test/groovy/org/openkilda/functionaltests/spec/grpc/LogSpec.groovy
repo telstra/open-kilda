@@ -113,6 +113,7 @@ class LogSpec extends GrpcBaseSpecification {
     @Tidy
     @Unroll
     @Tags(HARDWARE)
+    @Ignore("https://github.com/telstra/open-kilda/issues/3972")
     def "Not able to set incorrect remote log server configuration(ip/port): #data.remoteIp/#data.remotePort \
 on the #sw.switchId switch"() {
         when: "Try to set incorrect configuration"

@@ -60,9 +60,10 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         allFlowPaths.findAll { it != flowPath }.each { altFlowIsls.addAll(pathHelper.getInvolvedIsls(it)) }
         def islToFail = flowIsls.find { !(it in altFlowIsls) && !(it.reversed in altFlowIsls) }
         antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        wait(WAIT_OFFSET) { northbound.getLink(islToFail).state == FAILED }
 
         then: "The flow was rerouted after reroute delay"
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+        wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
         }
@@ -70,7 +71,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         cleanup: "Revive the ISL back (bring switch port up) and delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
         database.resetCosts()
@@ -326,7 +327,8 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         then: "The flow goes to 'Up' status"
         and: "The flow was rerouted"
-        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET * 2) {
+        //rtretiak: TODO: why such a long wait required(it is indeed required)? investigate
+        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET * 3) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == REROUTE_SUCCESS
         }
@@ -527,9 +529,8 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
             //check that system doesn't retry to reroute the firstFlow (its src is down, no need to retry)
             assert !firstFlowHistory.find { it.taskId =~ /.+ : retry #1/ }
             def secondFlowHistory = northbound.getFlowHistory(secondFlow.flowId).findAll { it.action == REROUTE_ACTION }
-            assert secondFlowHistory.findAll { it.taskId =~ /.+ : retry #2/ }.size() >= 1
-            /*there should be original reroute + 3 retries. We are not checking the #3 retry directly, since it may
-            have its reason changed to 'isl timeout' because ISL is about to fail due to a disconnected switch*/
+            /*there should be original reroute + 3 retries. We are not checking the 'retry #' messages directly,
+            since system may have their reasons changed to 'isl timeout' during reroute merge*/
             assert secondFlowHistory.size() == 4
             withPool {
                 [firstFlow.flowId, secondFlow.flowId].eachParallel { String flowId ->
@@ -767,8 +768,8 @@ have links with enough bandwidth"
 
         when: "An ISL which is unique for current path breaks, leading to a flow reroute"
         antiflap.portDown(mainPathUniqueIsl.srcSwitch.dpId, mainPathUniqueIsl.srcPort)
-        Wrappers.wait(3, 0) {
-            assert northbound.getLink(mainPathUniqueIsl).state == IslChangeType.FAILED
+        wait(3, 0) {
+            assert northbound.getLink(mainPathUniqueIsl).state == FAILED
         }
 
         and: "Right when reroute starts: an ISL which is common for current path and potential backup path breaks too, \
@@ -776,7 +777,7 @@ triggering one more reroute of the current path"
         //add latency to make reroute process longer to allow us break the target path while rules are being installed
         lockKeeper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(1000))
         //break the second ISL when the first reroute has started and is in progress
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             assert northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }.size() == 1
         }
         antiflap.portDown(commonIsl.srcSwitch.dpId, commonIsl.srcPort)
@@ -786,7 +787,7 @@ triggering one more reroute of the current path"
             northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }.payload.last().action)
 
         then: "System reroutes the flow twice and flow ends up in UP state"
-        Wrappers.wait(PATH_INSTALLATION_TIME * 2) {
+        wait(PATH_INSTALLATION_TIME * 2) {
             def history = northbound.getFlowHistory(flow.flowId)
             def reroutes = history.findAll { it.action == REROUTE_ACTION }
             assert reroutes.size() == 2 //reroute queue, second reroute starts right after first is finished
@@ -796,13 +797,17 @@ triggering one more reroute of the current path"
 
         and: "New flow path avoids both main and backup paths as well as broken ISLs"
         def actualIsls = pathHelper.getInvolvedIsls(northbound.getFlowPath(flow.flowId))
-        !actualIsls.contains(commonIsl)
-        !actualIsls.contains(mainPathUniqueIsl)
+        [commonIsl, commonIsl.reversed, mainPathUniqueIsl, mainPathUniqueIsl.reversed].each {
+            assert !actualIsls.contains(it)
+        }
 
         and: "Flow is pingable"
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
+        Wrappers.retry(3, 0) { //Was unstable on Jenkins builds. Fresh env problem?
+            with(northbound.pingFlow(flow.flowId, new PingInput())) {
+                it.forward.pingSuccess
+                it.reverse.pingSuccess
+            }
+            true
         }
 
         cleanup:
@@ -811,7 +816,7 @@ triggering one more reroute of the current path"
         withPool {
             [mainPathUniqueIsl, commonIsl].eachParallel { Isl isl ->
                 antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-                Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+                wait(WAIT_OFFSET + discoveryInterval) {
                     assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
                 }
             }

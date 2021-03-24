@@ -23,6 +23,7 @@ import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaConsumerSetup;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.session.SessionService;
+import org.openkilda.floodlight.service.zookeeper.ZooKeeperService;
 import org.openkilda.floodlight.statistics.IStatisticsService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.SwitchTrackingService;
@@ -71,7 +72,8 @@ public class KafkaMessageCollector implements IFloodlightModule {
                 CommandProcessorService.class,
                 SwitchTrackingService.class,
                 SessionService.class,
-                IStatisticsService.class);
+                IStatisticsService.class,
+                ZooKeeperService.class);
     }
 
     @Override

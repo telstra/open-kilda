@@ -18,8 +18,10 @@ package org.openkilda.pce.impl;
 import static java.lang.String.format;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.model.Flow;
@@ -267,11 +269,12 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
                 .build();
         PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
                 new BestWeightAndShortestPathFinder(5), config);
-        GetPathsResult paths = pathComputer.getPath(flow);
+        GetPathsResult pathsResult = pathComputer.getPath(flow);
 
         //then: system returns a path with least weight
-        assertThat(paths.getForward().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:02")));
-        assertThat(paths.getReverse().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:02")));
+        assertFalse(pathsResult.isBackUpPathComputationWayUsed());
+        assertThat(pathsResult.getForward().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:02")));
+        assertThat(pathsResult.getReverse().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:02")));
     }
 
     /**
@@ -295,11 +298,12 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
                 .build();
         PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
                 new BestWeightAndShortestPathFinder(5), config);
-        GetPathsResult paths = pathComputer.getPath(flow);
+        GetPathsResult pathsResult = pathComputer.getPath(flow);
 
         //then: system returns a path with least weight
-        assertThat(paths.getForward().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:02")));
-        assertThat(paths.getReverse().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:02")));
+        assertFalse(pathsResult.isBackUpPathComputationWayUsed());
+        assertThat(pathsResult.getForward().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:02")));
+        assertThat(pathsResult.getReverse().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:02")));
     }
 
     @Test
@@ -313,6 +317,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
                 .srcSwitch(srcSwitch)
                 .destSwitch(destSwitch)
                 .maxLatency(100)
+                .maxLatencyTier2(101)
                 .pathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
                 .build();
 
@@ -320,9 +325,38 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
                 new BestWeightAndShortestPathFinder(5), config);
         GetPathsResult path = pathComputer.getPath(flow, PathComputationStrategy.LATENCY);
 
-        assertEquals(PathComputationStrategy.LATENCY, path.getUsedStrategy());
+        assertTrue(path.isBackUpPathComputationWayUsed());
         assertNotNull(path.getForward());
         assertNotNull(path.getReverse());
+    }
+
+    @Test
+    public void shouldUseBackUpWeightWhenNoPathFoundInMaxLatencyStrat()
+            throws RecoverableException, UnroutableFlowException {
+        // 1 - 2 - 4
+        //   + 3 +
+        //path 1>2>4 has less latency than 1>3>4
+        createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 100, 100, "00:", 1, 100, 101);
+
+        //when: request a flow with MAX_LATENCY strategy and 'max-latency' is not enough to build a path
+        Flow flow = Flow.builder()
+                .flowId("test flow")
+                .srcSwitch(getSwitchById("00:01")).srcPort(15)
+                .destSwitch(getSwitchById("00:04")).destPort(15)
+                .bandwidth(500)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
+                .maxLatency(100L)
+                .maxLatencyTier2(300L)
+                .build();
+        PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
+                new BestWeightAndShortestPathFinder(5), config);
+        GetPathsResult pathsResult = pathComputer.getPath(flow);
+
+        //then: system returns a path built by 'max_latency_tier2'
+        assertTrue(pathsResult.isBackUpPathComputationWayUsed());
+        assertThat(pathsResult.getForward().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:03")));
+        assertThat(pathsResult.getReverse().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:03")));
     }
 
     void addPathSegments(FlowPath flowPath, Path path) {
@@ -503,7 +537,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
     }
 
     void createIsl(Switch srcSwitch, Switch dstSwitch, IslStatus status, IslStatus actual,
-                           int cost, long bw, int port, long latency) {
+                   int cost, long bw, int port, long latency) {
         Isl.IslBuilder isl = Isl.builder()
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
@@ -522,6 +556,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
 
     private void addPathSegment(FlowPath flowPath, Switch src, Switch dst, int srcPort, int dstPort) {
         PathSegment ps = PathSegment.builder()
+                .pathId(flowPath.getPathId())
                 .srcSwitch(src)
                 .destSwitch(dst)
                 .srcPort(srcPort)

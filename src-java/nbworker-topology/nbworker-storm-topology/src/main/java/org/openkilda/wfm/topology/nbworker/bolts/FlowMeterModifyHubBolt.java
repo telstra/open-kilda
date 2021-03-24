@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.error.ErrorData;
@@ -24,6 +25,8 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowMeterModifyHubService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -44,6 +47,7 @@ public class FlowMeterModifyHubBolt extends HubBolt {
 
     private final PersistenceManager persistenceManager;
     private transient FlowMeterModifyHubService service;
+    private LifecycleEvent deferredShutdownEvent;
 
     public FlowMeterModifyHubBolt(Config config, PersistenceManager persistenceManager) {
         super(config);
@@ -53,7 +57,7 @@ public class FlowMeterModifyHubBolt extends HubBolt {
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         super.prepare(stormConf, context, collector);
-        service = new FlowMeterModifyHubService(persistenceManager);
+        service = new FlowMeterModifyHubService(persistenceManager, new FlowHubCarrierImpl(null));
     }
 
     @Override
@@ -66,6 +70,20 @@ public class FlowMeterModifyHubBolt extends HubBolt {
         } else {
             unhandledInput(input);
         }
+    }
+
+    @Override
+    protected boolean deactivate(LifecycleEvent event) {
+        if (service.deactivate()) {
+            return true;
+        }
+        deferredShutdownEvent = event;
+        return false;
+    }
+
+    @Override
+    protected void activate() {
+        service.activate();
     }
 
     @Override
@@ -86,6 +104,8 @@ public class FlowMeterModifyHubBolt extends HubBolt {
         declarer.declareStream(StreamType.METER_MODIFY_WORKER.toString(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(StreamType.ERROR.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
+        declarer.declareStream(ZkStreams.ZK.toString(),
+                new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
         declarer.declare(new Fields(ResponseSplitterBolt.FIELD_ID_RESPONSE,
                 ResponseSplitterBolt.FIELD_ID_CONTEXT));
     }
@@ -100,7 +120,7 @@ public class FlowMeterModifyHubBolt extends HubBolt {
         @Override
         public void sendCommandToSpeakerWorker(String key, CommandData commandData) {
             emitWithContext(StreamType.METER_MODIFY_WORKER.toString(), tuple,
-                        new Values(KeyProvider.generateChainedKey(key), commandData));
+                    new Values(KeyProvider.generateChainedKey(key), commandData));
         }
 
         @Override
@@ -116,6 +136,12 @@ public class FlowMeterModifyHubBolt extends HubBolt {
         @Override
         public void endProcessing(String key) {
             cancelCallback(key);
+        }
+
+        @Override
+        public void sendInactive() {
+            getOutput().emit(ZkStreams.ZK.toString(), new Values(deferredShutdownEvent, getCommandContext()));
+            deferredShutdownEvent = null;
         }
     }
 }

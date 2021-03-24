@@ -33,6 +33,7 @@ import static org.openkilda.messaging.command.flow.RuleType.POST_INGRESS;
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.cookie.Cookie.ARP_INGRESS_COOKIE;
 import static org.openkilda.model.cookie.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_COOKIE;
@@ -376,7 +377,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     System.currentTimeMillis(), CorrelationContext.getId(), Destination.WFM_TRANSACTION);
             // TODO: Most/all commands are flow related, but not all. 'kilda.flow' might
             // not be the best place to send a generic error.
-            producerService.sendMessageAndTrack("kilda.flow", error);
+            producerService.sendMessageAndTrackWithZk("kilda.flow", error);
         }
         return Command.CONTINUE;
     }
@@ -787,7 +788,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         List<OFFlowMod> flows = new ArrayList<>();
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
-        if (featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_COPY_FIELD)) {
+        if (featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_PUSH_POP_VXLAN)) {
             flows.add(buildEgressIslVxlanRule(ofFactory, dpid, port));
             flows.add(buildTransitIslVxlanRule(ofFactory, port));
         }
@@ -1842,7 +1843,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public List<Long> installMultitableEndpointIslRules(DatapathId dpid, int port) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
         List<Long> installedRules = new ArrayList<>();
-        if (featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_COPY_FIELD)) {
+        if (featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_PUSH_POP_VXLAN)) {
             installedRules.add(installEgressIslVxlanRule(dpid, port));
             installedRules.add(installTransitIslVxlanRule(dpid, port));
         } else {
@@ -1856,7 +1857,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public List<Long> removeMultitableEndpointIslRules(DatapathId dpid, int port) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
         List<Long> removedFlows = new ArrayList<>();
-        if (featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_COPY_FIELD)) {
+        if (featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_PUSH_POP_VXLAN)) {
             removedFlows.add(removeEgressIslVxlanRule(dpid, port));
             removedFlows.add(removeTransitIslVxlanRule(dpid, port));
         } else {
@@ -2791,7 +2792,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
         return portDesc.getHwAddr();
     }
-
 
 
     private OFMeterConfig getMeter(DatapathId dpid, long meter) throws SwitchOperationException {

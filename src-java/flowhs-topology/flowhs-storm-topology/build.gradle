@@ -8,7 +8,9 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 
 description = 'Flow H&S Storm Topology'
 dependencies {
+    implementation project(':blue-green')
     implementation project(':flowhs-messaging')
+    implementation project(':flowmonitoring-messaging')
     implementation project(':ping-messaging')
     implementation project(':reroute-messaging')
     implementation project(':server42-control-messaging')
@@ -36,7 +38,7 @@ dependencies {
     testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
     testRuntimeOnly 'javax.servlet:javax.servlet-api'
 
-    implementation 'org.mapstruct:mapstruct-jdk8'
+    implementation 'org.mapstruct:mapstruct'
     implementation 'org.mapstruct:mapstruct-processor'
     annotationProcessor 'org.mapstruct:mapstruct-processor'
     testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
@@ -45,6 +47,8 @@ dependencies {
     testCompileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
 }
 
 jar {

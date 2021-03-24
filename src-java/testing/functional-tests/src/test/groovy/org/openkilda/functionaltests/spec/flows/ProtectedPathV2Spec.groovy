@@ -333,8 +333,9 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         def uniquePathCount = switchPair.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size()
 
         when: "Create 5 flows with protected paths"
-        List<FlowRequestV2> flows = (1..5).collect {
-            flowHelperV2.randomFlow(switchPair).tap {
+        List<FlowRequestV2> flows = []
+        5.times {
+            flows << flowHelperV2.randomFlow(switchPair, false, flows).tap {
                 maximumBandwidth = bandwidth
                 ignoreBandwidth = bandwidth == 0
                 allocateProtectedPath = true
@@ -370,6 +371,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         when: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
         def portDown = antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(islToBreak).state == IslChangeType.FAILED }
 
         then: "Flows are switched to protected paths"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -412,7 +414,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute"() {
+    def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute(no bw)"() {
         given: "Two switches with 2 diverse paths at least"
         def switchPair = topologyHelper.switchPairs.find {
             it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() > 1
@@ -428,12 +430,13 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
                 it != pathHelper.convert(path) }.collectMany { pathHelper.getInvolvedIsls(it) }
                 .unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
         otherIsls.collectMany{[it, it.reversed]}.each {
+            database.updateIslMaxBandwidth(it, flow.maximumBandwidth - 1)
             database.updateIslAvailableBandwidth(it, flow.maximumBandwidth - 1)
         }
 
         and: "Main flow path breaks"
         def mainIsl = pathHelper.getInvolvedIsls(path).first()
-        antiflap.portDown(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
+        def mainIslDown = antiflap.portDown(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
 
         then: "Main path swaps to protected, flow becomes degraded, main path UP, protected DOWN"
         Wrappers.wait(WAIT_OFFSET) {
@@ -447,11 +450,91 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
             }
         }
 
+        when: "ISL gets back up"
+        def mainIslUp = antiflap.portUp(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(mainIsl).state == IslChangeType.DISCOVERED }
+
+        then: "Main path remains the same, flow becomes UP, main path UP, protected UP"
+        Wrappers.wait(WAIT_OFFSET) {
+            def newPath = northbound.getFlowPath(flow.flowId)
+            assert pathHelper.convert(newPath) == pathHelper.convert(path.protectedPath)
+            verifyAll(northbound.getFlow(flow.flowId)) {
+                status == FlowState.UP.toString()
+                flowStatusDetails.mainFlowPathStatus == "Up"
+                flowStatusDetails.protectedFlowPathStatus == "Up"
+            }
+        }
+
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
-        mainIsl && antiflap.portUp(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
+        mainIslDown && !mainIslUp && antiflap.portUp(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
         otherIsls && otherIsls.collectMany{[it, it.reversed]}.each { database.resetIslBandwidth(it) }
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(mainIsl).state == IslChangeType.DISCOVERED }
+        database.resetCosts()
+    }
+
+    @Tidy
+    def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute(no path)"() {
+        given: "Two switches with 2 diverse paths at least"
+        def switchPair = topologyHelper.switchPairs.find {
+            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() > 1
+        } ?: assumeTrue("No switches with at least 2 diverse paths", false)
+
+        when: "Create flow with protected path"
+        def flow = flowHelperV2.randomFlow(switchPair).tap { allocateProtectedPath = true }
+        flowHelperV2.addFlow(flow)
+        def path = northbound.getFlowPath(flow.flowId)
+
+        and: "Other paths are not available (ISLs are down)"
+        def originalMainPath = pathHelper.convert(path)
+        def originalProtectedPath = pathHelper.convert(path.protectedPath)
+        def usedIsls = pathHelper.getInvolvedIsls(originalMainPath) + pathHelper.getInvolvedIsls(originalProtectedPath)
+        def otherIsls = switchPair.paths.findAll { it != originalMainPath &&
+                it != originalProtectedPath }.collectMany { pathHelper.getInvolvedIsls(it) }
+                .findAll {!usedIsls.contains(it) }
+                .unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
+        otherIsls.each {
+            antiflap.portDown(it.srcSwitch.dpId, it.srcPort)
+        }
+
+        and: "Main flow path breaks"
+        def mainIsl = pathHelper.getInvolvedIsls(path).first()
+        def mainIslDown = antiflap.portDown(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
+
+        then: "Main path swaps to protected, flow becomes degraded, main path UP, protected DOWN"
+        Wrappers.wait(WAIT_OFFSET) {
+            def newPath = northbound.getFlowPath(flow.flowId)
+            assert pathHelper.convert(newPath) == originalProtectedPath
+            verifyAll(northbound.getFlow(flow.flowId)) {
+                status == FlowState.DEGRADED.toString()
+                flowStatusDetails.mainFlowPathStatus == "Up"
+                flowStatusDetails.protectedFlowPathStatus == "Down"
+                statusInfo == "Couldn't find non overlapping protected path"
+            }
+        }
+
+        when: "ISL on broken path gets back up"
+        def mainIslUp = antiflap.portUp(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(mainIsl).state == IslChangeType.DISCOVERED }
+
+        then: "Main path remains the same (no swap), flow becomes UP, main path remains UP, protected path becomes UP"
+        Wrappers.wait(WAIT_OFFSET) {
+            def newPath = northbound.getFlowPath(flow.flowId)
+            assert pathHelper.convert(newPath) == originalProtectedPath
+            assert pathHelper.convert(newPath.protectedPath) == originalMainPath
+            verifyAll(northbound.getFlow(flow.flowId)) {
+                status == FlowState.UP.toString()
+                flowStatusDetails.mainFlowPathStatus == "Up"
+                flowStatusDetails.protectedFlowPathStatus == "Up"
+            }
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        mainIslDown && !mainIslUp && antiflap.portUp(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
+        otherIsls && otherIsls.each { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED } }
         database.resetCosts()
     }
 
@@ -871,7 +954,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             verifyAll(northbound.getFlow(flow.flowId)) {
                 status == FlowState.DEGRADED.toString()
-                statusInfo == "Reroute is unsuccessful. Couldn't find new path(s)"
+                statusInfo == "Couldn't find non overlapping protected path"
             }
             assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
         }

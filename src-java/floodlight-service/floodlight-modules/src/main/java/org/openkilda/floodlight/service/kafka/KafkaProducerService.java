@@ -15,6 +15,12 @@
 
 package org.openkilda.floodlight.service.kafka;
 
+import static org.openkilda.floodlight.service.zookeeper.ZooKeeperService.ZK_COMPONENT_NAME;
+
+import org.openkilda.bluegreen.LifecycleEvent;
+import org.openkilda.bluegreen.Signal;
+import org.openkilda.floodlight.service.zookeeper.ZooKeeperEventObserver;
+import org.openkilda.floodlight.service.zookeeper.ZooKeeperService;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
@@ -31,7 +37,9 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class KafkaProducerService implements IKafkaProducerService {
+import java.util.concurrent.atomic.AtomicBoolean;
+
+public class KafkaProducerService implements IKafkaProducerService, ZooKeeperEventObserver {
 
     private static final Logger logger = LoggerFactory.getLogger(KafkaProducerService.class);
     private static final Logger discoLogger = LoggerFactory.getLogger(
@@ -41,15 +49,22 @@ public class KafkaProducerService implements IKafkaProducerService {
     private Producer<String, String> producer;
     private final ObjectMapper jsonObjectMapper = new ObjectMapper();
 
+    private ZooKeeperService zkService;
+    private final AtomicBoolean active = new AtomicBoolean(false);
+
     @Override
     public void setup(FloodlightModuleContext moduleContext) {
         producer = moduleContext.getServiceImpl(KafkaUtilityService.class).makeProducer();
+        zkService = moduleContext.getServiceImpl(ZooKeeperService.class);
+        zkService.subscribe(this);
     }
 
+    @Override
     public void sendMessageAndTrack(String topic, Message message) {
         produce(encode(topic, message), new SendStatusCallback(this, topic, message));
     }
 
+    @Override
     public void sendMessageAndTrack(String topic, String key, Message message) {
         produce(encode(topic, key, message), new SendStatusCallback(this, topic, message));
     }
@@ -58,6 +73,46 @@ public class KafkaProducerService implements IKafkaProducerService {
     public void sendMessageAndTrack(String topic, String key, AbstractMessage message) {
         produce(encode(topic, key, message), new SendStatusCallback(this, topic,
                 message.getMessageContext().getCorrelationId()));
+    }
+
+    @Override
+    public void sendMessageAndTrackWithZk(String topic, Message message) {
+        if (active.get()) {
+            produce(encode(topic, message), new SendStatusCallback(this, topic, message));
+        } else {
+            logger.debug("ZooKeeper signal is not START");
+        }
+    }
+
+    @Override
+    public void sendMessageAndTrackWithZk(String topic, String key, Message message) {
+        if (active.get()) {
+            produce(encode(topic, key, message), new SendStatusCallback(this, topic, message));
+        } else {
+            logger.debug("ZooKeeper signal is not START");
+        }
+    }
+
+    @Override
+    public void handleLifecycleEvent(LifecycleEvent event) {
+        logger.info("Component {} with id {} got lifecycle event {}", ZK_COMPONENT_NAME, zkService.getRegion(), event);
+        if (Signal.START.equals(event.getSignal())) {
+            if (active.get()) {
+                logger.info("Component is already in active state, skipping START signal");
+                return;
+            }
+            active.set(true);
+            this.zkService.processLifecycleEvent(event);
+        } else if (Signal.SHUTDOWN.equals(event.getSignal())) {
+            if (!active.get()) {
+                logger.info("Component is already in inactive state, skipping SHUTDOWN signal");
+                return;
+            }
+            active.set(false);
+            this.zkService.processLifecycleEvent(event);
+        } else {
+            logger.error("Unsupported signal received: {}", event.getSignal());
+        }
     }
 
     /**

@@ -1,0 +1,66 @@
+plugins {
+    id 'io.freefair.aspectj.post-compile-weaving'
+    id 'com.github.johnrengelman.shadow'
+}
+
+compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
+compileJava.ajc.options.compilerArgs += '-verbose'
+
+description = 'Flow Monitoring Storm Topology'
+dependencies {
+    implementation project(':flowmonitoring-messaging')
+    implementation project(':base-storm-topology')
+    implementation project(':server42-messaging')
+    implementation project(':network-messaging')
+    implementation project(':floodlight-api')
+    implementation project(':blue-green')
+    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
+    testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
+    runtimeClasspath project(':kilda-persistence-orientdb')
+    testImplementation project(path: ':kilda-persistence-api', configuration: 'testArtifacts')
+    aspect project(':kilda-persistence-api')
+    testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
+
+    compileOnly('org.apache.storm:storm-core')
+    testImplementation('org.apache.storm:storm-core')
+
+    testImplementation 'junit:junit'
+    testImplementation 'pl.pragmatists:JUnitParams'
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.hamcrest:hamcrest-library'
+    testRuntimeOnly 'org.apache.curator:curator-test'
+    testRuntimeOnly 'org.clojure:clojure'
+    testRuntimeOnly 'org.hibernate.validator:hibernate-validator'
+    testRuntimeOnly 'org.glassfish:javax.el'
+    testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
+    testRuntimeOnly 'javax.servlet:javax.servlet-api'
+
+    implementation 'org.mapstruct:mapstruct'
+    implementation 'org.mapstruct:mapstruct-processor'
+    annotationProcessor 'org.mapstruct:mapstruct-processor'
+    testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
+
+    compileOnly 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology'
+    }
+
+    classifier = 'original'
+}
+
+shadowJar {
+    classifier = ''
+    mergeServiceFiles()
+}
+
+artifacts {
+    archives shadowJar
+}

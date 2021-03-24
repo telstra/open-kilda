@@ -11,6 +11,8 @@ include 'floodlight-api'
 include 'floodlight-modules'
 include 'flowhs-storm-topology'
 include 'flowhs-messaging'
+include 'flowmonitoring-storm-topology'
+include 'flowmonitoring-messaging'
 include 'grpc-api'
 include 'grpc-service'
 include 'isllatency-storm-topology'
@@ -42,7 +44,6 @@ include 'server42-stats'
 include 'server42-stats-messaging'
 include 'server42-messaging'
 include 'server42-control-storm-topology'
-include 'simulator-storm-topology'
 include 'stats-storm-topology'
 include 'swmanager-storm-topology'
 include 'atdd-staging'
@@ -59,6 +60,8 @@ project(':floodlight-api').projectDir = "$rootDir/floodlight-service/floodlight-
 project(':floodlight-modules').projectDir = "$rootDir/floodlight-service/floodlight-modules" as File
 project(':flowhs-storm-topology').projectDir = "$rootDir/flowhs-topology/flowhs-storm-topology" as File
 project(':flowhs-messaging').projectDir = "$rootDir/flowhs-topology/flowhs-messaging" as File
+project(':flowmonitoring-storm-topology').projectDir = "$rootDir/flowmonitoring-topology/flowmonitoring-storm-topology" as File
+project(':flowmonitoring-messaging').projectDir = "$rootDir/flowmonitoring-topology/flowmonitoring-messaging" as File
 project(':grpc-api').projectDir = "$rootDir/grpc-speaker/grpc-api" as File
 project(':grpc-service').projectDir = "$rootDir/grpc-speaker/grpc-service" as File
 project(':isllatency-storm-topology').projectDir = "$rootDir/isllatency-topology/isllatency-storm-topology" as File
@@ -82,7 +85,6 @@ project(':server42-stats').projectDir = "$rootDir/server42/server42-stats" as Fi
 project(':server42-stats-messaging').projectDir = "$rootDir/server42/server42-stats-messaging" as File
 project(':server42-messaging').projectDir = "$rootDir/server42/server42-messaging" as File
 project(':server42-control-storm-topology').projectDir = "$rootDir/server42/server42-control-storm-topology" as File
-project(':simulator-storm-topology').projectDir = "$rootDir/simulator-topology/simulator-storm-topology" as File
 project(':stats-storm-topology').projectDir = "$rootDir/stats-topology/stats-storm-topology" as File
 project(':swmanager-storm-topology').projectDir = "$rootDir/swmanager-topology/swmanager-storm-topology" as File
 

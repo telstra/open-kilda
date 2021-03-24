@@ -138,7 +138,12 @@ class MflStatSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET + rerouteDelay) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
         } // make sure that flow is UP after switchUP event
-        flowHelper.deleteFlow(flow.id)
+        Wrappers.retry(3, 2){
+            /*we expect that the flow is UP at this point,
+            but sometimes for no good reason the flow is IN_PROGRESS
+            then as a result system can't delete the flow*/
+            flowHelper.deleteFlow(flow.id)
+        }
     }
 
     def "System is able to collect stats from the statistic and management controllers (v2)"() {

@@ -49,6 +49,10 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getFlowHsServer42StormNotifyTopic();
     }
 
+    default String getFlowHsFlowMonitoringNotifyTopic() {
+        return getKafkaTopics().getFlowHsFlowMonitoringNotifyTopic();
+    }
+
 
     @Key("flow.path.allocation.retries")
     @Default("10")
@@ -57,6 +61,10 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Key("flow.path.allocation.retry.delay")
     @Default("50")
     int getPathAllocationRetryDelay();
+
+    @Key("flow.resources.allocation.retries")
+    @Default("10")
+    int getResourceAllocationRetriesLimit();
 
     @Key("flow.create.hub.timeout.seconds")
     @Default("30")

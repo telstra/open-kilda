@@ -71,7 +71,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         northbound.getFlowHistory(flows.first().flowId).last().action == "Flow creating" //reroute didn't start yet
 
         and: "The oldest broken flow is rerouted when the rerouteDelay runs out"
-        def waitTime = untilReroutesBegin() / 1000.0 + PATH_INSTALLATION_TIME
+        def waitTime = untilReroutesBegin() / 1000.0 + PATH_INSTALLATION_TIME * 2
         Wrappers.wait(waitTime) {
             //Flow should go DOWN or change path on reroute. In our case it doesn't matter which of these happen.
             assert (northboundV2.getFlowStatus(flows.first().flowId).status == FlowState.DOWN &&

@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.bolts;
 
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_HISTORY_BOLT;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_NB_RESPONSE_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_PING_SENDER;
@@ -23,6 +24,7 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_SPE
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.UPDATE_HUB_TO_SWAP_ENDPOINTS_HUB;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
+import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.messaging.Message;
@@ -32,6 +34,7 @@ import org.openkilda.messaging.command.flow.DeleteFlowLoopRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.flow.UpdateFlowInfo;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputer;
@@ -46,6 +49,8 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
@@ -56,6 +61,7 @@ import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 import lombok.Builder;
 import lombok.Getter;
 import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
@@ -68,6 +74,8 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
 
     private transient FlowUpdateService service;
     private String currentKey;
+
+    private LifecycleEvent deferredShutdownEvent;
 
     public FlowUpdateHubBolt(FlowUpdateConfig config, PersistenceManager persistenceManager,
                              PathComputerConfig pathComputerConfig, FlowResourcesConfig flowResourcesConfig) {
@@ -88,9 +96,24 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
 
         FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         service = new FlowUpdateService(this, persistenceManager, pathComputer, resourcesManager,
-                config.getPathAllocationRetriesLimit(),
-                config.getPathAllocationRetryDelay(), config.getSpeakerCommandRetriesLimit());
+                config.getPathAllocationRetriesLimit(), config.getPathAllocationRetryDelay(),
+                config.getResourceAllocationRetriesLimit(), config.getSpeakerCommandRetriesLimit());
     }
+
+    @Override
+    protected boolean deactivate(LifecycleEvent event) {
+        if (service.deactivate()) {
+            return true;
+        }
+        deferredShutdownEvent = event;
+        return false;
+    }
+
+    @Override
+    protected void activate() {
+        service.activate();
+    }
+
 
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
@@ -155,6 +178,15 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     }
 
     @Override
+    public void sendNotifyFlowMonitor(UpdateFlowInfo flowInfo) {
+        String correlationId = getCommandContext().getCorrelationId();
+        Message message = new InfoMessage(flowInfo, System.currentTimeMillis(), correlationId);
+
+        emitWithContext(HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(flowInfo.getFlowId(), message));
+    }
+
+    @Override
     public void sendSpeakerRequest(FlowSegmentRequest command) {
         String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
 
@@ -184,6 +216,12 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     }
 
     @Override
+    public void sendInactive() {
+        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferredShutdownEvent, getCommandContext()));
+        deferredShutdownEvent = null;
+    }
+
+    @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
 
@@ -193,21 +231,27 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
         declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_PING_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(ZkStreams.ZK.toString(),
+                new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
+        declarer.declareStream(HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
     }
 
     @Getter
     public static class FlowUpdateConfig extends Config {
         private int pathAllocationRetriesLimit;
         private int pathAllocationRetryDelay;
+        private int resourceAllocationRetriesLimit;
         private int speakerCommandRetriesLimit;
 
         @Builder(builderMethodName = "flowUpdateBuilder", builderClassName = "flowUpdateBuild")
-        public FlowUpdateConfig(String requestSenderComponent, String workerComponent, int timeoutMs, boolean autoAck,
-                                int pathAllocationRetriesLimit,
-                                int pathAllocationRetryDelay, int speakerCommandRetriesLimit) {
-            super(requestSenderComponent, workerComponent, null, timeoutMs, autoAck);
+        public FlowUpdateConfig(String requestSenderComponent, String workerComponent, String lifeCycleEventComponent,
+                                int timeoutMs, boolean autoAck,
+                                int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
+                                int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
+            super(requestSenderComponent, workerComponent, lifeCycleEventComponent, timeoutMs, autoAck);
             this.pathAllocationRetriesLimit = pathAllocationRetriesLimit;
             this.pathAllocationRetryDelay = pathAllocationRetryDelay;
+            this.resourceAllocationRetriesLimit = resourceAllocationRetriesLimit;
             this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
         }
     }

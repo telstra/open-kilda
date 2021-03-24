@@ -42,6 +42,7 @@ import { FlowsService } from 'src/app/common/services/flows.service';
     speed:string = '';
     latency:string = '';
     state:string = '';
+    bfd_session_status:string='';
     enable_bfd : boolean = false;
     evacuate:boolean=false;
     under_maintenance:boolean=false;
@@ -177,6 +178,7 @@ import { FlowsService } from 'src/app/common/services/flows.service';
           this.default_max_bandwidth = retrievedObject.default_max_bandwidth;
           this.latency = retrievedObject.latency;
           this.state = retrievedObject.state;
+          this.bfd_session_status = retrievedObject.bfd_session_status;
           this.available_bandwidth = retrievedObject.available_bandwidth;
           this.under_maintenance = retrievedObject.under_maintenance;
           this.evacuate = retrievedObject.evacuate;
@@ -561,8 +563,7 @@ get f() {
     if (formdata.timezone == "UTC") {
       convertedStartDate = moment(new Date(formdata.fromDate)).add(-60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
       convertedEndDate = moment(new Date(formdata.toDate)).add(60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
-      
-    }
+  }
     this.graphLoader.show(this.loaderName);
       this.dygraphService.getForwardGraphData(this.src_switch_kilda,
                                               this.src_port,

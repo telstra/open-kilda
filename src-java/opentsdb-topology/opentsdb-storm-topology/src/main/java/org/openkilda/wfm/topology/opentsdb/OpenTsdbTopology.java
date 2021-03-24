@@ -18,6 +18,9 @@ package org.openkilda.wfm.topology.opentsdb;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.kafka.InfoDataDeserializer;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
+import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.opentsdb.OpenTsdbTopologyConfig.OpenTsdbConfig;
 import org.openkilda.wfm.topology.opentsdb.bolts.DatapointParseBolt;
@@ -49,7 +52,8 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
     static final String OTSDB_SPOUT_ID = "kilda.otsdb-spout";
     private static final String OTSDB_BOLT_ID = "otsdb-bolt";
     private static final String OTSDB_FILTER_BOLT_ID = OpenTSDBFilterBolt.class.getSimpleName();
-    private static final String OTSDB_PARSE_BOLT_ID = DatapointParseBolt.class.getSimpleName();
+    @VisibleForTesting
+    static final String OTSDB_PARSE_BOLT_ID = DatapointParseBolt.class.getSimpleName();
 
     @Override
     public StormTopology createTopology() {
@@ -57,12 +61,23 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
         TopologyBuilder tb = new TopologyBuilder();
 
+        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig().getConnectString());
+        declareSpout(tb, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
+
+
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig().getConnectString(), getBoltInstancesCount(OTSDB_PARSE_BOLT_ID));
+        declareBolt(tb, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
+                .allGrouping(OTSDB_PARSE_BOLT_ID, ZkStreams.ZK.toString());
+
         attachInput(tb);
 
         OpenTsdbConfig openTsdbConfig = topologyConfig.getOpenTsdbConfig();
 
         declareBolt(tb, new DatapointParseBolt(), OTSDB_PARSE_BOLT_ID)
-                .shuffleGrouping(OTSDB_SPOUT_ID);
+                .shuffleGrouping(OTSDB_SPOUT_ID)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
 
         declareBolt(tb, new OpenTSDBFilterBolt(), OTSDB_FILTER_BOLT_ID)
                 .fieldsGrouping(OTSDB_PARSE_BOLT_ID, new Fields("hash"));
@@ -96,6 +111,11 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
         KafkaSpout<String, InfoData> kafkaSpout = new KafkaSpout<>(config);
         declareSpout(topology, kafkaSpout, OTSDB_SPOUT_ID);
+    }
+
+    @Override
+    protected String getZkTopoName() {
+        return "opentsdb";
     }
 
     /**

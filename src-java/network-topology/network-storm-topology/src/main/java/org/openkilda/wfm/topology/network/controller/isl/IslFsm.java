@@ -59,6 +59,7 @@ import lombok.Builder;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.RetryPolicy;
+import org.squirrelframework.foundation.fsm.Condition;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
@@ -237,6 +238,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         sendBfdPropertiesUpdate(context.getOutput());
 
         triggerDownFlowReroute(context);
+        sendIslChangedNotification(context.getOutput());
     }
 
     public void inactiveEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -255,6 +257,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         disableAuxiliaryPollMode(context.getOutput());
         sendIslStatusUpdateNotification(context, IslStatus.MOVED);
         triggerAffectedFlowReroute(context);
+        sendIslChangedNotification(context.getOutput());
     }
 
     public void cleanUpResourcesEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -353,6 +356,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private void sendIslRemovedNotification(IIslCarrier carrier) {
         carrier.islRemovedNotification(reference.getSource(), reference);
         carrier.islRemovedNotification(reference.getDest(), reference);
+        carrier.islChangedNotifyFlowMonitor(IslReference.of(reference.getSource()));
     }
 
     private void sendRemoveMultiTable(IIslCarrier carrier) {
@@ -408,6 +412,10 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 reference.getDest().getDatapath(), reference.getDest().getPortNumber(),
                 status);
         context.getOutput().islStatusUpdateNotification(trigger);
+    }
+
+    private void sendIslChangedNotification(IIslCarrier carrier) {
+        carrier.islChangedNotifyFlowMonitor(reference);
     }
 
     /**
@@ -807,13 +815,26 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
             // CLEAN_UP_RESOURCES
             builder.transition()
                     .from(IslFsmState.CLEAN_UP_RESOURCES).to(IslFsmState.DELETED).on(IslFsmEvent._RESOURCES_DONE);
-            for (IslFsmEvent event : new IslFsmEvent[]{
-                    IslFsmEvent.ISL_UP, IslFsmEvent.ISL_DOWN, IslFsmEvent.ISL_MOVE, IslFsmEvent.BFD_UP,
-                    IslFsmEvent.BFD_DOWN, IslFsmEvent.BFD_KILL, IslFsmEvent.ROUND_TRIP_STATUS}) {
+            for (IslFsmEvent event : new IslFsmEvent[]{IslFsmEvent.ISL_UP, IslFsmEvent.ISL_MOVE}) {
                 builder.transition()
                         .from(IslFsmState.CLEAN_UP_RESOURCES).to(IslFsmState.OPERATIONAL).on(event)
                         .callMethod("resurrectNotification");
             }
+            builder.transition()
+                    .from(IslFsmState.CLEAN_UP_RESOURCES).to(IslFsmState.OPERATIONAL).on(IslFsmEvent.ROUND_TRIP_STATUS)
+                    .when(new Condition<IslFsmContext>() {
+                        @Override
+                        public boolean isSatisfied(IslFsmContext context) {
+                            RoundTripStatus status = context.getRoundTripStatus();
+                            return status != null && !status.getStatus().equals(IslStatus.INACTIVE);
+                        }
+
+                        @Override
+                        public String name() {
+                            return "round-trip-status-is-not-fail";
+                        }
+                    })
+                    .callMethod("resurrectNotification");
             builder.onEntry(IslFsmState.CLEAN_UP_RESOURCES).callMethod("cleanUpResourcesEnter");
             builder.internalTransition()
                     .within(IslFsmState.CLEAN_UP_RESOURCES).on(IslFsmEvent.ISL_RULE_REMOVED)

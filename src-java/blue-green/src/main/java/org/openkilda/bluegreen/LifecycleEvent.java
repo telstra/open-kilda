@@ -20,11 +20,12 @@ package org.openkilda.bluegreen;
 import lombok.Builder;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.UUID;
 
 @Data
 @Builder(toBuilder = true)
-public class LifecycleEvent {
+public class LifecycleEvent implements Serializable {
     private Signal signal;
     private UUID uuid;
     private long messageId;

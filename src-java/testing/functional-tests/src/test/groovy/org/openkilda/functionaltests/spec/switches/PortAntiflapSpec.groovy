@@ -1,7 +1,12 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_DEACTIVATED
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -12,6 +17,7 @@ import org.openkilda.functionaltests.helpers.thread.PortBlinker
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PortChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
+import org.openkilda.model.SwitchFeature
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import groovy.util.logging.Slf4j
@@ -182,6 +188,63 @@ timeout"() {
         new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, 0)
                 .kafkaChangePort(PortChangeType.UP)
         Wrappers.wait(WAIT_OFFSET) { islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED }
+    }
+
+    @Tidy
+    @Tags([SMOKE_SWITCHES, HARDWARE])
+    def "A round-trip latency non-direct ISL goes UP according to antiflap"() {
+        given: "An active round-trip a-switch link"
+        def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort &&
+                [it.srcSwitch, it.dstSwitch].every { it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
+        }
+        assumeTrue("Wasn't able to find round-trip ISL with a-switch", isl != null)
+
+        when: "Port down event happens"
+        def timestampBefore = System.currentTimeMillis()
+        northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        def portIsDown = true
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getLink(isl).state == FAILED
+            assert northbound.getLink(isl.reversed).state == FAILED
+        }
+
+        and: "Port up event happens"
+        northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        portIsDown = false
+
+        then: "The ISL is failed till 'antiflap' is deactivated"
+        Wrappers.timedLoop(antiflapCooldown * 0.8) {
+            with(islUtils.getIslInfo(isl).get()) {
+                // it.state == FAILED //https://github.com/telstra/open-kilda/issues/4005
+                it.actualState == FAILED
+            }
+            TimeUnit.SECONDS.sleep(1)
+        }
+        Wrappers.wait(antiflapCooldown * 0.2 + WAIT_OFFSET) {
+            Long timestampAfter = System.currentTimeMillis()
+            assert northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter)
+                    .findAll { it.event == ANTI_FLAP_DEACTIVATED.toString() }.size() == 1
+        }
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            def fr = northbound.getLink(isl)
+            def rv = northbound.getLink(isl.reversed)
+            assert fr.state == DISCOVERED
+            assert fr.actualState == DISCOVERED
+            assert rv.state == DISCOVERED
+            assert rv.actualState == DISCOVERED
+        }
+
+        cleanup:
+        portIsDown && antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        Wrappers.wait(antiflapCooldown + discoveryInterval + WAIT_OFFSET) {
+            def fr = northbound.getLink(isl)
+            def rv = northbound.getLink(isl.reversed)
+            assert fr.state == DISCOVERED
+            assert fr.actualState == DISCOVERED
+            assert rv.state == DISCOVERED
+            assert rv.actualState == DISCOVERED
+        }
+        database.resetCosts()
     }
 
     def cleanup() {

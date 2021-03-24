@@ -9,6 +9,7 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 description = 'Connected Devices Storm Topology'
 dependencies {
     implementation project(':base-storm-topology')
+    implementation project(':blue-green')
     runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     runtimeClasspath project(':kilda-persistence-orientdb')
@@ -25,6 +26,8 @@ dependencies {
     testCompileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
 }
 
 jar {

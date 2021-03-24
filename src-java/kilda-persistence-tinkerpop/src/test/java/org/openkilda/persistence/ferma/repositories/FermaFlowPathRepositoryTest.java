@@ -48,7 +48,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
@@ -360,10 +359,12 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         FlowPath flowPath = createTestFlowPath();
 
         List<PathSegment> segments = asList(PathSegment.builder()
+                        .pathId(flowPath.getPathId())
                         .srcSwitch(switchA)
                         .destSwitch(switchC)
                         .build(),
                 PathSegment.builder()
+                        .pathId(flowPath.getPathId())
                         .srcSwitch(switchC)
                         .destSwitch(switchB)
                         .build());
@@ -382,9 +383,8 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         Flow flowC = buildTestProtectedFlow(TEST_FLOW_ID_3, switchB, PORT_1, VLAN_1, switchB, PORT_3, VLAN_1);
         flowRepository.add(flowC);
 
-        Collection<FlowPath> flowPaths =
-                flowPathRepository.findActualByFlowIds(Sets.newHashSet(TEST_FLOW_ID_1, TEST_FLOW_ID_2));
-        Collection<PathId> pathIds = flowPaths.stream().map(FlowPath::getPathId).collect(Collectors.toList());
+        Collection<PathId> pathIds =
+                flowPathRepository.findActualPathIdsByFlowIds(Sets.newHashSet(TEST_FLOW_ID_1, TEST_FLOW_ID_2));
         assertEquals(6, pathIds.size());
         assertTrue(pathIds.contains(flowA.getForwardPathId()));
         assertTrue(pathIds.contains(flowA.getReversePathId()));
@@ -434,12 +434,14 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
                 .build();
 
         PathSegment segment1 = PathSegment.builder()
+                .pathId(flowPath.getPathId())
                 .srcSwitch(switchA)
                 .srcPort(1)
                 .destSwitch(intSwitch)
                 .destPort(intPort)
                 .build();
         PathSegment segment2 = PathSegment.builder()
+                .pathId(flowPath.getPathId())
                 .srcSwitch(intSwitch)
                 .srcPort(intPort + 100)
                 .destSwitch(switchB)
@@ -476,6 +478,7 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         flow.setForwardPath(forwardFlowPath);
 
         PathSegment forwardSegment = PathSegment.builder()
+                .pathId(forwardFlowPath.getPathId())
                 .srcSwitch(srcSwitch)
                 .srcPort(srcPort)
                 .destSwitch(destSwitch)
@@ -494,6 +497,7 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         flow.setReversePath(reverseFlowPath);
 
         PathSegment reverseSegment = PathSegment.builder()
+                .pathId(reverseFlowPath.getPathId())
                 .srcSwitch(destSwitch)
                 .srcPort(destPort)
                 .destSwitch(srcSwitch)
@@ -518,6 +522,7 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         flow.setProtectedForwardPath(forwardProtectedFlowPath);
 
         PathSegment forwardSegment = PathSegment.builder()
+                .pathId(forwardProtectedFlowPath.getPathId())
                 .srcSwitch(srcSwitch)
                 .srcPort(srcPort)
                 .destSwitch(destSwitch)
@@ -535,6 +540,7 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         flow.setProtectedReversePath(reverseProtectedFlowPath);
 
         PathSegment reverseSegment = PathSegment.builder()
+                .pathId(reverseProtectedFlowPath.getPathId())
                 .srcSwitch(destSwitch)
                 .srcPort(destPort)
                 .destSwitch(srcSwitch)

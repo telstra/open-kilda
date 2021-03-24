@@ -24,6 +24,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
@@ -154,7 +155,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
 
         public Factory(FlowUpdateHubCarrier carrier, PersistenceManager persistenceManager,
                        PathComputer pathComputer, FlowResourcesManager resourcesManager,
-                       int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
+                       int pathAllocationRetriesLimit, int pathAllocationRetryDelay, int resourceAllocationRetriesLimit,
                        int speakerCommandRetriesLimit) {
             this.carrier = carrier;
 
@@ -178,7 +179,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
 
             builder.transition().from(State.FLOW_UPDATED).to(State.PRIMARY_RESOURCES_ALLOCATED).on(Event.NEXT)
                     .perform(new AllocatePrimaryResourcesAction(persistenceManager,
-                            pathAllocationRetriesLimit, pathAllocationRetryDelay,
+                            pathAllocationRetriesLimit, pathAllocationRetryDelay, resourceAllocationRetriesLimit,
                             pathComputer, resourcesManager, dashboardLogger));
             builder.transitions().from(State.FLOW_UPDATED)
                     .toAmong(State.REVERTING_FLOW, State.REVERTING_FLOW)
@@ -190,7 +191,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
             builder.transition().from(State.PRIMARY_RESOURCES_ALLOCATED).to(State.PROTECTED_RESOURCES_ALLOCATED)
                     .on(Event.NEXT)
                     .perform(new AllocateProtectedResourcesAction(persistenceManager,
-                            pathAllocationRetriesLimit, pathAllocationRetryDelay,
+                            pathAllocationRetriesLimit, pathAllocationRetryDelay, resourceAllocationRetriesLimit,
                             pathComputer, resourcesManager, dashboardLogger));
             builder.transitions().from(State.PRIMARY_RESOURCES_ALLOCATED)
                     .toAmong(State.NEW_RULES_REVERTED, State.NEW_RULES_REVERTED, State.REVERTING_ALLOCATED_RESOURCES)
@@ -331,7 +332,8 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .perform(new UpdateFlowStatusAction(persistenceManager, dashboardLogger));
 
             builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED).on(Event.NEXT);
-            builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
+            builder.transition().from(State.FLOW_STATUS_UPDATED)
+                    .to(State.NOTIFY_FLOW_MONITOR_WITH_ERROR).on(Event.ERROR);
 
             builder.onEntry(State.REVERTING_PATHS_SWAP)
                     .perform(reportErrorAction);
@@ -383,12 +385,23 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
             builder.onEntry(State.REVERTING_FLOW_STATUS)
                     .perform(reportErrorAction);
             builder.transitions().from(State.REVERTING_FLOW_STATUS)
-                    .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
+                    .toAmong(State.NOTIFY_FLOW_MONITOR_WITH_ERROR, State.NOTIFY_FLOW_MONITOR_WITH_ERROR)
                     .onEach(Event.NEXT, Event.ERROR)
                     .perform(new RevertFlowStatusAction(persistenceManager));
 
             builder.onEntry(State.FINISHED_WITH_ERROR)
                     .perform(reportErrorAction);
+
+            builder.transition()
+                    .from(State.NOTIFY_FLOW_MONITOR)
+                    .to(State.FINISHED)
+                    .on(Event.NEXT)
+                    .perform(new NotifyFlowMonitorAction<>(persistenceManager, carrier));
+            builder.transition()
+                    .from(State.NOTIFY_FLOW_MONITOR_WITH_ERROR)
+                    .to(State.FINISHED_WITH_ERROR)
+                    .on(Event.NEXT)
+                    .perform(new NotifyFlowMonitorAction<>(persistenceManager, carrier));
 
             builder.defineFinalState(State.FINISHED)
                     .addEntryAction(new OnFinishedAction(dashboardLogger));
@@ -469,7 +482,10 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
         REVERTING_FLOW_STATUS,
         REVERTING_FLOW,
 
-        FINISHED_WITH_ERROR
+        FINISHED_WITH_ERROR,
+
+        NOTIFY_FLOW_MONITOR,
+        NOTIFY_FLOW_MONITOR_WITH_ERROR
     }
 
     public enum Event {

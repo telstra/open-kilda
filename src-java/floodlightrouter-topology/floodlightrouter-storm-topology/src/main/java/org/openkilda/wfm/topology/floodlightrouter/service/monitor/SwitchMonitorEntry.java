@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.floodlightrouter.service.monitor;
 
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
+import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMonitorCarrier;
@@ -51,7 +52,7 @@ public class SwitchMonitorEntry {
         }
 
         if (! isHandled) {
-            carrier.switchStatusUpdateNotification(notification.getSwitchId(), notification);
+            carrier.networkStatusUpdateNotification(notification.getSwitchId(), notification);
         }
     }
 
@@ -70,6 +71,15 @@ public class SwitchMonitorEntry {
     public void handleNetworkDumpResponse(NetworkDumpSwitchData response, String region) {
         for (SwitchConnectMonitor entry : basicMonitors) {
             entry.handleNetworkDumpResponse(response, region);
+        }
+    }
+
+    /**
+     * Handle port status update notification.
+     */
+    public void handlePortStatusUpdateNotification(PortInfoData notification, String region) {
+        for (SwitchConnectMonitor entry : basicMonitors) {
+            entry.handlePortStatusUpdateNotification(notification, region);
         }
     }
 

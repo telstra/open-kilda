@@ -7,7 +7,7 @@ services:
 {{if not (exists "/no_grpc_stub")}}
   grpc-stub:
     container_name: grpc-stub
-    image: kilda/grpc-stub
+    image: kilda/grpc-stub:latest
     build:
       context: docker/grpc-stub/
       dockerfile: Dockerfile
@@ -23,7 +23,7 @@ services:
 
   lab-api:
     container_name: lab-api
-    image: kilda_lab-service
+    image: kilda_lab-service:latest
     build:
       context: docker/lab-service/
       dockerfile: Dockerfile
@@ -143,7 +143,7 @@ services:
   zookeeper:
     container_name: zookeeper
     hostname: zookeeper.pendev
-    image: "kilda/zookeeper:latest"
+    image: kilda/zookeeper:latest
     command: /usr/local/sbin/create-zknode-and-start.sh
     volumes:
       - ./docker/zookeeper/bin/create-zknode-and-start.sh:/usr/local/sbin/create-zknode-and-start.sh
@@ -194,6 +194,7 @@ services:
 
   wfm:
     container_name: wfm
+    image: "kilda/wfm:${TAG:-latest}"
     build:
       context: docker
       dockerfile: wfm/Dockerfile
@@ -208,11 +209,13 @@ services:
         condition: service_healthy
       db_migration:
         condition: service_healthy
+    environment:
+      - WFM_TOPOLOGIES_MODE
 
   hbase:
     container_name: hbase
     hostname: hbase.pendev
-    image: "kilda/hbase:latest"
+    image: kilda/hbase:latest
     command: /opt/hbase/bin/start-hbase
     volumes:
       - hbase_data:/data/hbase
@@ -243,7 +246,7 @@ services:
   storm-nimbus:
     container_name: storm-nimbus
     hostname: nimbus.pendev
-    image: "kilda/storm:latest"
+    image: kilda/storm:latest
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm nimbus
     depends_on:
       zookeeper:
@@ -269,7 +272,7 @@ services:
 {{if not (exists "/no_storm_ui")}}
   storm-ui:
     container_name: storm-ui
-    image: "kilda/storm:latest"
+    image: kilda/storm:latest
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm ui
     depends_on:
       zookeeper:
@@ -281,10 +284,10 @@ services:
     ports:
       - "8888:8080"
     healthcheck:
-      test: ["CMD-SHELL", "jps | grep --silent core"]
-      interval: 30s
+      test: ["CMD-SHELL", "/simple-storm-ui-healthcheck.sh"]
+      interval: 10s
       timeout: 10s
-      retries: 3
+      retries: 30
     networks:
       default:
         aliases:
@@ -294,7 +297,7 @@ services:
   storm-supervisor:
     container_name: storm-supervisor
     hostname: storm-supervisor.pendev
-    image: "kilda/storm:latest"
+    image: kilda/storm:latest
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm supervisor
     depends_on:
       zookeeper:
@@ -302,7 +305,7 @@ services:
       storm-nimbus:
         condition: service_healthy
 {{if not (exists "/no_logstash")}}      logstash:
-        condition: service_started
+        condition: service_healthy
 {{end}}{{if not (exists "/no_opentsdb")}}      opentsdb:
         condition: service_started
 {{end}}    ports:
@@ -321,12 +324,47 @@ services:
       - "6712:6712"
       - "6713:6713"
       - "6714:6714"
+      - "6715:6715"
+      - "6716:6716"
+      - "6717:6717"
+      - "6718:6718"
+      - "6719:6719"
+      - "6720:6720"
+      - "6721:6721"
+      - "6722:6722"
+      - "6723:6723"
+      - "6724:6724"
+      - "6725:6725"
+      - "6726:6726"
+      - "6727:6727"
+      - "6728:6728"
+      - "6729:6729"
+      - "6730:6730"
+      - "6731:6731"
+      - "6732:6732"
+      - "6733:6733"
+      - "6734:6734"
+      - "6735:6735"
+      - "6736:6736"
+      - "6737:6737"
+      - "6738:6738"
+      - "6739:6739"
+      - "6740:6740"
+      - "6741:6741"
+      - "6742:6742"
+      - "6743:6743"
+      - "6744:6744"
+      - "6745:6745"
+      - "6746:6746"
+      - "6747:6747"
+      - "6748:6748"
+      - "6749:6749"
       - "8001:8000"
     healthcheck:
-      test: ["CMD-SHELL", "jps | grep --silent Supervisor"]
-      interval: 30s
+      test: ["CMD-SHELL", "/simple-storm-supervisor-healthcheck.sh"]
+      interval: 10s
       timeout: 10s
-      retries: 3
+      retries: 30
     networks:
       default:
         aliases:
@@ -338,7 +376,7 @@ services:
     build:
       context: docker
       dockerfile: floodlight-modules/Dockerfile
-    image: "kilda/floodlight:latest"
+    image: "kilda/floodlight:${TAG:-latest}"
     command: ["floodlight", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_1"]
     ports:
       - "6653:6653"
@@ -350,7 +388,7 @@ services:
       kafka:
         condition: service_healthy
 {{if not (exists "/no_logstash")}}      logstash:
-        condition: service_started
+        condition: service_healthy
 {{end}}    cap_add:
       - NET_ADMIN
     networks:
@@ -367,7 +405,7 @@ services:
     build:
       context: docker
       dockerfile: floodlight-modules/Dockerfile
-    image: "kilda/floodlight:latest"
+    image: "kilda/floodlight:${TAG:-latest}"
     command: ["floodlight", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=2", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_2"]
     ports:
       - "6753:6653"
@@ -379,7 +417,7 @@ services:
       kafka:
         condition: service_healthy
 {{if not (exists "/no_logstash")}}      logstash:
-        condition: service_started
+        condition: service_healthy
 {{end}}    cap_add:
       - NET_ADMIN
     networks:
@@ -394,7 +432,7 @@ services:
     build:
       context: docker
       dockerfile: floodlight-modules/Dockerfile
-    image: "kilda/floodlight:latest"
+    image: "kilda/floodlight:${TAG:-latest}"
     command:
       - "floodlightStats"
       - "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1.stats"
@@ -409,7 +447,7 @@ services:
       kafka:
         condition: service_healthy
 {{if not (exists "/no_logstash")}}      logstash:
-        condition: service_started
+        condition: service_healthy
 {{end}}    cap_add:
       - NET_ADMIN
     networks:
@@ -418,8 +456,10 @@ services:
           - floodlight_stats.pendev
     mem_limit: ${FL_STATS_MEM_LIMIT:-1073741824}
 {{end}}
+
   northbound:
     container_name: openkilda-northbound
+    image: "kilda/northbound:${TAG:-latest}"
     build:
       context: docker
       dockerfile: northbound/Dockerfile
@@ -428,12 +468,38 @@ services:
     environment:
       REST_USERNAME: 'kilda'
       REST_PASSWORD: 'kilda'
+      BLUE_GREEN_MODE: 'blue'
     depends_on:
       kafka:
         condition: service_healthy
 {{if not (exists "/no_logstash")}}      logstash:
-        condition: service_started
+        condition: service_healthy
 {{end}}      db_migration:
+        condition: service_healthy
+    networks:
+      default:
+        aliases:
+         - northbound.pendev
+    mem_limit: ${NB_MEM_LIMIT:-1073741824}
+
+  northbound-blue-green:
+    container_name: openkilda-northbound-blue-green
+    image: "kilda/northbound:${TAG:-latest}"
+    build:
+      context: docker
+      dockerfile: northbound/Dockerfile
+    ports:
+      - "8787:8080"
+    environment:
+      REST_USERNAME: 'kilda'
+      REST_PASSWORD: 'kilda'
+      BLUE_GREEN_MODE: 'green'
+    depends_on:
+      kafka:
+        condition: service_healthy
+{{if not (exists "/no_logstash")}}      logstash:
+        condition: service_healthy
+{{end}}      odb1:
         condition: service_healthy
     networks:
       default:
@@ -444,17 +510,41 @@ services:
 {{if not (exists "/no_grpc_speaker")}}
   grpc-speaker:
     container_name: grpc-speaker
+    image: "kilda/grpc-speaker:${TAG:-latest}"
     build:
       context: docker
       dockerfile: grpc-service/Dockerfile
     ports:
     - "8091:8091"
+    environment:
+      BLUE_GREEN_MODE: 'blue'
     depends_on:
       kafka:
         condition: service_healthy
 {{if not (exists "/no_logstash")}}      logstash:
-        condition: service_started
+        condition: service_healthy
 {{end}}    networks:
+      default:
+        aliases:
+         - grpc-speaker.pendev
+    mem_limit: ${GRPC_MEM_LIMIT:-1073741824}
+
+  grpc-speaker-blue-green:
+    container_name: grpc-speaker-blue-green
+    image: "kilda/grpc-speaker:${TAG:-latest}"
+    build:
+      context: docker
+      dockerfile: grpc-service/Dockerfile
+    ports:
+      - "8092:8091"
+    environment:
+      BLUE_GREEN_MODE: 'green'
+    depends_on:
+      kafka:
+        condition: service_healthy
+  {{if not (exists "/no_logstash")}}    logstash:
+        condition: service_healthy
+  {{end}}  networks:
       default:
         aliases:
          - grpc-speaker.pendev
@@ -464,7 +554,7 @@ services:
   opentsdb:
     container_name: opentsdb
     hostname: opentsdb.pendev
-    image: "kilda/opentsdb:latest"
+    image: kilda/opentsdb:latest
     command: /app/wait-for-it.sh -t 120 -h hbase.pendev -p 9090 -- /app/start-opentsdb
     depends_on:
       zookeeper:
@@ -502,7 +592,7 @@ services:
 {{if not (exists "/no_elasticsearch")}}
   elasticsearch:
     container_name: elasticsearch
-    image: "kilda/elasticsearch:latest"
+    image: kilda/elasticsearch:latest
     hostname: elasticsearch.pendev
     ports:
       - "9200:9200"
@@ -552,6 +642,11 @@ services:
       # remove default 500m heap size in /usr/share/logstash/vendor/jruby/bin/jruby
       JAVA_MEM: " "
     mem_limit: ${LOGSTASH_MEM_LIMIT:-1073741824}
+    healthcheck:
+      test: ["CMD-SHELL", "/simple-logstash-healthcheck.sh"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
 {{end}}
 {{if not (exists "/no_server42_control")}}
   server42-control:

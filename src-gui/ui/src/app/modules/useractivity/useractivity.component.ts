@@ -59,7 +59,7 @@ export class UseractivityComponent implements OnInit {
   ngOnInit() {
 	this.titleService.setTitle('OPEN KILDA - User Activity');
 	this.loaderService.show(MessageObj.loading_user_activity);
-	this.startDate =  this.moment().subtract(15,'days').format('YYYY/MM/DD HH:mm');
+	this.startDate =  this.moment().subtract(7,'days').format('YYYY/MM/DD HH:mm');
 	this.endDate = this.moment().format('YYYY/MM/DD HH:mm');
     this.callDropdownService();
   	this.userActivityForm = this.formBuilder.group({

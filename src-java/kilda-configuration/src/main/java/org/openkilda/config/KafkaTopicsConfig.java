@@ -56,10 +56,6 @@ public interface KafkaTopicsConfig {
     @Default("kilda.otsdb")
     String getOtsdbTopic();
 
-    @Key("simulator")
-    @Default("kilda.simulator")
-    String getSimulatorTopic();
-
     @Key("speaker")
     @FallbackKey("kafka.speaker.topic")
     @Default("kilda.speaker.storm")
@@ -213,4 +209,12 @@ public interface KafkaTopicsConfig {
     @Key("topo.nbworker.server42-storm")
     @Default("kilda.nbworker.server42-storm-notify.priv")
     String getNbWorkerServer42StormNotifyTopic();
+
+    @Key("topo.flowhs.flow.monitoring")
+    @Default("kilda.flowhs.flowmonitoring-notify.priv")
+    String getFlowHsFlowMonitoringNotifyTopic();
+
+    @Key("topo.network.flow.monitoring")
+    @Default("kilda.network.flowmonitoring-notify.priv")
+    String getNetworkFlowMonitoringNotifyTopic();
 }

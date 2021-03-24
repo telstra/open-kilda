@@ -22,5 +22,5 @@ import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingUpdate;
 public interface SwitchMonitorCarrier {
     void regionUpdateNotification(RegionMappingUpdate mappingUpdate);
 
-    void switchStatusUpdateNotification(SwitchId switchId, InfoData notification);
+    void networkStatusUpdateNotification(SwitchId switchId, InfoData notification);
 }

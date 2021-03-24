@@ -24,6 +24,9 @@ import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
+import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.nbworker.bolts.DiscoveryEncoderBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FeatureTogglesBolt;
@@ -51,14 +54,14 @@ import org.apache.storm.tuple.Fields;
 import java.util.concurrent.TimeUnit;
 
 /**
- *  Storm topology to read data from database.
- *  Topology design:
- *  kilda.topo.nb-spout ---> router-bolt ---> validation-operations-bolt ---> response-splitter-bolt ---> nb-kafka-bolt
- *                                     | ---> links-operations-bolt      ---> |   \                       |
- *                                     | ---> flows-operations-bolt      ---> |  \ \                      |
- *                                     | ---> switches-operations-bolt   ---> | \ \ \                     |
- *                                     | ---> history-operations-bolt    ---> | \ \ \ \                   |
- *                                     | --->                   message-encoder-bolt (in error case) ---> |
+ * Storm topology to read data from database.
+ * Topology design:
+ * kilda.topo.nb-spout ---> router-bolt ---> validation-operations-bolt ---> response-splitter-bolt ---> nb-kafka-bolt
+ * | ---> links-operations-bolt      ---> |   \                       |
+ * | ---> flows-operations-bolt      ---> |  \ \                      |
+ * | ---> switches-operations-bolt   ---> | \ \ \                     |
+ * | ---> history-operations-bolt    ---> | \ \ \ \                   |
+ * | --->                   message-encoder-bolt (in error case) ---> |
  *
  * <p>kilda.topo.nb-spout: reads data from kafka.
  * router-bolt: detects what kind of request is send, defines the stream. neo-bolt: performs operation with the
@@ -82,7 +85,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String DISCO_KAFKA_BOLT_NAME = "disco-kafka-bolt";
     private static final String PING_KAFKA_BOLT_NAME = "ping-kafka-bolt";
     private static final String HISTORY_BOLT_NAME = "history-operations-bolt";
-    private static final String NB_SPOUT_ID = "nb-spout";
+    public static final String NB_SPOUT_ID = "nb-spout";
     private static final String SPEAKER_KAFKA_BOLT = "speaker-bolt";
     private static final String SWITCH_MANAGER_KAFKA_BOLT = "switch-manger-bolt";
     private static final String REROUTE_KAFKA_BOLT = "reroute-bolt";
@@ -114,9 +117,23 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
 
         declareKafkaSpout(tb, topologyConfig.getKafkaTopoNbTopic(), NB_SPOUT_ID);
 
-        RouterBolt router = new RouterBolt();
+        RouterBolt router = new RouterBolt(ZooKeeperSpout.SPOUT_ID);
         declareBolt(tb, router, ROUTER_BOLT_NAME)
-                .shuffleGrouping(NB_SPOUT_ID);
+                .shuffleGrouping(NB_SPOUT_ID)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
+
+        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig().getConnectString());
+        declareSpout(tb, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
+
+
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig().getConnectString(), getBoltInstancesCount(ROUTER_BOLT_NAME,
+                FlowMeterModifyHubBolt.ID, FlowValidationHubBolt.ID));
+        declareBolt(tb, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
+                .allGrouping(ROUTER_BOLT_NAME, ZkStreams.ZK.toString())
+                .allGrouping(FlowMeterModifyHubBolt.ID, ZkStreams.ZK.toString())
+                .allGrouping(FlowValidationHubBolt.ID, ZkStreams.ZK.toString());
 
         PersistenceManager persistenceManager =
                 PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
@@ -127,12 +144,14 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         HubBolt.Config validationHubConfig = HubBolt.Config.builder()
                 .requestSenderComponent(ROUTER_BOLT_NAME)
                 .workerComponent(VALIDATION_WORKER_BOLT)
+                .lifeCycleEventComponent(ZooKeeperSpout.SPOUT_ID)
                 .timeoutMs((int) TimeUnit.SECONDS.toMillis(topologyConfig.getProcessTimeout()))
                 .build();
         declareBolt(tb,
                 new FlowValidationHubBolt(validationHubConfig, persistenceManager, flowResourcesConfig,
                         topologyConfig.getFlowMeterMinBurstSizeInKbits(),
                         topologyConfig.getFlowMeterBurstCoefficient()), FlowValidationHubBolt.ID)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID)
                 .fieldsGrouping(ROUTER_BOLT_NAME, FlowValidationHubBolt.INCOME_STREAM, FIELDS_KEY)
                 .directGrouping(VALIDATION_WORKER_BOLT, FlowValidationHubBolt.INCOME_STREAM)
                 .directGrouping(CoordinatorBolt.ID);
@@ -151,12 +170,14 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         HubBolt.Config meterModifyHubConfig = HubBolt.Config.builder()
                 .requestSenderComponent(ROUTER_BOLT_NAME)
                 .workerComponent(METER_MODIFY_WORKER_BOLT)
+                .lifeCycleEventComponent(ZooKeeperSpout.SPOUT_ID)
                 .timeoutMs((int) TimeUnit.SECONDS.toMillis(topologyConfig.getProcessTimeout()))
                 .build();
         declareBolt(tb, new FlowMeterModifyHubBolt(meterModifyHubConfig, persistenceManager), FlowMeterModifyHubBolt.ID)
                 .fieldsGrouping(ROUTER_BOLT_NAME, FlowMeterModifyHubBolt.INCOME_STREAM, FIELDS_KEY)
                 .directGrouping(METER_MODIFY_WORKER_BOLT, FlowMeterModifyHubBolt.INCOME_STREAM)
-                .directGrouping(CoordinatorBolt.ID);
+                .directGrouping(CoordinatorBolt.ID)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
 
         WorkerBolt.Config speakerMeterModifyWorkerConfig = WorkerBolt.Config.builder()
                 .hubComponent(FlowMeterModifyHubBolt.ID)
@@ -276,6 +297,11 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.REROUTE.toString());
 
         return tb.createTopology();
+    }
+
+    @Override
+    protected String getZkTopoName() {
+        return "nbworker";
     }
 
     /**

@@ -251,5 +251,6 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
 
     def cleanLinkPropsAfterSearch() {
         northbound.deleteLinkProps(propsDataForSearch)
+        Wrappers.wait(WAIT_OFFSET / 2) { assert northbound.getAllLinkProps().empty }
     }
 }

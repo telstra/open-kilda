@@ -61,7 +61,7 @@ public class PortProperties implements CompositeDataEntity<PortProperties.PortPr
      * @param entityToClone the entity to copy properties data from.
      */
     public PortProperties(@NonNull PortProperties entityToClone) {
-        data = PortPropertiesCloner.INSTANCE.copy(entityToClone.getData());
+        data = PortPropertiesCloner.INSTANCE.deepCopy(entityToClone.getData());
     }
 
     @Builder
@@ -150,17 +150,17 @@ public class PortProperties implements CompositeDataEntity<PortProperties.PortPr
             target.setSwitchObj(new Switch(source.getSwitchObj()));
         }
 
+        @Mapping(target = "switchObj", ignore = true)
+        void copyWithoutSwitch(PortPropertiesData source, @MappingTarget PortPropertiesData target);
+
         /**
          * Performs deep copy of entity data.
          */
-        default PortPropertiesData copy(PortPropertiesData source) {
+        default PortPropertiesData deepCopy(PortPropertiesData source) {
             PortPropertiesData result = new PortPropertiesDataImpl();
             copyWithoutSwitch(source, result);
             result.setSwitchObj(new Switch(source.getSwitchObj()));
             return result;
         }
-
-        @Mapping(target = "switchObj", ignore = true)
-        void copyWithoutSwitch(PortPropertiesData source, @MappingTarget PortPropertiesData target);
     }
 }

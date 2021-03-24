@@ -40,7 +40,7 @@ public class VersioningProducerInterceptor<K, V> extends VersioningInterceptorBa
 
     @Override
     public ProducerRecord<K, V> onSend(ProducerRecord<K, V> record) {
-        if (!watchDog.isActive()) {
+        if (!watchDog.isConnectedAndValidated()) {
             if (isZooKeeperConnectTimeoutPassed()) {
                 log.error("Component {} with id {} tries to reconnect to ZooKeeper with connection string: {}",
                         componentName, runId, connectionString);
@@ -96,6 +96,8 @@ public class VersioningProducerInterceptor<K, V> extends VersioningInterceptorBa
         log.info("Configuring VersioningProducerInterceptor for component {} with id {} and connection string {}",
                 componentName, runId, connectionString);
         initWatchDog();
+        log.info("Producer interceptor was configured for component {} and id {} with kafka messaging version '{}'",
+                componentName, runId, getVersionAsString());
     }
 
     @Override

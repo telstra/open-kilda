@@ -681,6 +681,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         database.resetCosts()
     }
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/4043")
     def "Flow rules are not reinstalled according to switch property while swapping to protected path"() {
         given: "Three active switches with 3 diverse paths at least"
         List<PathNode> desiredPath = null
@@ -772,13 +773,15 @@ mode with existing flows and hold flows of different table-mode types"() {
         def flowIsls = pathHelper.getInvolvedIsls(newFlowPath)
         def islToBreak = flowIsls[0]
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(islToBreak).state == IslChangeType.FAILED }
         def newFlowPath2
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP ||
                     northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
             newFlowPath2 = PathHelper.convert(northbound.getFlowPath(flow.flowId))
             assert newFlowPath2 == desiredPath
-            assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == UPDATE_SUCCESS
+            //update + 1st swap + this swap = 3
+            assert northbound.getFlowHistory(flow.flowId).count { it.payload.last().action == UPDATE_SUCCESS } == 3
         }
 
         then: "Flow rules are still in the same table mode as previously"
@@ -972,12 +975,12 @@ mode with existing flows and hold flows of different table-mode types"() {
 //        }
 
         when: "Delete the flow"
-        northboundV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Flow rules are deleted"
-        Wrappers.wait(RULES_DELETION_TIME) {
+        Wrappers.wait(WAIT_OFFSET) {
             involvedSwitches.each { sw ->
-                northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
+                assert northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
                     def cookie = new Cookie(it.cookie)
                     cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES || !cookie.serviceFlag
                 }.empty

@@ -67,12 +67,18 @@ wget https://github.com/kelseyhightower/confd/releases/download/v0.16.0/confd-0.
 chmod +x /usr/local/bin/confd
 ```
 
+#### /etc/hosts
+Following entry has to be added to /etc/hosts for _local_ Kilda to work properly
+```
+127.0.0.1 localhost kafka.pendev logstash.pendev
+```
+
 ### How to build Kilda Controller
 
 From the base directory run the following command:
 
 ```
-make build-latest
+make build-stable
 ```
 
 Note that additional Ubuntu packages will be installed as part of the build process.
@@ -96,6 +102,57 @@ From the base directory run the following command:
 ```
 make up-test-mode
 ```
+
+### How to create a virtual topology for test
+```
+make test-topology
+```
+
+### How to run Kilda Controller in blue-green mode
+
+Blue-green mode is an implementation of zero downtime feature. In this mode you
+run two versions of kilda: old one(blue) and new one(green).
+And switch blue to green at some moment.
+
+__First of all you need to build two sets of images.__
+
+To build blue version of Kilda you need to run:
+```
+make build-stable
+```
+
+To build green version of Kilda you need to run:
+```
+make build-latest
+```
+
+These two commands build images with tags `stable` and `latest`.
+These tags will be used to run kilda in blue mode (from stable images)
+or in green mode (for latest images).  
+
+__There are 3 new commands to run kilda in blue-green mode:__ 
+
+Following command run Kilda in blue mode from stable images.
+Also it runs all common components like zookeeper, database, kafka, etc.  
+```
+make up-stable
+```
+
+Next command run green version of Kilda from the latest images.
+Common components wouldn't be rerun (we started them by previous command).
+Also floodligth 1 wouldn't be rerun (only floodlight 2).
+Floodlight 1 will stay on blue mode.   
+```
+make up-green
+```
+
+Next command is used to test rollbacks. It runs stable components in blue mode.
+The difference with `make up-stable` is that command wouldn't start common components
+(like zookeeper, kafka, etc) and floodlight 2 (it stays in green mode). 
+
+```
+make up-blue
+``` 
 
 ### How to debug Kilda Controller components
 
@@ -285,8 +342,8 @@ We have confd for managing config/properties files from templates. Confd configs
 5. run: `make update-props` for applying templates
 
 #### Common use cases
-An example, you already have neo4j server, and want to use it instead of dockerized neo4j. 
-You can add neo4j endpoints to confd/vars/main.yaml and create properties template for services which use neo4j:
+An example, you already have orientdb server, and want to use it instead of dockerized orientdb.
+You can add orientdb endpoints to confd/vars/main.yaml and create properties template for services which use orientdb:
 
 confd/conf.d/base-storm-topology.topologies.toml:
 ```
@@ -299,17 +356,22 @@ mode = "0644"
 
 confd/vars/main.yaml:
 ```
-kilda_neo4j_host: "neo4j"
-kilda_neo4j_user: "neo4j"
-kilda_neo4j_password: "temppass"
+kilda_orientdb_hosts: "odb1.pendev,odb2.pendev,odb3.pendev"
+kilda_orientdb_hosts_single: "odb1.pendev"
+kilda_orientdb_user: "kilda"
+kilda_orientdb_password: "kilda"
 ```
 
 confd/templates/base-storm-topology/topology.properties.tmpl
 ```
 ...
-neo4j.uri = bolt://{{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
-neo4j.user = {{ getv "/kilda_neo4j_user" }}
-neo4j.password = {{ getv "/kilda_neo4j_password" }}
+{{if not (exists "/single_orientdb")}}
+orientdb.url=remote:{{ getv "/kilda_orientdb_hosts" }}/{{ getv "/kilda_orientdb_database" }}
+{{else}}
+orientdb.url=remote:{{ getv "/kilda_orientdb_hosts_single" }}/{{ getv "/kilda_orientdb_database" }}
+{{end}}
+orientdb.user = {{ getv "/kilda_orientdb_user" }}
+orientdb.password = {{ getv "/kilda_orientdb_password" }}
 ...
 ```
 

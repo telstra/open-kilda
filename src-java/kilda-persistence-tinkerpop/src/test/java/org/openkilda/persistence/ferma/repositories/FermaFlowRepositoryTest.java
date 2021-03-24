@@ -379,10 +379,10 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
     @Test
     public void shouldFindFlowBySwitchEndpointWithMultiTable() {
         Flow firstFlow = createTestFlow(TEST_FLOW_ID, switchA, switchB);
-        firstFlow.setSrcWithMultiTable(true);
+        firstFlow.getForwardPath().setSrcWithMultiTable(true);
 
         Flow secondFlow = createTestFlow(TEST_FLOW_ID_2, switchA, switchB);
-        secondFlow.setSrcWithMultiTable(false);
+        secondFlow.getForwardPath().setSrcWithMultiTable(false);
 
         Collection<Flow> foundFlows = flowRepository.findByEndpointSwitchWithMultiTableSupport(TEST_SWITCH_A_ID);
         Set<String> foundFlowIds = foundFlows.stream().map(Flow::getFlowId).collect(Collectors.toSet());
@@ -598,8 +598,6 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
                 .destVlan(destVlan)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .status(FlowStatus.UP)
-                .srcWithMultiTable(multiTable)
-                .destWithMultiTable(multiTable)
                 .build();
         flowRepository.add(flow);
 
@@ -610,9 +608,12 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
                 .srcSwitch(srcSwitch)
                 .destSwitch(destSwitch)
                 .status(FlowPathStatus.ACTIVE)
+                .srcWithMultiTable(multiTable)
+                .destWithMultiTable(multiTable)
                 .build();
 
         PathSegment forwardSegment = PathSegment.builder()
+                .pathId(forwardFlowPath.getPathId())
                 .srcSwitch(srcSwitch)
                 .srcPort(srcPort)
                 .destSwitch(destSwitch)
@@ -630,9 +631,12 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
                 .srcSwitch(destSwitch)
                 .destSwitch(srcSwitch)
                 .status(FlowPathStatus.ACTIVE)
+                .srcWithMultiTable(multiTable)
+                .destWithMultiTable(multiTable)
                 .build();
 
         PathSegment reverseSegment = PathSegment.builder()
+                .pathId(reverseFlowPath.getPathId())
                 .srcSwitch(destSwitch)
                 .srcPort(destPort)
                 .destSwitch(srcSwitch)
@@ -671,6 +675,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         flow.setForwardPath(forwardFlowPath);
 
         PathSegment forwardSegment = PathSegment.builder()
+                .pathId(forwardFlowPath.getPathId())
                 .srcSwitch(srcSwitch)
                 .srcPort(1)
                 .destSwitch(intSwitch)
@@ -690,6 +695,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         flow.setReversePath(reverseFlowPath);
 
         PathSegment reverseSegment = PathSegment.builder()
+                .pathId(reverseFlowPath.getPathId())
                 .srcSwitch(intSwitch)
                 .srcPort(100)
                 .destSwitch(srcSwitch)

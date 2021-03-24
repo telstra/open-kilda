@@ -15,14 +15,19 @@
 
 package org.openkilda.wfm;
 
-import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_NAME;
-import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_RUN_ID;
+import static java.lang.String.format;
+import static org.openkilda.bluegreen.ZkWatchDog.DEFAULT_BUILD_VERSION;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
 
+import org.openkilda.bluegreen.Signal;
+import org.openkilda.bluegreen.kafka.interceptors.VersioningConsumerInterceptor;
 import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
-import org.openkilda.config.KafkaConfig;
+import org.openkilda.wfm.config.KafkaConfig;
 import org.openkilda.wfm.config.ZookeeperConfig;
 import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.error.ConfigurationException;
@@ -34,6 +39,10 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZooDefs.Ids;
+import org.apache.zookeeper.ZooKeeper;
 import org.junit.ClassRule;
 import org.junit.rules.TemporaryFolder;
 import org.kohsuke.args4j.CmdLineException;
@@ -41,7 +50,10 @@ import org.kohsuke.args4j.CmdLineException;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Properties;
+import java.util.stream.Stream;
 
 @Slf4j
 public abstract class AbstractStormTest {
@@ -65,26 +77,60 @@ public abstract class AbstractStormTest {
         return properties;
     }
 
-    protected static Properties kafkaProducerProperties() throws CmdLineException, ConfigurationException {
+    protected static Properties kafkaProducerProperties(String componentName, String runId)
+            throws CmdLineException, ConfigurationException {
         Properties properties = commonKafkaProperties();
         properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, STRING_SERIALIZER);
         properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, STRING_SERIALIZER);
         properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningProducerInterceptor.class.getName());
-        properties.put(PRODUCER_COMPONENT_NAME_PROPERTY, COMMON_COMPONENT_NAME);
-        properties.put(PRODUCER_RUN_ID_PROPERTY, COMMON_COMPONENT_RUN_ID);
+        properties.put(PRODUCER_COMPONENT_NAME_PROPERTY, componentName);
+        properties.put(PRODUCER_RUN_ID_PROPERTY, runId);
         properties.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY,
                 makeUnboundConfig(ZookeeperConfig.class).getConnectString());
         return properties;
     }
 
-    protected static Properties kafkaConsumerProperties(final String groupId)
+    protected static Properties kafkaConsumerProperties(final String groupId, String componentName, String runId)
             throws ConfigurationException, CmdLineException {
         Properties properties = commonKafkaProperties();
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
         properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, STRING_DESERIALIZER);
         properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, STRING_DESERIALIZER);
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        properties.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName());
+        properties.put(CONSUMER_COMPONENT_NAME_PROPERTY, componentName);
+        properties.put(CONSUMER_RUN_ID_PROPERTY, runId);
+        properties.put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY,
+                makeUnboundConfig(ZookeeperConfig.class).getConnectString());
         return properties;
+    }
+
+    protected static Properties getZooKeeperProperties(int zookeeperPort, String rootNode) {
+        Properties properties = new Properties();
+        properties.setProperty("zookeeper.hosts", format("localhost:%d", zookeeperPort));
+        properties.setProperty("zookeeper.connect_string", format("localhost:%d/%s", zookeeperPort, rootNode));
+        return properties;
+    }
+
+    protected static Properties getKafkaProperties(int kafkaPort) {
+        Properties properties = new Properties();
+        properties.setProperty("kafka.hosts", format("localhost:%d", kafkaPort));
+        properties.setProperty("kafka.listeners", format("PLAINTEXT://:%d", kafkaPort));
+        properties.setProperty("kafka.advertised.listeners", format("PLAINTEXT://localhost:%d", kafkaPort));
+        return properties;
+    }
+
+    protected static void setStartSignal(int zooKeeperPort, String root, String name, String id)
+            throws IOException, KeeperException, InterruptedException {
+        ZooKeeper zooKeeper = new ZooKeeper(getZooKeeperProperties(zooKeeperPort, root).getProperty("zookeeper.hosts"),
+                3000, event -> { });
+
+        setNode(zooKeeper, format("/%s", root), "");
+        setNode(zooKeeper, format("/%s/%s", root, name), "");
+        setNode(zooKeeper, format("/%s/%s/%s", root, name, id), "");
+        setNode(zooKeeper, format("/%s/%s/%s/expected_state", root, name, id), "");
+        setNode(zooKeeper, format("/%s/%s/%s/signal", root, name, id), Signal.START.toString());
+        setNode(zooKeeper, format("/%s/%s/%s/build-version", root, name, id), DEFAULT_BUILD_VERSION);
     }
 
     protected static Config stormConfig() {
@@ -95,19 +141,23 @@ public abstract class AbstractStormTest {
         return config;
     }
 
-    protected static void startZooKafkaAndStorm() throws Exception {
+    protected static void startZooKafka(Properties overlay) throws Exception {
         log.info("Starting Zookeeper and Kafka...");
 
-        makeConfigFile();
+        makeConfigFile(overlay, CONFIG_NAME);
 
-        server = new TestUtils.KafkaTestFixture(makeUnboundConfig(ZookeeperConfig.class));
+        server = new TestUtils.KafkaTestFixture(
+                makeUnboundConfig(ZookeeperConfig.class), makeUnboundConfig(KafkaConfig.class));
         server.start();
 
         log.info("Zookeeper and Kafka started.");
+    }
+
+    protected static void startStorm(String componentName, String runId) throws Exception {
         log.info("Starting local Storm cluster...");
 
         cluster = new LocalCluster();
-        kProducer = new TestKafkaProducer(kafkaProducerProperties());
+        kProducer = new TestKafkaProducer(kafkaProducerProperties(componentName, runId));
 
         log.info("Storm started.");
     }
@@ -145,15 +195,11 @@ public abstract class AbstractStormTest {
     }
 
     protected static String[] makeLaunchArgs(String... extraConfig) {
-        String[] args = new String[extraConfig.length + 1];
-
-        File root = fsData.getRoot();
-        args[0] = new File(root, CONFIG_NAME).toString();
-        for (int idx = 0; idx < extraConfig.length; idx += 1) {
-            args[idx + 1] = new File(root, extraConfig[idx]).toString();
-        }
-
-        return args;
+        String root = fsData.getRoot().getPath();
+        return Stream.concat(Stream.of(CONFIG_NAME), Arrays.stream(extraConfig))
+                .map(f -> Paths.get(root, f).toString())
+                .flatMap(f -> Stream.of("--topology-config", f))
+                .toArray(String[]::new);
     }
 
     protected static void makeConfigFile() throws IOException {
@@ -167,5 +213,12 @@ public abstract class AbstractStormTest {
 
     protected static Properties makeConfigOverlay() {
         return new Properties();
+    }
+
+    protected static void setNode(ZooKeeper zooKeeper, String path, String value)
+            throws KeeperException, InterruptedException  {
+        if (zooKeeper.exists(path, false) == null) {
+            zooKeeper.create(path, value.getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        }
     }
 }

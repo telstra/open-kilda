@@ -19,9 +19,8 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.impl.AvailableNetwork;
 import org.openkilda.pce.model.Edge;
+import org.openkilda.pce.model.FindPathResult;
 import org.openkilda.pce.model.WeightFunction;
-
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.List;
 
@@ -34,19 +33,20 @@ public interface PathFinder {
      *
      * @return a pair of ordered lists that represents the path from start to end, or an empty list if no path found.
      */
-    Pair<List<Edge>, List<Edge>> findPathInNetwork(AvailableNetwork network,
-                                                   SwitchId startSwitchId, SwitchId endSwitchId,
-                                                   WeightFunction weightFunction)
+    FindPathResult findPathInNetwork(AvailableNetwork network,
+                                     SwitchId startSwitchId, SwitchId endSwitchId,
+                                     WeightFunction weightFunction)
             throws UnroutableFlowException;
 
     /**
      * Finds a path whose weight is less than maxWeight and as close to maxWeight as possible.
+     * If this path is not found, then backUpMaxWeight is used as maxWeight.
      *
      * @return a pair of ordered lists that represents the path from start to end, or an empty list if no path found.
      */
-    Pair<List<Edge>, List<Edge>> findPathInNetwork(AvailableNetwork network,
-                                                   SwitchId startSwitchId, SwitchId endSwitchId,
-                                                   WeightFunction weightFunction, long maxWeight)
+    FindPathResult findPathInNetwork(AvailableNetwork network,
+                                     SwitchId startSwitchId, SwitchId endSwitchId,
+                                     WeightFunction weightFunction, long maxWeight, long backUpMaxWeight)
             throws UnroutableFlowException;
 
     /**

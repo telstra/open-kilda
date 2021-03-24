@@ -14,6 +14,12 @@ export class UseractivityListComponent implements OnInit,OnChanges {
   dtOptions = {};  
   wrapperHide=true;
   dtTrigger: Subject<any> = new Subject();
+  expandedActivityTime: boolean = false;
+  expandedClientIpAddress : boolean = false;
+  expandedUserId : boolean = false;
+  expandedActivityType : boolean = false;
+  expandedObjectId : boolean = false;
+
   constructor(
     private loaderService:LoaderService,
     private renderer:Renderer2
@@ -74,8 +80,44 @@ export class UseractivityListComponent implements OnInit,OnChanges {
   }
   
 
+  
   ngAfterViewInit(){
     this.dtTrigger.next();
+    this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
+      dtInstance.columns().every(function () {
+        const that = this;
+        $('input[type="search"]', this.header()).on('keyup change', function () {
+          if (that.search() !== this['value']) {
+              that
+              .search(this['value'])
+              .draw();
+          }
+        });
+      });
+    });
+  }
+
+  toggleSearch(e,inputContainer){ 
+    
+    this[inputContainer] = this[inputContainer] ? false : true;
+    if(this[inputContainer]){
+      setTimeout(() => {
+        this.renderer.selectRootElement('#'+inputContainer).focus();
+      });
+    }else{
+      setTimeout(() => {
+        this.renderer.selectRootElement('#'+inputContainer).value = "";
+        jQuery('#'+inputContainer).trigger('change');
+      });
+    }
+    event.stopPropagation();
+  }
+
+  stopPropagationmethod(e){
+    event.stopPropagation();
+    if (e.key === "Enter") {
+      return false;
+   }
   }
 
   ngOnDestroy(): void {

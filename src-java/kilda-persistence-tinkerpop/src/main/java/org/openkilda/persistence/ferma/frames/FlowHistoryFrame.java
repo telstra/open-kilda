@@ -26,23 +26,25 @@ import java.time.Instant;
 public abstract class FlowHistoryFrame extends KildaBaseVertexFrame implements FlowHistoryData {
     public static final String FRAME_LABEL = "flow_history";
     public static final String TASK_ID_PROPERTY = "task_id";
+    public static final String TIMESTAMP_PROPERTY = "timestamp";
+    public static final String ACTION_PROPERTY = "action";
 
     @Override
-    @Property("timestamp")
+    @Property(TIMESTAMP_PROPERTY)
     @Convert(InstantLongConverter.class)
     public abstract Instant getTimestamp();
 
     @Override
-    @Property("timestamp")
+    @Property(TIMESTAMP_PROPERTY)
     @Convert(InstantLongConverter.class)
     public abstract void setTimestamp(Instant timestamp);
 
     @Override
-    @Property("action")
+    @Property(ACTION_PROPERTY)
     public abstract String getAction();
 
     @Override
-    @Property("action")
+    @Property(ACTION_PROPERTY)
     public abstract void setAction(String action);
 
     @Override

@@ -10,6 +10,7 @@ export const MessageObj = {
     fetching_flows:"Fetching flows",
     re_routing:"Re-routing",
     re_routing_flows:"Re-routing flows",
+    ping_flows:"Ping flows",
     no_ports:"No Ports available",
     no_flow_available:"No Flows available",
     flow_updated:"Updating flow",

@@ -15,6 +15,12 @@
 
 package org.openkilda.northbound.config;
 
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.northbound.config.KafkaNorthboundConfig.NORTHBOUND_COMPONENT_NAME;
+
+import org.openkilda.bluegreen.kafka.interceptors.VersioningConsumerInterceptor;
 import org.openkilda.messaging.Message;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageListener;
@@ -55,10 +61,22 @@ public class MessageConsumerConfig {
     private String kafkaHosts;
 
     /**
+     * ZooKeeper hosts.
+     */
+    @Value("${zookeeper.connect_string}")
+    private String zookeeperConnectString;
+
+    /**
      * Kafka group id.
      */
     @Value("#{kafkaGroupConfig.getGroupId()}")
     private String groupId;
+
+    /**
+     * Kilda blue green-mode.
+     */
+    @Value("${BLUE_GREEN_MODE:blue}")
+    private String blueGreenMode;
 
     /**
      * Kafka group id.
@@ -80,9 +98,13 @@ public class MessageConsumerConfig {
     private Map<String, Object> consumerConfigs() {
         return ImmutableMap.<String, Object>builder()
                 .put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHosts)
-                .put(ConsumerConfig.GROUP_ID_CONFIG, groupId)
+                .put(ConsumerConfig.GROUP_ID_CONFIG, buildGroupId())
                 .put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
                 .put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, kafkaSessionTimeout)
+                .put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName())
+                .put(CONSUMER_COMPONENT_NAME_PROPERTY, NORTHBOUND_COMPONENT_NAME)
+                .put(CONSUMER_RUN_ID_PROPERTY, blueGreenMode)
+                .put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, zookeeperConnectString)
                 .build();
     }
 
@@ -128,4 +150,7 @@ public class MessageConsumerConfig {
         return new KafkaMessagingChannel();
     }
 
+    private String buildGroupId() {
+        return String.format("%s-%s", groupId, blueGreenMode);
+    }
 }

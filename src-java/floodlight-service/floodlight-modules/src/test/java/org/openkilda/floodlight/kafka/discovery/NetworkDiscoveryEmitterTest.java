@@ -198,7 +198,7 @@ public class NetworkDiscoveryEmitterTest extends EasyMockSupport {
 
     private Capture<InfoMessage> setupConfirmationCatcher(DiscoverIslCommandData request, int count) {
         Capture<InfoMessage> capture = newCapture();
-        kafkaProducerService.sendMessageAndTrack(
+        kafkaProducerService.sendMessageAndTrackWithZk(
                 eq(CONFIRMATION_TOPIC), eq(request.getSwitchId().toString()), capture(capture));
         expectLastCall().times(count);
         return capture;

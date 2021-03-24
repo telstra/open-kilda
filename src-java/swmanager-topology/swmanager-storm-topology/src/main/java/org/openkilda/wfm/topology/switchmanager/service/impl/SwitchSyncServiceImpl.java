@@ -29,6 +29,7 @@ import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchSyncService;
 
 import com.google.common.annotations.VisibleForTesting;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 
@@ -41,6 +42,9 @@ import java.util.Map;
 public class SwitchSyncServiceImpl implements SwitchSyncService {
 
     private Map<String, SwitchSyncFsm> fsms = new HashMap<>();
+
+    @Getter
+    private boolean active = true;
 
     @VisibleForTesting
     CommandBuilder commandBuilder;
@@ -157,6 +161,25 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
 
         if (exitStates.contains(fsm.getCurrentState())) {
             fsms.remove(fsm.getKey());
+            if (isAllOperationsCompleted() && !active) {
+                carrier.sendInactive();
+            }
         }
+    }
+
+    @Override
+    public void activate() {
+        active = true;
+    }
+
+    @Override
+    public boolean deactivate() {
+        active = false;
+        return isAllOperationsCompleted();
+    }
+
+    @Override
+    public boolean isAllOperationsCompleted() {
+        return fsms.isEmpty();
     }
 }

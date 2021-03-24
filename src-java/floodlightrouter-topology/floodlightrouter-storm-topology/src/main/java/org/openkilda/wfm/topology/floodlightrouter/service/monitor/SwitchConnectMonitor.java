@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.floodlightrouter.service.monitor;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
+import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMonitorCarrier;
@@ -93,6 +94,11 @@ public abstract class SwitchConnectMonitor {
         }
     }
 
+    public void handlePortStatusUpdateNotification(PortInfoData notification, String region) {
+        ensureSwitchIdMatch(notification.getSwitchId());
+        proxyPortStatusUpdateNotification(notification, region);
+    }
+
     public boolean isAvailable() {
         return ! availableInRegions.isEmpty();
     }
@@ -144,6 +150,10 @@ public abstract class SwitchConnectMonitor {
         log.info(
                 "List of {} availability zones for {} has changed to: {}",
                 formatConnectMode(), switchId, formatAvailableRegionsSet());
+    }
+
+    protected void proxyPortStatusUpdateNotification(PortInfoData notification, String region) {
+        // noop
     }
 
     protected void ensureSwitchIdMatch(SwitchId affectedSwitchId) {

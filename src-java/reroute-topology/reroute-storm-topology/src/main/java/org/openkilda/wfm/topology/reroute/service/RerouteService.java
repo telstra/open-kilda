@@ -45,6 +45,7 @@ import org.openkilda.wfm.topology.reroute.bolts.MessageSender;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData.FlowThrottlingDataBuilder;
 
+import lombok.Data;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
@@ -90,13 +91,14 @@ public class RerouteService {
         SwitchId switchId = pathNode.getSwitchId();
         final IslEndpoint affectedIsl = new IslEndpoint(switchId, port);
 
-        transactionManager.doInTransaction(() -> {
+        RerouteResult rerouteResult = transactionManager.doInTransaction(() -> {
+            RerouteResult result = new RerouteResult();
             Collection<FlowPath> affectedFlowPaths = getAffectedFlowPaths(pathNode.getSwitchId(), pathNode.getPortNo());
 
             // swapping affected primary paths with available protected
             List<FlowPath> pathsForSwapping = getPathsForSwapping(affectedFlowPaths);
             for (FlowPath path : pathsForSwapping) {
-                sender.emitPathSwapCommand(correlationId, path.getFlow().getFlowId(), command.getReason());
+                result.flowIdsForSwapPaths.add(path.getFlowId());
             }
 
             for (FlowWithAffectedPaths entry : groupPathsForRerouting(affectedFlowPaths)) {
@@ -110,14 +112,7 @@ public class RerouteService {
                 flowRepository.updateStatusSafe(flow, flowStatus, flowStatusInfo);
 
                 if (flowPathFound) {
-                    FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(flow)
-                            .correlationId(correlationId)
-                            .affectedIsl(Collections.singleton(affectedIsl))
-                            .force(false)
-                            .effectivelyDown(true)
-                            .reason(command.getReason())
-                            .build();
-                    sender.emitRerouteCommand(flow.getFlowId(), flowThrottlingData);
+                    result.flowsForReroute.add(flow);
                 }
             }
 
@@ -130,7 +125,22 @@ public class RerouteService {
                     flowRepository.updateStatusSafe(flow, FlowStatus.DOWN, command.getReason());
                 }
             }
+            return result;
         });
+
+        for (String flowId : rerouteResult.flowIdsForSwapPaths) {
+            sender.emitPathSwapCommand(correlationId, flowId, command.getReason());
+        }
+        for (Flow flow : rerouteResult.flowsForReroute) {
+            FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(flow)
+                    .correlationId(correlationId)
+                    .affectedIsl(Collections.singleton(affectedIsl))
+                    .force(false)
+                    .effectivelyDown(true)
+                    .reason(command.getReason())
+                    .build();
+            sender.emitRerouteCommand(flow.getFlowId(), flowThrottlingData);
+        }
     }
 
     private boolean updateFlowPathsStateForFlow(SwitchId switchId, int port, List<FlowPath> paths) {
@@ -203,7 +213,8 @@ public class RerouteService {
         int port = pathNode.getPortNo();
         SwitchId switchId = pathNode.getSwitchId();
 
-        transactionManager.doInTransaction(() -> {
+        Map<String, FlowThrottlingData> flowsForReroute = transactionManager.doInTransaction(() -> {
+            Map<String, FlowThrottlingData> forReroute = new HashMap<>();
             Map<Flow, Set<PathId>> flowsForRerouting = getInactiveFlowsForRerouting();
 
             for (Entry<Flow, Set<PathId>> entry : flowsForRerouting.entrySet()) {
@@ -255,21 +266,27 @@ public class RerouteService {
                 if (flow.isPinned()) {
                     log.info("Skipping reroute command for pinned flow {}", flow.getFlowId());
                 } else {
-                    log.info("Produce reroute(attempt to restore inactive flows) request for {} (affected ISL "
+                    log.info("Create reroute command (attempt to restore inactive flows) request for {} (affected ISL "
                                     + "endpoints: {})",
                             flow.getFlowId(), allAffectedIslEndpoints);
                     FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(flow)
                             .correlationId(correlationId)
-
                             .affectedIsl(allAffectedIslEndpoints)
                             .force(false)
                             .effectivelyDown(true)
                             .reason(command.getReason())
                             .build();
-                    sender.emitRerouteCommand(flow.getFlowId(), flowThrottlingData);
+                    forReroute.put(flow.getFlowId(), flowThrottlingData);
                 }
             }
+            return forReroute;
         });
+
+        for (Entry<String, FlowThrottlingData> entry : flowsForReroute.entrySet()) {
+            log.info("Produce reroute (attempt to restore inactive flows) request for {} (affected ISL endpoints: {})",
+                    entry.getKey(), entry.getValue().getAffectedIsl());
+            sender.emitRerouteCommand(entry.getKey(), entry.getValue());
+        }
     }
 
     /**
@@ -419,5 +436,11 @@ public class RerouteService {
         private Flow flow;
 
         private List<FlowPath> affectedPaths = new ArrayList<>();
+    }
+
+    @Data
+    private static class RerouteResult {
+        Set<String> flowIdsForSwapPaths = new HashSet<>();
+        Set<Flow> flowsForReroute = new HashSet<>();
     }
 }

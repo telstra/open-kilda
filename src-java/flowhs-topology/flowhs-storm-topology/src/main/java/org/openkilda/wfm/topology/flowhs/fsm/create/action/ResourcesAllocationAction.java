@@ -20,13 +20,15 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.model.PathSegment;
+import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.FlowSegmentCookie.FlowSegmentCookieBuilder;
 import org.openkilda.pce.GetPathsResult;
@@ -37,6 +39,8 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.IslRepository.IslEndpoints;
+import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.CommandContext;
@@ -67,9 +71,13 @@ import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeException;
 import net.jodah.failsafe.RetryPolicy;
 import net.jodah.failsafe.SyncFailsafe;
+import org.apache.commons.collections4.map.LazyMap;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -98,8 +106,11 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
+        KildaConfigurationRepository kildaConfigurationRepository = persistenceManager.getRepositoryFactory()
+                .createKildaConfigurationRepository();
 
-        this.flowPathBuilder = new FlowPathBuilder(switchRepository, switchPropertiesRepository);
+        this.flowPathBuilder = new FlowPathBuilder(switchPropertiesRepository,
+                kildaConfigurationRepository);
         this.commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
     }
 
@@ -223,6 +234,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
     private void allocateMainPath(FlowCreateFsm stateMachine) throws UnroutableFlowException,
             RecoverableException, ResourceAllocationException {
         GetPathsResult paths = pathComputer.getPath(getFlow(stateMachine.getFlowId()));
+        stateMachine.setBackUpPrimaryPathComputationWayUsed(paths.isBackUpPathComputationWayUsed());
 
         log.debug("Creating the primary path {} for flow {}", paths, stateMachine.getFlowId());
 
@@ -231,6 +243,8 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
             FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
             final FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
                     .flowEffectiveId(flowResources.getUnmaskedCookie());
+
+            updateSwitchRelatedFlowProperties(flow);
 
             FlowPath forward = flowPathBuilder.buildFlowPath(
                     flow, flowResources.getForward(), paths.getForward(),
@@ -246,8 +260,8 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
             flowPathRepository.add(reverse);
             flow.setReversePath(reverse);
 
-            updateIslsForFlowPath(forward);
-            updateIslsForFlowPath(reverse);
+            updateIslsForFlowPath(forward.getPathId());
+            updateIslsForFlowPath(reverse.getPathId());
 
             stateMachine.setForwardPathId(forward.getPathId());
             stateMachine.setReversePathId(reverse.getPathId());
@@ -266,6 +280,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         tmpFlow.setGroupId(flowRepository.getOrCreateFlowGroupId(flowId)
                 .orElseThrow(() -> new FlowNotFoundException(flowId)));
         GetPathsResult protectedPath = pathComputer.getPath(tmpFlow);
+        stateMachine.setBackUpProtectedPathComputationWayUsed(protectedPath.isBackUpPathComputationWayUsed());
 
         boolean overlappingProtectedPathFound =
                 flowPathBuilder.arePathsOverlapped(protectedPath.getForward(), tmpFlow.getForwardPath())
@@ -298,8 +313,8 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
             flowPathRepository.add(reverse);
             flow.setProtectedReversePath(reverse);
 
-            updateIslsForFlowPath(forward);
-            updateIslsForFlowPath(reverse);
+            updateIslsForFlowPath(forward.getPathId());
+            updateIslsForFlowPath(reverse.getPathId());
 
             stateMachine.setProtectedForwardPathId(forward.getPathId());
             stateMachine.setProtectedReversePathId(reverse.getPathId());
@@ -308,26 +323,14 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         });
     }
 
-    private void updateIslsForFlowPath(FlowPath flowPath) throws ResourceAllocationException {
-        for (PathSegment pathSegment : flowPath.getSegments()) {
-            log.debug("Updating ISL for the path segment: {}", pathSegment);
-
-            updateAvailableBandwidth(pathSegment.getSrcSwitchId(), pathSegment.getSrcPort(),
-                    pathSegment.getDestSwitchId(), pathSegment.getDestPort());
-        }
-    }
-
-    private void updateAvailableBandwidth(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort)
-            throws ResourceAllocationException {
-        long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(srcSwitch, srcPort,
-                dstSwitch, dstPort);
-        log.debug("Updating ISL {}_{}-{}_{} with used bandwidth {}", srcSwitch, srcPort, dstSwitch, dstPort,
-                usedBandwidth);
-        long islAvailableBandwidth =
-                islRepository.updateAvailableBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth);
-        if (islAvailableBandwidth < 0) {
-            throw new ResourceAllocationException(format("ISL %s_%d-%s_%d was overprovisioned",
-                    srcSwitch, srcPort, dstSwitch, dstPort));
+    private void updateIslsForFlowPath(PathId pathId) throws ResourceAllocationException {
+        Map<IslEndpoints, Long> updatedIsls = islRepository.updateAvailableBandwidthOnIslsOccupiedByPath(pathId);
+        for (Entry<IslEndpoints, Long> entry : updatedIsls.entrySet()) {
+            IslEndpoints isl = entry.getKey();
+            if (entry.getValue() < 0) {
+                throw new ResourceAllocationException(format("ISL %s_%d-%s_%d was over-provisioned",
+                        isl.getSrcSwitch(), isl.getSrcPort(), isl.getDestSwitch(), isl.getDestPort()));
+            }
         }
     }
 
@@ -352,5 +355,27 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
     @Override
     protected String getGenericErrorMessage() {
         return "Could not create flow";
+    }
+
+    //TODO: refactor FlowCreate and unify ResourcesAllocationAction with BaseResourceAllocationAction to avoid
+    // code duplication.
+    private void updateSwitchRelatedFlowProperties(Flow flow) {
+        Map<SwitchId, SwitchProperties> switchProperties = LazyMap.lazyMap(new HashMap<>(), switchId ->
+                switchPropertiesRepository.findBySwitchId(switchId).orElse(null));
+
+        DetectConnectedDevices.DetectConnectedDevicesBuilder detectConnectedDevices =
+                flow.getDetectConnectedDevices().toBuilder();
+        SwitchProperties srcSwitchProps = switchProperties.get(flow.getSrcSwitchId());
+        if (srcSwitchProps != null) {
+            detectConnectedDevices.srcSwitchLldp(srcSwitchProps.isSwitchLldp());
+            detectConnectedDevices.srcSwitchArp(srcSwitchProps.isSwitchArp());
+        }
+        SwitchProperties destSwitchProps = switchProperties.get(flow.getDestSwitchId());
+        if (destSwitchProps != null) {
+            switchProperties.put(flow.getDestSwitchId(), destSwitchProps);
+            detectConnectedDevices.dstSwitchLldp(destSwitchProps.isSwitchLldp());
+            detectConnectedDevices.dstSwitchArp(destSwitchProps.isSwitchArp());
+        }
+        flow.setDetectConnectedDevices(detectConnectedDevices.build());
     }
 }

@@ -25,6 +25,7 @@ import org.openkilda.grpc.speaker.model.LogicalPortDto;
 import org.openkilda.grpc.speaker.model.PacketInOutStatsResponse;
 import org.openkilda.grpc.speaker.model.RemoteLogServerDto;
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.messaging.model.grpc.RemoteLogServer;
 import org.openkilda.messaging.model.grpc.SwitchInfoStatus;
@@ -48,6 +49,13 @@ public class GrpcServiceImpl implements GrpcService {
     @Autowired
     @Qualifier("grpcRestTemplate")
     private RestTemplate restTemplate;
+
+    @Override
+    @Retryable(exceptionExpression = "#{responseBodyAsString.contains('Could not create session')}")
+    public HealthCheck getHealthCheck() {
+        return restTemplate.exchange("/api/v1/health-check", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), HealthCheck.class).getBody();
+    }
 
     @Override
     @Retryable(exceptionExpression = "#{responseBodyAsString.contains('Could not create session')}")

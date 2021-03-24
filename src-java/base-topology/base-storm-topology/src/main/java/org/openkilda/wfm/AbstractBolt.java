@@ -77,8 +77,8 @@ public abstract class AbstractBolt extends BaseRichBolt {
     public void execute(Tuple input) {
         if (log.isDebugEnabled()) {
             log.trace("{} input tuple from {}:{} [{}]",
-                      getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(),
-                      formatTuplePayload(input));
+                    getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(),
+                    formatTuplePayload(input));
         }
         try {
             currentTuple = input;
@@ -117,15 +117,30 @@ public abstract class AbstractBolt extends BaseRichBolt {
     protected void dispatch(Tuple input) throws Exception {
         if (input.getSourceComponent().equals(lifeCycleEventSourceComponent)) {
             LifecycleEvent event = (LifecycleEvent) input.getValueByField(FIELD_ID_LIFECYCLE_EVENT);
-            handleLifeCycleEvent(event);
+            log.info("Received lifecycle event {}", event);
+            if (shouldHandleLifeCycleEvent(event.getSignal())) {
+                handleLifeCycleEvent(event);
+            }
         } else {
             handleInput(input);
         }
     }
 
+    protected final boolean shouldHandleLifeCycleEvent(Signal signal) {
+        if (Signal.START.equals(signal) && active) {
+            log.info("Component is already in active state, skipping START signal");
+            return false;
+        }
+        if (Signal.SHUTDOWN.equals(signal) && !active) {
+            log.info("Component is already in inactive state, skipping SHUTDOWN signal");
+            return false;
+        }
+        return true;
+    }
+
     protected abstract void handleInput(Tuple input) throws Exception;
 
-    protected void handleLifeCycleEvent(LifecycleEvent event) {
+    protected final void handleLifeCycleEvent(LifecycleEvent event) {
         if (Signal.START.equals(event.getSignal())) {
             emit(ZkStreams.ZK.toString(), currentTuple, new Values(event, commandContext));
             try {
@@ -134,9 +149,11 @@ public abstract class AbstractBolt extends BaseRichBolt {
                 active = true;
             }
         } else if (Signal.SHUTDOWN.equals(event.getSignal())) {
-            emit(ZkStreams.ZK.toString(), currentTuple, new Values(event, commandContext));
+
             try {
-                deactivate();
+                if (deactivate(event)) {
+                    emit(ZkStreams.ZK.toString(), currentTuple, new Values(event, commandContext));
+                }
             } finally {
                 active = false;
             }
@@ -149,8 +166,8 @@ public abstract class AbstractBolt extends BaseRichBolt {
         // no actions required
     }
 
-    protected void deactivate() {
-        // no actions required
+    protected boolean deactivate(LifecycleEvent event) {
+        return true;
     }
 
     protected void handleException(Exception e) throws Exception {
@@ -165,7 +182,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
     protected void unhandledInput(Tuple input) {
         log.error(
                 "{} is unable to handle input tuple from \"{}\" stream \"{}\" [{}] - have topology being build"
-                + " correctly?",
+                        + " correctly?",
                 getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(), formatTuplePayload(input));
     }
 
@@ -186,7 +203,8 @@ public abstract class AbstractBolt extends BaseRichBolt {
         init();
     }
 
-    protected void init() { }
+    protected void init() {
+    }
 
     protected CommandContext setupCommandContext() {
         Tuple input = getCurrentTuple();
@@ -197,10 +215,10 @@ public abstract class AbstractBolt extends BaseRichBolt {
             context = new CommandContext().fork("trace-fail");
 
             log.warn("The command context is missing in input tuple received by {} on stream {}:{}, execution context"
-                              + " can't  be traced. Create new command context for possible tracking of following"
-                              + " processing [{}].",
-                      getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(),
-                      formatTuplePayload(input), e);
+                            + " can't  be traced. Create new command context for possible tracking of following"
+                            + " processing [{}].",
+                    getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(),
+                    formatTuplePayload(input), e);
         }
 
         return context;

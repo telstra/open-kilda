@@ -19,6 +19,7 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.payload.history.FlowDumpPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.messaging.payload.history.FlowHistoryPayload;
+import org.openkilda.messaging.payload.history.FlowStatusTimestampsEntry;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -30,6 +31,7 @@ import org.openkilda.model.history.FlowDump;
 import org.openkilda.model.history.FlowEvent;
 import org.openkilda.model.history.FlowHistory;
 import org.openkilda.model.history.PortHistory;
+import org.openkilda.persistence.repositories.history.FlowEventRepository.FlowStatusesImmutableView;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
@@ -147,6 +149,10 @@ public abstract class HistoryMapper {
     public String map(SwitchId switchId) {
         return switchId.toString();
     }
+
+    @Mapping(target = "statusChangeTimestamp", source = "timestamp")
+    @Mapping(target = "timestamp", ignore = true)
+    public abstract FlowStatusTimestampsEntry map(FlowStatusesImmutableView flowStatusesImmutableView);
 
     @Mapping(source = "flow.srcSwitch.switchId", target = "sourceSwitch")
     @Mapping(source = "flow.destSwitch.switchId", target = "destinationSwitch")

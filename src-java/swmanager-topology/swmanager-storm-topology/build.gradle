@@ -15,6 +15,7 @@ dependencies {
     implementation project(':floodlight-api')
     implementation project(':kilda-reporting')
     runtimeClasspath project(':kilda-persistence-orientdb')
+    implementation project(':blue-green')
 
     compileOnly('org.apache.storm:storm-core')
     testImplementation('org.apache.storm:storm-core')
@@ -28,7 +29,7 @@ dependencies {
     testImplementation 'org.hamcrest:hamcrest-library'
     testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
 
-    implementation 'org.mapstruct:mapstruct-jdk8'
+    implementation 'org.mapstruct:mapstruct'
     implementation 'org.mapstruct:mapstruct-processor'
     annotationProcessor 'org.mapstruct:mapstruct-processor'
     testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
@@ -37,6 +38,8 @@ dependencies {
     testCompileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
 }
 
 jar {

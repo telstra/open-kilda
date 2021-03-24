@@ -4,12 +4,6 @@ kilda_environment_naming_prefix: ""
 kilda_environment_role: "devel"
 kilda_test_profile: "virtual"
 
-kilda_neo4j_host: "neo4j.pendev"
-kilda_neo4j_bolt_port: "7687"
-kilda_neo4j_rest_port: "7474"
-kilda_neo4j_user: "neo4j"
-kilda_neo4j_password: "temppass"
-kilda_neo4j_cypher_path: "/db/data/cypher"
 kilda_orientdb_hosts: "odb1.pendev,odb2.pendev,odb3.pendev"
 kilda_orientdb_hosts_single: "odb1.pendev"
 kilda_orientdb_user: "kilda"
@@ -116,7 +110,6 @@ kilda_pce_network_strategy: "SYMMETRIC_COST"
 
 kilda_floodlight_alive_timeout: 10
 kilda_floodlight_alive_interval: 2
-kilda_message_blacklist_timeout: 180
 
 kilda_logging_json_file: False
 kilda_logging_logstash: True
@@ -158,8 +151,11 @@ kilda_latency_discovery_interval_multiplier: 3
 kilda_storm_isl_latency_parallelism: 4
 kilda_storm_parallelism_level_new: 2
 kilda_storm_parallelism_level: 1
-kilda_storm_flow_hs_parallelism: 4
+kilda_storm_flow_hs_parallelism: 2
+kilda_storm_flow_hs_reroute_hub_count_multiplier: 2
 kilda_storm_parallelism_workers_count: 1
+
+kilda_storm_flow_monitoring_parallelism: 2
 
 kilda_storm_disruptor_wait_timeout: 1000
 kilda_storm_disruptor_batch_timeout: 10
@@ -174,14 +170,16 @@ kilda_server42_control_switch_to_vlan_1003: "1003=00:00:00:00:00:00:00:03"
 
 kilda_server42_control_kafka_group_id: "server42-control"
 kilda_server42_control_zeromq_connection_host: "tcp://server42-server-stub.pendev:5555"
-kilda_server42_control_component_name: "server42-control"
-kilda_server42_control_run_id: "server42-control-run-id"
+kilda_server42_control_component_name: "server42-control-app"
+kilda_server42_control_run_id: "server42-control-app-run-id"
 
 kilda_server42_stats_http_port: 9003
 kilda_server42_stats_zeromq_connection_host: "tcp://server42-server-stub.pendev:5556"
 kilda_server42_stats_kafka_group_id: "server42-stats"
-kilda_server42_stats_component_name: "server42-stats"
-kilda_server42_stats_run_id: "server42-stats-run-id"
+kilda_server42_stats_component_name: "server42-stats-app"
+kilda_server42_stats_run_id: "server42-stats-app-run-id"
 
 kilda_server42_control_storm_stub_http_port: 9001
 kilda_server42_control_storm_stub_kafka_group_id: "server42-control-storm-stub"
+kilda_server42_control_storm_stub_component_name: "server42-control-storm-stub"
+kilda_server42_control_storm_stub_run_id: "server42-control-storm-stub-run-id"

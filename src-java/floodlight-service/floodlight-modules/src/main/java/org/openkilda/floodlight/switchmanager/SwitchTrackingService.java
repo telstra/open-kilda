@@ -221,7 +221,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
 
     private void emitDiscoveryEvent(DatapathId dpId, InfoData payload) {
         Message message = buildMessage(payload);
-        producerService.sendMessageAndTrack(discoveryTopic, dpId.toString(), message);
+        producerService.sendMessageAndTrackWithZk(discoveryTopic, dpId.toString(), message);
     }
 
     /**

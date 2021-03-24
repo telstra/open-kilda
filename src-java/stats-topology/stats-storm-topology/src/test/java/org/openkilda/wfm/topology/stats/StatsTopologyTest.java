@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.stats;
 
+import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 import static org.apache.storm.utils.Utils.sleep;
 import static org.hamcrest.CoreMatchers.is;
@@ -24,6 +25,8 @@ import static org.junit.Assert.assertEquals;
 import static org.openkilda.model.FlowPathDirection.FORWARD;
 import static org.openkilda.model.FlowPathDirection.REVERSE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
+import static org.openkilda.wfm.config.KafkaConfig.STATS_TOPOLOGY_TEST_KAFKA_PORT;
+import static org.openkilda.wfm.config.ZookeeperConfig.STATS_TOPOLOGY_TEST_ZOOKEEPER_PORT;
 
 import org.openkilda.floodlight.api.request.EgressFlowSegmentInstallRequest;
 import org.openkilda.floodlight.api.request.IngressFlowSegmentInstallRequest;
@@ -112,6 +115,9 @@ public class StatsTopologyTest extends AbstractStormTest {
     private static final int ENCAPSULATION_ID = 123;
     private static final UUID TRANSACTION_ID = UUID.randomUUID();
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    public static final String COMPONENT_NAME = "stats";
+    public static final String RUN_ID = "blue";
+    public static final String ROOT_NODE = "kilda";
     private static InMemoryGraphPersistenceManager persistenceManager;
     private static StatsTopologyConfig statsTopologyConfig;
     private static TestKafkaConsumer otsdbConsumer;
@@ -133,12 +139,15 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     @BeforeClass
     public static void setupOnce() throws Exception {
-        AbstractStormTest.startZooKafkaAndStorm();
-
-        LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
-        Properties configOverlay = new Properties();
+        Properties configOverlay = getZooKeeperProperties(STATS_TOPOLOGY_TEST_ZOOKEEPER_PORT, ROOT_NODE);
+        configOverlay.putAll(getKafkaProperties(STATS_TOPOLOGY_TEST_KAFKA_PORT));
         configOverlay.setProperty("opentsdb.metric.prefix", METRIC_PREFIX);
 
+        AbstractStormTest.startZooKafka(configOverlay);
+        setStartSignal(STATS_TOPOLOGY_TEST_ZOOKEEPER_PORT, ROOT_NODE, COMPONENT_NAME, RUN_ID);
+        AbstractStormTest.startStorm(COMPONENT_NAME, RUN_ID);
+
+        LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
         launchEnvironment.setupOverlay(configOverlay);
 
         MultiPrefixConfigurationProvider configurationProvider = launchEnvironment.getConfigurationProvider();
@@ -154,7 +163,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         cluster.submitTopology(StatsTopologyTest.class.getSimpleName(), config, stormTopology);
 
         otsdbConsumer = new TestKafkaConsumer(statsTopologyConfig.getKafkaOtsdbTopic(),
-                kafkaConsumerProperties(UUID.randomUUID().toString()));
+                kafkaConsumerProperties(UUID.randomUUID().toString(), COMPONENT_NAME, RUN_ID));
         otsdbConsumer.start();
 
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
@@ -426,6 +435,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     @Test
     public void flowStatsSwapPathTest() throws Exception {
+
         // install 3 rules on src switch 1
         sendInstallIngressCommand(MAIN_FORWARD_COOKIE);
         sendInstallEgressCommand(MAIN_REVERSE_COOKIE, SWITCH_ID_1, PORT_2);
@@ -531,7 +541,7 @@ public class StatsTopologyTest extends AbstractStormTest {
                     assertEquals(direction, datapoint.getTags().get("direction"));
                     break;
                 default:
-                    throw new AssertionError(String.format("Unknown metric: %s", datapoint.getMetric()));
+                    throw new AssertionError(format("Unknown metric: %s", datapoint.getMetric()));
             }
         });
     }
@@ -607,7 +617,7 @@ public class StatsTopologyTest extends AbstractStormTest {
             } else if (Objects.equals(2, entry.getValue())) {
                 Assert.assertEquals("unknown", tags.get("flowid"));
             } else {
-                Assert.fail(String.format("Unexpected metric value: %s", entry));
+                Assert.fail(format("Unexpected metric value: %s", entry));
             }
         }
     }
@@ -639,7 +649,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    public void flowRttTest() throws IOException {
+    public void flowRttTest() throws IOException, InterruptedException {
         FlowRttStatsData flowRttStatsData = FlowRttStatsData.builder()
                 .flowId(flowId)
                 .direction("forward")
@@ -844,23 +854,23 @@ public class StatsTopologyTest extends AbstractStormTest {
             try {
                 record = otsdbConsumer.pollMessage(POLL_TIMEOUT);
                 if (record == null) {
-                    throw new AssertionError(String.format(POLL_DATAPOINT_ASSERT_MESSAGE,
+                    throw new AssertionError(format(POLL_DATAPOINT_ASSERT_MESSAGE,
                             expectedDatapointCount, datapoints.size()));
                 }
                 Datapoint datapoint = objectMapper.readValue(record.value(), Datapoint.class);
                 datapoints.add(datapoint);
             } catch (InterruptedException e) {
-                throw new AssertionError(String.format(POLL_DATAPOINT_ASSERT_MESSAGE,
+                throw new AssertionError(format(POLL_DATAPOINT_ASSERT_MESSAGE,
                         expectedDatapointCount, datapoints.size()));
             } catch (IOException e) {
-                throw new AssertionError(String.format("Could not parse datapoint object: '%s'", record.value()));
+                throw new AssertionError(format("Could not parse datapoint object: '%s'", record.value()));
             }
         }
         try {
             // ensure that we received exact expected count of records
             ConsumerRecord<String, String> record = otsdbConsumer.pollMessage(POLL_TIMEOUT);
             if (record != null) {
-                throw new AssertionError(String.format(
+                throw new AssertionError(format(
                         "Got more then %d records. Extra record '%s'", expectedDatapointCount, record));
             }
         } catch (InterruptedException e) {

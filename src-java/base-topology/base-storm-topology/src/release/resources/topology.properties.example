@@ -21,7 +21,6 @@ kafka.topic.flow.status = kilda.flow.status
 kafka.topic.ping = kilda.ping
 kafka.topic.northbound = kilda.northbound
 kafka.topic.opentsdb = kilda.otsdb
-kafka.topic.simulator = kilda.simulator
 kafka.topic.speaker = kilda.speaker
 kafka.topic.speaker.disco = kilda.speaker.disco
 kafka.topic.speaker.flow = kilda.speaker.flow
@@ -87,7 +86,6 @@ discovery.db.write.repeats.time.frame = 30
 # multi-FL
 floodlight.alive.timeout = 10
 floodlight.alive.interval = 2
-message.blacklist.timeout = 180
 floodlight.regions = 1,1.stats,2
 # floodlight.switch.mapping.remove.delay.seconds = 900
 
@@ -129,3 +127,5 @@ flow.delete.speaker.timeout.seconds = 10
 flow.delete.speaker.command.retries = 3
 
 server42.control.flowrtt.sync.interval.seconds = 60
+
+blue.green.mode = blue

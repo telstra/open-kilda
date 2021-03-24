@@ -45,6 +45,7 @@ public class FlowCreateService {
     private final FlowCreateHubCarrier carrier;
     private final FlowEventRepository flowEventRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
+    private boolean active;
 
     public FlowCreateService(FlowCreateHubCarrier carrier, PersistenceManager persistenceManager,
                              PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
@@ -156,6 +157,27 @@ public class FlowCreateService {
             fsms.remove(key);
 
             carrier.cancelTimeoutCallback(key);
+            if (!active && fsms.isEmpty()) {
+                carrier.sendInactive();
+            }
         }
+    }
+
+    /**
+     * Handles deactivate command.
+     */
+    public boolean deactivate() {
+        active = false;
+        if (fsms.isEmpty()) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Handles activate command.
+     */
+    public void activate() {
+        active = true;
     }
 }

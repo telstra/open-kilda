@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.ping.bolt;
 
+import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.floodlight.response.PingResponse;
@@ -49,7 +50,8 @@ public class TimeoutManager extends Abstract {
 
     private ExpirableMap<UUID, TimeoutDescriptor> pendingPings;
 
-    public TimeoutManager(int pingTimeout) {
+    public TimeoutManager(int pingTimeout, String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
         this.pingTimeout = TimeUnit.SECONDS.toMillis(pingTimeout);
     }
 
@@ -126,6 +128,12 @@ public class TimeoutManager extends Abstract {
         long expireAt = System.currentTimeMillis() + timeout;
         TimeoutDescriptor descriptor = new TimeoutDescriptor(expireAt, pingContext, commandContext);
         pendingPings.put(pingContext.getPingId(), descriptor);
+    }
+
+    @Override
+    protected boolean deactivate(LifecycleEvent event) {
+        pendingPings.clear();
+        return true;
     }
 
     private void cancelTimeout(TimeoutDescriptor descriptor) {

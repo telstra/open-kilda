@@ -102,7 +102,7 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
 
         then: "Flows are evacuated (rerouted)"
         def flow1PathUpdated, flow2PathUpdated
-        Wrappers.wait(PATH_INSTALLATION_TIME) {
+        Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
             [flow1, flow2].each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
 
             flow1PathUpdated = PathHelper.convert(northbound.getFlowPath(flow1.flowId))

@@ -20,8 +20,11 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 
+import lombok.Value;
+
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface IslRepository extends Repository<Isl> {
@@ -65,20 +68,20 @@ public interface IslRepository extends Repository<Isl> {
      * @param requiredBandwidth required bandwidth amount that should be available on ISLs.
      * @param flowEncapsulationType required encapsulation support
      */
-    Collection<Isl> findActiveAndOccupiedByFlowPathWithAvailableBandwidth(PathId pathId, long requiredBandwidth,
-                                                                          FlowEncapsulationType flowEncapsulationType);
+    Collection<IslImmutableView> findActiveByPathAndBandwidthAndEncapsulationType(
+            PathId pathId, long requiredBandwidth, FlowEncapsulationType flowEncapsulationType);
 
     /**
      * Finds all active ISLs.
      */
-    Collection<Isl> findAllActive();
+    Collection<IslImmutableView> findAllActive();
 
     /**
      * Finds all active ISLs with encapsulation type support.
      *
      * @param flowEncapsulationType required encapsulation support
      */
-    Collection<Isl> findAllActiveByEncapsulationType(FlowEncapsulationType flowEncapsulationType);
+    Collection<IslImmutableView> findActiveByEncapsulationType(FlowEncapsulationType flowEncapsulationType);
 
     /**
      * Finds all active ISLs, filtering out ISLs that don't have enough available bandwidth.
@@ -86,8 +89,8 @@ public interface IslRepository extends Repository<Isl> {
      * @param requiredBandwidth required bandwidth amount that should be available on ISLs.
      * @param flowEncapsulationType required encapsulation support
      */
-    Collection<Isl> findActiveWithAvailableBandwidth(long requiredBandwidth,
-                                                     FlowEncapsulationType flowEncapsulationType);
+    Collection<IslImmutableView> findActiveByBandwidthAndEncapsulationType(
+            long requiredBandwidth, FlowEncapsulationType flowEncapsulationType);
 
     /**
      * Finds all active ISLs, ignores ISLs if they have not enough bandwidth in any direction.
@@ -95,13 +98,55 @@ public interface IslRepository extends Repository<Isl> {
      * @param flowEncapsulationType required encapsulation support
      * @return list of ISLs.
      */
-    Collection<Isl> findSymmetricActiveWithAvailableBandwidth(long requiredBandwidth,
-                                                              FlowEncapsulationType flowEncapsulationType);
+    Collection<IslImmutableView> findSymmetricActiveByBandwidthAndEncapsulationType(
+            long requiredBandwidth, FlowEncapsulationType flowEncapsulationType);
 
     /**
-     * Update ISL available bandwidth according to the provided used bandwidth.
+     * Update ISL available bandwidth according to the actual used bandwidth.
+     *
      * @return the result available bandwidth of the updated ISL.
      */
-    long updateAvailableBandwidth(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort,
-                                  long usedBandwidth);
+    long updateAvailableBandwidth(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
+
+    /**
+     * Update ISL available bandwidth according to the actual used bandwidth.
+     *
+     * @return the endpoints of updated ISLs with the result available bandwidth.
+     */
+    Map<IslEndpoints, Long> updateAvailableBandwidthOnIslsOccupiedByPath(PathId pathId);
+
+    @Value
+    class IslEndpoints {
+        String srcSwitch;
+        int srcPort;
+        String destSwitch;
+        int destPort;
+    }
+
+    /**
+     * Represents ISL as immutable plain data.
+     */
+    interface IslImmutableView {
+        SwitchId getSrcSwitchId();
+
+        int getSrcPort();
+
+        String getSrcPop();
+
+        SwitchId getDestSwitchId();
+
+        int getDestPort();
+
+        String getDestPop();
+
+        long getLatency();
+
+        int getCost();
+
+        long getAvailableBandwidth();
+
+        boolean isUnderMaintenance();
+
+        boolean isUnstable();
+    }
 }

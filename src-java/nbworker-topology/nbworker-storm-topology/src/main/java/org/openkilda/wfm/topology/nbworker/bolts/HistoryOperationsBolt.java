@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowStatusTimestampsRequest;
 import org.openkilda.messaging.nbtopology.request.PortHistoryRequest;
 import org.openkilda.messaging.payload.history.FlowDumpPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryPayload;
@@ -50,6 +51,8 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
             return getFlowHistory((GetFlowHistoryRequest) request);
         } else if (request instanceof PortHistoryRequest) {
             return getPortHistory((PortHistoryRequest) request);
+        } else if (request instanceof GetFlowStatusTimestampsRequest) {
+            return getFlowStatusTimestamps((GetFlowStatusTimestampsRequest) request);
         } else {
             unhandledInput(tuple);
             return null;
@@ -72,6 +75,15 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
     private List<InfoData> getPortHistory(PortHistoryRequest request) {
         return historyService.listPortHistory(request.getSwitchId(), request.getPortNumber(),
                 request.getStart(), request.getEnd())
+                .stream()
+                .map(HistoryMapper.INSTANCE::map)
+                .collect(Collectors.toList());
+    }
+
+    private List<InfoData> getFlowStatusTimestamps(GetFlowStatusTimestampsRequest request) {
+        Instant timeFrom = Instant.ofEpochSecond(request.getTimestampFrom());
+        Instant timeTo = Instant.ofEpochSecond(request.getTimestampTo() + 1).minusMillis(1);
+        return historyService.getFlowStatusTimestamps(request.getFlowId(), timeFrom, timeTo, request.getMaxCount())
                 .stream()
                 .map(HistoryMapper.INSTANCE::map)
                 .collect(Collectors.toList());

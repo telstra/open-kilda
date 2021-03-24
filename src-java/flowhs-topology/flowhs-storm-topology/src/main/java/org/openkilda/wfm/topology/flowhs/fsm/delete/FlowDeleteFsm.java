@@ -26,6 +26,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
@@ -184,18 +185,29 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
             builder.transition().from(State.REMOVING_FLOW).to(State.FLOW_REMOVED).on(Event.NEXT)
                     .perform(new RemoveFlowAction(persistenceManager));
 
-            builder.transition().from(State.FLOW_REMOVED).to(State.FINISHED).on(Event.NEXT);
-            builder.transition().from(State.FLOW_REMOVED).to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
+            builder.transition().from(State.FLOW_REMOVED).to(State.NOTIFY_FLOW_MONITOR).on(Event.NEXT);
+            builder.transition().from(State.FLOW_REMOVED).to(State.NOTIFY_FLOW_MONITOR_WITH_ERROR).on(Event.ERROR);
 
             builder.onEntry(State.REVERTING_FLOW_STATUS)
                     .perform(reportErrorAction);
             builder.transitions().from(State.REVERTING_FLOW_STATUS)
-                    .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
+                    .toAmong(State.NOTIFY_FLOW_MONITOR_WITH_ERROR, State.NOTIFY_FLOW_MONITOR_WITH_ERROR)
                     .onEach(Event.NEXT, Event.ERROR)
                     .perform(new RevertFlowStatusAction(persistenceManager));
 
             builder.onEntry(State.FINISHED_WITH_ERROR)
                     .perform(reportErrorAction);
+
+            builder.transition()
+                    .from(State.NOTIFY_FLOW_MONITOR)
+                    .to(State.FINISHED)
+                    .on(Event.NEXT)
+                    .perform(new NotifyFlowMonitorAction<>(persistenceManager, carrier));
+            builder.transition()
+                    .from(State.NOTIFY_FLOW_MONITOR_WITH_ERROR)
+                    .to(State.FINISHED_WITH_ERROR)
+                    .on(Event.NEXT)
+                    .perform(new NotifyFlowMonitorAction<>(persistenceManager, carrier));
 
             builder.defineFinalState(State.FINISHED)
                     .addEntryAction(new OnFinishedAction(dashboardLogger));
@@ -227,7 +239,10 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
 
         REVERTING_FLOW_STATUS,
 
-        FINISHED_WITH_ERROR
+        FINISHED_WITH_ERROR,
+
+        NOTIFY_FLOW_MONITOR,
+        NOTIFY_FLOW_MONITOR_WITH_ERROR
     }
 
     public enum Event {

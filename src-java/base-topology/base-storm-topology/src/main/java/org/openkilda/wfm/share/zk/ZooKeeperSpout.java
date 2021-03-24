@@ -31,7 +31,10 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichSpout;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
+import org.apache.zookeeper.KeeperException;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.Queue;
 import java.util.UUID;
@@ -43,9 +46,10 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
     public static final String FIELD_ID_LIFECYCLE_EVENT = "lifecycle.event";
 
     public static final String FIELD_ID_CONTEXT = AbstractBolt.FIELD_ID_CONTEXT;
-    private String id;
-    private String serviceName;
-    private String connectionString;
+    private final String id;
+    private final String serviceName;
+    private final String connectionString;
+    private Instant zooKeeperConnectionTimestamp = Instant.MIN;
     private transient Queue<Signal> signals;
     private transient ZkWatchDog watchDog;
     private transient SpoutOutputCollector collector;
@@ -66,8 +70,14 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
                 .connectionString(connectionString)
                 .connectionRefreshInterval(ZkClient.DEFAULT_CONNECTION_REFRESH_INTERVAL)
                 .build();
-        watchDog.init();
         watchDog.subscribe(this);
+        watchDog.initAndWaitConnection();
+        forceReadSignal();
+    }
+
+    protected boolean isZooKeeperConnectTimeoutPassed() {
+        return zooKeeperConnectionTimestamp.plus(10, ChronoUnit.SECONDS)
+                .isBefore(Instant.now());
     }
 
     @Override
@@ -78,13 +88,19 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
                     .signal(signal)
                     .uuid(UUID.randomUUID())
                     .messageId(messageId++).build();
+            log.info("Component {} with id {} received signal {} from zookeeper. Sending event {}",
+                    serviceName, id, signal, event);
             collector.emit(new Values(event, new CommandContext()), messageId);
         } else {
             org.apache.storm.utils.Utils.sleep(1L);
         }
-        if (!watchDog.isActive()) {
-            log.info("Service {} with run_id {} tries to reconnect to ZooKeeper {}", serviceName, id, connectionString);
-            watchDog.safeRefreshConnection();
+        if (!watchDog.isConnectedAndValidated()) {
+            if (isZooKeeperConnectTimeoutPassed()) {
+                log.info("Service {} with run_id {} tries to reconnect to ZooKeeper {}",
+                        serviceName, id, connectionString);
+                watchDog.safeRefreshConnection();
+                zooKeeperConnectionTimestamp = Instant.now();
+            }
         }
     }
 
@@ -110,5 +126,21 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
     public void handle(Signal signal) {
         log.info("Received signal {}", signal);
         signals.add(signal);
+    }
+
+    private void forceReadSignal() {
+        Signal signal = null;
+        try {
+            signal = watchDog.getSignalSync();
+        } catch (KeeperException | InterruptedException e) {
+            log.error(String.format("Couldn't get signal for component %s and id %s. Error: %s",
+                    serviceName, id, e.getMessage()), e);
+        }
+
+        if (signal == null) {
+            log.error("Couldn't get signal for component {} and id {}. Signal is null.", serviceName, id);
+        } else {
+            handle(signal);
+        }
     }
 }

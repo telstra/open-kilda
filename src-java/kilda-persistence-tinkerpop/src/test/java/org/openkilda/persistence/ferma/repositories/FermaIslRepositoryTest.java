@@ -17,6 +17,8 @@ package org.openkilda.persistence.ferma.repositories;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -33,10 +35,12 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.IslRepository.IslImmutableView;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
@@ -47,12 +51,14 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
+    static final SwitchId TEST_SWITCH_C_ID = new SwitchId(3);
     static final String TEST_FLOW_ID = "test_flow";
 
     IslRepository islRepository;
@@ -63,6 +69,7 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
 
     Switch switchA;
     Switch switchB;
+    Switch switchC;
 
     @Before
     public void setUp() {
@@ -72,109 +79,210 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
         flowPathRepository = repositoryFactory.createFlowPathRepository();
         switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
 
-        switchA = createTestSwitch(1);
+        switchA = createTestSwitch(TEST_SWITCH_A_ID);
         SwitchProperties switchAFeatures = SwitchProperties.builder()
                 .switchObj(switchA)
                 .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)
                 .build();
         switchPropertiesRepository.add(switchAFeatures);
 
-        switchB = createTestSwitch(2);
+        switchB = createTestSwitch(TEST_SWITCH_B_ID);
         SwitchProperties switchBFeatures = SwitchProperties.builder()
                 .switchObj(switchB)
                 .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)
                 .build();
         switchPropertiesRepository.add(switchBFeatures);
-        assertEquals(2, switchRepository.findAll().size());
+
+        switchC = createTestSwitch(TEST_SWITCH_C_ID);
+        SwitchProperties switchCFeatures = SwitchProperties.builder()
+                .switchObj(switchC)
+                .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)
+                .build();
+        switchPropertiesRepository.add(switchCFeatures);
+        assertEquals(3, switchRepository.findAll().size());
     }
 
     @Test
     public void shouldCreateIsl() {
-        Isl isl = Isl.builder().srcSwitch(switchA).destSwitch(switchB).build();
-
-        islRepository.add(isl);
+        createIsl(switchA, switchB);
 
         assertEquals(1, islRepository.findAll().size());
     }
 
     @Test
-    public void shouldCreateSwitchAlongWithIsl() {
-        Isl isl = Isl.builder().srcSwitch(switchA).destSwitch(switchB).build();
+    public void shouldFindAllIsls() {
+        Isl isl1 = createIsl(switchA, 111, switchB, 121, IslStatus.ACTIVE);
+        Isl isl2 = createIsl(switchA, 112, switchB, 122, IslStatus.INACTIVE);
+        Isl isl3 = createIsl(switchA, 113, switchB, 123, IslStatus.MOVED);
 
-        islRepository.add(isl);
-
-        assertEquals(2, switchRepository.findAll().size());
+        List<Isl> foundIsls = Lists.newArrayList(islRepository.findAll());
+        assertThat(foundIsls, Matchers.hasSize(3));
+        assertThat(foundIsls, Matchers.containsInAnyOrder(isl1, isl2, isl3));
     }
 
     @Test
     public void shouldFindIslByEndpoint() {
-        Isl isl = Isl.builder()
-                .srcSwitch(switchA).srcPort(111)
-                .destSwitch(switchB).destPort(112).build();
+        Isl isl = createIsl(switchA, 111, switchB, 112);
 
-        islRepository.add(isl);
+        assertTrue(islRepository.existsByEndpoint(TEST_SWITCH_A_ID, 111));
 
         List<Isl> foundIsls = Lists.newArrayList(islRepository.findByEndpoint(TEST_SWITCH_A_ID, 111));
-        assertEquals(1, foundIsls.size());
-        assertEquals(switchA.getSwitchId(), foundIsls.get(0).getSrcSwitchId());
-        assertEquals(switchB.getSwitchId(), foundIsls.get(0).getDestSwitchId());
+        assertThat(foundIsls, Matchers.hasSize(1));
+        assertThat(foundIsls, Matchers.contains(isl));
 
         foundIsls = Lists.newArrayList(islRepository.findByEndpoint(TEST_SWITCH_B_ID, 112));
-        assertEquals(1, foundIsls.size());
-        assertEquals(switchA.getSwitchId(), foundIsls.get(0).getSrcSwitchId());
-        assertEquals(switchB.getSwitchId(), foundIsls.get(0).getDestSwitchId());
+        assertThat(foundIsls, Matchers.hasSize(1));
+        assertThat(foundIsls, Matchers.contains(isl));
     }
 
     @Test
     public void shouldFindIslBySrcEndpoint() {
-        Isl isl = Isl.builder()
-                .srcSwitch(switchA).srcPort(111)
-                .destSwitch(switchB).build();
-
-        islRepository.add(isl);
+        Isl isl = createIsl(switchA, 111, switchB, 112);
 
         List<Isl> foundIsls = Lists.newArrayList(islRepository.findBySrcEndpoint(TEST_SWITCH_A_ID, 111));
-        assertEquals(1, foundIsls.size());
-        assertEquals(switchA.getSwitchId(), foundIsls.get(0).getSrcSwitchId());
-        assertEquals(switchB.getSwitchId(), foundIsls.get(0).getDestSwitchId());
+        assertThat(foundIsls, Matchers.hasSize(1));
+        assertThat(foundIsls, Matchers.contains(isl));
     }
 
     @Test
     public void shouldFindIslByDestEndpoint() {
-        Isl isl = Isl.builder()
-                .srcSwitch(switchA).srcPort(111)
-                .destSwitch(switchB).destPort(112).build();
-
-        islRepository.add(isl);
+        Isl isl = createIsl(switchA, 111, switchB, 112);
 
         List<Isl> foundIsls = Lists.newArrayList(islRepository.findByDestEndpoint(TEST_SWITCH_B_ID, 112));
-        assertEquals(1, foundIsls.size());
-        assertEquals(switchA.getSwitchId(), foundIsls.get(0).getSrcSwitchId());
-        assertEquals(switchB.getSwitchId(), foundIsls.get(0).getDestSwitchId());
+        assertThat(foundIsls, Matchers.hasSize(1));
+        assertThat(foundIsls, Matchers.contains(isl));
+    }
+
+    @Test
+    public void shouldFindIslBySrcSwitch() {
+        Isl isl1 = createIsl(switchA, 111, switchB, 112);
+        Isl isl2 = createIsl(switchA, 112, switchB, 113);
+
+        List<Isl> foundIsls = Lists.newArrayList(islRepository.findBySrcSwitch(TEST_SWITCH_A_ID));
+        assertThat(foundIsls, Matchers.hasSize(2));
+        assertThat(foundIsls, Matchers.containsInAnyOrder(isl1, isl2));
+    }
+
+    @Test
+    public void shouldFindIslByDestSwitch() {
+        Isl isl1 = createIsl(switchA, 111, switchB, 121);
+        Isl isl2 = createIsl(switchA, 112, switchB, 122);
+
+        List<Isl> foundIsls = Lists.newArrayList(islRepository.findByDestSwitch(TEST_SWITCH_B_ID));
+        assertThat(foundIsls, Matchers.hasSize(2));
+        assertThat(foundIsls, Matchers.containsInAnyOrder(isl1, isl2));
     }
 
     @Test
     public void shouldFindIslByEndpoints() {
-        Isl isl = Isl.builder()
-                .srcSwitch(switchA).srcPort(111)
-                .destSwitch(switchB).destPort(112).build();
-
-        islRepository.add(isl);
+        Isl isl = createIsl(switchA, 111, switchB, 112);
 
         Isl foundIsl = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 111, TEST_SWITCH_B_ID, 112).get();
-        assertEquals(switchA.getSwitchId(), foundIsl.getSrcSwitchId());
-        assertEquals(switchB.getSwitchId(), foundIsl.getDestSwitchId());
+        assertEquals(isl, foundIsl);
+    }
+
+    @Test
+    public void shouldFindIslByPartialEndpoints() {
+        Isl isl1 = createIsl(switchA, 111, switchB, 121);
+        Isl isl2 = createIsl(switchA, 112, switchC, 121);
+
+        List<Isl> foundIsls = Lists.newArrayList(
+                islRepository.findByPartialEndpoints(TEST_SWITCH_A_ID, 111, TEST_SWITCH_B_ID, 121));
+        assertThat(foundIsls, Matchers.hasSize(1));
+        assertThat(foundIsls, Matchers.contains(isl1));
+
+        foundIsls = Lists.newArrayList(
+                islRepository.findByPartialEndpoints(TEST_SWITCH_A_ID, 111, TEST_SWITCH_B_ID, null));
+        assertThat(foundIsls, Matchers.hasSize(1));
+        assertThat(foundIsls, Matchers.contains(isl1));
+
+        foundIsls = Lists.newArrayList(
+                islRepository.findByPartialEndpoints(TEST_SWITCH_A_ID, null, TEST_SWITCH_B_ID, 121));
+        assertThat(foundIsls, Matchers.hasSize(1));
+        assertThat(foundIsls, Matchers.contains(isl1));
+
+        foundIsls = Lists.newArrayList(
+                islRepository.findByPartialEndpoints(TEST_SWITCH_A_ID, null, TEST_SWITCH_B_ID, null));
+        assertThat(foundIsls, Matchers.hasSize(1));
+        assertThat(foundIsls, Matchers.contains(isl1));
+
+        foundIsls = Lists.newArrayList(
+                islRepository.findByPartialEndpoints(TEST_SWITCH_A_ID, 111, null, null));
+        assertThat(foundIsls, Matchers.hasSize(1));
+        assertThat(foundIsls, Matchers.contains(isl1));
+
+        foundIsls = Lists.newArrayList(
+                islRepository.findByPartialEndpoints(TEST_SWITCH_A_ID, null, null, 121));
+        assertThat(foundIsls, Matchers.hasSize(2));
+        assertThat(foundIsls, Matchers.containsInAnyOrder(isl1, isl2));
+
+        foundIsls = Lists.newArrayList(
+                islRepository.findByPartialEndpoints(TEST_SWITCH_A_ID, null, null, null));
+        assertThat(foundIsls, Matchers.hasSize(2));
+        assertThat(foundIsls, Matchers.containsInAnyOrder(isl1, isl2));
+
+        foundIsls = Lists.newArrayList(
+                islRepository.findByPartialEndpoints(new SwitchId(123456), null, null, null));
+        assertThat(foundIsls, Matchers.empty());
+
+        foundIsls = Lists.newArrayList(
+                islRepository.findByPartialEndpoints(TEST_SWITCH_A_ID, null, new SwitchId(123456), null));
+        assertThat(foundIsls, Matchers.empty());
+
+        foundIsls = Lists.newArrayList(
+                islRepository.findByPartialEndpoints(null, 111, TEST_SWITCH_B_ID, 121));
+        assertThat(foundIsls, Matchers.hasSize(1));
+        assertThat(foundIsls, Matchers.contains(isl1));
+
+        foundIsls = Lists.newArrayList(
+                islRepository.findByPartialEndpoints(null, 111, TEST_SWITCH_B_ID, null));
+        assertThat(foundIsls, Matchers.hasSize(1));
+        assertThat(foundIsls, Matchers.contains(isl1));
+
+        foundIsls = Lists.newArrayList(
+                islRepository.findByPartialEndpoints(null, null, TEST_SWITCH_B_ID, 121));
+        assertThat(foundIsls, Matchers.hasSize(1));
+        assertThat(foundIsls, Matchers.contains(isl1));
+
+        foundIsls = Lists.newArrayList(
+                islRepository.findByPartialEndpoints(null, 111, null, null));
+        assertThat(foundIsls, Matchers.hasSize(1));
+        assertThat(foundIsls, Matchers.contains(isl1));
+
+        foundIsls = Lists.newArrayList(
+                islRepository.findByPartialEndpoints(null, null, null, 121));
+        assertThat(foundIsls, Matchers.hasSize(2));
+        assertThat(foundIsls, Matchers.containsInAnyOrder(isl1, isl2));
+    }
+
+    @Test
+    public void shouldFindIslByPathId() {
+        Isl isl = createIsl(switchA, 111, switchB, 112);
+
+        PathId pathId = new PathId("test_path_id");
+        PathSegment segment = PathSegment.builder()
+                .pathId(pathId)
+                .srcSwitch(isl.getSrcSwitch()).srcPort(isl.getSrcPort())
+                .destSwitch(isl.getDestSwitch()).destPort(isl.getDestPort())
+                .build();
+        FlowPath path = FlowPath.builder()
+                .pathId(pathId)
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .segments(Collections.singletonList(segment))
+                .build();
+        flowPathRepository.add(path);
+
+        List<Isl> foundIsls = Lists.newArrayList(islRepository.findByPathIds(Collections.singletonList(pathId)));
+        assertThat(foundIsls, Matchers.hasSize(1));
+        assertThat(foundIsls, Matchers.contains(isl));
     }
 
     @Test
     public void shouldSkipInactiveIsl() {
-        Isl isl = Isl.builder()
-                .srcSwitch(switchA).srcPort(111)
-                .destSwitch(switchB).status(IslStatus.INACTIVE).build();
+        createIsl(switchA, 111, switchB, 112, IslStatus.INACTIVE);
 
-        islRepository.add(isl);
-
-        List<Isl> foundIsl = Lists.newArrayList(islRepository.findAllActive());
+        List<IslImmutableView> foundIsl = Lists.newArrayList(islRepository.findAllActive());
         assertThat(foundIsl, Matchers.empty());
     }
 
@@ -182,89 +290,64 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
     public void shouldSkipInactiveIslSwitch() {
         switchA.setStatus(SwitchStatus.INACTIVE);
 
-        Isl isl = Isl.builder()
-                .srcSwitch(switchA).srcPort(111)
-                .destSwitch(switchB).status(IslStatus.ACTIVE).build();
+        createIsl(switchA, 111, switchB, 112, IslStatus.ACTIVE);
 
-        islRepository.add(isl);
-
-        List<Isl> foundIsl = Lists.newArrayList(islRepository.findAllActive());
+        List<IslImmutableView> foundIsl = Lists.newArrayList(islRepository.findAllActive());
         assertThat(foundIsl, Matchers.empty());
     }
 
     @Test
     public void shouldFindActiveIsl() {
-        Isl isl = Isl.builder()
-                .srcSwitch(switchA).srcPort(111)
-                .destSwitch(switchB).status(IslStatus.ACTIVE).build();
+        createIsl(switchA, 111, switchB, 112, IslStatus.ACTIVE);
 
-        islRepository.add(isl);
-
-        List<Isl> foundIsl = Lists.newArrayList(islRepository.findAllActive());
-        assertThat(foundIsl, Matchers.hasSize(1));
+        List<IslImmutableView> foundIsls = Lists.newArrayList(islRepository.findAllActive());
+        assertThat(foundIsls, Matchers.hasSize(1));
     }
 
     @Test
     public void shouldFindActiveIslWithAvailableBandwidth() {
-        Isl isl = Isl.builder()
-                .srcSwitch(switchA)
-                .destSwitch(switchB)
-                .status(IslStatus.ACTIVE).availableBandwidth(101).build();
+        Isl isl = createIsl(switchA, 111, switchB, 112, IslStatus.ACTIVE, 101L);
 
-        islRepository.add(isl);
-
-        List<Isl> foundIsl = Lists.newArrayList(islRepository.findActiveWithAvailableBandwidth(100,
-                FlowEncapsulationType.TRANSIT_VLAN));
-        assertThat(foundIsl, Matchers.hasSize(1));
+        List<IslImmutableView> foundIsls =
+                Lists.newArrayList(islRepository.findActiveByBandwidthAndEncapsulationType(100,
+                        FlowEncapsulationType.TRANSIT_VLAN));
+        assertThat(foundIsls, Matchers.hasSize(1));
+        assertEquals(isl.getAvailableBandwidth(), foundIsls.get(0).getAvailableBandwidth());
     }
 
     @Test
     public void shouldSkipIslWithNoEnoughBandwidth() {
-        Isl isl = Isl.builder()
-                .srcSwitch(switchA)
-                .destSwitch(switchB)
-                .status(IslStatus.ACTIVE).availableBandwidth(99).build();
+        createIsl(switchA, 111, switchB, 112, IslStatus.ACTIVE, 99L);
 
-        islRepository.add(isl);
-
-        List<Isl> foundIsl = Lists.newArrayList(islRepository.findActiveWithAvailableBandwidth(100,
-                FlowEncapsulationType.TRANSIT_VLAN));
-        assertThat(foundIsl, Matchers.hasSize(0));
+        List<IslImmutableView> foundIsls = Lists.newArrayList(
+                islRepository.findActiveByBandwidthAndEncapsulationType(100,
+                        FlowEncapsulationType.TRANSIT_VLAN));
+        assertThat(foundIsls, Matchers.hasSize(0));
     }
 
     @Test
     public void shouldFindIslOccupiedByFlowWithAvailableBandwidth() {
-        Isl isl = Isl.builder()
-                .srcSwitch(switchA).srcPort(1)
-                .destSwitch(switchB).destPort(2)
-                .status(IslStatus.ACTIVE).availableBandwidth(101).build();
-
-        islRepository.add(isl);
+        Isl isl = createIsl(switchA, 1, switchB, 2, IslStatus.ACTIVE, 101L);
 
         Flow flow = createFlowWithPath(0, 0);
         PathId pathId = flow.getPaths().stream()
                 .filter(path -> path.getSegments().get(0).getSrcPort() == isl.getSrcPort())
                 .findAny().map(FlowPath::getPathId).orElseThrow(AssertionFailedError::new);
 
-        List<Isl> foundIsls = Lists.newArrayList(
-                islRepository.findActiveAndOccupiedByFlowPathWithAvailableBandwidth(
+        List<IslImmutableView> foundIsls = Lists.newArrayList(
+                islRepository.findActiveByPathAndBandwidthAndEncapsulationType(
                         pathId, 100, FlowEncapsulationType.TRANSIT_VLAN));
         assertThat(foundIsls, Matchers.hasSize(1));
     }
 
     @Test
     public void shouldSkipIslOccupiedByFlowWithNoEnoughBandwidth() {
-        Isl isl = Isl.builder()
-                .srcSwitch(switchA).srcPort(1)
-                .destSwitch(switchB).destPort(2)
-                .status(IslStatus.ACTIVE).availableBandwidth(99).build();
-
-        islRepository.add(isl);
+        createIsl(switchA, 1, switchB, 2, IslStatus.ACTIVE, 99L);
 
         Flow flow = createFlowWithPath(0, 0);
 
-        List<Isl> foundIsls = Lists.newArrayList(
-                islRepository.findActiveAndOccupiedByFlowPathWithAvailableBandwidth(
+        List<IslImmutableView> foundIsls = Lists.newArrayList(
+                islRepository.findActiveByPathAndBandwidthAndEncapsulationType(
                         flow.getPathIds().iterator().next(), 100, FlowEncapsulationType.TRANSIT_VLAN));
         assertThat(foundIsls, Matchers.hasSize(0));
     }
@@ -283,136 +366,225 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
 
     @Test
     public void shouldDeleteIsl() {
-        Isl isl = Isl.builder()
-                .srcSwitch(switchA)
-                .destSwitch(switchB)
-                .build();
+        Isl isl = createIsl(switchA, switchB);
 
-        islRepository.add(isl);
         transactionManager.doInTransaction(() ->
                 islRepository.remove(isl));
 
-        assertEquals(0, islRepository.findAll().size());
+        assertThat(islRepository.findAll(), Matchers.empty());
     }
 
     @Test
     public void shouldDeleteFoundIsl() {
-        Isl isl1 = Isl.builder()
-                .srcSwitch(switchA).srcPort(1)
-                .destSwitch(switchB).destPort(1)
-                .build();
-        Isl isl2 = Isl.builder()
-                .srcSwitch(switchA).srcPort(2)
-                .destSwitch(switchB).destPort(2)
-                .build();
+        Isl isl1 = createIsl(switchA, 1, switchB, 1);
+        createIsl(switchA, 2, switchB, 2);
 
-        islRepository.add(isl1);
-        islRepository.add(isl2);
-
-        assertEquals(2, islRepository.findAll().size());
+        assertThat(islRepository.findAll(), Matchers.hasSize(2));
 
         transactionManager.doInTransaction(() ->
                 islRepository.remove(isl1));
 
-        assertEquals(1, islRepository.findAll().size());
+        assertThat(islRepository.findAll(), Matchers.hasSize(1));
     }
 
     @Test
     public void shouldCreateAndFindIslByEndpoint() {
-        Isl isl = Isl.builder()
-                .srcSwitch(switchA).srcPort(1)
-                .destSwitch(switchB).destPort(1)
-                .build();
+        Isl isl = createIsl(switchA, 1, switchB, 1);
 
-        islRepository.add(isl);
-
-        assertEquals(1, islRepository.findAll().size());
-        assertEquals(2, switchRepository.findAll().size());
+        assertThat(islRepository.findAll(), Matchers.hasSize(1));
 
         List<Isl> foundIsls = Lists.newArrayList(islRepository.findBySrcEndpoint(TEST_SWITCH_A_ID, 1));
 
-        assertEquals(1, foundIsls.size());
-        assertEquals(switchB.getSwitchId(), foundIsls.get(0).getDestSwitchId());
+        assertThat(foundIsls, Matchers.hasSize(1));
+        assertThat(foundIsls, Matchers.contains(isl));
     }
 
     @Test
     public void shouldCreateAndFindIslByEndpoints() {
-        Isl isl = Isl.builder()
-                .srcSwitch(switchA).srcPort(1)
-                .destSwitch(switchB).destPort(1)
-                .build();
+        Isl isl = createIsl(switchA, 1, switchB, 1);
 
-        islRepository.add(isl);
-
-        assertEquals(1, islRepository.findAll().size());
-        assertEquals(2, switchRepository.findAll().size());
+        assertThat(islRepository.findAll(), Matchers.hasSize(1));
 
         Isl foundIsl = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 1).get();
 
-        assertEquals(switchB.getSwitchId(), foundIsl.getDestSwitchId());
+        assertEquals(isl, foundIsl);
     }
 
     @Test
     public void shouldReturnSymmetricIslsWithRequiredBandwidth() {
         long availableBandwidth = 100L;
 
-        Isl forwardIsl = Isl.builder()
-                .srcSwitch(switchA).srcPort(1)
-                .destSwitch(switchB).destPort(2)
-                .status(IslStatus.ACTIVE).availableBandwidth(availableBandwidth)
-                .build();
+        createIsl(switchA, 1, switchB, 2, IslStatus.ACTIVE, availableBandwidth);
+        createIsl(switchB, 2, switchA, 1, IslStatus.ACTIVE, availableBandwidth);
 
-        Isl reverseIsl = Isl.builder()
-                .srcSwitch(switchB).srcPort(2)
-                .destSwitch(switchA).destPort(1)
-                .status(IslStatus.ACTIVE).availableBandwidth(availableBandwidth)
-                .build();
-
-        islRepository.add(forwardIsl);
-        islRepository.add(reverseIsl);
-
-        assertEquals(2, islRepository.findSymmetricActiveWithAvailableBandwidth(availableBandwidth,
-                FlowEncapsulationType.TRANSIT_VLAN).size());
+        assertThat(islRepository.findSymmetricActiveByBandwidthAndEncapsulationType(availableBandwidth,
+                FlowEncapsulationType.TRANSIT_VLAN), Matchers.hasSize(2));
     }
 
     @Test
     public void shouldNotReturnIslIfOneDirectionDoesntHaveEnoughBandwidth() {
         long availableBandwidth = 100L;
 
-        Isl forwardIsl = Isl.builder()
-                .srcSwitch(switchA).srcPort(1)
-                .destSwitch(switchB).destPort(2)
-                .status(IslStatus.ACTIVE).availableBandwidth(availableBandwidth)
-                .build();
+        createIsl(switchA, 1, switchB, 2, IslStatus.ACTIVE, availableBandwidth);
+        createIsl(switchB, 2, switchA, 1, IslStatus.ACTIVE, availableBandwidth - 1);
 
-        Isl reverseIsl = Isl.builder()
-                .srcSwitch(switchB).srcPort(2)
-                .destSwitch(switchA).destPort(1)
-                .status(IslStatus.ACTIVE).availableBandwidth(availableBandwidth - 1)
-                .build();
-
-        islRepository.add(forwardIsl);
-        islRepository.add(reverseIsl);
-
-        assertEquals(0, islRepository.findSymmetricActiveWithAvailableBandwidth(availableBandwidth,
-                FlowEncapsulationType.TRANSIT_VLAN).size());
+        assertThat(islRepository.findSymmetricActiveByBandwidthAndEncapsulationType(availableBandwidth,
+                FlowEncapsulationType.TRANSIT_VLAN), Matchers.empty());
     }
 
     @Test
     public void shouldFindActiveIslsByFlowEncapsulationType() {
-        Isl isl = Isl.builder()
-                .srcSwitch(switchA).srcPort(1)
-                .destSwitch(switchB).destPort(2)
-                .status(IslStatus.ACTIVE).availableBandwidth(100).build();
-        islRepository.add(isl);
+        createIsl(switchA, 1, switchB, 2, IslStatus.ACTIVE, 100L);
 
-        List<Isl> allIsls = Lists.newArrayList(
-                islRepository.findAllActive());
+        List<IslImmutableView> allIsls = Lists.newArrayList(islRepository.findAllActive());
         assertThat(allIsls, Matchers.hasSize(1));
 
-        List<Isl> foundIsls = Lists.newArrayList(
-                islRepository.findAllActiveByEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN));
+        List<IslImmutableView> foundIsls = Lists.newArrayList(
+                islRepository.findActiveByEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN));
         assertThat(foundIsls, Matchers.hasSize(1));
+    }
+
+    @Test
+    public void shouldUpdateAvailableBandwidth() {
+        Isl isl = createIsl(switchA, 1, switchB, 2, IslStatus.ACTIVE, 100L);
+        isl.setMaxBandwidth(100L);
+
+        createPathWithSegment(TEST_FLOW_ID, switchA, 1, switchB, 2, 33L);
+
+        islRepository.updateAvailableBandwidth(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2);
+
+        Isl islAfter = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2).get();
+        assertEquals(67, islAfter.getAvailableBandwidth());
+    }
+
+    @Test
+    public void shouldNotUpdateAvailableBandwidthIfEndpointDoesntMatch() {
+        Isl isl = createIsl(switchA, 1, switchB, 2, IslStatus.ACTIVE, 100L);
+        isl.setMaxBandwidth(100L);
+
+        try {
+            createPathWithSegment(TEST_FLOW_ID + "_1", switchA, 1, switchB, 3, 33L);
+            islRepository.updateAvailableBandwidth(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 3);
+            fail();
+        } catch (PersistenceException ex) {
+            // expected
+        }
+
+        Isl islAfter = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2).get();
+        assertEquals(100, islAfter.getAvailableBandwidth());
+
+        try {
+            createPathWithSegment(TEST_FLOW_ID + "_2", switchA, 2, switchB, 2, 33L);
+            islRepository.updateAvailableBandwidth(TEST_SWITCH_A_ID, 2, TEST_SWITCH_B_ID, 2);
+            fail();
+        } catch (PersistenceException ex) {
+            // expected
+        }
+
+        islAfter = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2).get();
+        assertEquals(100, islAfter.getAvailableBandwidth());
+
+        try {
+            createPathWithSegment(TEST_FLOW_ID + "_3", switchC, 1, switchB, 2, 33L);
+            islRepository.updateAvailableBandwidth(TEST_SWITCH_C_ID, 1, TEST_SWITCH_B_ID, 2);
+            fail();
+        } catch (PersistenceException ex) {
+            // expected
+        }
+
+        islAfter = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2).get();
+        assertEquals(100, islAfter.getAvailableBandwidth());
+
+        try {
+            createPathWithSegment(TEST_FLOW_ID + "_4", switchA, 1, switchC, 2, 33L);
+            islRepository.updateAvailableBandwidth(TEST_SWITCH_A_ID, 1, TEST_SWITCH_C_ID, 2);
+            fail();
+        } catch (PersistenceException ex) {
+            // expected
+        }
+
+        islAfter = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2).get();
+        assertEquals(100, islAfter.getAvailableBandwidth());
+    }
+
+    @Test
+    public void shouldUpdateAvailableBandwidthByPath() {
+        Isl isl = createIsl(switchA, 1, switchB, 2, IslStatus.ACTIVE, 100L);
+        isl.setMaxBandwidth(100L);
+
+        createPathWithSegment(TEST_FLOW_ID, switchA, 1, switchB, 2, 33L);
+
+        islRepository.updateAvailableBandwidthOnIslsOccupiedByPath(new PathId(TEST_FLOW_ID));
+
+        Isl islAfter = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2).get();
+        assertEquals(67, islAfter.getAvailableBandwidth());
+    }
+
+    @Test
+    public void shouldNotUpdateAvailableBandwidthByPathIfDoesntMatch() {
+        Isl isl = createIsl(switchA, 1, switchB, 2, IslStatus.ACTIVE, 100L);
+        isl.setMaxBandwidth(100L);
+
+        createPathWithSegment(TEST_FLOW_ID + "_1", switchA, 1, switchB, 2, 33L);
+
+        Collection<?> updatedIsls = islRepository.updateAvailableBandwidthOnIslsOccupiedByPath(
+                new PathId(TEST_FLOW_ID + "_faked")).values();
+        assertThat(updatedIsls, Matchers.empty());
+
+        Isl islAfter = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2).get();
+        assertEquals(100, islAfter.getAvailableBandwidth());
+    }
+
+    private Isl createIsl(Switch srcSwitch, Switch destSwitch) {
+        return createIsl(srcSwitch, null, destSwitch, null, null, null);
+    }
+
+    private Isl createIsl(Switch srcSwitch, int srcPort, Switch destSwitch, int destPort) {
+        return createIsl(srcSwitch, srcPort, destSwitch, destPort, null, null);
+    }
+
+    private Isl createIsl(Switch srcSwitch, int srcPort, Switch destSwitch, int destPort, IslStatus status) {
+        return createIsl(srcSwitch, srcPort, destSwitch, destPort, status, null);
+    }
+
+    private Isl createIsl(Switch srcSwitch, Integer srcPort, Switch destSwitch, Integer destPort, IslStatus status,
+                          Long availableBandwidth) {
+        Isl.IslBuilder islBuilder = Isl.builder()
+                .srcSwitch(srcSwitch)
+                .destSwitch(destSwitch)
+                .status(status);
+        if (srcPort != null) {
+            islBuilder.srcPort(srcPort);
+        }
+        if (destPort != null) {
+            islBuilder.destPort(destPort);
+        }
+        if (availableBandwidth != null) {
+            islBuilder.availableBandwidth(availableBandwidth);
+        }
+        Isl isl = islBuilder.build();
+        islRepository.add(isl);
+        return isl;
+    }
+
+    private FlowPath createPathWithSegment(String pathId, Switch srcSwitch, Integer srcPort,
+                                           Switch destSwitch, Integer destPort, long bandwidth) {
+        PathId pathIdAsObj = new PathId(pathId);
+        FlowPath path = FlowPath.builder()
+                .srcSwitch(srcSwitch)
+                .destSwitch(destSwitch)
+                .pathId(pathIdAsObj)
+                .bandwidth(bandwidth)
+                .segments(Collections.singletonList(PathSegment.builder()
+                        .pathId(pathIdAsObj)
+                        .srcSwitch(srcSwitch)
+                        .srcPort(srcPort)
+                        .destSwitch(destSwitch)
+                        .destPort(destPort)
+                        .build()))
+                .build();
+        flowPathRepository.add(path);
+        return path;
     }
 
     private Flow createFlowWithPath(int forwardBandwidth, int reverseBandwidth) {
@@ -436,6 +608,7 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
         flow.setForwardPath(forwardPath);
 
         PathSegment forwardSegment = PathSegment.builder()
+                .pathId(forwardPath.getPathId())
                 .srcSwitch(switchA)
                 .srcPort(1)
                 .destSwitch(switchB)
@@ -456,6 +629,7 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
         flow.setReversePath(reversePath);
 
         PathSegment reverseSegment = PathSegment.builder()
+                .pathId(reversePath.getPathId())
                 .srcSwitch(switchB)
                 .srcPort(2)
                 .destSwitch(switchA)

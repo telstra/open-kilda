@@ -28,6 +28,7 @@ import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_FI
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_GRPC_SPEAKER_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_KILDA_SPEAKER_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_KILDA_SPEAKER_SPOUT;
+import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_OFS_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_REQUESTER_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.SYSTEM_RULE_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.TABLE_STATS_METRIC_GEN;
@@ -41,6 +42,8 @@ import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
+import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.stats.bolts.CacheBolt;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt;
@@ -92,13 +95,18 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
 
         TopologyBuilder builder = new TopologyBuilder();
 
+        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig().getConnectString());
+        declareSpout(builder, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
+
         final String kafkaSpoutId = StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString();
         declareKafkaSpout(builder, topologyConfig.getKafkaStatsTopic(), kafkaSpoutId);
 
-        SpeakerBolt speakerBolt = new SpeakerBolt();
+        SpeakerBolt speakerBolt = new SpeakerBolt(ZooKeeperSpout.SPOUT_ID);
         final String statsOfsBolt = StatsComponentType.STATS_OFS_BOLT.toString();
         declareBolt(builder, speakerBolt, statsOfsBolt)
-                .shuffleGrouping(kafkaSpoutId);
+                .shuffleGrouping(kafkaSpoutId)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
 
         inputSpeakerRequests(builder);
         cacheSyncFilter(builder);
@@ -137,8 +145,10 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         declareBolt(builder,
                 new TickBolt(topologyConfig.getStatisticsRequestInterval()), TICK_BOLT.name());
 
-        declareBolt(builder, new StatsRequesterBolt(persistenceManager), STATS_REQUESTER_BOLT.name())
-                .shuffleGrouping(TICK_BOLT.name());
+        declareBolt(builder, new StatsRequesterBolt(persistenceManager, ZooKeeperSpout.SPOUT_ID),
+                STATS_REQUESTER_BOLT.name())
+                .shuffleGrouping(TICK_BOLT.name())
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
 
         declareBolt(builder, buildKafkaBolt(topologyConfig.getSpeakerTopic()), STATS_KILDA_SPEAKER_BOLT.name())
                 .shuffleGrouping(STATS_REQUESTER_BOLT.name(), STATS_REQUEST.name());
@@ -149,11 +159,14 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 SERVER42_STATS_FLOW_RTT_SPOUT.name());
 
         declareBolt(builder,
-                new FlowRttMetricGenBolt(topologyConfig.getMetricPrefix()), SERVER42_STATS_FLOW_RTT_METRIC_GEN.name())
-                .shuffleGrouping(SERVER42_STATS_FLOW_RTT_SPOUT.name());
+                new FlowRttMetricGenBolt(topologyConfig.getMetricPrefix(), ZooKeeperSpout.SPOUT_ID),
+                SERVER42_STATS_FLOW_RTT_METRIC_GEN.name())
+                .shuffleGrouping(SERVER42_STATS_FLOW_RTT_SPOUT.name())
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
 
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
-        declareBolt(builder, createKafkaBolt(openTsdbTopic), "stats-opentsdb")
+        declareBolt(builder, createKafkaBolt(openTsdbTopic),
+                "stats-opentsdb")
                 .shuffleGrouping(PORT_STATS_METRIC_GEN.name())
                 .shuffleGrouping(METER_STATS_METRIC_GEN.name())
                 .shuffleGrouping(METER_CFG_STATS_METRIC_GEN.name())
@@ -162,6 +175,15 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 .shuffleGrouping(SYSTEM_RULE_STATS_METRIC_GEN.name())
                 .shuffleGrouping(PACKET_IN_OUT_STATS_METRIC_GEN.name())
                 .shuffleGrouping(SERVER42_STATS_FLOW_RTT_METRIC_GEN.name());
+
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig().getConnectString(), getBoltInstancesCount(STATS_REQUESTER_BOLT.name(),
+                STATS_OFS_BOLT.name(), SERVER42_STATS_FLOW_RTT_METRIC_GEN.name(), SpeakerRequestDecoderBolt.BOLT_ID));
+        declareBolt(builder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
+                .allGrouping(STATS_REQUESTER_BOLT.name(), StatsRequesterBolt.ZOOKEEPER_STREAM)
+                .allGrouping(STATS_OFS_BOLT.name(), SpeakerBolt.ZOOKEEPER_STREAM)
+                .allGrouping(SERVER42_STATS_FLOW_RTT_METRIC_GEN.name(), FlowRttMetricGenBolt.ZOOKEEPER_STREAM)
+                .allGrouping(SpeakerRequestDecoderBolt.BOLT_ID, SpeakerRequestDecoderBolt.ZOOKEEPER_STREAM);
 
         return builder.createTopology();
     }
@@ -173,15 +195,20 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         String id = STATS_KILDA_SPEAKER_SPOUT.name();
         KafkaTopicsConfig topics = topologyConfig.getKafkaTopics();
         KafkaSpoutConfig<String, String> config = makeKafkaSpoutConfig(
-                    ImmutableList.of(topics.getSpeakerFlowHsTopic()),
-                    id, StringDeserializer.class)
+                ImmutableList.of(topics.getSpeakerFlowHsTopic()), id, StringDeserializer.class)
                 .setRecordTranslator(new JsonKafkaTranslator())
                 .build();
         declareSpout(topology, new KafkaSpout<>(config), id);
 
-        SpeakerRequestDecoderBolt decoder = new SpeakerRequestDecoderBolt();
+        SpeakerRequestDecoderBolt decoder = new SpeakerRequestDecoderBolt(ZooKeeperSpout.SPOUT_ID);
         declareBolt(topology, decoder, SpeakerRequestDecoderBolt.BOLT_ID)
-                .shuffleGrouping(id);
+                .shuffleGrouping(id)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
+    }
+
+    @Override
+    protected String getZkTopoName() {
+        return "stats";
     }
 
     /**

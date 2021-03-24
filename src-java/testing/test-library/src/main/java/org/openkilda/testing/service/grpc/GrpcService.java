@@ -24,6 +24,7 @@ import org.openkilda.grpc.speaker.model.LogOferrorsDto;
 import org.openkilda.grpc.speaker.model.LogicalPortDto;
 import org.openkilda.grpc.speaker.model.PacketInOutStatsResponse;
 import org.openkilda.grpc.speaker.model.RemoteLogServerDto;
+import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.messaging.model.grpc.RemoteLogServer;
 import org.openkilda.messaging.model.grpc.SwitchInfoStatus;
@@ -31,6 +32,8 @@ import org.openkilda.messaging.model.grpc.SwitchInfoStatus;
 import java.util.List;
 
 public interface GrpcService {
+    HealthCheck getHealthCheck();
+
     SwitchInfoStatus getSwitchStatus(String switchAddress);
 
     List<LogicalPort> getSwitchLogicalPorts(String switchAddress);

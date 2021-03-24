@@ -34,9 +34,9 @@ public abstract class RequestedFlowMapper {
      */
     @Mapping(target = "flowId", source = "flowId")
     @Mapping(target = "source", expression = "java(new FlowEndpoint(flow.getSrcSwitchId(), "
-            + "flow.getSrcPort(), flow.getSrcVlan()))")
+            + "flow.getSrcPort(), flow.getSrcVlan(), flow.getSrcInnerVlan()))")
     @Mapping(target = "destination", expression = "java(new FlowEndpoint(flow.getDestSwitchId(), "
-            + "flow.getDestPort(), flow.getDestVlan()))")
+            + "flow.getDestPort(), flow.getDestVlan(), flow.getDestInnerVlan()))")
     @Mapping(target = "encapsulationType", source = "encapsulationType")
     @Mapping(target = "pathComputationStrategy",
             expression = "java(java.util.Optional.ofNullable(flow.getPathComputationStrategy())"

@@ -13,7 +13,7 @@
 #   limitations under the License.
 #
 
-ARG base_image=ubuntu:xenial
+ARG base_image=ubuntu:20.04
 FROM ${base_image}
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -39,16 +39,16 @@ RUN chmod 777 /app/* \
         wget \
         ssh \
         iputils-ping \
-        python \
-        python-dev \
-        python-pip \
+        python3 \
+        python3-dev \
+        python3-pip \
         make \
         apt-transport-https \
         openjdk-8-jdk \
         iptables \
         iproute2 \
         rsync \
-    && pip install --upgrade pip \
-    && python -m pip install setuptools \
+    && pip3 install --upgrade pip \
+    && python3 -m pip install setuptools \
     && echo "export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> ~/.bashrc \
     && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*

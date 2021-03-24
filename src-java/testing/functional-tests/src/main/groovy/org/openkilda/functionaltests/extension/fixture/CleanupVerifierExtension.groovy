@@ -54,17 +54,18 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
             spec.addListener(new AbstractRunListener() {
                 @Override
                 void afterSpec(SpecInfo runningSpec) {
-                    log.info("Running cleanup verifier for '$runningSpec.name'")
+                    log.debug("Running cleanup verifier for '$runningSpec.name'")
                     runVerfications()
                 }
             })
         } else { //run verifier after each feature
             spec.features.each {
-                it.addInterceptor(new IMethodInterceptor() {
+                //push cleanup interceptor to the start of the list, so that it's run AFTER TestFixture interceptor
+                it.interceptors.push(new IMethodInterceptor() {
                     @Override
                     void intercept(IMethodInvocation invocation) throws Throwable {
                         invocation.proceed()
-                        log.info("Running cleanup verifier for '$invocation.feature.name'")
+                        log.debug("Running cleanup verifier for '$invocation.feature.name'")
                         runVerfications()
                     }
                 })
@@ -100,5 +101,6 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
             assert it.availableBandwidth == it.speed
             assert it.cost == Constants.DEFAULT_COST || it.cost == 0
         }
+        assert northbound.getAllLinkProps().empty
     }
 }

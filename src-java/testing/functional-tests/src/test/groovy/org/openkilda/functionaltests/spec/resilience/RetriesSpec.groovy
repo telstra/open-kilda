@@ -3,12 +3,12 @@ package org.openkilda.functionaltests.spec.resilience
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PATH_SWAP_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
@@ -87,8 +87,8 @@ and at least 1 path must remain safe"
             assert northbound.getLink(islToBreak).state == IslChangeType.FAILED
         }
 
-        then: "System fails to install rules on desired path and tries to retry reroute and find new path"
-        wait(rerouteDelay + WAIT_OFFSET, 0.1) {
+        then: "System fails to install rules on desired path and tries to retry reroute and find new path (global retry)"
+        wait(WAIT_OFFSET * 3, 0.1) {
             assert northbound.getFlowHistory(flow.flowId).find {
                 it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1/)
             }
@@ -399,6 +399,7 @@ and at least 1 path must remain safe"
         wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
     }
 

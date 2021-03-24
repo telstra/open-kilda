@@ -19,7 +19,9 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.reroute.RerouteFlows;
 import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
 import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
+import org.openkilda.messaging.info.event.IslChangedInfoData;
 import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
+import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.model.BfdProperties;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
@@ -59,6 +61,8 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.util.Optional;
+
 public class IslHandler extends AbstractBolt implements IIslCarrier {
     public static final String BOLT_ID = ComponentId.ISL_HANDLER.toString();
 
@@ -89,6 +93,10 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     public static final String STREAM_UNIISL_ID = "uni-isl";
     public static final Fields STREAM_UNIISL_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER,
             FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
+
+    public static final String STREAM_FLOW_MONITORING_ID = "flow-monitoring";
+    public static final Fields STREAM_FLOW_MONITORING_FIELDS = new Fields(
+            KafkaEncoder.FIELD_ID_KEY, KafkaEncoder.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     private final PersistenceManager persistenceManager;
     private final NetworkOptions options;
@@ -154,6 +162,7 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
         streamManager.declareStream(STREAM_SPEAKER_RULES_ID, STREAM_SPEAKER_RULES_FIELDS);
         streamManager.declareStream(STREAM_POLL_ID, STREAM_POLL_FIELDS);
         streamManager.declareStream(STREAM_UNIISL_ID, STREAM_UNIISL_FIELDS);
+        streamManager.declareStream(STREAM_FLOW_MONITORING_ID, STREAM_FLOW_MONITORING_FIELDS);
     }
 
     @Override
@@ -206,6 +215,23 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
         emit(STREAM_BFD_HUB_ID, makeBfdHubTuple(new BfdHubIslRemoveNotificationCommand(srcEndpoint, reference)));
     }
 
+    @Override
+    public void islChangedNotifyFlowMonitor(IslReference reference) {
+        Optional<Endpoint> src = Optional.ofNullable(reference.getSource());
+        Optional<Endpoint> dst = Optional.ofNullable(reference.getDest());
+        IslChangedInfoData islChangedInfoData = IslChangedInfoData.builder()
+                .source(NetworkEndpoint.builder()
+                        .datapath(src.map(Endpoint::getDatapath).orElse(null))
+                        .portNumber(src.map(Endpoint::getPortNumber).orElse(null))
+                        .build())
+                .destination(NetworkEndpoint.builder()
+                        .datapath(dst.map(Endpoint::getDatapath).orElse(null))
+                        .portNumber(dst.map(Endpoint::getPortNumber).orElse(null))
+                        .build())
+                .build();
+        emit(STREAM_FLOW_MONITORING_ID, getCurrentTuple(), makeIslChangedTuple(islChangedInfoData));
+    }
+
     private Values makeSpeakerRulesTuple(SpeakerRulesWorkerCommand command) {
         return new Values(command.getKey(), command, getCommandContext());
     }
@@ -220,6 +246,10 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     }
 
     private Values makeStatusUpdateTuple(IslStatusUpdateNotification payload) {
+        return new Values(null, payload, getCommandContext());
+    }
+
+    private Values makeIslChangedTuple(IslChangedInfoData payload) {
         return new Values(null, payload, getCommandContext());
     }
 

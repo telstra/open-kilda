@@ -16,12 +16,14 @@
 package org.openkilda.wfm.topology;
 
 import static java.lang.String.format;
-import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_NAME;
-import static org.openkilda.bluegreen.kafka.Utils.COMMON_COMPONENT_RUN_ID;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
 
+import org.openkilda.bluegreen.kafka.interceptors.VersioningConsumerInterceptor;
 import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
 import org.openkilda.config.KafkaConfig;
 import org.openkilda.config.ZookeeperConfig;
@@ -52,6 +54,7 @@ import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.flux.model.BoltDef;
+import org.apache.storm.flux.model.PropertyDef;
 import org.apache.storm.flux.model.SpoutDef;
 import org.apache.storm.flux.model.TopologyDef;
 import org.apache.storm.flux.parser.FluxParser;
@@ -72,6 +75,7 @@ import org.kohsuke.args4j.CmdLineException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.InputStream;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -82,6 +86,12 @@ import java.util.Properties;
  */
 public abstract class AbstractTopology<T extends AbstractTopologyConfig> implements Topology {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private static final String TOPOLOGY_PARALLELISM_TOPOLOGY_DEF_KEY = "topology.parallelism";
+    private static final String TOPOLOGY_WORKERS_TOPOLOGY_DEF_KEY = "topology.workers";
+    private static final String SPOUT_PARALLELISM_TOPOLOGY_DEF_KEY = "topology.spouts.parallelism";
+    private static final String BOLT_PARALLELISM_TOPOLOGY_DEF_KEY = "topology.bolts.parallelism";
+    private static final String MAX_SPOUT_PENDING_SPOUT_DEF_KEY = "max.spout.pending";
 
     public static final String BOLT_ID_CTRL_ROUTE = "ctrl.route";
 
@@ -99,16 +109,14 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     protected final TopologyDef topologyDef;
     protected final T topologyConfig;
     private final KafkaConfig kafkaConfig;
-
-
-
     private final ZookeeperConfig zookeeperConfig;
 
     protected AbstractTopology(LaunchEnvironment env, String topologyDefinitionName, Class<T> topologyConfigClass) {
         kafkaNamingStrategy = env.getKafkaNamingStrategy();
         topoNamingStrategy = env.getTopologyNamingStrategy();
 
-        topologyDef = loadTopologyDef(topologyDefinitionName, env.getProperties()).orElse(null);
+        topologyDef = Optional.ofNullable(env.getTopologyDefinition())
+                .orElseGet(() -> loadTopologyDef(topologyDefinitionName, env.getProperties()).orElse(null));
 
         String defaultTopologyName = getClass().getSimpleName().toLowerCase();
         // Use the default topology name with naming strategy applied only if no specific name provided via CLI.
@@ -127,30 +135,32 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     }
 
     private Optional<TopologyDef> loadTopologyDef(String topologyDefinitionName, Properties properties) {
+        String yamlResource = format("/%s.yaml", topologyDefinitionName);
         try {
             // Check the definition in resources for existence.
-            String yamlResource = format("/%s.yaml", topologyDefinitionName);
-            if (FluxParser.class.getResourceAsStream(yamlResource) == null) {
-                return Optional.empty();
+            try (InputStream stream = this.getClass().getResourceAsStream(yamlResource)) {
+                if (stream == null) {
+                    return Optional.empty();
+                }
             }
 
             return Optional.of(FluxParser.parseResource(yamlResource, false, true, properties, false));
         } catch (Exception e) {
-            logger.info("Unable to load topology configuration (definition) file", e);
+            logger.info("Unable to load topology definition file {}", yamlResource, e);
             return Optional.empty();
         }
     }
 
     private Optional<Integer> getTopologyParallelism() {
         if (topologyDef != null && topologyDef.getConfig() != null) {
-            return Optional.of((Integer) topologyDef.getConfig().get("topology.parallelism"));
+            return Optional.of((Integer) topologyDef.getConfig().get(TOPOLOGY_PARALLELISM_TOPOLOGY_DEF_KEY));
         }
         return Optional.empty();
     }
 
     private Optional<Integer> getTopologyWorkers() {
         if (topologyDef != null && topologyDef.getConfig() != null) {
-            return Optional.of((Integer) topologyDef.getConfig().get("topology.workers"));
+            return Optional.of((Integer) topologyDef.getConfig().get(TOPOLOGY_WORKERS_TOPOLOGY_DEF_KEY));
         }
         return Optional.empty();
     }
@@ -210,25 +220,15 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         return errorCode;
     }
 
-    /**
-     * //TODO(zero_down_time) Remove when zero down time feature will be completed.
-     *
-     * @deprecated use getKafkaProducerProperties with parameters (component name, run id)
-     */
-    @Deprecated
     private Properties getKafkaProducerProperties() {
-        return getKafkaProducerProperties(COMMON_COMPONENT_NAME, COMMON_COMPONENT_RUN_ID);
-    }
-
-    private Properties getKafkaProducerProperties(String componentName, String runId) {
         Properties kafka = new Properties();
 
         kafka.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         kafka.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         kafka.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaConfig.getHosts());
         kafka.setProperty(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningProducerInterceptor.class.getName());
-        kafka.setProperty(PRODUCER_COMPONENT_NAME_PROPERTY, componentName);
-        kafka.setProperty(PRODUCER_RUN_ID_PROPERTY, runId);
+        kafka.setProperty(PRODUCER_COMPONENT_NAME_PROPERTY, getZkTopoName());
+        kafka.setProperty(PRODUCER_RUN_ID_PROPERTY, topologyConfig.getBlueGreenMode());
         kafka.setProperty(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, getZookeeperConfig().getConnectString());
 
         return kafka;
@@ -283,7 +283,8 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     }
 
     protected SpoutDeclarer declareKafkaSpout(TopologyBuilder builder, List<String> topics, String spoutId) {
-        KafkaSpoutConfig<String, Message> config = getKafkaSpoutConfigBuilder(topics, spoutId).build();
+        KafkaSpoutConfig<String, Message> config = getKafkaSpoutConfigBuilder(topics, spoutId)
+                .build();
         logger.info("Setup kafka spout: id={}, group={}, subscriptions={}",
                 spoutId, config.getConsumerGroupId(), config.getSubscription().getTopicsString());
         return declareSpout(builder, new KafkaSpout<>(config), spoutId);
@@ -292,6 +293,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     protected SpoutDeclarer declareSpout(TopologyBuilder builder, IRichSpout spout, String spoutId) {
         Integer spoutParallelism = null;
         Integer spoutNumTasks = null;
+        Integer spoutMaxSpoutPending = null;
         if (topologyDef != null) {
             SpoutDef spoutDef = topologyDef.getSpoutDef(spoutId);
             if (spoutDef != null) {
@@ -299,11 +301,19 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
                 if (spoutDef.getNumTasks() > 0) {
                     spoutNumTasks = spoutDef.getNumTasks();
                 }
+                if (spoutDef.getProperties() != null) {
+                    for (PropertyDef propertyDef : spoutDef.getProperties()) {
+                        if (MAX_SPOUT_PENDING_SPOUT_DEF_KEY.equals(propertyDef.getName())) {
+                            spoutMaxSpoutPending = (Integer) propertyDef.getValue();
+                            break;
+                        }
+                    }
+                }
             }
         }
         if (spoutParallelism == null) {
             if (topologyDef != null && topologyDef.getConfig() != null) {
-                spoutParallelism = (Integer) topologyDef.getConfig().get("topology.spouts.parallelism");
+                spoutParallelism = (Integer) topologyDef.getConfig().get(SPOUT_PARALLELISM_TOPOLOGY_DEF_KEY);
             }
             if (spoutParallelism == null) {
                 spoutParallelism = getTopologyParallelism().orElse(null);
@@ -312,6 +322,9 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         SpoutDeclarer spoutDeclarer = builder.setSpout(spoutId, spout, spoutParallelism);
         if (spoutNumTasks != null) {
             spoutDeclarer.setNumTasks(spoutNumTasks);
+        }
+        if (spoutMaxSpoutPending != null) {
+            spoutDeclarer.setMaxSpoutPending(spoutMaxSpoutPending);
         }
         return spoutDeclarer;
     }
@@ -322,7 +335,8 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      * @param topic Kafka topic
      */
     protected SpoutDeclarer declareKafkaSpoutForAbstractMessage(TopologyBuilder builder, String topic, String spoutId) {
-        return declareKafkaSpoutForAbstractMessage(builder, Collections.singletonList(topic), spoutId);
+        return declareKafkaSpoutForAbstractMessage(
+                builder, Collections.singletonList(topic), spoutId);
     }
 
     /**
@@ -330,8 +344,8 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      *
      * @param topics Kafka topics
      */
-    protected SpoutDeclarer declareKafkaSpoutForAbstractMessage(TopologyBuilder builder,
-                                                                List<String> topics, String spoutId) {
+    protected SpoutDeclarer declareKafkaSpoutForAbstractMessage(
+            TopologyBuilder builder, List<String> topics, String spoutId) {
         KafkaSpout<?, ?> spout = new KafkaSpout<>(
                 makeKafkaSpoutConfig(topics, spoutId, AbstractMessageDeserializer.class)
                         .setRecordTranslator(new AbstractMessageTranslator())
@@ -344,10 +358,8 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      *
      * @param topic Kafka topic
      * @return {@link KafkaBolt}
-     * @deprecated replaced by {@link AbstractTopology#buildKafkaBolt(String)}
      */
-    @Deprecated
-    protected KafkaBolt<String, String> createKafkaBolt(final String topic) {
+    protected KafkaBolt<String, String> createKafkaBolt(String topic) {
         return new KafkaBolt<String, String>()
                 .withProducerProperties(getKafkaProducerProperties())
                 .withTopicSelector(new DefaultTopicSelector(topic))
@@ -359,22 +371,9 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      *
      * @param topic Kafka topic
      * @return {@link KafkaBolt}
-     * @deprecated replaced by {@link AbstractTopology#makeKafkaBolt}
      */
-    @Deprecated
     protected KafkaBolt<String, Message> buildKafkaBolt(final String topic) {
         return makeKafkaBolt(topic, MessageSerializer.class);
-    }
-
-    /**
-     * Creates Kafka bolt, that uses {@link MessageSerializer} in order to serialize an object.
-     *
-     * @param topic Kafka topic
-     * @return {@link KafkaBolt}
-     */
-    protected KafkaBolt<String, Message> buildKafkaBolt(
-            final String topic, String componentName, String runId) {
-        return makeKafkaBolt(topic, MessageSerializer.class, componentName, runId);
     }
 
     /**
@@ -412,6 +411,10 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
                 .setProp(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
                 .setProp(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
                 .setProp(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDecoder)
+                .setProp(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName())
+                .setProp(CONSUMER_COMPONENT_NAME_PROPERTY, getZkTopoName())
+                .setProp(CONSUMER_RUN_ID_PROPERTY, topologyConfig.getBlueGreenMode())
+                .setProp(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, getZookeeperConfig().getConnectString())
                 .setTupleTrackingEnforced(true);
 
         return config;
@@ -421,36 +424,13 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         return kafkaNamingStrategy.kafkaConsumerGroupName(format("%s__%s", topologyName, spoutId));
     }
 
-    /**
-     * //TODO(zero_down_time) Remove when zero down time feature will be completed.
-     *
-     * @deprecated use makeKafkaBolt with parameters (component name, run id)
-     */
-    @Deprecated
     protected <V> KafkaBolt<String, V> makeKafkaBolt(String topic, Class<? extends Serializer<V>> valueEncoder) {
         return makeKafkaBolt(valueEncoder)
                 .withTopicSelector(topic);
     }
 
-    protected <V> KafkaBolt<String, V> makeKafkaBolt(
-            String topic, Class<? extends Serializer<V>> valueEncoder, String componentName, String runId) {
-        return makeKafkaBolt(valueEncoder, componentName, runId)
-                .withTopicSelector(topic);
-    }
-
-    /**
-     * //TODO(zero_down_time) Remove when zero down time feature will be completed.
-     *
-     * @deprecated use makeKafkaBolt with parameters (component name, run id)
-     */
-    @Deprecated
     protected <V> KafkaBolt<String, V> makeKafkaBolt(Class<? extends Serializer<V>> valueEncoder) {
-        return makeKafkaBolt(valueEncoder, COMMON_COMPONENT_NAME, COMMON_COMPONENT_RUN_ID);
-    }
-
-    protected <V> KafkaBolt<String, V> makeKafkaBolt(
-            Class<? extends Serializer<V>> valueEncoder, String componentName, String runId) {
-        Properties properties = getKafkaProducerProperties(componentName, runId);
+        Properties properties = getKafkaProducerProperties();
         properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, valueEncoder.getName());
 
         return new KafkaBolt<String, V>()
@@ -459,33 +439,66 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     }
 
     protected BoltDeclarer declareBolt(TopologyBuilder builder, IRichBolt bolt, String boltId) {
-        Integer boltParallelism = null;
-        Integer boltNumTasks = null;
-        if (topologyDef != null) {
-            BoltDef boltDef = topologyDef.getBoltDef(boltId);
-            if (boltDef != null) {
-                boltParallelism = boltDef.getParallelism();
-                if (boltDef.getNumTasks() > 0) {
-                    boltNumTasks = boltDef.getNumTasks();
-                }
-            }
-        }
-        if (boltParallelism == null) {
-            if (topologyDef != null && topologyDef.getConfig() != null) {
-                boltParallelism = (Integer) topologyDef.getConfig().get("topology.bolts.parallelism");
-            }
-            if (boltParallelism == null) {
-                boltParallelism = getTopologyParallelism().orElse(null);
-            }
-        }
-        BoltDeclarer boltDeclarer = builder.setBolt(boltId, bolt, boltParallelism);
+        BoltDeclarer boltDeclarer = builder.setBolt(boltId, bolt, getBoltParallelism(boltId));
+        Integer boltNumTasks = getBoltNumTasks(boltId);
         if (boltNumTasks != null) {
             boltDeclarer.setNumTasks(boltNumTasks);
         }
         return boltDeclarer;
     }
 
+    @VisibleForTesting
+    Integer getBoltParallelism(String boltId) {
+        if (topologyDef != null) {
+            BoltDef boltDef = topologyDef.getBoltDef(boltId);
+            if (boltDef != null) {
+                return boltDef.getParallelism();
+            }
+            if (topologyDef.getConfig() != null && topologyDef.getConfig()
+                    .containsKey(BOLT_PARALLELISM_TOPOLOGY_DEF_KEY)) {
+                return (Integer) topologyDef.getConfig().get(BOLT_PARALLELISM_TOPOLOGY_DEF_KEY);
+            }
+        }
+        return getTopologyParallelism().orElse(null);
+    }
+
+    @VisibleForTesting
+    Integer getBoltNumTasks(String boltId) {
+        if (topologyDef != null) {
+            BoltDef boltDef = topologyDef.getBoltDef(boltId);
+            if (boltDef != null && boltDef.getNumTasks() > 0) {
+                return boltDef.getNumTasks();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Counts how many instances of bolt will be run in storm.
+     */
+    @VisibleForTesting
+    int getBoltInstancesCount(String boltId) {
+        Integer boltNumTasks = getBoltNumTasks(boltId);
+        if (boltNumTasks != null) {
+            return boltNumTasks;
+        }
+        return Optional.ofNullable(getBoltParallelism(boltId)).orElse(1);
+    }
+
+    /**
+     * Counts how many instances of bolts will be run in storm.
+     */
+    protected int getBoltInstancesCount(String... boltIds) {
+        int count = 0;
+        for (String boltId : boltIds) {
+            count += getBoltInstancesCount(boltId);
+        }
+        return count;
+    }
+
     protected ZookeeperConfig getZookeeperConfig() {
         return zookeeperConfig;
     }
+
+    protected abstract String getZkTopoName();
 }

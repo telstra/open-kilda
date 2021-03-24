@@ -48,14 +48,16 @@ public class FlowRerouteService {
     private final FlowRerouteHubCarrier carrier;
     private final FlowEventRepository flowEventRepository;
 
+    private boolean active;
+
     public FlowRerouteService(FlowRerouteHubCarrier carrier, PersistenceManager persistenceManager,
                               PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
                               int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
-                              int speakerCommandRetriesLimit) {
+                              int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
         this.carrier = carrier;
         this.flowEventRepository = persistenceManager.getRepositoryFactory().createFlowEventRepository();
         fsmFactory = new FlowRerouteFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
-                pathAllocationRetriesLimit, pathAllocationRetryDelay,
+                pathAllocationRetriesLimit, pathAllocationRetryDelay, resourceAllocationRetriesLimit,
                 speakerCommandRetriesLimit);
     }
 
@@ -168,11 +170,33 @@ public class FlowRerouteService {
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
             performHousekeeping(key);
+
+            if (!active && fsms.isEmpty()) {
+                carrier.sendInactive();
+            }
         }
     }
 
     private void performHousekeeping(String key) {
         fsms.remove(key);
         carrier.cancelTimeoutCallback(key);
+    }
+
+    /**
+     * Handles deactivate command.
+     */
+    public boolean deactivate() {
+        active = false;
+        if (fsms.isEmpty()) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Handles activate command.
+     */
+    public void activate() {
+        active = true;
     }
 }

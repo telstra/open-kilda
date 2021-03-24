@@ -1,0 +1,15 @@
+# topology configuration
+config:
+  topology.parallelism: ${topology_parallelism}
+  topology.workers: 4
+
+# spout definitions
+# spouts:
+
+# bolt definitions
+bolts:
+  - id: "${first_bolt_name}"
+    parallelism: ${first_bolt_parallelism}
+    numTasks: ${first_bolt_num_tasks}
+  - id: "${second_bolt_name}"
+    parallelism: ${second_bolt_parallelism}

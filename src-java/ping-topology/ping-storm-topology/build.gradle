@@ -14,6 +14,7 @@ dependencies {
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     implementation project(':kilda-reporting')
     implementation project(':floodlight-api')
+    implementation project(':blue-green')
     runtimeClasspath project(':kilda-persistence-orientdb')
     aspect project(':kilda-persistence-api')
 
@@ -31,6 +32,8 @@ dependencies {
     testCompileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
 }
 
 jar {

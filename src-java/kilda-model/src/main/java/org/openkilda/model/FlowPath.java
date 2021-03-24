@@ -17,8 +17,6 @@ package org.openkilda.model;
 
 import static java.lang.String.format;
 
-import org.openkilda.model.PathSegment.PathSegmentData;
-import org.openkilda.model.PathSegment.PathSegmentDataImpl;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
@@ -68,8 +66,6 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
      */
     private FlowPath() {
         data = new FlowPathDataImpl();
-        // The reference is used to link path segments back to the path. See {@link #setSegments(List)}.
-        ((FlowPathDataImpl) data).flowPath = this;
     }
 
     /**
@@ -79,9 +75,7 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
      * @param flow the flow to be referred ({@code FlowPath.getFlow()}) by the new path.
      */
     public FlowPath(@NonNull FlowPath entityToClone, Flow flow) {
-        this();
-        ((FlowPathDataImpl) data).flow = flow;
-        FlowPathCloner.INSTANCE.copy(entityToClone.getData(), data, this);
+        data = FlowPathCloner.INSTANCE.deepCopy(entityToClone.getData(), flow);
     }
 
     @Builder
@@ -89,12 +83,13 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
                     FlowSegmentCookie cookie, MeterId meterId, GroupId ingressMirrorGroupId,
                     long latency, long bandwidth,
                     boolean ignoreBandwidth, FlowPathStatus status, List<PathSegment> segments,
-                    Set<FlowApplication> applications) {
+                    Set<FlowApplication> applications, boolean srcWithMultiTable, boolean destWithMultiTable) {
         data = FlowPathDataImpl.builder().pathId(pathId).srcSwitch(srcSwitch).destSwitch(destSwitch)
                 .cookie(cookie).meterId(meterId).ingressMirrorGroupId(ingressMirrorGroupId)
                 .latency(latency).bandwidth(bandwidth)
                 .ignoreBandwidth(ignoreBandwidth).status(status)
-                .applications(applications).build();
+                .applications(applications).srcWithMultiTable(srcWithMultiTable).destWithMultiTable(destWithMultiTable)
+                .build();
         // The reference is used to link path segments back to the path. See {@link #setSegments(List)}.
         ((FlowPathDataImpl) data).flowPath = this;
 
@@ -173,6 +168,8 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
                 .append(getStatus(), that.getStatus())
                 .append(getSegments(), that.getSegments())
                 .append(getApplications(), that.getApplications())
+                .append(isSrcWithMultiTable(), that.isSrcWithMultiTable())
+                .append(isDestWithMultiTable(), that.isDestWithMultiTable())
                 .isEquals();
     }
 
@@ -180,7 +177,7 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
     public int hashCode() {
         return Objects.hash(getPathId(), getSrcSwitchId(), getDestSwitchId(), getFlowId(), getCookie(), getMeterId(),
                 getLatency(), getBandwidth(), isIgnoreBandwidth(), getTimeCreate(), getTimeModify(), getStatus(),
-                getSegments());
+                getSegments(), getApplications(), isSrcWithMultiTable(), isDestWithMultiTable());
     }
 
     /**
@@ -250,6 +247,15 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         Set<FlowApplication> getApplications();
 
         void setApplications(Set<FlowApplication> applications);
+
+        boolean isSrcWithMultiTable();
+
+        void setSrcWithMultiTable(boolean srcWithMultiTable);
+
+        boolean isDestWithMultiTable();
+
+        void setDestWithMultiTable(boolean destWithMultiTable);
+
     }
 
     /**
@@ -282,12 +288,24 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         @EqualsAndHashCode.Exclude
         @NonNull List<PathSegment> segments = new ArrayList<>();
         Set<FlowApplication> applications;
+
+        public void setPathId(PathId pathId) {
+            this.pathId = pathId;
+
+            if (segments != null) {
+                segments.forEach(segment -> segment.getData().setPathId(pathId));
+            }
+        }
+
         // The reference is used to link path segments back to the path. See {@link #setSegments(List)}.
         @Setter(AccessLevel.NONE)
         @Getter(AccessLevel.NONE)
         @ToString.Exclude
         @EqualsAndHashCode.Exclude
         FlowPath flowPath;
+
+        boolean srcWithMultiTable;
+        boolean destWithMultiTable;
 
         @Override
         public String getFlowId() {
@@ -308,7 +326,7 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
             this.bandwidth = bandwidth;
 
             if (segments != null) {
-                segments.forEach(segment -> segment.setBandwidth(bandwidth));
+                segments.forEach(segment -> segment.getData().setBandwidth(bandwidth));
             }
         }
 
@@ -316,7 +334,7 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
             this.ignoreBandwidth = ignoreBandwidth;
 
             if (segments != null) {
-                segments.forEach(segment -> segment.setIgnoreBandwidth(ignoreBandwidth));
+                segments.forEach(segment -> segment.getData().setIgnoreBandwidth(ignoreBandwidth));
             }
         }
 
@@ -332,13 +350,11 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         public void setSegments(List<PathSegment> segments) {
             for (int idx = 0; idx < segments.size(); idx++) {
                 PathSegment segment = segments.get(idx);
-                segment.setSeqId(idx);
-                segment.setIgnoreBandwidth(ignoreBandwidth);
-                segment.setBandwidth(bandwidth);
-                PathSegmentData data = segment.getData();
-                if (data instanceof PathSegmentDataImpl) {
-                    ((PathSegmentDataImpl) data).path = flowPath;
-                }
+                PathSegment.PathSegmentData data = segment.getData();
+                data.setPathId(pathId);
+                data.setSeqId(idx);
+                data.setIgnoreBandwidth(ignoreBandwidth);
+                data.setBandwidth(bandwidth);
             }
 
             this.segments = new ArrayList<>(segments);
@@ -354,32 +370,27 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
 
         void copy(FlowPathData source, @MappingTarget FlowPathData target);
 
-        /**
-         * Performs deep copy of entity data.
-         */
-        default FlowPathData copy(FlowPathData source, FlowPath targetPath, Flow targetFlow) {
-            FlowPathDataImpl result = new FlowPathDataImpl();
-            result.flowPath = targetPath;
-            result.flow = targetFlow;
-            copy(source, result, targetPath);
-            return result;
-        }
-
-        /**
-         * Performs deep copy of entity data.
-         */
-        default void copy(FlowPathData source, FlowPathData target, FlowPath targetPath) {
-            copyWithoutSwitchesAndSegments(source, target);
-            target.setSrcSwitch(new Switch(source.getSrcSwitch()));
-            target.setDestSwitch(new Switch(source.getDestSwitch()));
-            target.setSegments(source.getSegments().stream()
-                    .map(segment -> new PathSegment(segment, targetPath))
-                    .collect(Collectors.toList()));
-        }
-
         @Mapping(target = "srcSwitch", ignore = true)
         @Mapping(target = "destSwitch", ignore = true)
         @Mapping(target = "segments", ignore = true)
         void copyWithoutSwitchesAndSegments(FlowPathData source, @MappingTarget FlowPathData target);
+
+        /**
+         * Performs deep copy of entity data.
+         *
+         * @param source the path data to copy from.
+         * @param targetFlow the flow to be referred ({@code FlowPathData.getFlow()}) by the new path data.
+         */
+        default FlowPathData deepCopy(FlowPathData source, Flow targetFlow) {
+            FlowPathDataImpl result = new FlowPathDataImpl();
+            result.flow = targetFlow;
+            copyWithoutSwitchesAndSegments(source, result);
+            result.setSrcSwitch(new Switch(source.getSrcSwitch()));
+            result.setDestSwitch(new Switch(source.getDestSwitch()));
+            result.setSegments(source.getSegments().stream()
+                    .map(PathSegment::new)
+                    .collect(Collectors.toList()));
+            return result;
+        }
     }
 }

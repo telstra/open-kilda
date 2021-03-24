@@ -1,0 +1,17 @@
+@startuml
+title Flow-monitoring topology
+hide empty description
+
+[*] ---> FlowSpout
+[*] ---> FlowLatencySpout
+[*] ---> IslLatencySpout
+
+FlowSpout ---> FlowCacheBolt : flow path changes
+FlowLatencySpout ---> FlowCacheBolt : server42 stats
+IslLatencySpout ---> IslCacheBolt : isl latency
+TickBolt ---> FlowCacheBolt : tick
+FlowCacheBolt ---> IslCacheBolt : calculate actual latency for path
+FlowCacheBolt ---> ActionBolt : detect SLA violation
+IslCacheBolt ---> ActionBolt : detect SLA violation
+
+@enduml

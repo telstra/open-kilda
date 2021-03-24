@@ -25,7 +25,6 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
-import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
@@ -70,6 +69,12 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
                 new HashSet<>(Optional.ofNullable(context.getAffectedIsl()).orElse(emptySet()));
         dashboardLogger.onFlowPathReroute(flowId, affectedIsl, context.isForceReroute());
 
+        String rerouteReason = context.getRerouteReason();
+        stateMachine.saveNewEventToHistory("Started flow validation", FlowEventData.Event.REROUTE,
+                rerouteReason == null ? FlowEventData.Initiator.NB : FlowEventData.Initiator.AUTO,
+                rerouteReason == null ? null : "Reason: " + rerouteReason);
+        stateMachine.setRerouteReason(rerouteReason);
+
         Flow flow = transactionManager.doInTransaction(() -> {
             Flow foundFlow = getFlow(flowId);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
@@ -98,12 +103,10 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
             stateMachine.setPeriodicPingsEnabled(foundFlow.isPeriodicPings());
 
             if (foundFlow.getTargetPathComputationStrategy() != null) {
-                stateMachine.setTargetPathComputationStrategy(foundFlow.getTargetPathComputationStrategy());
                 foundFlow.setPathComputationStrategy(foundFlow.getTargetPathComputationStrategy());
                 foundFlow.setTargetPathComputationStrategy(null);
-            } else {
-                stateMachine.setTargetPathComputationStrategy(foundFlow.getPathComputationStrategy());
             }
+
             foundFlow.setStatus(FlowStatus.IN_PROGRESS);
             return foundFlow;
         });
@@ -123,10 +126,10 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
             reroutePrimary = true;
             rerouteProtected = true;
         } else {
-            reroutePrimary = checkIsPathAffected(flow.getForwardPathId(), affectedIsl)
-                    || checkIsPathAffected(flow.getReversePathId(), affectedIsl);
-            rerouteProtected = checkIsPathAffected(flow.getProtectedForwardPathId(), affectedIsl)
-                    || checkIsPathAffected(flow.getProtectedReversePathId(), affectedIsl);
+            reroutePrimary = checkIsPathAffected(flow.getForwardPath(), affectedIsl)
+                    || checkIsPathAffected(flow.getReversePath(), affectedIsl);
+            rerouteProtected = checkIsPathAffected(flow.getProtectedForwardPath(), affectedIsl)
+                    || checkIsPathAffected(flow.getProtectedReversePath(), affectedIsl);
         }
         // check protected path presence
         rerouteProtected &= flow.isAllocateProtectedPath();
@@ -158,14 +161,11 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
                     format("Flow %s is pinned, fail to reroute its protected paths", flowId));
         }
 
-        String rerouteReason = context.getRerouteReason();
-        stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.REROUTE,
-                rerouteReason == null ? FlowEventData.Initiator.NB : FlowEventData.Initiator.AUTO,
-                rerouteReason == null ? null : "Reason: " + rerouteReason);
-        stateMachine.setRerouteReason(rerouteReason);
         stateMachine.setAffectedIsls(context.getAffectedIsl());
         stateMachine.setForceReroute(context.isForceReroute());
         stateMachine.setIgnoreBandwidth(context.isIgnoreBandwidth());
+
+        stateMachine.saveActionToHistory("Flow was validated successfully");
 
         return Optional.empty();
     }
@@ -175,12 +175,11 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
         return "Could not reroute flow";
     }
 
-    private boolean checkIsPathAffected(PathId pathId, Set<IslEndpoint> affectedIsl) {
-        if (pathId == null) {
+    private boolean checkIsPathAffected(FlowPath path, Set<IslEndpoint> affectedIsl) {
+        if (path == null) {
             return false;
         }
 
-        FlowPath path = getFlowPath(pathId);
         boolean isAffected = false;
         for (PathSegment segment : path.getSegments()) {
             isAffected = affectedIsl.contains(getSegmentSourceEndpoint(segment));

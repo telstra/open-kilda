@@ -15,10 +15,10 @@
 
 package org.openkilda.wfm;
 
+import org.openkilda.wfm.config.KafkaConfig;
 import org.openkilda.wfm.config.ZookeeperConfig;
 
 import com.google.common.io.Files;
-import kafka.server.KafkaConfig;
 import kafka.server.KafkaServerStartable;
 import org.apache.curator.test.TestingServer;
 
@@ -35,12 +35,13 @@ public final class TestUtils {
 
     private TestUtils() {}
 
-    private static Properties serverProperties(ZookeeperConfig config) {
+    private static Properties serverProperties(ZookeeperConfig zookeeperConfig, KafkaConfig kafkaConfig) {
         Properties props = new Properties();
-        props.setProperty("zookeeper.connect", config.getConnectString());
+        props.setProperty("zookeeper.connect", zookeeperConfig.getConnectString());
         props.setProperty("broker.id", "1");
         props.setProperty("delete.topic.enable", "true");
-        props.setProperty("advertised.listeners", "PLAINTEXT://localhost:9092");
+        props.setProperty("listeners", kafkaConfig.getListeners());
+        props.setProperty("advertised.listeners", kafkaConfig.getAdvertisedListeners());
         props.setProperty("offsets.topic.replication.factor", "1");
         return props;
     }
@@ -50,13 +51,15 @@ public final class TestUtils {
         public KafkaServerStartable kafka;
         public File tempDir = Files.createTempDir();
         private ZookeeperConfig zooKeeperConfig;
+        private KafkaConfig kafkaConfig;
 
-        public KafkaTestFixture(ZookeeperConfig zooKeeperConfig) {
+        public KafkaTestFixture(ZookeeperConfig zooKeeperConfig, KafkaConfig kafkaConfig) {
             this.zooKeeperConfig = zooKeeperConfig;
+            this.kafkaConfig = kafkaConfig;
         }
 
         public void start() throws Exception {
-            Properties props = serverProperties(zooKeeperConfig);
+            Properties props = serverProperties(zooKeeperConfig, kafkaConfig);
             this.start(props);
         }
 
@@ -68,7 +71,7 @@ public final class TestUtils {
             System.out.println("--> Temp Directory: " + zk.getTempDirectory());
 
             props.put("log.dirs", tempDir.getAbsolutePath());
-            KafkaConfig kafkaConfig = new KafkaConfig(props);
+            kafka.server.KafkaConfig kafkaConfig = new kafka.server.KafkaConfig(props);
             kafka = new KafkaServerStartable(kafkaConfig);
             kafka.startup();
             System.out.println("Started KAFKA: ");

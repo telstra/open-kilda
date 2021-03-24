@@ -197,7 +197,7 @@
             <app-switch-meters *ngIf="openedTab == 'meters'"></app-switch-meters>
           </div>
           <div class="tab-pane" [ngClass]="{'active': openedTab == 'flows'}" >
-              <app-switch-flows  [data]="switchFlows" *ngIf="openedTab == 'flows' && loadswitchFlows"></app-switch-flows>
+              <app-switch-flows  [data]="switchFlows" (refresh)="refreshSwitchFlows()"  *ngIf="openedTab == 'flows' && loadswitchFlows"></app-switch-flows>
           </div>
             <div class="tab-pane" [ngClass]="{'active': openedTab == 'descripancy'}" id="a">
             <div class="table-responsive">

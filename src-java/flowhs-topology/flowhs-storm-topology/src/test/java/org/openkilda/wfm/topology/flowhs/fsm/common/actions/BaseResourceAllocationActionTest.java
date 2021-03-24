@@ -15,20 +15,27 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.singletonList;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.model.PathId;
+import org.openkilda.model.PathSegment;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.PathComputer;
-import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.IslRepository;
-import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 
+import com.google.common.base.Suppliers;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -36,16 +43,8 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
-public class BaseResourceAllocationActionTest {
-
-    @Mock
-    private FlowPathRepository flowPathRepository;
-
-    @Mock
-    private IslRepository islRepository;
-
-    @Mock
-    PersistenceManager persistenceManager;
+public class BaseResourceAllocationActionTest extends InMemoryGraphBasedTest {
+    private IslRepository islRepositorySpy;
 
     @Mock
     PathComputer pathComputer;
@@ -56,44 +55,49 @@ public class BaseResourceAllocationActionTest {
     @Mock
     FlowOperationsDashboardLogger dashboardLogger;
 
-    @Mock
-    RepositoryFactory repositoryFactory;
-
     @Test(expected = ResourceAllocationException.class)
     public void updateAvailableBandwidthFailsOnOverProvisionTest() throws ResourceAllocationException {
-        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
-        when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
-        when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
-        when(flowPathRepository.getUsedBandwidthBetweenEndpoints(any(), eq(10), any(), eq(10)))
-                .thenReturn(100L);
-        when(islRepository.updateAvailableBandwidth(any(), eq(10), any(), eq(10), eq(100L)))
-                .thenReturn(-1L);
+        islRepositorySpy = spy(persistenceManager.getRepositoryFactory().createIslRepository());
+        when(repositoryFactory.createIslRepository()).thenReturn(islRepositorySpy);
 
-        BaseResourceAllocationAction action = Mockito.mock(BaseResourceAllocationAction.class,
+        doReturn(-1L).when(islRepositorySpy).updateAvailableBandwidth(any(), anyInt(), any(), anyInt());
+
+        BaseResourceAllocationAction action = mock(BaseResourceAllocationAction.class,
                 Mockito.withSettings()
-                        .useConstructor(persistenceManager, 3, 3, pathComputer, resourcesManager, dashboardLogger)
+                        .useConstructor(persistenceManager, 3, 3, 3, pathComputer, resourcesManager, dashboardLogger)
                         .defaultAnswer(Mockito.CALLS_REAL_METHODS));
 
-        action.updateAvailableBandwidth(new SwitchId(1000), 10, new SwitchId(1000), 10,
-                0L, false);
+        PathSegment segment = PathSegment.builder()
+                .pathId(new PathId(""))
+                .srcSwitch(Switch.builder().switchId(new SwitchId(1)).build())
+                .srcPort(1)
+                .destSwitch(Switch.builder().switchId(new SwitchId(2)).build())
+                .destPort(2)
+                .build();
+
+        action.createPathSegments(singletonList(segment), Suppliers.ofInstance(emptyMap()));
     }
 
     @Test()
-    public void updateAvailableBandwidthIgnorsOverProvisionTest() throws ResourceAllocationException {
-        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
-        when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
-        when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
-        when(flowPathRepository.getUsedBandwidthBetweenEndpoints(any(), eq(10), any(), eq(10)))
-                .thenReturn(100L);
-        when(islRepository.updateAvailableBandwidth(any(), eq(10), any(), eq(10), eq(100L)))
-                .thenReturn(-1L);
+    public void updateAvailableBandwidthNoOverProvisionTest() throws ResourceAllocationException {
+        islRepositorySpy = spy(persistenceManager.getRepositoryFactory().createIslRepository());
+        when(repositoryFactory.createIslRepository()).thenReturn(islRepositorySpy);
 
-        BaseResourceAllocationAction action = Mockito.mock(BaseResourceAllocationAction.class,
+        doReturn(1L).when(islRepositorySpy).updateAvailableBandwidth(any(), anyInt(), any(), anyInt());
+
+        BaseResourceAllocationAction action = mock(BaseResourceAllocationAction.class,
                 Mockito.withSettings()
-                        .useConstructor(persistenceManager, 3, 3, pathComputer, resourcesManager, dashboardLogger)
+                        .useConstructor(persistenceManager, 3, 3, 3, pathComputer, resourcesManager, dashboardLogger)
                         .defaultAnswer(Mockito.CALLS_REAL_METHODS));
 
-        action.updateAvailableBandwidth(new SwitchId(1000), 10, new SwitchId(1000), 10,
-                0L, true);
+        PathSegment segment = PathSegment.builder()
+                .pathId(new PathId(""))
+                .srcSwitch(Switch.builder().switchId(new SwitchId(1)).build())
+                .srcPort(1)
+                .destSwitch(Switch.builder().switchId(new SwitchId(2)).build())
+                .destPort(2)
+                .build();
+
+        action.createPathSegments(singletonList(segment), Suppliers.ofInstance(emptyMap()));
     }
 }

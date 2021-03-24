@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.floodlightrouter.service.monitor;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
+import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
@@ -44,7 +45,7 @@ public class SwitchReadWriteConnectMonitor extends SwitchConnectMonitor {
         super.handlePeriodicDump(switchData, region);
         if (Objects.equals(activeRegion, region)) {
             // proxy network dump for active region only
-            carrier.switchStatusUpdateNotification(switchId, switchData);
+            carrier.networkStatusUpdateNotification(switchId, switchData);
         }
     }
 
@@ -56,7 +57,7 @@ public class SwitchReadWriteConnectMonitor extends SwitchConnectMonitor {
         log.info("Set {} active region for {} to \"{}\"", formatConnectMode(), switchId, activeRegion);
 
         carrier.regionUpdateNotification(new RegionMappingSet(switchId, activeRegion, isReadWriteMode()));
-        carrier.switchStatusUpdateNotification(switchId, notification);
+        carrier.networkStatusUpdateNotification(switchId, notification);
     }
 
     @Override
@@ -67,7 +68,7 @@ public class SwitchReadWriteConnectMonitor extends SwitchConnectMonitor {
         log.info("There is no any {} available regions for {} - switch is unavailable", formatConnectMode(), switchId);
 
         carrier.regionUpdateNotification(new RegionMappingRemove(switchId, null, isReadWriteMode()));
-        carrier.switchStatusUpdateNotification(switchId, notification);
+        carrier.networkStatusUpdateNotification(switchId, notification);
     }
 
     @Override
@@ -80,6 +81,15 @@ public class SwitchReadWriteConnectMonitor extends SwitchConnectMonitor {
         super.handleRegionLose(region);
         if (Objects.equals(activeRegion, region) && !availableInRegions.isEmpty()) {
             swapActiveRegion();
+        }
+    }
+
+    @Override
+    protected void proxyPortStatusUpdateNotification(PortInfoData notification, String region) {
+        super.proxyPortStatusUpdateNotification(notification, region);
+        if (Objects.equals(activeRegion, region)) {
+            // proxy port status update for active region only
+            carrier.networkStatusUpdateNotification(notification.getSwitchId(), notification);
         }
     }
 

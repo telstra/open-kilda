@@ -21,6 +21,8 @@ import static org.openkilda.wfm.share.bolt.MonotonicClock.FIELD_ID_TICK_IDENTIFI
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.bolt.MonotonicClock;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -36,6 +38,10 @@ public class TickDeduplicator extends AbstractBolt {
 
     public static final String STREAM_PING_ID = "ping.tick";
 
+    public static final Fields STREAM_ZOOKEEPER_FIELDS = new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+            ZooKeeperBolt.FIELD_ID_CONTEXT);
+    public static final String STREAM_ZOOKEEPER = ZkStreams.ZK.toString();
+
     private final HashMap<Integer, Long> lastTick = new HashMap<>();
     private Integer activeSourceTask = null;
     private final long tickPeriod;
@@ -43,24 +49,27 @@ public class TickDeduplicator extends AbstractBolt {
     private final MonotonicTick.Match<TickId> periodicTickMatcher = new MonotonicClock.Match<>(
             MonotonicTick.BOLT_ID, TickId.PERIODIC_PING);
 
-    public TickDeduplicator(long tickPeriod, TimeUnit unit) {
+    public TickDeduplicator(long tickPeriod, TimeUnit unit, String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
         this.tickPeriod = unit.toMillis(tickPeriod);
     }
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        int taskId = input.getSourceTask();
+        if (active) {
+            int taskId = input.getSourceTask();
 
-        if (periodicTickMatcher.isTick(input)) {
-            updateLastTick(taskId, pullTick(input));
-        }
+            if (periodicTickMatcher.isTick(input)) {
+                updateLastTick(taskId, pullTick(input));
+            }
 
-        if (shouldProxy(taskId)) {
-            boolean periodicPing =
-                    TickId.PERIODIC_PING.equals(pullValue(input, FIELD_ID_TICK_IDENTIFIER, TickId.class));
-            String stream = periodicPing ? STREAM_PING_ID : DEFAULT_STREAM_ID;
-            log.debug("Proxy tuple in stream {} from {}", stream, taskId);
-            getOutput().emit(stream, input, input.getValues());
+            if (shouldProxy(taskId)) {
+                boolean periodicPing =
+                        TickId.PERIODIC_PING.equals(pullValue(input, FIELD_ID_TICK_IDENTIFIER, TickId.class));
+                String stream = periodicPing ? STREAM_PING_ID : DEFAULT_STREAM_ID;
+                log.debug("Proxy tuple in stream {} from {}", stream, taskId);
+                getOutput().emit(stream, input, input.getValues());
+            }
         }
     }
 
@@ -93,5 +102,6 @@ public class TickDeduplicator extends AbstractBolt {
     public void declareOutputFields(OutputFieldsDeclarer outputManager) {
         outputManager.declare(STREAM_FIELDS);
         outputManager.declareStream(STREAM_PING_ID, STREAM_FIELDS);
+        outputManager.declareStream(STREAM_ZOOKEEPER, STREAM_ZOOKEEPER_FIELDS);
     }
 }

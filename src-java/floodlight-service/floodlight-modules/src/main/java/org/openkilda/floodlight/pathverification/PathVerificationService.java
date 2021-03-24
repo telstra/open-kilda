@@ -641,18 +641,18 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     private void sendDiscovery(IslInfoData discovery) {
         String key = discovery.getSource().getSwitchId().toString();
         Message message = addInfoEnvelope(discovery);
-        producerService.sendMessageAndTrack(topoDiscoTopic, key, message);
+        producerService.sendMessageAndTrackWithZk(topoDiscoTopic, key, message);
     }
 
     private void sendRoundTripDiscovery(IslRoundTripLatency latencyData) {
         String key = latencyData.getSrcSwitchId().toString();
         Message message = addInfoEnvelope(latencyData);
-        producerService.sendMessageAndTrack(topoDiscoTopic, key, message);
+        producerService.sendMessageAndTrackWithZk(topoDiscoTopic, key, message);
     }
 
     private void sendLatency(IslBaseLatency latencyData, SwitchId switchId) {
         Message message = addInfoEnvelope(latencyData);
-        producerService.sendMessageAndTrack(islLatencyTopic, switchId.toString(), message);
+        producerService.sendMessageAndTrackWithZk(islLatencyTopic, switchId.toString(), message);
     }
 
     private InfoMessage addInfoEnvelope(InfoData payload) {

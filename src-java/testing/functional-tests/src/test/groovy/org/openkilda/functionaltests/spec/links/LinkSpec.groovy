@@ -5,7 +5,8 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.messaging.info.event.IslChangeType.*
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -186,9 +187,12 @@ class LinkSpec extends HealthCheckSpecification {
         topology.getBusyPortsForSwitch(switchPair.src).each { port ->
             antiflap.portUp(switchPair.src.dpId, port)
         }
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northbound.getAllLinks().every { it.state == DISCOVERED }
+        }
 
         then: "All flows go to 'Up' status"
-        Wrappers.wait(rerouteDelay + discoveryInterval + PATH_INSTALLATION_TIME) {
+        Wrappers.wait(rerouteDelay + PATH_INSTALLATION_TIME) {
             [flow1, flow2, flow3, flow4].each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
         }
 
@@ -389,7 +393,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "Flows are rerouted"
         response.containsAll([flow1, flow2]*.flowId)
-        Wrappers.wait(PATH_INSTALLATION_TIME) {
+        Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
             [flow1, flow2].each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
             assert PathHelper.convert(northbound.getFlowPath(flow1.flowId)) != flow1Path
             assert PathHelper.convert(northbound.getFlowPath(flow2.flowId)) != flow2Path
@@ -737,7 +741,7 @@ class LinkSpec extends HealthCheckSpecification {
         linkIsDeleted = false
 
         then: "The link is rediscovered in both directions"
-        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
+        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET*2) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
             assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED

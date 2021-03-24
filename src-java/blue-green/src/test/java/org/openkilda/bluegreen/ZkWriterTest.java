@@ -35,7 +35,7 @@ public class ZkWriterTest {
         doCallRealMethod().when(writer).validateZNodes();
         doCallRealMethod().when(writer).validateNodes();
         writer.validateZNodes();
-        verify(writer, Mockito.times(3)).ensureZNode(any());
+        verify(writer, Mockito.times(4)).ensureZNode(any());
     }
 
     @Test
@@ -43,6 +43,6 @@ public class ZkWriterTest {
         ZkWriter writer = Mockito.mock(ZkWriter.class);
         doCallRealMethod().when(writer).process(any());
         writer.process(new WatchedEvent(EventType.NodeDataChanged, KeeperState.SyncConnected, "/test"));
-        verify(writer, Mockito.times(1)).refreshConnection(KeeperState.SyncConnected);
+        verify(writer, Mockito.times(1)).refreshConnectionIfNeeded(KeeperState.SyncConnected);
     }
 }

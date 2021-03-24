@@ -2,11 +2,28 @@
 <table id="useractivityTable" datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover dataTable no-footer">
   <thead>
     <tr class="tableHeading">
-      <th><span title="ActivityTime">Date Time</span></th>
-      <th><span title="clientIpAddress">Ip Address</span></th>
-      <th><span title="userId">Username</span></th>
-      <th><span title="activityType">Type</span></th>
-      <th><span title="objectId">Object</span></th>
+      <th>
+        <span title="ActivityTime">Date Time</span>
+           <i class="fa fa-search" (click)="toggleSearch($event,'expandedActivityTime')"></i>
+           <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedActivityTime" id="expandedActivityTime"/>
+       
+      </th>
+      <th><span title="clientIpAddress">Ip Address</span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedClientIpAddress')"></i>
+        <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedClientIpAddress" id="expandedClientIpAddress"/>
+      </th>
+      <th><span title="userId">Username</span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedUserId')"></i>
+        <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedUserId" id="expandedUserId"/>
+    </th>
+      <th><span title="activityType">Type</span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedActivityType')"></i>
+        <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedActivityType" id="expandedActivityType"/>
+    </th>
+      <th><span title="objectId">Object</span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedObjectId')"></i>
+        <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedObjectId" id="expandedObjectId"/>
+    </th>
     </tr>
   </thead>
   <tbody>

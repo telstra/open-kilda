@@ -76,10 +76,9 @@ class PortHistorySpec extends HealthCheckSpecification {
         }
 
         then: "Port history is updated on the src switch"
-        Long timestampAfterUp
         Wrappers.wait(WAIT_OFFSET) {
-            timestampAfterUp = System.currentTimeMillis()
-            with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterUp)) {
+            with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, System.currentTimeMillis())) {
+                it.size() == 4
                 checkPortHistory(it.find { it.event == PORT_UP.toString() },
                         isl.srcSwitch.dpId, isl.srcPort, PORT_UP)
                 def deactivateEvent = it.find { it.event == ANTI_FLAP_DEACTIVATED.toString() }
@@ -92,17 +91,19 @@ class PortHistorySpec extends HealthCheckSpecification {
         }
 
         and: "Port history on the dst switch is not empty when link is direct"
-        with(northboundV2.getPortHistory(isl.dstSwitch.dpId, isl.dstPort, timestampBefore, timestampAfterUp)) {
-            it.size() == historySizeOnDstSw
-            if (historySizeOnDstSw as boolean) {
-                checkPortHistory(it.find { it.event == PORT_UP.toString() },
-                        isl.dstSwitch.dpId, isl.dstPort, PORT_UP)
-                def deactivateEvent = it.find { it.event == ANTI_FLAP_DEACTIVATED.toString() }
-                checkPortHistory(deactivateEvent, isl.dstSwitch.dpId, isl.dstPort,
-                        ANTI_FLAP_DEACTIVATED)
-                // no flapping occurs during cooldown, so antiflap stat doesn't exist in the ANTI_FLAP_DEACTIVATED event
-                !deactivateEvent.downCount
-                !deactivateEvent.upCount
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            with(northboundV2.getPortHistory(isl.dstSwitch.dpId, isl.dstPort, timestampBefore, System.currentTimeMillis())) {
+                it.size() == historySizeOnDstSw
+                if (historySizeOnDstSw as boolean) {
+                    checkPortHistory(it.find { it.event == PORT_UP.toString() },
+                            isl.dstSwitch.dpId, isl.dstPort, PORT_UP)
+                    def deactivateEvent = it.find { it.event == ANTI_FLAP_DEACTIVATED.toString() }
+                    checkPortHistory(deactivateEvent, isl.dstSwitch.dpId, isl.dstPort,
+                            ANTI_FLAP_DEACTIVATED)
+                    // no flapping occurs during cooldown, so antiflap stat doesn't exist in the ANTI_FLAP_DEACTIVATED event
+                    !deactivateEvent.downCount
+                    !deactivateEvent.upCount
+                }
             }
         }
 
@@ -115,8 +116,8 @@ class PortHistorySpec extends HealthCheckSpecification {
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
                 assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
             }
-            database.resetCosts()
         }
+        database.resetCosts()
 
         where:
         [islDescription, historySizeOnDstSw, isl] << [
@@ -159,8 +160,8 @@ class PortHistorySpec extends HealthCheckSpecification {
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
                 assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
             }
-            database.resetCosts()
         }
+        database.resetCosts()
     }
 
     @Tidy
@@ -203,8 +204,8 @@ class PortHistorySpec extends HealthCheckSpecification {
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
                 assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
             }
-            database.resetCosts()
         }
+        database.resetCosts()
         switchToDisconnect && switchHelper.reviveSwitch(switchToDisconnect, blockData)
     }
 
