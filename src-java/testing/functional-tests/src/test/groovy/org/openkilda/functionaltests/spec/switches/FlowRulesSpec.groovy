@@ -551,20 +551,20 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def mainFlowPath = flowPathInfo.forwardPath
         def protectedFlowPath = flowPathInfo.protectedPath.forwardPath
         def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
-        def uniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
+        def uniqueNodes = (protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
             !commonNodeIds.contains(it.switchId)
-        }
-        def rulesOnCommonNodesBefore = commonNodeIds.collectEntries {
-            [it, northbound.getSwitchRules(it).flowEntries*.cookie.sort()]
+        })*.switchId
+        def rulesOnSwitchesBefore = (commonNodeIds + uniqueNodes).collectEntries {
+            [it, northbound.getSwitchRules(it).flowEntries.sort { it.cookie }]
         }
 
         and: "Delete flow rules(for main and protected paths) on involved switches for creating missing rules"
         commonNodeIds.each { northbound.deleteSwitchRules(it, DeleteRulesAction.IGNORE_DEFAULTS) }
-        uniqueNodes.each { northbound.deleteSwitchRules(it.switchId, DeleteRulesAction.IGNORE_DEFAULTS) }
+        uniqueNodes.each { northbound.deleteSwitchRules(it, DeleteRulesAction.IGNORE_DEFAULTS) }
         commonNodeIds.each { switchId ->
             assert northbound.validateSwitchRules(switchId).missingRules.size() > 0
         }
-        uniqueNodes.each { assert northbound.validateSwitchRules(it.switchId).missingRules.size() == 2 }
+        uniqueNodes.each { assert northbound.validateSwitchRules(it).missingRules.size() == 2 }
 
         when: "Synchronize rules on switches"
         commonNodeIds.each {
@@ -575,7 +575,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
             assert response.excessRules.empty
         }
         uniqueNodes.each {
-            def response = northbound.synchronizeSwitchRules(it.switchId)
+            def response = northbound.synchronizeSwitchRules(it)
             assert response.missingRules.size() == 2
             assert response.installedRules.sort() == response.missingRules.sort()
             assert response.properRules.findAll { !new Cookie(it).serviceFlag }.empty, it
@@ -585,17 +585,22 @@ class FlowRulesSpec extends HealthCheckSpecification {
         then: "No missing rules were found after rules synchronization"
         commonNodeIds.each { switchId ->
             verifyAll(northbound.validateSwitchRules(switchId)) {
-                properRules.sort() == rulesOnCommonNodesBefore[switchId]
+                properRules.sort() == rulesOnSwitchesBefore[switchId]*.cookie
                 missingRules.empty
                 excessRules.empty
             }
         }
         uniqueNodes.each {
-            verifyAll(northbound.validateSwitchRules(it.switchId)) {
+            verifyAll(northbound.validateSwitchRules(it)) {
                 properRules.findAll { !new Cookie(it).serviceFlag }.size() == 2
                 missingRules.empty
                 excessRules.empty
             }
+        }
+
+        and: "Synced rules are exactly the same as before delete (ignoring irrelevant fields)"
+        rulesOnSwitchesBefore.each {
+            compareRules(northbound.getSwitchRules(it.key).flowEntries, it.value)
         }
 
         cleanup: "Delete the flow"
