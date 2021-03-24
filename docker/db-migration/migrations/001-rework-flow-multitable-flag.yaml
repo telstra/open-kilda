@@ -29,6 +29,14 @@ databaseChangeLog:
         - sql: >
             UPDATE flow_path
             SET dst_with_multi_table = in("owns").dst_with_multi_table[0]
+      rollback:
+        - sql: >
+            UPDATE flow
+            SET src_with_multi_table = out("owns").src_with_multi_table[0]
+        - sql: >
+            UPDATE flow
+            SET dst_with_multi_table = out("owns").dst_with_multi_table[0]
+
   - changeSet:
       id: drop_old_flow_properties
       author: rozdy
@@ -42,9 +50,3 @@ databaseChangeLog:
         - sql: "CREATE PROPERTY flow.dst_with_multi_table IF NOT EXISTS BOOLEAN"
         - sql: "CREATE INDEX flow.src_with_multi_table NOTUNIQUE_HASH_INDEX"
         - sql: "CREATE INDEX flow.dst_with_multi_table NOTUNIQUE_HASH_INDEX"
-        - sql: >
-            UPDATE flow
-            SET src_with_multi_table = out("owns").src_with_multi_table[0]
-        - sql: >
-            UPDATE flow
-            SET dst_with_multi_table = out("owns").dst_with_multi_table[0]
