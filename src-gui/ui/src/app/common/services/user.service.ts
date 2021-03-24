@@ -99,4 +99,9 @@ const httpOptions = {
         return this.http.patch<any[]>(`${this.configUrl}/user/settings`,payload);
     }
 
+    unblockUser(Id){
+        const url = `${this.configUrl}/user/unlock/account/${Id}`; 
+        return this.http.put(url,{});
+    }
+
   }
