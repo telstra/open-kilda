@@ -99,11 +99,11 @@ mode with existing flows and hold flows of different table-mode types"() {
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         and: "Involved switches pass switch validation"
-        involvedSwitches.each {
-            with(northbound.validateSwitch(it.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        involvedSwitches.each {sw ->
+            with(northbound.validateSwitch(sw.dpId)) { validation ->
+                validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+                validation.verifyHexRuleSectionsAreEmpty(sw.dpId, ["missingHex", "excessHex", "misconfiguredHex"])
+                validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
             }
         }
 
@@ -135,11 +135,11 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         then: "Flow remains valid and pingable, switch validation passes"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
-        involvedSwitches.each {
-            with(northbound.validateSwitch(it.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        involvedSwitches.each { sw ->
+            with(northbound.validateSwitch(sw.dpId)) { validation ->
+                validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+                validation.verifyHexRuleSectionsAreEmpty(sw.dpId, ["missingHex", "excessHex", "misconfiguredHex"])
+                validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
             }
         }
         verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
@@ -162,11 +162,11 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         and: "Involved switches pass switch validation"
-        involvedSwitches.each {
-            with(northbound.validateSwitch(it.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        involvedSwitches.each { sw ->
+            with(northbound.validateSwitch(sw.dpId)) { validation ->
+                validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+                validation.verifyHexRuleSectionsAreEmpty(sw.dpId, ["missingHex", "excessHex", "misconfiguredHex"])
+                validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
             }
         }
 
@@ -1174,10 +1174,10 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         and: "All involved switches pass switch validation"
-        involvedSwitches.each {
-            with(northbound.validateSwitch(it.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        involvedSwitches.each { sw ->
+            with(northbound.validateSwitch(sw.dpId)) { validation ->
+                validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess"])
+                validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
             }
         }
 
@@ -1257,10 +1257,10 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         and: "Involved switches pass switch validation"
-        involvedSwitches.each {
-            with(northbound.validateSwitch(it.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty()
-                validation.verifyMeterSectionsAreEmpty()
+        involvedSwitches.each { sw ->
+            with(northbound.validateSwitch(sw.dpId)) { validation ->
+                validation.verifyRuleSectionsAreEmpty(sw.dpId)
+                validation.verifyMeterSectionsAreEmpty(sw.dpId)
             }
         }
 
@@ -1403,10 +1403,10 @@ mode with existing flows and hold flows of different table-mode types"() {
         def path = northbound.getFlowPath(flow.flowId)
         def allInvolvedSwitches = (pathHelper.getInvolvedSwitches(pathHelper.convert(path)) +
                 pathHelper.getInvolvedSwitches(pathHelper.convert(path.protectedPath))).unique()
-        allInvolvedSwitches.each {
-            def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        allInvolvedSwitches.each { sw ->
+            def validation = northbound.validateSwitch(sw.dpId)
+            validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
         }
 
         when: "Swap flow paths"
@@ -1422,10 +1422,10 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         and: "No involved switches have rule discrepencies"
-        allInvolvedSwitches.each {
-            def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        allInvolvedSwitches.each { sw ->
+            def validation = northbound.validateSwitch(sw.dpId)
+            validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
         }
 
         when: "Remove the flow"
@@ -1434,8 +1434,8 @@ mode with existing flows and hold flows of different table-mode types"() {
         then: "No involved switches have rule discrepencies"
         allInvolvedSwitches.each {
             def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyRuleSectionsAreEmpty()
-            validation.verifyMeterSectionsAreEmpty()
+            validation.verifyRuleSectionsAreEmpty(it.dpId)
+            validation.verifyMeterSectionsAreEmpty(it.dpId)
         }
 
         cleanup:

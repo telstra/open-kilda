@@ -1362,8 +1362,8 @@ switches"() {
         then: "Related switch have no rule anomalies"
         switches.each {
             def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyRuleSectionsAreEmpty()
-            validation.verifyMeterSectionsAreEmpty()
+            validation.verifyRuleSectionsAreEmpty(it.dpId)
+            validation.verifyMeterSectionsAreEmpty(it.dpId)
         }
         def isSwitchValid = true
 
@@ -1525,8 +1525,8 @@ switches"() {
                 if (it.ofVersion == "OF_13") {
                     def validationResult = northbound.validateSwitch(it.dpId)
                     //below verification should also include 'excess' after #4003 is fixed
-                    switchHelper.verifyRuleSectionsAreEmpty(validationResult, ["missing"])
-                    switchHelper.verifyMeterSectionsAreEmpty(validationResult, ["missing", "misconfigured", "excess"])
+                    validationResult.verifyRuleSectionsAreEmpty(it.dpId, ["missing"])
+                    validationResult.verifyMeterSectionsAreEmpty(it.dpId, ["missing", "misconfigured", "excess"])
                 } else {
                     def validationResult = northbound.validateSwitchRules(it.dpId)
                     assert validationResult.missingRules.size() == 0

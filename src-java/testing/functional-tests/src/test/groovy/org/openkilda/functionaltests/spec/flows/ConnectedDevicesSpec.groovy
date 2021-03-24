@@ -1469,10 +1469,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
         [flow.srcSwitch, flow.destSwitch].each {
             def validation = northbound.validateSwitch(it.switchId)
-            switchHelper.verifyRuleSectionsAreEmpty(validation, ["missing", "excess", "misconfigured"])
-            switchHelper.verifyHexRuleSectionsAreEmpty(validation, ["missingHex", "excessHex", "misconfiguredHex"])
+            validation.verifyRuleSectionsAreEmpty(it.switchId, ["missing", "excess", "misconfigured"])
+            validation.verifyHexRuleSectionsAreEmpty(it.switchId, ["missingHex", "excessHex", "misconfiguredHex"])
             if (it.ofVersion != "OF_12") {
-                switchHelper.verifyMeterSectionsAreEmpty(validation, ["missing", "misconfigured", "excess"])
+                validation.verifyMeterSectionsAreEmpty(it.switchId, ["missing", "misconfigured", "excess"])
             }
         }
     }
