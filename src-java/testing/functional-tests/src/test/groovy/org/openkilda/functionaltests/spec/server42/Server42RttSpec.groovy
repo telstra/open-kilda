@@ -12,6 +12,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.model.system.FeatureTogglesDto
+import org.openkilda.model.SwitchFeature
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -306,6 +307,13 @@ class Server42RttSpec extends HealthCheckSpecification {
                 server42Port = props.server42Port
                 server42Vlan = props.server42Vlan
             })
+        }
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            def amountOfS42Rules = sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) ? 2 : 1
+            def s42Rules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
+                it.cookie in  [Cookie.SERVER_42_OUTPUT_VLAN_COOKIE, Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE]
+            }
+            assert requiredState ? (s42Rules.size() == amountOfS42Rules) : s42Rules.empty
         }
         return originalProps.server42FlowRtt
     }
