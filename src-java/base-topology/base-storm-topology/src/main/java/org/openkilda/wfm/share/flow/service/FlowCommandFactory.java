@@ -181,16 +181,17 @@ public class FlowCommandFactory {
         SwitchId switchId = isForward ? flow.getSrcSwitchId() : flow.getDestSwitchId();
         SwitchId egressSwitchId = isForward ? flow.getDestSwitchId() : flow.getSrcSwitchId();
         int customerPort = isForward ? flow.getSrcPort() : flow.getDestPort();
-        int inVlan = isForward ? flow.getSrcVlan() : flow.getDestVlan();
+        int inputOuterVlan = isForward ? flow.getSrcVlan() : flow.getDestVlan();
+        int inputInnerVlan = isForward ? flow.getSrcInnerVlan() : flow.getDestInnerVlan();
         long cookie = new FlowSegmentCookie(flowPath.getCookie().getValue()).toBuilder()
                 .type(CookieType.SERVER_42_INGRESS)
                 .build()
                 .getValue();
 
         return new InstallServer42IngressFlow(transactionIdGenerator.generate(), flow.getFlowId(),
-                cookie, switchId, server42Port, outputPort, customerPort, inVlan, resources.getTransitEncapsulationId(),
-                resources.getEncapsulationType(), getOutputVlanType(flow, flowPath), egressSwitchId, server42MacAddress,
-                multiTable);
+                cookie, switchId, server42Port, outputPort, customerPort, inputOuterVlan, inputInnerVlan,
+                resources.getTransitEncapsulationId(), resources.getEncapsulationType(),
+                egressSwitchId, server42MacAddress, multiTable);
     }
 
     private boolean needToInstallOrRemoveLldpFlow(FlowPath path) {

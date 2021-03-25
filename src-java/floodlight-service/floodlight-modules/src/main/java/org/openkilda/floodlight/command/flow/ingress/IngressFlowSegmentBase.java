@@ -294,7 +294,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
         return ofMessages;
     }
 
-    protected List<OFFlowMod> makeIngressServer42IngressFlowModMessages() {
+    protected List<OFFlowMod> makeServer42IngressFlowModMessages() {
         List<OFFlowMod> ofMessages = new ArrayList<>();
         if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
             ofMessages.add(flowModFactory.makeOuterOnlyVlanServer42IngressFlowMessage(
