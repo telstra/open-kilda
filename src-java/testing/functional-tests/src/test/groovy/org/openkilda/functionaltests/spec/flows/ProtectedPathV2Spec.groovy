@@ -187,10 +187,16 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         def srcSwProps = northbound.getSwitchProperties(switchPair.src.dpId)
         def amountOfserver42Rules = srcSwProps.server42FlowRtt ? 1 : 0
         def amountOfFlowRulesSrcSw = srcSwProps.multiTable ? (3 + amountOfserver42Rules) : (2 + amountOfserver42Rules)
+        if (srcSwProps.multiTable && srcSwProps.server42FlowRtt && flow.source.vlanId) {
+            amountOfFlowRulesSrcSw += 1
+        }
         assert createdCookiesSrcSw.size() == amountOfFlowRulesSrcSw
         def dstSwProps = northbound.getSwitchProperties(switchPair.dst.dpId)
         def amountOfserver42RulesDstSw = dstSwProps.server42FlowRtt ? 1 : 0
         def amountOfFlowRulesDstSw = dstSwProps.multiTable ? (3 + amountOfserver42RulesDstSw) : (2 + amountOfserver42RulesDstSw)
+        if (dstSwProps.multiTable && dstSwProps.server42FlowRtt && flow.destination.vlanId) {
+            amountOfFlowRulesDstSw += 1
+        }
         assert createdCookiesDstSw.size() == amountOfFlowRulesDstSw
 
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
