@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -108,14 +107,12 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         def dstLldpData = LldpData.buildRandom()
         def srcArpData = ArpData.buildRandom()
         def dstArpData = ArpData.buildRandom()
-        withPool {
-            [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].eachParallel {
-                endpoint, lldpData, arpData ->
-                    new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath), [endpoint.vlanId]).withCloseable {
-                        it.sendLldp(lldpData)
-                        it.sendArp(arpData)
-                    }
-            }
+        [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
+            endpoint, lldpData, arpData ->
+                new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath), [endpoint.vlanId]).withCloseable {
+                    it.sendLldp(lldpData)
+                    it.sendArp(arpData)
+                }
         }
 
         then: "Getting connecting devices shows corresponding devices on each endpoint if enabled"
@@ -221,14 +218,12 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def srcArpData = ArpData.buildRandom()
         def dstArpData = ArpData.buildRandom()
         def tgService = traffExamProvider.get()
-        withPool {
-            [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].eachParallel {
-                endpoint, lldpData, arpData ->
-                    new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath), [endpoint.vlanId]).withCloseable {
-                        it.sendLldp(lldpData)
-                        it.sendArp(arpData)
-                    }
-            }
+        [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
+            endpoint, lldpData, arpData ->
+                new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath), [endpoint.vlanId]).withCloseable {
+                    it.sendLldp(lldpData)
+                    it.sendArp(arpData)
+                }
         }
 
         then: "Getting connecting devices shows corresponding devices on each endpoint according to updated status"
@@ -341,14 +336,12 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def srcArpData = ArpData.buildRandom()
         def dstArpData = ArpData.buildRandom()
         def tgService = traffExamProvider.get()
-        withPool {
-            [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].eachParallel {
-                endpoint, lldpData, arpData ->
-                    new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath), [endpoint.vlanId]).withCloseable {
-                        it.sendLldp(lldpData)
-                        it.sendArp(arpData)
-                    }
-            }
+        [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
+            endpoint, lldpData, arpData ->
+                new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath), [endpoint.vlanId]).withCloseable {
+                    it.sendLldp(lldpData)
+                    it.sendArp(arpData)
+                }
         }
 
         then: "Getting connecting devices shows corresponding devices on each endpoint"
@@ -922,15 +915,13 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def dstArpData = ArpData.buildRandom()
         def nonDefaultVlan = 777 //use this vlan if flow endpoint is 'default' and should catch any vlan
         def tgService = traffExamProvider.get()
-        withPool {
-            [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].eachParallel {
-                endpoint, lldpData, arpData ->
-                    new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath),
-                            [endpoint.vlanId ?: nonDefaultVlan]).withCloseable {
-                        it.sendLldp(lldpData)
-                        it.sendArp(arpData)
-                    }
-            }
+        [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
+            endpoint, lldpData, arpData ->
+                new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath),
+                        [endpoint.vlanId ?: nonDefaultVlan]).withCloseable {
+                    it.sendLldp(lldpData)
+                    it.sendArp(arpData)
+                }
         }
 
         then: "Devices are registered for the flow on src and dst"
@@ -1117,15 +1108,13 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def dstLldpData = LldpData.buildRandom()
         def srcArpData = ArpData.buildRandom()
         def dstArpData = ArpData.buildRandom()
-        withPool {
-            [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].eachParallel {
-                endpoint, lldpData, arpData ->
-                    new ConnectedDevice(tgService, topology.getTraffGen(endpoint.switchId),
-                            [endpoint.vlanId, endpoint.innerVlanId]).withCloseable {
-                        it.sendLldp(lldpData)
-                        it.sendArp(arpData)
-                    }
-            }
+        [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
+            endpoint, lldpData, arpData ->
+                new ConnectedDevice(tgService, topology.getTraffGen(endpoint.switchId),
+                        [endpoint.vlanId, endpoint.innerVlanId]).withCloseable {
+                    it.sendLldp(lldpData)
+                    it.sendArp(arpData)
+                }
         }
 
         then: "Getting connecting devices shows corresponding devices on src endpoint"
@@ -1210,14 +1199,12 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def dstLldpData = LldpData.buildRandom()
         def srcArpData = ArpData.buildRandom()
         def dstArpData = ArpData.buildRandom()
-        withPool {
-            [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].eachParallel {
-                endpoint, lldpData, arpData ->
-                    new ConnectedDevice(tgService, topology.getTraffGen(endpoint.switchId), [outerVlan]).withCloseable {
-                        it.sendLldp(lldpData)
-                        it.sendArp(arpData)
-                    }
-            }
+        [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
+            endpoint, lldpData, arpData ->
+                new ConnectedDevice(tgService, topology.getTraffGen(endpoint.switchId), [outerVlan]).withCloseable {
+                    it.sendLldp(lldpData)
+                    it.sendArp(arpData)
+                }
         }
 
         then: "Getting connecting devices doesn't show corresponding devices on src endpoint"
