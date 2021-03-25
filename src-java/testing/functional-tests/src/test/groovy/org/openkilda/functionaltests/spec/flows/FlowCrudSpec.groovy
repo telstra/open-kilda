@@ -612,6 +612,10 @@ class FlowCrudSpec extends HealthCheckSpecification {
             def swProps = northbound.getSwitchProperties(it.dpId)
             def amountOfMultiTableRules = swProps.multiTable ? 1 : 0
             def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId,dstSwitch.dpId]) ? 1 : 0
+            if (swProps.multiTable && swProps.server42FlowRtt) {
+                if ((flow.destination.getDatapath() == it.dpId && flow.destination.vlanId) || (flow.source.getDatapath() == it.dpId && flow.source.vlanId))
+                    amountOfServer42Rules += 1
+            }
             def amountOfFlowRules = 2 + amountOfMultiTableRules + amountOfServer42Rules
             assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
         }
