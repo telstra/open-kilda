@@ -191,6 +191,9 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
         FlowEndpoint newEgress = new FlowEndpoint(
                 newFlow.getDestSwitch(), newFlow.getDestPort(), newFlow.getDestVlan(), newFlow.getDestInnerVlan());
 
+        boolean srcSwitchServer42Multitable = srcSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle
+                && srcSwitchProperties.isMultiTable();
+
         PathContext forwardPathContext = PathContext.builder()
                 .removeCustomerPortRule(removeForwardCustomerPortSharedCatchRule(oldFlow, newFlow))
                 .removeCustomerPortLldpRule(removeForwardSharedLldpRule(oldFlow, newFlow))
@@ -201,13 +204,16 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
                         oldFlow, newFlow, srcSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle))
                 .removeServer42IngressRule(srcSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle)
                 .updateMeter(removeMeters)
-                .removeServer42OuterVlanMatchSharedRule(removeServer42OuterVlanMatchSharedRule(
-                        oldFlow.getFlowId(), oldIngress, newIngress))
+                .removeServer42OuterVlanMatchSharedRule(srcSwitchServer42Multitable
+                        && removeServer42OuterVlanMatchSharedRule(oldFlow.getFlowId(), oldIngress, newIngress))
                 .server42Port(srcSwitchProperties.getServer42Port())
                 .server42MacAddress(srcSwitchProperties.getServer42MacAddress())
                 .build();
 
         SwitchProperties dstSwitchProperties = getSwitchProperties(oldFlow.getDestSwitch());
+
+        boolean dstSwitchServer42Multitable = dstSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle
+                && dstSwitchProperties.isMultiTable();
 
         PathContext reversePathContext = PathContext.builder()
                 .removeCustomerPortRule(removeReverseCustomerPortSharedCatchRule(oldFlow, newFlow))
@@ -219,8 +225,8 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
                         oldFlow, newFlow, dstSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle))
                 .removeServer42IngressRule(dstSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle)
                 .updateMeter(removeMeters)
-                .removeServer42OuterVlanMatchSharedRule(removeServer42OuterVlanMatchSharedRule(
-                        oldFlow.getFlowId(), oldEgress, newEgress))
+                .removeServer42OuterVlanMatchSharedRule(dstSwitchServer42Multitable
+                        && removeServer42OuterVlanMatchSharedRule(oldFlow.getFlowId(), oldEgress, newEgress))
                 .server42Port(dstSwitchProperties.getServer42Port())
                 .server42MacAddress(dstSwitchProperties.getServer42MacAddress())
                 .build();

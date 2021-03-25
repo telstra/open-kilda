@@ -443,8 +443,7 @@ public abstract class IngressFlowModFactory {
     private RoutingMetadata buildServer42IngressMetadata() {
         RoutingMetadataBuilder builder = RoutingMetadata.builder()
                 .inputPort(command.getEndpoint().getPortNumber());
-
-        if (FlowEndpoint.isVlanIdSet(command.getEndpoint().getInnerVlanId())) {
+        if (FlowEndpoint.isVlanIdSet(command.getEndpoint().getOuterVlanId())) {
             builder.outerVlanId(command.getEndpoint().getOuterVlanId());
         }
         return builder.build(switchFeatures);

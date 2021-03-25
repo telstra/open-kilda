@@ -86,6 +86,7 @@ import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
+import org.openkilda.floodlight.utils.metadata.RoutingMetadata.RoutingMetadataBuilder;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.flow.RuleType;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
@@ -2145,9 +2146,15 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
 
         if (multiTable) {
-            RoutingMetadata metadata = RoutingMetadata.builder()
-                    .inputPort(customerPort)
-                    .build(featureDetectorService.detectSwitch(sw));
+            RoutingMetadataBuilder metadataBuilder = RoutingMetadata.builder()
+                    .inputPort(customerPort);
+
+            if (vlanId > 0) {
+                metadataBuilder.outerVlanId(vlanId);
+            }
+
+            RoutingMetadata metadata = metadataBuilder.build(featureDetectorService.detectSwitch(sw));
+
             builder.setMasked(MatchField.METADATA,
                     OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()));
         } else {
@@ -2309,6 +2316,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                         actions.add(buildServer42CopyFirstTimestamp(of));
                     }
                 }
+                //TODO:(bug) if outputVlanType is REPLACE we miss push vlan
                 pushVlanTransitEncapsulation(of, transitTunnelId, outputVlanType, actions);
                 break;
             case VXLAN:
