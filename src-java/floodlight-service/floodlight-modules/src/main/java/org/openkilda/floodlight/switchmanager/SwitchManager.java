@@ -527,46 +527,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public long installServer42IngressFlow(
-            DatapathId dpid, DatapathId dstDpid, Long cookie, org.openkilda.model.MacAddress server42MacAddress,
-            int server42Port, int outputPort, int customerPort, int inputVlanId, int transitTunnelId,
-            OutputVlanType outputVlanType, FlowEncapsulationType encapsulationType, boolean multiTable)
-            throws SwitchOperationException {
-        IOFSwitch sw = lookupSwitch(dpid);
-        Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
-        OFFactory ofFactory = sw.getOFFactory();
-        List<OFAction> actionList = new ArrayList<>();
-
-        actionList.addAll(pushTransitEncapsulationForServer42IngressFlow(ofFactory, transitTunnelId, outputVlanType,
-                encapsulationType, dpid, dstDpid, features, multiTable));
-
-        actionList.add(actionSetOutputPort(ofFactory, OFPort.of(outputPort)));
-
-        OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
-        // build match by server 42 port (input port), input vlan id, customer port (metadata match) and mac address
-        Match match = matchServer42IngressFlow(
-                sw, server42MacAddress, server42Port, customerPort, inputVlanId, multiTable);
-
-        int flowPriority = inputVlanId == 0 ? SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY : FLOW_PRIORITY;
-        int tableId = multiTable ? INGRESS_TABLE_ID : INPUT_TABLE_ID;
-
-        List<OFInstruction> instructions = createIngressFlowInstructions(ofFactory, null, actions, false);
-
-        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority,
-                tableId)
-                .setInstructions(instructions)
-                .setMatch(match);
-
-        if (features.contains(SwitchFeature.RESET_COUNTS_FLAG)) {
-            builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
-        }
-        return pushFlow(sw, "--InstallServer42IngressFlow--", builder.build());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public long installEgressFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
                                   int transitTunnelId, int outputVlanId, OutputVlanType outputVlanType,
                                   FlowEncapsulationType encapsulationType,

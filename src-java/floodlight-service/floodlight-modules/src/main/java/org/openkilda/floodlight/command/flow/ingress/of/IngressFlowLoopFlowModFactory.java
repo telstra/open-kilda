@@ -34,11 +34,6 @@ abstract class IngressFlowLoopFlowModFactory extends IngressInstallFlowModFactor
     }
 
     @Override
-    protected List<OFAction> makeServer42IngressFlowTransformActions(List<Integer> vlanStack) {
-        throw new UnsupportedOperationException("Server 42 rules aren't supported by flow loop factory.");
-    }
-
-    @Override
     protected List<OFAction> makeTransformActions(List<Integer> vlanStack) {
         throw new UnsupportedOperationException("Transform actions aren't supported by flow loop factory.");
     }

@@ -107,7 +107,10 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
         return instructions;
     }
 
-    protected abstract List<OFAction> makeServer42IngressFlowTransformActions(List<Integer> vlanStack);
+    protected List<OFAction> makeServer42IngressFlowTransformActions(List<Integer> vlanStack) {
+        // default implimentation to do not force FlowLoop and OneSwitchFlow factories to override this method
+        return new ArrayList<>();
+    }
 
     @Override
     protected List<OFInstruction> makeOuterVlanMatchInstructions() {

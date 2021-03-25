@@ -22,7 +22,6 @@ import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 import org.openkilda.messaging.Utils;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.MacAddress;
-import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -50,8 +49,8 @@ public class InstallServer42IngressFlow extends InstallTransitFlow {
     @JsonProperty("input_vlan_id")
     protected Integer inputVlanId;
 
-    @JsonProperty("output_vlan_type")
-    protected OutputVlanType outputVlanType;
+    @JsonProperty("input_inner_vlan_id")
+    protected int inputInnerVlanId;
 
     @JsonProperty("egress_switch_id")
     protected SwitchId egressSwitchId;
@@ -66,12 +65,13 @@ public class InstallServer42IngressFlow extends InstallTransitFlow {
      * @param id             id of the flow
      * @param cookie         flow cookie
      * @param switchId       switch ID for flow installation
-     * @param inputPort      input port of the flow
+     * @param inputPort      input port of the flow (server42 packet allways comes from server42 port)
      * @param outputPort     output port of the flow
+     * @param customerPort   port from which comes customer's packets. need for matching by metadata
      * @param inputVlanId    input vlan id value
+     * @param inputInnerVlanId    input inner vlan id value
      * @param transitEncapsulationId  transit encapsulation id value
      * @param transitEncapsulationType  transit encapsulation type value
-     * @param outputVlanType output vlan type action
      * @param egressSwitchId id of the ingress switch
      * @throws IllegalArgumentException if any of mandatory parameters is null
      */
@@ -85,10 +85,10 @@ public class InstallServer42IngressFlow extends InstallTransitFlow {
                                       @JsonProperty("output_port") final Integer outputPort,
                                       @JsonProperty("customer_port") final Integer customerPort,
                                       @JsonProperty("input_vlan_id") final Integer inputVlanId,
+                                      @JsonProperty("input_inner_vlan_id") Integer inputInnerVlanId,
                                       @JsonProperty("transit_encapsulation_id") final Integer transitEncapsulationId,
                                       @JsonProperty("transit_encapsulation_type") final FlowEncapsulationType
                                           transitEncapsulationType,
-                                      @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
                                       @JsonProperty("egress_switch_id") final SwitchId egressSwitchId,
                                       @JsonProperty("server42_mac_address") MacAddress server42MacAddress,
                                       @JsonProperty("multi_table") final boolean multiTable) {
@@ -96,26 +96,9 @@ public class InstallServer42IngressFlow extends InstallTransitFlow {
                 transitEncapsulationType, multiTable);
         setCustomerPort(customerPort);
         setInputVlanId(inputVlanId);
-        setOutputVlanType(outputVlanType);
+        setInputInnerVlanId(inputInnerVlanId);
         setEgressSwitchId(egressSwitchId);
         setServer42MacAddress(server42MacAddress);
-    }
-
-    /**
-     * Sets output action on the vlan tag.
-     *
-     * @param outputVlanType action on the vlan tag
-     */
-    public void setOutputVlanType(final OutputVlanType outputVlanType) {
-        if (outputVlanType == null) {
-            throw new IllegalArgumentException("output_vlan_type couldn't be null");
-        } else if (!Utils.validateInputVlanType(inputVlanId, outputVlanType)) {
-            throw new IllegalArgumentException(
-                    format("Invalid combination of output_vlan_type = %s and input_vlan_id = %s",
-                            outputVlanType, inputVlanId));
-        } else {
-            this.outputVlanType = outputVlanType;
-        }
     }
 
     /**

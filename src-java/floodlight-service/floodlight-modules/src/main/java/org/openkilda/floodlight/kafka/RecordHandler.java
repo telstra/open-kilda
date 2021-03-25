@@ -59,6 +59,7 @@ import org.openkilda.floodlight.command.flow.FlowSegmentWrapperCommand;
 import org.openkilda.floodlight.command.flow.egress.EgressFlowSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowLoopSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressServer42FlowInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowInstallCommand;
 import org.openkilda.floodlight.command.flow.transit.TransitFlowLoopSegmentInstallCommand;
 import org.openkilda.floodlight.converter.OfFlowStatsMapper;
@@ -340,26 +341,6 @@ class RecordHandler implements Runnable {
     private void doDiscoverPathCommand(CommandData data) {
         DiscoverPathCommandData command = (DiscoverPathCommandData) data;
         logger.warn("NOT IMPLEMENTED: sending discover Path to {}", command);
-    }
-
-    private void installServer42IngressFlow(final InstallServer42IngressFlow command) throws SwitchOperationException {
-        logger.debug("Installing server 42 ingress flow: {}", command);
-
-        DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
-
-        context.getSwitchManager().installServer42IngressFlow(
-                dpid,
-                DatapathId.of(command.getEgressSwitchId().toLong()),
-                command.getCookie(),
-                command.getServer42MacAddress(),
-                command.getInputPort(),
-                command.getOutputPort(),
-                command.getCustomerPort(),
-                command.getInputVlanId(),
-                command.getTransitEncapsulationId(),
-                command.getOutputVlanType(),
-                command.getTransitEncapsulationType(),
-                command.isMultiTable());
     }
 
     /**
@@ -1346,8 +1327,6 @@ class RecordHandler implements Runnable {
             processInstallServer42Rule((InstallServer42Flow) command);
         } else if (Cookie.isDefaultRule(command.getCookie())) {
             processInstallDefaultFlowByCookie(command.getSwitchId(), command.getCookie());
-        } else if (command instanceof InstallServer42IngressFlow) {
-            installServer42IngressFlow((InstallServer42IngressFlow) command);
         } else if (command instanceof InstallTransitFlow) {
             installTransitFlow((InstallTransitFlow) command);
         } else if (command instanceof InstallSharedFlow) {
@@ -1702,10 +1681,24 @@ class RecordHandler implements Runnable {
             command = makeTransitLoopWrappedCommand((InstallTransitLoopFlow) request, messageContext, responseFactory);
         } else if (request instanceof InstallEgressFlow) {
             command = makeFlowSegmentWrappedCommand((InstallEgressFlow) request, messageContext, responseFactory);
+        } else if (request instanceof InstallServer42IngressFlow) {
+            command = makeFlowSegmentWrappedCommand(
+                    (InstallServer42IngressFlow) request, messageContext, responseFactory);
         } else {
             command = null;
         }
         return Optional.ofNullable(command);
+    }
+
+    private FlowSegmentWrapperCommand makeFlowSegmentWrappedCommand(
+            InstallServer42IngressFlow request, MessageContext messageContext,
+            FlowSegmentResponseFactory responseFactory) {
+        IngressServer42FlowInstallCommand command = new IngressServer42FlowInstallCommand(
+                messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), request.getSwitchId(),
+                request.getCustomerPort(), request.getInputVlanId(), request.getInputInnerVlanId(),
+                request.getEgressSwitchId(), request.getOutputPort(), makeTransitEncapsulation(request),
+                request.getInputPort(), request.getServer42MacAddress());
+        return new FlowSegmentWrapperCommand(command, responseFactory);
     }
 
     private FlowSegmentWrapperCommand makeFlowSegmentWrappedCommand(
