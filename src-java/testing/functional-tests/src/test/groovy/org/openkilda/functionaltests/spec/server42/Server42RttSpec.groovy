@@ -84,14 +84,21 @@ class Server42RttSpec extends HealthCheckSpecification {
         def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
         flowHelperV2.addFlow(flow)
         and: "Create a reversed flow for backward metric"
-        def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed).tap { it.flowId = it.flowId.take(25) }
+        def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed, false, [flow]).tap {
+            flowId = it.flowId.take(25)
+        }
         flowHelperV2.addFlow(reversedFlow)
 
         then: "Server42 input/ingress rules are installed"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             [switchPair.src, switchPair.dst].each {
-                //one rule of each type for one flow
-                def amountOfRules = useMultitable ? 4 : 2 //no SERVER_42_INPUT cookie in singleTable
+                /** - one rule of each type for one flow;
+                 * - no SERVER_42_INPUT cookie in singleTable;
+                 * - SERVER_42_INPUT is installed for each different flow port (if there are 10 flows on port number 5,
+                 * then there will be installed one INPUT rule);
+                 * - SERVER_42_INGRESS is installed for each flow.
+                 */
+                def amountOfRules = useMultitable ? 4 : 2
                 assert northbound.getSwitchRules(it.dpId).flowEntries.findAll {
                     new Cookie(it.cookie).getType() in  [CookieType.SERVER_42_INPUT, CookieType.SERVER_42_INGRESS]
                 }.size() == amountOfRules
@@ -145,7 +152,9 @@ class Server42RttSpec extends HealthCheckSpecification {
         def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
         flowHelperV2.addFlow(flow)
         and: "Reversed flow for backward metric is created"
-        def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed).tap { it.flowId = it.flowId.take(25) }
+        def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed, false, [flow]).tap {
+            it.flowId = it.flowId.take(25)
+        }
         flowHelperV2.addFlow(reversedFlow)
         expect: "Involved switches pass switch validation"
         Wrappers.wait(RULES_INSTALLATION_TIME) { //wait for s42 rules
