@@ -89,7 +89,7 @@ public class DatapointParseBolt extends BaseRichBolt {
                     LOGGER.debug("Processing datapoint: {}", payload);
                     datapoints = Collections.singletonList((Datapoint) payload);
                 } else if (payload instanceof DatapointEntries) {
-                    LOGGER.warn("Processing datapoints: {}", payload);
+                    LOGGER.debug("Processing datapoints: {}", payload);
                     datapoints = ((DatapointEntries) payload).getDatapointEntries();
                 } else {
                     LOGGER.error("Unhandled input tuple from {} with data {}", getClass().getName(), payload);
