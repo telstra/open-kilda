@@ -124,12 +124,12 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
 
         ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString());
+                getZookeeperConfig());
         declareSpout(tb, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
 
 
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString(), getBoltInstancesCount(ROUTER_BOLT_NAME,
+                getZookeeperConfig(), getBoltInstancesCount(ROUTER_BOLT_NAME,
                 FlowMeterModifyHubBolt.ID, FlowValidationHubBolt.ID));
         declareBolt(tb, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(ROUTER_BOLT_NAME, ZkStreams.ZK.toString())

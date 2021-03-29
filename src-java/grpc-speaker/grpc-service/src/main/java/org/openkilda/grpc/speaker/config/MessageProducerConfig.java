@@ -18,6 +18,7 @@ package org.openkilda.grpc.speaker.config;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
 import static org.openkilda.grpc.speaker.config.KafkaGrpcSpeakerConfig.GRPC_COMPONENT_NAME;
 
 import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
@@ -62,6 +63,12 @@ public class MessageProducerConfig {
     private String zookeeperConnectString;
 
     /**
+     * Zookeeper reconnect delay.
+     */
+    @Value("${zookeeper.reconnect_delay:100}")
+    private long zookeeperReconnectDelayMs;
+
+    /**
      * Kafka producer config bean.
      * This {@link Map} is used by {@link MessageProducerConfig#producerFactory}.
      *
@@ -79,6 +86,7 @@ public class MessageProducerConfig {
         props.put(PRODUCER_COMPONENT_NAME_PROPERTY, GRPC_COMPONENT_NAME);
         props.put(PRODUCER_RUN_ID_PROPERTY, blueGreenMode);
         props.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, zookeeperConnectString);
+        props.put(PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY, Long.toString(zookeeperReconnectDelayMs));
 
         return props;
     }

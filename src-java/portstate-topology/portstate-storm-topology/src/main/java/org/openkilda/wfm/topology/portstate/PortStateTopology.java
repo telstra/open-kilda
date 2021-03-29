@@ -67,12 +67,12 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
          */
 
         ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(),
-                getZkTopoName(), getZookeeperConfig().getConnectString());
+                getZkTopoName(), getZookeeperConfig());
         declareSpout(builder, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
 
 
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(),
-                getZkTopoName(), getZookeeperConfig().getConnectString(), getBoltInstancesCount(
+                getZkTopoName(), getZookeeperConfig(), getBoltInstancesCount(
                         TOPO_DISCO_PARSE_BOLT_NAME, WFM_STATS_PARSE_BOLT_NAME, REQUEST_SPEAKER_BOLT_NAME));
         declareBolt(builder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(TOPO_DISCO_PARSE_BOLT_NAME, ZkStreams.ZK.toString())

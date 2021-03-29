@@ -39,6 +39,13 @@ public final class Utils {
      */
     public static final String CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY =
             "kafka.consumer.messaging.zookeeper.connecting.string.property";
+
+    /**
+     * Property name for Kafka consumer to specify zookeeper reconnection delay interval.
+     */
+    public static final String CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY =
+            "kafka.consumer.messaging.zookeeper.reconnection.delay.property";
+
     /**
      * Property name for Kafka producer to specify component name for producer interceptor.
      */
@@ -52,6 +59,11 @@ public final class Utils {
      */
     public static final String PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY =
             "kafka.producer.messaging.zookeeper.connecting.string.property";
+    /**
+     * Property name for Kafka producer to specify zookeeper reconnection delay interval.
+     */
+    public static final String PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY =
+            "kafka.producer.messaging.zookeeper.reconnection.delay.property";
 
     /**
      * Returns value from map by key, throws exception otherwise.

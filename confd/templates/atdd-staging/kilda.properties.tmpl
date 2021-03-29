@@ -30,6 +30,7 @@ elasticsearch.index={{ getv "/kilda_logging_elasticsearch_index" }}
 
 environment.naming.prefix={{ getv "/kilda_environment_naming_prefix" }}
 zookeeper.connect_string = {{ getv "/kilda_zookeeper_hosts"}}/{{ getv "/kilda_zookeeper_state_root" }}
+zookeeper.reconnect_delay = {{ getv "/kilda_zookeeper_reconnect_delay_ms" }}
 kafka.bootstrap.server={{ getv "/kilda_kafka_hosts" }}
 kafka.topic.topo.disco=kilda.topo.disco.storm
 

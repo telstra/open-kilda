@@ -56,7 +56,7 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
 
     private void createZkSpout(TopologyBuilder builder) {
         ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString());
+                getZookeeperConfig());
         declareSpout(builder, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
     }
 
@@ -73,7 +73,7 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
 
     private void createZkBolt(TopologyBuilder builder) {
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString(), getBoltInstancesCount(PACKET_BOLT_ID));
+                getZookeeperConfig(), getBoltInstancesCount(PACKET_BOLT_ID));
         declareBolt(builder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(PACKET_BOLT_ID, ZkStreams.ZK.toString());
     }

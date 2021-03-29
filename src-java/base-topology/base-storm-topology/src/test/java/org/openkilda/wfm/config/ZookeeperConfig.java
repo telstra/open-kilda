@@ -16,6 +16,7 @@
 package org.openkilda.wfm.config;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
+import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
 @Configuration
@@ -30,4 +31,9 @@ public interface ZookeeperConfig {
 
     @Key("connect_string")
     String getConnectString();
+
+    @Key("reconnect_delay")
+    @Default("100")
+    long getReconnectDelay();
+
 }

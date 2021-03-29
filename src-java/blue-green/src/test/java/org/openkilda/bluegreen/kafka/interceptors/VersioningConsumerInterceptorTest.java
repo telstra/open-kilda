@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.MESSAGE_VERSION_HEADER;
 
 import org.openkilda.bluegreen.ZkWatchDog;
@@ -130,6 +131,7 @@ public class VersioningConsumerInterceptorTest {
         config.put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, "test");
         config.put(CONSUMER_RUN_ID_PROPERTY, "run_id");
         config.put(CONSUMER_COMPONENT_NAME_PROPERTY, "name");
+        config.put(CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY, "100");
 
         VersioningConsumerInterceptor<String, String> interceptor = Mockito.mock(VersioningConsumerInterceptor.class);
         doCallRealMethod().when(interceptor).configure(any());

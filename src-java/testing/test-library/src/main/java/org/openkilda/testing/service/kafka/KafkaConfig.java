@@ -18,9 +18,11 @@ package org.openkilda.testing.service.kafka;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
 
 import org.openkilda.bluegreen.kafka.interceptors.VersioningConsumerInterceptor;
 import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
@@ -42,7 +44,8 @@ public class KafkaConfig {
 
     @Bean(name = "kafkaConsumerProperties")
     public Properties kafkaConsumerProperties(@Value("${kafka.bootstrap.server}") String bootstrapServer,
-                                              @Value("${zookeeper.connect_string}") String zookeeperHosts) {
+                                              @Value("${zookeeper.connect_string}") String zookeeperHosts,
+                                              @Value("${zookeeper.reconnect_delay}") long reconnectDelayMs) {
         Properties connectDefaults = new Properties();
         connectDefaults.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServer);
         connectDefaults.put(ConsumerConfig.GROUP_ID_CONFIG, "autotest");
@@ -53,12 +56,14 @@ public class KafkaConfig {
         connectDefaults.put(CONSUMER_COMPONENT_NAME_PROPERTY, COMPONENT_NAME);
         connectDefaults.put(CONSUMER_RUN_ID_PROPERTY, RUN_ID);
         connectDefaults.put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, zookeeperHosts);
+        connectDefaults.put(CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY, Long.toString(reconnectDelayMs));
         return connectDefaults;
     }
 
     @Bean(name = "kafkaProducerProperties")
     public Properties kafkaProducerProperties(@Value("${kafka.bootstrap.server}") String bootstrapServer,
-                                              @Value("${zookeeper.connect_string}") String zookeeperHosts) {
+                                              @Value("${zookeeper.connect_string}") String zookeeperHosts,
+                                              @Value("${zookeeper.reconnect_delay}") long reconnectDelayMs) {
         Properties connectDefaults = new Properties();
         connectDefaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServer);
         connectDefaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
@@ -67,6 +72,7 @@ public class KafkaConfig {
         connectDefaults.put(PRODUCER_COMPONENT_NAME_PROPERTY, COMPONENT_NAME);
         connectDefaults.put(PRODUCER_RUN_ID_PROPERTY, RUN_ID);
         connectDefaults.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, zookeeperHosts);
+        connectDefaults.put(PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY, Long.toString(reconnectDelayMs));
         return connectDefaults;
     }
 }

@@ -96,7 +96,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         TopologyBuilder builder = new TopologyBuilder();
 
         ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString());
+                getZookeeperConfig());
         declareSpout(builder, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
 
         final String kafkaSpoutId = StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString();
@@ -177,7 +177,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 .shuffleGrouping(SERVER42_STATS_FLOW_RTT_METRIC_GEN.name());
 
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString(), getBoltInstancesCount(STATS_REQUESTER_BOLT.name(),
+                getZookeeperConfig(), getBoltInstancesCount(STATS_REQUESTER_BOLT.name(),
                 STATS_OFS_BOLT.name(), SERVER42_STATS_FLOW_RTT_METRIC_GEN.name(), SpeakerRequestDecoderBolt.BOLT_ID));
         declareBolt(builder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(STATS_REQUESTER_BOLT.name(), StatsRequesterBolt.ZOOKEEPER_STREAM)
