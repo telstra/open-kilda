@@ -15,6 +15,7 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -41,13 +42,13 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -59,6 +60,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
     static final String TEST_FLOW_ID_3 = "test_flow_3";
     static final String TEST_FLOW_ID_4 = "test_flow_4";
     static final String TEST_FLOW_ID_5 = "test_flow_5";
+    static final String TEST_FLOW_ID_6 = "test_flow_6";
     static final String TEST_GROUP_ID = "test_group";
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
@@ -66,6 +68,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
     static final int PORT_1 = 1;
     static final int PORT_2 = 2;
     static final int PORT_3 = 3;
+    static final int PORT_4 = 4;
     public static final int VLAN_1 = 3;
     public static final int VLAN_2 = 4;
     public static final int VLAN_3 = 5;
@@ -231,7 +234,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
                 .map(Flow::getFlowId)
                 .collect(Collectors.toSet());
 
-        assertEquals(Sets.newHashSet(TEST_FLOW_ID_2, TEST_FLOW_ID_3, TEST_FLOW_ID_4), foundFlowIds);
+        assertEquals(newHashSet(TEST_FLOW_ID_2, TEST_FLOW_ID_3, TEST_FLOW_ID_4), foundFlowIds);
     }
 
     @Test
@@ -361,23 +364,10 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         createTestFlow(TEST_FLOW_ID_2, switchA, PORT_2, VLAN_2, switchB, PORT_2, 0, true);
         createTestFlow(TEST_FLOW_ID_3, switchA, PORT_1, VLAN_3, switchB, PORT_2, 0, false);
         createTestFlow(TEST_FLOW_ID_4, switchA, PORT_1, VLAN_1, switchA, PORT_3, VLAN_1, true);
+        createTestFlow(TEST_FLOW_ID_5, switchA, PORT_2, VLAN_1, switchB, PORT_1, VLAN_1, true);
 
         Collection<String> flowIds = flowRepository.findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(
                 switchA.getSwitchId(), PORT_1);
-        assertEquals(1, flowIds.size());
-        assertEquals(TEST_FLOW_ID, flowIds.iterator().next());
-    }
-
-    @Test
-    public void shouldFindFlowIdsForMultiSwitchFlowsBySwitchIdAndVlanWithMultiTableSupport() {
-        createTestFlow(TEST_FLOW_ID, switchA, PORT_1, VLAN_1, switchB, PORT_2, VLAN_2, true);
-        createTestFlow(TEST_FLOW_ID_2, switchA, PORT_2, VLAN_2, switchB, PORT_2, 0, true);
-        createTestFlow(TEST_FLOW_ID_3, switchA, PORT_3, VLAN_1, switchB, PORT_2, 0, false);
-        createTestFlow(TEST_FLOW_ID_4, switchA, PORT_1, VLAN_1, switchA, PORT_3, VLAN_1, true);
-        createTestFlow(TEST_FLOW_ID_5, switchB, PORT_1, VLAN_1, switchA, PORT_3, VLAN_2, true);
-
-        Collection<String> flowIds = flowRepository
-                .findFlowIdsForMultiSwitchFlowsBySwitchIdAndVlanWithMultiTableSupport(switchA.getSwitchId(), VLAN_1);
         assertEquals(1, flowIds.size());
         assertEquals(TEST_FLOW_ID, flowIds.iterator().next());
     }
@@ -389,6 +379,21 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         Collection<Flow> foundFlows = flowRepository.findByEndpointSwitch(TEST_SWITCH_A_ID);
         Set<String> foundFlowIds = foundFlows.stream().map(foundFlow -> flow.getFlowId()).collect(Collectors.toSet());
         assertThat(foundFlowIds, Matchers.hasSize(1));
+    }
+
+    @Test
+    public void shouldFindFlowBySwitchEndpointAndOuterVlan() {
+        createTestFlow(TEST_FLOW_ID, switchA, PORT_1, VLAN_1, switchB, PORT_1, VLAN_2);
+        createTestFlow(TEST_FLOW_ID_2, switchA, PORT_1, VLAN_2, switchB, PORT_1, VLAN_1);
+        createTestFlow(TEST_FLOW_ID_3, switchA, PORT_3, VLAN_1, switchB, PORT_3, VLAN_1);
+        createTestFlow(TEST_FLOW_ID_4, switchA, PORT_2, VLAN_3, switchB, PORT_2, VLAN_3);
+        createTestFlow(TEST_FLOW_ID_5, switchA, PORT_2, VLAN_1, switchA, PORT_4, VLAN_1);
+        createTestFlow(TEST_FLOW_ID_6, switchB, PORT_4, VLAN_2, switchA, PORT_2, VLAN_1);
+
+        Collection<String> flowIds = flowRepository.findByEndpointSwitchAndOuterVlan(TEST_SWITCH_A_ID, VLAN_1)
+                .stream().map(Flow::getFlowId).collect(Collectors.toList());
+        assertEquals(4, flowIds.size());
+        assertEquals(newHashSet(TEST_FLOW_ID, TEST_FLOW_ID_3, TEST_FLOW_ID_5, TEST_FLOW_ID_6), new HashSet<>(flowIds));
     }
 
     @Test
@@ -416,7 +421,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
                 .map(Flow::getFlowId)
                 .collect(Collectors.toSet());
 
-        assertEquals(Sets.newHashSet(TEST_FLOW_ID_2, TEST_FLOW_ID_3, TEST_FLOW_ID_4), foundFlowIds);
+        assertEquals(newHashSet(TEST_FLOW_ID_2, TEST_FLOW_ID_3, TEST_FLOW_ID_4), foundFlowIds);
     }
 
     @Test
@@ -492,7 +497,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         Flow secondFlow = createTestFlow(TEST_FLOW_ID_2, switchA, switchB);
         secondFlow.setBandwidth(secondFlowBandwidth);
 
-        long foundBandwidth = flowRepository.computeFlowsBandwidthSum(Sets.newHashSet(TEST_FLOW_ID, TEST_FLOW_ID_2));
+        long foundBandwidth = flowRepository.computeFlowsBandwidthSum(newHashSet(TEST_FLOW_ID, TEST_FLOW_ID_2));
 
         assertEquals(firstFlowBandwidth + secondFlowBandwidth, foundBandwidth);
     }
