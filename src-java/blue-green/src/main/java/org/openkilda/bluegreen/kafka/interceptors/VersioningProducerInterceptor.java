@@ -20,6 +20,7 @@ import static org.openkilda.bluegreen.kafka.Utils.MESSAGE_VERSION_HEADER;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.getValue;
 
 import lombok.extern.slf4j.Slf4j;
@@ -93,6 +94,8 @@ public class VersioningProducerInterceptor<K, V> extends VersioningInterceptorBa
         connectionString = getValue(configs, PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, String.class);
         runId = getValue(configs, PRODUCER_RUN_ID_PROPERTY, String.class);
         componentName = getValue(configs, PRODUCER_COMPONENT_NAME_PROPERTY, String.class);
+        reconnectDelayMs = Long.parseLong(getValue(configs, PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY,
+                String.class));
         log.info("Configuring VersioningProducerInterceptor for component {} with id {} and connection string {}",
                 componentName, runId, connectionString);
         initWatchDog();

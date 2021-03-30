@@ -1,7 +1,7 @@
 ---
 KILDA CONTROLLER
 ---
-[![Build Status](https://travis-ci.org/telstra/open-kilda.svg?branch=develop)](https://travis-ci.org/telstra/open-kilda)[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=org.openkilda%3Akilda-parent&metric=alert_status)](https://sonarcloud.io/dashboard?id=org.openkilda%3Akilda-parent)
+[![Build Status](https://github.com/telstra/open-kilda/actions/workflows/unittest.yml/badge.svg)](https://github.com/telstra/open-kilda/actions/workflows/unittest.yml)[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=org.openkilda%3Akilda-parent&metric=alert_status)](https://sonarcloud.io/dashboard?id=org.openkilda%3Akilda-parent)
 
 ## Introduction
 
@@ -377,13 +377,3 @@ orientdb.password = {{ getv "/kilda_orientdb_password" }}
 
 In this example we will generate file ```src-java/base-topology/base-storm-topology/src/release/resources/topology.properties```
 from template ```confd/templates/base-storm-topology/topology.properties.tmpl```
-
-### How enable travis CI
-Someone with admin rights should log in using github account to https://travis-ci.org and on the page
-https://travis-ci.org/profile/telstra activate telstra/open-kilda repository.
-All configurations for travis are located in .travis.yml. For adding new scripts you should create new line under script parameter.
-```
-script:
-- make run-test
-- new command
-```

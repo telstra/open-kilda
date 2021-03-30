@@ -30,8 +30,8 @@ public class ZkWriter extends ZkClient {
 
     @Builder
     public ZkWriter(String id, String serviceName, String connectionString, int sessionTimeout,
-                    long connectionRefreshInterval, final int expectedState) {
-        super(id, serviceName, connectionString, sessionTimeout, connectionRefreshInterval);
+                    long connectionRefreshInterval, final int expectedState, long reconnectDelayMs) {
+        super(id, serviceName, connectionString, sessionTimeout, connectionRefreshInterval, reconnectDelayMs);
         statePath = getPaths(serviceName, id, STATE);
         expectedStatePath = getPaths(serviceName, id, EXPECTED_STATE);
         this.expectedState = expectedState;

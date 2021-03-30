@@ -83,13 +83,13 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
 
     private void zooKeeperSpout(TopologyBuilder topology) {
         ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString());
+                getZookeeperConfig());
         declareSpout(topology, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
     }
 
     private void zooKeeperBolt(TopologyBuilder topology) {
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString(), getBoltInstancesCount(Router.BOLT_ID));
+                getZookeeperConfig(), getBoltInstancesCount(Router.BOLT_ID));
         declareBolt(topology, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(Router.BOLT_ID, ZkStreams.ZK.toString());
     }

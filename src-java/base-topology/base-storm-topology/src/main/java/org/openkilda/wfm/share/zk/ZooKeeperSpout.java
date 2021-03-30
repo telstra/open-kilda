@@ -21,6 +21,7 @@ import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.bluegreen.Signal;
 import org.openkilda.bluegreen.ZkClient;
 import org.openkilda.bluegreen.ZkWatchDog;
+import org.openkilda.config.ZookeeperConfig;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
 
@@ -49,6 +50,7 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
     private final String id;
     private final String serviceName;
     private final String connectionString;
+    private final long reconnectDelayMs;
     private Instant zooKeeperConnectionTimestamp = Instant.MIN;
     private transient Queue<Signal> signals;
     private transient ZkWatchDog watchDog;
@@ -56,10 +58,11 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
     private long messageId = 0;
 
 
-    public ZooKeeperSpout(String id, String serviceName, String connectionString) {
+    public ZooKeeperSpout(String id, String serviceName, ZookeeperConfig zookeeperConfig) {
         this.id = id;
         this.serviceName = serviceName;
-        this.connectionString = connectionString;
+        this.connectionString = zookeeperConfig.getConnectString();
+        this.reconnectDelayMs = zookeeperConfig.getReconnectDelay();
     }
 
     @Override
@@ -69,6 +72,7 @@ public class ZooKeeperSpout extends BaseRichSpout implements LifeCycleObserver {
         this.watchDog = ZkWatchDog.builder().id(id).serviceName(serviceName)
                 .connectionString(connectionString)
                 .connectionRefreshInterval(ZkClient.DEFAULT_CONNECTION_REFRESH_INTERVAL)
+                .reconnectDelayMs(reconnectDelayMs)
                 .build();
         watchDog.subscribe(this);
         watchDog.initAndWaitConnection();

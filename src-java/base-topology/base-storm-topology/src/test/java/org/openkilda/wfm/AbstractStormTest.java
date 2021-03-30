@@ -20,9 +20,11 @@ import static org.openkilda.bluegreen.ZkWatchDog.DEFAULT_BUILD_VERSION;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
 
 import org.openkilda.bluegreen.Signal;
 import org.openkilda.bluegreen.kafka.interceptors.VersioningConsumerInterceptor;
@@ -85,8 +87,10 @@ public abstract class AbstractStormTest {
         properties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningProducerInterceptor.class.getName());
         properties.put(PRODUCER_COMPONENT_NAME_PROPERTY, componentName);
         properties.put(PRODUCER_RUN_ID_PROPERTY, runId);
-        properties.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY,
-                makeUnboundConfig(ZookeeperConfig.class).getConnectString());
+        ZookeeperConfig zkConfig = makeUnboundConfig(ZookeeperConfig.class);
+        properties.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, zkConfig.getConnectString());
+
+        properties.put(PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY, Long.toString(zkConfig.getReconnectDelay()));
         return properties;
     }
 
@@ -100,8 +104,9 @@ public abstract class AbstractStormTest {
         properties.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName());
         properties.put(CONSUMER_COMPONENT_NAME_PROPERTY, componentName);
         properties.put(CONSUMER_RUN_ID_PROPERTY, runId);
-        properties.put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY,
-                makeUnboundConfig(ZookeeperConfig.class).getConnectString());
+        ZookeeperConfig zkConfig = makeUnboundConfig(ZookeeperConfig.class);
+        properties.put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, zkConfig.getConnectString());
+        properties.put(CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY, Long.toString(zkConfig.getReconnectDelay()));
         return properties;
     }
 
@@ -109,6 +114,7 @@ public abstract class AbstractStormTest {
         Properties properties = new Properties();
         properties.setProperty("zookeeper.hosts", format("localhost:%d", zookeeperPort));
         properties.setProperty("zookeeper.connect_string", format("localhost:%d/%s", zookeeperPort, rootNode));
+        properties.setProperty("zookeeper.reconnect_delay", "100");
         return properties;
     }
 

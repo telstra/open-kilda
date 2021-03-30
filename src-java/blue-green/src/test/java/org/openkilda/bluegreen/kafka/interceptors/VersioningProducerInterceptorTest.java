@@ -24,6 +24,7 @@ import static org.openkilda.bluegreen.kafka.Utils.MESSAGE_VERSION_HEADER;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
 
 import org.openkilda.bluegreen.ZkWatchDog;
 
@@ -116,6 +117,7 @@ public class VersioningProducerInterceptorTest {
         config.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, "test");
         config.put(PRODUCER_RUN_ID_PROPERTY, "run_id");
         config.put(PRODUCER_COMPONENT_NAME_PROPERTY, "name");
+        config.put(PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY, "100");
 
         VersioningProducerInterceptor<String, String> interceptor = Mockito.mock(VersioningProducerInterceptor.class);
         doCallRealMethod().when(interceptor).configure(any());

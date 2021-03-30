@@ -23,6 +23,7 @@ elasticsearch.index=kilda-*
 
 environment.naming.prefix=
 zookeeper.connect_string=localhost/kilda
+zookeeper.reconnect_delay=100
 kafka.bootstrap.server=localhost:9092
 kafka.topic.topo.disco=kilda.topo.disco.storm
 

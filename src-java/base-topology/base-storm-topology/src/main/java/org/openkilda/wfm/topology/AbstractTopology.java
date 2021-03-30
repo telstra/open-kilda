@@ -19,9 +19,11 @@ import static java.lang.String.format;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
 
 import org.openkilda.bluegreen.kafka.interceptors.VersioningConsumerInterceptor;
 import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
@@ -230,6 +232,8 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         kafka.setProperty(PRODUCER_COMPONENT_NAME_PROPERTY, getZkTopoName());
         kafka.setProperty(PRODUCER_RUN_ID_PROPERTY, topologyConfig.getBlueGreenMode());
         kafka.setProperty(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, getZookeeperConfig().getConnectString());
+        kafka.setProperty(PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY,
+                Long.toString(getZookeeperConfig().getReconnectDelay()));
 
         return kafka;
     }
@@ -415,6 +419,8 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
                 .setProp(CONSUMER_COMPONENT_NAME_PROPERTY, getZkTopoName())
                 .setProp(CONSUMER_RUN_ID_PROPERTY, topologyConfig.getBlueGreenMode())
                 .setProp(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, getZookeeperConfig().getConnectString())
+                .setProp(CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY,
+                        Long.toString(getZookeeperConfig().getReconnectDelay()))
                 .setTupleTrackingEnforced(true);
 
         return config;

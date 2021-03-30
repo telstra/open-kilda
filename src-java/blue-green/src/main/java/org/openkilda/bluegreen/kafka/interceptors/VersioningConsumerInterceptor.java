@@ -19,6 +19,7 @@ import static java.lang.String.format;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.MESSAGE_VERSION_HEADER;
 import static org.openkilda.bluegreen.kafka.Utils.getValue;
 
@@ -121,6 +122,8 @@ public class VersioningConsumerInterceptor<K, V> extends VersioningInterceptorBa
         connectionString = getValue(configs, CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, String.class);
         runId = getValue(configs, CONSUMER_RUN_ID_PROPERTY, String.class);
         componentName = getValue(configs, CONSUMER_COMPONENT_NAME_PROPERTY, String.class);
+        reconnectDelayMs = Long.parseLong(getValue(configs, CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY,
+                String.class));
         log.info("Configuring VersioningConsumerInterceptor for component {} with id {} and connection string {}",
                 componentName, runId, connectionString);
         initWatchDog();

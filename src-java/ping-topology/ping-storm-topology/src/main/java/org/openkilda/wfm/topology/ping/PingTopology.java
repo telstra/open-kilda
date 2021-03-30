@@ -98,13 +98,13 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
 
     private void zooKeeperSpout(TopologyBuilder topology) {
         ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString());
+                getZookeeperConfig());
         declareSpout(topology, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
     }
 
     private void zooKeeperBolt(TopologyBuilder topology) {
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString(), getBoltInstancesCount(
+                getZookeeperConfig(), getBoltInstancesCount(
                         InputRouter.BOLT_ID, TickDeduplicator.BOLT_ID));
         declareBolt(topology, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(InputRouter.BOLT_ID, InputRouter.STREAM_ZOOKEEPER)
