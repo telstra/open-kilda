@@ -38,8 +38,10 @@ class FlowHistorySpec extends HealthCheckSpecification {
     def "History records are created for the create/update actions using custom timeline"() {
         when: "Create a flow"
         assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
+        } ?: assumeTrue(false, "No suiting switches found")
+        def flow = flowHelper.randomFlow(switchPair)
         //set non default values
         flow.ignoreBandwidth = true
         flow.periodicPings = true

@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.junit.Assume.assumeTrue
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
@@ -326,7 +326,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
             srcSwitch = isl.srcSwitch
             dstSwitch = isl.dstSwitch
             [isl.srcSwitch, isl.dstSwitch].any { !it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
-        } ?: assumeTrue("Wasn't able to find a suitable link", false)
+        } ?: assumeTrue(false, "Wasn't able to find a suitable link")
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flowHelperV2.addFlow(flow)
 

@@ -80,8 +80,8 @@ class FlowSyncV2Spec extends HealthCheckSpecification {
     def "Able to synchronize a flow (install missing flow rules, reinstall existing) with rerouting"() {
         given: "An intermediate-switch flow with two possible paths at least and deleted rules on src switch"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
-                assumeTrue("No suiting switches found to build an intermediate-switch flow " +
-                        "with two possible paths at least.", false)
+                assumeTrue(false, "No suiting switches found to build an intermediate-switch flow " +
+                        "with two possible paths at least.")
 
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
