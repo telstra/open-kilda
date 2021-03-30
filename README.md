@@ -10,7 +10,7 @@ Note that the build process will install additional packages. It is recommended 
 ### Prerequisites
 
 The followings are required for building Kilda controller:
- - Gradle 6.0+
+ - Gradle 6.7+
  - Maven 3.3.9+
  - JDK8
  - Python 2.7+
@@ -30,7 +30,7 @@ apt-get install maven openjdk-8-jdk python python3 docker.io docker-compose virt
 
 #### Gradle
 You can either install Gradle, or use Gradle wrapper:
- - Option 1 - Install Gradle (ensure that you have gradle 6.0 or later) - https://gradle.org/install/
+ - Option 1 - Install Gradle (ensure that you have gradle 6.7 or later) - https://gradle.org/install/
 
  - Option 2 - Use Gradle wrapper. The Kilda repository contains an instance of Gradle Wrapper 
  which can be used straight from here without further installation.
