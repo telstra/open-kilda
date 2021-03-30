@@ -53,7 +53,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -152,13 +151,38 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
         return results;
     }
 
-    protected Collection<String> findServer42OuterVlanMatchSharedRuleUsage(FlowEndpoint endpoint) {
-        if (!FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
+    protected List<String> findServer42OuterVlanMatchSharedRuleUsage(FlowEndpoint needle) {
+        // TODO(snikitin) Replace with some optimised DB request
+        if (!FlowEndpoint.isVlanIdSet(needle.getOuterVlanId())) {
             return Collections.emptyList();
         }
 
-        return flowRepository.findFlowIdsForMultiSwitchFlowsBySwitchIdAndVlanWithMultiTableSupport(
-                endpoint.getSwitchId(), endpoint.getOuterVlanId());
+        List<String> flowIds = new ArrayList<>();
+        for (Flow flow : flowRepository.findByEndpointSwitchAndOuterVlan(
+                needle.getSwitchId(), needle.getOuterVlanId())) {
+            if (flow.getSrcSwitchId().equals(flow.getDestSwitchId())) {
+                // skip one switch flows
+                continue;
+            }
+            for (FlowSideAdapter flowSide : new FlowSideAdapter[]{
+                    new FlowSourceAdapter(flow),
+                    new FlowDestAdapter(flow)}) {
+                FlowEndpoint endpoint = flowSide.getEndpoint();
+                if (needle.getSwitchId().equals(endpoint.getSwitchId())
+                        && needle.getOuterVlanId() == endpoint.getOuterVlanId()) {
+                    boolean multitableEnabled = flow.getPaths().stream()
+                            .filter(path -> flow.isActualPathId(path.getPathId()))
+                            .filter(path -> !path.isProtected())
+                            .filter(path -> path.getSrcSwitchId().equals(endpoint.getSwitchId()))
+                            .anyMatch(FlowPath::isSrcWithMultiTable);
+                    if (multitableEnabled) {
+                        flowIds.add(flow.getFlowId());
+                        break;
+                    }
+                }
+            }
+        }
+        return flowIds;
     }
 
     protected Set<String> getDiverseWithFlowIds(Flow flow) {

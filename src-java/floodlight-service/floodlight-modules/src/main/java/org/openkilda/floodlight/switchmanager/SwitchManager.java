@@ -86,7 +86,6 @@ import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
-import org.openkilda.floodlight.utils.metadata.RoutingMetadata.RoutingMetadataBuilder;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.flow.RuleType;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
@@ -171,7 +170,6 @@ import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
-import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
@@ -2094,39 +2092,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         } else {
             matchBuilder.setExact(MatchField.TUNNEL_ID, U64.of(tunnelId));
         }
-    }
-
-    private Match matchServer42IngressFlow(
-            IOFSwitch sw, org.openkilda.model.MacAddress server42MacAddress, int server42Port, int customerPort,
-            int vlanId, boolean multiTable) {
-        OFFactory ofFactory = sw.getOFFactory();
-        Match.Builder builder = ofFactory.buildMatch();
-        if (vlanId > 0) {
-            matchVlan(ofFactory, builder, vlanId);
-        }
-
-        if (multiTable) {
-            RoutingMetadataBuilder metadataBuilder = RoutingMetadata.builder()
-                    .inputPort(customerPort);
-
-            if (vlanId > 0) {
-                metadataBuilder.outerVlanId(vlanId);
-            }
-
-            RoutingMetadata metadata = metadataBuilder.build(featureDetectorService.detectSwitch(sw));
-
-            builder.setMasked(MatchField.METADATA,
-                    OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()));
-        } else {
-            int udpSrcPort = config.getServer42UdpPortOffset() + customerPort;
-
-            builder.setExact(MatchField.ETH_SRC, MacAddress.of(server42MacAddress.toString()))
-                    .setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                    .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-                    .setExact(MatchField.UDP_SRC, TransportPort.of(udpSrcPort));
-        }
-        builder.setExact(MatchField.IN_PORT, OFPort.of(server42Port));
-        return builder.build();
     }
 
     /**
