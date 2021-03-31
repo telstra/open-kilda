@@ -334,6 +334,7 @@ public class NetworkSwitchServiceTest {
         resetMocks();
 
         service.switchEvent(switchAddEvent);
+        verifySwitchSync(service);
 
         verify(carrier).removePortHandler(Endpoint.of(alphaDatapath, 3));
 
