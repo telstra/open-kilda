@@ -69,14 +69,17 @@ public class ZooKeeperService implements IService, LifeCycleObserver {
 
         KildaCore kildaCore = moduleContext.getServiceImpl(KildaCore.class);
         String connectionString = kafkaChannel.getConfig().getZooKeeperConnectString();
+        long reconnectDelayMs = kafkaChannel.getConfig().getZooKeeperReconnectDelayMs();
         zkWriter = ZkWriter.builder()
                 .id(region)
                 .serviceName(ZK_COMPONENT_NAME)
                 .connectionString(connectionString)
+                .reconnectDelayMs(reconnectDelayMs)
                 .expectedState(getExpectedState(kildaCore.getConfig().getRole())).build();
         zooKeeperStateTracker = new ZkStateTracker(zkWriter);
 
         watchDog = ZkWatchDog.builder().id(region).serviceName(ZK_COMPONENT_NAME)
+                .reconnectDelayMs(reconnectDelayMs)
                 .connectionString(connectionString).build();
         watchDog.subscribe(this);
 

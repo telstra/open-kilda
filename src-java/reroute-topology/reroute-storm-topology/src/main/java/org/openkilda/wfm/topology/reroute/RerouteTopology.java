@@ -52,6 +52,8 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
     private static final String BOLT_ID_KAFKA_FLOWHS = "kafka-flowhs-bolt";
     private static final String BOLT_ID_KAFKA_NB = "kafka-northbound-bolt";
 
+    private static final String METRICS_BOLT_ID = "metrics-bolt";
+
     public static final Fields KAFKA_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD);
 
     public RerouteTopology(LaunchEnvironment env) {
@@ -90,18 +92,20 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
         zkBolt(topologyBuilder);
         zkSpout(topologyBuilder);
 
+        metrics(topologyBuilder);
+
         return topologyBuilder.createTopology();
     }
 
     private void zkSpout(TopologyBuilder topologyBuilder) {
-        String zkString = getZookeeperConfig().getConnectString();
-        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(), zkString);
+        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig());
         declareSpout(topologyBuilder, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
     }
 
     private void zkBolt(TopologyBuilder topologyBuilder) {
-        String zkString = getZookeeperConfig().getConnectString();
-        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(), zkString,
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig(),
                 getBoltInstancesCount(RerouteBolt.BOLT_ID, OperationQueueBolt.BOLT_ID));
         declareBolt(topologyBuilder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(RerouteBolt.BOLT_ID, ZkStreams.ZK.toString())
@@ -165,6 +169,13 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
     @Override
     protected String getZkTopoName() {
         return "reroute";
+    }
+
+    private void metrics(TopologyBuilder topologyBuilder) {
+        String openTsdbTopic = topologyConfig.getKafkaTopics().getOtsdbTopic();
+        KafkaBolt kafkaBolt = createKafkaBolt(openTsdbTopic);
+        declareBolt(topologyBuilder, kafkaBolt, METRICS_BOLT_ID)
+                .shuffleGrouping(RerouteBolt.BOLT_ID, RerouteBolt.STREAM_TO_METRICS_BOLT);
     }
 
     /**

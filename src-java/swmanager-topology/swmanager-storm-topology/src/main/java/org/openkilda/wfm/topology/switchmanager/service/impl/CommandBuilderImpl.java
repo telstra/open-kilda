@@ -24,6 +24,8 @@ import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.InstallServer42Flow;
 import org.openkilda.messaging.command.flow.InstallServer42Flow.InstallServer42FlowBuilder;
 import org.openkilda.messaging.command.flow.InstallSharedFlow;
+import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.ReinstallServer42FlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
@@ -280,6 +282,26 @@ public class CommandBuilderImpl implements CommandBuilder {
                 .filter(flow -> excessRulesCookies.contains(flow.getCookie()))
                 .map(entry -> buildRemoveFlowWithoutMeterFromFlowEntry(switchId, entry))
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ReinstallDefaultFlowForSwitchManagerRequest> buildCommandsToReinstallRules(
+            SwitchId switchId, List<Long> reinstallRulesCookies) {
+
+        SwitchProperties properties = getSwitchProperties(switchId);
+        List<ReinstallDefaultFlowForSwitchManagerRequest> commands = new ArrayList<>();
+
+        for (Long cookie : reinstallRulesCookies) {
+            if (isDefaultRuleWithSpecialRequirements(cookie)) {
+                commands.add(new ReinstallServer42FlowForSwitchManagerRequest(
+                        switchId, cookie, properties.getServer42MacAddress(), properties.getServer42Vlan(),
+                        properties.getServer42Port()));
+            } else {
+                commands.add(new ReinstallDefaultFlowForSwitchManagerRequest(switchId, cookie));
+            }
+        }
+
+        return commands;
     }
 
     @VisibleForTesting

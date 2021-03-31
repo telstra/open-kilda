@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.network.model.facts;
 
 import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchStatus;
 
 import lombok.Value;
 
@@ -27,11 +28,13 @@ import java.util.List;
 @Value
 public class HistoryFacts implements Serializable {
     private final SwitchId switchId;
+    private final SwitchStatus lastRecordedStatus;
 
     private final List<Isl> outgoingLinks = new ArrayList<>();
 
-    public HistoryFacts(SwitchId switchId) {
+    public HistoryFacts(SwitchId switchId, SwitchStatus lastRecordedStatus) {
         this.switchId = switchId;
+        this.lastRecordedStatus = lastRecordedStatus;
     }
 
     /**

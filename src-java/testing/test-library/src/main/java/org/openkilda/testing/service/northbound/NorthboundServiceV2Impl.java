@@ -18,6 +18,7 @@ package org.openkilda.testing.service.northbound;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
@@ -157,6 +158,41 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     public FlowLoopResponse deleteFlowLoop(String flowId) {
         return restTemplate.exchange("/api/v2/flows/{flow_id}/loops", HttpMethod.DELETE,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowLoopResponse.class, flowId).getBody();
+    }
+
+    @Override
+    public FlowHistoryStatusesResponse getFlowHistoryStatuses(String flowId) {
+        return getFlowHistoryStatuses(flowId, null, null, null);
+    }
+
+    @Override
+    public FlowHistoryStatusesResponse getFlowHistoryStatuses(String flowId, Long timeFrom, Long timeTo) {
+        return getFlowHistoryStatuses(flowId, timeFrom, timeTo, null);
+    }
+
+    @Override
+    public FlowHistoryStatusesResponse getFlowHistoryStatuses(String flowId, Integer maxCount) {
+        return getFlowHistoryStatuses(flowId, null, null, maxCount);
+    }
+
+    @Override
+    public FlowHistoryStatusesResponse getFlowHistoryStatuses(String flowId, Long timeFrom, Long timeTo,
+                                                              Integer maxCount) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder
+                .fromUriString("/api/v2/flows/{flow_id}/history/statuses");
+        if (timeFrom != null) {
+            uriBuilder.queryParam("timeFrom", timeFrom);
+        }
+        if (timeTo != null) {
+            uriBuilder.queryParam("timeTo", timeTo);
+        }
+        if (maxCount != null) {
+            uriBuilder.queryParam("max_count", maxCount);
+        }
+
+        return restTemplate.exchange(uriBuilder.build().toString(),
+                HttpMethod.GET, new HttpEntity(buildHeadersWithCorrelationId()), FlowHistoryStatusesResponse.class,
+                flowId).getBody();
     }
 
     @Override

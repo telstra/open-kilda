@@ -1,19 +1,29 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_SUCCESS
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.messaging.payload.history.FlowHistoryEntry
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
+import org.openkilda.model.SwitchFeature
 import org.openkilda.model.history.FlowEvent
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
@@ -198,6 +208,14 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         then: "History is still available for the deleted flow"
         northbound.getFlowHistory(flow.flowId, specStartTime, timestampAfterUpdate).size() == 2
 
+        and: "Flow history statuses returns all flow statuses for the whole life cycle"
+        //create, update, delete
+        northboundV2.getFlowHistoryStatuses(flow.flowId).historyStatuses*.statusBecome == ["UP", "UP", "DELETED"]
+        //check custom timeLine and the 'count' option
+        northboundV2.getFlowHistoryStatuses(flow.flowId, specStartTime, timestampAfterUpdate)
+            .historyStatuses*.statusBecome == ["UP", "UP"]
+        northboundV2.getFlowHistoryStatuses(flow.flowId, 1).historyStatuses*.statusBecome == ["DELETED"]
+
         cleanup:
         !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
@@ -235,6 +253,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(LOW_PRIORITY)
     def "History max_count cannot be <1"() {
         when: "Try to get history with max_count 0"
         northbound.getFlowHistory(flowWithHistory, 0)
@@ -250,6 +269,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
 
     @Tidy
     @Unroll
+    @Tags(LOW_PRIORITY)
     def "Check history: #data.descr"() {
         expect: "#data.descr"
         northbound.getFlowHistory(*data.params) == data.expectedHistory
@@ -296,6 +316,54 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
                         expectedHistory: []
                 ]
         ]
+    }
+
+    @Tidy
+    @Tags([LOW_PRIORITY])
+    def "Root cause is registered in flow history while rerouting"() {
+        given: "An active flow"
+        Switch srcSwitch
+        Switch dstSwitch
+        topology.islsForActiveSwitches.find { isl ->
+            srcSwitch = isl.srcSwitch
+            dstSwitch = isl.dstSwitch
+            [isl.srcSwitch, isl.dstSwitch].any { !it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
+        } ?: assumeTrue("Wasn't able to find a suitable link", false)
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowHelperV2.addFlow(flow)
+
+        when: "Deactivate the src switch"
+        def blockData = switchHelper.knockoutSwitch(srcSwitch, RW)
+        def swIsActive = false
+
+        and: "Related ISLs are FAILED"
+        def isls = topology.getRelatedIsls(srcSwitch)
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET / 2) {
+            def allIsls = northbound.getAllLinks()
+            isls.each { assert islUtils.getIslInfo(allIsls, it).get().actualState == IslChangeType.FAILED }
+        }
+
+        then: "Flow goes DOWN"
+        Wrappers.wait(WAIT_OFFSET) {
+            def flowInfo = northboundV2.getFlow(flow.flowId)
+            assert flowInfo.status == FlowState.DOWN.toString()
+            //https://github.com/telstra/open-kilda/issues/4126
+//            assert flowInfo.statusInfo == "ValidateFlowAction failed: Flow's $flow.flowId src switch is not active"
+        }
+
+        and: "The root cause('Switch is not active') is registered in flow history"
+        Wrappers.wait(WAIT_OFFSET) {
+            def flowHistory = northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }
+            assert flowHistory.payload[0].action == "Started flow validation"
+            assert flowHistory.payload[1].action == "ValidateFlowAction failed: Flow's $flow.flowId src switch is not active"
+            assert flowHistory.payload[2].action == REROUTE_FAIL
+        }
+
+        cleanup:
+        if (!swIsActive) {
+            switchHelper.reviveSwitch(srcSwitch, blockData, true)
+        }
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     void checkHistoryCreateV2Action(FlowHistoryEntry flowHistory, String flowId) {

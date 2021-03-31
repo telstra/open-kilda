@@ -55,9 +55,10 @@ public abstract class ZkClient implements Watcher {
     private final int sessionTimeout;
     protected Instant lastRefreshAttempt;
     protected long connectionRefreshInterval;
+    protected long reconnectDelayMs;
 
     public ZkClient(String id, String serviceName, String connectionString, int sessionTimeout,
-                    long connectionRefreshInterval) {
+                    long connectionRefreshInterval, long reconnectDelayMs) {
         if (sessionTimeout == 0) {
             sessionTimeout = DEFAULT_SESSION_TIMEOUT;
         }
@@ -68,6 +69,10 @@ public abstract class ZkClient implements Watcher {
         this.sessionTimeout = sessionTimeout;
         this.connectionRefreshInterval = connectionRefreshInterval;
         this.lastRefreshAttempt = Instant.MIN;
+        if (reconnectDelayMs <= 0) {
+            reconnectDelayMs = RECONNECT_DELAY_MS;
+        }
+        this.reconnectDelayMs = reconnectDelayMs;
     }
 
     /**
@@ -78,7 +83,7 @@ public abstract class ZkClient implements Watcher {
 
         RetryPolicy retryPolicy = new RetryPolicy()
                 .retryOn(IllegalStateException.class)
-                .withDelay(RECONNECT_DELAY_MS, TimeUnit.MILLISECONDS);
+                .withDelay(reconnectDelayMs, TimeUnit.MILLISECONDS);
 
         final int[] attempt = {1}; // need to be final to be used in lambda
         SyncFailsafe<Object> failsafe = Failsafe.with(retryPolicy)

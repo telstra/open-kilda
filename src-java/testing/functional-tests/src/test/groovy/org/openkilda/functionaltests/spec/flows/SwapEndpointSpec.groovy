@@ -38,7 +38,6 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
 import spock.lang.Ignore
@@ -1303,7 +1302,6 @@ switches"() {
     }
 
     @Tidy
-    @Ignore("fix ASAP, unstable on jenkins")
     def "System reverts both flows if fails during rule installation when swapping endpoints"() {
         given: "Two flows with different src switches and same dst"
         def swPair1
@@ -1338,9 +1336,9 @@ switches"() {
         and: "First flow is reverted to Down"
         Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET * 2) { // sometimes it takes more time on jenkins
             assert northboundV2.getFlowStatus(flow1.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow1.flowId).find {
-                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1/)
-            }
+            assert northbound.getFlowHistory(flow1.flowId).findAll {
+                it.action == REROUTE_ACTION && it.payload.last().action == REROUTE_FAIL
+            }.size() > 1 // reroute(ISL_1 become INACTIVE) + retry or reroute(ISL_1) + reroute(ISL_2)
         }
         with(northboundV2.getFlow(flow1.flowId)) {
             source == flow1.source
@@ -1375,7 +1373,7 @@ switches"() {
             database.setSwitchStatus(swPair1.src.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(swPair1.src, blockData, true)
         }
-        !isSwitchValid && switches.each { northbound.synchronizeSwitch(it, true)}
+        !isSwitchValid && switches.each { northbound.synchronizeSwitch(it.dpId, true)}
     }
 
     @Tidy

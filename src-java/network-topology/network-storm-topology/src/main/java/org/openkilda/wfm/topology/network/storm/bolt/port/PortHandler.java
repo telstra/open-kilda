@@ -17,11 +17,11 @@ package org.openkilda.wfm.topology.network.storm.bolt.port;
 
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
-import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.payload.switches.PortPropertiesPayload;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Isl;
 import org.openkilda.model.PortProperties;
 import org.openkilda.persistence.PersistenceManager;
@@ -31,8 +31,6 @@ import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.share.mappers.PortMapper;
 import org.openkilda.wfm.share.model.Endpoint;
-import org.openkilda.wfm.share.zk.ZkStreams;
-import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Config;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
@@ -49,6 +47,8 @@ import org.openkilda.wfm.topology.network.storm.bolt.history.command.HistoryComm
 import org.openkilda.wfm.topology.network.storm.bolt.history.command.PortHistoryCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
+import org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast.ISpeakerBcastConsumer;
+import org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast.SpeakerBcast;
 import org.openkilda.wfm.topology.network.storm.bolt.sw.SwitchHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslDiscoveryCommand;
@@ -69,7 +69,7 @@ import org.apache.storm.tuple.Values;
 
 import java.time.Instant;
 
-public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlapCarrier {
+public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlapCarrier, ISpeakerBcastConsumer {
     public static final String BOLT_ID = ComponentId.PORT_HANDLER.toString();
 
     public static final String FIELD_ID_DATAPATH = SwitchHandler.FIELD_ID_DATAPATH;
@@ -88,10 +88,6 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
 
     public static final String STREAM_NORTHBOUND_ID = "northbound";
     private static final Fields STREAM_NORTHBOUND_FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
-
-    public static final String STREAM_ZOOKEEPER_ID = ZkStreams.ZK.toString();
-    public static final Fields STREAM_ZOOKEEPER_FIELDS = new Fields(ZooKeeperBolt.FIELD_ID_STATE,
-            ZooKeeperBolt.FIELD_ID_CONTEXT);
 
     private transient NetworkPortService portService;
     private transient NetworkAntiFlapService antiFlapService;
@@ -123,7 +119,13 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
         } else if (SwitchHandler.BOLT_ID.equals(source)) {
             handleSwitchCommand(input);
         } else if (SpeakerRouter.BOLT_ID.equals(source)) {
-            handlePortCommand(input);
+            if (input.getSourceStreamId().equals(SpeakerRouter.STREAM_PORT_ID)) {
+                handlePortCommand(input);
+            } else if (input.getSourceStreamId().equals(SpeakerRouter.STREAM_BCAST_ID)) {
+                handleSpeakerBcast(input);
+            } else {
+                unhandledInput(input);
+            }
         } else {
             unhandledInput(input);
         }
@@ -139,6 +141,15 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
 
     private void handleSwitchCommand(Tuple input) throws PipelineException {
         handleCommand(input, SwitchHandler.FIELD_ID_COMMAND);
+    }
+
+    private void handleSpeakerBcast(Tuple input) {
+        try {
+            SpeakerBcast command = pullValue(input, SpeakerRouter.FIELD_ID_COMMAND, SpeakerBcast.class);
+            command.apply(this);
+        } catch (PipelineException e) {
+            log.error("Handle speaker bcast command exception", e);
+        }
     }
 
     private void handlePortCommand(Tuple input) throws PipelineException {
@@ -167,23 +178,11 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     }
 
     @Override
-    protected void activate() {
-        antiFlapService.activate();
-    }
-
-    @Override
-    protected boolean deactivate(LifecycleEvent event) {
-        antiFlapService.deactivate();
-        return true;
-    }
-
-    @Override
     public void declareOutputFields(OutputFieldsDeclarer streamManager) {
         streamManager.declare(STREAM_FIELDS);
         streamManager.declareStream(STREAM_POLL_ID, STREAM_POLL_FIELDS);
         streamManager.declareStream(STREAM_HISTORY_ID, STREAM_HISTORY_FIELDS);
         streamManager.declareStream(STREAM_NORTHBOUND_ID, STREAM_NORTHBOUND_FIELDS);
-        streamManager.declareStream(STREAM_ZOOKEEPER_ID, STREAM_ZOOKEEPER_FIELDS);
     }
 
     // IPortCarrier
@@ -292,6 +291,20 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
 
     public void processRoundTripStatus(RoundTripStatus status) {
         portService.roundTripStatusNotification(status);
+    }
+
+    // ISpeakerBcastConsumer
+
+    @Override
+    public void activationStatusUpdate(boolean isActive) {
+        if (! isActive) {
+            antiFlapService.reset();
+        }
+    }
+
+    @Override
+    public void processFeatureTogglesUpdate(FeatureToggles toggles) {
+        // no actions required
     }
 
     // Private

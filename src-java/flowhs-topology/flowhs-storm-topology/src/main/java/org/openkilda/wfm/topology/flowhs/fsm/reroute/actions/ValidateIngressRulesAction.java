@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -28,7 +29,10 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class ValidateIngressRulesAction extends
@@ -50,8 +54,24 @@ public class ValidateIngressRulesAction extends
             return;
         }
 
+        MeterRegistryHolder.getRegistry().ifPresent(registry -> {
+            if (response.getRequestCreateTime() > 0) {
+                long roundtrip = Duration.between(Instant.ofEpochMilli(response.getRequestCreateTime()),
+                        Instant.now()).toNanos();
+                if (roundtrip > 0) {
+                    registry.timer("fsm.validate_command.roundtrip")
+                            .record(roundtrip, TimeUnit.NANOSECONDS);
+                }
+            }
+
+            if (response.getExecutionTime() > 0) {
+                registry.timer("fsm.validate_command.floodlight_execution")
+                        .record(response.getExecutionTime(), TimeUnit.NANOSECONDS);
+            }
+        });
+
         if (response.isSuccess()) {
-            stateMachine.getPendingCommands().remove(commandId);
+            stateMachine.removePendingCommand(commandId);
 
             stateMachine.saveActionToHistory("Rule was validated",
                     format("The ingress rule has been validated successfully: switch %s, cookie %s",
@@ -59,19 +79,17 @@ public class ValidateIngressRulesAction extends
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) response;
 
-            int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
-            if (retries < speakerCommandRetriesLimit
+            int attempt = stateMachine.doRetryForCommand(commandId);
+            if (attempt <= speakerCommandRetriesLimit
                     && errorResponse.getErrorCode() == FlowErrorResponse.ErrorCode.MISSING_OF_FLOWS) {
-                stateMachine.getRetriedCommands().put(commandId, ++retries);
-
                 stateMachine.saveErrorToHistory("Rule validation failed", format(
                         "Failed to validate the ingress rule: commandId %s, switch %s, cookie %s. Error %s. "
                                 + "Retrying (attempt %d)",
-                        commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse, retries));
+                        commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse, attempt));
 
                 stateMachine.getCarrier().sendSpeakerRequest(command.makeVerifyRequest(commandId));
             } else {
-                stateMachine.getPendingCommands().remove(commandId);
+                stateMachine.removePendingCommand(commandId);
 
                 stateMachine.saveErrorToHistory("Rule validation failed",
                         format("Failed to validate the ingress rule: commandId %s, switch %s, cookie %s. Error %s",

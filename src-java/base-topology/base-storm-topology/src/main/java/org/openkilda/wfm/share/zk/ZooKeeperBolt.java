@@ -19,6 +19,7 @@ import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.bluegreen.ZkClient;
 import org.openkilda.bluegreen.ZkStateTracker;
 import org.openkilda.bluegreen.ZkWriter;
+import org.openkilda.config.ZookeeperConfig;
 import org.openkilda.wfm.AbstractBolt;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -38,15 +39,17 @@ public class ZooKeeperBolt extends AbstractBolt {
     private final String id;
     private final String serviceName;
     private final String connectionString;
+    private final long reconnectDelayMs;
     private final int expectedState;
     private Instant zooKeeperConnectionTimestamp = Instant.MIN;
     private transient ZkWriter zkWriter;
     private transient ZkStateTracker zkStateTracker;
 
-    public ZooKeeperBolt(String id, String serviceName, String connectionString, int expectedState) {
+    public ZooKeeperBolt(String id, String serviceName, ZookeeperConfig zookeeperConfig, int expectedState) {
         this.id = id;
         this.serviceName = serviceName;
-        this.connectionString = connectionString;
+        this.connectionString = zookeeperConfig.getConnectString();
+        this.reconnectDelayMs = zookeeperConfig.getReconnectDelay();
         this.expectedState = expectedState;
     }
 
@@ -89,6 +92,7 @@ public class ZooKeeperBolt extends AbstractBolt {
         zkWriter = ZkWriter.builder().id(id).serviceName(serviceName)
                 .connectionRefreshInterval(ZkClient.DEFAULT_CONNECTION_REFRESH_INTERVAL)
                 .connectionString(connectionString)
+                .reconnectDelayMs(reconnectDelayMs)
                 .expectedState(expectedState).build();
         zkWriter.initAndWaitConnection();
         zkStateTracker = new ZkStateTracker(zkWriter);

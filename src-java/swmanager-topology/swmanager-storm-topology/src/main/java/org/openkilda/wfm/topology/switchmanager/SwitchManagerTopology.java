@@ -33,6 +33,7 @@ import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import com.google.common.collect.Lists;
 import org.apache.storm.generated.StormTopology;
+import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 
@@ -45,6 +46,7 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
     private static final String WORKER_SPOUT = "worker.spout";
     private static final String NB_KAFKA_BOLT = "nb.bolt";
     private static final String SPEAKER_KAFKA_BOLT = "speaker.bolt";
+    private static final String METRICS_BOLT = "metrics.bolt";
 
     private static final Fields FIELDS_KEY = new Fields(MessageKafkaTranslator.FIELD_ID_KEY);
 
@@ -58,8 +60,8 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
 
         TopologyBuilder builder = new TopologyBuilder();
 
-        String zkString = getZookeeperConfig().getConnectString();
-        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(), zkString);
+        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig());
         declareSpout(builder, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
 
         declareSpout(builder, new CoordinatorSpout(), CoordinatorSpout.ID);
@@ -81,7 +83,7 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
                 topologyConfig.getKafkaSwitchManagerNbWorkerTopic());
         declareKafkaSpout(builder, inputTopics, HUB_SPOUT);
         declareBolt(builder, new SwitchManagerHub(hubConfig, persistenceManager,
-                topologyConfig, configurationProvider.getConfiguration(FlowResourcesConfig.class)),
+                        topologyConfig, configurationProvider.getConfiguration(FlowResourcesConfig.class)),
                 SwitchManagerHub.ID)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID)
                 .fieldsGrouping(HUB_SPOUT, FIELDS_KEY)
@@ -107,10 +109,13 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
         declareBolt(builder, buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic()), SPEAKER_KAFKA_BOLT)
                 .shuffleGrouping(SpeakerWorkerBolt.ID, StreamType.TO_FLOODLIGHT.toString());
 
-        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(), zkString,
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig(),
                 getBoltInstancesCount(SwitchManagerHub.ID));
         declareBolt(builder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(SwitchManagerHub.ID, ZkStreams.ZK.toString());
+
+        metrics(builder);
 
         return builder.createTopology();
     }
@@ -118,6 +123,13 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
     @Override
     protected String getZkTopoName() {
         return "swmanager";
+    }
+
+    private void metrics(TopologyBuilder topologyBuilder) {
+        String openTsdbTopic = topologyConfig.getKafkaTopics().getOtsdbTopic();
+        KafkaBolt kafkaBolt = createKafkaBolt(openTsdbTopic);
+        topologyBuilder.setBolt(METRICS_BOLT, kafkaBolt)
+                .shuffleGrouping(SwitchManagerHub.ID, StreamType.HUB_TO_METRICS_BOLT.name());
     }
 
     /**

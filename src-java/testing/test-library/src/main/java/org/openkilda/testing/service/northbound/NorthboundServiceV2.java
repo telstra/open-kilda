@@ -17,6 +17,7 @@ package org.openkilda.testing.service.northbound;
 
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
@@ -65,6 +66,14 @@ public interface NorthboundServiceV2 {
     FlowLoopResponse createFlowLoop(String flowId, FlowLoopPayload flowLoopPayload);
 
     FlowLoopResponse deleteFlowLoop(String flowId);
+
+    FlowHistoryStatusesResponse getFlowHistoryStatuses(String flowId);
+
+    FlowHistoryStatusesResponse getFlowHistoryStatuses(String flowId, Long timeFrom, Long timeTo);
+
+    FlowHistoryStatusesResponse getFlowHistoryStatuses(String flowId, Integer maxCount);
+
+    FlowHistoryStatusesResponse getFlowHistoryStatuses(String flowId, Long timeFrom, Long timeTo, Integer maxCount);
 
     //switches
 

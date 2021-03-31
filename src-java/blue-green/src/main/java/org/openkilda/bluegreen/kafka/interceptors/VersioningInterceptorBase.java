@@ -42,6 +42,7 @@ public abstract class VersioningInterceptorBase implements BuildVersionObserver 
     protected Instant versionIsNotSetTimestamp = Instant.MIN;
     protected Instant initConnectionTimestamp = Instant.MIN;
     protected Instant cantConnectToZooKeeperTimestamp = Instant.MIN;
+    protected long reconnectDelayMs;
     protected volatile byte[] version;
 
     protected boolean isVersionTimeoutPassed() {
@@ -72,6 +73,7 @@ public abstract class VersioningInterceptorBase implements BuildVersionObserver 
                 .serviceName(componentName)
                 .connectionString(connectionString)
                 .connectionRefreshInterval(ZkClient.DEFAULT_CONNECTION_REFRESH_INTERVAL)
+                .reconnectDelayMs(reconnectDelayMs)
                 .build();
         watchDog.subscribe(this);
         watchDog.initAndWaitConnection();
