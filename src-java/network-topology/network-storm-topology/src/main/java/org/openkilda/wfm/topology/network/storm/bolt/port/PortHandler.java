@@ -48,6 +48,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.history.command.PortHistory
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast.ISpeakerBcastConsumer;
+import org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast.SpeakerBcast;
 import org.openkilda.wfm.topology.network.storm.bolt.sw.SwitchHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslDiscoveryCommand;
@@ -118,7 +119,13 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
         } else if (SwitchHandler.BOLT_ID.equals(source)) {
             handleSwitchCommand(input);
         } else if (SpeakerRouter.BOLT_ID.equals(source)) {
-            handlePortCommand(input);
+            if (input.getSourceStreamId().equals(SpeakerRouter.STREAM_PORT_ID)) {
+                handlePortCommand(input);
+            } else if (input.getSourceStreamId().equals(SpeakerRouter.STREAM_BCAST_ID)) {
+                handleSpeakerBcast(input);
+            } else {
+                unhandledInput(input);
+            }
         } else {
             unhandledInput(input);
         }
@@ -134,6 +141,15 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
 
     private void handleSwitchCommand(Tuple input) throws PipelineException {
         handleCommand(input, SwitchHandler.FIELD_ID_COMMAND);
+    }
+
+    private void handleSpeakerBcast(Tuple input) {
+        try {
+            SpeakerBcast command = pullValue(input, SpeakerRouter.FIELD_ID_COMMAND, SpeakerBcast.class);
+            command.apply(this);
+        } catch (PipelineException e) {
+            log.error("Handle speaker bcast command exception", e);
+        }
     }
 
     private void handlePortCommand(Tuple input) throws PipelineException {

@@ -18,9 +18,11 @@ package org.openkilda.floodlight;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
 import static org.openkilda.floodlight.service.zookeeper.ZooKeeperService.ZK_COMPONENT_NAME;
 
 import org.openkilda.bluegreen.kafka.interceptors.VersioningConsumerInterceptor;
@@ -48,6 +50,9 @@ public interface KafkaChannelConfig extends KafkaConsumerGroupConfig {
     @Key("zookeeper-connect-string")
     String getZooKeeperConnectString();
 
+    @Key("zookeeper-reconnect-delay-ms")
+    long getZooKeeperReconnectDelayMs();
+
     @Key("heart-beat-interval")
     @Default("1")
     @Min(1)
@@ -74,7 +79,7 @@ public interface KafkaChannelConfig extends KafkaConsumerGroupConfig {
         properties.put(CONSUMER_COMPONENT_NAME_PROPERTY, ZK_COMPONENT_NAME);
         properties.put(CONSUMER_RUN_ID_PROPERTY, getFloodlightRegion());
         properties.put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, getZooKeeperConnectString());
-
+        properties.put(CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY, Long.toString(getZooKeeperReconnectDelayMs()));
         return properties;
     }
 
@@ -99,6 +104,7 @@ public interface KafkaChannelConfig extends KafkaConsumerGroupConfig {
         properties.put(PRODUCER_COMPONENT_NAME_PROPERTY, ZK_COMPONENT_NAME);
         properties.put(PRODUCER_RUN_ID_PROPERTY, getFloodlightRegion());
         properties.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, getZooKeeperConnectString());
+        properties.put(PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY, Long.toString(getZooKeeperReconnectDelayMs()));
 
         return properties;
     }

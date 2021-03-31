@@ -51,8 +51,8 @@ public class ZkWatchDog extends ZkClient implements DataCallback {
 
     @Builder
     public ZkWatchDog(String id, String serviceName, String connectionString,
-                      int sessionTimeout, Signal signal, long connectionRefreshInterval) {
-        super(id, serviceName, connectionString, sessionTimeout, connectionRefreshInterval);
+                      int sessionTimeout, Signal signal, long connectionRefreshInterval, long reconnectDelayMs) {
+        super(id, serviceName, connectionString, sessionTimeout, connectionRefreshInterval, reconnectDelayMs);
 
         this.buildVersionPath = getPaths(serviceName, id, BUILD_VERSION);
         this.signalPath = getPaths(serviceName, id, SIGNAL);

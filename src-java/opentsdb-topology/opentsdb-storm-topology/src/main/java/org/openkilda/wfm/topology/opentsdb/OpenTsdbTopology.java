@@ -62,12 +62,12 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
         TopologyBuilder tb = new TopologyBuilder();
 
         ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString());
+                getZookeeperConfig());
         declareSpout(tb, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
 
 
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString(), getBoltInstancesCount(OTSDB_PARSE_BOLT_ID));
+                getZookeeperConfig(), getBoltInstancesCount(OTSDB_PARSE_BOLT_ID));
         declareBolt(tb, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(OTSDB_PARSE_BOLT_ID, ZkStreams.ZK.toString());
 

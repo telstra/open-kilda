@@ -18,6 +18,7 @@ package org.openkilda.northbound.config;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
 import static org.openkilda.northbound.config.KafkaNorthboundConfig.NORTHBOUND_COMPONENT_NAME;
 
 import org.openkilda.bluegreen.kafka.interceptors.VersioningConsumerInterceptor;
@@ -67,6 +68,12 @@ public class MessageConsumerConfig {
     private String zookeeperConnectString;
 
     /**
+     * Zookeeper reconnect delay.
+     */
+    @Value("${zookeeper.reconnect_delay:100}")
+    private long zookeeperReconnectDelayMs;
+
+    /**
      * Kafka group id.
      */
     @Value("#{kafkaGroupConfig.getGroupId()}")
@@ -105,6 +112,7 @@ public class MessageConsumerConfig {
                 .put(CONSUMER_COMPONENT_NAME_PROPERTY, NORTHBOUND_COMPONENT_NAME)
                 .put(CONSUMER_RUN_ID_PROPERTY, blueGreenMode)
                 .put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, zookeeperConnectString)
+                .put(CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY, Long.toString(zookeeperReconnectDelayMs))
                 .build();
     }
 

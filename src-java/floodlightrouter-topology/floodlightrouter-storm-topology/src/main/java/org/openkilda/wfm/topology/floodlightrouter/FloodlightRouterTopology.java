@@ -108,22 +108,21 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     }
 
     private void zkSpout(TopologyBuilder topology) {
-        String zkString = getZookeeperConfig().getConnectString();
         ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(topologyConfig.getBlueGreenMode(), getZkTopoName(),
-                zkString);
+                getZookeeperConfig());
         declareSpout(topology, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
     }
 
     private void zkBolt(TopologyBuilder topology) {
-        String zkString = getZookeeperConfig().getConnectString();
-        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(topologyConfig.getBlueGreenMode(), getZkTopoName(), zkString,
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(topologyConfig.getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig(),
                 getBoltInstancesCount(SpeakerToNetworkProxyBolt.BOLT_ID, ComponentType.SPEAKER_DISCO_REQUEST_BOLT,
-                ComponentType.KILDA_FLOW_HS_REPLY_BOLT, ComponentType.SPEAKER_FLOW_REQUEST_BOLT,
-                ComponentType.KILDA_PING_REPLY_BOLT, ComponentType.KILDA_STATS_REPLY_BOLT,
-                ComponentType.KILDA_ISL_LATENCY_REPLY_BOLT, ComponentType.KILDA_CONNECTED_DEVICES_REPLY_BOLT,
-                ComponentType.KILDA_SWITCH_MANAGER_REPLY_BOLT, ComponentType.NORTHBOUND_REPLY_BOLT,
-                ComponentType.KILDA_NB_WORKER_REPLY_BOLT, ComponentType.SPEAKER_REQUEST_BOLT,
-                RegionTrackerBolt.BOLT_ID, SwitchMonitorBolt.BOLT_ID));
+                        ComponentType.KILDA_FLOW_HS_REPLY_BOLT, ComponentType.SPEAKER_FLOW_REQUEST_BOLT,
+                        ComponentType.KILDA_PING_REPLY_BOLT, ComponentType.KILDA_STATS_REPLY_BOLT,
+                        ComponentType.KILDA_ISL_LATENCY_REPLY_BOLT, ComponentType.KILDA_CONNECTED_DEVICES_REPLY_BOLT,
+                        ComponentType.KILDA_SWITCH_MANAGER_REPLY_BOLT, ComponentType.NORTHBOUND_REPLY_BOLT,
+                        ComponentType.KILDA_NB_WORKER_REPLY_BOLT, ComponentType.SPEAKER_REQUEST_BOLT,
+                        RegionTrackerBolt.BOLT_ID, SwitchMonitorBolt.BOLT_ID));
         declareBolt(topology, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(SpeakerToNetworkProxyBolt.BOLT_ID, ZkStreams.ZK.toString())
                 .allGrouping(ComponentType.SPEAKER_DISCO_REQUEST_BOLT, ZkStreams.ZK.toString())
