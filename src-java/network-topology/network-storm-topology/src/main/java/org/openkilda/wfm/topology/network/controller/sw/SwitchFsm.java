@@ -189,11 +189,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     public void handlePortAdd(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                               SwitchFsmContext context) {
-        AbstractPort port = makePortRecord(Endpoint.of(switchId, context.getPortNumber()));
+        AbstractPort port = addNewPort(context);
         log.info("Receive port-add notification for {}", port);
-
-        portAdd(port, context);
-        updateOnlineStatus(port, context, OnlineStatus.ONLINE);
 
         Boolean isPortEnabled = context.getPortEnabled();
         if (isPortEnabled == null) {
@@ -219,8 +216,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                                           SwitchFsmContext context) {
         AbstractPort port = portByNumber.get(context.getPortNumber());
         if (port == null) {
-            log.error("Port {} is not listed into {}", context.getPortNumber(), switchId);
-            return;
+            log.info("Port {} is not listed into {}, creating new record.", context.getPortNumber(), switchId);
+            port = addNewPort(context);
         }
 
         switch (event) {
@@ -368,6 +365,13 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
             features.clear();
             features.addAll(update);
         }
+    }
+
+    private AbstractPort addNewPort(SwitchFsmContext context) {
+        AbstractPort port = makePortRecord(Endpoint.of(switchId, context.getPortNumber()));
+        portAdd(port, context);
+        updateOnlineStatus(port, context, OnlineStatus.ONLINE);
+        return port;
     }
 
     private AbstractPort portAdd(AbstractPort port, SwitchFsmContext context) {
