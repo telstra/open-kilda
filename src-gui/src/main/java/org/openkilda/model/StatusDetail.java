@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -31,10 +31,10 @@ import lombok.Data;
 @Data
 public class StatusDetail {
 
-    @JsonProperty("main-path")
+    @JsonProperty("main_path")
     private String mainPath;
     
-    @JsonProperty("protected-path")
+    @JsonProperty("protected_path")
     private String protectedPath;
     
 }

@@ -39,22 +39,22 @@ public class FlowEndpoint implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @JsonProperty("switch-id")
+    @JsonProperty("switch_id")
     private String switchId;
 
-    @JsonProperty("port-id")
+    @JsonProperty("port_number")
     private int portId;
 
-    @JsonProperty("vlan-id")
+    @JsonProperty("vlan_id")
     private int vlanId;
     
-    @JsonProperty("inner-vlan-id")
+    @JsonProperty("inner_vlan_id")
     private int innerVlanId;
     
     @JsonProperty("switch-name")
     private String switchName;
     
-    @JsonProperty("detect-connected-devices")
+    @JsonProperty("detect_connected_devices")
     private DetectedDevice detectedDevice;
 
     public String getSwitchId() {
