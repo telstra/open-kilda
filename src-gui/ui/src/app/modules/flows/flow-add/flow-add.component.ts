@@ -87,6 +87,8 @@ export class FlowAddComponent implements OnInit {
       ignore_bandwidth:[null],
       pinned:[null],
       periodic_pings:[null],
+      max_latency:[""],
+      max_latency_tier2:[""]
     });
 
     this.vlanPorts = Array.from({ length: 4095 }, (v, k) => {
@@ -205,23 +207,27 @@ export class FlowAddComponent implements OnInit {
 
     var flowData = {
       source: {
-        "switch-id": this.flowAddForm.controls["source_switch"].value,
-        "port-id": this.flowAddForm.controls["source_port"].value,
-        "vlan-id": this.flowAddForm.controls["source_vlan"].value
+        "switch_id": this.flowAddForm.controls["source_switch"].value,
+        "port_number": this.flowAddForm.controls["source_port"].value,
+        "vlan_id": this.flowAddForm.controls["source_vlan"].value,
+        "inner_vlan_id":0,
       },
       destination: {
-        "switch-id": this.flowAddForm.controls["target_switch"].value,
-        "port-id": this.flowAddForm.controls["target_port"].value,
-        "vlan-id": this.flowAddForm.controls["target_vlan"].value
+        "switch_id": this.flowAddForm.controls["target_switch"].value,
+        "port_number": this.flowAddForm.controls["target_port"].value,
+        "vlan_id": this.flowAddForm.controls["target_vlan"].value,
+        "inner_vlan_id":0,
       },
-      flowid: this.flowAddForm.controls["flowname"].value,
-      "maximum-bandwidth": this.flowAddForm.controls["maximum_bandwidth"].value,
-      description: this.flowAddForm.controls["description"].value,
-      "diverse-flowid": this.flowAddForm.controls["diverse_flowid"].value || null,
+      "flow_id": this.flowAddForm.controls["flowname"].value,
+      "maximum_bandwidth": this.flowAddForm.controls["maximum_bandwidth"].value,
+      "description": this.flowAddForm.controls["description"].value,
+      "diverse_flow_id": this.flowAddForm.controls["diverse_flowid"].value || null,
       "allocate_protected_path": this.flowAddForm.controls["allocate_protected_path"].value || null,
       'ignore_bandwidth':this.flowAddForm.controls['ignore_bandwidth'].value || null,
-       pinned:this.flowAddForm.controls['pinned'].value || null,
-      "periodic-pings":this.flowAddForm.controls['periodic_pings'].value || null,
+      "pinned":this.flowAddForm.controls['pinned'].value || null,
+      "periodic_pings":this.flowAddForm.controls['periodic_pings'].value || null,
+      "max_latency":this.flowAddForm.controls['max_latency'].value || 0,
+      "max_latency_tier2":this.flowAddForm.controls['max_latency_tier2'].value || 0
     };
     const modalReff = this.modalService.open(ModalconfirmationComponent);
     modalReff.componentInstance.title = "Confirmation";
@@ -235,7 +241,7 @@ export class FlowAddComponent implements OnInit {
             localStorage.removeItem('flows');
             localStorage.removeItem('filterFlag');          
             localStorage.removeItem('flowsinventory'); 
-            this.router.navigate(["/flows/details/" + response.flowid]);
+            this.router.navigate(["/flows/details/" + response.flow_id]);
             this.loaderService.hide();
           },
           error => {

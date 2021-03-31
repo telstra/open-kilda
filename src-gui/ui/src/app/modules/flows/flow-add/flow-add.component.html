@@ -34,6 +34,28 @@
                 </div>
               </div>
 
+              <div class='form-group row flow_details' >
+                <label class='col-sm-3 col-form-label'>Max Latency:</label>
+                <div class="col-sm-4">
+                  <input formControlName="max_latency" id="max_latency" class="form-control" name="max_latency"
+                    type="number" min="0"  />
+                  <!-- <div *ngIf="submitted && f.max_latency.errors" class="invalid-feedback">
+                    <div *ngIf="f.max_latency.errors.required">maximum latency is required</div>
+                  </div> -->
+                </div>
+              </div>
+
+              <div class='form-group row flow_details'>
+                <label class='col-sm-3 col-form-label'>Max Latency Tier2:</label>
+                <div class="col-sm-4">
+                  <input formControlName="max_latency_tier2" id="max_latency_tier2" class="form-control" name="max_latency_tier2"
+                    type="number" min="0"  />
+                  <!-- <div *ngIf="submitted && f.max_latency_tier2.errors" class="invalid-feedback">
+                    <div *ngIf="f.max_latency_tier2.errors.required">max latency tier2 is required</div>
+                  </div> -->
+                </div>
+              </div>
+
               <div class='form-group row flow_details'>
                 <label class='col-sm-3 col-form-label'>Diverse Flow:</label>
                 <div class='col-sm-4'>
