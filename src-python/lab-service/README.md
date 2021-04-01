@@ -13,4 +13,4 @@ curl localhost:8288/api
 ```
 
 ## Traffic Examination
-A REST API wrapper above iperf. [Read more](https://github.com/telstra/open-kilda/blob/develop/services/lab-service/traffexam/README.rst)
+A REST API wrapper above iperf. [Read more](https://github.com/telstra/open-kilda/blob/develop/src-python/lab-service/traffexam/README.rst)
