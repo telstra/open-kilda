@@ -133,7 +133,7 @@ public class SimpleSwitchRuleConverter {
                 .inPort(rule.getInPort())
                 .inVlan(rule.getInVlan())
                 .outPort(rule.getInPort());
-        if (ingress.getEndpoint().getInnerVlanId() != 0) {
+        if (flowPath.isSrcWithMultiTable() && ingress.getEndpoint().getOuterVlanId() != 0) {
             builder.outVlan(Collections.singletonList(ingress.getEndpoint().getOuterVlanId()));
         }
         return builder.build();
