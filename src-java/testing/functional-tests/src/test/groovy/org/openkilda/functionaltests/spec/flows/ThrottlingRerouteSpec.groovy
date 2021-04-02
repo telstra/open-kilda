@@ -10,6 +10,7 @@ import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -41,6 +42,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
     @Value('${reroute.hardtimeout}')
     int rerouteHardTimeout
 
+    @Tidy
     @Tags(SMOKE)
     def "Reroute is not performed while new reroutes are being issued"() {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"
@@ -92,8 +94,8 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "cleanup: restore broken paths and delete flows"
-        flows.each { flowHelperV2.deleteFlow(it.flowId) }
+        cleanup:
+        flows.each { it && flowHelperV2.deleteFlow(it.flowId) }
         brokenIsls.each {
             antiflap.portUp(it.srcSwitch.dpId, it.srcPort)
         }
@@ -180,6 +182,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     def "Flow can be safely deleted while it is in the reroute window waiting for reroute"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -192,6 +195,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
 
         and: "Immediately remove the flow before reroute delay runs out and flow is actually rerouted"
         flowHelperV2.deleteFlow(flow.flowId)
+        def flowIsDeleted = true
 
         then: "The flow is not present in NB"
         northboundV2.getAllFlows().empty
@@ -202,8 +206,9 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
             verifySwitchRules(it.dpId)
         }}
 
-        and: "cleanup: restore broken path"
-        antiflap.portUp(brokenIsl.srcSwitch.dpId, brokenIsl.srcPort)
+        cleanup:
+        flow && !flowIsDeleted && northboundV2.deleteFlow(flow.flowId)
+        brokenIsl && antiflap.portUp(brokenIsl.srcSwitch.dpId, brokenIsl.srcPort)
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(brokenIsl).state == IslChangeType.DISCOVERED }
     }
 

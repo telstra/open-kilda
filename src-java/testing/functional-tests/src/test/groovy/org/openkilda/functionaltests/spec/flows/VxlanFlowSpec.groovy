@@ -39,6 +39,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
+    @Tidy
     @Tags(HARDWARE)
     def "System allows to create/update encapsulation type for a flow\
 (#encapsulationCreate.toString() -> #encapsulationUpdate.toString())"() {
@@ -159,8 +160,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Delete the flow"
+        flow && flowHelper.deleteFlow(flow.id)
 
         where:
         encapsulationCreate | encapsulationUpdate
@@ -168,6 +169,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         FlowEncapsulationType.VXLAN | FlowEncapsulationType.TRANSIT_VLAN
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "Able to CRUD a metered pinned flow with 'VXLAN' encapsulation"() {
         when: "Create a flow"
@@ -193,11 +195,14 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         !newFlowInfo.pinned
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
-        and: "Cleanup: Delete the flow"
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Delete the flow"
+        if (flow) {
+            Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+            flowHelper.deleteFlow(flow.id)
+        }
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "Able to CRUD a vxlan flow with protected path"() {
         given: "Two active VXLAN supported switches with two available path at least"
@@ -319,10 +324,11 @@ class VxlanFlowSpec extends HealthCheckSpecification {
             assert direction.discrepancies.empty
         }
 
-        and: "Cleanup: Delete the flow and reset costs"
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Delete the flow and reset costs"
+        flow && flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "System allows tagged traffic via default flow(0<->0) with 'VXLAN' encapsulation"() {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
@@ -357,8 +363,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(defaultFlow.id)
+        cleanup: "Delete the flow"
+        flow && flowHelper.deleteFlow(defaultFlow.id)
     }
 
     @Tidy
@@ -451,6 +457,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         !exc && flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "System allows to create/update encapsulation type for a one-switch flow\
 (#encapsulationCreate.toString() -> #encapsulationUpdate.toString())"() {
@@ -512,8 +519,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Delete the flow"
+        flow && flowHelper.deleteFlow(flow.id)
 
         where:
         encapsulationCreate | encapsulationUpdate
@@ -540,7 +547,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         //TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
 
         cleanup:
-        flowHelper.deleteFlow(flow.id)
+        flow && flowHelper.deleteFlow(flow.id)
     }
 
     def isVxlanEnabled(SwitchId switchId) {

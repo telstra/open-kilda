@@ -71,6 +71,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         "The port $port on the switch '$swId' is occupied by an ISL ($endpoint endpoint collision)."
     }
 
+    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTags([
             @IterationTag(tags = [SMOKE], iterationNameRegex = /vlan /),
@@ -128,6 +129,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         then: "The flow is not present in NB"
         !northboundV2.getAllFlows().find { it.flowId == flow.flowId }
+        def flowIsDeleted = true
 
         and: "ISL bandwidth is restored"
         Wrappers.wait(WAIT_OFFSET) {
@@ -137,6 +139,9 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         and: "No rule discrepancies on every switch of the flow"
         switches.each { sw -> Wrappers.wait(WAIT_OFFSET) { verifySwitchRules(sw.dpId) } }
+
+        cleanup:
+        !flowIsDeleted && flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         /*Some permutations may be missed, since at current implementation we only take 'direct' possible flows
@@ -165,7 +170,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         northboundV2.getAllFlows()*.flowId.containsAll(flows*.flowId)
 
         cleanup: "Delete flows"
-        flows.each { flowHelperV2.deleteFlow(it.flowId) }
+        flows.each { it && flowHelperV2.deleteFlow(it.flowId) }
 
         where:
         data << [
@@ -329,6 +334,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to create single switch single port flow with different vlan (#flow.source.switchId)"(
             FlowRequestV2 flow) {
@@ -346,9 +352,13 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         then: "The flow is not present in NB"
         !northboundV2.getAllFlows().find { it.flowId == flow.flowId }
+        def flowIsDeleted = true
 
         and: "No rule discrepancies on the switch after delete"
         Wrappers.wait(WAIT_OFFSET) { verifySwitchRules(flow.source.switchId) }
+
+        cleanup:
+        !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         flow << getSingleSwitchSinglePortFlows()
@@ -528,6 +538,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     def "Removing flow while it is still in progress of being set up should not cause rule discrepancies"() {
         given: "A potential flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -566,7 +577,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
@@ -682,6 +693,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     def "Unable to create a flow on an isl port when ISL status is MOVED"() {
         given: "An inactive isl with moved state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -695,6 +707,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
             [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }
         }
+        def islIsMoved = true
 
         when: "Try to create a flow using ISL src port"
         def flow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch)
@@ -708,15 +721,18 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == getPortViolationError("source", isl.srcPort, isl.srcSwitch.dpId)
 
-        and: "Cleanup: Restore status of the ISL and delete new created ISL"
-        islUtils.replug(newIsl, true, isl, false, false)
-        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
-        islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
-        northbound.deleteLink(islUtils.toLinkParameters(newIsl))
-        Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
+        cleanup: "Restore status of the ISL and delete new created ISL"
+        if (islIsMoved) {
+            islUtils.replug(newIsl, true, isl, false, false)
+            islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+            islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
+            northbound.deleteLink(islUtils.toLinkParameters(newIsl))
+            Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
+        }
         database.resetCosts()
     }
 
+    @Tidy
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
         given: "Disconnected switch"
         def sw = topology.getActiveSwitches()[0]
@@ -734,8 +750,9 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         errorDetails.errorDescription == "Source switch $sw.dpId and " +
                 "Destination switch $sw.dpId are not connected to the controller"
 
-        and: "Cleanup: Connect switch back to the controller"
-        switchHelper.reviveSwitch(sw, blockData, true)
+        cleanup: "Connect switch back to the controller"
+        blockData && switchHelper.reviveSwitch(sw, blockData, true)
+        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy

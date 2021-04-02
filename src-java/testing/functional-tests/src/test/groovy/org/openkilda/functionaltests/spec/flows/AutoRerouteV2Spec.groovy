@@ -69,12 +69,11 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Revive the ISL back (bring switch port up) and delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-        antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        islToFail && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
-        database.resetCosts()
     }
 
     @Tidy
@@ -157,15 +156,14 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
-        helperFlows && helperFlows.each { flowHelperV2.deleteFlow(it.flowId) }
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        helperFlows && helperFlows.each { it && flowHelperV2.deleteFlow(it.flowId) }
         if (portDown && !portUp) {
             antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
             wait(discoveryInterval + WAIT_OFFSET) {
                 assert islUtils.getIslInfo(islToFail).get().state == IslChangeType.DISCOVERED
             }
         }
-        database.resetCosts()
     }
 
     @Tidy
@@ -180,7 +178,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         def isSwitchDisconnected = true
 
         then: "Flow becomes 'Down'"
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             def flowInfo =  northboundV2.getFlow(flow.flowId)
             assert flowInfo.status == FlowState.DOWN.toString()
             assert flowInfo.statusInfo == "Switch $sw.dpId is inactive"
@@ -191,7 +189,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         def islToFail = topology.isls.find() {isl-> isl.srcSwitch != sw && isl.dstSwitch != sw}
         antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
         isIslFailed = true
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             assert northbound.getLink(islToFail).state == IslChangeType.FAILED
         }
 
@@ -202,7 +200,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         isIslFailed = false
 
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             assert northbound.getLink(islToFail).state == IslChangeType.DISCOVERED
         }
 
@@ -214,7 +212,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         isSwitchDisconnected = false
 
         then: "Flow becomes 'Up'"
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
@@ -222,11 +220,11 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         isSwitchDisconnected && switchHelper.reviveSwitch(sw, blockData, true)
         if (isIslFailed) {
             antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            wait(discoveryInterval + WAIT_OFFSET) {
                 assert northbound.getLink(islToFail).actualState == IslChangeType.DISCOVERED
             }
         }
@@ -279,15 +277,15 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology to the original state, remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         portDown && !portUp && antiflap.portUp(isl.dstSwitch.dpId, isl.dstPort)
         broughtDownIsls.each { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
         wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
-        database.resetCosts()
     }
 
+    @Tidy
     @Tags(SMOKE)
     def "Flow in 'Down' status is rerouted when discovering a new ISL"() {
         given: "An intermediate-switch flow with one alternative path at least"
@@ -304,7 +302,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         }
 
         then: "The flow goes to 'Down' status"
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+        wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
             assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
         }
@@ -328,21 +326,21 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         then: "The flow goes to 'Up' status"
         and: "The flow was rerouted"
         //rtretiak: TODO: why such a long wait required(it is indeed required)? investigate
-        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET * 3) {
+        wait(rerouteDelay + discoveryInterval + WAIT_OFFSET * 3) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == REROUTE_SUCCESS
         }
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
 
-        and: "Bring port involved in the original path up and delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-        antiflap.portUp(flowPath.first().switchId, flowPath.first().portNo)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        cleanup: "Bring port involved in the original path up and delete the flow"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        flowPath && antiflap.portUp(flowPath.first().switchId, flowPath.first().portNo)
+        wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
-        database.resetCosts()
     }
 
+    @Tidy
     @Tags(SMOKE)
     def "Flow in 'Up' status is not rerouted when discovering a new ISL and more preferable path is available"() {
         given: "A flow with one alternative path at least"
@@ -361,26 +359,33 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "Link status becomes 'FAILED'"
-        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToFail).get().state == IslChangeType.FAILED }
+        wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToFail).get().state == IslChangeType.FAILED }
 
         when: "Failed link goes up"
         antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "Link status becomes 'DISCOVERED'"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(islToFail).get().state == IslChangeType.DISCOVERED
         }
+        def islIsUp = true
 
         and: "The flow is not rerouted and doesn't use more preferable path"
         TimeUnit.SECONDS.sleep(rerouteDelay + WAIT_OFFSET)
         northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
 
-        and: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-        database.resetCosts()
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        if (!islIsUp) {
+            islToFail && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
+            wait(discoveryInterval + WAIT_OFFSET) {
+                assert islUtils.getIslInfo(islToFail).get().state == IslChangeType.DISCOVERED
+            }
+        }
     }
 
+    @Tidy
     @Tags([SMOKE])
     def "Flow in 'Up' status is not rerouted when connecting a new switch and more preferable path is available"() {
         given: "A flow with one alternative path at least"
@@ -397,26 +402,29 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         def blockData = lockKeeper.knockoutSwitch(switchToDisconnect, RW)
 
         then: "The switch is really disconnected from the controller"
-        Wrappers.wait(WAIT_OFFSET) { assert !(switchToDisconnect.dpId in northbound.getActiveSwitches()*.switchId) }
+        wait(WAIT_OFFSET) { assert !(switchToDisconnect.dpId in northbound.getActiveSwitches()*.switchId) }
 
         when: "Connect the switch back to the controller"
         lockKeeper.reviveSwitch(switchToDisconnect, blockData)
 
         then: "The switch is really connected to the controller"
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             assert northbound.getSwitch(switchToDisconnect.dpId).state == SwitchChangeType.ACTIVATED
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
+        def switchIsOnline = true
 
         and: "The flow is not rerouted and doesn't use more preferable path"
         TimeUnit.SECONDS.sleep(rerouteDelay + WAIT_OFFSET)
         northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
 
-        and: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        cleanup: "Delete the flow"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        blockData && !switchIsOnline && switchHelper.reviveSwitch(switchToDisconnect, blockData, true)
     }
 
+    @Tidy
     @Tags([HARDWARE, SMOKE])
     def "Flow is not rerouted when one of the flow ports goes down"() {
         given: "An intermediate-switch flow with one alternative path at least"
@@ -441,10 +449,11 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         TimeUnit.SECONDS.sleep(rerouteDelay)
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
 
-        and: "Bring flow ports up and delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-        ["source", "destination"].each { antiflap.portUp(flow."$it".switchId, flow."$it".portNumber) }
-        database.resetCosts()
+        cleanup: "Bring flow ports up and delete the flow"
+        if (flow) {
+            flowHelperV2.deleteFlow(flow.flowId)
+            ["source", "destination"].each { antiflap.portUp(flow."$it".switchId, flow."$it".portNumber) }
+        }
     }
 
     @Tidy
@@ -622,7 +631,7 @@ have links with enough bandwidth"
         def blockData = lockKeeper.knockoutSwitch(swToDeactivate, RW)
         def isSwDeactivated = true
         // it takes more time to DEACTIVATE a switch via the 'knockoutSwitch' method on the stage env
-        Wrappers.wait(WAIT_OFFSET * 4) {
+        wait(WAIT_OFFSET * 4) {
             assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.DEACTIVATED
         }
 
@@ -631,7 +640,7 @@ have links with enough bandwidth"
 
         when: "Activate the src switch"
         lockKeeper.reviveSwitch(swToDeactivate, blockData)
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
             assert northbound.getAllLinks().findAll {
                 it.state == IslChangeType.DISCOVERED
@@ -648,7 +657,7 @@ have links with enough bandwidth"
         flow && flowHelperV2.deleteFlow(flow.flowId)
         if (isSwDeactivated) {
             lockKeeper.reviveSwitch(swToDeactivate, blockData)
-            Wrappers.wait(WAIT_OFFSET) {
+            wait(WAIT_OFFSET) {
                 assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
                 assert northbound.getAllLinks().findAll {
                     it.state == IslChangeType.DISCOVERED
@@ -676,13 +685,13 @@ have links with enough bandwidth"
                 .collectMany { [it, it.reversed] }.unique()
                 .findAll { !untouchableIsls.contains(it) }.unique { [it, it.reversed].sort() }
         withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort) } }
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll { it.state == FAILED }.size() == islsToBreak.size() * 2
         }
         //move the flow to DOWN status
         def islToBreak = pathHelper.getInvolvedIsls(flowPath).first()
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN }
+        wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN }
 
         when: "Generate switchUp event on switch which is not related to the flow"
         def involvedSwitches = pathHelper.getInvolvedSwitches(flowPath)*.dpId
@@ -713,7 +722,7 @@ have links with enough bandwidth"
         islToBreak && antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         !isSwitchActivated && blockData && switchHelper.reviveSwitch(switchToManipulate, blockData)
         islsToBreak && withPool { islsToBreak.eachParallel { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) } }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
     }

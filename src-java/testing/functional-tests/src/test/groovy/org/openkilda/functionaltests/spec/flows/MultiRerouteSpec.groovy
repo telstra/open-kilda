@@ -94,7 +94,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         northbound.getAllLinks().each { assert it.availableBandwidth >= 0 }
 
         cleanup: "revert system to original state"
-        flows.each { flowHelperV2.deleteFlow(it.flowId) }
+        flows.each { it && flowHelperV2.deleteFlow(it.flowId) }
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())

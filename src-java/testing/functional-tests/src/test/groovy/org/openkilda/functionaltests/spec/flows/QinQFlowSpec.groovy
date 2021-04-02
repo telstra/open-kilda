@@ -40,6 +40,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
+    @Tidy
     @IterationTags([
             @IterationTag(tags=[SMOKE_SWITCHES],
                     iterationNameRegex = /srcVlanId: 10, srcInnerVlanId: 20, dstVlanId: 30, dstInnerVlanId: 0/)
@@ -212,7 +213,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the flows"
-        [qinqFlow.flowId, vlanFlow.id].each { flowHelperV2.deleteFlow(it) }
+        [qinqFlow.flowId, vlanFlow.id].each { it && flowHelperV2.deleteFlow(it) }
+        def flowsAreDeleted = true
 
         then: "Flows rules are deleted"
         involvedSwitchesforBothFlows.each { sw ->
@@ -228,6 +230,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
             }.empty
         }
 
+        cleanup:
+        qinqFlow && !flowsAreDeleted && flowHelperV2.deleteFlow(qinqFlow.flowId)
+        vlanFlow && !flowsAreDeleted && flowHelper.deleteFlow(vlanFlow.id)
+
         where:
         srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
         10        | 20             | 30        | 40
@@ -235,6 +241,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         10        | 20             | 0         | 0
     }
 
+    @Tidy
     def "System allows to create a single switch QinQ flow\
 (srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
         given: "A switch with enabled multiTable mode"
@@ -284,6 +291,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(qinqFlow.flowId)
+        def qinqFlowIsDeleted = true
 
         then: "Flow rules are deleted"
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
@@ -292,6 +300,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
         northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
             new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
         }.empty
+
+        cleanup:
+        qinqFlow && !qinqFlowIsDeleted && flowHelperV2.deleteFlow(qinqFlow.flowId)
 
         where:
         srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
@@ -324,6 +335,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.to(MessageError).errorMessage == "Could not create flow"
 
         cleanup: "Revert system to original state"
+        !exc && northboundV2.deleteFlow(flow.flowId)
         northbound.updateSwitchProperties(swP.src.dpId, initSrcSwProps)
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
             assert northbound.getSwitchRules(swP.src.dpId).flowEntries*.cookie.sort() == swP.src.defaultCookies.sort()
@@ -359,6 +371,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         10             | -1
     }
 
+    @Tidy
     def "System allow to create/update/delete a QinQ flow via APIv1"() {
         given: "Two switches with enabled multi table mode"
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -467,6 +480,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         flowWithoutQinQ && flowHelperV2.deleteFlow(flowWithoutQinQ.flowId)
     }
 
+    @Tidy
     def "System detects conflict QinQ flows(oVlan: #conflictVlan, iVlan: #conflictInnerVlanId)"() {
         given: "Two switches with enabled multi table mode"
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -491,8 +505,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
         exc.statusCode == HttpStatus.CONFLICT
         exc.responseBodyAsString.to(MessageError).errorMessage == "Could not create flow"
 
-        and: "Revert system to original state"
-        flowHelperV2.deleteFlow(flow.flowId)
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        !exc && northboundV2.deleteFlow(conflictFlow.flowId)
 
         where:
         vlan | innerVlan | conflictVlan | conflictInnerVlanId
@@ -500,6 +515,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         10   | 0         | 0            | 10
     }
 
+    @Tidy
     def "System allows to create more than one QinQ flow on the same port and with the same vlan"() {
         given: "Two switches connected to traffgen and enabled multiTable mode"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
@@ -550,6 +566,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         when: "Delete the second flow"
         flowHelperV2.deleteFlow(flow2.flowId)
+        def flow2IsDeleted = true
 
         then: "The first flow is still valid and pingable"
         northbound.validateFlow(flow1.flowId).each { assert it.asExpected }
@@ -567,10 +584,12 @@ class QinQFlowSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the first flow"
-        flowHelperV2.deleteFlow(flow1.flowId)
+        cleanup:
+        flow1 && flowHelperV2.deleteFlow(flow1.flowId)
+        !flow2IsDeleted && flowHelperV2.deleteFlow(flow2.flowId)
     }
 
+    @Tidy
     def "System allows to create a single-switch-port QinQ flow\
 (srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
         given: "A switch with enabled multiTable mode"
@@ -613,11 +632,15 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(qinqFlow.flowId)
+        def flowIsDeleted = true
 
         then: "Flow rules are deleted"
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
         }
+
+        cleanup:
+        qinqFlow && !flowIsDeleted && flowHelperV2.deleteFlow(qinqFlow.flowId)
 
         where:
         srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
@@ -626,6 +649,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         10        | 20             | 0         | 0
     }
 
+    @Tidy
     @Tags(HARDWARE) //not tested
     @IterationTags([
             @IterationTag(tags=[SMOKE_SWITCHES],
@@ -787,6 +811,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         when: "Delete the flows"
         [qinqFlow.flowId, vlanFlow.id].each { flowHelperV2.deleteFlow(it) }
+        def flowsAreDeleted = true
 
         then: "Flows rules are deleted"
         involvedSwitchesforBothFlows.each { sw ->
@@ -801,6 +826,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
                 new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
             }.empty
         }
+
+        cleanup:
+        qinqFlow && !flowsAreDeleted && flowHelperV2.deleteFlow(qinqFlow.flowId)
+        vlanFlow && !flowsAreDeleted && flowHelper.deleteFlow(vlanFlow.id)
 
         where:
         srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId

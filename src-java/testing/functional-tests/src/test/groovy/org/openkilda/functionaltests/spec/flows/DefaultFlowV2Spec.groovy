@@ -114,7 +114,7 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
         }
 
         cleanup:
-        [vlanFlow, defaultFlow, qinqFlow].each { flow -> flowHelperV2.deleteFlow(flow.flowId) }
+        [vlanFlow, defaultFlow, qinqFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
         initSwProps.each { sw, swProps ->
             switchHelper.updateSwitchProperties(sw, swProps)
         }
@@ -160,7 +160,7 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flows"
-        flowHelperV2.deleteFlow(defaultFlow.flowId)
+        defaultFlow && flowHelperV2.deleteFlow(defaultFlow.flowId)
     }
 
     @Tidy
@@ -226,7 +226,7 @@ port=$defaultFlow2.source.portNumber, existing flow '$defaultFlow1.flowId' \
 source: switchId=\"$defaultFlow1.source.switchId\" port=$defaultFlow1.source.portNumber"
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(defaultFlow1.flowId)
+        defaultFlow1 && flowHelperV2.deleteFlow(defaultFlow1.flowId)
         defaultFlow2 && !exc && flowHelperV2.deleteFlow(defaultFlow2.flowId)
     }
 }

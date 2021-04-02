@@ -77,7 +77,7 @@ class SwapEndpointSpec extends HealthCheckSpecification {
         def isSwitchValid = true
 
         cleanup: "Delete flows"
-        flows.each { flowHelper.deleteFlow(it.id) }
+        flows.each { it && flowHelper.deleteFlow(it.id) }
         !isSwitchValid && involvedSwitches.each { northbound.synchronizeSwitch(it.dpId, true) }
 
         where:
@@ -248,7 +248,7 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Delete flows"
-        [data.flow1, data.flow2].each { flowHelper.deleteFlow(it.id) }
+        [data.flow1, data.flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!isSwitchValid) {
             [data.switchPairs[0].src.dpId, data.switchPairs[0].dst.dpId, data.switchPairs[1].src.dpId, data.switchPairs[1].dst.dpId]
                     .unique().each { northbound.synchronizeSwitch(it, true) }
@@ -316,7 +316,7 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Delete flows"
-        [data.flow1, data.flow2].each { flowHelper.deleteFlow(it.id) }
+        [data.flow1, data.flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!isSwitchValid) {
             [data.switchPairs[0].src.dpId, data.switchPairs[0].dst.dpId, data.switchPairs[1].src.dpId, data.switchPairs[1].dst.dpId]
                     .unique().each { northbound.synchronizeSwitch(it, true) }
@@ -391,7 +391,7 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Delete flows"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!isSwitchValid) {
             [switchPairs[0].src.dpId, switchPairs[0].dst.dpId, switchPairs[1].src.dpId, switchPairs[1].dst.dpId]
                     .unique().each { northbound.synchronizeSwitch(it, true) }
@@ -442,7 +442,7 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Delete flows"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!isSwitchValid) {
             [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
                     .unique().each { northbound.synchronizeSwitch(it, true) }
@@ -489,7 +489,7 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Delete flows"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!isSwitchValid) {
             [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
                     .unique().each { northbound.synchronizeSwitch(it, true) }
@@ -572,7 +572,7 @@ switches"() {
         def isTestComplete = true
 
         cleanup: "Delete the flow"
-        flowHelper.deleteFlow(flow1.id)
+        flow1 && flowHelper.deleteFlow(flow1.id)
         !isTestComplete && [switchPair.src.dpId, switchPair.dst.dpId].each { northbound.synchronizeSwitch(it, true) }
     }
 
@@ -600,7 +600,7 @@ switches"() {
         Boolean isTestCompleted = true
 
         cleanup: "Delete flows"
-        [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2, flow3].each { it && flowHelper.deleteFlow(it.id) }
         if (!isTestCompleted) {
             [data.flow1SwitchPair.src.dpId, data.flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, data.flow2SwitchPair.dst.dpId]
                     .unique().each { northbound.synchronizeSwitch(it, true) }
@@ -718,7 +718,7 @@ switches"() {
         Boolean isTestCompleted = true
 
         cleanup: "Delete flows"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!isTestCompleted) {
             [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
                     .unique().each { northbound.synchronizeSwitch(it, true) }
@@ -784,7 +784,7 @@ switches"() {
         Boolean isTestCompleted = true
 
         cleanup: "Delete flows"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         !isTestCompleted && [swPair.src.dpId, swPair.dst.dpId].each { northbound.synchronizeSwitch(it, true) }
     }
 
@@ -868,7 +868,7 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Restore topology and delete flows"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -957,7 +957,7 @@ switches"() {
         Boolean isTestCompleted = true
 
         cleanup: "Restore topology and delete flows"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -1052,7 +1052,7 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Restore topology and delete flows"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -1135,7 +1135,7 @@ switches"() {
         Boolean isTestCompleted = true
 
         cleanup: "Restore topology and delete flows"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -1174,7 +1174,7 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Delete flows"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!isSwitchValid) {
             [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
                     .unique().each { northbound.synchronizeSwitch(it, true) }
@@ -1287,7 +1287,7 @@ switches"() {
         }
 
         cleanup: "Delete flows"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!isSwitchValid) {
             [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
                     .unique().each { northbound.synchronizeSwitch(it, true) }
@@ -1322,7 +1322,7 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Delete flows"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         !isSwitchValid && [switchPair.src.dpId, switchPair.dst.dpId].each { northbound.synchronizeSwitch(it, true) }
 
 
@@ -1383,7 +1383,7 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Delete flows"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         !isSwitchValid && [switchPair.src.dpId, switchPair.dst.dpId].each { northbound.synchronizeSwitch(it, true) }
 
         where:
@@ -1497,7 +1497,7 @@ switches"() {
         def isSwitchValid = true
 
         cleanup:
-        deleteResponses?.size() != 2 && [flow1, flow2].each { flowHelperV2.deleteFlow(it.flowId) }
+        deleteResponses?.size() != 2 && [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         if (blockData) {
             database.setSwitchStatus(swPair1.src.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(swPair1.src, blockData, true)
@@ -1591,7 +1591,7 @@ switches"() {
         getFlowLoopRules(flow1SwitchPair.dst.dpId)*.packetCount.every { it > 0 }
 
         cleanup: "Restore topology and delete flows"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!switchesAreValid) {
             [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
                     .unique().each { northbound.synchronizeSwitch(it, true) }
