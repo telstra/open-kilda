@@ -154,10 +154,8 @@ public class GrpcSession implements Closeable {
                 .setLogicalportno(port.getLogicalPortNumber())
                 .setLogicalporttype(mapper.map(port.getType()))
                 .build();
-
-        log.info(
-                "About to create logical port={} type={} target-physical-port={} on switch {}",
-                port.getLogicalPortNumber(), port.getType(), port.getPortNumbers(), address);
+        log.info("About to create logical port: {}, for physical port: {}, on: {}", port.getLogicalPortNumber(),
+                port.getPortNumbers(), address);
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, SET_LOGICAL_PORT);
         extendChain(() -> stub.setConfigLogicalPort(request, observer), observer.future);
