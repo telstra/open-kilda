@@ -2,7 +2,7 @@ name: unittests
 on: [pull_request]
 jobs:
   unittests:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
     - name: Set up JDK 1.8
@@ -32,7 +32,6 @@ jobs:
         rm -fr $HOME/.gradle/caches/*/plugin-resolution/
     - name: Run checkstyle
       run: |
-        export TRAVIS=true
         export PATH="$PATH:/opt/confd/bin"
         export MAVEN_OPTS="$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
         make checkstyle
