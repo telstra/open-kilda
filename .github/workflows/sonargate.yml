@@ -37,7 +37,6 @@ jobs:
         rm -fr $HOME/.gradle/caches/*/plugin-resolution/
     - name: Run sonar
       run: |
-        export TRAVIS=true
         export PATH="$PATH:/opt/confd/bin"
         export MAVEN_OPTS="$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
         make sonar
