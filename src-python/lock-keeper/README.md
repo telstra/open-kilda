@@ -17,7 +17,7 @@ Also, it can start/stop controller's container to simulate its outage or mainten
 
 Build
 
-docker build -t kilda/lock-keeper .
+docker build -t kilda/lock-keeper -f ../../docker/lock-keeper/Dockerfile .
 
 Run
 
