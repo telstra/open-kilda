@@ -2,7 +2,7 @@ name: sonargate
 on: [pull_request]
 jobs:
   sonargate:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
     - name: Set up Java11
@@ -33,7 +33,6 @@ jobs:
         echo "systemProp.sonar.projectKey=org.openkilda:kilda-parent" >> $HOME/.gradle/gradle.properties
         echo "systemProp.sonar.login=${{secrets.SONAR_TOKEN}}" >> $HOME/.gradle/gradle.properties
         echo "systemProp.sonar.password=" >> $HOME/.gradle/gradle.properties
-        cat $HOME/.gradle/gradle.properties
         rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
         rm -fr $HOME/.gradle/caches/*/plugin-resolution/
     - name: Run sonar
