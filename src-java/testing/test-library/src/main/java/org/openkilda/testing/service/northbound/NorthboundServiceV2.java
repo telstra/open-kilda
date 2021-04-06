@@ -30,6 +30,7 @@ import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
@@ -90,6 +91,8 @@ public interface NorthboundServiceV2 {
     PortPropertiesResponse updatePortProperties(SwitchId switchId, Integer port, PortPropertiesDto payload);
 
     SwitchDtoV2 partialSwitchUpdate(SwitchId switchId, SwitchPatchDto dto);
+
+    SwitchConnectionsResponse getSwitchConnections(SwitchId switchId);
 
     //links
     BfdPropertiesPayload setLinkBfd(TopologyDefinition.Isl isl);
