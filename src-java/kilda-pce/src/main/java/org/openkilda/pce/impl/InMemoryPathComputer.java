@@ -39,8 +39,6 @@ import org.openkilda.pce.model.WeightFunction;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -69,25 +67,11 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     @Override
-    public GetPathsResult getPath(
-            Flow flow, Collection<PathId> reusePathsResources, PathComputationStrategy... backUpStrategies)
+    public GetPathsResult getPath(Flow flow, Collection<PathId> reusePathsResources)
             throws UnroutableFlowException, RecoverableException {
-        List<PathComputationStrategy> strategies = new ArrayList<>();
-        strategies.add(flow.getPathComputationStrategy());
-        strategies.addAll(Arrays.asList(backUpStrategies));
-
         AvailableNetwork network = availableNetworkFactory.getAvailableNetwork(flow, reusePathsResources);
 
-        for (int i = 0; i < strategies.size() - 1; i++) {
-            try {
-                return getPath(network, flow, strategies.get(i));
-            } catch (UnroutableFlowException e) {
-                log.warn(String.format("No path found for flow '%s' with '%s' strategy. Will try with "
-                        + "'%s' strategy.", flow.getFlowId(), strategies.get(i), strategies.get(i + 1)), e);
-            }
-        }
-
-        return getPath(network, flow, strategies.get(strategies.size() - 1));
+        return getPath(network, flow, flow.getPathComputationStrategy());
     }
 
     private GetPathsResult getPath(AvailableNetwork network, Flow flow, PathComputationStrategy strategy)
