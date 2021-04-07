@@ -501,7 +501,9 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
             builder.transition().from(SwitchFsmState.PENDING).to(SwitchFsmState.SYNC).on(SwitchFsmEvent.ONLINE)
                     .callMethod("initPortsFromHistory");
             builder.transition().from(SwitchFsmState.PENDING).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
-
+            builder.transition().from(SwitchFsmState.PENDING).to(SwitchFsmState.DELETED)
+                    .on(SwitchFsmEvent.SWITCH_REMOVE)
+                    .callMethod("removePortsFsm");
 
             // SYNCHRONIZE
             builder.transition().from(SwitchFsmState.SYNC).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.SYNC_ENDED);

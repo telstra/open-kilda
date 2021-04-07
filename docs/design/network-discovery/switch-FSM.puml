@@ -33,6 +33,7 @@ INIT --> PENDING : history
 
 PENDING : enter / setup port workers
 PENDING --> SYNC : online / init ports from history
+PENDING --> DELETED: switch-remove / kill ports FSM
 PENDING --> OFFLINE : offline
 
 SYNC : enter / init attempts count from config
