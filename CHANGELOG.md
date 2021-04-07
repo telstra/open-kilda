@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.89.1 (08/04/2021)
+
+### Bug Fixes:
+-  [#4197](https://github.com/telstra/open-kilda/pull/4197) Updated version of switch fsm to fix bfd [**floodlight**][**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.89.0...v1.89.1).
+
+### Affected Components:
+fl, network
+
+---
+
 ## v1.89.0 (25/03/2021)
 
 ### Features:
