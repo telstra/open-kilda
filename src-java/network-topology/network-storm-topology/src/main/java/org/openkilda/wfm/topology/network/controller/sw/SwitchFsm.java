@@ -116,14 +116,9 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
             port.setHistory(outgoingLink);
             portAdd(port, context);
         }
-        SwitchFsmEvent nextEvent;
-        if (SwitchStatus.ACTIVE.equals(historyFacts.getLastRecordedStatus())) {
-            nextEvent = SwitchFsmEvent.ONLINE;
-        } else {
-            nextEvent = SwitchFsmEvent.OFFLINE;
+        if (SwitchStatus.INACTIVE.equals(historyFacts.getLastRecordedStatus())) {
+            fire(SwitchFsmEvent.OFFLINE, context);
         }
-        fire(nextEvent, context);
-
     }
 
     public void syncEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
@@ -503,7 +498,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
             // PENDING
             builder.onEntry(SwitchFsmState.PENDING).callMethod("applyHistory");
-            builder.transition().from(SwitchFsmState.PENDING).to(SwitchFsmState.ONLINE).on(SwitchFsmEvent.ONLINE)
+            builder.transition().from(SwitchFsmState.PENDING).to(SwitchFsmState.SYNC).on(SwitchFsmEvent.ONLINE)
                     .callMethod("initPortsFromHistory");
             builder.transition().from(SwitchFsmState.PENDING).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
 

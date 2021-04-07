@@ -32,7 +32,7 @@ INIT --> SYNC : online
 INIT --> PENDING : history
 
 PENDING : enter / setup port workers
-PENDING --> ONLINE : online / init ports from history
+PENDING --> SYNC : online / init ports from history
 PENDING --> OFFLINE : offline
 
 SYNC : enter / init attempts count from config
