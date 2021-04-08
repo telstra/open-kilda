@@ -139,7 +139,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
 
     private void zookeeperSpout(TopologyBuilder topology) {
         ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString());
+                getZookeeperConfig());
         declareSpout(topology, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
     }
 
@@ -429,7 +429,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         int expectedBoltsCount = getBoltInstancesCount(
                 SpeakerRouter.BOLT_ID, WatchListHandler.BOLT_ID, NetworkPersistedStateImportHandler.BOLT_ID);
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(topologyConfig.getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig().getConnectString(), expectedBoltsCount);
+                getZookeeperConfig(), expectedBoltsCount);
         declareBolt(topology, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(SpeakerRouter.BOLT_ID, SpeakerRouter.STREAM_ZOOKEEPER_ID)
                 .allGrouping(WatchListHandler.BOLT_ID, WatchListHandler.STREAM_ZOOKEEPER_ID)

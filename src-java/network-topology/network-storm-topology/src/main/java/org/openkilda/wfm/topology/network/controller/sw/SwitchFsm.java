@@ -116,6 +116,9 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
             port.setHistory(outgoingLink);
             portAdd(port, context);
         }
+        if (SwitchStatus.INACTIVE.equals(historyFacts.getLastRecordedStatus())) {
+            fire(SwitchFsmEvent.OFFLINE, context);
+        }
     }
 
     public void syncEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
@@ -165,6 +168,13 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         context.getOutput().sendSwitchStateChanged(switchId, SwitchStatus.INACTIVE);
         for (AbstractPort port : portByNumber.values()) {
             updateOnlineStatus(port, context, OnlineStatus.of(false, context.getIsRegionOffline()));
+        }
+    }
+
+    public void initPortsFromHistory(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                                     SwitchFsmContext context) {
+        for (AbstractPort port : portByNumber.values()) {
+            updateOnlineStatus(port, context, OnlineStatus.of(true, context.getIsRegionOffline()));
         }
     }
 
@@ -483,10 +493,15 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                     PersistenceManager.class, SwitchId.class, NetworkOptions.class);
 
             // INIT
-            builder.transition()
-                    .from(SwitchFsmState.INIT).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.HISTORY)
-                    .callMethod("applyHistory");
             builder.transition().from(SwitchFsmState.INIT).to(SwitchFsmState.SYNC).on(SwitchFsmEvent.ONLINE);
+            builder.transition().from(SwitchFsmState.INIT).to(SwitchFsmState.PENDING).on(SwitchFsmEvent.HISTORY);
+
+            // PENDING
+            builder.onEntry(SwitchFsmState.PENDING).callMethod("applyHistory");
+            builder.transition().from(SwitchFsmState.PENDING).to(SwitchFsmState.SYNC).on(SwitchFsmEvent.ONLINE)
+                    .callMethod("initPortsFromHistory");
+            builder.transition().from(SwitchFsmState.PENDING).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
+
 
             // SYNCHRONIZE
             builder.transition().from(SwitchFsmState.SYNC).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.SYNC_ENDED);
@@ -582,6 +597,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     public enum SwitchFsmState {
         INIT,
+        PENDING,
         SYNC,
         OFFLINE,
         ONLINE,

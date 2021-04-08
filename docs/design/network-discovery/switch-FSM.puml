@@ -28,8 +28,12 @@ endlegend
 
 [*] --> INIT
 
-INIT --> OFFLINE : history / setup port workers
 INIT --> SYNC : online
+INIT --> PENDING : history
+
+PENDING : enter / setup port workers
+PENDING --> SYNC : online / init ports from history
+PENDING --> OFFLINE : offline
 
 SYNC : enter / init attempts count from config
 SYNC : enter / save speaker data

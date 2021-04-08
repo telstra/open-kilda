@@ -98,14 +98,14 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
     }
 
     private void zkSpout(TopologyBuilder topologyBuilder) {
-        String zkString = getZookeeperConfig().getConnectString();
-        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(), zkString);
+        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig());
         declareSpout(topologyBuilder, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
     }
 
     private void zkBolt(TopologyBuilder topologyBuilder) {
-        String zkString = getZookeeperConfig().getConnectString();
-        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(), zkString,
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig(),
                 getBoltInstancesCount(RerouteBolt.BOLT_ID, OperationQueueBolt.BOLT_ID));
         declareBolt(topologyBuilder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(RerouteBolt.BOLT_ID, ZkStreams.ZK.toString())

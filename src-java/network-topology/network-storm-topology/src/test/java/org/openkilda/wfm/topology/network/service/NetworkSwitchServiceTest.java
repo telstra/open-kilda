@@ -249,7 +249,7 @@ public class NetworkSwitchServiceTest {
                 Optional.of(Switch.builder().switchId(alphaDatapath)
                 .build()));
 
-        HistoryFacts history = new HistoryFacts(alphaDatapath);
+        HistoryFacts history = new HistoryFacts(alphaDatapath, SwitchStatus.INACTIVE);
 
         Switch alphaSwitch = Switch.builder().switchId(alphaDatapath).build();
         Switch betaSwitch = Switch.builder().switchId(betaDatapath).build();
@@ -286,7 +286,7 @@ public class NetworkSwitchServiceTest {
 
         // History
 
-        HistoryFacts history = new HistoryFacts(alphaDatapath);
+        HistoryFacts history = new HistoryFacts(alphaDatapath, SwitchStatus.ACTIVE);
 
         Switch alphaSwitch = Switch.builder().switchId(alphaDatapath).build();
         Switch betaSwitch = Switch.builder().switchId(betaDatapath).build();
@@ -337,10 +337,8 @@ public class NetworkSwitchServiceTest {
         verifySwitchSync(service);
 
         verify(carrier).removePortHandler(Endpoint.of(alphaDatapath, 3));
-
         //System.out.println(mockingDetails(carrier).printInvocations());
         //System.out.println(mockingDetails(switchRepository).printInvocations());
-
     }
 
     @Test

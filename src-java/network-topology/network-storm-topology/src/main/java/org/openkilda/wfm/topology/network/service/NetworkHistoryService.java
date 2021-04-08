@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.network.service;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -58,7 +59,8 @@ public class NetworkHistoryService {
         HashMap<SwitchId, HistoryFacts> switchById = new HashMap<>();
         for (Switch switchEntry : switchRepository.findAll()) {
             SwitchId switchId = switchEntry.getSwitchId();
-            switchById.put(switchId, new HistoryFacts(switchId));
+            SwitchStatus switchStatus = switchEntry.getStatus();
+            switchById.put(switchId, new HistoryFacts(switchId, switchStatus));
         }
 
         IslRepository islRepository = repositoryFactory.createIslRepository();

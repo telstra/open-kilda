@@ -60,8 +60,8 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
 
         TopologyBuilder builder = new TopologyBuilder();
 
-        String zkString = getZookeeperConfig().getConnectString();
-        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(), zkString);
+        ZooKeeperSpout zooKeeperSpout = new ZooKeeperSpout(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig());
         declareSpout(builder, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
 
         declareSpout(builder, new CoordinatorSpout(), CoordinatorSpout.ID);
@@ -83,7 +83,7 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
                 topologyConfig.getKafkaSwitchManagerNbWorkerTopic());
         declareKafkaSpout(builder, inputTopics, HUB_SPOUT);
         declareBolt(builder, new SwitchManagerHub(hubConfig, persistenceManager,
-                topologyConfig, configurationProvider.getConfiguration(FlowResourcesConfig.class)),
+                        topologyConfig, configurationProvider.getConfiguration(FlowResourcesConfig.class)),
                 SwitchManagerHub.ID)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID)
                 .fieldsGrouping(HUB_SPOUT, FIELDS_KEY)
@@ -109,7 +109,8 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
         declareBolt(builder, buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic()), SPEAKER_KAFKA_BOLT)
                 .shuffleGrouping(SpeakerWorkerBolt.ID, StreamType.TO_FLOODLIGHT.toString());
 
-        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(), zkString,
+        ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
+                getZookeeperConfig(),
                 getBoltInstancesCount(SwitchManagerHub.ID));
         declareBolt(builder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(SwitchManagerHub.ID, ZkStreams.ZK.toString());
