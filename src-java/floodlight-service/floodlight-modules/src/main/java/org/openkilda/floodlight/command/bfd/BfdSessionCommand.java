@@ -140,7 +140,7 @@ abstract class BfdSessionCommand extends BfdCommand {
                 .setSourcePort(udpPort)
                 .setDestinationPort(udpPort);
 
-        InetAddress sourceIpAddress = switchManager.getSwitchIpAddress(sw);
+        InetAddress sourceIpAddress = bfdSession.getTarget().getInetAddress();
         InetAddress destIpAddress = bfdSession.getRemote().getInetAddress();
         IPacket l3 = new IPv4()
                 .setSourceAddress(IPv4Address.of(sourceIpAddress.getAddress()))
