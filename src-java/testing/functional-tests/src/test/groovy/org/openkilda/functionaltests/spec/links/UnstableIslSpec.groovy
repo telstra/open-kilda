@@ -40,6 +40,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
         when: "Remove a-switch rules to break link between switches"
         def rulesToRemove = [isl.aswitch, isl.aswitch.reversed]
         lockKeeper.removeFlows(rulesToRemove)
+        def portIsDown = true
 
         then: "Status of forward and reverse ISLs becomes 'FAILED'"
         Wrappers.wait(discoveryTimeout * 1.5 + WAIT_OFFSET) {
@@ -58,9 +59,20 @@ class UnstableIslSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
             assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
         }
+        portIsDown = true
 
         then: "Isl is not being 'unstable'"
         [isl, isl.reversed].each { assert database.getIslTimeUnstable(it) == null }
+
+        cleanup:
+        if (isl && !portIsDown) {
+            lockKeeper.addFlows(rulesToRemove)
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+                def links = northbound.getAllLinks()
+                assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
+                assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
+            }
+        }
     }
 
     @Tidy

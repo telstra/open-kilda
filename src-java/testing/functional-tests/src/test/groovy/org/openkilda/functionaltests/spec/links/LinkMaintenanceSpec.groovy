@@ -7,6 +7,7 @@ import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -16,6 +17,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 
 class LinkMaintenanceSpec extends HealthCheckSpecification {
 
+    @Tidy
     @Tags(SMOKE)
     def "Maintenance mode can be set/unset for a particular link"() {
         given: "An active link"
@@ -23,6 +25,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
 
         when: "Set maintenance mode for the link"
         def response = northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, true, false))
+        def linkIsUnderMaintenance = true
 
         then: "Maintenance flag for forward and reverse ISLs is really set"
         response.each { assert it.underMaintenance }
@@ -33,6 +36,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
 
         when: "Unset maintenance mode from the link"
         response = northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, false, false))
+        linkIsUnderMaintenance = false
 
         then: "Maintenance flag for forward and reverse ISLs is really unset"
         response.each { assert !it.underMaintenance }
@@ -40,8 +44,12 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         and: "Cost for ISLs is changed to the default value"
         database.getIslCost(isl) == DEFAULT_COST
         database.getIslCost(isl.reversed) == DEFAULT_COST
+
+        cleanup:
+        linkIsUnderMaintenance && northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, false, false))
     }
 
+    @Tidy
     def "Flows can be evacuated (rerouted) from a particular link when setting maintenance mode for it"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -85,11 +93,12 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         !(isl in pathHelper.getInvolvedIsls(flow1PathUpdated))
         !(isl in pathHelper.getInvolvedIsls(flow2PathUpdated))
 
-        and: "Delete flows and unset maintenance mode"
-        [flow1, flow2].each { flowHelperV2.deleteFlow(it.flowId) }
-        northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, false, false))
+        cleanup: "Delete flows and unset maintenance mode"
+        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
+        isl && northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, false, false))
     }
 
+    @Tidy
     def "Flows are rerouted to a path with link under maintenance when there are no other paths available"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -148,10 +157,11 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
             assert islUnderMaintenance in pathHelper.getInvolvedIsls(flow2PathUpdated)
         }
 
-        and: "Restore topology, delete flows, unset maintenance mode and reset costs"
-        broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
-        [flow1, flow2].each { flowHelperV2.deleteFlow(it.flowId) }
-        northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(islUnderMaintenance, false, false))
+        cleanup: "Restore topology, delete flows, unset maintenance mode and reset costs"
+        broughtDownPorts.each { it && antiflap.portUp(it.switchId, it.portNo) }
+        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
+        islUnderMaintenance && northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(
+                islUnderMaintenance, false, false))
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }

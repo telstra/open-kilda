@@ -11,6 +11,7 @@ import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.model.SwitchFeature
@@ -30,6 +31,7 @@ class IslReplugSpec extends HealthCheckSpecification {
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix
 
+    @Tidy
     def "Round-trip ISL status changes to MOVED when replugging it into another switch"() {
         given: "A connected a-switch link, round-trip-enabled"
         and: "A non-connected a-switch link with round-trip support"
@@ -66,6 +68,7 @@ class IslReplugSpec extends HealthCheckSpecification {
 
         then: "Original ISL becomes DISCOVERED again"
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+        def originIslIsUp = true
 
         and: "Replugged ISL status changes to MOVED"
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
@@ -78,6 +81,7 @@ class IslReplugSpec extends HealthCheckSpecification {
             assert !islUtils.getIslInfo(newIsl).isPresent()
             assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
         }
+        def newIslIsRemoved = true
 
         and: "The src and dst switches of the isl pass switch validation"
         [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique().each { swId ->
@@ -87,9 +91,21 @@ class IslReplugSpec extends HealthCheckSpecification {
         }
 
         cleanup:
+        if (!originIslIsUp) {
+            islUtils.replug(newIsl, true, isl, false, true)
+            islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+        }
+        if (newIsl && !newIslIsRemoved) {
+            northbound.deleteLink(islUtils.toLinkParameters(newIsl))
+            Wrappers.wait(WAIT_OFFSET) {
+                assert !islUtils.getIslInfo(newIsl).isPresent()
+                assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
+            }
+        }
         database.resetCosts()
     }
 
+    @Tidy
     def "ISL status changes to MOVED when replugging ISL into another switch"() {
         given: "A connected a-switch link"
         def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }
@@ -117,6 +133,7 @@ class IslReplugSpec extends HealthCheckSpecification {
 
         then: "Original ISL becomes DISCOVERED again"
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+        def originIslIsUp = true
 
         and: "Replugged ISL status changes to MOVED"
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
@@ -129,6 +146,7 @@ class IslReplugSpec extends HealthCheckSpecification {
             assert !islUtils.getIslInfo(newIsl).isPresent()
             assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
         }
+        def newIslIsRemoved = true
 
         and: "The src and dst switches of the isl pass switch validation"
         [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique().each { swId ->
@@ -138,9 +156,21 @@ class IslReplugSpec extends HealthCheckSpecification {
         }
 
         cleanup:
+        if (!originIslIsUp) {
+            islUtils.replug(newIsl, true, isl, false, true)
+            islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+        }
+        if (newIsl && !newIslIsRemoved) {
+            northbound.deleteLink(islUtils.toLinkParameters(newIsl))
+            Wrappers.wait(WAIT_OFFSET) {
+                assert !islUtils.getIslInfo(newIsl).isPresent()
+                assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
+            }
+        }
         database.resetCosts()
     }
 
+    @Tidy
     def "New potential self-loop ISL (the same port on the same switch) is not getting discovered when replugging"() {
         given: "A connected a-switch link"
         def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }
@@ -165,8 +195,13 @@ class IslReplugSpec extends HealthCheckSpecification {
 
         then: "Original ISL becomes DISCOVERED again"
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+        def originIslIsUp = true
 
         cleanup:
+        if (!originIslIsUp) {
+            islUtils.replug(loopedIsl, true, isl, false, false)
+            islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+        }
         database.resetCosts()
     }
 

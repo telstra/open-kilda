@@ -207,6 +207,7 @@ class BfdSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     def "Deleting a failed BFD link also removes the BFD session from it"() {
         given: "An inactive a-switch link with BFD session"
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow &&
@@ -230,10 +231,12 @@ class BfdSpec extends HealthCheckSpecification {
             assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
             assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED
         }
+        def isLinkUp = true
 
         then: "Discovered link shows no bfd session"
         !northbound.getLink(isl).enableBfd
         !northbound.getLink(isl.reversed).enableBfd
+        def isBfdDisabled = true
 
         and: "Acts like there is no BFD session (fails only after discovery timeout)"
         lockKeeper.removeFlows([isl.aswitch])
@@ -246,12 +249,14 @@ class BfdSpec extends HealthCheckSpecification {
             assert northbound.getLink(isl.reversed).state == IslChangeType.FAILED
         }
 
-        and: "Cleanup: restore ISL"
-        lockKeeper.addFlows([isl.aswitch])
+        cleanup:
+        isl && lockKeeper.addFlows([isl.aswitch])
+        !isLinkUp && antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
             assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED
         }
+        !isBfdDisabled && northboundV2.deleteLinkBfd(isl)
     }
 
     @Tidy
@@ -344,6 +349,7 @@ class BfdSpec extends HealthCheckSpecification {
         bfdProps && northboundV2.deleteLinkBfd(isl)
     }
 
+    @Tidy
     def "Unable to create bfd with #data.descr"() {
         given: "An ISL between two Noviflow switches"
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow }
@@ -355,6 +361,9 @@ class BfdSpec extends HealthCheckSpecification {
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.BAD_REQUEST
+
+        cleanup:
+        !e && northboundV2.deleteLinkBfd(isl)
 
         where:
         data << [
