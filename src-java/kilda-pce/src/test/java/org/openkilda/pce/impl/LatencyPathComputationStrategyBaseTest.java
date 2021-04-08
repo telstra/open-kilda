@@ -15,10 +15,12 @@
 
 package org.openkilda.pce.impl;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -33,6 +35,7 @@ import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.pce.finder.BestWeightAndShortestPathFinder;
 
 import org.hamcrest.Matchers;
 import org.junit.Test;
@@ -299,6 +302,57 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
         GetPathsResult path2 = pathComputer.getPath(flow, flow.getPathIds());
         assertEquals(diversePath, path2);
     }
+
+    @Test
+    public void shouldSetBackUpFlagWhenPathHasLatencyGreaterThanMaxLatency()
+            throws RecoverableException, UnroutableFlowException {
+        createTriangleTopo(IslStatus.ACTIVE, 100, 100, "00:", 1);
+
+        //when: request a flow with LATENCY strategy and 'max-latency' is lower than found path
+        Flow flow = Flow.builder()
+                .flowId("test flow")
+                .srcSwitch(getSwitchById("00:01")).srcPort(15)
+                .destSwitch(getSwitchById("00:02")).destPort(15)
+                .bandwidth(500)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(PathComputationStrategy.LATENCY)
+                .maxLatency(50L)
+                .maxLatencyTier2(300L)
+                .build();
+        PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
+                new BestWeightAndShortestPathFinder(5), config);
+        GetPathsResult pathsResult = pathComputer.getPath(flow);
+
+        //then: system returns a path built with backUpPathComputationWayUsed flag
+        assertTrue(pathsResult.isBackUpPathComputationWayUsed());
+        assertThat(pathsResult.getForward().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:03")));
+        assertThat(pathsResult.getReverse().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:03")));
+    }
+
+    @Test
+    public void shouldReturnEmptyPathWhenPathHasLatencyGreaterThanMaxLatencyTier2()
+            throws RecoverableException, UnroutableFlowException {
+        createTriangleTopo(IslStatus.ACTIVE, 100, 100, "00:", 1);
+
+        //when: request a flow with LATENCY strategy and 'max-latency-tier-2' is lower than found path
+        Flow flow = Flow.builder()
+                .flowId("test flow")
+                .srcSwitch(getSwitchById("00:01")).srcPort(15)
+                .destSwitch(getSwitchById("00:02")).destPort(15)
+                .bandwidth(500)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(PathComputationStrategy.LATENCY)
+                .maxLatency(50L)
+                .maxLatencyTier2(70L)
+                .build();
+        PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
+                new BestWeightAndShortestPathFinder(5), config);
+
+        //then: system can't find path
+        thrown.expect(UnroutableFlowException.class);
+        pathComputer.getPath(flow);
+    }
+
 
     private void createDiamond(IslStatus pathBstatus, IslStatus pathCstatus, long pathBlatency, long pathClatency) {
         createDiamond(pathBstatus, pathCstatus, 10, 10, "00", 1, pathBlatency, pathClatency);

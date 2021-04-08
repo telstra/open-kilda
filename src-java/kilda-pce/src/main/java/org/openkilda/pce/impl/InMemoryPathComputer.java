@@ -114,12 +114,24 @@ public class InMemoryPathComputer implements PathComputer {
 
         switch (strategy) {
             case COST:
-            case LATENCY:
             case COST_AND_AVAILABLE_BANDWIDTH:
-                return pathFinder.findPathInNetwork(network, flow.getSrcSwitchId(),
+                return pathFinder.findPathWithMinWeight(network, flow.getSrcSwitchId(),
                         flow.getDestSwitchId(), weightFunction);
+            case LATENCY:
+                long maxLatency = flow.getMaxLatency() == null || flow.getMaxLatency() == 0
+                        ? Long.MAX_VALUE : flow.getMaxLatency();
+                long maxLatencyTier2 = flow.getMaxLatencyTier2() == null || flow.getMaxLatencyTier2() == 0
+                        ? Long.MAX_VALUE : flow.getMaxLatencyTier2();
+                if (maxLatencyTier2 < maxLatency) {
+                    log.warn("Bad flow params found: maxLatencyTier2 ({}) should be greater than maxLatency ({}). "
+                                    + "Put maxLatencyTier2 = maxLatency during path calculation.",
+                            flow.getMaxLatencyTier2(), flow.getMaxLatency());
+                    maxLatencyTier2 = maxLatency;
+                }
+                return pathFinder.findPathWithMinWeightAndLatencyLimits(network, flow.getSrcSwitchId(),
+                        flow.getDestSwitchId(), weightFunction, maxLatency, maxLatencyTier2);
             case MAX_LATENCY:
-                return pathFinder.findPathInNetwork(network, flow.getSrcSwitchId(),
+                return pathFinder.findPathWithWeightCloseToMaxWeight(network, flow.getSrcSwitchId(),
                         flow.getDestSwitchId(), weightFunction, flow.getMaxLatency(),
                         Optional.ofNullable(flow.getMaxLatencyTier2()).orElse(0L));
             default:

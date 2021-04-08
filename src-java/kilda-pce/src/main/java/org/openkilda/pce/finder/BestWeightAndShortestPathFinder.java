@@ -78,9 +78,9 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
     }
 
     @Override
-    public FindPathResult findPathInNetwork(AvailableNetwork network,
-                                            SwitchId startSwitchId, SwitchId endSwitchId,
-                                            WeightFunction weightFunction)
+    public FindPathResult findPathWithMinWeight(AvailableNetwork network,
+                                                SwitchId startSwitchId, SwitchId endSwitchId,
+                                                WeightFunction weightFunction)
             throws UnroutableFlowException {
         Node start = network.getSwitch(startSwitchId);
         Node end = network.getSwitch(endSwitchId);
@@ -88,9 +88,22 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
     }
 
     @Override
-    public FindPathResult findPathInNetwork(AvailableNetwork network,
-                                            SwitchId startSwitchId, SwitchId endSwitchId,
-                                            WeightFunction weightFunction, long maxWeight, long backUpMaxWeight)
+    public FindPathResult findPathWithMinWeightAndLatencyLimits(AvailableNetwork network,
+                                                                SwitchId startSwitchId, SwitchId endSwitchId,
+                                                                WeightFunction weightFunction,
+                                                                long maxLatency, long latencyLimit)
+            throws UnroutableFlowException {
+        Node start = network.getSwitch(startSwitchId);
+        Node end = network.getSwitch(endSwitchId);
+        return findPath(network, startSwitchId, endSwitchId,
+                () -> findOneDirectionPathWithLatencyLimits(start, end, weightFunction, maxLatency, latencyLimit));
+    }
+
+    @Override
+    public FindPathResult findPathWithWeightCloseToMaxWeight(AvailableNetwork network,
+                                                             SwitchId startSwitchId, SwitchId endSwitchId,
+                                                             WeightFunction weightFunction,
+                                                             long maxWeight, long backUpMaxWeight)
             throws UnroutableFlowException {
         Node start = network.getSwitch(startSwitchId);
         Node end = network.getSwitch(endSwitchId);
@@ -273,6 +286,23 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         if (foundPath.isEmpty()) {
             foundPath = getPath(start, end, weightFunction, backUpMaxWeight);
             backUpPathComputationWayUsed = true;
+        }
+
+        return FindOneDirectionPathResult.builder()
+                .foundPath(foundPath)
+                .backUpPathComputationWayUsed(backUpPathComputationWayUsed)
+                .build();
+    }
+
+    private FindOneDirectionPathResult findOneDirectionPathWithLatencyLimits(Node start, Node end,
+                                                                             WeightFunction weightFunction,
+                                                                             long maxLatency, long latencyLimit) {
+        List<Edge> foundPath = getPath(start, end, weightFunction);
+
+        long pathLatency = foundPath.stream().mapToLong(Edge::getLatency).sum();
+        boolean backUpPathComputationWayUsed = pathLatency > maxLatency;
+        if (pathLatency > latencyLimit) {
+            foundPath = emptyList();
         }
 
         return FindOneDirectionPathResult.builder()

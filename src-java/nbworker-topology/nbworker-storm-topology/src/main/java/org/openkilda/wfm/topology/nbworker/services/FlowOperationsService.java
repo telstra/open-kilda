@@ -16,6 +16,8 @@
 package org.openkilda.wfm.topology.nbworker.services;
 
 import static org.apache.commons.collections4.ListUtils.union;
+import static org.openkilda.model.PathComputationStrategy.LATENCY;
+import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
@@ -55,6 +57,7 @@ import org.openkilda.wfm.share.service.IntersectionComputer;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsCarrier;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -80,6 +83,7 @@ public class FlowOperationsService {
 
     private static final int MAX_TRANSACTION_RETRY_COUNT = 3;
     private static final int RETRY_DELAY = 100;
+    private static final Set<PathComputationStrategy> LATENCY_BASED_STRATEGIES = Sets.newHashSet(MAX_LATENCY, LATENCY);
 
     private TransactionManager transactionManager;
     private IslRepository islRepository;
@@ -387,11 +391,11 @@ public class FlowOperationsService {
                 && !flowPatch.getMaxLatency().equals(flow.getMaxLatency());
         boolean changedMaxLatencyTier2 = flowPatch.getMaxLatencyTier2() != null
                 && !flowPatch.getMaxLatencyTier2().equals(flow.getMaxLatencyTier2());
-        boolean strategyIsMaxLatency =
-                PathComputationStrategy.MAX_LATENCY.equals(flowPatch.getPathComputationStrategy())
+        boolean strategyIsLatencyBased =
+                LATENCY_BASED_STRATEGIES.contains(flowPatch.getPathComputationStrategy())
                         || flowPatch.getPathComputationStrategy() == null
-                        && PathComputationStrategy.MAX_LATENCY.equals(flow.getPathComputationStrategy());
-        return changedStrategy || (strategyIsMaxLatency && (changedMaxLatency || changedMaxLatencyTier2));
+                        && LATENCY_BASED_STRATEGIES.contains(flow.getPathComputationStrategy());
+        return changedStrategy || (strategyIsLatencyBased && (changedMaxLatency || changedMaxLatencyTier2));
     }
 
     private boolean updateRequiredBySource(FlowPatch flowPatch, Flow flow) {
