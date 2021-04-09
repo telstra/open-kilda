@@ -15,17 +15,18 @@
 
 package org.openkilda.wfm.kafka;
 
+import org.openkilda.bluegreen.kafka.TransportErrorReport;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.SerializationUtils;
-import org.openkilda.messaging.error.DeserializationErrorMessage;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.TransportErrorWrapper;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.serialization.Deserializer;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 public class MessageDeserializer implements Deserializer<Message> {
@@ -41,11 +42,10 @@ public class MessageDeserializer implements Deserializer<Message> {
         try {
             return SerializationUtils.MAPPER.readValue(data, base);
         } catch (IOException e) {
-            String dataAsSting = StringUtils.toEncodedString(data, Charset.defaultCharset());
-            DeserializationErrorMessage dummy = DeserializationErrorMessage.createFromException(
-                    topic, base, dataAsSting, e);
-            log.debug("{}", dummy.getData().getErrorMessage(), e);
-            return dummy;
+            TransportErrorReport errorReport = TransportErrorReport.createFromException(
+                    topic, base, data, e);
+            return new InfoMessage(
+                    new TransportErrorWrapper(errorReport), System.currentTimeMillis(), UUID.randomUUID().toString());
         }
     }
 
