@@ -1456,9 +1456,18 @@ switches"() {
         and: "First flow is reverted to Down"
         Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET * 2) { // sometimes it takes more time on jenkins
             assert northboundV2.getFlowStatus(flow1.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow1.flowId).findAll {
+            def flowHistory = northbound.getFlowHistory(flow1.flowId)
+            /* '||' due to instability on jenkins
+                * locally: it always retry to reroute (reason of failed reroute: 'No bandwidth or path...')
+                * jenkins: - reroute(ISL_1 become INACTIVE) + retry or reroute(ISL_1) + reroute(ISL_2);
+                *          - or one reroute only. (reason of failed reroute: 'Failed to allocate flow resources...')
+                */
+            assert flowHistory.findAll {
                 it.action == REROUTE_ACTION && it.payload.last().action == REROUTE_FAIL
-            }.size() > 1 // reroute(ISL_1 become INACTIVE) + retry or reroute(ISL_1) + reroute(ISL_2)
+            }.size() > 1 || flowHistory.find {
+                it.action == REROUTE_ACTION && it.payload.last().action == REROUTE_FAIL &&
+                        it.payload.last().details.contains("Failed to allocate flow resources.")
+            }
         }
         with(northboundV2.getFlow(flow1.flowId)) {
             source == flow1.source
