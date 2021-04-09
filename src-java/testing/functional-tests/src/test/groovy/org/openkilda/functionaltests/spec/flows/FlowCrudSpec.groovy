@@ -478,8 +478,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
             possibleFlowPaths.size() > 1 && possibleFlowPaths.max { it.size() }.size() > pathNodeCount
         }.collect {
             [it.srcSwitch, it.dstSwitch]
-        }.flatten() ?: assumeTrue("No suiting active neighboring switches with two possible flow paths at least and " +
-                "different number of hops found", false)
+        }.flatten() ?: assumeTrue(false, "No suiting active neighboring switches with two possible flow paths at least and " +
+                "different number of hops found")
 
         and: "Make all shorter forward paths not preferable. Shorter reverse paths are still preferable"
         possibleFlowPaths.findAll { it.size() == pathNodeCount }.each {

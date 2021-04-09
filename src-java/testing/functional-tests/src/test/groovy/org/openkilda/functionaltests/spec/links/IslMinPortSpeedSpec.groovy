@@ -23,7 +23,7 @@ class IslMinPortSpeedSpec extends HealthCheckSpecification {
         given: "Two ports with different port speed"
         def isl = topology.islsForActiveSwitches.find {
             it.getAswitch()?.inPort && it.getAswitch()?.outPort
-        } ?: assumeTrue("Unable to find required ports in topology",false)
+        } ?: assumeTrue(false, "Unable to find required ports in topology")
         def port = northbound.getPort(isl.srcSwitch.dpId, isl.srcPort)
         assumeTrue(isl as boolean, "Wasn't able to find required a-switch links")
 

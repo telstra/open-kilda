@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
@@ -146,7 +147,9 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
 
     def "Able to detect discrepancies for a flow with protected path"() {
         when: "Create a flow with protected path"
-        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
+        } ?: assumeTrue(false, "No suiting switches found")
         def flow = flowHelper.randomFlow(switchPair)
         flow.allocateProtectedPath = true
         flowHelper.addFlow(flow)
