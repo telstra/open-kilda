@@ -1,0 +1,18 @@
+---
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: rozdy
+      changes:
+        - tagDatabase:
+            tag: 002-cleanup-flow-multitable-flag
+
+  - changeSet:
+      id: cleanup_old_flow_properties
+      author: rozdy
+      changes:
+        - sql: "UPDATE flow REMOVE src_with_multi_table"
+        - sql: "UPDATE flow REMOVE dst_with_multi_table"
+      rollback:
+        - sql: "CREATE PROPERTY flow.src_with_multi_table IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE PROPERTY flow.dst_with_multi_table IF NOT EXISTS BOOLEAN"
