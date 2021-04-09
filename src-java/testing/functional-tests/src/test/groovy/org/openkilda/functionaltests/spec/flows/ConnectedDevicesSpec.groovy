@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.junit.Assume.assumeTrue
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -52,7 +52,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
-import spock.lang.Unroll
+import spock.lang.Shared
 
 import java.time.Instant
 import javax.inject.Provider
@@ -64,18 +64,17 @@ Verify allocated Connected Devices resources and installed rules.""")
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/connected-devices-lldp")
 class ConnectedDevicesSpec extends HealthCheckSpecification {
 
-    @Autowired
+    @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
-    @Unroll
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTags([
             @IterationTag(tags = [SMOKE, SMOKE_SWITCHES], iterationNameRegex = /srcLldp=true and dstLldp=true/),
             @IterationTag(tags = [HARDWARE], iterationNameRegex = /VXLAN/)
     ])
     def "Able to create a #flowDescr flow with lldp and arp enabled on #devicesDescr"() {
-        assumeTrue("Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199",
-                data.encapsulation != FlowEncapsulationType.VXLAN)
+        assumeTrue(data.encapsulation != FlowEncapsulationType.VXLAN,
+"Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
 
         given: "A flow with enabled or disabled connected devices"
         def tgService = traffExamProvider.get()
@@ -188,7 +187,6 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         SwitchPair switchPair
     }
 
-    @Unroll
     def "Able to update flow from srcDevices=#oldSrcEnabled, dstDevices=#oldDstEnabled to \
 srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         given: "Switches with turned 'on' multiTable property"
@@ -265,7 +263,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     @Tags([SMOKE_SWITCHES])
     def "Able to detect devices on a single-switch different-port flow"() {
         given: "A flow between different ports on the same switch"
-        assumeTrue("Require at least 1 switch with connected traffgen", topology.activeTraffGens.size() > 0)
+        assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def sw = topology.activeTraffGens*.switchConnected.first()
         def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
 
@@ -308,7 +306,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         database.removeConnectedDevices(sw.dpId)
     }
 
-    @Unroll
     def "Able to swap flow paths with connected devices (srcDevices=#srcEnabled, dstDevices=#dstEnabled)"() {
         given: "Switches with turned 'on' multiTable property"
         def flow = getFlowWithConnectedDevices(true, false, srcEnabled, dstEnabled)
@@ -573,7 +570,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     @Tidy
     def "System properly detects devices if feature is 'off' on switch level and 'on' on flow level"() {
         given: "A switch with devices feature turned off"
-        assumeTrue("Require at least 1 switch with connected traffgen", topology.activeTraffGens.size() > 0)
+        assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def sw = topology.activeTraffGens[0].switchConnected
         def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
         def swProps = northbound.getSwitchProperties(sw.dpId)
@@ -641,7 +638,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     @Tidy
     def "System properly detects devices if feature is 'on' on switch level and 'off' on flow level"() {
         given: "A switch with devices feature turned on"
-        assumeTrue("Require at least 1 switch with connected traffgen", topology.activeTraffGens.size() > 0)
+        assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def tg = topology.activeTraffGens[0]
         def sw = tg.switchConnected
         def initialProps = northbound.getSwitchProperties(sw.dpId)
@@ -697,7 +694,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     @Tags([SMOKE_SWITCHES])
     def "Able to detect devices on free switch port (no flow or isl)"() {
         given: "A switch with devices feature turned on"
-        assumeTrue("Require at least 1 switch with connected traffgen", topology.activeTraffGens.size() > 0)
+        assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def tg = topology.activeTraffGens[0]
         def sw = tg.switchConnected
         def initialProps = northbound.getSwitchProperties(sw.dpId)
@@ -732,10 +729,9 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         database.removeConnectedDevices(sw.dpId)
     }
 
-    @Unroll
     def "Able to distinguish devices between default and non-default single-switch flows (#descr)"() {
         given: "A switch with devices feature turned on"
-        assumeTrue("Require at least 1 switch with connected traffgen", topology.activeTraffGens.size() > 0)
+        assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def tg = topology.activeTraffGens[0]
         def sw = tg.switchConnected
         def initialProps = northbound.getSwitchProperties(sw.dpId)
@@ -892,7 +888,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         descr = "default ${getDescr(srcDefault, dstDefault)}"
     }
 
-    @Unroll
     def "System properly detects device vlan in case of #descr"() {
         given: "Switches with turned 'on' multiTable property"
         def flow = getFlowWithConnectedDevices(true, false, true, true).tap {
@@ -983,7 +978,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     }
 
     @Tidy
-    @Unroll
     def "System forbids to turn on '#propertyToTurnOn' on a single-table-mode switch"() {
         when: "Try to change switch props so that connected devices are 'on' but switch is in a single-table mode"
         def sw = topology.activeSwitches.first()
@@ -1063,21 +1057,20 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         SwitchHelper.updateSwitchProperties(sw, initProps)
     }
 
-    @Unroll
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTag(tags = [HARDWARE], iterationNameRegex = /VXLAN/)
     def "System detects devices for a qinq(iVlan=#vlanId oVlan=#innerVlanId) flow with lldp and arp enabled on the src switch"() {
-        assumeTrue("Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199",
-                encapsulationType != FlowEncapsulationType.VXLAN)
+        assumeTrue(encapsulationType != FlowEncapsulationType.VXLAN,
+"Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
 
         given: "Two switches connected to traffgen and they support enabled multiTable mode"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
-        assumeTrue("Unable to find two active traffgens", (allTraffGenSwitches.size() > 1))
+        assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find two active traffgens")
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
             [it.src, it.dst].every { sw ->
                 sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
             }
-        } ?: assumeTrue("No suiting switches found", false)
+        } ?: assumeTrue(false, "No suiting switches found")
 
         and: "A QinQ flow with enabled connected devices"
         def tgService = traffExamProvider.get()
@@ -1167,16 +1160,15 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         100    | 200         | FlowEncapsulationType.VXLAN
     }
 
-    @Unroll
     def "System doesn't detect devices only if vlan match with outerVlan of qinq flow"() {
         given: "Two switches connected to traffgen and they support enabled multiTable mode"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
-        assumeTrue("Unable to find two active traffgens", (allTraffGenSwitches.size() > 1))
+        assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find two active traffgens")
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
             [it.src, it.dst].every { sw ->
                 sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
             }
-        } ?: assumeTrue("No suiting switches found", false)
+        } ?: assumeTrue(false, "No suiting switches found")
 
         and: "A QinQ flow with enabled connected devices"
         def tgService = traffExamProvider.get()
@@ -1231,11 +1223,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         initialDstProps && restoreSwitchProperties(swP.dst.dpId, initialDstProps)
     }
 
-    @Unroll
     @Tags([SMOKE_SWITCHES])
     def "Able to detect devices on a qinq single-switch different-port flow"() {
         given: "A flow between different ports on the same switch"
-        assumeTrue("Require at least 1 switch with connected traffgen", topology.activeTraffGens.size() > 0)
+        assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def sw = topology.activeTraffGens*.switchConnected.first()
         def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
 
@@ -1295,11 +1286,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         100    | 200         | FlowEncapsulationType.VXLAN
     }
 
-    @Unroll
     @Tags([SMOKE_SWITCHES])
     def "Able to detect devices when two qinq single-switch different-port flows exist with the same outerVlanId"() {
         given: "Two flows between different ports on the same switch with the same outerVlanId"
-        assumeTrue("Require at least 1 switch with connected traffgen", topology.activeTraffGens.size() > 0)
+        assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def sw = topology.activeTraffGens*.switchConnected.first()
         def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
 
@@ -1398,7 +1388,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     private FlowPayload getFlowWithConnectedDevices(
             boolean protectedFlow, boolean oneSwitch, boolean srcEnabled, boolean dstEnabled) {
         def tgSwPair = getUniqueSwitchPairs()?.first()
-        assumeTrue("Unable to find a switchPair with traffgens for the requested flow arguments", tgSwPair as boolean)
+        assumeTrue(tgSwPair as boolean, "Unable to find a switchPair with traffgens for the requested flow arguments")
         getFlowWithConnectedDevices(protectedFlow, oneSwitch, srcEnabled, dstEnabled, tgSwPair)
     }
 
@@ -1436,7 +1426,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         List<SwitchPair> switchPairs = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.findAll {
             it.src in tgSwitches && it.dst in tgSwitches
         }
-        assumeTrue("Unable to find a switchPair with traffgens on both sides", switchPairs.size() > 0)
+        assumeTrue(switchPairs.size() > 0, "Unable to find a switchPair with traffgens on both sides")
         def result = []
         while (!unpickedTgSwitches.empty) {
             def pair = switchPairs.sort(false) { switchPair ->

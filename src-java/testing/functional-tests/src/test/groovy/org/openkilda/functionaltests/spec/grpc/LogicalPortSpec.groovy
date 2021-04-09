@@ -11,7 +11,6 @@ import org.openkilda.messaging.model.grpc.LogicalPortType
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
-import spock.lang.Unroll
 
 @Narrative("""This test suite checks the CRUD actions on a logical port.
 Logical ports are defined by associating a single physical port to them to define
@@ -23,7 +22,6 @@ NOTE: The GRPC implementation supports the LAG type only and it is set by defaul
 class LogicalPortSpec extends GrpcBaseSpecification {
 
     @Tidy
-    @Unroll
     @Tags(HARDWARE) //https://github.com/telstra/open-kilda/issues/3904
     def "Able to create/read/delete logicalport on the #switches.switchId switch"() {
         /**the update action is not working(issue on a Noviflow switch side)*/
@@ -73,7 +71,6 @@ class LogicalPortSpec extends GrpcBaseSpecification {
     }
 
     @Tidy
-    @Unroll
     @Tags(HARDWARE)
     def "Not able to create logical port with incorrect port number(lPort/sPort): \
 #data.logicalPortNumber/#data.portNumber on the #sw.switchId switch"() {
@@ -107,7 +104,6 @@ class LogicalPortSpec extends GrpcBaseSpecification {
     }
 
     @Tidy
-    @Unroll
     @Tags(HARDWARE)
     def "Not able to delete non-existent logical port number on the #switches.switchId switch"() {
         when: "Try to delete incorrect logicalPortNumber"

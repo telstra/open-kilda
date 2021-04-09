@@ -14,7 +14,6 @@ class LinkDumpSpec extends BaseSpecification {
     @Shared
     def r = new Random()
 
-    @Unroll
     def "Flow dump on mesh topology"() {
         given: "A mesh topology"
         def topo = new TopologyBuilder(flHelper.fls,

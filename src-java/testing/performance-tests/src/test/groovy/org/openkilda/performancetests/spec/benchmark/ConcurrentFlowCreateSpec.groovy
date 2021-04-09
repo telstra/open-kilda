@@ -17,7 +17,6 @@ class ConcurrentFlowCreateSpec extends BaseSpecification {
     @Shared
     def r = new Random()
 
-    @Unroll
     def "Flow creation (concurrent) on mesh topology"() {
         given: "A mesh topology"
         def topo = new TopologyBuilder(flHelper.fls,

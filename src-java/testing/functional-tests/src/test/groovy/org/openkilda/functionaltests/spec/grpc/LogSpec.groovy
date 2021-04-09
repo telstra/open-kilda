@@ -19,7 +19,6 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
-import spock.lang.Unroll
 
 @Narrative("""This test suite checks that we are able to enable/disable:
  - log messages;
@@ -32,7 +31,6 @@ class LogSpec extends GrpcBaseSpecification {
     Integer defaultRemoteLogServerPort
 
     @Tidy
-    @Unroll
     def "Able to enable 'log messages' on the #switches.switchId switch"() {
         when: "Try to turn on 'log messages'"
         def responseAfterTurningOn = grpc.enableLogMessagesOnSwitch(switches.address, new LogMessagesDto(OnOffState.ON))
@@ -55,7 +53,6 @@ class LogSpec extends GrpcBaseSpecification {
     }
 
     @Tidy
-    @Unroll
     def "Able to enable 'OF log messages'  on the #switches.switchId switch"() {
         when: "Try to turn on 'OF log messages'"
         def responseAfterTurningOn = grpc.enableLogOfErrorsOnSwitch(switches.address,
@@ -79,7 +76,6 @@ class LogSpec extends GrpcBaseSpecification {
     }
 
     @Tidy
-    @Unroll
     def "Able to manipulate(CRUD) with a remote log server on the #switches.switchId switch"() {
         when: "Remove current remote log server configuration"
         def response = grpc.deleteRemoteLogServerForSwitch(switches.address)
@@ -111,7 +107,6 @@ class LogSpec extends GrpcBaseSpecification {
     }
 
     @Tidy
-    @Unroll
     @Tags(HARDWARE)
     @Ignore("https://github.com/telstra/open-kilda/issues/3972")
     def "Not able to set incorrect remote log server configuration(ip/port): #data.remoteIp/#data.remotePort \

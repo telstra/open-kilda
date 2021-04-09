@@ -15,7 +15,6 @@ import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
 import groovy.util.logging.Slf4j
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
-import spock.lang.Unroll
 
 @Slf4j
 @Narrative("""The specification covers the following scenarios:
@@ -29,7 +28,6 @@ import spock.lang.Unroll
 class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
 
     @Tidy
-    @Unroll
     @IterationTag(tags = [SMOKE], iterationNameRegex = /reverse/)
     def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration"() {
         given: "Two flows with #flowConfig configuration"
@@ -103,7 +101,6 @@ class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     def "Unable to #data.description a non-existent flow"() {
         when: "Trying to #action a non-existent flow"
         data.operation.call()

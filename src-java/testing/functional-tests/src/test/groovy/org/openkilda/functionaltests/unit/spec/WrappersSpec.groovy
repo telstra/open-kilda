@@ -4,9 +4,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.Wrappers.WaitTimeoutException
 
 import spock.lang.Specification
-import spock.lang.Unroll
 
-@Unroll
 class WrappersSpec extends Specification {
 
     def timeout = 0.01

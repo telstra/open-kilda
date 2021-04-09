@@ -49,7 +49,6 @@ class EnduranceSpec extends BaseSpecification {
      * During the test all flows will be continuously 'pinged'. Any failed ping will be logged, any twice-failed ping
      * will fail the test at the end
      */
-    @Unroll
     def "Simulate live environment with random events happening#debugText"() {
         Assume.assumeThat(preset.debug, equalTo(debug))
 

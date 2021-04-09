@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.junit.Assume.assumeTrue
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
@@ -17,7 +17,6 @@ import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
-import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -31,14 +30,14 @@ class FlowHistorySpec extends HealthCheckSpecification {
     @Shared
     Long timestampBefore
 
-    def setupOnce() {
+    def setupSpec() {
         timestampBefore = System.currentTimeSeconds() - 5
     }
 
     @Tidy
     def "History records are created for the create/update actions using custom timeline"() {
         when: "Create a flow"
-        assumeTrue("Multi table is not enabled in kilda configuration", useMultitable)
+        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         //set non default values
