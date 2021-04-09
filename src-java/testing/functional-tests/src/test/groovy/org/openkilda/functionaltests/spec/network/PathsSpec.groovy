@@ -133,7 +133,7 @@ class PathsSpec extends HealthCheckSpecification {
                 )
             }
         }
-        assumeTrue("Unable to find required switches in topology", switchPair as boolean)
+        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
         def srcProps = northbound.getSwitchProperties(switchPair.src.dpId)
         def dstProps = northbound.getSwitchProperties(switchPair.dst.dpId)
 
