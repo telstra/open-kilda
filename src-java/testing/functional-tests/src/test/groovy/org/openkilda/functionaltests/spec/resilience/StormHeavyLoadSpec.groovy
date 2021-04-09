@@ -5,6 +5,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.Message
@@ -37,6 +38,7 @@ class StormHeavyLoadSpec extends HealthCheckSpecification {
      * Test produces multiple port up/down messages to the topo.disco kafka topic,
      * expecting that Storm will be able to swallow them and continue to operate.
      */
+    @Tidy
     @Tags(HARDWARE)
     def "Storm does not fail under heavy load of topo.disco topic"() {
         when: "Produce massive amount of messages into topo.disco topic"

@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
@@ -18,6 +19,7 @@ import spock.lang.Narrative
  environment (using v2 APIs)""")
 class ContentionV2Spec extends BaseSpecification {
 
+    @Tidy
     def "Parallel flow creation requests with the same name creates only 1 flow"() {
         when: "Create the same flow in parallel multiple times"
         def flowsAmount = 20
@@ -41,7 +43,7 @@ class ContentionV2Spec extends BaseSpecification {
         }
 
         cleanup: "Remove flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/3411")
