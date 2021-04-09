@@ -363,8 +363,8 @@ mode with existing flows and hold flows of different table-mode types"() {
     }
 
     @Tags([SMOKE_SWITCHES])
-    @Ignore("https://github.com/telstra/open-kilda/issues/3961")
-    def "Flow rules are (re)installed according to switch property while syncing and updating"() {
+    @Ignore("https://github.com/telstra/open-kilda/issues/3961, https://github.com/telstra/open-kilda/issues/4170")
+    def "Flow rules are (re)installed according to switch property while syncing and updating flow endpoint"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null
         List<Switch> involvedSwitches = null
@@ -468,9 +468,9 @@ mode with existing flows and hold flows of different table-mode types"() {
             rules.find { it.cookie == flowInfoFromDb2.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
         }
 
-        when: "Update the flow"
+        when: "Update the flow(srcVlanId)"
          flowHelperV2.updateFlow(flow.flowId, flowHelperV2.toRequest(northboundV2.getFlow(flow.flowId).tap {
-              it.description = it.description + " updated"
+              it.source.vlanId = it.source.vlanId + 1
           }))
 
         then: "Flow rules on the src switch are recreated in single table mode"
