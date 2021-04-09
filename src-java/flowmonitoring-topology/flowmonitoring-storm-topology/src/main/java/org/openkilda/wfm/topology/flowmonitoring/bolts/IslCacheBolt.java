@@ -46,6 +46,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.time.Clock;
 import java.util.List;
 
 public class IslCacheBolt extends AbstractBolt {
@@ -64,7 +65,7 @@ public class IslCacheBolt extends AbstractBolt {
 
     @PersistenceContextRequired(requiresNew = true)
     protected void init() {
-        islCacheService = new IslCacheService(persistenceManager, islRttLatencyExpiration);
+        islCacheService = new IslCacheService(persistenceManager, Clock.systemUTC(), islRttLatencyExpiration);
     }
 
     @Override
