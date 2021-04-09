@@ -593,8 +593,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
         and: "All related switches have no discrepancies in rules"
         switches.each {
             def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
-            validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
+            validation.verifyMeterSectionsAreEmpty(it.dpId, ["excess", "misconfigured", "missing"])
+            validation.verifyRuleSectionsAreEmpty(it.dpId, ["excess", "missing"])
             def swProps = northbound.getSwitchProperties(it.dpId)
             def amountOfMultiTableRules = swProps.multiTable ? 1 : 0
             def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId,dstSwitch.dpId]) ? 1 : 0
@@ -879,8 +879,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
          excess meters should NOT be just allocated to the created flow
          they should be recreated(burst size should be recalculated) */
         def validateSwitchInfo = northbound.validateSwitch(sw.dpId)
-        switchHelper.verifyRuleSectionsAreEmpty(validateSwitchInfo, ["missing", "excess"])
-        switchHelper.verifyMeterSectionsAreEmpty(validateSwitchInfo, ["missing", "misconfigured", "excess"])
+        validateSwitchInfo.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess"])
+        validateSwitchInfo.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "misconfigured", "excess"])
         validateSwitchInfo.meters.proper.size() == amountOfFlows * 2 // one flow creates two meters
 
         and: "Cleanup: Delete the flows and excess meters"

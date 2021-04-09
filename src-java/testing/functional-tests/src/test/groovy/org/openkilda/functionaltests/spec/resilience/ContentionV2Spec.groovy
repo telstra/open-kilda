@@ -116,8 +116,8 @@ class ContentionV2Spec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             relatedSwitches.each {
                 def validation = northbound.validateSwitch(it.dpId)
-                switchHelper.verifyRuleSectionsAreEmpty(validation, ["missing", "excess"])
-                switchHelper.verifyMeterSectionsAreEmpty(validation, ["missing", "misconfigured", "excess"])
+                validation.verifyRuleSectionsAreEmpty(it.dpId, ["missing", "excess"])
+                validation.verifyMeterSectionsAreEmpty(it.dpId, ["missing", "misconfigured", "excess"])
             }
         }
 

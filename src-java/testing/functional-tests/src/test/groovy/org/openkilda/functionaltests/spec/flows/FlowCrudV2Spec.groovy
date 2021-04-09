@@ -556,8 +556,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         and: "All related switches have no discrepancies in rules"
         switches.each {
             def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
-            validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
+            validation.verifyMeterSectionsAreEmpty(it.dpId, ["excess", "misconfigured", "missing"])
+            validation.verifyRuleSectionsAreEmpty(it.dpId, ["excess", "missing"])
             def swProps = northbound.getSwitchProperties(it.dpId)
             def amountOfMultiTableRules = swProps.multiTable ? 1 : 0
             def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId,dstSwitch.dpId]) ? 1 : 0
@@ -987,8 +987,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         and: "The src switch passes switch validation"
         with(northbound.validateSwitch(srcSwitch.dpId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            validation.verifyRuleSectionsAreEmpty(srcSwitch.dpId, ["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(srcSwitch.dpId, ["missing", "excess", "misconfigured"])
         }
         def srcSwitchIsFine = true
 
@@ -1047,8 +1047,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         Wrappers.wait(RULES_DELETION_TIME) {
             [dstSwitch, newDstSwitch]*.dpId.each { switchId ->
                 with(northbound.validateSwitch(switchId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyRuleSectionsAreEmpty(switchId, ["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(switchId, ["missing", "excess", "misconfigured"])
                 }
             }
         }
@@ -1098,8 +1098,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         withPool {
             involvedSwitchIds.eachParallel { SwitchId swId ->
                 with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
                 }
             }
         }
@@ -1209,8 +1209,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         withPool {
             currentPath*.switchId.eachParallel { SwitchId swId ->
                 with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
                 }
             }
         }
@@ -1255,10 +1255,10 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
 
         and: "Involved switches pass switch validation"
-        [swPair.src, swPair.dst].each {
-            with(northbound.validateSwitch(it.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        [swPair.src, swPair.dst].each {sw ->
+            with(northbound.validateSwitch(sw.dpId)) { validation ->
+                validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+                validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
             }
         }
         def isSwitchValid = true

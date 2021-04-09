@@ -47,7 +47,7 @@ class MultitableSwitchRulesSpec extends HealthCheckSpecification {
 
         and: "Switch pass switch validation"
         with(northbound.validateSwitch(sw.dpId)) { validationResponse ->
-            switchHelper.verifyRuleSectionsAreEmpty(validationResponse, ["missing", "excess", "misconfigured"])
+            validationResponse.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
         }
 
         when: "Update switch properties(multi_table: false)"
@@ -68,7 +68,7 @@ class MultitableSwitchRulesSpec extends HealthCheckSpecification {
 
         and: "Switch pass switch validation"
         with(northbound.validateSwitch(sw.dpId)) { validationResponse ->
-            switchHelper.verifyRuleSectionsAreEmpty(validationResponse, ["missing", "excess", "misconfigured"])
+            validationResponse.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
         }
 
         cleanup: "Revert system to origin state"

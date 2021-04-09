@@ -67,10 +67,10 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             verifyAll(northbound.validateSwitch(switchPair.src.dpId)) {
                 it.rules.missing.containsAll(createdCookies)
                 it.rules.missingHex.containsAll(createdHexCookies)
-                switchHelper.verifyRuleSectionsAreEmpty(it, ["proper", "excess"])
-                switchHelper.verifyHexRuleSectionsAreEmpty(it, ["properHex", "excessHex"])
+                it.verifyRuleSectionsAreEmpty(switchPair.src.dpId, ["proper", "excess"])
+                it.verifyHexRuleSectionsAreEmpty(switchPair.src.dpId, ["properHex", "excessHex"])
                 it.meters.missing.size() == 1
-                switchHelper.verifyMeterSectionsAreEmpty(it, ["proper", "misconfigured", "excess"])
+                it.verifyMeterSectionsAreEmpty(switchPair.src.dpId, ["proper", "misconfigured", "excess"])
             }
         }
 
@@ -83,10 +83,10 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         verifyAll(northbound.validateSwitch(switchPair.src.dpId)) {
             it.rules.proper.containsAll(createdCookies)
             it.rules.properHex.containsAll(createdHexCookies)
-            switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
-            switchHelper.verifyHexRuleSectionsAreEmpty(it, ["missingHex", "excessHex"])
+            it.verifyRuleSectionsAreEmpty(switchPair.src.dpId, ["missing", "excess"])
+            it.verifyHexRuleSectionsAreEmpty(switchPair.src.dpId, ["missingHex", "excessHex"])
             it.meters.proper*.meterId == originalMeterIds.sort()
-            switchHelper.verifyMeterSectionsAreEmpty(it, ["missing", "excess", "misconfigured"])
+            it.verifyMeterSectionsAreEmpty(switchPair.src.dpId, ["missing", "excess", "misconfigured"])
         }
 
         and: "Cleanup: Delete the flow"
@@ -121,10 +121,10 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             verifyAll(northbound.validateSwitch(sw.dpId)) {
                 it.rules.excess.size() == 3
                 it.rules.excessHex.size() == 3
-                switchHelper.verifyRuleSectionsAreEmpty(it, ["proper", "missing"])
-                switchHelper.verifyHexRuleSectionsAreEmpty(it, ["properHex", "missingHex"])
+                it.verifyRuleSectionsAreEmpty(sw.dpId, ["proper", "missing"])
+                it.verifyHexRuleSectionsAreEmpty(sw.dpId, ["properHex", "missingHex"])
                 it.meters.excess.size() == 1
-                switchHelper.verifyMeterSectionsAreEmpty(it, ["missing", "proper", "misconfigured"])
+                it.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "proper", "misconfigured"])
             }
         }
 
@@ -135,8 +135,8 @@ class SwitchActivationSpec extends HealthCheckSpecification {
 
         then: "Excess meters/rules were synced during switch activation"
         verifyAll(northbound.validateSwitch(sw.dpId)) {
-            switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess", "proper"])
-            switchHelper.verifyHexRuleSectionsAreEmpty(it, ["missingHex", "excessHex", "properHex"])
+            it.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "proper"])
+            it.verifyHexRuleSectionsAreEmpty(sw.dpId, ["missingHex", "excessHex", "properHex"])
         }
     }
 
