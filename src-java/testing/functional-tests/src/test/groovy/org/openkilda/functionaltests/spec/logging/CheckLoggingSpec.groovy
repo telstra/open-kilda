@@ -4,6 +4,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -33,6 +34,7 @@ class CheckLoggingSpec extends HealthCheckSpecification {
     def switchErrorMsg = "Switch $NON_EXISTENT_SWITCH_ID not found"
     def flowErrorMsg = { "Can not get flow: Flow $it not found" }
 
+    @Tidy
     def "Check Floodlight logging"() {
         when: "Retrieve Floodlight logs for last 5 minutes"
         def result = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.FLOODLIGHT)
@@ -48,6 +50,7 @@ class CheckLoggingSpec extends HealthCheckSpecification {
         result.hits.hits.any { hit -> hit.source.message.toLowerCase().contains(discoveryMsg) }
     }
 
+    @Tidy
     def "Check Northbound logging"() {
         when: "A non-existent switch is requested"
         northbound.getSwitch(NON_EXISTENT_SWITCH_ID)
@@ -69,6 +72,7 @@ class CheckLoggingSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     def "Check Storm logging"() {
         when: "A non-existent flow is requested"
         def flowId = "nonexistentFlowId" + System.currentTimeMillis()
