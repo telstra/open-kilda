@@ -7,6 +7,7 @@ import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -38,6 +39,7 @@ class FlowStatSpec extends HealthCheckSpecification {
     @Shared
     Integer statsRouterInterval = 120
 
+    @Tidy
     def "System is able to collect stats after intentional swapping flow path to protected"() {
         given: "Two active neighboring switches with two diverse paths at least"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
@@ -119,8 +121,8 @@ class FlowStatSpec extends HealthCheckSpecification {
         otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps.size() == mainReverseCookieStat.size()
         otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps.size() == mainForwardCookieStat.size()
 
-        and: "Cleanup: revert system to original state"
-        flowHelperV2.deleteFlow(flow.flowId)
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2762")
@@ -214,6 +216,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
+    @Tidy
     def "System collects stats when a protected flow was automatically rerouted"() {
         given: "Two active not neighboring switches with three not overlapping paths at least"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
@@ -265,6 +268,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         when: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        def portIsDown = true
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             assert northboundV2.getFlowStatus(flow.id).status == FlowState.UP
             assert pathHelper.convert(northbound.getFlowPath(flow.id)) == currentProtectedPath
@@ -288,15 +292,16 @@ class FlowStatSpec extends HealthCheckSpecification {
         newMainForwardCookieStat.size() == mainForwardCookieStat.size()
         newMainReverseCookieStat.size() == mainReverseCookieStat.size()
 
-        and: "Cleanup: revert system to original state"
-        flowHelper.deleteFlow(flow.id)
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        cleanup:
+        flow && flowHelper.deleteFlow(flow.id)
+        islToBreak && portIsDown && antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
         database.resetCosts()
     }
 
+    @Tidy
     def "System collects stat when protected flow is DEGRADED"() {
         given: "Two active not neighboring switches with two not overlapping paths at least"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
@@ -323,6 +328,7 @@ class FlowStatSpec extends HealthCheckSpecification {
             broughtDownPorts.add(src)
             antiflap.portDown(src.switchId, src.portNo)
         }
+        def srcPortIsDown = true
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
                 it.state == IslChangeType.FAILED
@@ -333,6 +339,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
         def protectedIsls = pathHelper.getInvolvedIsls(currentProtectedPath)
         antiflap.portDown(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
+        def dstPortIsDown = true
         Wrappers.wait(WAIT_OFFSET) {
             verifyAll(northboundV2.getFlow(flow.flowId)) {
                 status == "Degraded"
@@ -366,17 +373,18 @@ class FlowStatSpec extends HealthCheckSpecification {
             stats.values().each { assert it != 0 }
         }
 
-        and: "Cleanup: Restore topology, delete flows and reset costs"
-        flowHelperV2.deleteFlow(flow.flowId)
-        antiflap.portUp(protectedIsls[0].srcSwitch.dpId, protectedIsls[0].srcPort)
-        antiflap.portUp(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
+        cleanup: "Restore topology, delete flows and reset costs"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        protectedIsls && srcPortIsDown && antiflap.portUp(protectedIsls[0].srcSwitch.dpId, protectedIsls[0].srcPort)
+        protectedIsls && dstPortIsDown && antiflap.portUp(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
+        broughtDownPorts && broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
         database.resetCosts()
     }
 
+    @Tidy
     @Tags([SMOKE_SWITCHES])
     def "System collects stats when flow is pinned and unmetered"() {
         given: "Two active not neighboring switches"
@@ -417,7 +425,7 @@ class FlowStatSpec extends HealthCheckSpecification {
             stats.values().each { assert it != 0 }
         }
 
-        and: "Cleanup: Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 }
