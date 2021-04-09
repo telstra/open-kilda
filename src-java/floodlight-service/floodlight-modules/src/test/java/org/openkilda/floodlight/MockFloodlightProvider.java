@@ -32,8 +32,6 @@
 
 package org.openkilda.floodlight;
 
-import static org.junit.Assert.fail;
-
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.HARole;
@@ -53,9 +51,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
-import net.floodlightcontroller.packet.Ethernet;
 import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +60,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -74,7 +69,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 /**
  * The MockFloodlightProvider.
@@ -139,37 +133,6 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         return Collections.unmodifiableMap(lers);
     }
 
-    public void clearListeners() {
-        this.listeners.clear();
-    }
-
-    public void dispatchMessage(IOFSwitch sw, OFMessage msg) {
-        dispatchMessage(sw, msg, new FloodlightContext());
-    }
-
-    public void dispatchMessage(IOFSwitch sw, OFMessage msg, FloodlightContext bc) {
-        List<IOFMessageListener> theListeners = listeners.get(msg.getType()).getOrderedListeners();
-        if (theListeners != null) {
-            Command result = Command.CONTINUE;
-            Iterator<IOFMessageListener> it = theListeners.iterator();
-            if (OFType.PACKET_IN.equals(msg.getType())) {
-                OFPacketIn pi = (OFPacketIn) msg;
-                Ethernet eth = new Ethernet();
-                eth.deserialize(pi.getData(), 0, pi.getData().length);
-                IFloodlightProviderService.bcStore.put(bc,
-                        IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
-                        eth);
-            }
-            while (it.hasNext() && !Command.STOP.equals(result)) {
-                result = it.next().receive(sw, msg, bc);
-            }
-        }
-        // paag
-        for (IControllerCompletionListener listener:completionListeners) {
-            listener.onMessageConsumed(sw, msg, bc);
-        }
-    }
-
     @Override
     public void handleOutgoingMessage(IOFSwitch sw, OFMessage m) {
         FloodlightContext bc = new FloodlightContext();
@@ -187,25 +150,11 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         }
     }
 
-    public void handleOutgoingMessages(IOFSwitch sw, List<OFMessage> msglist, FloodlightContext bc) {
-        for (OFMessage m:msglist) {
-            handleOutgoingMessage(sw, m);
-        }
-    }
-
     @Override
     public void run() {
         logListeners();
         if (useAsyncUpdates) {
             executorService = Executors.newSingleThreadExecutor();
-        }
-    }
-
-    public void shutdown() {
-        if (executorService != null) {
-            executorService.shutdownNow();
-            executorService = null;
-            mostRecentUpdateFuture = null;
         }
     }
 
@@ -273,23 +222,6 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
         }
     }
 
-    public void waitForUpdates(long timeout, TimeUnit unit) throws InterruptedException {
-
-        long timeoutNanos = unit.toNanos(timeout);
-        long start = System.nanoTime();
-        for (;;) {
-            Future<?> future = mostRecentUpdateFuture;
-            if ((future == null) || future.isDone()) {
-                break;
-            }
-            Thread.sleep(100);
-            long now = System.nanoTime();
-            if (now > start + timeoutNanos) {
-                fail("Timeout waiting for update tasks to complete");
-            }
-        }
-    }
-
     @Override
     public void addHAListener(IHAListener listener) {
         haListeners.addListener(null, listener);
@@ -315,21 +247,6 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     @Override
     public void setRole(HARole role, String roleChangeDescription) {
         this.role = role;
-    }
-
-    /**
-     * Dispatches a new role change notification.
-     */
-    public void transitionToActive() {
-        IUpdate update = new IUpdate() {
-            @Override
-            public void dispatch() {
-                for (IHAListener rl : haListeners.getOrderedListeners()) {
-                    rl.transitionToActive();
-                }
-            }
-        };
-        addUpdateToQueue(update);
     }
 
     @Override
