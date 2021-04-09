@@ -1,6 +1,7 @@
 plugins {
     id 'groovy'
     id 'com.adarshr.test-logger' version '2.1.1'
+    id "org.gradle.test-retry" version "1.2.1"
 }
 
 description = 'Functional-Tests'
@@ -74,7 +75,22 @@ task runTest(type: Test) {
 
 tasks.withType(Test) {
     useJUnitPlatform()
-    outputs.upToDateWhen { false } //never cache results of functional tests
+    outputs.upToDateWhen { false } //never cache results of functional tests, always rerun tests
+    //if there is a failed/unstable test, create log file for further processing in Jenkins pipeline
+    def unstableLog = new File("${project.buildDir}/test-results/unstable.log").tap {
+        it.parentFile.mkdirs()
+        it.write "false"
+    }
+    afterTest { desc, result ->
+        if ("FAILURE" == result.resultType as String) {
+            unstableLog.write "true"
+        }
+    }
+    retry { //test-retry plugin config
+        maxRetries = 1
+        maxFailures = 3
+        failOnPassedAfterRetry = false
+    }
 }
 
 testlogger {
