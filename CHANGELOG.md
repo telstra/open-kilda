@@ -1,5 +1,46 @@
 # Changelog
 
+## v1.90.0 (13/04/2021)
+
+### Bug Fixes:
+-  [#4104](https://github.com/telstra/open-kilda/pull/4104) Fix zkClient to work in Windows env
+-  [#4168](https://github.com/telstra/open-kilda/pull/4168) Cleanup flow multi table flags
+-  [#4179](https://github.com/telstra/open-kilda/pull/4179) Fixed unhandled input in RerouteTopology if topology is inactive [**storm-topologies**]
+-  [#4187](https://github.com/telstra/open-kilda/pull/4187) Fixed flow loop for single vlan multi table flow (Issue: [#4186](https://github.com/telstra/open-kilda/issues/4186))
+-  [#4202](https://github.com/telstra/open-kilda/pull/4202) Fixed missed RequestsLogFile in func tests template [**tests**]
+-  [#4140](https://github.com/telstra/open-kilda/pull/4140) Added max latency fields into /v1/network/paths API (Issue: [#4139](https://github.com/telstra/open-kilda/issues/4139)) [**northbound**][**storm-topologies**]
+
+### Improvements:
+-  [#4162](https://github.com/telstra/open-kilda/pull/4162) Added unit tests for server42 commands and refactor processInstallServer42Rule() [**floodlight**][**tests**]
+-  [#4166](https://github.com/telstra/open-kilda/pull/4166) imrpove "System reverts both flows if fails during rule installation … [**tests**]
+-  [#4172](https://github.com/telstra/open-kilda/pull/4172) ignore test according to #4170 [**tests**]
+-  [#4174](https://github.com/telstra/open-kilda/pull/4174) improve FlowHistorySpec, FlowValidationNegative/V2Spec [**tests**]
+-  [#4182](https://github.com/telstra/open-kilda/pull/4182) Make traffexam to not hide into network namespace [**tests**]
+-  [#4192](https://github.com/telstra/open-kilda/pull/4192) Add sonargate github action [**tests**]
+-  [#4195](https://github.com/telstra/open-kilda/pull/4195) Switch unittests to Ubuntu 20.04 [**tests**]
+-  [#4147](https://github.com/telstra/open-kilda/pull/4147) add test for 'network/paths' endpoint using LATENCY strategy [**tests**]
+-  [#4087](https://github.com/telstra/open-kilda/pull/4087) Add tests for flow monitoring feature [**tests**]
+-  [#4154](https://github.com/telstra/open-kilda/pull/4154) Removed unused methods and variables from floodlight [**floodlight**]
+-  [#4156](https://github.com/telstra/open-kilda/pull/4156) improve s42 spec [**tests**]
+
+### Other changes:
+-  [#4165](https://github.com/telstra/open-kilda/pull/4165) Enable test-retry plugin [**tests**]
+-  [#4105](https://github.com/telstra/open-kilda/pull/4105) Start moving to spock2.0 [**tests**]
+-  [#4109](https://github.com/telstra/open-kilda/pull/4109) Multyfloodlight monitoring design [**docs**]
+-  [#4193](https://github.com/telstra/open-kilda/pull/4193) Update lockkeeper readme with proper docker build command [**docs**]
+-  [#4153](https://github.com/telstra/open-kilda/pull/4153) Improve assertion error message for sw validation in swHelper [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.89.1...v1.90.0).
+
+### Affected Components:
+flow-hs, fl, nb, nbworker, reroute
+
+### Upgrade notes:
+If you have an older version of Kilda installed, then you must migrate the data stored in OrientDB.
+Follow the [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
 ## v1.89.1 (08/04/2021)
 
 ### Bug Fixes:
