@@ -56,4 +56,13 @@ public interface PathFinder {
      */
     List<List<Edge>> findNPathsBetweenSwitches(AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId,
                                                int count, WeightFunction weightFunction) throws UnroutableFlowException;
+
+    /**
+     * Find N (or less) best paths wih max weight restrictions.
+     *
+     * @return an list of N (or less) best paths.
+     */
+    List<List<Edge>> findNPathsBetweenSwitches(
+            AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId, int count,
+            WeightFunction weightFunction, long maxWeight, long backUpMaxWeight) throws UnroutableFlowException;
 }

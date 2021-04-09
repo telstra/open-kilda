@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -126,15 +127,33 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                 .build();
     }
 
+    @Override
+    public List<List<Edge>> findNPathsBetweenSwitches(
+            AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId, int count,
+            WeightFunction weightFunction) throws UnroutableFlowException {
+        Node end = network.getSwitch(endSwitchId);
+        return findNPathsBetweenSwitches(network, startSwitchId, endSwitchId, count, weightFunction,
+                (Node start) -> findOneDirectionPath(start, end, weightFunction));
+    }
+
+    @Override
+    public List<List<Edge>> findNPathsBetweenSwitches(
+            AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId, int count,
+            WeightFunction weightFunction, long maxWeight, long backUpMaxWeight) throws UnroutableFlowException {
+        Node end = network.getSwitch(endSwitchId);
+        return findNPathsBetweenSwitches(network, startSwitchId, endSwitchId, count, weightFunction,
+                (Node start) -> findOneDirectionPath(start, end, weightFunction, maxWeight, backUpMaxWeight));
+    }
+
     /**
      * Find N (or less) best paths. To find N paths Yen's algorithm is used.
      *
      * @return an list of N (or less) best paths.
      */
-    @Override
-    public List<List<Edge>> findNPathsBetweenSwitches(
+    private List<List<Edge>> findNPathsBetweenSwitches(
             AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId, int count,
-            WeightFunction weightFunction) throws UnroutableFlowException {
+            WeightFunction weightFunction, Function<Node, FindOneDirectionPathResult> getPath)
+            throws UnroutableFlowException {
 
         Node start = network.getSwitch(startSwitchId);
         Node end = network.getSwitch(endSwitchId);
@@ -145,7 +164,11 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
 
         // Determine the shortest path from the start to the end.
         List<List<Edge>> bestPaths = new ArrayList<>();
-        bestPaths.add(getPath(start, end, weightFunction));
+        List<Edge> firstPath = getPath.apply(start).getFoundPath();
+        if (firstPath.isEmpty()) {
+            return new ArrayList<>();
+        }
+        bestPaths.add(getPath.apply(start).getFoundPath());
 
         // Initialize the set to store the potential kth shortest path.
         // Use LinkedHashSet to have deterministic results.
@@ -174,7 +197,7 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                 }
 
                 // Calculate the spur path from the spur node to the end.
-                List<Edge> pathFromSpurNode = getPath(spurNode, end, weightFunction);
+                List<Edge> pathFromSpurNode = getPath.apply(spurNode).getFoundPath();
                 if (!pathFromSpurNode.isEmpty()) {
                     List<Edge> totalPath = new ArrayList<>(rootPath);
                     // Entire path is made up of the root path and spur path.

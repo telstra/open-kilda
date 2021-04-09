@@ -207,7 +207,7 @@ public interface NorthboundService {
     //feature network
 
     PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType flowEncapsulationType,
-                      PathComputationStrategy pathComputationStrategy);
+                      PathComputationStrategy pathComputationStrategy, Long maxLatency, Long maxLatencyTier2);
 
     // configuration
 
