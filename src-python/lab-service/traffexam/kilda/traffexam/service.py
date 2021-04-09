@@ -20,6 +20,8 @@ import subprocess
 import threading
 import time
 
+import ipaddress
+
 from kilda.traffexam import context as context_module
 from kilda.traffexam import exc
 from kilda.traffexam import model
@@ -43,6 +45,9 @@ class Abstract(system.NSIPDBMixin, context_module.ContextConsumer):
             self._pool[self.key(item)] = item
 
             return item
+
+    def register(self, subject):
+        self._pool[self.key(subject)] = subject
 
     def list(self):
         return tuple(self._pool.values())
@@ -81,7 +86,8 @@ class Abstract(system.NSIPDBMixin, context_module.ContextConsumer):
         raise NotImplementedError
 
     def get_gw_iface(self):
-        return self.context.shared_registry.fetch(system.VEthPair).ns
+        return self.context.shared_registry.fetch(
+            system.GatewayIfaceDescriptor).name
 
 
 class VLANService(Abstract):
@@ -151,6 +157,13 @@ class VLANService(Abstract):
 
 
 class IpAddressService(Abstract):
+    def __init__(self, context):
+        super().__init__(context)
+        existing_addresses = self._collect_existing_addresses(
+            self.get_ipdb(), self.get_gw_iface())
+        for entry in existing_addresses:
+            self._pool[self.key(entry)] = entry
+
     def key(self, subject):
         return subject.idnr
 
@@ -176,6 +189,19 @@ class IpAddressService(Abstract):
                 continue
 
             raise exc.ServiceCreateCollisionError(self, subject, address)
+
+    @staticmethod
+    def _collect_existing_addresses(ipdb, iface_ref):
+        master_iface = model.NetworkIface(iface_ref)
+        results = []
+        with ipdb.interfaces[iface_ref].ro as iface:
+            for addr, prefix in iface.ipaddr:
+                try:
+                    results.append(model.IpAddress(
+                        addr, prefix=prefix, iface=master_iface))
+                except ipaddress.AddressValueError:
+                    pass  # ignore not ipv4 addresses
+        return results
 
 
 class EndpointService(Abstract):
@@ -264,9 +290,13 @@ class EndpointService(Abstract):
         self.run_iperf(subject, cmd)
 
     def make_cmd_common_part(self, subject):
-        cmd = [
-            'ip', 'netns', 'exec', self.context.make_network_namespace_name(),
-            'iperf3', '--json', '--interval=1']
+        cmd = []
+        if self._is_network_namespace_used():
+            cmd.extend((
+                'ip', 'netns', 'exec',
+                self.context.make_network_namespace_name()))
+        cmd.extend((
+            'iperf3', '--json', '--interval=1'))
         if subject.bind_address is not None:
             cmd.append('--bind={}'.format(subject.bind_address.address))
         return cmd
@@ -283,6 +313,13 @@ class EndpointService(Abstract):
 
     def make_error_file_name(self, subject):
         return self.context.path('{}.err'.format(subject.idnr))
+
+    def _is_network_namespace_used(self):
+        try:
+            self.context.shared_registry.fetch(system.FakeNetworkNamespace)
+            return False
+        except exc.RegistryLookupError:
+            return True
 
     @staticmethod
     def unpack_output(out):

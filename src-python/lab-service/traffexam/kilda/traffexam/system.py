@@ -35,7 +35,7 @@ class RootIPDBMixin(_IpMixin):
         return self.context.shared_registry.fetch(IPDBRoot)
 
 
-class NSIPDBMixin(_IpMixin):
+class NSIPDBMixin(RootIPDBMixin):
     def get_ipdb(self):
         return self.context.shared_registry.fetch(NetworkNamespace)
 
@@ -168,7 +168,22 @@ class NetworkNamespace(_IPDBAllocator):
             raise exc.SubprocessError(cmd, proc.returncode, output)
 
 
+class FakeNetworkNamespace(Abstract):
+    def create(self):
+        pass  # nothing to do here
+
+    def configure(self):
+        root = self.context.shared_registry.fetch(IPDBRoot)
+        self.context.shared_registry.add(NetworkNamespace, root)
+        self.context.shared_registry.add(type(self), self)
+
+    def release(self):
+        pass  # nothing to do here
+
+
 GWDescriptor = collections.namedtuple('GWDescription', ('root', 'ns'))
+GatewayIfaceDescriptor = collections.namedtuple(
+    'GatewayIfaceDescriptor', ('name', ))
 
 
 class VEthPair(RootIPDBMixin, _IfaceManager, Abstract):
@@ -212,8 +227,10 @@ class VEthPair(RootIPDBMixin, _IfaceManager, Abstract):
             pass
 
         nsip = self.context.shared_registry.fetch(NetworkNamespace)
+        iface_index = self.ns_gw_name
         try:
             with nsip.interfaces[right] as iface:
+                iface_index = iface.index
                 iface.ifname = self.ns_gw_name
                 iface.up()
         except OSError as e:
@@ -235,7 +252,9 @@ class VEthPair(RootIPDBMixin, _IfaceManager, Abstract):
                 raise exc.SystemResourceNotFoundError(klass, str(e))
 
         self.context.shared_registry.add(
-                klass, GWDescriptor(left, self.ns_gw_name))
+            klass, GWDescriptor(left, self.ns_gw_name))
+        self.context.shared_registry.add(
+            GatewayIfaceDescriptor, GatewayIfaceDescriptor(iface_index))
 
     def make_name(self):
         base = self.context.make_veth_base_name()
