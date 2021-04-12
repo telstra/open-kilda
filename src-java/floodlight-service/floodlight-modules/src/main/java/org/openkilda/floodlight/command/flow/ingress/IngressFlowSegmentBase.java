@@ -313,7 +313,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
         List<OFFlowMod> ofMessages = new ArrayList<>();
         if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
             if (FlowEndpoint.isVlanIdSet(endpoint.getInnerVlanId())) {
-                ofMessages.add(flowModFactory.makeDoubleServer42IngressFlowMessage());
+                ofMessages.add(flowModFactory.makeDoubleVlanServer42IngressFlowMessage());
             } else {
                 ofMessages.add(flowModFactory.makeSingleVlanServer42IngressFlowMessage());
             }

@@ -241,7 +241,7 @@ public abstract class IngressFlowModFactory {
     /**
      * Make rule to match server 42 packets by inner VLAN tag and forward in in ISL.
      */
-    public OFFlowMod makeDoubleServer42IngressFlowMessage() {
+    public OFFlowMod makeDoubleVlanServer42IngressFlowMessage() {
         FlowEndpoint endpoint = command.getEndpoint();
         RoutingMetadata metadata = buildServer42IngressMetadata();
         OFFlowMod.Builder builder = flowModBuilderFactory

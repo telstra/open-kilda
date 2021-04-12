@@ -108,8 +108,8 @@ public class IngressServer42FlowInstallCommandTest {
 
         assertCommonMultiTable(mod);
         assertEquals(3, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
-        assertEquals(VLAN_1, mod.getMatch().get(MatchField.VLAN_VID).getVlan());
-        assertMetadata(mod, CUSTOMER_PORT);
+        assertEquals(VLAN_2, mod.getMatch().get(MatchField.VLAN_VID).getVlan());
+        assertMetadata(mod, VLAN_1, CUSTOMER_PORT);
 
         List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
         assertEquals(4, applyActions.size());
@@ -125,16 +125,17 @@ public class IngressServer42FlowInstallCommandTest {
         OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
 
         assertCommonMultiTable(mod);
-        assertEquals(3, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
-        assertEquals(VLAN_1, mod.getMatch().get(MatchField.VLAN_VID).getVlan());
-        assertMetadata(mod, CUSTOMER_PORT);
+        assertEquals(2, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
+        assertNull(mod.getMatch().get(MatchField.VLAN_VID));
+        assertMetadata(mod, VLAN_1, CUSTOMER_PORT);
 
         List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
-        assertEquals(4, applyActions.size());
+        assertEquals(5, applyActions.size());
         assertSetField(applyActions.get(0), OFOxmEthSrc.class, MacAddress.of(INGRESS_SWITCH_ID.toMacAddress()));
         assertSetField(applyActions.get(1), OFOxmEthDst.class, MacAddress.of(EGRESS_SWITCH_ID.toMacAddress()));
-        assertSetField(applyActions.get(2), OFOxmVlanVid.class, OFVlanVidMatch.ofVlan(VLAN_ENCAPSULATION.getId()));
-        assertOutputAction(applyActions.get(3));
+        assertPushVlanAction(applyActions.get(2));
+        assertSetField(applyActions.get(3), OFOxmVlanVid.class, OFVlanVidMatch.ofVlan(VLAN_ENCAPSULATION.getId()));
+        assertOutputAction(applyActions.get(4));
     }
 
     @Test
@@ -145,7 +146,7 @@ public class IngressServer42FlowInstallCommandTest {
         assertCommonMultiTable(mod);
         assertEquals(2, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
         assertNull(mod.getMatch().get(MatchField.VLAN_VID));
-        assertMetadata(mod, CUSTOMER_PORT);
+        assertMetadata(mod, 0, CUSTOMER_PORT);
 
         List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
         assertEquals(5, applyActions.size());
@@ -163,8 +164,8 @@ public class IngressServer42FlowInstallCommandTest {
 
         assertCommonMultiTable(mod);
         assertEquals(3, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
-        assertEquals(VLAN_1, mod.getMatch().get(MatchField.VLAN_VID).getVlan());
-        assertMetadata(mod, CUSTOMER_PORT);
+        assertEquals(VLAN_2, mod.getMatch().get(MatchField.VLAN_VID).getVlan());
+        assertMetadata(mod, VLAN_1, CUSTOMER_PORT);
 
         List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
         assertEquals(2, applyActions.size());
@@ -178,14 +179,15 @@ public class IngressServer42FlowInstallCommandTest {
         OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
 
         assertCommonMultiTable(mod);
-        assertEquals(3, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
-        assertEquals(VLAN_1, mod.getMatch().get(MatchField.VLAN_VID).getVlan());
-        assertMetadata(mod, CUSTOMER_PORT);
+        assertEquals(2, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
+        assertNull(mod.getMatch().get(MatchField.VLAN_VID));
+        assertMetadata(mod, VLAN_1, CUSTOMER_PORT);
 
         List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
-        assertEquals(2, applyActions.size());
-        assertPushVxlanAction(applyActions.get(0));
-        assertOutputAction(applyActions.get(1));
+        assertEquals(3, applyActions.size());
+        assertPushVlanAction(applyActions.get(0));
+        assertPushVxlanAction(applyActions.get(1));
+        assertOutputAction(applyActions.get(2));
     }
 
     @Test
@@ -196,7 +198,7 @@ public class IngressServer42FlowInstallCommandTest {
         assertCommonMultiTable(mod);
         assertEquals(2, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
         assertNull(mod.getMatch().get(MatchField.VLAN_VID));
-        assertMetadata(mod, CUSTOMER_PORT);
+        assertMetadata(mod, 0, CUSTOMER_PORT);
 
         List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
         assertEquals(3, applyActions.size());
@@ -275,9 +277,12 @@ public class IngressServer42FlowInstallCommandTest {
         assertOutputAction(applyActions.get(2));
     }
 
-    private void assertMetadata(OFFlowMod mod, int expectedPort) {
+    private void assertMetadata(OFFlowMod mod, int expectedOuterVlan, int expectedPort) {
         RoutingMetadataBuilder metadataBuilder = RoutingMetadata32.builder()
                 .inputPort(expectedPort);
+        if (expectedOuterVlan != 0) {
+            metadataBuilder.outerVlanId(expectedOuterVlan);
+        }
         RoutingMetadata metadata = metadataBuilder.build(FEATURES);
         assertEquals(metadata.getValue(), mod.getMatch().getMasked(MatchField.METADATA).getValue().getValue());
         assertEquals(metadata.getMask(), mod.getMatch().getMasked(MatchField.METADATA).getMask().getValue());
@@ -362,7 +367,6 @@ public class IngressServer42FlowInstallCommandTest {
         context.addService(KildaCore.class, kildaCoreMock);
 
         replay(switchServiceMock, featureDetectorServiceMock, kildaCoreMock);
-        command.setup(context);
         command.setup(context);
         return command;
     }
