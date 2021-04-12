@@ -39,8 +39,23 @@ public class MailUtils {
     @Value("${subject.change.password}")
     private String subjectChangePassword;
 
+    @Value("${subject.account.block}")
+    private String subjectAccountBlock;
 
-    public String getSubjectAccountUsername() {
+
+    public String getSubjectAccountBlock() {
+		return subjectAccountBlock;
+	}
+
+
+
+	public void setSubjectAccountBlock(String subjectAccountBlock) {
+		this.subjectAccountBlock = subjectAccountBlock;
+	}
+
+
+
+	public String getSubjectAccountUsername() {
         return subjectAccountUsername;
     }
 
