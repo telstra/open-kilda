@@ -9,9 +9,7 @@ import org.openkilda.messaging.error.MessageError
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
-import spock.lang.Unroll
 
 @Narrative("""NoviWare software license file is used to activate the basic and licensed features.
 If you want to test full functionality then you have to perform the following manual tests:
@@ -19,7 +17,6 @@ If you want to test full functionality then you have to perform the following ma
     - set license by 'license data' """)
 class LicenseSpec extends GrpcBaseSpecification {
     @Tidy
-    @Unroll
     @Tags(HARDWARE)
     def "Not able to set incorrect license on the #switches.switchId switch"() {
         when: "Try to set incorrect license key"

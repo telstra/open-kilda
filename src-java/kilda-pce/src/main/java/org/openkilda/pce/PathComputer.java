@@ -62,10 +62,12 @@ public interface PathComputer {
      * @param srcSwitch source switchId
      * @param dstSwitch destination switchId
      * @param flowEncapsulationType target encapsulation type
-     *
+     * @param maxLatency max latency
+     * @param maxLatencyTier2 max latency tier2
      * @return an list of N (or less) best paths ordered from best to worst.
      */
     List<Path> getNPaths(SwitchId srcSwitch, SwitchId dstSwitch, int count,
-                         FlowEncapsulationType flowEncapsulationType, PathComputationStrategy pathComputationStrategy)
+                         FlowEncapsulationType flowEncapsulationType, PathComputationStrategy pathComputationStrategy,
+                         Long maxLatency, Long maxLatencyTier2)
             throws RecoverableException, UnroutableFlowException;
 }

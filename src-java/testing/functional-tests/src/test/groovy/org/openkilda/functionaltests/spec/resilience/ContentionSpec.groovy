@@ -4,7 +4,6 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.extension.rerun.Rerun
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowState
@@ -84,8 +83,6 @@ class ContentionSpec extends BaseSpecification {
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2563")
-    @Rerun(times = 4)
-    //Race condition is being tested here, so need multiple runs to ensure stability
     def "Reroute can be simultaneously performed with sync rules requests and not cause any rule discrepancies"() {
         given: "A flow with reroute potential"
         def switches = topologyHelper.getNotNeighboringSwitchPair()
@@ -115,8 +112,8 @@ class ContentionSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             relatedSwitches.each {
                 def validation = northbound.validateSwitch(it.dpId)
-                switchHelper.verifyRuleSectionsAreEmpty(validation, ["missing", "excess"])
-                switchHelper.verifyMeterSectionsAreEmpty(validation, ["missing", "misconfigured", "excess"])
+                validation.verifyRuleSectionsAreEmpty(it.dpId, ["missing", "excess"])
+                validation.verifyMeterSectionsAreEmpty(it.dpId, ["missing", "misconfigured", "excess"])
             }
         }
 
@@ -126,5 +123,9 @@ class ContentionSpec extends BaseSpecification {
         and: "Cleanup: remove flow and reset costs"
         flowHelper.deleteFlow(flow.id)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
+
+        where:
+        //Race condition is being tested here, so need multiple runs to ensure stability
+        i << (1..4)
     }
 }

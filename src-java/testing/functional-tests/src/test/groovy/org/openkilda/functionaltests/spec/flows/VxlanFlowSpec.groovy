@@ -1,7 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.junit.Assume.assumeTrue
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -25,7 +25,6 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
-import spock.lang.Unroll
 
 import java.time.Instant
 import javax.inject.Provider
@@ -40,19 +39,18 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
-    @Unroll
     @Tags(HARDWARE)
     def "System allows to create/update encapsulation type for a flow\
 (#encapsulationCreate.toString() -> #encapsulationUpdate.toString())"() {
         given: "Two active neighboring VXLAN supported switches with traffgens"
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.findAll {
             isVxlanEnabled(it.dpId)
-        }*.dpId ?: assumeTrue("Should be at least two active traffgens connected to VXLAN supported switches",
-                false)
+        }*.dpId ?: assumeTrue(false,
+"Should be at least two active traffgens connected to VXLAN supported switches")
 
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
             allTraffgenSwitchIds.contains(it.src.dpId) && allTraffgenSwitchIds.contains(it.dst.dpId)
-        } ?: assumeTrue("Unable to find required switches in topology",false)
+        } ?: assumeTrue(false, "Unable to find required switches in topology")
 
         when: "Create a flow with #encapsulationCreate.toString() encapsulation type"
         def flow = flowHelper.randomFlow(switchPair)
@@ -176,7 +174,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
             [swP.src, swP.dst].every { sw -> isVxlanEnabled(sw.dpId) }
         }
-        assumeTrue("Unable to find required switches in topology", switchPair as boolean)
+        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
 
         def flow = flowHelper.randomFlow(switchPair)
         flow.encapsulationType = FlowEncapsulationType.VXLAN
@@ -206,12 +204,12 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
             [swP.src, swP.dst].every { sw -> isVxlanEnabled(sw.dpId) }
         }
-        assumeTrue("Unable to find required switches in topology", switchPair as boolean)
+        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
 
         def availablePaths = switchPair.paths.findAll { path ->
             pathHelper.getInvolvedSwitches(path).every { isVxlanEnabled(it.dpId) }
         }
-        assumeTrue("Unable to find required paths between switches", availablePaths.size() >= 2)
+        assumeTrue(availablePaths.size() >= 2, "Unable to find required paths between switches")
 
         when: "Create a flow with protected path"
         def flow = flowHelper.randomFlow(switchPair)
@@ -331,11 +329,11 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         given: "Two active VXLAN supported switches with traffgens"
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.findAll {
             isVxlanEnabled(it.dpId)
-        }*.dpId ?: assumeTrue("Should be at least two active traffgens connected to VXLAN supported switches",
-                false)
+        }*.dpId ?: assumeTrue(false,
+"Should be at least two active traffgens connected to VXLAN supported switches")
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
             allTraffgenSwitchIds.contains(it.src.dpId) && allTraffgenSwitchIds.contains(it.dst.dpId)
-        } ?: assumeTrue("Unable to find required switches in topology",false)
+        } ?: assumeTrue(false, "Unable to find required switches in topology")
 
         when: "Create a default flow"
         def defaultFlow = flowHelper.randomFlow(switchPair)
@@ -369,7 +367,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
             [swP.src, swP.dst].every { sw -> !isVxlanEnabled(sw.dpId) }
         }
-        assumeTrue("Unable to find required switches in topology", switchPair as boolean)
+        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
 
         when: "Try to create a flow"
         def flow = flowHelper.randomFlow(switchPair)
@@ -393,7 +391,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
             [swP.src, swP.dst].every { sw -> isVxlanEnabled(sw.dpId) } && swP.paths.find { path ->
                 pathHelper.getInvolvedSwitches(path).find { !isVxlanEnabled(it.dpId) }
             }
-        } ?: assumeTrue("Unable to find required switches in topology", false)
+        } ?: assumeTrue(false, "Unable to find required switches in topology")
         // find path with needed transit switch
         def requiredPath = switchPair.paths.find {
             pathHelper.getInvolvedSwitches(it).find { !isVxlanEnabled(it.dpId) }
@@ -437,7 +435,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
             isVxlanEnabled(it.src.dpId) && !isVxlanEnabled(it.dst.dpId)
         }
-        assumeTrue("Unable to find required switches in topology", switchPair as boolean)
+        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
 
         when: "Try to create a flow"
         def flow = flowHelper.randomFlow(switchPair)
@@ -453,14 +451,13 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         !exc && flowHelper.deleteFlow(flow.id)
     }
 
-    @Unroll
     @Tags(HARDWARE)
     def "System allows to create/update encapsulation type for a one-switch flow\
 (#encapsulationCreate.toString() -> #encapsulationUpdate.toString())"() {
         when: "Try to create a one-switch flow"
         def sw = topology.activeTraffGens*.switchConnected.find {
             isVxlanEnabled(it.dpId)
-        } ?: assumeTrue("Should be at least one active traffgen connected to VXLAN supported switch",false)
+        } ?: assumeTrue(false, "Should be at least one active traffgen connected to VXLAN supported switch")
         def flow = flowHelper.singleSwitchFlow(sw)
         flow.encapsulationType = encapsulationCreate
         northbound.addFlow(flow)

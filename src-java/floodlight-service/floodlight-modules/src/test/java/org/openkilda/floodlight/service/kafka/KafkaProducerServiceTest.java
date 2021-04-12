@@ -30,12 +30,9 @@ import org.openkilda.model.SwitchId;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.easymock.EasyMockSupport;
 import org.easymock.IAnswer;
 import org.junit.Assert;
@@ -136,18 +133,5 @@ public class KafkaProducerServiceTest extends EasyMockSupport {
         return new InfoMessage(
                 new PortInfoData(new SwitchId("ff:fe:00:00:00:00:00:01"), 8, PortChangeType.UP),
                 System.currentTimeMillis(), getClass().getCanonicalName() + "-test");
-    }
-
-    @SuppressWarnings("unchecked")
-    private void setupSendCapture(Capture<ProducerRecord<String, String>> trap, RecordMetadata[] sendResults)
-            throws Exception {
-        for (RecordMetadata metadata : sendResults) {
-            Future promise = mock(Future.class);
-            expect(promise.get()).andReturn(metadata);
-            replay(promise);
-
-            expect(kafkaProducer.send(EasyMock.capture(trap), anyObject(Callback.class)))
-                    .andReturn(promise);
-        }
     }
 }

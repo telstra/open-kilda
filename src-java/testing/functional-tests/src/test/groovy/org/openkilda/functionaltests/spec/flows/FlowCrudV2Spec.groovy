@@ -1,7 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.junit.Assume.assumeTrue
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -63,7 +63,7 @@ More specific cases like partialUpdate/protected/diverse etc. are covered in sep
 """)
 class FlowCrudV2Spec extends HealthCheckSpecification {
 
-    @Autowired
+    @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
     @Shared
@@ -82,8 +82,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 (#flow.source.switchId - #flow.destination.switchId)")
     def "Valid flow has no rule discrepancies"() {
         given: "A flow"
-        assumeTrue("There should be at least two active traffgens for test execution",
-                topology.activeTraffGens.size() >= 2)
+        assumeTrue(topology.activeTraffGens.size() >= 2,
+"There should be at least two active traffgens for test execution")
         def traffExam = traffExamProvider.get()
         def allLinksInfoBefore = northbound.getAllLinks().collectEntries { [it.id, it.availableBandwidth] }.sort()
         flowHelperV2.addFlow(flow)
@@ -329,7 +329,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         ]
     }
 
-    @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to create single switch single port flow with different vlan (#flow.source.switchId)"(
             FlowRequestV2 flow) {
@@ -442,8 +441,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
             possibleFlowPaths.size() > 1 && possibleFlowPaths.max { it.size() }.size() > pathNodeCount
         }.collect {
             [it.srcSwitch, it.dstSwitch]
-        }.flatten() ?: assumeTrue("No suiting active neighboring switches with two possible flow paths at least and " +
-                "different number of hops found", false)
+        }.flatten() ?: assumeTrue(false, "No suiting active neighboring switches with two possible flow paths at least and " +
+                "different number of hops found")
 
         and: "Make all shorter forward paths not preferable. Shorter reverse paths are still preferable"
         possibleFlowPaths.findAll { it.size() == pathNodeCount }.each {
@@ -469,7 +468,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     def "Error is returned if there is no available path to #data.isolatedSwitchType switch"() {
         given: "A switch that has no connection to other switches"
         def isolatedSwitch = topologyHelper.notNeighboringSwitchPair.src
@@ -558,8 +556,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         and: "All related switches have no discrepancies in rules"
         switches.each {
             def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
-            validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
+            validation.verifyMeterSectionsAreEmpty(it.dpId, ["excess", "misconfigured", "missing"])
+            validation.verifyRuleSectionsAreEmpty(it.dpId, ["excess", "missing"])
             def swProps = northbound.getSwitchProperties(it.dpId)
             def amountOfMultiTableRules = swProps.multiTable ? 1 : 0
             def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId,dstSwitch.dpId]) ? 1 : 0
@@ -612,11 +610,10 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 	}
 
     @Tidy
-    @Unroll
     def "Unable to create a flow on an isl port in case port is occupied on a #data.switchType switch"() {
         given: "An isl"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
-        assumeTrue("Unable to find required isl", isl as boolean)
+        assumeTrue(isl as boolean, "Unable to find required isl")
 
         when: "Try to create a flow using isl port"
         def flow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch)
@@ -662,7 +659,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     def "Unable to create a flow on an isl port when ISL status is FAILED"() {
         given: "An inactive isl with failed state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
-        assumeTrue("Unable to find required isl", isl as boolean)
+        assumeTrue(isl as boolean, "Unable to find required isl")
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         islUtils.waitForIslStatus([isl, isl.reversed], FAILED)
 
@@ -688,9 +685,9 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     def "Unable to create a flow on an isl port when ISL status is MOVED"() {
         given: "An inactive isl with moved state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
-        assumeTrue("Unable to find required isl", isl as boolean)
+        assumeTrue(isl as boolean, "Unable to find required isl")
         def notConnectedIsls = topology.notConnectedIsls
-        assumeTrue("Unable to find non-connected isl", notConnectedIsls.size() > 0)
+        assumeTrue(notConnectedIsls.size() > 0, "Unable to find non-connected isl")
         def notConnectedIsl = notConnectedIsls.first()
         def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, false)
 
@@ -746,7 +743,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         given: "Two active not neighboring switches with two diverse paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
             it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue("No suiting switches found", false)
+        } ?: assumeTrue(false, "No suiting switches found")
 
         when: "Create flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -928,7 +925,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     def "Able to update a flow endpoint"() {
         given: "Three active switches"
         def allSwitches = topology.activeSwitches
-        assumeTrue("Unable to find three active switches", allSwitches.size() >= 3)
+        assumeTrue(allSwitches.size() >= 3, "Unable to find three active switches")
         def srcSwitch = allSwitches[0]
         def dstSwitch = allSwitches[1]
 
@@ -990,8 +987,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         and: "The src switch passes switch validation"
         with(northbound.validateSwitch(srcSwitch.dpId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            validation.verifyRuleSectionsAreEmpty(srcSwitch.dpId, ["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(srcSwitch.dpId, ["missing", "excess", "misconfigured"])
         }
         def srcSwitchIsFine = true
 
@@ -1050,8 +1047,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         Wrappers.wait(RULES_DELETION_TIME) {
             [dstSwitch, newDstSwitch]*.dpId.each { switchId ->
                 with(northbound.validateSwitch(switchId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyRuleSectionsAreEmpty(switchId, ["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(switchId, ["missing", "excess", "misconfigured"])
                 }
             }
         }
@@ -1071,7 +1068,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         given: "Two active not neighboring switches with two possible paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
             it.paths.size() >= 2
-        } ?: assumeTrue("No suiting switches found", false)
+        } ?: assumeTrue(false, "No suiting switches found")
 
         and: "A flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -1101,8 +1098,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         withPool {
             involvedSwitchIds.eachParallel { SwitchId swId ->
                 with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
                 }
             }
         }
@@ -1121,11 +1118,11 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         given: "Two active switches connected to traffgens with two possible paths at least"
         def activeTraffGens = topology.activeTraffGens
         def allTraffgenSwitches = activeTraffGens*.switchConnected ?:
-                assumeTrue("Should be at least two active traffgens connected to switches", false)
+                assumeTrue(false, "Should be at least two active traffgens connected to switches")
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
             allTraffgenSwitches*.dpId.contains(swP.src.dpId) && allTraffgenSwitches*.dpId.contains(swP.dst.dpId) &&
                     swP.paths.size() >= 2
-        } ?: assumeTrue("Unable to find required switches/paths in topology",false)
+        } ?: assumeTrue(false, "Unable to find required switches/paths in topology")
 
         and: "A flow"
         def flow = flowHelperV2.randomFlow(switchPair, false)
@@ -1212,8 +1209,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         withPool {
             currentPath*.switchId.eachParallel { SwitchId swId ->
                 with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
                 }
             }
         }
@@ -1258,10 +1255,10 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
 
         and: "Involved switches pass switch validation"
-        [swPair.src, swPair.dst].each {
-            with(northbound.validateSwitch(it.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        [swPair.src, swPair.dst].each {sw ->
+            with(northbound.validateSwitch(sw.dpId)) { validation ->
+                validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+                validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
             }
         }
         def isSwitchValid = true

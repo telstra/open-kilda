@@ -22,7 +22,6 @@ class DiscoverySpec extends BaseSpecification {
     @Value("#{'\${floodlight.regions}'.split(',')}")
     List<String> regions
 
-    @Unroll
     def "System is able to discover a huge topology at once#debugText"() {
         Assume.assumeThat(preset.debug, equalTo(debug))
         def islsAmount = preset.switchesAmount * 2
@@ -69,7 +68,6 @@ class DiscoverySpec extends BaseSpecification {
     /**
      * Push the system to its limits until it fails to discover new isls or switches. Measure system's capabilities
      */
-    @Unroll
     def "System is able to continuously discover new switches and ISLs#debugText"() {
         Assume.assumeThat(preset.debug, equalTo(debug))
 

@@ -32,7 +32,6 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -66,9 +65,9 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
     @Override
     protected List<OFInstruction> makeIngressFlowLoopInstructions(FlowEndpoint endpoint) {
         List<OFAction> actions = new ArrayList<>();
-        if (endpoint.getInnerVlanId() != 0) {
+        if (command.getMetadata().isMultiTable()) {
             actions.addAll(OfAdapter.INSTANCE.makeVlanReplaceActions(of,
-                    Collections.singletonList(endpoint.getInnerVlanId()),
+                    FlowEndpoint.makeVlanStack(endpoint.getInnerVlanId()),
                     endpoint.getVlanStack()));
         }
         actions.add(of.actions().buildOutput()

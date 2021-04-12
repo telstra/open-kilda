@@ -39,6 +39,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.time.Clock;
 import java.util.List;
 
 public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier {
@@ -63,7 +64,8 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
 
     @PersistenceContextRequired(requiresNew = true)
     protected void init() {
-        flowCacheService = new FlowCacheService(persistenceManager, flowRttStatsExpirationTime, this);
+        flowCacheService = new FlowCacheService(persistenceManager, Clock.systemUTC(),
+                flowRttStatsExpirationTime, this);
     }
 
     @Override

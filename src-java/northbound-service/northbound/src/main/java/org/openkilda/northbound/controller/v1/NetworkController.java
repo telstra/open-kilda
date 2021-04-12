@@ -60,8 +60,18 @@ public class NetworkController extends BaseController {
             @ApiParam(value = "Valid values are: COST, LATENCY, MAX_LATENCY, COST_AND_AVAILABLE_BANDWIDTH. If path "
                     + "computation strategy is not specified, default value from Kilda Configuration will be used")
             @RequestParam(value = "path_computation_strategy", required = false)
-                    PathComputationStrategy pathComputationStrategy) {
-        return networkService.getPaths(srcSwitchId, dstSwitchId, encapsulationType, pathComputationStrategy);
+                    PathComputationStrategy pathComputationStrategy,
+            @ApiParam(value = "Maximum latency of flow path in milliseconds. Required for MAX_LATENCY strategy. "
+                    + "Other strategies will ignore this parameter. If max_latency is 0 LATENCY strategy will be used "
+                    + "instead of MAX_LATENCY")
+            @RequestParam(value = "max_latency", required = false) Long maxLatency,
+            @ApiParam(value = "Second tier for flow path latency in milliseconds. If there is no path with required "
+                    + "max_latency, max_latency_tier2 with be used instead. Used only with MAX_LATENCY strategy. "
+                    + "Other strategies will ignore this parameter.")
+            @RequestParam(value = "max_latency_tier2", required = false)
+                    Long maxLatencyTier2) {
+        return networkService.getPaths(srcSwitchId, dstSwitchId, encapsulationType, pathComputationStrategy, maxLatency,
+                maxLatencyTier2);
     }
 
     /**

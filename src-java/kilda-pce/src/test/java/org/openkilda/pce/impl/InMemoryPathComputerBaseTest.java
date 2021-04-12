@@ -22,6 +22,16 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.openkilda.model.PathComputationStrategy.COST;
+import static org.openkilda.model.PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH;
+import static org.openkilda.model.PathComputationStrategy.LATENCY;
+import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.model.Flow;
@@ -45,6 +55,10 @@ import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.finder.BestWeightAndShortestPathFinder;
+import org.openkilda.pce.finder.PathFinder;
+import org.openkilda.pce.model.Edge;
+import org.openkilda.pce.model.Node;
+import org.openkilda.pce.model.WeightFunction;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -52,6 +66,7 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
+import com.google.common.collect.Lists;
 import org.hamcrest.Matchers;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -64,6 +79,8 @@ import java.util.List;
 import java.util.UUID;
 
 public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
+    public static SwitchId SWITCH_1 = new SwitchId(1);
+    public static SwitchId SWITCH_2 = new SwitchId(2);
 
     static SwitchRepository switchRepository;
     static SwitchPropertiesRepository switchPropertiesRepository;
@@ -357,6 +374,125 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         assertTrue(pathsResult.isBackUpPathComputationWayUsed());
         assertThat(pathsResult.getForward().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:03")));
         assertThat(pathsResult.getReverse().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:03")));
+    }
+
+    @Test
+    public void getNPathsCostSortByBandwidth() throws RecoverableException, UnroutableFlowException {
+        List<Path> foundPaths = mockPathComputerWithoutMaxWeight().getNPaths(SWITCH_1, SWITCH_2, 10, null, COST,
+                0L, 0L);
+
+        assertEquals(5, foundPaths.size());
+        assertSortedByBandwidthAndLatency(foundPaths);
+    }
+
+    @Test
+    public void getNPathsCostAndAvailableBandwidthSortByBandwidth()
+            throws RecoverableException, UnroutableFlowException {
+        List<Path> foundPaths = mockPathComputerWithoutMaxWeight().getNPaths(
+                SWITCH_1, SWITCH_2, 10, null, COST_AND_AVAILABLE_BANDWIDTH, 0L, 0L);
+
+        assertEquals(5, foundPaths.size());
+        assertSortedByBandwidthAndLatency(foundPaths);
+    }
+
+    @Test
+    public void getNPathsLatencySortByLatency() throws RecoverableException, UnroutableFlowException {
+        List<Path> foundPaths = mockPathComputerWithoutMaxWeight().getNPaths(
+                SWITCH_1, SWITCH_2, 10, null, LATENCY, 0L, 0L);
+
+        assertEquals(5, foundPaths.size());
+        assertSortedByLatencyAndBandwidth(foundPaths);
+    }
+
+    @Test
+    public void getNPathsMaxLatencyWithNullMaxLatencySortByLatency()
+            throws RecoverableException, UnroutableFlowException {
+        // We used MAX_LATENCY strategy with null max latency param. In this case LATENCY strategy must be used
+        // We check it by using PathComputerWithoutMaxWeight() mock instead of mockPathComputerWithMaxWeight()
+        List<Path> foundPaths = mockPathComputerWithoutMaxWeight().getNPaths(
+                SWITCH_1, SWITCH_2, 10, null, MAX_LATENCY, null, null);
+
+        assertEquals(5, foundPaths.size());
+        assertSortedByLatencyAndBandwidth(foundPaths);
+    }
+
+    @Test
+    public void getNPathsMaxLatencyWithZeroMaxLatencySortByLatency()
+            throws RecoverableException, UnroutableFlowException {
+        // We used MAX_LATENCY strategy with 0 max latency param. In this case LATENCY strategy must be used
+        // We check it by using PathComputerWithoutMaxWeight() mock instead of mockPathComputerWithMaxWeight()
+        List<Path> foundPaths = mockPathComputerWithoutMaxWeight().getNPaths(
+                SWITCH_1, SWITCH_2, 10, null, MAX_LATENCY, 0L, null);
+
+        assertEquals(5, foundPaths.size());
+        assertSortedByLatencyAndBandwidth(foundPaths);
+    }
+
+    @Test
+    public void getNPathsMaxLatencySortByLatency() throws RecoverableException, UnroutableFlowException {
+        List<Path> foundPaths = mockPathComputerWithMaxWeight().getNPaths(
+                SWITCH_1, SWITCH_2, 10, null, MAX_LATENCY, 1000L, 0L);
+
+        assertEquals(5, foundPaths.size());
+        assertSortedByLatencyAndBandwidth(foundPaths);
+    }
+
+    private PathComputer mockPathComputerWithoutMaxWeight() throws UnroutableFlowException {
+        PathFinder pathFinderMock = mock(PathFinder.class);
+        when(pathFinderMock.findNPathsBetweenSwitches(
+                any(AvailableNetwork.class), eq(SWITCH_1), eq(SWITCH_2), anyInt(), any(WeightFunction.class)))
+                .thenReturn(getPaths());
+        return new InMemoryPathComputer(availableNetworkFactory, pathFinderMock, config);
+    }
+
+    private PathComputer mockPathComputerWithMaxWeight() throws UnroutableFlowException {
+        PathFinder pathFinderMock = mock(PathFinder.class);
+        when(pathFinderMock.findNPathsBetweenSwitches(
+                any(AvailableNetwork.class), eq(SWITCH_1), eq(SWITCH_2), anyInt(), any(WeightFunction.class),
+                anyLong(), anyLong()))
+                .thenReturn(getPaths());
+        return new InMemoryPathComputer(availableNetworkFactory, pathFinderMock, config);
+    }
+
+    private List<List<Edge>> getPaths() {
+        List<Edge> path1 = createPath(10, 5);
+        List<Edge> path2 = createPath(10, 4);
+        List<Edge> path3 = createPath(15, 5);
+        List<Edge> path4 = createPath(100, 100);
+        List<Edge> path5 = createPath(1, 1);
+
+        return Lists.newArrayList(path1, path2, path3, path4, path5);
+    }
+
+    private void assertSortedByBandwidthAndLatency(List<Path> paths) {
+        for (int i = 1; i < paths.size(); i++) {
+            Path prev = paths.get(i - 1);
+            Path cur = paths.get(i);
+            assertTrue(prev.getMinAvailableBandwidth() >= cur.getMinAvailableBandwidth());
+            if (prev.getMinAvailableBandwidth() == cur.getMinAvailableBandwidth()) {
+                assertTrue(prev.getLatency() <= cur.getLatency());
+            }
+        }
+    }
+
+    private void assertSortedByLatencyAndBandwidth(List<Path> paths) {
+        for (int i = 1; i < paths.size(); i++) {
+            Path prev = paths.get(i - 1);
+            Path cur = paths.get(i);
+            assertTrue(prev.getLatency() <= cur.getLatency());
+            if (prev.getLatency() == cur.getLatency()) {
+                assertTrue(prev.getMinAvailableBandwidth() >= cur.getMinAvailableBandwidth());
+            }
+        }
+    }
+
+    private ArrayList<Edge> createPath(long availableBandwidth, long latency) {
+        return Lists.newArrayList(Edge.builder()
+                .srcSwitch(new Node(SWITCH_1, ""))
+                .destSwitch(new Node(SWITCH_2, ""))
+                .availableBandwidth(availableBandwidth)
+                .latency(latency)
+                .build());
     }
 
     void addPathSegments(FlowPath flowPath, Path path) {

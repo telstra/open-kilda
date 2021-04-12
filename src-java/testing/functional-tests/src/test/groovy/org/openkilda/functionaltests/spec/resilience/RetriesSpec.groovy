@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.resilience
 
-import static org.junit.Assume.assumeTrue
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
@@ -29,7 +29,6 @@ import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 
 import groovy.util.logging.Slf4j
 import spock.lang.Shared
-import spock.lang.Unroll
 
 import java.util.concurrent.TimeUnit
 
@@ -112,7 +111,7 @@ and at least 1 path must remain safe"
         and: "All related switches have no rule anomalies"
         [mainPath, failoverPath, currentPath].collectMany { pathHelper.getInvolvedSwitches(it) }.unique()
                 .findAll { it != switchToBreak }.each {
-            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(it.dpId, ["missing", "excess", "misconfigured"])
         }
 
         cleanup:
@@ -132,7 +131,6 @@ and at least 1 path must remain safe"
     }
 
     @Tidy
-    @Unroll
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "System tries to retry rule installation during #data.description if previous one is failed"(){
         given: "Two active neighboring switches with two diverse paths at least"
@@ -141,7 +139,7 @@ and at least 1 path must remain safe"
             allPaths = it.paths
             allPaths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2 &&
                     allPaths.find { it.size() > 2 }
-        } ?: assumeTrue("No switch pair with at least 2 diverse paths", false)
+        } ?: assumeTrue(false, "No switch pair with at least 2 diverse paths")
 
         List<PathNode> mainPath = allPaths.min { it.size() }
         //find path with more than two switches
@@ -214,8 +212,8 @@ and at least 1 path must remain safe"
         wait(WAIT_OFFSET / 2) {
             involvedSwitchIds.each { swId ->
                 with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
                 }
             }
         }
@@ -366,8 +364,8 @@ and at least 1 path must remain safe"
         wait(WAIT_OFFSET / 2) {
             involvedSwitchIds.each { swId ->
                 with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
                 }
             }
         }
@@ -456,8 +454,8 @@ and at least 1 path must remain safe"
             it.src.features.contains(SwitchFeature.MULTI_TABLE) && it.paths.size() > 1 &&
                     it.paths.find { it.size() > 2 }
         }
-        assumeTrue("Couldn't find a switch pair with src sw supporting Multi-table, 2+ paths and at least 1 " +
-                "path having transit switch", swPair as boolean)
+        assumeTrue(swPair as boolean, "Couldn't find a switch pair with src sw supporting Multi-table, 2+ paths and at least 1 " +
+                "path having transit switch")
         def originalMode = swPair.src.changeMultitable(false)
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
@@ -512,8 +510,8 @@ and at least 1 path must remain safe"
         northbound.validateFlow(flow.flowId).every { it.asExpected }
         currentSwitches.each {
             def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyRuleSectionsAreEmpty(["excess", "missing", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(["excess", "missing", "misconfigured"])
+            validation.verifyRuleSectionsAreEmpty(it.dpId, ["excess", "missing", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(it.dpId, ["excess", "missing", "misconfigured"])
         }
         def done = true
 
@@ -540,8 +538,8 @@ and at least 1 path must remain safe"
             it.src.features.contains(SwitchFeature.MULTI_TABLE) && it.paths.size() > 1 &&
                     it.paths.find { it.size() > 2 }
         }
-        assumeTrue("Couldn't find a switch pair with src sw supporting Multi-table, 2+ paths and at least 1 " +
-                "path having transit switch", swPair as boolean)
+        assumeTrue(swPair as boolean, "Couldn't find a switch pair with src sw supporting Multi-table, 2+ paths and at least 1 " +
+                "path having transit switch")
         def originalMode = swPair.src.changeMultitable(false)
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
@@ -598,8 +596,8 @@ and at least 1 path must remain safe"
         northbound.validateFlow(flow.flowId).every { it.asExpected }
         currentSwitches.each {
             def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyRuleSectionsAreEmpty(["excess", "missing", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(["excess", "missing", "misconfigured"])
+            validation.verifyRuleSectionsAreEmpty(it.dpId, ["excess", "missing", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(it.dpId, ["excess", "missing", "misconfigured"])
         }
         def done = true
 

@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.junit.Assume.assumeTrue
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
@@ -33,7 +33,6 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
-import spock.lang.Unroll
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -51,7 +50,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
     @Shared
     List<FlowHistoryEntry> bigHistory
 
-    def setupOnce() {
+    def setupSpec() {
         specStartTime = System.currentTimeSeconds()
         def twoDaysAgo = Instant.now().minus(2, ChronoUnit.DAYS)
         flowWithHistory = new Faker().food().ingredient().replaceAll(/\W/, "") + twoDaysAgo.toEpochMilli()
@@ -268,7 +267,6 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
     @Tags(LOW_PRIORITY)
     def "Check history: #data.descr"() {
         expect: "#data.descr"
@@ -328,7 +326,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
             srcSwitch = isl.srcSwitch
             dstSwitch = isl.dstSwitch
             [isl.srcSwitch, isl.dstSwitch].any { !it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
-        } ?: assumeTrue("Wasn't able to find a suitable link", false)
+        } ?: assumeTrue(false, "Wasn't able to find a suitable link")
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flowHelperV2.addFlow(flow)
 

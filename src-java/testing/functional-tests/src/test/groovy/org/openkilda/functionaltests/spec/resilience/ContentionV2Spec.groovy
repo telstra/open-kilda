@@ -4,15 +4,11 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.extension.rerun.Rerun
-import org.openkilda.functionaltests.helpers.FlowHelperV2
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
-import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
 import groovyx.gpars.group.DefaultPGroup
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
@@ -21,11 +17,6 @@ import spock.lang.Narrative
 @Narrative("""This spec is aimed to test different race conditions and system behavior in a concurrent
  environment (using v2 APIs)""")
 class ContentionV2Spec extends BaseSpecification {
-    @Autowired
-    NorthboundServiceV2 northboundV2
-
-    @Autowired
-    FlowHelperV2 flowHelperV2
 
     def "Parallel flow creation requests with the same name creates only 1 flow"() {
         when: "Create the same flow in parallel multiple times"
@@ -96,8 +87,6 @@ class ContentionV2Spec extends BaseSpecification {
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2563")
-    @Rerun(times = 4)
-    //Race condition is being tested here, so need multiple runs to ensure stability
     def "Reroute can be simultaneously performed with sync rules requests and not cause any rule discrepancies"() {
         given: "A flow with reroute potential"
         def switches = topologyHelper.getNotNeighboringSwitchPair()
@@ -127,8 +116,8 @@ class ContentionV2Spec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             relatedSwitches.each {
                 def validation = northbound.validateSwitch(it.dpId)
-                switchHelper.verifyRuleSectionsAreEmpty(validation, ["missing", "excess"])
-                switchHelper.verifyMeterSectionsAreEmpty(validation, ["missing", "misconfigured", "excess"])
+                validation.verifyRuleSectionsAreEmpty(it.dpId, ["missing", "excess"])
+                validation.verifyMeterSectionsAreEmpty(it.dpId, ["missing", "misconfigured", "excess"])
             }
         }
 
@@ -138,6 +127,10 @@ class ContentionV2Spec extends BaseSpecification {
         and: "Cleanup: remove flow and reset costs"
         flowHelperV2.deleteFlow(flow.id)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
+
+        where:
+        //Race condition is being tested here, so need multiple runs to ensure stability
+        i << (1..4)
     }
 
 }

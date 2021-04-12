@@ -11,6 +11,9 @@ Do not change this file, all changes will be lost. Change corresponding template
         <File name="KildaLogFile" fileName="build/logs/logs.log">
             <PatternLayout pattern="%d{ISO8601} %-5p %c{1}:%L - %m%n"/>
         </File>
+        <File name="RequestsLogFile" fileName="build/logs/requests.log">
+            <PatternLayout pattern="%d{ISO8601} %-5p %c{1}:%L - %m%n"/>
+        </File>
         <File name="SkippedTestsFile" fileName="build/logs/skipped_tests.log" append="false">
             <PatternLayout pattern="%m%n%n"/>
         </File>

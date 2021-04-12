@@ -16,7 +16,10 @@
 import errno
 import fcntl
 import os
+import pathlib
 import time
+
+import nsenter
 
 from kilda.traffexam import common
 from kilda.traffexam import exc
@@ -99,3 +102,36 @@ class PidFile(common.Resource):
         pid = self._read(pid_file)
         if pid != os.getpid():
             raise exc.PidFileStolenError(self.path, pid)
+
+
+class _NetworkNamespaceContext(object):
+    def __enter__(self):
+        raise NotImplementedError
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        raise NotImplementedError
+
+
+class DummyNetworkNamespaceContext(_NetworkNamespaceContext):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass  # nothing to do here
+
+
+class NetworkNamespaceContext(_NetworkNamespaceContext):
+    _fs_netns_root = pathlib.Path('/var/run/netns')
+
+    def __init__(self, name):
+        self._fs_location = str(self._fs_netns_root / name)
+        self._calls = []
+
+    def __enter__(self):
+        ns = nsenter.Namespace(self._fs_location, 'net')
+        self._calls.append(ns)
+        return ns.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        ns = self._calls.pop()
+        return ns.__exit__(exc_type, exc_val, exc_tb)
