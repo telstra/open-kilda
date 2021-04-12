@@ -141,15 +141,15 @@ public class CustomAuthenticationProvider extends DaoAuthenticationProvider {
                 entity.setFailedLoginTime(new Timestamp(System.currentTimeMillis()));
                 entity.setStatusEntity(Status.getStatusByCode(Status.LOCK.getCode()).getStatusEntity());
                 userRepository.save(entity);
-//                try {
-                Map<String, Object> map = new HashMap<String, Object>();
-                map.put("name", entity.getName());
-                map.put("time", accUnlockTime);
-                mailService.send(entity.getEmail(), mailUtils.getSubjectAccountBlock(),
-                        TemplateService.Template.ACCOUNT_BLOCK, map);
-//                } catch (Exception e) {
-//                	LOGGER.warn("User account block email failed for username:'" + entity.getUsername());
-//                }
+                try {
+                    Map<String, Object> map = new HashMap<String, Object>();
+                    map.put("name", entity.getName());
+                    map.put("time", accUnlockTime);
+                    mailService.send(entity.getEmail(), mailUtils.getSubjectAccountBlock(),
+                            TemplateService.Template.ACCOUNT_BLOCK, map);
+                } catch (Exception e) {
+                    LOGGER.warn("User account block email failed for username:'" + entity.getUsername());
+                }
                 throw new LockedException("User account is locked for "
                         + Integer.valueOf(accUnlockTime) + " minute(s)");
             }

@@ -44,18 +44,18 @@ public class MailUtils {
 
 
     public String getSubjectAccountBlock() {
-		return subjectAccountBlock;
-	}
+        return subjectAccountBlock;
+    }
+
+    
+
+    public void setSubjectAccountBlock(String subjectAccountBlock) {
+        this.subjectAccountBlock = subjectAccountBlock;
+    }
 
 
 
-	public void setSubjectAccountBlock(String subjectAccountBlock) {
-		this.subjectAccountBlock = subjectAccountBlock;
-	}
-
-
-
-	public String getSubjectAccountUsername() {
+    public String getSubjectAccountUsername() {
         return subjectAccountUsername;
     }
 
