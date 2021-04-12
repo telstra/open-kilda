@@ -172,12 +172,12 @@ kilda_server42_control_switch_to_vlan_1002: "1002=00:00:00:00:00:00:00:02"
 kilda_server42_control_switch_to_vlan_1003: "1003=00:00:00:00:00:00:00:03"
 
 kilda_server42_control_kafka_group_id: "server42-control"
-kilda_server42_control_zeromq_connection_host: "tcp://server42-server-stub.pendev:5555"
+kilda_server42_control_zeromq_connection_host: "tcp://server42-server.pendev:5555"
 kilda_server42_control_component_name: "server42-control-app"
 kilda_server42_control_run_id: "server42-control-app-run-id"
 
 kilda_server42_stats_http_port: 9003
-kilda_server42_stats_zeromq_connection_host: "tcp://server42-server-stub.pendev:5556"
+kilda_server42_stats_zeromq_connection_host: "tcp://server42-server.pendev:5556"
 kilda_server42_stats_kafka_group_id: "server42-stats"
 kilda_server42_stats_component_name: "server42-stats-app"
 kilda_server42_stats_run_id: "server42-stats-app-run-id"

@@ -712,7 +712,32 @@ services:
     networks:
       default:
         aliases:
-         - server42-server-stub.pendev
+         - server42-server.pendev
+    mem_limit: ${S42SS_MEM_LIMIT:-1073741824}
+{{end}}
+{{if not (exists "/no_server42_server")}}
+  server42-server:
+    container_name: server42-server
+    image: kilda/server42dpdk:latest
+    ports:
+      - "5555:5555"
+      - "5556:5556"
+    depends_on:
+      kafka:
+        condition: service_healthy
+{{if not (exists "/no_logstash")}}      logstash:
+        condition: service_started
+  {{end}}
+    privileged: true
+    volumes:
+      - /sys/bus/pci/drivers:/sys/bus/pci/drivers
+      - /sys/kernel/mm/hugepages:/sys/kernel/mm/hugepages
+      - /sys/devices/system/node:/sys/devices/system/node
+      - /dev:/dev
+    networks:
+      default:
+        aliases:
+         - server42-server.pendev
     mem_limit: ${S42SS_MEM_LIMIT:-1073741824}
 {{end}}
 {{if not (exists "/no_server42_storm_stub")}}
