@@ -22,6 +22,8 @@ import org.openkilda.exception.OtpRequiredException;
 import org.openkilda.exception.TwoFaKeyNotSetException;
 import org.openkilda.service.ApplicationSettingService;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
@@ -30,18 +32,31 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.core.Authentication;
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.dao.repository.UserRepository;
+import org.usermanagement.service.MailService;
+import org.usermanagement.service.TemplateService;
+import org.usermanagement.util.MailUtils;
 
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 public class CustomAuthenticationProvider extends DaoAuthenticationProvider {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(CustomAuthenticationProvider.class);
+    
+    @Autowired
+    private MailUtils mailUtils;
+    
     @Autowired
     private UserRepository userRepository;
     
     @Autowired
     private ApplicationSettingService applicationSettingService;
+    
+    @Autowired
+    private MailService mailService;
 
     /*
      * (non-Javadoc)
@@ -126,6 +141,15 @@ public class CustomAuthenticationProvider extends DaoAuthenticationProvider {
                 entity.setFailedLoginTime(new Timestamp(System.currentTimeMillis()));
                 entity.setStatusEntity(Status.getStatusByCode(Status.LOCK.getCode()).getStatusEntity());
                 userRepository.save(entity);
+//                try {
+                Map<String, Object> map = new HashMap<String, Object>();
+                map.put("name", entity.getName());
+                map.put("time", accUnlockTime);
+                mailService.send(entity.getEmail(), mailUtils.getSubjectAccountBlock(),
+                        TemplateService.Template.ACCOUNT_BLOCK, map);
+//                } catch (Exception e) {
+//                	LOGGER.warn("User account block email failed for username:'" + entity.getUsername());
+//                }
                 throw new LockedException("User account is locked for "
                         + Integer.valueOf(accUnlockTime) + " minute(s)");
             }
