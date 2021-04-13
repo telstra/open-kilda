@@ -14,7 +14,6 @@ class FlowCreateSpec extends BaseSpecification {
     @Shared
     def r = new Random()
 
-    @Unroll
     def "Flow creation on mesh topology"() {
         given: "A mesh topology"
         def topo = new TopologyBuilder(flHelper.fls,

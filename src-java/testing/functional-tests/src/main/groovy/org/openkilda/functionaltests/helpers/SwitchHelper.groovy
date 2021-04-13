@@ -55,6 +55,7 @@ import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.tools.IslUtils
+import org.openkilda.testing.tools.SoftAssertions
 
 import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Autowired
@@ -129,9 +130,9 @@ class SwitchHelper {
         def server42Rules = []
         if (swProps.multiTable) {
             multiTableRules = [MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
-                    MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
-                    MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE,
-                    ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE]
+                               MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
+                               MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE,
+                               ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE]
             if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
                 multiTableRules.addAll([LLDP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE])
             }
@@ -185,7 +186,7 @@ class SwitchHelper {
                      VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE,
                      CATCH_BFD_RULE_COOKIE, ROUND_TRIP_LATENCY_RULE_COOKIE,
                      VERIFICATION_UNICAST_VXLAN_RULE_COOKIE] + multiTableRules + devicesRules + server42Rules)
-        } else if((sw.noviflow || sw.nbFormat().manufacturer == "E") && sw.wb5164){
+        } else if ((sw.noviflow || sw.nbFormat().manufacturer == "E") && sw.wb5164) {
             return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                      VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
                      VERIFICATION_UNICAST_VXLAN_RULE_COOKIE] + multiTableRules + devicesRules + server42Rules)
@@ -194,7 +195,7 @@ class SwitchHelper {
         } else {
             return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                      VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE]
-            + multiTableRules + devicesRules + server42Rules)
+                    + multiTableRules + devicesRules + server42Rules)
         }
     }
 
@@ -319,17 +320,21 @@ class SwitchHelper {
      * NOTE: will filter out default meters for 'proper' section, so that switch without flow meters, but only with
      * default meters in 'proper' section is considered 'empty'
      */
-    static void verifyMeterSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
+    static void verifyMeterSectionsAreEmpty(SwitchValidationResult switchValidateInfo, SwitchId swId,
                                             List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
+        def assertions = new SoftAssertions()
         if (switchValidateInfo.meters) {
             sections.each { section ->
                 if (section == "proper") {
-                    assert switchValidateInfo.meters.proper.findAll { !it.defaultMeter }.empty
+                    assertions.checkSucceeds {
+                        assert switchValidateInfo.meters.proper.findAll { !it.defaultMeter }.empty, swId
+                    }
                 } else {
-                    assert switchValidateInfo.meters."$section".empty
+                    assertions.checkSucceeds { assert switchValidateInfo.meters."$section".empty, swId }
                 }
             }
         }
+        assertions.verify()
     }
 
     /**
@@ -338,17 +343,22 @@ class SwitchHelper {
      * Default flow rules for the system looks like as a simple default rule.
      * Based on that you have to use extra filter to detect these rules in missing/excess/misconfigured sections.
      */
-    static void verifyRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
+    static void verifyRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo, SwitchId swId,
                                            List<String> sections = ["missing", "proper", "excess", "misconfigured"]) {
+        def assertions = new SoftAssertions()
         sections.each { String section ->
             if (section == "proper") {
-                assert switchValidateInfo.rules.proper.findAll {
-                    def cookie = new Cookie(it)
-                    !cookie.serviceFlag && cookie.type != CookieType.SHARED_OF_FLOW }.empty
+                assertions.checkSucceeds {
+                    assert switchValidateInfo.rules.proper.findAll {
+                        def cookie = new Cookie(it)
+                        !cookie.serviceFlag && cookie.type != CookieType.SHARED_OF_FLOW
+                    }.empty, swId
+                }
             } else {
-                assert switchValidateInfo.rules."$section".empty
+                assertions.checkSucceeds { assert switchValidateInfo.rules."$section".empty, swId }
             }
         }
+        assertions.verify()
     }
 
     /**
@@ -358,9 +368,10 @@ class SwitchHelper {
      * Based on that you have to use extra filter to detect these rules in
      * missingHex/excessHex/misconfiguredHex sections.
      */
-    static void verifyHexRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
-                                           List<String> sections = ["properHex", "excessHex", "missingHex",
-                                                                    "misconfiguredHex"]) {
+    static void verifyHexRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo, SwitchId swId,
+                                              List<String> sections = ["properHex", "excessHex", "missingHex",
+                                                                       "misconfiguredHex"]) {
+        def assertions = new SoftAssertions()
         sections.each { String section ->
             if (section == "properHex") {
                 def defaultCookies = switchValidateInfo.rules.proper.findAll {
@@ -370,11 +381,14 @@ class SwitchHelper {
 
                 def defaultHexCookies = []
                 defaultCookies.each { defaultHexCookies.add(Long.toHexString(it)) }
-                assert switchValidateInfo.rules.properHex.findAll { !(it in defaultHexCookies) }.empty
+                assertions.checkSucceeds {
+                    assert switchValidateInfo.rules.properHex.findAll { !(it in defaultHexCookies) }.empty, swId
+                }
             } else {
-                assert switchValidateInfo.rules."$section".empty
+                assertions.checkSucceeds { assert switchValidateInfo.rules."$section".empty, swId }
             }
         }
+        assertions.verify()
     }
 
     static boolean isDefaultMeter(MeterInfoDto dto) {
@@ -385,7 +399,7 @@ class SwitchHelper {
      * Verifies that actual and expected burst size are the same.
      */
     static void verifyBurstSizeIsCorrect(Switch sw, Long expected, Long actual) {
-        if(sw.isWb5164()) {
+        if (sw.isWb5164()) {
             assert Math.abs(expected - actual) <= expected * 0.01
         } else {
             assert Math.abs(expected - actual) <= 1
@@ -401,11 +415,13 @@ class SwitchHelper {
      * Useful when knocking out switches
      */
     static void waitForSwitchFlConnection(Switch sw, boolean shouldBePresent, List<Floodlight> floodlights) {
-        Wrappers.wait(WAIT_OFFSET) { withPool {
+        Wrappers.wait(WAIT_OFFSET) {
+            withPool {
                 floodlights.eachParallel {
                     assert it.getFloodlightService().getSwitches()*.switchId.contains(sw.dpId) == shouldBePresent
                 }
-            } }
+            }
+        }
     }
 
     /**
@@ -415,7 +431,7 @@ class SwitchHelper {
     static boolean changeMultitable(Switch sw, boolean requiredState) {
         def originalProps = northbound.getSwitchProperties(sw.dpId)
         if (originalProps.multiTable != requiredState) {
-            northbound.updateSwitchProperties(sw.dpId, originalProps.jacksonCopy().tap {multiTable = requiredState })
+            northbound.updateSwitchProperties(sw.dpId, originalProps.jacksonCopy().tap { multiTable = requiredState })
         }
         return originalProps.multiTable
     }
@@ -424,8 +440,8 @@ class SwitchHelper {
      * Disconnect a switch from controller either removing controller settings inside an OVS switch
      * or blocking access to floodlight via iptables for a hardware switch.
      *
-     * @param sw                    switch which is going to be disconnected
-     * @param waitForRelatedLinks   make sure that all switch related ISLs are FAILED
+     * @param sw switch which is going to be disconnected
+     * @param waitForRelatedLinks make sure that all switch related ISLs are FAILED
      */
     List<FloodlightResourceAddress> knockoutSwitch(Switch sw, FloodlightConnectMode mode, boolean waitForRelatedLinks) {
         def blockData = lockKeeper.knockoutSwitch(sw, mode)
@@ -452,8 +468,8 @@ class SwitchHelper {
      * Connect a switch to controller either adding controller settings inside an OVS switch
      * or setting proper iptables to allow access to floodlight for a hardware switch.
      *
-     * @param sw                    switch which is going to be connected
-     * @param waitForRelatedLinks   make sure that all switch related ISLs are DISCOVERED
+     * @param sw switch which is going to be connected
+     * @param waitForRelatedLinks make sure that all switch related ISLs are DISCOVERED
      */
     void reviveSwitch(Switch sw, List<FloodlightResourceAddress> flResourceAddress, boolean waitForRelatedLinks) {
         lockKeeper.reviveSwitch(sw, flResourceAddress)

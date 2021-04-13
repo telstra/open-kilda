@@ -1,7 +1,7 @@
 package org.openkilda.functionaltests.spec.multitable
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.junit.Assume.assumeTrue
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -11,7 +11,6 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.SHARED_RULE_TABLE_ID
 import static org.openkilda.testing.Constants.SINGLE_TABLE_ID
@@ -61,7 +60,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         List<PathNode> desiredPath = null
         List<Switch> involvedSwitches = null
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.dpId ?:
-                assumeTrue("Should be at least two active traffgens connected to switches", false)
+                assumeTrue(false, "Should be at least two active traffgens connected to switches")
         def swPair = topologyHelper.allNotNeighboringSwitchPairs.collectMany { [it, it.reversed] }.find { pair ->
             desiredPath = pair.paths.find { path ->
                 involvedSwitches = pathHelper.getInvolvedSwitches(path)
@@ -71,8 +70,8 @@ mode with existing flows and hold flows of different table-mode types"() {
                         involvedSwitches.every { it.features.contains(SwitchFeature.MULTI_TABLE) }
             }
         }
-        assumeTrue("Unable to find a path that will allow 'multi -> single -> multi -> single' switch sequence",
-                swPair.asBoolean())
+        assumeTrue(swPair.asBoolean(),
+"Unable to find a path that will allow 'multi -> single -> multi -> single' switch sequence")
         //make required path the most preferred
         swPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
 
@@ -99,11 +98,11 @@ mode with existing flows and hold flows of different table-mode types"() {
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         and: "Involved switches pass switch validation"
-        involvedSwitches.each {
-            with(northbound.validateSwitch(it.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        involvedSwitches.each {sw ->
+            with(northbound.validateSwitch(sw.dpId)) { validation ->
+                validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+                validation.verifyHexRuleSectionsAreEmpty(sw.dpId, ["missingHex", "excessHex", "misconfiguredHex"])
+                validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
             }
         }
 
@@ -135,11 +134,11 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         then: "Flow remains valid and pingable, switch validation passes"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
-        involvedSwitches.each {
-            with(northbound.validateSwitch(it.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        involvedSwitches.each { sw ->
+            with(northbound.validateSwitch(sw.dpId)) { validation ->
+                validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+                validation.verifyHexRuleSectionsAreEmpty(sw.dpId, ["missingHex", "excessHex", "misconfiguredHex"])
+                validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
             }
         }
         verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
@@ -162,11 +161,11 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         and: "Involved switches pass switch validation"
-        involvedSwitches.each {
-            with(northbound.validateSwitch(it.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        involvedSwitches.each { sw ->
+            with(northbound.validateSwitch(sw.dpId)) { validation ->
+                validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+                validation.verifyHexRuleSectionsAreEmpty(sw.dpId, ["missingHex", "excessHex", "misconfiguredHex"])
+                validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
             }
         }
 
@@ -364,8 +363,8 @@ mode with existing flows and hold flows of different table-mode types"() {
     }
 
     @Tags([SMOKE_SWITCHES])
-    @Ignore("https://github.com/telstra/open-kilda/issues/3961")
-    def "Flow rules are (re)installed according to switch property while syncing and updating"() {
+    @Ignore("https://github.com/telstra/open-kilda/issues/3961, https://github.com/telstra/open-kilda/issues/4170")
+    def "Flow rules are (re)installed according to switch property while syncing and updating flow endpoint"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null
         List<Switch> involvedSwitches = null
@@ -380,7 +379,7 @@ mode with existing flows and hold flows of different table-mode types"() {
             // make sure that alternative path for protected path is available
             allPaths.findAll { it.intersect(desiredPath) == [] }.size() > 0
         }
-        assumeTrue("Unable to find a path with three switches", switchPair.asBoolean())
+        assumeTrue(switchPair.asBoolean(), "Unable to find a path with three switches")
         //make required path the most preferred
         switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
         Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
@@ -469,9 +468,9 @@ mode with existing flows and hold flows of different table-mode types"() {
             rules.find { it.cookie == flowInfoFromDb2.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
         }
 
-        when: "Update the flow"
+        when: "Update the flow(srcVlanId)"
          flowHelperV2.updateFlow(flow.flowId, flowHelperV2.toRequest(northboundV2.getFlow(flow.flowId).tap {
-              it.description = it.description + " updated"
+              it.source.vlanId = it.source.vlanId + 1
           }))
 
         then: "Flow rules on the src switch are recreated in single table mode"
@@ -492,8 +491,8 @@ mode with existing flows and hold flows of different table-mode types"() {
         List<Switch> involvedSwitches = null
 
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.dpId ?:
-                assumeTrue("Should be at least two active traffgens connected to switches",
-                        allTraffgenSwitchIds.size() > 1)
+                assumeTrue(allTraffgenSwitchIds.size() > 1,
+"Should be at least two active traffgens connected to switches")
         def switchPair = topologyHelper.allNotNeighboringSwitchPairs.collectMany { [it, it.reversed] }.find { pair ->
             def allPaths = pair.paths.findAll { path ->
                 pathHelper.getInvolvedSwitches(path).every { it.features.contains(SwitchFeature.MULTI_TABLE) }
@@ -508,7 +507,7 @@ mode with existing flows and hold flows of different table-mode types"() {
                 allPaths.findAll { it.intersect(desiredPath) == [] }.size() > 0
             }
         }
-        assumeTrue("Unable to find a switch pair with two diverse paths", switchPair.asBoolean())
+        assumeTrue(switchPair.asBoolean(), "Unable to find a switch pair with two diverse paths")
         //make required path the most preferred
         switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
         Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
@@ -690,7 +689,7 @@ mode with existing flows and hold flows of different table-mode types"() {
             // make sure that alternative path for protected path is available
             allPaths.findAll { it.intersect(desiredPath) == [] }.size() > 1
         }
-        assumeTrue("Unable to find a path with three switches", switchPair.asBoolean())
+        assumeTrue(switchPair.asBoolean(), "Unable to find a path with three switches")
         //make required path the most preferred
         switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
         Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
@@ -879,7 +878,7 @@ mode with existing flows and hold flows of different table-mode types"() {
                         involvedSwitches.every { it.features.contains(SwitchFeature.MULTI_TABLE) }
             }
         }
-        assumeTrue("Unable to find a path with three switches", switchPair.asBoolean())
+        assumeTrue(switchPair.asBoolean(), "Unable to find a path with three switches")
         //make required path the most preferred
         switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
         Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
@@ -998,7 +997,7 @@ mode with existing flows and hold flows of different table-mode types"() {
                         involvedSwitches.every { it.features.contains(SwitchFeature.MULTI_TABLE) }
             }
         }
-        assumeTrue("Unable to find a path with three switches", switchPair.asBoolean())
+        assumeTrue(switchPair.asBoolean(), "Unable to find a path with three switches")
         //make required path the most preferred
         switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
         Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
@@ -1174,10 +1173,10 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         and: "All involved switches pass switch validation"
-        involvedSwitches.each {
-            with(northbound.validateSwitch(it.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        involvedSwitches.each { sw ->
+            with(northbound.validateSwitch(sw.dpId)) { validation ->
+                validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess"])
+                validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
             }
         }
 
@@ -1198,7 +1197,7 @@ mode with existing flows and hold flows of different table-mode types"() {
                         involvedSwitches.every { it.features.contains(SwitchFeature.MULTI_TABLE) }
             }
         }
-        assumeTrue("Unable to find a path with three switches", switchPair.asBoolean())
+        assumeTrue(switchPair.asBoolean(), "Unable to find a path with three switches")
         //make required path the most preferred
         switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
         Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
@@ -1257,10 +1256,10 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         and: "Involved switches pass switch validation"
-        involvedSwitches.each {
-            with(northbound.validateSwitch(it.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty()
-                validation.verifyMeterSectionsAreEmpty()
+        involvedSwitches.each { sw ->
+            with(northbound.validateSwitch(sw.dpId)) { validation ->
+                validation.verifyRuleSectionsAreEmpty(sw.dpId)
+                validation.verifyMeterSectionsAreEmpty(sw.dpId)
             }
         }
 
@@ -1274,7 +1273,7 @@ mode with existing flows and hold flows of different table-mode types"() {
     def "System does not allow to enable the multiTable mode on an unsupported switch"() {
         given: "Unsupported switch"
         def sw = topology.activeSwitches.find { !it.features.contains(SwitchFeature.MULTI_TABLE) }
-        assumeTrue("Unable to find required switch", sw as boolean)
+        assumeTrue(sw as boolean, "Unable to find required switch")
 
         when: "Try to enable the multiTable mode on the switch"
         northbound.updateSwitchProperties(sw.dpId, northbound.getSwitchProperties(sw.dpId).tap {
@@ -1294,7 +1293,7 @@ mode with existing flows and hold flows of different table-mode types"() {
     def "System connects a new switch with disabled multiTable mode when the switch does not support that mode"() {
         given: "Unsupported switch"
         def sw = topology.activeSwitches.find { !it.features.contains(SwitchFeature.MULTI_TABLE) }
-        assumeTrue("Unable to find required switch", sw as boolean)
+        assumeTrue(sw as boolean, "Unable to find required switch")
 
         and: "Multi table is enabled in the kilda configuration"
         def initConf = northbound.getKildaConfiguration()
@@ -1332,15 +1331,15 @@ mode with existing flows and hold flows of different table-mode types"() {
         List<PathNode> desiredPath = null
         List<Switch> mainPathSwitches = null
         def switchPair = topologyHelper.switchPairs.find { pair ->
-            def allPaths = pair.paths.findAll { path ->
-                pathHelper.getInvolvedSwitches(path).every { it.features.contains(SwitchFeature.MULTI_TABLE) }
+            def allPaths = pair.paths.findAll { p ->
+                pathHelper.getInvolvedSwitches(p).every { it.features.contains(SwitchFeature.MULTI_TABLE) }
             }
             desiredPath = allPaths.find { thePath ->
                 mainPathSwitches = pathHelper.getInvolvedSwitches(thePath)
                 mainPathSwitches.size() == 3 && allPaths.findAll { it.intersect(thePath) == [] }.size() > 2
             }
         }
-        assumeTrue("Unable to find a switch pair with two diverse paths", switchPair.asBoolean())
+        assumeTrue(switchPair.asBoolean(), "Unable to find a switch pair with two diverse paths")
         //make required path the most preferred
         switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
         Map<SwitchId, SwitchPropertiesDto> initSwProps = mainPathSwitches.collectEntries {
@@ -1403,10 +1402,10 @@ mode with existing flows and hold flows of different table-mode types"() {
         def path = northbound.getFlowPath(flow.flowId)
         def allInvolvedSwitches = (pathHelper.getInvolvedSwitches(pathHelper.convert(path)) +
                 pathHelper.getInvolvedSwitches(pathHelper.convert(path.protectedPath))).unique()
-        allInvolvedSwitches.each {
-            def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        allInvolvedSwitches.each { sw ->
+            def validation = northbound.validateSwitch(sw.dpId)
+            validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
         }
 
         when: "Swap flow paths"
@@ -1422,10 +1421,10 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         and: "No involved switches have rule discrepencies"
-        allInvolvedSwitches.each {
-            def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        allInvolvedSwitches.each { sw ->
+            def validation = northbound.validateSwitch(sw.dpId)
+            validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
         }
 
         when: "Remove the flow"
@@ -1434,8 +1433,8 @@ mode with existing flows and hold flows of different table-mode types"() {
         then: "No involved switches have rule discrepencies"
         allInvolvedSwitches.each {
             def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyRuleSectionsAreEmpty()
-            validation.verifyMeterSectionsAreEmpty()
+            validation.verifyRuleSectionsAreEmpty(it.dpId)
+            validation.verifyMeterSectionsAreEmpty(it.dpId)
         }
 
         cleanup:

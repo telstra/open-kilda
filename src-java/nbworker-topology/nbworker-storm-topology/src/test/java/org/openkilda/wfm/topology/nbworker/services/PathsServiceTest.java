@@ -21,6 +21,7 @@ import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 import static org.openkilda.model.PathComputationStrategy.COST;
 import static org.openkilda.model.PathComputationStrategy.LATENCY;
+import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 import static org.openkilda.wfm.topology.nbworker.services.PathsService.MAX_PATH_COUNT;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
@@ -51,6 +52,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.Optional;
 
 public class PathsServiceTest extends InMemoryGraphBasedTest {
     private static final int SWITCH_COUNT = MAX_PATH_COUNT + 50;
@@ -58,6 +60,8 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
 
     private static final SwitchId SWITCH_ID_1 = new SwitchId(1);
     private static final SwitchId SWITCH_ID_2 = new SwitchId(2);
+    public static final long BASE_LATENCY = 10000;
+    public static final long MIN_LATENCY = BASE_LATENCY - SWITCH_COUNT;
 
     private static KildaConfigurationRepository kildaConfigurationRepository;
     private static SwitchRepository switchRepository;
@@ -115,8 +119,8 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
                 createSwitchProperties(transitSwitch, TRANSIT_VLAN);
             }
 
-            createIsl(switchA, i * 2, transitSwitch, i * 2, i, 10000 - i, 1000 + i);
-            createIsl(transitSwitch, i * 2 + 1, switchB, i * 2 + 1, i, 10000 - i, 1000 + i);
+            createIsl(switchA, i * 2, transitSwitch, i * 2, i, BASE_LATENCY - i, 1000 + i);
+            createIsl(transitSwitch, i * 2 + 1, switchB, i * 2 + 1, i, BASE_LATENCY - i, 1000 + i);
         }
 
         kildaConfigurationRepository.add(KildaConfiguration.builder()
@@ -128,16 +132,10 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
     @Test
     public void findNPathsByTransitVlanAndCost()
             throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
-        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, COST);
+        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, COST, null, null);
 
         assertEquals(MAX_PATH_COUNT, paths.size());
-
-        for (PathsInfoData path : paths) {
-            assertEquals(3, path.getPath().getNodes().size());
-            assertEquals(SWITCH_ID_1, path.getPath().getNodes().get(0).getSwitchId());
-            assertEquals(SWITCH_ID_2, path.getPath().getNodes().get(2).getSwitchId());
-        }
-
+        assertPathLength(paths);
 
         for (int i = 0; i < paths.size(); i++) {
             // switches with less switchIds has better cost
@@ -151,16 +149,73 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
+    public void findNPathsByTransitVlanIgnoreMaxLatency()
+            throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
+        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, LATENCY, 1L, 2L);
+        assertTransitVlanAndLatencyPaths(paths);
+    }
+
+    @Test
+    public void findNPathsByVxlanAndEnoughMaxLatencyZeroTier2Latency()
+            throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
+        long maxLatency = MIN_LATENCY * 2 + 1;
+        List<PathsInfoData> paths = pathsService.getPaths(
+                SWITCH_ID_1, SWITCH_ID_2, VXLAN, MAX_LATENCY, maxLatency, 0L);
+        assertMaxLatencyPaths(paths, maxLatency, 1, VXLAN);
+    }
+
+    @Test
+    public void findNPathsByTransitVlanAndTooSmallMaxLatency()
+            throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
+        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, MAX_LATENCY, 1L, 0L);
+        assertTrue(paths.isEmpty());
+    }
+
+    @Test
+    public void findNPathsByTransitVlanAndTooSmallMaxLatencyAndTier2Latency()
+            throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
+        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, MAX_LATENCY, 1L, 2L);
+        assertTrue(paths.isEmpty());
+    }
+
+    @Test
+    public void findNPathsByTransitVlanAndTooSmallMaxLatencyEnoughTier2Latency()
+            throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
+        long maxLatencyTier2 = MIN_LATENCY * 2 + 1;
+        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, MAX_LATENCY, 1L,
+                maxLatencyTier2);
+        assertMaxLatencyPaths(paths, maxLatencyTier2, 1, TRANSIT_VLAN);
+    }
+
+    @Test
+    public void findNPathsByTransitVlanAndZeroMaxLatency()
+            throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
+        // as max latency param is 0 LATENCY starategy will be used instead. It means all 500 paths will be returned
+        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, MAX_LATENCY, 0L,
+                null);
+        assertTransitVlanAndLatencyPaths(paths);
+    }
+
+    @Test
+    public void findNPathsByTransitVlanAndNullMaxLatency()
+            throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
+        // as max latency param is null LATENCY starategy will be used instead. It means all 500 paths will be returned
+        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, MAX_LATENCY, null,
+                null);
+        assertTransitVlanAndLatencyPaths(paths);
+    }
+
+    @Test
     public void findNPathsByTransitVlanAndLatency()
             throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
-        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, LATENCY);
+        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, LATENCY, null, null);
         assertTransitVlanAndLatencyPaths(paths);
     }
 
     @Test
     public void findNPathsByVxlanAndCost()
             throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
-        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, VXLAN, COST);
+        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, VXLAN, COST, null, null);
         assertVxlanAndCostPathes(paths);
     }
 
@@ -172,7 +227,7 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
             config.setPathComputationStrategy(LATENCY);
         });
         // find N paths without strategy
-        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, null);
+        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, null, null, null);
         assertTransitVlanAndLatencyPaths(paths);
     }
 
@@ -184,22 +239,30 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
             config.setFlowEncapsulationType(VXLAN);
         });
         // find N paths without encapsulation type
-        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, null, COST);
+        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, null, COST, null, null);
         assertVxlanAndCostPathes(paths);
     }
 
+    private void assertMaxLatencyPaths(List<PathsInfoData> paths, long maxLatency, long expectedCount,
+                                       FlowEncapsulationType encapsulationType) {
+        assertEquals(expectedCount, paths.size());
+        assertPathLength(paths);
+
+        for (PathsInfoData path : paths) {
+            assertTrue(path.getPath().getLatency() < maxLatency);
+            Optional<SwitchProperties> properties = switchPropertiesRepository
+                    .findBySwitchId(path.getPath().getNodes().get(1).getSwitchId());
+            assertTrue(properties.isPresent());
+            assertTrue(properties.get().getSupportedTransitEncapsulation().contains(encapsulationType));
+        }
+    }
 
     private void assertTransitVlanAndLatencyPaths(List<PathsInfoData> paths) {
         assertEquals(MAX_PATH_COUNT, paths.size());
-
-        for (PathsInfoData path : paths) {
-            assertEquals(3, path.getPath().getNodes().size());
-            assertEquals(SWITCH_ID_1, path.getPath().getNodes().get(0).getSwitchId());
-            assertEquals(SWITCH_ID_2, path.getPath().getNodes().get(2).getSwitchId());
-        }
+        assertPathLength(paths);
 
         for (int i = 0; i < paths.size(); i++) {
-            // switches with high switchIds has better latency
+            // switches with low switchIds has better latency
             assertTrue(paths.get(i).getPath().getNodes().get(1).getSwitchId().getId()
                     > SWITCH_COUNT - MAX_PATH_COUNT);
 
@@ -212,13 +275,7 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
 
     private void assertVxlanAndCostPathes(List<PathsInfoData> paths) {
         assertEquals(VXLAN_SWITCH_COUNT, paths.size());
-
-        for (PathsInfoData path : paths) {
-            assertEquals(3, path.getPath().getNodes().size());
-            assertEquals(SWITCH_ID_1, path.getPath().getNodes().get(0).getSwitchId());
-            assertEquals(SWITCH_ID_2, path.getPath().getNodes().get(2).getSwitchId());
-        }
-
+        assertPathLength(paths);
 
         for (int i = 0; i < paths.size(); i++) {
 
@@ -233,14 +290,22 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         }
     }
 
+    private void assertPathLength(List<PathsInfoData> paths) {
+        for (PathsInfoData path : paths) {
+            assertEquals(3, path.getPath().getNodes().size());
+            assertEquals(SWITCH_ID_1, path.getPath().getNodes().get(0).getSwitchId());
+            assertEquals(SWITCH_ID_2, path.getPath().getNodes().get(2).getSwitchId());
+        }
+    }
 
-    private void createIsl(Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort, int cost, int latency,
+
+    private void createIsl(Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort, int cost, long latency,
                            int bandwidth) {
         createOneWayIsl(srcSwitch, srcPort, dstSwitch, dstPort, cost, latency, bandwidth);
         createOneWayIsl(dstSwitch, dstPort, srcSwitch, srcPort, cost, latency, bandwidth);
     }
 
-    private void createOneWayIsl(Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort, int cost, int latency,
+    private void createOneWayIsl(Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort, int cost, long latency,
                                  int bandwidth) {
         islRepository.add(Isl.builder()
                 .srcSwitch(srcSwitch)

@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.junit.Assume.assumeTrue
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_ACTIVATED
@@ -29,7 +29,6 @@ import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
-import spock.lang.Unroll
 
 @See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/port-FSM.png",
         "https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/AF-FSM.png"])
@@ -44,11 +43,10 @@ class PortHistorySpec extends HealthCheckSpecification {
     def antiflapDumpingInterval = 60
 
     @Tidy
-    @Unroll
     @IterationTag(tags = [SMOKE, SMOKE_SWITCHES], iterationNameRegex = /direct/)
     def "Port history are created for the port down/up actions when link is #islDescription"() {
         given: "A link"
-        assumeTrue("Unable to find $islDescription ISL for this test", isl as boolean)
+        assumeTrue(isl as boolean, "Unable to find $islDescription ISL for this test")
         def timestampBefore = System.currentTimeMillis()
 
         when: "Execute port DOWN on the src switch"
@@ -278,13 +276,13 @@ class PortHistorySpec extends HealthCheckSpecification {
     @Ignore("https://github.com/telstra/open-kilda/issues/3007")
     def "System shows antiflap statistic in the ANTI_FLAP_DEACTIVATED event when antiflap is deactivated\
  before collecting ANTI_FLAP_PERIODIC_STATS"() {
-        assumeTrue("It can't be run when antiflap.cooldown + flap_duration > port.antiflap.stats.dumping.interval.seconds",
-                antiflapCooldown + 3 < antiflapDumpingInterval)
+        assumeTrue(antiflapCooldown + 3 < antiflapDumpingInterval,
+"It can't be run when antiflap.cooldown + flap_duration > port.antiflap.stats.dumping.interval.seconds")
         //port up/down procedure is done once in this test, so it can't take more than 3 seconds
 
         given: "A direct link"
         def isl = getTopology().islsForActiveSwitches.find { !it.aswitch }
-        assumeTrue("Unable to find ISL for this test", isl as boolean)
+        assumeTrue(isl as boolean, "Unable to find ISL for this test")
         def timestampBefore = System.currentTimeMillis()
 
         when: "Execute port DOWN on the src switch for activating antiflap"

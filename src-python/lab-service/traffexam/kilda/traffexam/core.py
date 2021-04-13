@@ -38,6 +38,7 @@ from kilda.traffexam import rest
     type=click.Path(file_okay=False, dir_okay=True))
 @click.option('--logging-config')
 @click.option('--debug', is_flag=True)
+@click.option('--without-namespace', is_flag=True)
 @click.argument('iface')
 @click.argument('bind')
 def main(iface, bind, **args):
@@ -59,6 +60,7 @@ def main(iface, bind, **args):
                     pass
 
             context.set_debug_mode(args['debug'])
+            context.set_allocate_namespace(not args['without_namespace'])
 
             with proc.PidFile(context.make_lock_file_name()):
                 setup_environment(context)
@@ -85,6 +87,13 @@ def setup_environment(context):
     iface_info_getter = system.RootIfaceInfo(context)
     target_iface = iface_info_getter(context.iface.index)
 
+    if context.is_allocate_network_namespace:
+        setup_isolated_environment(context, target_iface)
+    else:
+        setup_public_environment(context, target_iface)
+
+
+def setup_isolated_environment(context, target_iface):
     context.acquire_resources(
             system.NetworkNamespace,
             system.VEthPair)
@@ -101,3 +110,13 @@ def setup_environment(context):
             system.NSNetworksCleanUp,
             system.NSGatewaySetUp,
             system.TargetIfaceSetUp)
+
+
+def setup_public_environment(context, target_iface):
+    context.shared_registry.add(
+        system.GatewayIfaceDescriptor,
+        system.GatewayIfaceDescriptor(target_iface.index))
+
+    context.acquire_resources(
+        system.FakeNetworkNamespace,
+        system.TargetIfaceSetUp)

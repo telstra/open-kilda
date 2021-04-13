@@ -110,10 +110,6 @@ public class MockSwitchManager implements IFloodlightModule, IOFSwitchManager, I
         
     }
 
-    public void setSwitchHandshakeHandlers(Map<DatapathId, OFSwitchHandshakeHandler> handlers) {
-        this.switchHandlers = handlers;
-    }
-
     @Override
     public ImmutableList<OFSwitchHandshakeHandler>
             getSwitchHandshakeHandlers() {

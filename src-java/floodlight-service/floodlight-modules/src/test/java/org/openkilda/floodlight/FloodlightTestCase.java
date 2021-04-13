@@ -36,25 +36,18 @@ import static org.easymock.EasyMock.expect;
 
 import org.openkilda.floodlight.service.FeatureDetectorService;
 
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.packet.Ethernet;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
-import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
 
@@ -81,42 +74,12 @@ public class FloodlightTestCase {
         return mockSwitchManager;
     }
 
-    public void setMockFloodlightProvider(MockFloodlightProvider mockFloodlightProvider) {
-        this.mockFloodlightProvider = mockFloodlightProvider;
-    }
-
-    public FloodlightContext parseAndAnnotate(OFMessage m) {
-        FloodlightContext bc = new FloodlightContext();
-        return parseAndAnnotate(bc, m);
-    }
-
-    public static FloodlightContext parseAndAnnotate(FloodlightContext bc, OFMessage m) {
-        if (OFType.PACKET_IN.equals(m.getType())) {
-            OFPacketIn pi = (OFPacketIn) m;
-            Ethernet eth = new Ethernet();
-            eth.deserialize(pi.getData(), 0, pi.getData().length);
-            IFloodlightProviderService.bcStore.put(bc,
-                    IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
-                    eth);
-        }
-        return bc;
-    }
-
     @Before
     public void setUp() throws Exception {
         mockFloodlightProvider = new MockFloodlightProvider();
         mockSwitchManager = new MockSwitchManager();
         swFeatures = factory.buildFeaturesReply().setNBuffers(1000).build();
         featureDetectorService.setup(new FloodlightModuleContext());
-    }
-
-    public static OFPortDesc createOfPortDesc(IOFSwitch sw, String name, int number) {
-        OFPortDesc portDesc = sw.getOFFactory().buildPortDesc()
-                .setHwAddr(MacAddress.NONE)
-                .setPortNo(OFPort.of(number))
-                .setName(name)
-                .build();
-        return portDesc;
     }
 
     public IOFSwitch buildMockIoFSwitch(Long id, OFPortDesc portDesc, OFFactory factory,

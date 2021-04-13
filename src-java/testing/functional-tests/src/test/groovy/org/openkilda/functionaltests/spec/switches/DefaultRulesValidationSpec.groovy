@@ -13,7 +13,6 @@ import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import spock.lang.Narrative
-import spock.lang.Unroll
 
 @Narrative("""This test suite checks the switch validate and rule validate features regarding default rules.
 System should be able to detect missing, misconfigured, proper and excess default rules.
@@ -28,7 +27,6 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
      */
 
     @Tidy
-    @Unroll
     @Tags(SMOKE)
     def "Switch and rule validation can properly detect default rules to 'proper' section (#sw.name #propsDescr)"(
             Map swProps, Switch sw, String propsDescr) {

@@ -24,6 +24,7 @@ from kilda.traffexam import exc
 
 class Context(object):
     is_debug = False
+    is_allocate_network_namespace = True
 
     root = os.path.join(os.sep, 'var', 'run', const.PROJECT_NAME)
     service = None
@@ -39,6 +40,7 @@ class Context(object):
 
         self.set_root(self.root)
         self.set_debug_mode(self.is_debug)
+        self.set_allocate_namespace(self.is_allocate_network_namespace)
 
         self._init_done = True
 
@@ -92,6 +94,10 @@ class Context(object):
 
     def set_debug_mode(self, mode):
         self.is_debug = mode
+        return self
+
+    def set_allocate_namespace(self, need_allocate):
+        self.is_allocate_network_namespace = need_allocate
         return self
 
     def set_service_adapter(self, adapter):

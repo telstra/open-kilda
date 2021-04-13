@@ -40,10 +40,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.openkilda.floodlight.Constants.inputPort;
-import static org.openkilda.floodlight.Constants.inputVlanId;
 import static org.openkilda.floodlight.Constants.meterId;
 import static org.openkilda.floodlight.Constants.outputPort;
-import static org.openkilda.floodlight.Constants.outputVlanId;
 import static org.openkilda.floodlight.Constants.transitVlanId;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.LATENCY_PACKET_UDP_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.OVS_MANUFACTURER;
@@ -51,8 +49,6 @@ import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildMeterM
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_GROUP_ID;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID;
-import static org.openkilda.model.MeterId.MIN_SYSTEM_RULE_METER_ID;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 import static org.openkilda.model.SwitchFeature.BFD;
 import static org.openkilda.model.SwitchFeature.GROUP_PACKET_OUT_CONTROLLER;
@@ -106,7 +102,6 @@ import org.openkilda.floodlight.test.standard.OutputCommands;
 import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
@@ -114,7 +109,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
 import com.sabre.oss.conf4j.source.MapConfigurationSource;
@@ -437,254 +431,6 @@ public class SwitchManagerTest {
         assertEquals(scheme.installUnicastVerificationRuleVxlan(defaultDpid), capture.getValue());
     }
 
-
-    @Test
-    public void installIngressFlowReplaceActionUsingTransitVlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
-
-        switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                inputVlanId, transitVlanId, OutputVlanType.REPLACE, meterId, encapsulationType, false);
-
-        assertEquals(
-                scheme.ingressReplaceFlowMod(dpid, inputPort, outputPort, inputVlanId, transitVlanId, meterId, cookie,
-                        encapsulationType, EGRESS_SWITCH_DP_ID),
-                capture.getValue());
-    }
-
-    @Test
-    public void installIngressFlowReplaceActionUsingVxlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
-
-        switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                inputVlanId, transitVlanId, OutputVlanType.REPLACE, meterId, encapsulationType, false);
-
-        assertEquals(
-                scheme.ingressReplaceFlowMod(dpid, inputPort, outputPort, inputVlanId, transitVlanId, meterId, cookie,
-                        encapsulationType, EGRESS_SWITCH_DP_ID),
-                capture.getValue());
-    }
-
-    @Test
-    public void installIngressFlowPopActionUsingTransitVlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
-
-        switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                inputVlanId, transitVlanId, OutputVlanType.POP, meterId, encapsulationType, false);
-
-        assertEquals(
-                scheme.ingressPopFlowMod(dpid, inputPort, outputPort, inputVlanId, transitVlanId, meterId, cookie,
-                        encapsulationType, EGRESS_SWITCH_DP_ID),
-                capture.getValue());
-    }
-
-    @Test
-    public void installIngressFlowPopActionUsingVxlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
-
-        switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                inputVlanId, transitVlanId, OutputVlanType.POP, meterId, encapsulationType, false);
-
-        assertEquals(
-                scheme.ingressPopFlowMod(dpid, inputPort, outputPort, inputVlanId, transitVlanId, meterId, cookie,
-                        encapsulationType, EGRESS_SWITCH_DP_ID),
-                capture.getValue());
-    }
-
-    @Test
-    public void installIngressFlowPushActionvUsingTransitVlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
-
-        switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                0, transitVlanId, OutputVlanType.PUSH, meterId, encapsulationType, false);
-
-        assertEquals(
-                scheme.ingressPushFlowMod(dpid, inputPort, outputPort, transitVlanId, meterId, cookie,
-                        encapsulationType, EGRESS_SWITCH_DP_ID),
-                capture.getValue());
-    }
-
-    @Test
-    public void installIngressFlowPushActionUsingVxlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
-
-        switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                0, transitVlanId, OutputVlanType.PUSH, meterId, encapsulationType, false);
-
-        assertEquals(
-                scheme.ingressPushFlowMod(dpid, inputPort, outputPort, transitVlanId, meterId, cookie,
-                        encapsulationType, EGRESS_SWITCH_DP_ID),
-                capture.getValue());
-    }
-
-    @Test
-    public void installIngressFlowNoneActionUsingTransitVlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
-
-        switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                0, transitVlanId, OutputVlanType.NONE, meterId, encapsulationType, false);
-
-        assertEquals(
-                scheme.ingressNoneFlowMod(dpid, inputPort, outputPort, transitVlanId, meterId, cookie,
-                        encapsulationType, EGRESS_SWITCH_DP_ID),
-                capture.getValue());
-    }
-
-    @Test
-    public void installIngressFlowNoneActionUsingVxlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
-
-        switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                0, transitVlanId, OutputVlanType.NONE, meterId, encapsulationType, false);
-
-        assertEquals(
-                scheme.ingressNoneFlowMod(dpid, inputPort, outputPort, transitVlanId, meterId, cookie,
-                        encapsulationType, EGRESS_SWITCH_DP_ID),
-                capture.getValue());
-    }
-
-    @Test
-    public void installIngressFlowWithoutResetCountsFlag() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest(true);
-
-        switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                0, transitVlanId, OutputVlanType.NONE, meterId, FlowEncapsulationType.TRANSIT_VLAN, false);
-
-        final OFFlowMod actual = capture.getValue();
-        assertThat(actual.getFlags().isEmpty(), is(true));
-    }
-
-    @Test
-    public void installEgressFlowNoneActionUsingTransitVlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
-
-        switchManager.installEgressFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId, 0,
-                OutputVlanType.NONE, encapsulationType, false);
-
-        assertEquals(
-                scheme.egressNoneFlowMod(dpid, inputPort, outputPort, transitVlanId, cookie, encapsulationType),
-                capture.getValue());
-    }
-
-    @Test
-    public void installEgressFlowNoneActionUsingVxlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
-
-        switchManager.installEgressFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId, 0,
-                OutputVlanType.NONE, encapsulationType, false);
-
-        assertEquals(
-                scheme.egressNoneFlowMod(dpid, inputPort, outputPort, transitVlanId, cookie, encapsulationType),
-                capture.getValue());
-    }
-
-    @Test
-    public void installEgressFlowPushActionUsingTransitVlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
-
-        switchManager.installEgressFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId, outputVlanId,
-                OutputVlanType.PUSH, encapsulationType, false);
-
-        assertEquals(
-                scheme.egressPushFlowMod(dpid, inputPort, outputPort, transitVlanId, outputVlanId, cookie,
-                        encapsulationType),
-                capture.getValue());
-    }
-
-    @Test
-    public void installEgressFlowPushActionUsingVxlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
-
-        switchManager.installEgressFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId, outputVlanId,
-                OutputVlanType.PUSH, encapsulationType, false);
-
-        assertEquals(
-                scheme.egressPushFlowMod(dpid, inputPort, outputPort, transitVlanId, outputVlanId, cookie,
-                        encapsulationType),
-                capture.getValue());
-    }
-
-    @Test
-    public void installEgressFlowPopActionUsingTransitVlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
-
-        switchManager.installEgressFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId, 0,
-                OutputVlanType.POP, encapsulationType, false);
-
-        assertEquals(
-                scheme.egressPopFlowMod(dpid, inputPort, outputPort, transitVlanId, cookie, encapsulationType),
-                capture.getValue());
-    }
-
-    @Test
-    public void installEgressFlowPopActionUsingVxlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
-
-        switchManager.installEgressFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId, 0,
-                OutputVlanType.POP, encapsulationType, false);
-
-        assertEquals(
-                scheme.egressPopFlowMod(dpid, inputPort, outputPort, transitVlanId, cookie, encapsulationType),
-                capture.getValue());
-    }
-
-    @Test
-    public void installEgressFlowReplaceActionUsingTransitVlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
-
-        switchManager.installEgressFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId, outputVlanId,
-                OutputVlanType.REPLACE, encapsulationType, false);
-
-        assertEquals(
-                scheme.egressReplaceFlowMod(dpid, inputPort, outputPort, transitVlanId, outputVlanId, cookie,
-                        encapsulationType),
-                capture.getValue());
-    }
-
-    @Test
-    public void installEgressFlowReplaceActionUsingVxlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
-
-        switchManager.installEgressFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId, outputVlanId,
-                OutputVlanType.REPLACE, encapsulationType, false);
-
-        assertEquals(
-                scheme.egressReplaceFlowMod(dpid, inputPort, outputPort, transitVlanId, outputVlanId, cookie,
-                        encapsulationType),
-                capture.getValue());
-    }
-
     @Test
     public void installTransitFlowUsingTransitVlan() throws Exception {
         Capture<OFFlowMod> capture = prepareForInstallTest();
@@ -711,65 +457,6 @@ public class SwitchManagerTest {
         assertEquals(
                 scheme.transitFlowMod(inputPort, outputPort, transitVlanId, cookie, encapsulationType),
                 capture.getValue());
-    }
-
-    @Test
-    public void installOneSwitchFlowReplaceAction() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
-                inputPort, outputPort, inputVlanId, outputVlanId, OutputVlanType.REPLACE, meterId, false);
-
-        assertEquals(
-                scheme.oneSwitchReplaceFlowMod(inputPort, outputPort, inputVlanId, outputVlanId, meterId, cookie),
-                capture.getValue());
-    }
-
-    @Test
-    public void installOneSwitchFlowPushAction() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
-                inputPort, outputPort, 0, outputVlanId, OutputVlanType.PUSH, meterId, false);
-
-        assertEquals(
-                scheme.oneSwitchPushFlowMod(inputPort, outputPort, outputVlanId, meterId, cookie),
-                capture.getValue());
-    }
-
-    @Test
-    public void installOneSwitchFlowPopAction() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
-                inputPort, outputPort, inputVlanId, 0, OutputVlanType.POP, meterId, false);
-
-        assertEquals(
-                scheme.oneSwitchPopFlowMod(inputPort, outputPort, inputVlanId, meterId, cookie),
-                capture.getValue());
-    }
-
-    @Test
-    public void installOneSwitchFlowNoneAction() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
-                inputPort, outputPort, 0, 0, OutputVlanType.NONE, meterId, false);
-
-        assertEquals(
-                scheme.oneSwitchNoneFlowMod(inputPort, outputPort, meterId, cookie),
-                capture.getValue());
-    }
-
-    @Test
-    public void installOneSwitchFlowNoneActionWithoutResetCountsFlag() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest(true);
-
-        switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
-                inputPort, outputPort, 0, 0, OutputVlanType.NONE, meterId, false);
-
-        final OFFlowMod actual = capture.getValue();
-        assertThat(actual.getFlags().isEmpty(), is(true));
     }
 
     @Test
@@ -818,66 +505,6 @@ public class SwitchManagerTest {
         List<OFMeterConfig> meters = switchManager.dumpMeters(dpid);
         assertNotNull(meters);
         assertTrue(meters.isEmpty());
-    }
-
-    @Test
-    public void installBandwidthMeterForCentecSwitch() throws Exception {
-        runInstallMeterTest(bandwidth, Math.round(bandwidth * config.getFlowMeterBurstCoefficient()), true, false);
-    }
-
-    @Test
-    public void installHugeBandwidthMeterForCentecSwitch() throws Exception {
-        runInstallMeterTest(hugeBandwidth, MAX_CENTEC_SWITCH_BURST_SIZE, true, false);
-    }
-
-    @Test
-    public void installBandwidthMeterForNoviFlowSwitch() throws Exception {
-        runInstallMeterTest(bandwidth, Math.round(bandwidth * MAX_NOVIFLOW_BURST_COEFFICIENT), false, true);
-    }
-
-    @Test
-    public void installBandwidthMeter() throws Exception {
-        runInstallMeterTest(bandwidth, Math.round(bandwidth * config.getFlowMeterBurstCoefficient()), false, false);
-    }
-
-    private void runInstallMeterTest(long bandwidth, long burstSize, boolean isCentecSwitch, boolean isNoviFlowSwitch)
-            throws Exception {
-        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
-        expect(iofSwitch.getId()).andReturn(dpid);
-        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
-        expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
-        expect(switchDescription.getManufacturerDescription())
-                .andStubReturn(isCentecSwitch ? CENTEC_SWITCH_DESCRIPTION : "");
-        expect(switchDescription.getSoftwareDescription())
-                .andStubReturn(isNoviFlowSwitch ? NOVIFLOW_SWITCH_DESCRIPTION : "");
-
-        expect(iofSwitch.write(scheme.installMeter(bandwidth, burstSize, meterId))).andReturn(true);
-        expect(iofSwitch.writeRequest(anyObject(OFBarrierRequest.class)))
-                .andReturn(Futures.immediateFuture(createMock(OFBarrierReply.class)));
-
-        replay(ofSwitchService);
-        replay(iofSwitch);
-        replay(switchDescription);
-
-        switchManager.installMeterForFlow(dpid, bandwidth, meterId);
-    }
-
-    @Test
-    public void installFlowMeterWithNegativeIdTest() throws SwitchOperationException {
-        runInstallMeterWithInvalidId(-1L);
-    }
-
-    @Test
-    public void installFlowMeterWithIdForDefaultRuleTest() throws SwitchOperationException {
-        for (int id = MIN_SYSTEM_RULE_METER_ID; id < MAX_SYSTEM_RULE_METER_ID; id++) {
-            runInstallMeterWithInvalidId(id);
-        }
-    }
-
-    private void runInstallMeterWithInvalidId(long meterId) throws SwitchOperationException {
-        SwitchManager mock = mock(SwitchManager.class);
-        mock.installMeterForFlow(dpid, bandwidth, meterId);
-        expectLastCall().andThrow(new InvalidMeterIdException(null, null));
     }
 
     @Test

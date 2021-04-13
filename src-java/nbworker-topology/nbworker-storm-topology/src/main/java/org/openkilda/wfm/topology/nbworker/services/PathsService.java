@@ -60,7 +60,7 @@ public class PathsService {
      */
     public List<PathsInfoData> getPaths(
             SwitchId srcSwitchId, SwitchId dstSwitchId, FlowEncapsulationType requestEncapsulationType,
-            PathComputationStrategy requestPathComputationStrategy)
+            PathComputationStrategy requestPathComputationStrategy, Long maxLatency, Long maxLatencyTier2)
             throws RecoverableException, SwitchNotFoundException, UnroutableFlowException {
         if (Objects.equals(srcSwitchId, dstSwitchId)) {
             throw new IllegalArgumentException(
@@ -79,7 +79,7 @@ public class PathsService {
         PathComputationStrategy pathComputationStrategy = Optional.ofNullable(requestPathComputationStrategy)
                 .orElse(kildaConfiguration.getPathComputationStrategy());
         List<Path> flowPaths = pathComputer.getNPaths(srcSwitchId, dstSwitchId, MAX_PATH_COUNT, flowEncapsulationType,
-                pathComputationStrategy);
+                pathComputationStrategy, maxLatency, maxLatencyTier2);
 
         return flowPaths.stream().map(PathMapper.INSTANCE::map)
                 .map(path -> PathsInfoData.builder().path(path).build())

@@ -15,3 +15,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 001-rework-flow-multitable-flag.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 002-cleanup-flow-multitable-flag.yaml

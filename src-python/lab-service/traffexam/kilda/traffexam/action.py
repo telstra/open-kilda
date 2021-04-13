@@ -14,31 +14,33 @@
 #
 
 import functools
-import pathlib
 import operator
 
-import nsenter
 from scapy.all import ARP, IP, TCP, UDP, Ether, sendp
 from scapy.contrib import lldp
 
 from kilda.traffexam import context as context_module
+from kilda.traffexam import exc
+from kilda.traffexam import proc
+from kilda.traffexam import system
 
 
 class Abstract(context_module.ContextConsumer):
+    def __init__(self, context, namespace):
+        super().__init__(context)
+        self._network_namespace_context = namespace
+
     def __call__(self, *args, **kwargs):
         raise NotImplementedError
 
 
 class LLDPPush(Abstract):
-    ns_fs_location = pathlib.Path('/var/run/netns')
     lldp_bcast_mac = '01:80:c2:00:00:0e'
 
     def __call__(self, iface, push_entry):
         pkt = self._encode(push_entry)
 
-        ns_name = self.context.make_network_namespace_name()
-        ns_fd = self.ns_fs_location / ns_name
-        with nsenter.Namespace(str(ns_fd), 'net'):
+        with self._network_namespace_context:
             sendp(pkt, iface=iface.name, verbose=False, promisc=False)
 
     def _encode(self, entry):
@@ -64,25 +66,20 @@ class LLDPPush(Abstract):
 
 
 class ARPPush(Abstract):
-    ns_fs_location = pathlib.Path('/var/run/netns')
     dst_ipv4 = "8.8.8.9"
     eth_broadcast = "FF:FF:FF:FF:FF:FF"
 
     def __call__(self, iface, push_entry):
         pkt = self._encode(push_entry)
-
-        ns_name = self.context.make_network_namespace_name()
-        ns_fd = self.ns_fs_location / ns_name
-        with nsenter.Namespace(str(ns_fd), 'net'):
+        with self._network_namespace_context:
             sendp(pkt, iface=iface.name, verbose=False, promisc=False)
 
     def _encode(self, entry):
         arp = ARP(hwsrc=entry.src_mac, psrc=entry.src_ipv4, pdst=self.dst_ipv4)
         return Ether(src=entry.src_mac, dst=self.eth_broadcast) / arp
 
-class UDPPush(Abstract):
-    ns_fs_location = pathlib.Path('/var/run/netns')
 
+class UDPPush(Abstract):
     def __call__(self, iface, push_entry):
         data = "TEST"
         ether = Ether(src=push_entry.src_mac_address, dst=push_entry.dst_mac_address, type=push_entry.eth_type)
@@ -90,15 +87,11 @@ class UDPPush(Abstract):
         udp = UDP(sport=push_entry.src_port, dport=push_entry.dst_port)
         pkt = ether / ip / udp / data
 
-        ns_name = self.context.make_network_namespace_name()
-        ns_fd = self.ns_fs_location / ns_name
-        with nsenter.Namespace(str(ns_fd), 'net'):
+        with self._network_namespace_context:
             sendp(pkt, iface=iface.name, verbose=False, promisc=False)
 
 
 class TCPPush(Abstract):
-    ns_fs_location = pathlib.Path('/var/run/netns')
-
     def __call__(self, iface, push_entry):
         data = "TEST"
         ether = Ether(src=push_entry.src_mac_address, dst=push_entry.dst_mac_address, type=push_entry.eth_type)
@@ -106,15 +99,24 @@ class TCPPush(Abstract):
         tcp = TCP(sport=push_entry.src_port, dport=push_entry.dst_port)
         pkt = ether / ip / tcp / data
 
-        ns_name = self.context.make_network_namespace_name()
-        ns_fd = self.ns_fs_location / ns_name
-        with nsenter.Namespace(str(ns_fd), 'net'):
+        with self._network_namespace_context:
             sendp(pkt, iface=iface.name, verbose=False, promisc=False)
 
 
 class Adapter(object):
     def __init__(self, context):
-        self.lldp_push = LLDPPush(context)
-        self.arp_push = ARPPush(context)
-        self.udp_push = UDPPush(context)
-        self.tcp_push = TCPPush(context)
+        network_namespace = self._make_network_namespace_context(context)
+
+        self.lldp_push = LLDPPush(context, network_namespace)
+        self.arp_push = ARPPush(context, network_namespace)
+        self.udp_push = UDPPush(context, network_namespace)
+        self.tcp_push = TCPPush(context, network_namespace)
+
+    @staticmethod
+    def _make_network_namespace_context(context):
+        try:
+            context.shared_registry.fetch(system.FakeNetworkNamespace)
+            return proc.DummyNetworkNamespaceContext()
+        except exc.RegistryLookupError:
+            return proc.NetworkNamespaceContext(
+                context.make_network_namespace_name())

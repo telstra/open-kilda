@@ -28,19 +28,22 @@ import org.openkilda.wfm.topology.flowmonitoring.model.FlowState;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Clock;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class FlowCacheService {
 
+    private Clock clock;
     private long flowRttStatsExpirationTime;
     private FlowCacheBoltCarrier carrier;
 
     private Map<String, FlowState> flowStates;
 
-    public FlowCacheService(PersistenceManager persistenceManager, long flowRttStatsExpirationTime,
-                            FlowCacheBoltCarrier carrier) {
+    public FlowCacheService(PersistenceManager persistenceManager, Clock clock,
+                            long flowRttStatsExpirationTime, FlowCacheBoltCarrier carrier) {
+        this.clock = clock;
         this.flowRttStatsExpirationTime = flowRttStatsExpirationTime;
         this.carrier = carrier;
 
@@ -87,7 +90,7 @@ public class FlowCacheService {
     }
 
     private void checkFlowLatency(String flowId, FlowState flowState) {
-        long currentTimeMillis = System.currentTimeMillis();
+        long currentTimeMillis = clock.millis();
         if (currentTimeMillis > flowState.getForwardPathLatency().getTimestamp() + flowRttStatsExpirationTime) {
             carrier.emitCalculateFlowLatencyRequest(flowId, FlowDirection.FORWARD,
                     flowState.getForwardPath(), flowState.getMaxLatency(), flowState.getMaxLatencyTier2());

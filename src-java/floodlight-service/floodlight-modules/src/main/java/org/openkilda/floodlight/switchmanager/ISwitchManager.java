@@ -43,10 +43,6 @@ import java.util.Set;
 
 public interface ISwitchManager extends IFloodlightService {
 
-
-    long COOKIE_FLAG_SERVICE = 0x8000000000000000L;
-    long COOKIE_FLAG_BFD_CATCH = 0x0001000000000001L;
-
     void activate(DatapathId dpid) throws SwitchOperationException;
 
     void deactivate(DatapathId dpid);
@@ -475,40 +471,6 @@ public interface ISwitchManager extends IFloodlightService {
     List<Long> removeMultitableEndpointIslRules(final DatapathId dpid, final int port) throws SwitchOperationException;
 
     /**
-     * Installs custom drop rule .. ie cookie, priority, match
-     *
-     * @param dpid datapathId of switch
-     * @param dstMac Destination Mac address to match on
-     * @param dstMask Destination Mask to match on
-     * @param cookie Cookie to use for this rule
-     * @param priority Priority of the rule
-     */
-    void installDropFlowCustom(final DatapathId dpid, String dstMac, String dstMask,
-                               final long cookie, final int priority) throws SwitchOperationException;
-
-
-    /**
-     * Installs an flow on ingress switch.
-     *
-     * @param dpid datapathId of the switch
-     * @param dstDpid datapathId of the egress switch
-     * @param flowId flow id
-     * @param inputPort port to expect the packet on
-     * @param outputPort port to forward the packet out
-     * @param inputVlanId input vlan to match on, 0 means not to match on vlan
-     * @param transitTunnelId vlan or vni to add before outputing on outputPort
-     * @param encapsulationType flow encapsulation type
-     * @param multiTable multitable pipeline flag
-     * @return transaction id
-     * @throws SwitchOperationException Switch not found
-     */
-    long installIngressFlow(DatapathId dpid, DatapathId dstDpid, String flowId, Long cookie, int inputPort,
-                            int outputPort, int inputVlanId,
-                            int transitTunnelId, OutputVlanType outputVlanType, long meterId,
-                            FlowEncapsulationType encapsulationType, boolean multiTable)
-            throws SwitchOperationException;
-
-    /**
      * Installs server 42 Ingress flow witch matches Server 42 RTT packets.
      *
      * @param dpid datapathId of the switch
@@ -528,27 +490,6 @@ public interface ISwitchManager extends IFloodlightService {
             FlowEncapsulationType encapsulationType, boolean multiTable) throws SwitchOperationException;
 
     /**
-     * Installs flow on egress swtich.
-     *
-     * @param dpid datapathId of the switch
-     * @param flowId flow id
-     * @param inputPort port to expect the packet on
-     * @param outputPort port to forward the packet out
-     * @param transitTunnelId vlan or vni to match on the ingressPort
-     * @param outputVlanId set vlan on packet before forwarding via outputPort; 0 means not to set
-     * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
-     * @param encapsulationType flow encapsulation type
-     * @param multiTable multitable pipeline flag
-     * @return transaction id
-     * @throws SwitchOperationException Switch not found
-     */
-    long installEgressFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
-                           int transitTunnelId, int outputVlanId, OutputVlanType outputVlanType,
-                           FlowEncapsulationType encapsulationType,
-                           boolean multiTable)
-            throws SwitchOperationException;
-
-    /**
      * Installs flow on a transit switch.
      *
      * @param dpid datapathId of the switch
@@ -563,26 +504,6 @@ public interface ISwitchManager extends IFloodlightService {
      */
     long installTransitFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
                             int transitTunnelId, FlowEncapsulationType encapsulationType, boolean multiTable)
-            throws SwitchOperationException;
-
-    /**
-     * Installs flow through one switch.
-     *
-     * @param dpid datapathId of the switch
-     * @param flowId flow id
-     * @param inputPort port to expect packet on
-     * @param outputPort port to forward packet out
-     * @param inputVlanId vlan to match on inputPort
-     * @param outputVlanId set vlan on packet before forwarding via outputPort; 0 means not to set
-     * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
-     * @param multiTable multitable pipeline flag
-     * @return transaction id
-     * @throws SwitchOperationException Switch not found
-     */
-    long installOneSwitchFlow(final DatapathId dpid, final String flowId, final Long cookie,
-                                                      final int inputPort, final int outputPort, int inputVlanId,
-                                                      int outputVlanId, final OutputVlanType outputVlanType,
-                                                      final long meterId, boolean multiTable)
             throws SwitchOperationException;
 
     void installOuterVlanMatchSharedFlow(SwitchId switchId, String flowId, FlowSharedSegmentCookie cookie)
@@ -656,17 +577,6 @@ public interface ISwitchManager extends IFloodlightService {
     OFMeterConfig dumpMeterById(final DatapathId dpid, final long meterId) throws SwitchOperationException;
 
     /**
-     * Installs a meter on ingress switch OF_13.
-     * TODO: describe params meaning in accordance with OF
-     *
-     * @param dpid datapath ID of the switch
-     * @param bandwidth the bandwidth limit value
-     * @param meterId the meter ID
-     * @throws SwitchOperationException Switch not found
-     */
-    void installMeterForFlow(DatapathId dpid, long bandwidth, long meterId) throws SwitchOperationException;
-
-    /**
      * Updates a meter on ingress switch OF_13.
      *
      * @param dpid datapath ID of the switch
@@ -704,8 +614,6 @@ public interface ISwitchManager extends IFloodlightService {
      * @return switch's IP address
      */
     InetAddress getSwitchIpAddress(IOFSwitch sw);
-
-    List<OFPortDesc> getEnabledPhysicalPorts(DatapathId dpid) throws SwitchNotFoundException;
 
     List<OFPortDesc> getPhysicalPorts(DatapathId dpid) throws SwitchNotFoundException;
 

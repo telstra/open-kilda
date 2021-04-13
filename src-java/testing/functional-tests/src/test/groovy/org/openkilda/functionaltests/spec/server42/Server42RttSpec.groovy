@@ -1,7 +1,7 @@
 package org.openkilda.functionaltests.spec.server42
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.junit.Assume.assumeTrue
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.STATS_FROM_SERVER42_LOGGING_TIMEOUT
@@ -12,6 +12,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.model.system.FeatureTogglesDto
+import org.openkilda.model.SwitchFeature
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -42,7 +43,7 @@ class Server42RttSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.switchPairs.find {
             it.src.dpId in server42switchesDpIds
         }
-        assumeTrue("Was not able to find a switch with a server42 connected", switchPair != null)
+        assumeTrue(switchPair != null, "Was not able to find a switch with a server42 connected")
         when: "Set server42FlowRtt toggle to true"
         def flowRttFeatureStartState = changeFlowRttToggle(true)
         and: "server42FlowRtt is enabled on src and dst switches"
@@ -72,7 +73,7 @@ class Server42RttSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
             it.src.dpId in server42switchesDpIds && !server42switchesDpIds.contains(it.dst.dpId)
         }
-        assumeTrue("Was not able to find a switch with a server42 connected", switchPair != null)
+        assumeTrue(switchPair != null, "Was not able to find a switch with a server42 connected")
         and: "server42FlowRtt feature toggle is set to true"
         def flowRttFeatureStartState = changeFlowRttToggle(true)
         and: "server42FlowRtt is enabled on src and dst switches"
@@ -83,14 +84,21 @@ class Server42RttSpec extends HealthCheckSpecification {
         def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
         flowHelperV2.addFlow(flow)
         and: "Create a reversed flow for backward metric"
-        def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed).tap { it.flowId = it.flowId.take(25) }
+        def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed, false, [flow]).tap {
+            flowId = it.flowId.take(25)
+        }
         flowHelperV2.addFlow(reversedFlow)
 
         then: "Server42 input/ingress rules are installed"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             [switchPair.src, switchPair.dst].each {
-                //one rule of each type for one flow
-                def amountOfRules = useMultitable ? 4 : 2 //no SERVER_42_INPUT cookie in singleTable
+                /** - one rule of each type for one flow;
+                 * - no SERVER_42_INPUT cookie in singleTable;
+                 * - SERVER_42_INPUT is installed for each different flow port (if there are 10 flows on port number 5,
+                 * then there will be installed one INPUT rule);
+                 * - SERVER_42_INGRESS is installed for each flow.
+                 */
+                def amountOfRules = useMultitable ? 4 : 2
                 assert northbound.getSwitchRules(it.dpId).flowEntries.findAll {
                     new Cookie(it.cookie).getType() in  [CookieType.SERVER_42_INPUT, CookieType.SERVER_42_INGRESS]
                 }.size() == amountOfRules
@@ -133,7 +141,7 @@ class Server42RttSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
             it.src.dpId in server42switchesDpIds && !server42switchesDpIds.contains(it.dst.dpId)
         }
-        assumeTrue("Was not able to find a switch with a server42 connected", switchPair != null)
+        assumeTrue(switchPair != null, "Was not able to find a switch with a server42 connected")
         def statsWaitSeconds = 4
         and: "server42FlowRtt toggle is turned off"
         def flowRttFeatureStartState = changeFlowRttToggle(false)
@@ -144,7 +152,9 @@ class Server42RttSpec extends HealthCheckSpecification {
         def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
         flowHelperV2.addFlow(flow)
         and: "Reversed flow for backward metric is created"
-        def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed).tap { it.flowId = it.flowId.take(25) }
+        def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed, false, [flow]).tap {
+            it.flowId = it.flowId.take(25)
+        }
         flowHelperV2.addFlow(reversedFlow)
         expect: "Involved switches pass switch validation"
         Wrappers.wait(RULES_INSTALLATION_TIME) { //wait for s42 rules
@@ -244,7 +254,7 @@ class Server42RttSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
             it.src.prop?.server42MacAddress != null && it.src.prop?.server42MacAddress == it.dst.prop?.server42MacAddress
         }
-        assumeTrue("Was not able to find 2 switches on the same server42", switchPair != null)
+        assumeTrue(switchPair != null, "Was not able to find 2 switches on the same server42")
         and: "server42FlowRtt feature enabled globally and on src/dst switch"
         def flowRttFeatureStartState = changeFlowRttToggle(true)
         def initialSwitchRtt = [switchPair.src, switchPair.dst].collectEntries { [it, changeFlowRttSwitch(it, true)] }
@@ -306,6 +316,13 @@ class Server42RttSpec extends HealthCheckSpecification {
                 server42Port = props.server42Port
                 server42Vlan = props.server42Vlan
             })
+        }
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            def amountOfS42Rules = sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) ? 2 : 1
+            def s42Rules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
+                it.cookie in  [Cookie.SERVER_42_OUTPUT_VLAN_COOKIE, Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE]
+            }
+            assert requiredState ? (s42Rules.size() == amountOfS42Rules) : s42Rules.empty
         }
         return originalProps.server42FlowRtt
     }

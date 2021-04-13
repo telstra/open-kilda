@@ -13,7 +13,7 @@ class VolumeSpec extends BaseSpecification {
     @Shared
     def r = new Random()
 
-    def setupOnce() {
+    def setupSpec() {
         topoHelper.purgeTopology()
     }
 
@@ -45,8 +45,8 @@ class VolumeSpec extends BaseSpecification {
 
         and: "Target switch passes switch validation"
         verifyAll(northbound.validateSwitch(sw.dpId)) {
-            it.verifyRuleSectionsAreEmpty(["excess", "missing"])
-            it.verifyMeterSectionsAreEmpty(["excess", "missing", "misconfigured"])
+            it.verifyRuleSectionsAreEmpty(sw.dpId, ["excess", "missing"])
+            it.verifyMeterSectionsAreEmpty(sw.dpId, ["excess", "missing", "misconfigured"])
         }
 
         cleanup: "Remove all flows, delete topology"

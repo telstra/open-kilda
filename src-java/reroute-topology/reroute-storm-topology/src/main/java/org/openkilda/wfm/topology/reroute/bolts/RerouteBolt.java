@@ -128,8 +128,10 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
                 PathSwapResult pathSwapResult = (PathSwapResult) infoData;
                 emitWithContext(STREAM_OPERATION_QUEUE_ID, getCurrentTuple(),
                         new Values(pathSwapResult.getFlowId(), pathSwapResult));
-            } else if (active && infoData instanceof SwitchStateChanged) {
-                rerouteService.processSingleSwitchFlowStatusUpdate((SwitchStateChanged) infoData);
+            } else if (infoData instanceof SwitchStateChanged) {
+                if (active) {
+                    rerouteService.processSingleSwitchFlowStatusUpdate((SwitchStateChanged) infoData);
+                }
             } else {
                 unhandledInput(getCurrentTuple());
             }

@@ -175,10 +175,6 @@ public class OfFlowStatsMapperTest {
 
     }
 
-    private void compareBuckets(OFBucket origin, GroupBucket result) {
-        assertEquals(origin.getWatchPort().getPortNumber(), result.getWatchPort());
-    }
-
     private OFGroupDescStatsEntry buildFlowGroupEntry() {
         return factory.buildGroupDescStatsEntry()
                 .setGroup(OFGroup.of(22))

@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.junit.Assume.assumeTrue
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -38,7 +38,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
     def "ISL is still able to properly fail even if switches have reconnected"() {
         given: "A flow"
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
-        assumeTrue("No a-switch ISL found for the test", isl.asBoolean())
+        assumeTrue(isl.asBoolean(), "No a-switch ISL found for the test")
         def flow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch)
         flowHelperV2.addFlow(flow)
 
@@ -112,8 +112,8 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
         and: "Blinking switch has no rule anomalies"
         def validation = northbound.validateSwitch(swPair.src.dpId)
-        validation.verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
-        validation.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
+        validation.verifyRuleSectionsAreEmpty(swPair.src.dpId, ["missing", "misconfigured", "excess"])
+        validation.verifyMeterSectionsAreEmpty(swPair.src.dpId, ["missing", "misconfigured", "excess"])
 
         and: "Flow validation is OK"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
@@ -151,8 +151,8 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
         and: "Dst switch validation shows no missing rules"
         with(northbound.validateSwitch(dstSwitch.dpId)) {
-            it.verifyRuleSectionsAreEmpty(["missing", "proper", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "proper", "excess"])
+            it.verifyRuleSectionsAreEmpty(dstSwitch.dpId, ["missing", "proper", "misconfigured"])
+            it.verifyMeterSectionsAreEmpty(dstSwitch.dpId, ["missing", "misconfigured", "proper", "excess"])
         }
 
         when: "Try to validate flow"
