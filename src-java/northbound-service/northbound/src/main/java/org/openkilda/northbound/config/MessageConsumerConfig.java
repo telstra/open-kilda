@@ -105,7 +105,7 @@ public class MessageConsumerConfig {
     private Map<String, Object> consumerConfigs() {
         return ImmutableMap.<String, Object>builder()
                 .put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHosts)
-                .put(ConsumerConfig.GROUP_ID_CONFIG, buildGroupId())
+                .put(ConsumerConfig.GROUP_ID_CONFIG, groupId)
                 .put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
                 .put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, kafkaSessionTimeout)
                 .put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName())
@@ -156,9 +156,5 @@ public class MessageConsumerConfig {
     @Bean
     public MessagingChannel messagingChannel() {
         return new KafkaMessagingChannel();
-    }
-
-    private String buildGroupId() {
-        return String.format("%s-%s", groupId, blueGreenMode);
     }
 }
