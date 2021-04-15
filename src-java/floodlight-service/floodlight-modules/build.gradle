@@ -22,8 +22,10 @@ dependencies {
         exclude group: 'org.slf4j', module: 'slf4j-log4j12'
         exclude group: 'log4j', module: 'log4j'
     }
+    implementation 'commons-codec:commons-codec'
     implementation 'org.apache.commons:commons-collections4'
-    implementation 'com.auth0:java-jwt'
+    implementation 'com.auth0:java-jwt:3.2.0'
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.68'
 
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
@@ -31,15 +33,15 @@ dependencies {
     implementation 'org.aspectj:aspectjrt'
     implementation 'org.mapstruct:mapstruct'
     implementation 'org.mapstruct:mapstruct-processor'
-    implementation 'net.jodah:failsafe:1.0.5'
+    implementation 'net.jodah:failsafe'
     annotationProcessor 'org.mapstruct:mapstruct-processor'
     testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
 
     implementation 'org.hibernate.validator:hibernate-validator'
-    implementation 'org.glassfish:javax.el'
+    implementation 'org.glassfish:jakarta.el'
     implementation 'com.google.guava:guava'
-    implementation 'org.restlet.jse:org.restlet:2.3.2'
-    compileOnly 'com.google.code.findbugs:jsr305:2.0.1'
+    implementation 'org.restlet.jse:org.restlet:2.3.12'
+    compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
     implementation 'args4j:args4j'
 
     implementation('org.slf4j:slf4j-api')
@@ -51,7 +53,7 @@ dependencies {
     testRuntimeOnly 'ch.qos.logback:logback-core:1.2.3'
 
     testImplementation 'junit:junit'
-    testImplementation 'org.easymock:easymock'
+    testImplementation 'org.easymock:easymock:4.2'
     testImplementation 'org.hamcrest:hamcrest-library'
     testImplementation 'io.netty:netty-all'
     testRuntimeOnly 'org.python:jython-standalone:2.5.2'

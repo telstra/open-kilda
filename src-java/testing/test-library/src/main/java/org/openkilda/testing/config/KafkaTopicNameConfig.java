@@ -26,7 +26,7 @@ import org.openkilda.config.naming.KafkaNamingStrategy;
 import com.sabre.oss.conf4j.processor.ConfigurationValueProcessor;
 import com.sabre.oss.conf4j.spring.annotation.ConfigurationType;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.ErrorMvcAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

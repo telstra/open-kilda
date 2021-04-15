@@ -23,7 +23,6 @@ import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import net.jodah.failsafe.SyncFailsafe;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Watcher;
@@ -32,9 +31,9 @@ import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @SuperBuilder
@@ -80,23 +79,23 @@ public abstract class ZkClient implements Watcher {
     public synchronized void initAndWaitConnection() {
         init();
 
-        RetryPolicy retryPolicy = new RetryPolicy()
-                .retryOn(IllegalStateException.class)
-                .withDelay(reconnectDelayMs, TimeUnit.MILLISECONDS);
-
-        final int[] attempt = {1}; // need to be final to be used in lambda
-        SyncFailsafe<Object> failsafe = Failsafe.with(retryPolicy)
+        RetryPolicy<Void> retryPolicy = new RetryPolicy<Void>()
+                .handle(IllegalStateException.class)
+                .withMaxRetries(-1)
+                .withDelay(Duration.ofMillis(reconnectDelayMs))
                 .onRetry(e -> {
-                    String message = format("Failed to init zk client, retrying... Attempt: %d", attempt[0]++);
-                    if (attempt[0] <= 10) {
-                        log.info(message, e);
-                    } else if (attempt[0] <= 20) {
-                        log.warn(message, e);
+                    String message = format("Failed to init zk client, retrying... Attempt: %d", e.getAttemptCount());
+                    if (e.getAttemptCount() <= 10) {
+                        log.info(message, e.getLastFailure());
+                    } else if (e.getAttemptCount() <= 20) {
+                        log.warn(message, e.getLastFailure());
                     } else {
-                        log.error(message, e);
+                        log.error(message, e.getLastFailure());
                     }
                 });
-        failsafe.run(this::reconnect);
+
+        Failsafe.with(retryPolicy)
+                .run(this::reconnect);
     }
 
     private void reconnect() {

@@ -37,16 +37,13 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 
-import junitparams.JUnitParamsRunner;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
 import java.util.Properties;
 import java.util.stream.Stream;
 
-@RunWith(JUnitParamsRunner.class)
 public class FlowResourcesManagerTest extends InMemoryGraphBasedTest {
 
     private final FlowDto firstFlow = FlowDto.builder()

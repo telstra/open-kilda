@@ -64,13 +64,13 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> {
@@ -97,7 +97,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private final FeatureTogglesRepository featureTogglesRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
 
-    private final RetryPolicy transactionRetryPolicy;
+    private final RetryPolicy<?> transactionRetryPolicy;
 
     public static IslFsmFactory factory(Clock clock, PersistenceManager persistenceManager,
                                         NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder) {
@@ -125,7 +125,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
         transactionManager = persistenceManager.getTransactionManager();
         transactionRetryPolicy = transactionManager.getDefaultRetryPolicy()
-                .withMaxDuration(options.getDbRepeatMaxDurationSeconds(), TimeUnit.SECONDS);
+                .withMaxDuration(Duration.ofSeconds(options.getDbRepeatMaxDurationSeconds()));
     }
 
     // -- FSM actions --

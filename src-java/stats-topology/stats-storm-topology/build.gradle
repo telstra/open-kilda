@@ -22,15 +22,14 @@ dependencies {
     compileOnly('org.apache.storm:storm-core')
     testImplementation('org.apache.storm:storm-core')
 
-    compileOnly 'com.google.code.findbugs:jsr305:2.0.1'
+    compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
 
-    testImplementation 'junit:junit'
-    testImplementation 'pl.pragmatists:JUnitParams'
-    testImplementation 'org.mockito:mockito-core'
-    testImplementation 'org.clojure:clojure'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
     testImplementation 'org.hamcrest:hamcrest-library'
     testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
-    testRuntimeOnly 'org.glassfish:javax.el'
+    testRuntimeOnly 'org.glassfish:jakarta.el'
     testRuntimeOnly 'org.apache.curator:curator-test'
 
     compileOnly 'org.projectlombok:lombok'

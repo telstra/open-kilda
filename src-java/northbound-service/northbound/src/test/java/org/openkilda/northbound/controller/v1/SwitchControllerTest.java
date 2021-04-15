@@ -21,7 +21,6 @@ import static org.openkilda.messaging.Utils.EXTRA_AUTH;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.northbound.controller.v1.TestMessageMock.TEST_SWITCH_ID;
 import static org.openkilda.northbound.controller.v1.TestMessageMock.TEST_SWITCH_RULE_COOKIE;
-import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
@@ -85,7 +84,7 @@ public class SwitchControllerTest {
         // then
         MvcResult result = mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(APPLICATION_JSON_VALUE))
                 .andReturn();
         Long[] response = MAPPER.readValue(result.getResponse().getContentAsString(), Long[].class);
         assertEquals(TEST_SWITCH_RULE_COOKIE, (long) response[0]);

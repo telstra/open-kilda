@@ -11,7 +11,7 @@ security.rest.password.default=kilda
 kafka.hosts=kafka.pendev:9092
 zookeeper.connect_string=zookeeper.pendev/kilda
 
-server.contextPath=/api
+server.servlet.context-path=/api
 
 web.request.asyncTimeout=30000
 

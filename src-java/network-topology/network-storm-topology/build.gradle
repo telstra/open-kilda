@@ -33,10 +33,9 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor'
     testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
 
-    testImplementation 'junit:junit'
-    testImplementation 'pl.pragmatists:JUnitParams'
-    testImplementation 'org.mockito:mockito-core'
-    testImplementation 'org.clojure:clojure'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
     testImplementation 'org.hamcrest:hamcrest-library'
     testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
 

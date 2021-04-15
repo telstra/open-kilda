@@ -127,7 +127,7 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     public Map<OFType, List<IOFMessageListener>> getListeners() {
         Map<OFType, List<IOFMessageListener>> lers =
                 new HashMap<OFType, List<IOFMessageListener>>();
-        for (Entry<OFType, ListenerDispatcher<OFType, IOFMessageListener>> e :listeners.entrySet()) {
+        for (Entry<OFType, ListenerDispatcher<OFType, IOFMessageListener>> e : listeners.entrySet()) {
             lers.put(e.getKey(), e.getValue().getOrderedListeners());
         }
         return Collections.unmodifiableMap(lers);

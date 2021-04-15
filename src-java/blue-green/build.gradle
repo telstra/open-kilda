@@ -7,8 +7,8 @@ description = 'Kilda Blue Green'
 dependencies {
     implementation 'com.google.guava:guava'
     implementation 'org.apache.commons:commons-lang3'
-    implementation 'com.esotericsoftware:kryo:3.0.3'
-    implementation 'net.jodah:failsafe:1.0.5'
+    implementation 'com.esotericsoftware:kryo'
+    implementation 'net.jodah:failsafe'
 
     implementation 'org.mapstruct:mapstruct'
     implementation 'org.mapstruct:mapstruct-processor'
@@ -20,13 +20,14 @@ dependencies {
 
     // Conflicts with storm local run over IDE.
     api ('org.apache.zookeeper:zookeeper:3.4.0') {
-        exclude(group: 'org.slf4j', module: 'slf4j-log4j12')
-        exclude(group: 'log4j', module: 'log4j')
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        exclude group: 'log4j', module: 'log4j'
     }
     annotationProcessor 'org.mapstruct:mapstruct-processor'
 
-    testImplementation 'junit:junit'
-    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

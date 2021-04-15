@@ -20,8 +20,7 @@ import org.openkilda.wfm.topology.AbstractTopologyConfig;
 import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
-
-import javax.validation.constraints.Min;
+import jakarta.validation.constraints.Min;
 
 @Configuration
 public interface IslLatencyTopologyConfig extends AbstractTopologyConfig {

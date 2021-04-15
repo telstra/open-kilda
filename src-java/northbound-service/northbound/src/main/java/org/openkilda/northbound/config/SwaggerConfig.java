@@ -82,6 +82,4 @@ public class SwaggerConfig {
                 .apis(RequestHandlerSelectors.basePackage("org.openkilda.northbound.controller.v2"))
                 .build();
     }
-
-
 }

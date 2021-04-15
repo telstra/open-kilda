@@ -251,6 +251,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
             throw new MessageException(ErrorType.NOT_FOUND, "Can not get flow: " + e.getMessage(),
                     "Flow not found");
         } catch (Exception e) {
+            log.error("Can not get flow", e);
             throw new MessageException(ErrorType.INTERNAL_ERROR, "Can not get flow", "Internal Error");
         }
     }
@@ -263,6 +264,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
                     .map(FlowResponse::new)
                     .collect(Collectors.toList());
         } catch (Exception e) {
+            log.error("Can not dump flows", e);
             throw new MessageException(ErrorType.INTERNAL_ERROR, "Can not dump flows", "Internal Error");
         }
     }
