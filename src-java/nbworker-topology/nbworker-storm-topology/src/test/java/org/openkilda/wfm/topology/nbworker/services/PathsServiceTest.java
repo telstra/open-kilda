@@ -60,6 +60,7 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
 
     private static final SwitchId SWITCH_ID_1 = new SwitchId(1);
     private static final SwitchId SWITCH_ID_2 = new SwitchId(2);
+    private static final SwitchId SWITCH_ID_3 = new SwitchId(3);
     public static final long BASE_LATENCY = 10000;
     public static final long MIN_LATENCY = BASE_LATENCY - SWITCH_COUNT;
 
@@ -217,6 +218,18 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
             throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
         List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, VXLAN, COST, null, null);
         assertVxlanAndCostPathes(paths);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void findNPathsByVxlanSrcWithoutVxlanSupport()
+            throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
+        pathsService.getPaths(SWITCH_ID_3, SWITCH_ID_2, VXLAN, COST, null, null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void findNPathsByVxlanDstWithoutVxlanSupport()
+            throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
+        pathsService.getPaths(SWITCH_ID_2, SWITCH_ID_3, VXLAN, COST, null, null);
     }
 
     @Test

@@ -20,6 +20,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;
@@ -29,8 +30,10 @@ import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.share.mappers.PathMapper;
 
 import lombok.extern.slf4j.Slf4j;
@@ -45,10 +48,12 @@ public class PathsService {
     public static final int MAX_PATH_COUNT = 500;
     private PathComputer pathComputer;
     private SwitchRepository switchRepository;
+    private SwitchPropertiesRepository switchPropertiesRepository;
     private KildaConfigurationRepository kildaConfigurationRepository;
 
     public PathsService(RepositoryFactory repositoryFactory, PathComputerConfig pathComputerConfig) {
         switchRepository = repositoryFactory.createSwitchRepository();
+        switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
         PathComputerFactory pathComputerFactory = new PathComputerFactory(
                 pathComputerConfig, new AvailableNetworkFactory(pathComputerConfig, repositoryFactory));
@@ -76,6 +81,25 @@ public class PathsService {
         KildaConfiguration kildaConfiguration = kildaConfigurationRepository.getOrDefault();
         FlowEncapsulationType flowEncapsulationType = Optional.ofNullable(requestEncapsulationType)
                 .orElse(kildaConfiguration.getFlowEncapsulationType());
+
+        SwitchProperties srcProperties = switchPropertiesRepository.findBySwitchId(srcSwitchId).orElseThrow(
+                () -> new SwitchPropertiesNotFoundException(srcSwitchId));
+        if (!srcProperties.getSupportedTransitEncapsulation().contains(flowEncapsulationType)) {
+            throw new IllegalArgumentException(String.format("Switch %s doesn't support %s encapslation type. Choose "
+                    + "one of the supported encapsulation types %s or update switch properties and add needed "
+                    + "encapsulation type.", srcSwitchId, flowEncapsulationType,
+                    srcProperties.getSupportedTransitEncapsulation()));
+        }
+
+        SwitchProperties dstProperties = switchPropertiesRepository.findBySwitchId(dstSwitchId).orElseThrow(
+                () -> new SwitchPropertiesNotFoundException(dstSwitchId));
+        if (!dstProperties.getSupportedTransitEncapsulation().contains(flowEncapsulationType)) {
+            throw new IllegalArgumentException(String.format("Switch %s doesn't support %s encapslation type. Choose "
+                    + "one of the supported encapsulation types %s or update switch properties and add needed "
+                    + "encapsulation type.", dstSwitchId, requestEncapsulationType,
+                    dstProperties.getSupportedTransitEncapsulation()));
+        }
+
         PathComputationStrategy pathComputationStrategy = Optional.ofNullable(requestPathComputationStrategy)
                 .orElse(kildaConfiguration.getPathComputationStrategy());
         List<Path> flowPaths = pathComputer.getNPaths(srcSwitchId, dstSwitchId, MAX_PATH_COUNT, flowEncapsulationType,
