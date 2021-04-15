@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -24,14 +24,11 @@ import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildInstru
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.prepareFlowModBuilder;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.INPUT_TABLE_ID;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.NOVIFLOW_TIMESTAMP_SIZE_IN_BITS;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FORWARD_UDP_PORT;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_OUTPUT_VLAN_PRIORITY;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_REVERSE_UDP_PORT;
-import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
-import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VLAN_COOKIE;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_ISL_RTT_OUTPUT_PRIORITY;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_ISL_RTT_REVERSE_UDP_PORT;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE;
 
-import org.openkilda.floodlight.service.FeatureDetectorService;
+import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.switchmanager.factory.SwitchFlowTuple;
 import org.openkilda.floodlight.switchmanager.factory.generator.SwitchFlowGenerator;
 import org.openkilda.model.MacAddress;
@@ -44,8 +41,6 @@ import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
-import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -54,18 +49,16 @@ import org.projectfloodlight.openflow.types.TransportPort;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Server42OutputVlanFlowGenerator implements SwitchFlowGenerator {
-
-    private FeatureDetectorService featureDetectorService;
-    private int server42Port;
-    private int server42Vlan;
-    private MacAddress server42MacAddress;
+public class Server42IslRttOutputFlowGenerator implements SwitchFlowGenerator {
+    private final KildaCore kildaCore;
+    private final int server42Port;
+    private final int server42Vlan;
+    private final MacAddress server42MacAddress;
 
     @Builder
-    public Server42OutputVlanFlowGenerator(
-            FeatureDetectorService featureDetectorService, int server42Port, int server42Vlan,
-            MacAddress server42MacAddress) {
-        this.featureDetectorService = featureDetectorService;
+    public Server42IslRttOutputFlowGenerator(KildaCore kildaCore, int server42Port, int server42Vlan,
+                                             MacAddress server42MacAddress) {
+        this.kildaCore = kildaCore;
         this.server42Port = server42Port;
         this.server42Vlan = server42Vlan;
         this.server42MacAddress = server42MacAddress;
@@ -80,18 +73,17 @@ public class Server42OutputVlanFlowGenerator implements SwitchFlowGenerator {
             actions.add(actionPushVlan(ofFactory, EthType.VLAN_FRAME.getValue()));
             actions.add(actionReplaceVlan(ofFactory, server42Vlan));
         }
-        actions.add(actionSetSrcMac(ofFactory, convertDpIdToMac(sw.getId())));
-        actions.add(actionSetDstMac(ofFactory, org.projectfloodlight.openflow.types.MacAddress.of(
-                server42MacAddress.getAddress())));
-        if (featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_COPY_FIELD)) {
-            actions.add(buildCopyTimestamp(ofFactory));
-        }
 
+        actions.add(actionSetSrcMac(ofFactory, convertDpIdToMac(sw.getId())));
+        actions.add(actionSetDstMac(ofFactory,
+                        org.projectfloodlight.openflow.types.MacAddress.of(server42MacAddress.getAddress())));
         actions.add(actionSetOutputPort(ofFactory, OFPort.of(server42Port)));
 
         OFFlowMod flowMod = prepareFlowModBuilder(
-                ofFactory, SERVER_42_OUTPUT_VLAN_COOKIE, SERVER_42_OUTPUT_VLAN_PRIORITY, INPUT_TABLE_ID)
-                .setMatch(buildMatch(sw.getId(), ofFactory))
+                ofFactory, SERVER_42_ISL_RTT_OUTPUT_COOKIE, SERVER_42_ISL_RTT_OUTPUT_PRIORITY,
+                INPUT_TABLE_ID)
+                .setMatch(buildMatch(ofFactory, org.projectfloodlight.openflow.types.MacAddress.of(
+                        kildaCore.getConfig().getServer42IslRttMagicMacAddress())))
                 .setInstructions(ImmutableList.of(buildInstructionApplyActions(ofFactory, actions)))
                 .build();
         return SwitchFlowTuple.builder()
@@ -100,24 +92,13 @@ public class Server42OutputVlanFlowGenerator implements SwitchFlowGenerator {
                 .build();
     }
 
-    private static Match buildMatch(DatapathId dpid, OFFactory ofFactory) {
+    private static Match buildMatch(OFFactory ofFactory,
+                                    org.projectfloodlight.openflow.types.MacAddress ethDstMacAddress) {
         return ofFactory.buildMatch()
-                .setExact(MatchField.ETH_DST, convertDpIdToMac(dpid))
+                .setExact(MatchField.ETH_DST, ethDstMacAddress)
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-                .setExact(MatchField.UDP_SRC, TransportPort.of(SERVER_42_REVERSE_UDP_PORT))
-                .setExact(MatchField.UDP_DST, TransportPort.of(SERVER_42_FORWARD_UDP_PORT))
-                .build();
-    }
-
-    private static OFAction buildCopyTimestamp(OFFactory factory) {
-        OFOxms oxms = factory.oxms();
-        return factory.actions().buildNoviflowCopyField()
-                .setNBits(NOVIFLOW_TIMESTAMP_SIZE_IN_BITS)
-                .setSrcOffset(0)
-                .setDstOffset(NOVIFLOW_TIMESTAMP_SIZE_IN_BITS)
-                .setOxmSrcHeader(oxms.buildNoviflowTxtimestamp().getTypeLen())
-                .setOxmDstHeader(oxms.buildNoviflowUpdPayload().getTypeLen())
+                .setExact(MatchField.UDP_SRC, TransportPort.of(SERVER_42_ISL_RTT_REVERSE_UDP_PORT))
                 .build();
     }
 }

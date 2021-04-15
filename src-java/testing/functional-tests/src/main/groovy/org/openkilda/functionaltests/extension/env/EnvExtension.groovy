@@ -88,6 +88,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
                 .floodlightRoutePeriodicSync(true)
                 .collectGrpcStats(true)
                 .server42FlowRtt(true)
+                .server42IslRtt(true)
                 .build()
         northbound.toggleFeature(features)
         log.info("Deleting all flows")
@@ -140,6 +141,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
                 server42MacAddress = sw.prop.server42MacAddress
                 server42Port = sw.prop.server42Port
                 server42Vlan = sw.prop.server42Vlan
+                server42IslRtt = (sw.prop.server42IslRtt == null ? "AUTO" : (sw.prop.server42IslRtt ? "ENABLED" : "DISABLED"))
             })
         }
     }

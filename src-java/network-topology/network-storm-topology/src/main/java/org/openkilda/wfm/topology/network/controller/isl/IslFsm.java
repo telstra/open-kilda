@@ -85,7 +85,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private List<DiscoveryMonitor<?>> monitorsByPriority = Collections.emptyList();
     private StatusAggregator statusAggregator = new StatusAggregator();
 
-    private final BiIslDataHolder<Boolean> endpointMultiTableManagementCompleteStatus;
+    private final BiIslDataHolder<Boolean> endpointResourcesManagementCompleteStatus;
 
     private final NetworkTopologyDashboardLogger dashboardLogger;
 
@@ -113,7 +113,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
         this.dashboardLogger = dashboardLogger;
 
-        endpointMultiTableManagementCompleteStatus = new BiIslDataHolder<>(reference);
+        endpointResourcesManagementCompleteStatus = new BiIslDataHolder<>(reference);
 
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         islRepository = repositoryFactory.createIslRepository();
@@ -194,11 +194,11 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         log.info("ISL {} initiate speaker resources setup process", reference);
 
         islRulesAttempts = options.getRulesSynchronizationAttempts();
-        endpointMultiTableManagementCompleteStatus.putBoth(false);
+        endpointResourcesManagementCompleteStatus.putBoth(false);
 
-        sendInstallMultiTable(context.getOutput());
+        sendInstallResources(context.getOutput());
 
-        if (isMultiTableManagementCompleted()) {
+        if (isResourcesManagementCompleted()) {
             fire(IslFsmEvent._RESOURCES_DONE, context);
         }
     }
@@ -212,8 +212,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
         log.info("Receive response on ISL resource allocation request for {} (from {})",
                 reference, endpoint.getDatapath());
-        endpointMultiTableManagementCompleteStatus.put(endpoint, true);
-        if (isMultiTableManagementCompleted()) {
+        endpointResourcesManagementCompleteStatus.put(endpoint, true);
+        if (isResourcesManagementCompleted()) {
             fire(IslFsmEvent._RESOURCES_DONE, context);
         }
     }
@@ -223,7 +223,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
             long maxAttempts = options.getRulesSynchronizationAttempts();
             log.info("Retrying ISL resources setup for {} (attempt {} of {})",
                     reference, maxAttempts - islRulesAttempts, maxAttempts);
-            sendInstallMultiTable(context.getOutput());
+            sendInstallResources(context.getOutput());
         } else {
             log.warn("Failed to install rules for multi table mode on isl {}, required manual rule sync",
                     reference);
@@ -264,11 +264,11 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         log.info("ISL {} initiate speaker resources removal process", reference);
 
         islRulesAttempts = options.getRulesSynchronizationAttempts();
-        endpointMultiTableManagementCompleteStatus.putBoth(false);
+        endpointResourcesManagementCompleteStatus.putBoth(false);
 
-        sendRemoveMultiTable(context.getOutput());
+        sendRemoveIslResources(context.getOutput());
 
-        if (isMultiTableManagementCompleted()) {
+        if (isResourcesManagementCompleted()) {
             fire(IslFsmEvent._RESOURCES_DONE, context);
         }
     }
@@ -282,8 +282,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
         log.info("Receive response on ISL resource release request for {} (from {})",
                 reference, endpoint.getDatapath());
-        endpointMultiTableManagementCompleteStatus.put(endpoint, true);
-        if (isMultiTableManagementCompleted()) {
+        endpointResourcesManagementCompleteStatus.put(endpoint, true);
+        if (isResourcesManagementCompleted()) {
             fire(IslFsmEvent._RESOURCES_DONE, context);
         }
     }
@@ -293,7 +293,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
             long maxAttempts = options.getRulesSynchronizationAttempts();
             log.info("Retrying ISL resources removal for {} (attempt {} of {})",
                     reference, maxAttempts - islRulesAttempts, maxAttempts);
-            sendRemoveMultiTable(context.getOutput());
+            sendRemoveIslResources(context.getOutput());
         } else {
             log.warn("Failed to remove rules for multi table mode on isl {}, required manual rule sync",
                     reference);
@@ -332,24 +332,30 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         link.setBfdSessionStatus(null);
     }
 
-    private void sendInstallMultiTable(IIslCarrier carrier) {
+    private void sendInstallResources(IIslCarrier carrier) {
         final Endpoint source = reference.getSource();
         final Endpoint dest = reference.getDest();
-        sendInstallMultiTable(carrier, source, dest);
-        sendInstallMultiTable(carrier, dest, source);
+        sendInstallResources(carrier, source, dest);
+        sendInstallResources(carrier, dest, source);
     }
 
-    private void sendInstallMultiTable(IIslCarrier carrier, Endpoint ingress, Endpoint egress) {
-        Boolean isCompleted = endpointMultiTableManagementCompleteStatus.get(ingress);
+    private void sendInstallResources(IIslCarrier carrier, Endpoint ingress, Endpoint egress) {
+        Boolean isCompleted = endpointResourcesManagementCompleteStatus.get(ingress);
         if (isCompleted != null && isCompleted) {
             return;
         }
 
-        if (isSwitchInMultiTableMode(ingress.getDatapath())) {
+        Optional<SwitchProperties> switchProperties = switchPropertiesRepository.findBySwitchId(ingress.getDatapath());
+        boolean multitableMode = switchProperties.map(SwitchProperties::isMultiTable).orElse(false);
+        boolean server42IslRtt = featureTogglesRepository.getOrDefault().getServer42IslRtt()
+                && switchProperties.map(SwitchProperties::hasServer42IslRttEnabled).orElse(false);
+        Integer server42Port = switchProperties.map(SwitchProperties::getServer42Port).orElse(null);
+
+        if (multitableMode || server42IslRtt) {
             log.info("Emit ISL resource allocation request for {} to {}", reference, ingress.getDatapath());
-            carrier.islDefaultRulesInstall(ingress, egress);
+            carrier.islDefaultRulesInstall(ingress, egress, multitableMode, server42IslRtt, server42Port);
         } else {
-            endpointMultiTableManagementCompleteStatus.put(ingress, true);
+            endpointResourcesManagementCompleteStatus.put(ingress, true);
         }
     }
 
@@ -359,15 +365,15 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         carrier.islChangedNotifyFlowMonitor(reference, true);
     }
 
-    private void sendRemoveMultiTable(IIslCarrier carrier) {
+    private void sendRemoveIslResources(IIslCarrier carrier) {
         final Endpoint source = reference.getSource();
         final Endpoint dest = reference.getDest();
-        sendRemoveMultiTable(carrier, source, dest);
-        sendRemoveMultiTable(carrier, dest, source);
+        sendRemoveIslResources(carrier, source, dest);
+        sendRemoveIslResources(carrier, dest, source);
     }
 
-    private void sendRemoveMultiTable(IIslCarrier carrier, Endpoint ingress, Endpoint egress) {
-        Boolean isCompleted = endpointMultiTableManagementCompleteStatus.get(ingress);
+    private void sendRemoveIslResources(IIslCarrier carrier, Endpoint ingress, Endpoint egress) {
+        Boolean isCompleted = endpointResourcesManagementCompleteStatus.get(ingress);
         if (isCompleted != null && isCompleted) {
             return;
         }
@@ -375,11 +381,11 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         // TODO(surabujin): why for we need this check?
         boolean isIslRemoved = islRepository.findByEndpoint(ingress.getDatapath(), ingress.getPortNumber())
                 .isEmpty();
-        if (isIslRemoved && isSwitchInMultiTableMode(ingress.getDatapath())) {
+        if (isIslRemoved && isSwitchInMultiTableModeOrServer42IslRtt(ingress.getDatapath())) {
             log.info("Emit ISL resource release request for {} to {}", reference, ingress.getDatapath());
             carrier.islDefaultRulesDelete(ingress, egress);
         } else {
-            endpointMultiTableManagementCompleteStatus.put(ingress, true);
+            endpointResourcesManagementCompleteStatus.put(ingress, true);
         }
     }
 
@@ -650,15 +656,15 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                         String.format("Isl %s ===> %s record not found in DB", source, dest)));
     }
 
-    private boolean isSwitchInMultiTableMode(SwitchId switchId) {
+    private boolean isSwitchInMultiTableModeOrServer42IslRtt(SwitchId switchId) {
         return switchPropertiesRepository
                 .findBySwitchId(switchId)
-                .map(SwitchProperties::isMultiTable)
+                .map(sp -> sp.isMultiTable() || sp.hasServer42IslRttEnabled())
                 .orElse(false);
     }
 
-    private boolean isMultiTableManagementCompleted() {
-        return endpointMultiTableManagementCompleteStatus.stream()
+    private boolean isResourcesManagementCompleted() {
+        return endpointResourcesManagementCompleteStatus.stream()
                 .filter(Objects::nonNull)
                 .allMatch(entry -> entry);
     }

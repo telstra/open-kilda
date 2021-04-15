@@ -16,8 +16,9 @@
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import static java.lang.String.format;
-import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VLAN_COOKIE;
-import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE;
 
 import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
@@ -168,7 +169,7 @@ public class CommandBuilderImpl implements CommandBuilder {
                     }
 
                     long server42Cookie = flowPath.getCookie().toBuilder()
-                            .type(CookieType.SERVER_42_INGRESS)
+                            .type(CookieType.SERVER_42_FLOW_RTT_INGRESS)
                             .build()
                             .getValue();
                     if (switchRules.contains(server42Cookie) && !flowPath.isOneSwitchFlow()
@@ -233,9 +234,11 @@ public class CommandBuilderImpl implements CommandBuilder {
      * Some default rules require additional properties to be installed. This method filters such rules.
      */
     private static boolean isDefaultRuleWithSpecialRequirements(long cookie) {
-        return cookie == SERVER_42_OUTPUT_VLAN_COOKIE
-                || cookie == SERVER_42_OUTPUT_VXLAN_COOKIE
-                || new PortColourCookie(cookie).getType() == CookieType.SERVER_42_INPUT;
+        return cookie == SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE
+                || cookie == SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
+                || new PortColourCookie(cookie).getType() == CookieType.SERVER_42_FLOW_RTT_INPUT
+                || cookie == SERVER_42_ISL_RTT_OUTPUT_COOKIE
+                || new PortColourCookie(cookie).getType() == CookieType.SERVER_42_ISL_RTT_INPUT;
     }
 
     /**
@@ -256,19 +259,29 @@ public class CommandBuilderImpl implements CommandBuilder {
                     .server42Vlan(properties.getServer42Vlan())
                     .server42MacAddress(properties.getServer42MacAddress());
 
-            if (cookie == SERVER_42_OUTPUT_VLAN_COOKIE) {
+            if (cookie == SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE) {
                 commands.add(command
-                        .id("SWMANAGER_SERVER_42_OUTPUT_VLAN_RULE_INSTALL")
+                        .id("SWMANAGER_SERVER_42_FLOW_RTT_OUTPUT_VLAN_RULE_INSTALL")
                         .outputPort(properties.getServer42Port())
                         .build());
-            } else if (cookie == SERVER_42_OUTPUT_VXLAN_COOKIE) {
+            } else if (cookie == SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE) {
                 commands.add(command
-                        .id("SWMANAGER_SERVER_42_OUTPUT_VXLAN_RULE_INSTALL")
+                        .id("SWMANAGER_SERVER_42_FLOW_RTT_OUTPUT_VXLAN_RULE_INSTALL")
                         .outputPort(properties.getServer42Port())
                         .build());
-            } else if (new PortColourCookie(cookie).getType() == CookieType.SERVER_42_INPUT) {
+            } else if (new PortColourCookie(cookie).getType() == CookieType.SERVER_42_FLOW_RTT_INPUT) {
                 commands.add(command
-                        .id("SWMANAGER_SERVER_42_INPUT_RULE_INSTALL")
+                        .id("SWMANAGER_SERVER_42_FLOW_RTT_INPUT_RULE_INSTALL")
+                        .inputPort(properties.getServer42Port())
+                        .build());
+            } else if (cookie == SERVER_42_ISL_RTT_OUTPUT_COOKIE) {
+                commands.add(command
+                        .id("SWMANAGER_SERVER_42_ISL_RTT_OUTPUT_RULE_INSTALL")
+                        .outputPort(properties.getServer42Port())
+                        .build());
+            } else if (new PortColourCookie(cookie).getType() == CookieType.SERVER_42_ISL_RTT_INPUT) {
+                commands.add(command
+                        .id("SWMANAGER_SERVER_42_ISL_RTT_INPUT_RULE_INSTALL")
                         .inputPort(properties.getServer42Port())
                         .build());
             } else {

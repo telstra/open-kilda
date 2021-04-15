@@ -859,10 +859,13 @@ class LinkSpec extends HealthCheckSpecification {
         //https://github.com/telstra/open-kilda/issues/3906
         if (!useMultitable) {
             [isl.srcSwitch, isl.dstSwitch].each {
-                def validateInfo = northbound.validateSwitch(it.dpId).rules
-                assert validateInfo.missing.empty
-                assert validateInfo.excess.empty
-                assert validateInfo.misconfigured.empty
+                //Similar to https://github.com/telstra/open-kilda/issues/3906 but for Server42 ISL RTT rules.
+                if (!it.prop || (it.prop.server42IslRtt == "DISABLED")) {
+                    def validateInfo = northbound.validateSwitch(it.dpId).rules
+                    assert validateInfo.missing.empty
+                    assert validateInfo.excess.empty
+                    assert validateInfo.misconfigured.empty
+                }
             }
         }
 

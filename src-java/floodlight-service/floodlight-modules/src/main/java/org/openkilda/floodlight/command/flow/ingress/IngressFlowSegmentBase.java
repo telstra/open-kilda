@@ -365,7 +365,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
             }
         } else {
             ofMessages.add(flowModFactory.makeDefaultPortServer42IngressFlowMessage(
-                    getKildaCoreConfig().getServer42UdpPortOffset()));
+                    getKildaCoreConfig().getServer42FlowRttUdpPortOffset()));
         }
 
         return ofMessages;
@@ -375,10 +375,10 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
         List<OFFlowMod> ofMessages = new ArrayList<>();
         if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
             ofMessages.add(flowModFactory.makeOuterOnlyVlanServer42IngressFlowMessage(
-                    getKildaCoreConfig().getServer42UdpPortOffset()));
+                    getKildaCoreConfig().getServer42FlowRttUdpPortOffset()));
         } else {
             ofMessages.add(flowModFactory.makeDefaultPortServer42IngressFlowMessage(
-                    getKildaCoreConfig().getServer42UdpPortOffset()));
+                    getKildaCoreConfig().getServer42FlowRttUdpPortOffset()));
         }
         return ofMessages;
     }

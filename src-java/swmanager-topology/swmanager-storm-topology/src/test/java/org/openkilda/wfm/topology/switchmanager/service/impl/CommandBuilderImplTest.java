@@ -306,7 +306,7 @@ public class CommandBuilderImplTest {
     @Test
     public void reinstallServer42RuleTest() {
         List<ReinstallDefaultFlowForSwitchManagerRequest> commands = commandBuilder.buildCommandsToReinstallRules(
-                SWITCH_ID_A, Lists.newArrayList(Cookie.SERVER_42_OUTPUT_VLAN_COOKIE));
+                SWITCH_ID_A, Lists.newArrayList(Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE));
 
         assertEquals(1, commands.size());
         assertEquals(ReinstallServer42FlowForSwitchManagerRequest.class, commands.get(0).getClass());

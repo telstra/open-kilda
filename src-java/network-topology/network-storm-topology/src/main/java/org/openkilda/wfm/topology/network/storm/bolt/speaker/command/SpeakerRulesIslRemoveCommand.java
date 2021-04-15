@@ -30,7 +30,7 @@ public class SpeakerRulesIslRemoveCommand extends SpeakerRulesWorkerCommand {
 
     @Override
     public void apply(SpeakerRulesWorker handler) {
-        handler.processRemoveIslDefaultRulesRequest(getKey(), source, destination);
+        handler.processRemoveIslRulesRequest(getKey(), source, destination);
     }
 
     public void timeout(SpeakerRulesWorker handler) {

@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.STATS_FROM_SERVER42_LOGGING_TIMEOUT
@@ -42,7 +44,7 @@ see server42-control-server-stub.
 Note that on hardware env it is very important for switch to have correct time, since data in otsdb it posted using
 switch timestamps, thus we may see no stats in otsdb if time on switch is incorrect
  */
-class Server42RttSpec extends HealthCheckSpecification {
+class Server42FlowRttSpec extends HealthCheckSpecification {
     @Shared
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix
@@ -151,9 +153,10 @@ class Server42RttSpec extends HealthCheckSpecification {
                  * then there will be installed one INPUT rule);
                  * - SERVER_42_INGRESS is installed for each flow.
                  */
-                def amountOfRules = useMultitable ? 4 : 2
+                def amountOfRules = northbound.getSwitchProperties(it.dpId).multiTable ? 4 : 2
                 assert northbound.getSwitchRules(it.dpId).flowEntries.findAll {
-                    new Cookie(it.cookie).getType() in  [CookieType.SERVER_42_INPUT, CookieType.SERVER_42_INGRESS]
+                    new Cookie(it.cookie).getType() in  [CookieType.SERVER_42_FLOW_RTT_INPUT,
+                                                         CookieType.SERVER_42_FLOW_RTT_INGRESS]
                 }.size() == amountOfRules
             }
         }
@@ -700,7 +703,8 @@ class Server42RttSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             def amountOfS42Rules = sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) ? 2 : 1
             def s42Rules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                it.cookie in  [Cookie.SERVER_42_OUTPUT_VLAN_COOKIE, Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE]
+                it.cookie in  [Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE,
+                               Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE]
             }
             assert requiredState ? (s42Rules.size() == amountOfS42Rules) : s42Rules.empty
         }
@@ -724,7 +728,8 @@ class Server42RttSpec extends HealthCheckSpecification {
             Wrappers.wait(RULES_INSTALLATION_TIME) {
                 initialSwitchRtt.keySet().eachParallel { sw ->
                     assert northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                        new Cookie(it.cookie).getType() in [CookieType.SERVER_42_INPUT, CookieType.SERVER_42_INGRESS]
+                        new Cookie(it.cookie).getType() in [CookieType.SERVER_42_FLOW_RTT_INPUT,
+                                                            CookieType.SERVER_42_FLOW_RTT_INGRESS]
                     }.empty
                 }
             }

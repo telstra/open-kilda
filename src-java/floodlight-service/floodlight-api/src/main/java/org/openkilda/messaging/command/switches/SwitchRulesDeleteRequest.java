@@ -88,6 +88,8 @@ public class SwitchRulesDeleteRequest extends CommandData {
     @JsonProperty("server42_flow_rtt_ports")
     private Set<Integer> server42FlowRttPorts;
 
+    @JsonProperty("server42_isl_rtt_enabled")
+    private boolean server42IslRttEnabled = false;
 
     /**
      * Constructs a delete switch rules request.
@@ -110,17 +112,5 @@ public class SwitchRulesDeleteRequest extends CommandData {
         this.deleteRulesAction = deleteRulesAction;
         // NB: criteria is only needed if deleteRulesAction is not provided
         this.criteria = deleteRulesAction == null ? Objects.requireNonNull(criteria) : criteria;
-    }
-
-    public boolean isMultiTable() {
-        return multiTable;
-    }
-
-    public List<Integer> getIslPorts() {
-        return islPorts;
-    }
-
-    public List<Integer> getFlowPorts() {
-        return flowPorts;
     }
 }

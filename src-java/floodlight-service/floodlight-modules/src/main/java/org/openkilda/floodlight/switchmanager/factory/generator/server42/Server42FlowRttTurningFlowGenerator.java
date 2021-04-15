@@ -22,11 +22,11 @@ import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpId
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.prepareFlowModBuilder;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.INPUT_TABLE_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.MAC_ADDRESS_SIZE_IN_BITS;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FORWARD_UDP_PORT;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_REVERSE_UDP_PORT;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_TURNING_PRIORITY;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_FORWARD_UDP_PORT;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_REVERSE_UDP_PORT;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_TURNING_PRIORITY;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST;
-import static org.openkilda.model.cookie.Cookie.SERVER_42_TURNING_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_TURNING_COOKIE;
 
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.factory.SwitchFlowTuple;
@@ -50,7 +50,7 @@ import org.projectfloodlight.openflow.types.TransportPort;
 import java.util.List;
 
 @Builder
-public class Server42TurningFlowGenerator implements SwitchFlowGenerator {
+public class Server42FlowRttTurningFlowGenerator implements SwitchFlowGenerator {
 
     private FeatureDetectorService featureDetectorService;
 
@@ -63,12 +63,12 @@ public class Server42TurningFlowGenerator implements SwitchFlowGenerator {
         OFFactory ofFactory = sw.getOFFactory();
         Match match = buildMatch(sw.getId(), ofFactory);
         List<OFAction> actions = ImmutableList.of(
-                actionSetUdpSrcAction(ofFactory, TransportPort.of(SERVER_42_REVERSE_UDP_PORT)),
+                actionSetUdpSrcAction(ofFactory, TransportPort.of(SERVER_42_FLOW_RTT_REVERSE_UDP_PORT)),
                 buildSwapAction(ofFactory),
                 actionSetOutputPort(ofFactory, OFPort.IN_PORT));
 
         OFFlowMod flowMod = prepareFlowModBuilder(
-                ofFactory, SERVER_42_TURNING_COOKIE, SERVER_42_TURNING_PRIORITY, INPUT_TABLE_ID)
+                ofFactory, SERVER_42_FLOW_RTT_TURNING_COOKIE, SERVER_42_FLOW_RTT_TURNING_PRIORITY, INPUT_TABLE_ID)
                 .setMatch(match)
                 .setInstructions(ImmutableList.of(buildInstructionApplyActions(ofFactory, actions)))
                 .build();
@@ -83,7 +83,7 @@ public class Server42TurningFlowGenerator implements SwitchFlowGenerator {
                 .setExact(MatchField.ETH_DST, convertDpIdToMac(dpid))
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-                .setExact(MatchField.UDP_SRC, TransportPort.of(SERVER_42_FORWARD_UDP_PORT))
+                .setExact(MatchField.UDP_SRC, TransportPort.of(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT))
                 .build();
     }
 

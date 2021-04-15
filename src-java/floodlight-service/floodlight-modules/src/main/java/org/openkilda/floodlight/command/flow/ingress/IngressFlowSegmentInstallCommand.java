@@ -105,7 +105,7 @@ public class IngressFlowSegmentInstallCommand extends IngressFlowSegmentCommand 
         List<OFFlowMod> ofMessages = super.makeSharedFlowModInstallMessages();
         if (metadata.isMultiTable() && rulesContext != null && rulesContext.isInstallServer42InputRule()) {
             Optional<OFFlowMod> server42InputRule = getFlowModFactory().makeServer42InputFlowMessage(
-                    getKildaCoreConfig().getServer42UdpPortOffset());
+                    getKildaCoreConfig().getServer42FlowRttUdpPortOffset());
             if (server42InputRule.isPresent()) {
                 ofMessages.add(server42InputRule.get());
             } else {

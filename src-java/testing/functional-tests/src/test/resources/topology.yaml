@@ -23,6 +23,7 @@ switches:
       server42_port: 11
       server42_mac_address: 00:00:00:00:01:02
       server42_vlan: 1002
+      server42_isl_rtt: false
 
   - name: ofsw3
     dp_id: 00:00:00:00:00:00:00:03
@@ -68,6 +69,12 @@ switches:
     out_ports:
       - port: 10
         vlan_range: 101..150
+    prop:
+      server42_flow_rtt: false
+      server42_port: 11
+      server42_mac_address: 00:00:00:00:01:03
+      server42_vlan: 1003
+      server42_isl_rtt: false
 
   - name: ofsw9
     dp_id: 00:00:00:00:00:00:00:09

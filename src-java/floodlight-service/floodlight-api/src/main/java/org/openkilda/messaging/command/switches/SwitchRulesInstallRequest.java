@@ -82,6 +82,9 @@ public class SwitchRulesInstallRequest extends CommandData {
     @JsonProperty("server42_flow_rtt_ports")
     private Set<Integer> server42FlowRttPorts;
 
+    @JsonProperty("server42_isl_rtt_enabled")
+    private boolean server42IslRttEnabled = false;
+
     /**
      * Constructs an install switch rules request.
      *
@@ -99,45 +102,5 @@ public class SwitchRulesInstallRequest extends CommandData {
         }
 
         this.installRulesAction = Objects.requireNonNull(installRulesAction);
-    }
-
-    public SwitchId getSwitchId() {
-        return switchId;
-    }
-
-    public InstallRulesAction getInstallRulesAction() {
-        return installRulesAction;
-    }
-
-    public boolean isMultiTable() {
-        return multiTable;
-    }
-
-    public boolean isSwitchLldp() {
-        return switchLldp;
-    }
-
-    public List<Integer> getIslPorts() {
-        return islPorts;
-    }
-
-    public List<Integer> getFlowPorts() {
-        return flowPorts;
-    }
-
-    public void setMultiTable(boolean multiTable) {
-        this.multiTable = multiTable;
-    }
-
-    public void setSwitchLldp(boolean switchLldp) {
-        this.switchLldp = switchLldp;
-    }
-
-    public void setIslPorts(List<Integer> islPorts) {
-        this.islPorts = islPorts;
-    }
-
-    public void setFlowPorts(List<Integer> flowPorts) {
-        this.flowPorts = flowPorts;
     }
 }

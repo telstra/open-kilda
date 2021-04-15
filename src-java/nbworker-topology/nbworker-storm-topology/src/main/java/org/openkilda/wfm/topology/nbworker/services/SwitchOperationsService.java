@@ -36,6 +36,7 @@ import org.openkilda.model.SwitchConnect;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.SwitchProperties.RttState;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
@@ -322,6 +323,7 @@ public class SwitchOperationsService {
             switchProperties.setSwitchArp(update.isSwitchArp());
             switchProperties.setSupportedTransitEncapsulation(update.getSupportedTransitEncapsulation());
             switchProperties.setServer42FlowRtt(update.isServer42FlowRtt());
+            switchProperties.setServer42IslRtt(update.getServer42IslRtt());
             switchProperties.setServer42Port(update.getServer42Port());
             switchProperties.setServer42Vlan(update.getServer42Vlan());
             switchProperties.setServer42MacAddress(update.getServer42MacAddress());
@@ -342,20 +344,28 @@ public class SwitchOperationsService {
             carrier.disableServer42FlowRttOnSwitch(switchId);
         }
 
+        if (switchPropertiesDto.getServer42IslRtt() != SwitchPropertiesDto.RttState.DISABLED) {
+            carrier.enableServer42IslRttOnSwitch(switchId);
+        } else {
+            carrier.disableServer42IslRttOnSwitch(switchId);
+        }
+
         return result.switchPropertiesDto;
     }
 
     private boolean isSwitchSyncNeeded(SwitchProperties current, SwitchProperties updated) {
+        boolean server42RttChanged = current.isServer42FlowRtt() != updated.isServer42FlowRtt()
+                || current.getServer42IslRtt() != updated.getServer42IslRtt();
+        boolean server42PropsChanged = (updated.isServer42FlowRtt() || updated.getServer42IslRtt() != RttState.DISABLED)
+                && (!Objects.equals(current.getServer42Port(), updated.getServer42Port())
+                || !Objects.equals(current.getServer42MacAddress(), updated.getServer42MacAddress())
+                || !Objects.equals(current.getServer42Vlan(), updated.getServer42Vlan()));
+
         return current.isMultiTable() != updated.isMultiTable()
                 || current.isSwitchLldp() != updated.isSwitchLldp()
                 || current.isSwitchArp() != updated.isSwitchArp()
-                || current.isServer42FlowRtt() != updated.isServer42FlowRtt()
-                || (updated.isServer42FlowRtt() && !Objects.equals(
-                current.getServer42Port(), updated.getServer42Port()))
-                || (updated.isServer42FlowRtt() && !Objects.equals(
-                current.getServer42MacAddress(), updated.getServer42MacAddress()))
-                || (updated.isServer42FlowRtt() && !Objects.equals(
-                current.getServer42Vlan(), updated.getServer42Vlan()));
+                || server42RttChanged
+                || server42PropsChanged;
     }
 
     private void validateSwitchProperties(SwitchId switchId, SwitchProperties updatedSwitchProperties) {
@@ -402,6 +412,20 @@ public class SwitchOperationsService {
         if (updatedSwitchProperties.isServer42FlowRtt()) {
             String errorMessage = "Illegal switch properties combination for switch %s. To enable property "
                     + "'server42_flow_rtt' you need to specify valid property '%s'";
+            if (updatedSwitchProperties.getServer42Port() == null) {
+                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_port"));
+            }
+            if (updatedSwitchProperties.getServer42MacAddress() == null) {
+                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_mac_address"));
+            }
+            if (updatedSwitchProperties.getServer42Vlan() == null) {
+                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_vlan"));
+            }
+        }
+
+        if (updatedSwitchProperties.getServer42IslRtt() == RttState.ENABLED) {
+            String errorMessage = "Illegal switch properties combination for switch %s. To enable property "
+                    + "'server42_isl_rtt' you need to specify valid property '%s'";
             if (updatedSwitchProperties.getServer42Port() == null) {
                 throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_port"));
             }

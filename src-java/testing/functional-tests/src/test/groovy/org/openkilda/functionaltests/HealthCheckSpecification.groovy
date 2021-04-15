@@ -97,6 +97,7 @@ class HealthCheckSpecification extends BaseSpecification {
             useBfdForIslIntegrityCheck
             floodlightRoutePeriodicSync
             server42FlowRtt
+            server42IslRtt
             //for below props any value allowed. dependent tests will skip themselves or adjust if feature is off
             //flowsRerouteUsingDefaultEncapType
             //collectGrpcStats

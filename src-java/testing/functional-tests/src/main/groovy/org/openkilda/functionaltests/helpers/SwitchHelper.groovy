@@ -24,9 +24,11 @@ import static org.openkilda.model.cookie.Cookie.MULTITABLE_POST_INGRESS_DROP_COO
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
 import static org.openkilda.model.cookie.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE
-import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VLAN_COOKIE
-import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE
-import static org.openkilda.model.cookie.Cookie.SERVER_42_TURNING_COOKIE
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_TURNING_COOKIE
+import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE
+import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_RULE_COOKIE
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
@@ -128,6 +130,7 @@ class SwitchHelper {
         def multiTableRules = []
         def devicesRules = []
         def server42Rules = []
+        def toggles = northbound.getFeatureToggles()
         if (swProps.multiTable) {
             multiTableRules = [MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
                                MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
@@ -171,14 +174,26 @@ class SwitchHelper {
             devicesRules.addAll([ARP_INPUT_PRE_DROP_COOKIE, ARP_TRANSIT_COOKIE, ARP_INGRESS_COOKIE])
         }
         if (swProps.server42FlowRtt) {
-            server42Rules << SERVER_42_OUTPUT_VLAN_COOKIE
+            server42Rules << SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE
             if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
-                server42Rules << SERVER_42_OUTPUT_VXLAN_COOKIE
+                server42Rules << SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
             }
         }
-        if (northbound.getFeatureToggles().server42FlowRtt) {
+        if (toggles.server42FlowRtt) {
             if (sw.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST)) {
-                server42Rules << SERVER_42_TURNING_COOKIE
+                server42Rules << SERVER_42_FLOW_RTT_TURNING_COOKIE
+            }
+        }
+        if (toggles.server42IslRtt &&
+                swProps.server42Port != null && swProps.server42MacAddress != null && swProps.server42Vlan != null &&
+                ("ENABLED".equals(swProps.server42IslRtt) ||
+                        "AUTO".equals(swProps.server42IslRtt) &&
+                        !sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD))) {
+            devicesRules.add(SERVER_42_ISL_RTT_TURNING_COOKIE)
+            devicesRules.add(SERVER_42_ISL_RTT_OUTPUT_COOKIE)
+
+            northbound.getLinks(sw.dpId, null, null, null).each {
+                devicesRules.add(new PortColourCookie(CookieType.SERVER_42_ISL_RTT_INPUT, it.source.portNo).getValue())
             }
         }
         if (sw.noviflow && !sw.wb5164) {
@@ -407,7 +422,7 @@ class SwitchHelper {
     }
 
     static SwitchProperties getDummyServer42Props() {
-        return new SwitchProperties(true, 33, "00:00:00:00:00:00", 1)
+        return new SwitchProperties(true, 33, "00:00:00:00:00:00", 1, null)
     }
 
     /**
