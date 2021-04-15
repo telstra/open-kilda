@@ -57,6 +57,7 @@ import org.openkilda.messaging.nbtopology.request.GetSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.messaging.nbtopology.request.PortHistoryRequest;
+import org.openkilda.messaging.nbtopology.request.SwitchConnectionsRequest;
 import org.openkilda.messaging.nbtopology.request.SwitchPatchRequest;
 import org.openkilda.messaging.nbtopology.request.UpdatePortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchPropertiesRequest;
@@ -89,6 +90,7 @@ import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.messaging.MessagingChannel;
@@ -108,8 +110,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
-public class SwitchServiceImpl implements SwitchService {
-
+public class SwitchServiceImpl extends BaseService implements SwitchService {
     private static final Logger logger = LoggerFactory.getLogger(SwitchServiceImpl.class);
 
     @Autowired
@@ -141,6 +142,12 @@ public class SwitchServiceImpl implements SwitchService {
 
     @Value("#{kafkaTopicsConfig.getTopoSwitchManagerNbTopic()}")
     private String switchManagerTopic;
+
+    @Autowired
+    public SwitchServiceImpl(MessagingChannel messagingChannel) {
+        super(messagingChannel);
+        this.messagingChannel = messagingChannel;
+    }
 
     /**
      * {@inheritDoc}
@@ -559,6 +566,15 @@ public class SwitchServiceImpl implements SwitchService {
         return messagingChannel.sendAndGet(nbworkerTopic, request)
                 .thenApply(GetSwitchResponse.class::cast)
                 .thenApply(GetSwitchResponse::getPayload)
+                .thenApply(switchMapper::map);
+    }
+
+    @Override
+    public CompletableFuture<SwitchConnectionsResponse> getSwitchConnections(SwitchId switchId) {
+        logger.info("Get connections between switch {} and OF speakers", switchId);
+
+        return sendRequest(nbworkerTopic, new SwitchConnectionsRequest(switchId))
+                .thenApply(org.openkilda.messaging.nbtopology.response.SwitchConnectionsResponse.class::cast)
                 .thenApply(switchMapper::map);
     }
 

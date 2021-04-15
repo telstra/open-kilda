@@ -16,11 +16,21 @@
 package org.openkilda.wfm.topology.floodlightrouter.service;
 
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.messaging.model.SwitchAvailabilityData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingUpdate;
 
 public interface SwitchMonitorCarrier {
     void regionUpdateNotification(RegionMappingUpdate mappingUpdate);
 
-    void networkStatusUpdateNotification(SwitchId switchId, InfoData notification);
+    void sendSwitchConnectNotification(
+            SwitchId switchId, SpeakerSwitchView speakerData, SwitchAvailabilityData availabilityData);
+
+    void sendSwitchDisconnectNotification(
+            SwitchId switchId, SwitchAvailabilityData availabilityData, boolean isRegionOffline);
+
+    void sendSwitchAvailabilityUpdateNotification(SwitchId switchId, SwitchAvailabilityData availabilityData);
+
+    void sendOtherNotification(SwitchId switchId, InfoData notification);
 }

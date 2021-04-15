@@ -23,6 +23,7 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.reroute.SwitchStateChanged;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.messaging.model.SwitchAvailabilityData;
 import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
@@ -246,16 +247,26 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
         return getCurrentTuple().getStringByField(FIELD_ID_KEY);
     }
 
-    public void processSwitchBecomeUnmanaged(SwitchId datapath) {
-        service.switchBecomeUnmanaged(datapath);
-    }
-
     public void processSwitchBecomeManaged(SpeakerSwitchView switchView) {
         service.switchBecomeManaged(switchView);
     }
 
     public void processSwitchAddWithHistory(HistoryFacts history) {
         service.switchAddWithHistory(history);
+    }
+
+    public void processSwitchConnect(
+            SwitchId switchId, SpeakerSwitchView speakerData, SwitchAvailabilityData availabilityData) {
+        service.switchConnect(switchId, speakerData, availabilityData);
+    }
+
+    public void processSwitchDisconnect(
+            SwitchId switchId, boolean isRegionOffline, SwitchAvailabilityData availabilityData) {
+        service.switchDisconnect(switchId, isRegionOffline, availabilityData);
+    }
+
+    public void processSwitchAvailabilityUpdate(SwitchId switchId, SwitchAvailabilityData availabilityData) {
+        service.switchAvailabilityUpdate(switchId, availabilityData);
     }
 
     public void processSwitchPortEvent(PortInfoData payload) {

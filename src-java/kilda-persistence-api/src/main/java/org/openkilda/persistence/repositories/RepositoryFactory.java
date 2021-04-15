@@ -38,6 +38,8 @@ public interface RepositoryFactory {
 
     SwitchRepository createSwitchRepository();
 
+    SwitchConnectRepository createSwitchConnectRepository();
+
     TransitVlanRepository createTransitVlanRepository();
 
     VxlanRepository createVxlanRepository();
@@ -70,4 +72,5 @@ public interface RepositoryFactory {
 
     MirrorGroupRepository createMirrorGroupRepository();
 
+    SpeakerRepository createSpeakerRepository();
 }

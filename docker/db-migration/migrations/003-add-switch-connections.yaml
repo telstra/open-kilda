@@ -1,0 +1,49 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: surabujin
+      changes:
+        - tagDatabase:
+            tag: 003-add-switch-connections
+
+  - changeSet:
+      id: add_speaker_vertex_class
+      author: surabujin
+      changes:
+        - sql: "CREATE CLASS speaker IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY speaker.name IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX speaker.name IF NOT EXISTS UNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DROP INDEX speaker.name IF EXISTS"
+        - sql: "DROP PROPERTY speaker.name IF EXISTS"
+        - sql: "DROP CLASS speaker IF EXISTS"
+
+  - changeSet:
+      id: add_switch_connect_edge_class
+      author: surabujin
+      changes:
+        - sql: "CREATE CLASS switch_connect IF NOT EXISTS EXTENDS E"
+        - sql: "CREATE PROPERTY switch_connect.mode IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY switch_connect.master IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE PROPERTY switch_connect.connected_at IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY switch_connect.switch_address IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY switch_connect.switch_address_port IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY switch_connect.speaker_address IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY switch_connect.speaker_address_port IF NOT EXISTS INTEGER"
+      rollback:
+        - sql: "DROP PROPERTY switch_connect.speaker_address_port IF EXISTS"
+        - sql: "DROP PROPERTY switch_connect.speaker_address IF EXISTS"
+        - sql: "DROP PROPERTY switch_connect.switch_address_port IF EXISTS"
+        - sql: "DROP PROPERTY switch_connect.switch_address IF EXISTS"
+        - sql: "DROP PROPERTY switch_connect.connected_at IF EXISTS"
+        - sql: "DROP PROPERTY switch_connect.master IF EXISTS"
+        - sql: "DROP PROPERTY switch_connect.mode IF EXISTS"
+        - sql: "DROP CLASS switch_connect IF EXISTS"
+
+  - changeSet:
+      id: drop_switch_connection_data_on_rollback
+      author: surabujin
+      changes: []
+      rollback:
+        - sql: "DELETE EDGE switch_connect"
+        - sql: "DELETE VERTEX speaker"

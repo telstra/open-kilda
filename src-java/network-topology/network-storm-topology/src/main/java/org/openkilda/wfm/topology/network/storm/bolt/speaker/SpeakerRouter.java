@@ -30,7 +30,9 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.IslRoundTripLatency;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
+import org.openkilda.messaging.info.switches.SwitchAvailabilityUpdateNotification;
+import org.openkilda.messaging.info.switches.SwitchConnectNotification;
+import org.openkilda.messaging.info.switches.SwitchDisconnectNotification;
 import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.messaging.nbtopology.request.UpdatePortPropertiesRequest;
 import org.openkilda.wfm.AbstractBolt;
@@ -51,12 +53,14 @@ import org.openkilda.wfm.topology.network.storm.bolt.port.command.UpdatePortProp
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast.FeatureTogglesNotificationBcast;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast.SpeakerBcast;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast.TopologyActivationStateUpdateNotificationBcast;
+import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchAvailabilityUpdateCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchConnectCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchDisconnectCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchEventCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchManagedEventCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchPortEventCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchRemoveEventCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchUnmanagedEventCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherSpeakerDiscoveryCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherSpeakerRoundTripDiscovery;
@@ -181,15 +185,20 @@ public class SpeakerRouter extends AbstractBolt {
             emit(STREAM_WATCHER_ID, input, makeWatcherTuple(
                     input, new WatcherSpeakerRoundTripDiscovery((IslRoundTripLatency) payload)));
         } else if (payload instanceof SwitchInfoData) {
+            // TODO(surabujin): is it still used?
             emit(input, makeDefaultTuple(input, new SwitchEventCommand((SwitchInfoData) payload)));
         } else if (payload instanceof PortInfoData) {
             emit(input, makeDefaultTuple(input, new SwitchPortEventCommand((PortInfoData) payload)));
+        } else if (payload instanceof SwitchConnectNotification) {
+            emit(input, makeDefaultTuple(input, new SwitchConnectCommand((SwitchConnectNotification) payload)));
+        } else if (payload instanceof SwitchDisconnectNotification) {
+            emit(input, makeDefaultTuple(input, new SwitchDisconnectCommand((SwitchDisconnectNotification) payload)));
+        } else if (payload instanceof SwitchAvailabilityUpdateNotification) {
+            emit(input, makeDefaultTuple(input, new SwitchAvailabilityUpdateCommand(
+                    (SwitchAvailabilityUpdateNotification) payload)));
         } else if (payload instanceof NetworkDumpSwitchData) {
             emit(input, makeDefaultTuple(
                     input, new SwitchManagedEventCommand(((NetworkDumpSwitchData) payload).getSwitchView())));
-        } else if (payload instanceof UnmanagedSwitchNotification) {
-            emit(input, makeDefaultTuple(
-                    input, new SwitchUnmanagedEventCommand(((UnmanagedSwitchNotification) payload).getSwitchId())));
         } else {
             return false;
         }

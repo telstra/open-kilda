@@ -33,6 +33,7 @@ import org.openkilda.messaging.nbtopology.request.GetSwitchConnectedDevicesReque
 import org.openkilda.messaging.nbtopology.request.GetSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.messaging.nbtopology.request.SwitchConnectionsRequest;
 import org.openkilda.messaging.nbtopology.request.SwitchPatchRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
@@ -40,6 +41,7 @@ import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchConnectedDeviceDto;
 import org.openkilda.messaging.nbtopology.response.SwitchConnectedDevicesResponse;
+import org.openkilda.messaging.nbtopology.response.SwitchConnectionsResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchPortConnectedDevicesDto;
 import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
 import org.openkilda.messaging.payload.switches.PortPropertiesPayload;
@@ -108,8 +110,18 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
+    List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request) {
+        List<? extends InfoData> results;
+        try {
+            results = dispatchRequest(tuple, request);
+        } catch (SwitchNotFoundException e) {
+            throw new MessageException(
+                    ErrorType.NOT_FOUND, e.getMessage(), String.format("Switch %s not found", e.getSwitchId()));
+        }
+        return results;
+    }
+
+    private List<? extends InfoData> dispatchRequest(Tuple tuple, BaseRequest request) throws SwitchNotFoundException {
         List<? extends InfoData> result = null;
         if (request instanceof GetSwitchesRequest) {
             result = getSwitches();
@@ -129,11 +141,13 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
             result = Collections.singletonList(getSwitchConnectedDevices((GetSwitchConnectedDevicesRequest) request));
         }  else if (request instanceof SwitchPatchRequest) {
             result = Collections.singletonList(patchSwitch((SwitchPatchRequest) request));
+        } else if (request instanceof SwitchConnectionsRequest) {
+            result = Collections.singletonList(getSwitchConnections((SwitchConnectionsRequest) request));
         } else {
             unhandledInput(tuple);
         }
 
-        return (List<InfoData>) result;
+        return result;
     }
 
     @TimedExecution("switch_dump")
@@ -288,6 +302,11 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
         } catch (SwitchNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Switch was not found.");
         }
+    }
+
+    private SwitchConnectionsResponse getSwitchConnections(SwitchConnectionsRequest request)
+            throws SwitchNotFoundException {
+        return switchOperationsService.getSwitchConnections(request.getSwitchId());
     }
 
     @Override

@@ -63,7 +63,7 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
         log.debug("Received operation request");
 
         try {
-            List<InfoData> result = processRequest(input, request);
+            List<? extends InfoData> result = processRequest(input, request);
             getOutput().emit(input, new Values(result, getCommandContext()));
         } catch (MessageException e) {
             log.error(format("Failed to process request: %s", e.getMessage()), e);
@@ -72,7 +72,7 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
         }
     }
 
-    abstract List<InfoData> processRequest(Tuple tuple, BaseRequest request);
+    abstract List<? extends InfoData> processRequest(Tuple tuple, BaseRequest request);
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {

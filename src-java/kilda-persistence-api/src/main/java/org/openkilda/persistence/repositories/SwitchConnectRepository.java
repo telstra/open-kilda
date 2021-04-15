@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,18 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.storm.bolt.sw.command;
+package org.openkilda.persistence.repositories;
 
+import org.openkilda.model.SwitchConnect;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.topology.network.storm.bolt.sw.SwitchHandler;
 
-public class SwitchUnmanagedEventCommand extends SwitchCommand {
-    public SwitchUnmanagedEventCommand(SwitchId datapath) {
-        super(datapath);
-    }
+import lombok.NonNull;
 
-    @Override
-    public void apply(SwitchHandler handler) {
-        handler.processSwitchBecomeUnmanaged(getDatapath());
-    }
+import java.util.List;
+
+public interface SwitchConnectRepository extends Repository<SwitchConnect> {
+    List<SwitchConnect> findBySwitchId(@NonNull SwitchId switchId);
 }

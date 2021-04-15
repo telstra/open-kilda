@@ -119,6 +119,12 @@ public class LinkServiceImpl extends BaseService implements LinkService {
 
     private Duration bfdPropertiesApplyPeriod;
 
+    @Autowired
+    public LinkServiceImpl(MessagingChannel messagingChannel) {
+        super(messagingChannel);
+        this.messagingChannel = messagingChannel;
+    }
+
     @Override
     public CompletableFuture<List<LinkDto>> getLinks(SwitchId srcSwitch, Integer srcPort,
                                                      SwitchId dstSwitch, Integer dstPort) {

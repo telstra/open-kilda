@@ -25,6 +25,9 @@ import com.syncleus.ferma.ElementFrame;
 import com.syncleus.ferma.FramedGraph;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
+import java.util.Optional;
+
 /**
  * Base repository implementation.
  */
@@ -89,4 +92,15 @@ abstract class FermaGenericRepository<E extends CompositeDataEntity<D>, D, F ext
     }
 
     protected abstract D doDetach(E entity, F frame);
+
+    protected Optional<F> makeOneOrZeroResults(List<? extends F> results) {
+        if (results.size() > 1) {
+            throw new PersistenceException(String.format(
+                    "Expect at most 1 record in response on query in %s, got %d",
+                    getClass().getCanonicalName(), results.size()));
+        }
+        return results.isEmpty()
+                ? Optional.empty()
+                : Optional.of(results.get(0));
+    }
 }

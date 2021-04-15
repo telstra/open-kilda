@@ -18,9 +18,11 @@ package org.openkilda.wfm.topology.nbworker.services;
 import static java.lang.String.format;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 
+import org.openkilda.messaging.model.SwitchAvailabilityData;
 import org.openkilda.messaging.model.SwitchPatch;
 import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
+import org.openkilda.messaging.nbtopology.response.SwitchConnectionsResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
@@ -28,6 +30,7 @@ import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchConnect;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
@@ -37,6 +40,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchConnectRepository;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -46,6 +50,7 @@ import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
+import org.openkilda.wfm.share.mappers.SwitchMapper;
 import org.openkilda.wfm.share.mappers.SwitchPropertiesMapper;
 
 import lombok.Value;
@@ -65,6 +70,7 @@ public class SwitchOperationsService {
     private SwitchOperationsServiceCarrier carrier;
     private SwitchRepository switchRepository;
     private SwitchPropertiesRepository switchPropertiesRepository;
+    private SwitchConnectRepository switchConnectRepository;
     private PortPropertiesRepository portPropertiesRepository;
     private SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
     private TransactionManager transactionManager;
@@ -83,8 +89,9 @@ public class SwitchOperationsService {
         this.islRepository = repositoryFactory.createIslRepository();
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
-        this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.portPropertiesRepository = repositoryFactory.createPortPropertiesRepository();
+        this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
+        this.switchConnectRepository = repositoryFactory.createSwitchConnectRepository();
         this.switchConnectedDeviceRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
         this.carrier = carrier;
     }
@@ -458,6 +465,19 @@ public class SwitchOperationsService {
             switchRepository.detach(foundSwitch);
             return foundSwitch;
         });
+    }
+
+    /**
+     * Find and return the set of connections to the speakers for specific switch.
+     */
+    public SwitchConnectionsResponse getSwitchConnections(SwitchId switchId) throws SwitchNotFoundException {
+        Switch sw = switchRepository.findById(switchId)
+                .orElseThrow(() -> new SwitchNotFoundException(switchId));
+        SwitchAvailabilityData.SwitchAvailabilityDataBuilder payload = SwitchAvailabilityData.builder();
+        for (SwitchConnect entry : switchConnectRepository.findBySwitchId(switchId)) {
+            payload.connection(SwitchMapper.INSTANCE.map(entry));
+        }
+        return new SwitchConnectionsResponse(sw.getSwitchId(), sw.getStatus(), payload.build());
     }
 
     @Value
