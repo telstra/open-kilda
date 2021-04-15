@@ -46,14 +46,17 @@ class Server42RttSpec extends HealthCheckSpecification {
         assumeTrue(switchPair != null, "Was not able to find a switch with a server42 connected")
         when: "Set server42FlowRtt toggle to true"
         def flowRttFeatureStartState = changeFlowRttToggle(true)
+
         and: "server42FlowRtt is enabled on src and dst switches"
         def server42Switch = switchPair.src
         def initialSwitchRtt = [server42Switch, switchPair.dst].collectEntries { [it, changeFlowRttSwitch(it, true)] }
+
         and: "Create a flow"
         def flowCreateTime = new Date()
         //take shorter flowid due to https://github.com/telstra/open-kilda/issues/3720
         def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
         flowHelperV2.addFlow(flow)
+
         then: "Check if stats for forward are available"
         def statsData = null
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
@@ -62,9 +65,11 @@ class Server42RttSpec extends HealthCheckSpecification {
                      direction: "forward"]).dps
             assert statsData && !statsData.empty
         }
+
         cleanup: "Revert system to original state"
         revertToOrigin([flow], flowRttFeatureStartState, initialSwitchRtt)
     }
+
     @Tidy
     def "Flow rtt stats are available in forward and reverse directions for new flows"() {
         given: "Two active switches with src switch having server42"
@@ -76,13 +81,16 @@ class Server42RttSpec extends HealthCheckSpecification {
         assumeTrue(switchPair != null, "Was not able to find a switch with a server42 connected")
         and: "server42FlowRtt feature toggle is set to true"
         def flowRttFeatureStartState = changeFlowRttToggle(true)
+
         and: "server42FlowRtt is enabled on src and dst switches"
         def server42Switch = switchPair.src
         def initialSwitchRtt = [server42Switch, switchPair.dst].collectEntries { [it, changeFlowRttSwitch(it, true)] }
+
         when: "Create a flow for forward metric"
         def flowCreateTime = new Date()
         def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
         flowHelperV2.addFlow(flow)
+
         and: "Create a reversed flow for backward metric"
         def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed, false, [flow]).tap {
             flowId = it.flowId.take(25)
@@ -116,6 +124,7 @@ class Server42RttSpec extends HealthCheckSpecification {
                 meters.misconfigured.empty
             }
         }
+
         and: "Check if stats for forward are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             def statsData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
@@ -123,6 +132,7 @@ class Server42RttSpec extends HealthCheckSpecification {
                      direction: "forward"]).dps
             assert statsData && !statsData.empty
         }
+
         and: "Check if stats for reverse are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             def statsData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
@@ -130,6 +140,7 @@ class Server42RttSpec extends HealthCheckSpecification {
                      direction: "reverse"]).dps
             assert statsData && !statsData.empty
         }
+
         cleanup: "Revert system to original state"
         revertToOrigin([flow, reversedFlow], flowRttFeatureStartState, initialSwitchRtt)
     }
@@ -143,19 +154,24 @@ class Server42RttSpec extends HealthCheckSpecification {
         }
         assumeTrue(switchPair != null, "Was not able to find a switch with a server42 connected")
         def statsWaitSeconds = 4
+
         and: "server42FlowRtt toggle is turned off"
         def flowRttFeatureStartState = changeFlowRttToggle(false)
+
         and: "server42FlowRtt is turned off on src and dst"
         def initialSwitchRtt = [switchPair.src, switchPair.dst].collectEntries { [it, changeFlowRttSwitch(it, false)] }
+
         and: "Flow for forward metric is created"
         def checkpointTime = new Date()
         def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
         flowHelperV2.addFlow(flow)
+
         and: "Reversed flow for backward metric is created"
         def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed, false, [flow]).tap {
             it.flowId = it.flowId.take(25)
         }
         flowHelperV2.addFlow(reversedFlow)
+
         expect: "Involved switches pass switch validation"
         Wrappers.wait(RULES_INSTALLATION_TIME) { //wait for s42 rules
             pathHelper.getInvolvedSwitches(flow.flowId).each { sw ->
@@ -169,33 +185,42 @@ class Server42RttSpec extends HealthCheckSpecification {
                 }
             }
         }
+
         when: "Wait for several seconds"
         TimeUnit.SECONDS.sleep(statsWaitSeconds)
+
         then: "Expect no flow rtt stats for forward flow"
         otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                 [flowid   : flow.flowId,
                  direction: "forward"]).dps.isEmpty()
+
         and: "Expect no flow rtt stats for reversed flow"
         otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                 [flowid   : reversedFlow.flowId,
                  direction: "reverse"]).dps.isEmpty()
+
         when: "Enable global rtt toggle"
         changeFlowRttToggle(true)
+
         and: "Wait for several seconds"
         checkpointTime = new Date()
         TimeUnit.SECONDS.sleep(statsWaitSeconds)
+
         then: "Expect no flow rtt stats for forward flow"
         otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                 [flowid   : flow.flowId,
                  direction: "forward"]).dps.isEmpty()
+
         and: "Expect no flow rtt stats for reversed flow"
         otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                 [flowid   : reversedFlow.flowId,
                  direction: "reverse"]).dps.isEmpty()
+
         when: "Enable switch rtt toggle on src and dst"
         changeFlowRttSwitch(switchPair.src, true)
         changeFlowRttSwitch(switchPair.dst, true)
         checkpointTime = new Date()
+
         then: "Stats for forward flow are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             def statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
@@ -203,6 +228,7 @@ class Server42RttSpec extends HealthCheckSpecification {
                      direction: "forward"]).dps
             assert statsData && !statsData.empty
         }
+
         and: "Stats for reversed flow are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             def statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
@@ -233,20 +259,25 @@ class Server42RttSpec extends HealthCheckSpecification {
 //        }
         when: "Disable global toggle"
         changeFlowRttToggle(false)
+
         and: "Wait for several seconds"
         checkpointTime = new Date()
         TimeUnit.SECONDS.sleep(statsWaitSeconds)
+
         then: "Expect no flow rtt stats for forward flow"
         otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                 [flowid   : flow.flowId,
                  direction: "forward"]).dps.isEmpty()
+
         and: "Expect no flow rtt stats for reversed flow"
         otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                 [flowid   : reversedFlow.flowId,
                  direction: "reverse"]).dps.isEmpty()
+
         cleanup: "Revert system to original state"
         revertToOrigin([flow, reversedFlow], flowRttFeatureStartState, initialSwitchRtt)
     }
+
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Flow rtt stats are available if both endpoints are conected to the same server42 (same pop)"() {
@@ -258,10 +289,12 @@ class Server42RttSpec extends HealthCheckSpecification {
         and: "server42FlowRtt feature enabled globally and on src/dst switch"
         def flowRttFeatureStartState = changeFlowRttToggle(true)
         def initialSwitchRtt = [switchPair.src, switchPair.dst].collectEntries { [it, changeFlowRttSwitch(it, true)] }
+
         when: "Create a flow"
         def checkpointTime = new Date()
         def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
         flowHelperV2.addFlow(flow)
+
         then: "Involved switches pass switch validation"
         Wrappers.wait(RULES_INSTALLATION_TIME) {  //wait for s42 rules
             pathHelper.getInvolvedSwitches(flow.flowId).each { sw ->
@@ -275,6 +308,7 @@ class Server42RttSpec extends HealthCheckSpecification {
                 }
             }
         }
+
         and: "Stats for both directions are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             def fwData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
@@ -286,10 +320,12 @@ class Server42RttSpec extends HealthCheckSpecification {
                      direction: "reverse"]).dps
             assert reverseData && !reverseData.empty
         }
+
         when: "Disable flow rtt on dst switch"
         changeFlowRttSwitch(switchPair.dst, false)
         sleep(1000)
         checkpointTime = new Date()
+
         then: "Stats are available in forward direction"
         TimeUnit.SECONDS.sleep(4) //remove after removing workaround below
         //not until https://github.com/telstra/open-kilda/issues/3809
@@ -299,13 +335,16 @@ class Server42RttSpec extends HealthCheckSpecification {
 //                     direction: "forward"]).dps
 //            assert fwData && !fwData.empty
 //        }
+
         and: "Stats are not available in reverse direction"
         otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                 [flowid   : flow.flowId,
                  direction: "reverse"]).dps.isEmpty()
+
         cleanup: "Revert system to original state"
         revertToOrigin([flow], flowRttFeatureStartState, initialSwitchRtt)
     }
+
     def changeFlowRttSwitch(Switch sw, boolean requiredState) {
         def originalProps = northbound.getSwitchProperties(sw.dpId)
         if (originalProps.server42FlowRtt != requiredState) {
@@ -326,13 +365,17 @@ class Server42RttSpec extends HealthCheckSpecification {
         }
         return originalProps.server42FlowRtt
     }
+
     def changeFlowRttToggle(boolean requiredState) {
         def originalState = northbound.featureToggles.server42FlowRtt
         if (originalState != requiredState) {
             northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(requiredState).build())
         }
+        //not going to check rules on every switch in the system. sleep does the trick fine
+        sleep(3000)
         return originalState
     }
+
     def revertToOrigin(flows,  flowRttFeatureStartState, initialSwitchRtt) {
         flows.each { flowHelperV2.deleteFlow(it.flowId) }
         //make sure that s42 rules are deleted
@@ -346,7 +389,6 @@ class Server42RttSpec extends HealthCheckSpecification {
             }
         }
         flowRttFeatureStartState != null && changeFlowRttToggle(flowRttFeatureStartState)
-        sleep(5000) //due to instability on jenkins
         initialSwitchRtt.each { sw, state -> changeFlowRttSwitch(sw, state)  }
         initialSwitchRtt.keySet().each { sw ->
             Wrappers.wait(RULES_INSTALLATION_TIME) {
