@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit
 @Tags([LOW_PRIORITY])
 class PinnedFlowSpec extends HealthCheckSpecification {
 
+    @Tidy
     def "System doesn't reroute(automatically) pinned flow when flow path is partially broken"() {
         given: "A pinned flow going through a long not preferable path"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -106,8 +107,8 @@ class PinnedFlowSpec extends HealthCheckSpecification {
             assert pathHelper.convert(northbound.getFlowPath(flow.id)) == currentPath
         }
 
-        and: "Cleanup: revert system to original state"
-        flowHelper.deleteFlow(flow.id)
+        cleanup:
+        flow && flowHelper.deleteFlow(flow.id)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
     }
@@ -153,6 +154,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
 
         cleanup:
-        flowHelper.deleteFlow(flow.id)
+        flow && flowHelper.deleteFlow(flow.id)
     }
 }

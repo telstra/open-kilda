@@ -237,7 +237,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         pathHelper.getInvolvedIsls(flow1.flowId).intersect(pathHelper.getInvolvedIsls(flow2.flowId)).empty
 
         cleanup:
-        [flow1, flow2].each { flowHelperV2.deleteFlow(it.flowId) }
+        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     @Tidy
@@ -410,6 +410,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Partial update with empty body does not actually update flow in any way"() {
         given: "A flow"
         def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -439,8 +440,8 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
 
-        cleanup: "Remove the flow"
-        [flow, helperFlow].each { flowHelperV2.deleteFlow(it.flowId) }
+        cleanup: "Remove flows"
+        [flow, helperFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     @Tidy
@@ -512,7 +513,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        [flow1, flow2].each { flowHelperV2.deleteFlow(it.flowId) }
+        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
 
         where:
         data <<[

@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -48,7 +49,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
@@ -74,9 +75,10 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "System doesn't reroute(automatically) pinned flow when flow path is partially broken"() {
         given: "A pinned flow going through a long not preferable path"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -159,9 +161,16 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
         }
+        def islsAreUp = true
 
-        and: "Cleanup: revert system to original state"
-        flowHelperV2.deleteFlow(flow.flowId)
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        if (islsToBreak && !islsAreUp) {
+            islsToBreak.each { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
+            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+                assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+            }
+        }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
     }
@@ -191,7 +200,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Revert system to original state"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
     }
@@ -221,7 +230,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Revert system to original state"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
@@ -266,6 +275,6 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 }

@@ -28,6 +28,7 @@ class DefaultFlowSpec extends HealthCheckSpecification {
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
+    @Tidy
     def "Systems allows to pass traffic via default and vlan flow when they are on the same port"() {
         given: "At least 3 traffGen switches"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
@@ -101,10 +102,11 @@ class DefaultFlowSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flows"
-        [vlanFlow, defaultFlow].each { flow -> flowHelper.deleteFlow(flow.id) }
+        cleanup: "Delete the flows"
+        [vlanFlow, defaultFlow].each { it && flowHelper.deleteFlow(it.id) }
     }
 
+    @Tidy
     def "System allows tagged traffic via default flow(0<->0)"() {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
         given: "At least 2 traffGen switches"
@@ -133,10 +135,11 @@ class DefaultFlowSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flows"
-        flowHelper.deleteFlow(defaultFlow.id)
+        cleanup: "Delete the flows"
+        defaultFlow && flowHelper.deleteFlow(defaultFlow.id)
     }
 
+    @Tidy
     def "Unable to send traffic from simple flow into default flow and vice versa"() {
         given: "At least 2 traffGen switches"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
@@ -169,8 +172,8 @@ class DefaultFlowSpec extends HealthCheckSpecification {
             assert !traffExam.waitExam(direction).hasTraffic()
         }
 
-        and: "Cleanup: Delete the flows"
-        [defaultFlow, simpleflow].each { flowHelper.deleteFlow(it.id) }
+        cleanup: "Delete the flows"
+        [defaultFlow, simpleflow].each { it && flowHelper.deleteFlow(it.id) }
     }
 
     @Tidy
@@ -198,7 +201,7 @@ port=$defaultFlow2.source.portNumber, existing flow '$defaultFlow1.id' \
 source: switchId=\"$defaultFlow1.source.datapath\" port=$defaultFlow1.source.portNumber"
 
         cleanup:
-        flowHelper.deleteFlow(defaultFlow1.id)
+        defaultFlow1 && flowHelper.deleteFlow(defaultFlow1.id)
         defaultFlow2 && !exc && flowHelper.deleteFlow(defaultFlow2.id)
     }
 }

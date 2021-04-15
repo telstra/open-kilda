@@ -169,7 +169,7 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         e.rawStatusCode == 404
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
@@ -210,7 +210,7 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         checkBandwidth(flowPathAfterUpdate, linksBeforeFlowCreate, linksAfterFlowUpdate)
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
@@ -252,7 +252,7 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/1150")

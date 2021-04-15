@@ -187,7 +187,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         [data, swPair] << ([
@@ -234,7 +234,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
@@ -353,7 +353,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow and reset costs"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
@@ -392,7 +392,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(defaultFlow.flowId)
+        flow && flowHelperV2.deleteFlow(defaultFlow.flowId)
     }
 
     @Tidy
@@ -605,7 +605,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         encapsulationCreate                | encapsulationUpdate

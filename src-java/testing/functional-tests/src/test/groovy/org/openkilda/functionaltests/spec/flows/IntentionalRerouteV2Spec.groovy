@@ -76,7 +76,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
 
         cleanup: "Remove the flow, restore the bandwidth on ISLs, reset costs"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         changedIsls.each {
             database.resetIslBandwidth(it)
             database.resetIslBandwidth(it.reversed)
@@ -131,8 +131,8 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
 
         cleanup: "Remove the flow, restore bandwidths on ISLs, reset costs"
-        flowHelperV2.deleteFlow(flow.flowId)
-        [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        thinIsl && [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
     }
 
     /**
@@ -193,7 +193,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
@@ -250,7 +250,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Remove the flow, restore the bandwidth on ISLs, reset costs"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         changedIsls.each {
             database.resetIslBandwidth(it)
             database.resetIslBandwidth(it.reversed)
@@ -313,7 +313,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def cleanup() {

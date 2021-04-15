@@ -91,7 +91,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         bandwidth | vlanId
@@ -156,7 +156,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
@@ -318,7 +318,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Revert system to original state"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
@@ -395,7 +395,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         flows.each { assert pathHelper.convert(northbound.getFlowPath(it.flowId)) == currentProtectedPath }
 
         cleanup: "Revert system to original state"
-        flows.each { flowHelperV2.deleteFlow(it.flowId) }
+        flows.each { it && flowHelperV2.deleteFlow(it.flowId) }
         if (portDown && !portUp) {
             antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
@@ -464,7 +464,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         mainIslDown && !mainIslUp && antiflap.portUp(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
         otherIsls && otherIsls.collectMany{[it, it.reversed]}.each { database.resetIslBandwidth(it) }
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(mainIsl).state == IslChangeType.DISCOVERED }
@@ -585,7 +585,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         cleanup: "Revert system to original state"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
 
         where:
@@ -652,7 +652,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentProtectedPath
 
         cleanup: "Revert system to original state"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (portDown && !portUp) {
             antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
@@ -694,7 +694,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         pathHelper.convert(newFlowPathInfo.protectedPath) == currentProtectedPath
 
         cleanup: "Revert system to original state"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
@@ -728,7 +728,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow and restore available bandwidth"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         isls.each { database.resetIslBandwidth(it) }
     }
 
@@ -758,7 +758,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         database.getTransitVlans(flowInfo.protectedForwardPathId, flowInfo.protectedReversePathId).size() == 1
 
         cleanup: "Delete the flow and restore available bandwidth"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         isls.each { database.resetIslBandwidth(it) }
     }
 
@@ -848,7 +848,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         pathHelper.convert(northbound.getFlowPath(flow.flowId).protectedPath) == newProtectedPath
 
         cleanup: "Revert system to original state"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (portDown && !portUp) {
             antiflap.portUp(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
@@ -899,7 +899,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -965,7 +965,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology, delete flow and reset costs"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort) } }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -1084,7 +1084,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Revert system to original state"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
@@ -1242,7 +1242,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
                 "Could not swap paths: Flow $flow.flowId doesn't have protected path"
 
         cleanup: "Revert system to original state"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
@@ -1287,6 +1287,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to swap paths for an inactive flow"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
@@ -1391,8 +1392,8 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
-        and: "Cleanup: Restore topology, delete flows and reset costs"
-        flowHelperV2.deleteFlow(flow.flowId)
+        cleanup: "Restore topology, delete flows and reset costs"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -1443,7 +1444,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         errorDetails.errorDescription == "Couldn't setup protected path for one-switch flow"
 
         cleanup: "Revert system to original state"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
@@ -1557,7 +1558,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         pathHelper.convert(newFlowPathInfo.protectedPath) == alternativePath
 
         cleanup: "Restore topology, delete flow and reset costs"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
         broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -1588,7 +1589,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     List<Integer> getCreatedMeterIds(SwitchId switchId) {

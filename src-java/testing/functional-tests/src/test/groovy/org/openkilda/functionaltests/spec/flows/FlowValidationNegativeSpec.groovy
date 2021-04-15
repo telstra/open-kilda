@@ -31,6 +31,7 @@ import spock.lang.Narrative
 @Tags([LOW_PRIORITY])
 class FlowValidationNegativeSpec extends HealthCheckSpecification {
 
+    @Tidy
     @IterationTag(tags = [SMOKE], iterationNameRegex = /reverse/)
     def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration"() {
         given: "Two flows with #flowConfig configuration"
@@ -84,8 +85,8 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
             assert nonAffectedSwitches.every { sw -> northbound.validateSwitchRules(sw).excessRules.size() == 0 }
         }
 
-        and: "Delete the flows"
-        [flowToBreak.id, intactFlow.id].each { flowHelper.deleteFlow(it) }
+        cleanup: "Delete the flows"
+        [flowToBreak, intactFlow].each {it && flowHelper.deleteFlow(it.id) }
 
         where:
         flowConfig      | switchPair                                        | item | switchNo | flowType
@@ -145,6 +146,7 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     def "Able to detect discrepancies for a flow with protected path"() {
         when: "Create a flow with protected path"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -193,8 +195,8 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         def responseValidateFlow2 = northbound.validateFlow(flow.id).findAll { !it.discrepancies.empty }*.discrepancies
         assert responseValidateFlow2.size() == 4
 
-        and: "Cleanup: delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        cleanup:
+        flow && flowHelper.deleteFlow(flow.id)
     }
 
     /**
