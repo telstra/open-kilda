@@ -84,6 +84,7 @@ public class FlowConverter {
         flowInfo.setPinned(flow.isPinned());
         flowInfo.setPeriodicPings(flow.isPeriodicPings());
         flowInfo.setMaxLatency(flow.getMaxLatency());
+        flowInfo.setMaxLatencyTier2(flow.getMaxLatencyTier2());
         flowInfo.setPriority(flow.getPriority());
         flowInfo.setTargetPathComputationStrategy(flow.getTargetPathComputationStrategy());
         flowInfo.setStatusInfo(flow.getStatusInfo());
