@@ -31,6 +31,7 @@ import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
@@ -253,6 +254,13 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
         return restTemplate.exchange("/api/v2/switches/{switchId}", HttpMethod.PATCH,
                 new HttpEntity<>(dto, buildHeadersWithCorrelationId()), SwitchDtoV2.class, switchId)
                 .getBody();
+    }
+
+    @Override
+    public SwitchConnectionsResponse getSwitchConnections(SwitchId switchId) {
+        log.debug("Get switch('{}') connections", switchId);
+        return restTemplate.exchange("/api/v2/switches/{switchId}/connections", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchConnectionsResponse.class, switchId).getBody();
     }
 
     @Override
