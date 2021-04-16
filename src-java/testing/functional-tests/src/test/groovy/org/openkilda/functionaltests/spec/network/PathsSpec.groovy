@@ -124,7 +124,7 @@ class PathsSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(LOW_PRIORITY)
-    def "Unable to get a path for a 'vxlan' flowEncapsulationType when flow when switches do not support it"() {
+    def "Unable to get a path for a 'vxlan' flowEncapsulationType when switches do not support it"() {
         given: "Two active not supported 'vxlan' flowEncapsulationType switches"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
             [it.src, it.dst].any { sw ->
@@ -133,7 +133,7 @@ class PathsSpec extends HealthCheckSpecification {
                 )
             }
         }
-        assumeTrue("Unable to find required switches in topology", switchPair as boolean)
+        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
         def srcProps = northbound.getSwitchProperties(switchPair.src.dpId)
         def dstProps = northbound.getSwitchProperties(switchPair.dst.dpId)
 
@@ -150,7 +150,7 @@ class PathsSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.NOT_FOUND
+        exc.statusCode == HttpStatus.BAD_REQUEST
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Switch $swWithoutVxlan.dpId doesn't support $FlowEncapsulationType.VXLAN " +
                 "encapslation type. Choose one of the supported encapsulation types $encapsTypesWithoutVxlan or " +
