@@ -27,9 +27,11 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 import spock.lang.Ignore
 import spock.lang.Shared
 
@@ -332,6 +334,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "System doesn't allow to create a QinQ flow with incorrect innerVlanIds\
 (src:#srcInnerVlanId, dst:#dstInnerVlanId)"() {
         given: "A switch pair with enabled multi table mode"

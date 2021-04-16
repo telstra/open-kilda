@@ -27,9 +27,11 @@ import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput
 import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Unroll
@@ -236,6 +238,7 @@ class FlowPingSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Verify error if try to ping with wrong flowId"() {
         when: "Send ping request with non-existing flowId"
         def wrongFlowId = "nonexistent"
@@ -319,6 +322,7 @@ class FlowPingSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([LOW_PRIORITY])
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to create a single-switch flow with periodic pings"() {
         when: "Try to create a single-switch flow with periodic pings"
         def flow = flowHelperV2.singleSwitchFlow(topology.activeSwitches.first()).tap {

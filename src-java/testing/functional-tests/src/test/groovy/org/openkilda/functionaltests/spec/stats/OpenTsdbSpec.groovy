@@ -12,7 +12,9 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.testing.Constants.DefaultRule
 
 import groovy.time.TimeCategory
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Execution
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -30,6 +32,7 @@ class OpenTsdbSpec extends HealthCheckSpecification {
     @Tidy
     @Unroll("Stats are being logged for metric:#metric, tags:#tags")
     @Tags([TOPOLOGY_DEPENDENT, SMOKE])
+    @Execution(ExecutionMode.CONCURRENT)
     def "Basic stats are being logged"(metric, tags) {
         expect: "At least 1 result in the past 5 minutes"
         otsdb.query(5.minutes.ago, metric, tags).dps.size() > 0
@@ -52,6 +55,7 @@ class OpenTsdbSpec extends HealthCheckSpecification {
     @Tidy
     @Tags(HARDWARE)
     @Unroll("Stats are being logged for metric:#metric, tags:#tags")
+    @Execution(ExecutionMode.CONCURRENT)
     def "Basic stats are being logged (10min interval)"() {
         expect: "At least 1 result in the past 10 minutes"
         otsdb.query(10.minutes.ago, metric, [:]).dps.size() > 0
@@ -65,6 +69,7 @@ class OpenTsdbSpec extends HealthCheckSpecification {
     @Tidy
     @Unroll("GRPC stats are being logged for metric:#metric, tags:#tags")
     @Tags([HARDWARE])
+    @Execution(ExecutionMode.CONCURRENT)
     def "GRPC stats are being logged"(metric, tags) {
         assumeTrue(northbound.getFeatureToggles().collectGrpcStats,
 "This test is skipped because 'collectGrpcStats' is disabled")

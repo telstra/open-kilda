@@ -12,15 +12,18 @@ import org.openkilda.testing.service.elastic.ElasticService
 import org.openkilda.testing.service.elastic.model.KildaTags
 
 import groovy.util.logging.Slf4j
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 import spock.lang.Narrative
 import spock.lang.Shared
 
 @Slf4j
 @Tags([SMOKE])
 @Narrative("This specification ensures that all logging facilities are up and running after Kilda deployment")
+@Execution(ExecutionMode.CONCURRENT)
 class CheckLoggingSpec extends HealthCheckSpecification {
 
     @Autowired @Shared

@@ -34,8 +34,10 @@ import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.transform.Memoized
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -95,6 +97,7 @@ class MetersSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to delete a meter with invalid ID=#meterId on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 

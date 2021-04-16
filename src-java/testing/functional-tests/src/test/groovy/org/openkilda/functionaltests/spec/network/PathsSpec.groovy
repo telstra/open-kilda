@@ -12,8 +12,10 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
 
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 
 class PathsSpec extends HealthCheckSpecification {
 
@@ -78,6 +80,7 @@ class PathsSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(LOW_PRIORITY)
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to get paths between one switch"() {
         given: "An active switch"
         def sw = topology.getActiveSwitches()[0]
@@ -92,6 +95,7 @@ class PathsSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(LOW_PRIORITY)
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to get paths between nonexistent switch"() {
         given: "An active switch"
         def sw = topology.getActiveSwitches()[0]
@@ -105,6 +109,7 @@ class PathsSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to get paths with max_latency strategy without max latency parameter"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getNotNeighboringSwitchPair()
@@ -124,6 +129,7 @@ class PathsSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(LOW_PRIORITY)
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to get a path for a 'vxlan' flowEncapsulationType when flow when switches do not support it"() {
         given: "Two active not supported 'vxlan' flowEncapsulationType switches"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {

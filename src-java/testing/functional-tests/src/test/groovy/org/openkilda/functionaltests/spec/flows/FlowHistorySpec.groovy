@@ -17,6 +17,8 @@ import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import org.spockframework.runtime.model.parallel.ExecutionMode
+import spock.lang.Execution
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -207,6 +209,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "History should not be returned in case flow was never created"() {
         when: "Try to get history for incorrect flowId"
         def flowHistory = northbound.getFlowHistory(NON_EXISTENT_FLOW_ID)

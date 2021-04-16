@@ -38,8 +38,10 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
@@ -511,6 +513,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to #action rules on a non-existent switch"() {
         when: "Try to #action rules on a non-existent switch"
         northbound."$method"(NON_EXISTENT_SWITCH_ID)

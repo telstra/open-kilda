@@ -46,9 +46,11 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import groovy.util.logging.Slf4j
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
@@ -570,6 +572,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to create a flow with invalid encapsulation type"() {
         given: "A flow with invalid encapsulation type"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches

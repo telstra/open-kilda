@@ -19,15 +19,18 @@ import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.otsdb.OtsdbQueryService
 import org.openkilda.testing.tools.IslUtils
 
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.spockframework.spring.EnableSharedInjection
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.test.context.ContextConfiguration
+import spock.lang.Execution
 import spock.lang.Shared
 import spock.lang.Specification
 
 @ContextConfiguration(locations = ["classpath:/spring-context.xml"])
 @EnableSharedInjection
+@Execution(ExecutionMode.SAME_THREAD)
 class BaseSpecification extends Specification {
 
     @Autowired @Shared

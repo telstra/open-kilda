@@ -31,9 +31,11 @@ import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
@@ -775,6 +777,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(LOW_PRIORITY)
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to create flowLoop for a non existent flow"() {
         when: "Try to create flowLoop on the transit switch"
         def sw = topology.activeSwitches.first()

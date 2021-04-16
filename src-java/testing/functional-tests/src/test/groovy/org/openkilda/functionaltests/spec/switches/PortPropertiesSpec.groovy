@@ -18,8 +18,10 @@ import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
 
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 import spock.lang.Narrative
 import spock.lang.See
 
@@ -77,6 +79,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Informative error is returned when trying to get/update port properties with non-existing switch"() {
         when: "Try to get port properties info for non-existing switch"
         //assume port 10 is always exist on a switch
@@ -102,6 +105,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Informative error is returned when trying to update port properties with non-existing port number"() {
         when: "Try to get port properties info for non-existing port"
         // Actually we have strange behaviour here, we can get port property for a non-existent port, but can't update

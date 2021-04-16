@@ -15,13 +15,16 @@ import org.openkilda.northbound.dto.v1.switches.SwitchLocationDto
 import org.openkilda.testing.service.grpc.GrpcService
 
 import groovy.transform.Memoized
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Execution
 import spock.lang.See
 import spock.lang.Shared
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/grpc-client")
 @Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
+@Execution(ExecutionMode.CONCURRENT)
 class GrpcBaseSpecification extends HealthCheckSpecification {
     @Value('${spring.profiles.active}')
     String profile

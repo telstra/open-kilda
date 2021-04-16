@@ -24,7 +24,9 @@ import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.SoftAssertions
 
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Execution
 import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
@@ -163,6 +165,7 @@ class PortHistorySpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Port history should not be returned in case port/switch have never existed"() {
         when: "Try to get port history for incorrect port and switch"
         def portHistory = northboundV2.getPortHistory(NON_EXISTENT_SWITCH_ID, 99999)

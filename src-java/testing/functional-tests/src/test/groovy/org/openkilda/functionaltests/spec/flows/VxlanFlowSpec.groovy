@@ -22,8 +22,10 @@ import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 import spock.lang.Narrative
 
 import java.time.Instant
@@ -362,6 +364,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "System doesn't allow to create a flow with 'VXLAN' encapsulation on non-supported switches"() {
         setup:
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
@@ -385,6 +388,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(HARDWARE)
+    @Execution(ExecutionMode.CONCURRENT)
     def "System doesn't allow to create a vxlan flow when transit switch doesn't support VXLAN"() {
         setup:
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
@@ -430,6 +434,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(HARDWARE)
+    @Execution(ExecutionMode.CONCURRENT)
     def "System doesn't allow to create a vxlan flow when dst switch doesn't support VXLAN"() {
         given: "VXLAN supported and not supported switches"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -522,6 +527,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "System doesn't allow to enable a flow with 'VXLAN' encapsulation on non-supported switch"() {
         given: "A flow with 'TRANSIT_VLAN' encapsulation"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->

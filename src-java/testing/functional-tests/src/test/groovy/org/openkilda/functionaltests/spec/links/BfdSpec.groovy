@@ -15,8 +15,10 @@ import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.links.BfdProperties
 
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
@@ -344,6 +346,7 @@ class BfdSpec extends HealthCheckSpecification {
         bfdProps && northboundV2.deleteLinkBfd(isl)
     }
 
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to create bfd with #data.descr"() {
         given: "An ISL between two Noviflow switches"
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow }

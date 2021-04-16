@@ -19,8 +19,10 @@ import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -76,6 +78,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(LOW_PRIORITY)
+    @Execution(ExecutionMode.CONCURRENT)
     def "System doesn't allow to update kilda configuration with wrong flow encapsulation type"() {
         when: "Try to set wrong flow encapsulation type"
         def incorrectValue = "TEST"

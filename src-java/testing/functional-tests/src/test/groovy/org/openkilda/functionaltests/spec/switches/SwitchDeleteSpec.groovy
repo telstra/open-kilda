@@ -14,12 +14,15 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 
 import java.util.concurrent.TimeUnit
 
 class SwitchDeleteSpec extends HealthCheckSpecification {
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to delete a nonexistent switch"() {
         when: "Try to delete a nonexistent switch"
         northbound.deleteSwitch(NON_EXISTENT_SWITCH_ID, false)

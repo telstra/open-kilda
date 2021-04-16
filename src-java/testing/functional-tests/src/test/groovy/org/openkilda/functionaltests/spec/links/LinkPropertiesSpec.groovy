@@ -13,6 +13,8 @@ import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.links.LinkPropsDto
 import org.openkilda.testing.Constants
 
+import org.spockframework.runtime.model.parallel.ExecutionMode
+import spock.lang.Execution
 import spock.lang.Shared
 
 import java.util.concurrent.TimeUnit
@@ -63,6 +65,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         northbound.deleteLinkProps(linkProps)
     }
 
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to create link property with invalid switchId format"() {
         when: "Try creating link property with invalid switchId format"
         def linkProp = new LinkPropsDto("I'm invalid", 1, "00:00:00:00:00:00:00:02", 1, [:])
@@ -73,6 +76,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         response.messages.first() == "Can not parse input string: \"${linkProp.srcSwitch}\""
     }
 
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to create link property with non-numeric value for #key"() {
         when: "Try creating link property with non-numeric values"
         def linkProp = new LinkPropsDto("00:00:00:00:00:00:00:01", 1, "00:00:00:00:00:00:00:02", 1, [(key): "1000L"])

@@ -15,8 +15,10 @@ import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 
 import groovy.transform.AutoClone
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 import spock.lang.Narrative
 
 @Narrative("""Switch properties are created automatically once switch is connected to the controller
@@ -61,6 +63,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Informative error is returned when trying to get/update switch properties with non-existing id"() {
         when: "Try to get switch properties info for non-existing switch"
         northbound.getSwitchProperties(NON_EXISTENT_SWITCH_ID)
@@ -85,6 +88,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Informative error is returned when trying to update switch properties with incorrect information"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
@@ -107,6 +111,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Error is returned when trying to #data.desc"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
@@ -171,6 +176,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to turn on switchLldp property without turning on multiTable property"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
@@ -195,6 +201,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to turn on switchArp property without turning on multiTable property"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
@@ -220,6 +227,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
+    @Execution(ExecutionMode.CONCURRENT)
     def "System forbids to turn on VXLAN encap type on switch that does not support it"() {
         given: "Switch that does not support VXLAN feature"
         def sw = topology.activeSwitches.find { !it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) }

@@ -26,8 +26,10 @@ import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import groovy.transform.Memoized
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 import spock.lang.See
 
 import java.util.concurrent.TimeUnit
@@ -239,6 +241,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to get flows for NOT existing link (#item doesn't exist)"() {
         when: "Get flows for NOT existing link"
         northbound.getLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -258,6 +261,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to get flows with specifying invalid query parameters (#item is invalid)"() {
         when: "Get flows with specifying invalid #item"
         northbound.getLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -275,6 +279,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to get flows without full specifying a particular link (#item is missing)"() {
         when: "Get flows without specifying #item"
         northbound.getLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -293,6 +298,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to delete a nonexistent link"() {
         given: "Parameters of nonexistent link"
         def parameters = new LinkParametersDto(new SwitchId(1).toString(), 100, new SwitchId(2).toString(), 100)
@@ -400,6 +406,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to reroute flows with specifying NOT existing link (#item doesn't exist)"() {
         when: "Reroute flows with specifying NOT existing link"
         northbound.rerouteLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -419,6 +426,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to reroute flows with specifying invalid query parameters (#item is invalid)"() {
         when: "Reroute flows with specifying invalid #item"
         northbound.rerouteLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -436,6 +444,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to reroute flows without full specifying a particular link (#item is missing)"() {
         when: "Reroute flows without specifying #item"
         northbound.rerouteLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -454,6 +463,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Get links with specifying query parameters"() {
         when: "Get links with specifying query parameters"
         def links = northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -471,6 +481,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Get links with specifying NOT existing query parameters (#item doesn't exist)"() {
         when: "Get links with specifying NOT existing query parameters"
         def links = northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -487,6 +498,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to get links with specifying invalid query parameters (#item is invalid)"() {
         when: "Get links with specifying invalid #item"
         northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -626,6 +638,7 @@ class LinkSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to update max bandwidth with specifying invalid query parameters (#item is invalid)"() {
         when: "Update max bandwidth with specifying invalid #item"
         northbound.updateLinkMaxBandwidth(srcSwId, srcSwPort, dstSwId, dstSwPort, 1000000)
@@ -642,6 +655,7 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
     }
 
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to update max bandwidth without full specifying a particular link (#item is missing)"() {
         when: "Update max bandwidth without specifying #item"
         northbound.updateLinkMaxBandwidth(srcSwId, srcSwPort, dstSwId, dstSwPort, 1000000)

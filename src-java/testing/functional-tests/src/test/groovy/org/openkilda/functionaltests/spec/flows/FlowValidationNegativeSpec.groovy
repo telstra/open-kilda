@@ -16,7 +16,9 @@ import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
 
 import groovy.util.logging.Slf4j
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 import spock.lang.Narrative
 
 @Slf4j
@@ -104,6 +106,7 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to #data.description a non-existent flow"() {
         when: "Trying to #action a non-existent flow"
         data.operation.call()

@@ -40,8 +40,10 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 import spock.lang.Ignore
 import spock.lang.Narrative
 
@@ -513,6 +515,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([LOW_PRIORITY, TOPOLOGY_DEPENDENT])
+    @Execution(ExecutionMode.CONCURRENT)
     def "Unable to create a vxlan flow when dst switch does not support it"() {
         given: "VXLAN supported and not supported switches"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {

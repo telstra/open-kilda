@@ -29,8 +29,10 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import com.github.javafaker.Faker
 import groovy.util.logging.Slf4j
+import org.spockframework.runtime.model.parallel.ExecutionMode
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Execution
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -253,6 +255,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(LOW_PRIORITY)
+    @Execution(ExecutionMode.CONCURRENT)
     def "History max_count cannot be <1"() {
         when: "Try to get history with max_count 0"
         northbound.getFlowHistory(flowWithHistory, 0)
@@ -268,6 +271,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(LOW_PRIORITY)
+    @Execution(ExecutionMode.CONCURRENT)
     def "Check history: #data.descr"() {
         expect: "#data.descr"
         northbound.getFlowHistory(*data.params) == data.expectedHistory
