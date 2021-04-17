@@ -8,16 +8,16 @@ There are potential issues that may occur because of the current design and impl
 - Rules might not be removed if switch(es) become inaccessible during the process.
 - It is almost impossible to track down what went wrong during the process.
 
-![Flow rerouting current version](flow-reroute-current.png "Flow rerouting current version")
+![Flow rerouting current version](https://pointillism.io/telstra/open-kilda/blob/master/docs/design/hub-and-spoke/reroute/flow-reroute-current.puml.svg "Flow rerouting current version")
 
 ## Flow rerouting using hub and spoke
 This approach helps to detect failures during installation and revert changes if something went wrong. Also it allows to
 handle timeout cases and add retries or another custom logic.
 
-![Flow rerouting design](flow-reroute-hs.png "Flow rerouting sequence diagram")
+![Flow rerouting design](https://pointillism.io/telstra/open-kilda/blob/master/docs/design/hub-and-spoke/reroute/flow-reroute-hs.puml.svg "Flow rerouting sequence diagram")
 
 ### FSM for flow rerouting
 Here is a FSM diagram that helps to understand main steps of flow rerouting.
-![Flow rerouting fsm](flow-reroute-fsm.png "Flow rerouting fsm diagram")
+![Flow rerouting fsm](https://pointillism.io/telstra/open-kilda/blob/master/docs/design/hub-and-spoke/reroute/flow-reroute-fsm.dot.svg "Flow rerouting fsm diagram")
 
 ### For more details about hub&spoke and look into examples please follow this [link](https://github.com/telstra/open-kilda/blob/develop/docs/design/hub-and-spoke/v7/README.md)
