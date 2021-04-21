@@ -120,8 +120,8 @@ subprojects {
             testImplementation 'io.grpc:grpc-testing:1.36.0'
             implementation 'com.google.protobuf:protobuf-java-util:3.15.6'
 
-            implementation 'io.springfox:springfox-swagger2:2.9.2'
-            implementation 'io.springfox:springfox-swagger-ui:2.9.2'
+            implementation 'io.springfox:springfox-swagger-ui:3.0.0'
+            implementation 'io.springfox:springfox-boot-starter:3.0.0'
 
             implementation 'com.esotericsoftware:kryo:5.0.4'
         }

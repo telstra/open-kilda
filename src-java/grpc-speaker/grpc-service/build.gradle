@@ -51,8 +51,8 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.commons:commons-lang3'
     implementation 'com.sabre.oss.conf4j:conf4j-spring-boot'
-    implementation 'io.springfox:springfox-swagger2'
     implementation 'io.springfox:springfox-swagger-ui'
+    implementation 'io.springfox:springfox-boot-starter'
     implementation files('lib/noviflow-grpc-lib-1.0.jar')
     //system group: 'io.grpc.noviflow', name: 'noviflow-grpc-lib', version:'1.0'
 

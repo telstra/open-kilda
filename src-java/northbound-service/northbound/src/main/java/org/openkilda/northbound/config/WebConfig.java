@@ -77,8 +77,8 @@ public class WebConfig extends WebMvcConfigurerAdapter {
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
-        registry.addRedirectViewController("v1/swagger-ui.html", "/swagger-ui.html");
-        registry.addRedirectViewController("v2/swagger-ui.html", "/swagger-ui.html");
+        registry.addViewController("/swagger-ui/")
+                .setViewName("forward:" + "/swagger-ui/index.html");
     }
 
     /**
@@ -97,10 +97,9 @@ public class WebConfig extends WebMvcConfigurerAdapter {
      */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/swagger-ui.html")
-                .addResourceLocations("classpath:/META-INF/resources/");
-        registry.addResourceHandler("/webjars/**")
-                .addResourceLocations("classpath:/META-INF/resources/webjars/");
+        registry.addResourceHandler("/swagger-ui/**")
+                .addResourceLocations("classpath:/META-INF/resources/webjars/springfox-swagger-ui/")
+                .resourceChain(false);
     }
 
     /**

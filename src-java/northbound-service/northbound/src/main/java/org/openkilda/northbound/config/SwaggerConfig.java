@@ -21,25 +21,28 @@ import org.openkilda.model.SwitchId;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.ResponseEntity;
 import springfox.documentation.builders.ApiInfoBuilder;
-import springfox.documentation.builders.ParameterBuilder;
 import springfox.documentation.builders.RequestHandlerSelectors;
-import springfox.documentation.schema.ModelRef;
+import springfox.documentation.builders.RequestParameterBuilder;
+import springfox.documentation.schema.ScalarType;
+import springfox.documentation.service.ParameterType;
 import springfox.documentation.spi.DocumentationType;
 import springfox.documentation.spring.web.plugins.Docket;
 import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 
 @Configuration
 @EnableSwagger2
 public class SwaggerConfig {
 
-    private final ParameterBuilder correlationIdParameter = new ParameterBuilder()
-                .name(CORRELATION_ID)
-                .description("Request's unique identifier")
-                .parameterType("header")
-                .modelRef(new ModelRef("string"));
+    private final RequestParameterBuilder correlationIdParameter = new RequestParameterBuilder()
+            .name(CORRELATION_ID)
+            .description("Request's unique identifier")
+            .query(q -> q.model(m -> m.scalarModel(ScalarType.STRING)))
+            .in(ParameterType.HEADER);
 
     /**
      * Swagger configuration for API version 1.
@@ -56,7 +59,8 @@ public class SwaggerConfig {
                         .description("Kilda SDN Controller API")
                         .version("1.0")
                         .build())
-                .globalOperationParameters(Collections.singletonList(correlationIdParameter.build()))
+                .globalRequestParameters(Collections.singletonList(correlationIdParameter.build()))
+                .genericModelSubstitutes(ResponseEntity.class, CompletableFuture.class)
                 .select()
                 .apis(RequestHandlerSelectors.basePackage("org.openkilda.northbound.controller.v1"))
                 .build();
@@ -77,7 +81,8 @@ public class SwaggerConfig {
                         .description("Kilda SDN Controller API")
                         .version("2.0")
                         .build())
-                .globalOperationParameters(Collections.singletonList(correlationIdParameter.required(true).build()))
+                .globalRequestParameters(Collections.singletonList(correlationIdParameter.required(true).build()))
+                .genericModelSubstitutes(ResponseEntity.class, CompletableFuture.class)
                 .select()
                 .apis(RequestHandlerSelectors.basePackage("org.openkilda.northbound.controller.v2"))
                 .build();
