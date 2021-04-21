@@ -44,7 +44,7 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
         implements SwitchOnlineStatusListener {
     private final IBfdLogicalPortCarrier carrier;
 
-    private final Set<String> activeRequest = new HashSet<>();
+    private final Set<String> activeRequests = new HashSet<>();
 
     @Getter
     private final Endpoint physicalEndpoint;
@@ -72,25 +72,25 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
     }
 
     public void processWorkerSuccess(String requestId, InfoData response) {
-        if (activeRequest.remove(requestId)) {
+        if (activeRequests.remove(requestId)) {
             logInfo("receive worker success response: {}", response);
             BfdLogicalPortFsmContext context = BfdLogicalPortFsmContext.builder()
                     .workerResponse(response)
                     .build();
-            BfdLogicalPortFsmFactory.EXECUTOR.fire(this, Event.WORKER_SUCCESS, context);
+            processWorkerResponse(Event.WORKER_SUCCESS, context);
         } else {
             reportWorkerResponseIgnored(requestId, response);
         }
     }
 
     public void processWorkerError(String requestId, ErrorData response) {
-        if (activeRequest.remove(requestId)) {
+        if (activeRequests.remove(requestId)) {
             String errorMessage = response == null ? "timeout" : response.getErrorMessage();
             logError("receive worker error response: {}", errorMessage);
             BfdLogicalPortFsmContext context = BfdLogicalPortFsmContext.builder()
                     .workerError(response)
                     .build();
-            BfdLogicalPortFsmFactory.EXECUTOR.fire(this, Event.WORKER_ERROR, context);
+            processWorkerResponse(Event.WORKER_ERROR, context);
         } else {
             reportWorkerResponseIgnored(requestId, response);
         }
@@ -113,7 +113,7 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
     // -- FSM actions --
 
     public void prepareEnterAction(State from, State to, Event event, BfdLogicalPortFsmContext context) {
-        activeRequest.clear();
+        activeRequests.clear();
         saveSessionData(context);
     }
 
@@ -126,7 +126,7 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
     }
 
     public void creatingExitAction(State from, State to, Event event, BfdLogicalPortFsmContext context) {
-        activeRequest.clear();
+        activeRequests.clear();
     }
 
     public void operationalEnterAction(State from, State to, Event event, BfdLogicalPortFsmContext context) {
@@ -137,6 +137,18 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
 
     public void removingEnterAction(State from, State to, Event event, BfdLogicalPortFsmContext context) {
         sendPortDeleteRequest();
+    }
+
+    public void waitOngoingRequestsEnterAction(State from, State to, Event event, BfdLogicalPortFsmContext context) {
+        saveSessionData(context);
+        if (activeRequests.isEmpty()) {
+            fire(Event.REQUESTS_QUEUE_IS_EMPTY, context);
+        }
+    }
+
+    public void recoveryEnableUpdateAction(State from, State to, Event event, BfdLogicalPortFsmContext context) {
+        saveSessionData(context);
+        sendPortCreateRequest();
     }
 
     public void stopEnterAction(State from, State to, Event event, BfdLogicalPortFsmContext context) {
@@ -176,6 +188,10 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
         saveSessionData(context);
     }
 
+    public void cleanActiveRequestsAction(State from, State to, Event event, BfdLogicalPortFsmContext context) {
+        activeRequests.clear();
+    }
+
     // -- private/service methods --
 
     private void saveSessionData(BfdLogicalPortFsmContext context) {
@@ -185,7 +201,7 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
     private void sendPortCreateRequest() {
         Endpoint logical = getLogicalEndpoint();
         if (online) {
-            activeRequest.add(carrier.createLogicalPort(logical, physicalEndpoint.getPortNumber()));
+            activeRequests.add(carrier.createLogicalPort(logical, physicalEndpoint.getPortNumber()));
         } else {
             log.debug("Do not send logical port {} create request because the switch is offline now", logical);
         }
@@ -194,7 +210,7 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
     private void sendPortDeleteRequest() {
         Endpoint logical = getLogicalEndpoint();
         if (online) {
-            activeRequest.add(carrier.deleteLogicalPort(logical));
+            activeRequests.add(carrier.deleteLogicalPort(logical));
         } else {
             log.debug("Do not send logical port {} delete request because the switch is offline now", logical);
         }
@@ -216,15 +232,16 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
         carrier.disableSession(getLogicalEndpoint());
     }
 
-    private void reportWorkerResponseIgnored(String requestId, MessageData response) {
-        logDebug("ignore response {} with id \"{}\" in state {}, active requests: {}",
-                response, requestId, getCurrentState(), activeRequest);
+    private void processWorkerResponse(Event event, BfdLogicalPortFsmContext context) {
+        BfdLogicalPortFsmFactory.EXECUTOR.fire(this, event, context);
+        if (activeRequests.isEmpty()) {
+            BfdLogicalPortFsmFactory.EXECUTOR.fire(this, Event.REQUESTS_QUEUE_IS_EMPTY, context);
+        }
     }
 
-    private void logDebug(String format, Object... args) {
-        if (log.isDebugEnabled()) {
-            log.debug(makeLogPrefix() + " - " + format, args);
-        }
+    private void reportWorkerResponseIgnored(String requestId, MessageData response) {
+        logInfo("receive stale worker response {} with id \"{}\" in state {}, active requests: {}",
+                response, requestId, getCurrentState(), activeRequests);
     }
 
     private void logInfo(String format, Object... args) {
@@ -264,6 +281,7 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
             final String sendPortCreateAction = "sendPortCreateAction";
             final String saveSessionDataAction = "saveSessionDataAction";
             final String sendPortDeleteAction = "sendPortDeleteAction";
+            final String cleanActiveRequestsAction = "cleanActiveRequestsAction";
 
             // ENTER
             builder.transition()
@@ -328,12 +346,12 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
                     .callMethod(sendSessionDisableAction);
 
             // REMOVING
-            builder.transition()
-                    .from(State.REMOVING).to(State.PREPARE).on(Event.ENABLE_UPDATE);
-            builder.transition()
-                    .from(State.REMOVING).to(State.STOP).on(Event.PORT_DEL);
             builder.onEntry(State.REMOVING)
                     .callMethod("removingEnterAction");
+            builder.transition()
+                    .from(State.REMOVING).to(State.WAIT_ONGOING_REQUESTS).on(Event.ENABLE_UPDATE);
+            builder.transition()
+                    .from(State.REMOVING).to(State.STOP).on(Event.PORT_DEL);
             builder.internalTransition()
                     .within(State.REMOVING).on(Event.ONLINE)
                     .callMethod(sendPortDeleteAction);
@@ -360,6 +378,38 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
                     .from(State.DEBRIS).to(State.REMOVING).on(Event.PORT_ADD);
             builder.transition()
                     .from(State.DEBRIS).to(State.PREPARE).on(Event.ENABLE_UPDATE);
+
+            // WAIT_ONGOING_REQUESTS
+            builder.onEntry(State.WAIT_ONGOING_REQUESTS)
+                    .callMethod("waitOngoingRequestsEnterAction");
+            builder.transition()
+                    .from(State.WAIT_ONGOING_REQUESTS).to(State.RECOVERY).on(Event.REQUESTS_QUEUE_IS_EMPTY);
+            builder.transition()
+                    .from(State.WAIT_ONGOING_REQUESTS).to(State.CREATING).on(Event.PORT_DEL)
+                    .callMethod(cleanActiveRequestsAction);
+            builder.transition()
+                    .from(State.WAIT_ONGOING_REQUESTS).to(State.REMOVING).on(Event.DISABLE);
+            builder.internalTransition()
+                    .within(State.WAIT_ONGOING_REQUESTS).on(Event.ENABLE_UPDATE)
+                    .callMethod(saveSessionDataAction);
+
+            // RECOVERY
+            builder.onEntry(State.RECOVERY)
+                    .callMethod(sendPortCreateAction);
+            builder.transition()
+                    .from(State.RECOVERY).to(State.OPERATIONAL).on(Event.WORKER_SUCCESS);
+            builder.transition()
+                    .from(State.RECOVERY).to(State.REMOVING).on(Event.DISABLE);
+            builder.transition()
+                    .from(State.RECOVERY).to(State.CREATING).on(Event.PORT_DEL);
+            builder.internalTransition()
+                    .within(State.RECOVERY).on(Event.ONLINE)
+                    .callMethod(sendPortCreateAction);
+            builder.internalTransition()
+                    .within(State.RECOVERY).on(Event.ENABLE_UPDATE)
+                    .callMethod("recoveryEnableUpdateAction");
+            builder.onExit(State.RECOVERY)
+                    .callMethod(cleanActiveRequestsAction);
 
             // STOP
             builder.defineFinalState(State.STOP);
@@ -398,6 +448,8 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
         REMOVING,
         HOUSEKEEPING,
         DEBRIS,
+        RECOVERY,
+        WAIT_ONGOING_REQUESTS,
         STOP
     }
 
@@ -406,7 +458,7 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
         ENABLE_UPDATE, DISABLE,
         PORT_ADD, PORT_DEL,
         ONLINE, OFFLINE,
-        WORKER_SUCCESS, WORKER_ERROR,
+        WORKER_SUCCESS, WORKER_ERROR, REQUESTS_QUEUE_IS_EMPTY,
         SESSION_COMPLETED
     }
 }

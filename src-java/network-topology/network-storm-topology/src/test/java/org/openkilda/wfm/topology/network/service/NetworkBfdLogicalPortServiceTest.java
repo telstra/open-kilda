@@ -18,10 +18,12 @@ package org.openkilda.wfm.topology.network.service;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
+import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.messaging.model.grpc.LogicalPortType;
 import org.openkilda.model.BfdProperties;
@@ -80,16 +82,7 @@ public class NetworkBfdLogicalPortServiceTest {
         verifyNoMoreInteractions(carrier);
         reset(carrier);
 
-        CreateLogicalPortResponse createResponse = new CreateLogicalPortResponse(
-                "127.0.1.1",
-                LogicalPort.builder()
-                        .portNumber(physical.getPortNumber())
-                        .logicalPortNumber(logical.getPortNumber())
-                        .type(LogicalPortType.BFD)
-                        .name(String.format("P%d", logical.getPortNumber()))
-                        .build(),
-                true);
-        service.workerSuccess(createRequestId, logical, createResponse);
+        service.workerSuccess(createRequestId, logical, makePortCreateResponse(physical, logical));
         service.portAdd(logical, physical.getPortNumber());
 
         verifyGenericWorkflow(service);
@@ -199,6 +192,7 @@ public class NetworkBfdLogicalPortServiceTest {
                 Duration.ofMillis(propertiesEnabled.getInterval().toMillis() + 100),
                 (short) (propertiesEnabled.getMultiplier() + 1));
         service.apply(physical, reference, altProperties);
+        service.portDel(logical);
         service.portAdd(logical, physical.getPortNumber());
 
         verify(carrier).enableUpdateSession(
@@ -252,6 +246,8 @@ public class NetworkBfdLogicalPortServiceTest {
         service.apply(physical, reference, propertiesEnabled);
         verifyNoMoreInteractions(carrier);
 
+        service.portDel(logical);  // on switch reconnect
+
         final String createRequestId = "port-create-request";
         when(carrier.createLogicalPort(eq(logical), eq(physical.getPortNumber()))).thenReturn(createRequestId);
         switchOnlineStatusMonitor.update(physical.getDatapath(), true);
@@ -259,8 +255,82 @@ public class NetworkBfdLogicalPortServiceTest {
     }
 
     @Test
-    public void portRecreateRaceConditionHandling() {
+    public void portDeleteDelayedResponse() {
         NetworkBfdLogicalPortService service = makeService();
+        final String deleteRequestId = doDisableOnReadyPort(service);
+
+        service.apply(physical, reference, propertiesEnabled);
+        verifyNoInteractions(carrier);
+
+        final String createRequestId = "port-create-request";
+        when(carrier.createLogicalPort(eq(logical), eq(physical.getPortNumber()))).thenReturn(createRequestId);
+        service.portDel(logical);
+        verify(carrier).createLogicalPort(eq(logical), eq(physical.getPortNumber()));
+        reset(carrier);
+
+        service.workerSuccess(createRequestId, logical, makePortCreateResponse(physical, logical));
+        verifyNoInteractions(carrier);
+
+        DeleteLogicalPortResponse deleteResponse = new DeleteLogicalPortResponse(
+                logical.getDatapath().toString(), logical.getPortNumber(), true);
+        service.workerSuccess(deleteRequestId, logical, deleteResponse);
+
+        service.portAdd(logical, physical.getPortNumber());
+        verify(carrier).enableUpdateSession(
+                eq(logical), eq(physical.getPortNumber()), eq(new BfdSessionData(reference, propertiesEnabled)));
+    }
+
+    @Test
+    public void portDeleteDelayedPortEvent() {
+        NetworkBfdLogicalPortService service = makeService();
+        final String deleteRequestId = doDisableOnReadyPort(service);
+
+        service.apply(physical, reference, propertiesEnabled);
+        verifyNoInteractions(carrier);
+
+        final String createRequestId1 = "port-create-request-1";
+        when(carrier.createLogicalPort(eq(logical), eq(physical.getPortNumber()))).thenReturn(createRequestId1);
+        DeleteLogicalPortResponse deleteResponse = new DeleteLogicalPortResponse(
+                logical.getDatapath().toString(), logical.getPortNumber(), true);
+        service.workerSuccess(deleteRequestId, logical, deleteResponse);
+        verify(carrier).createLogicalPort(eq(logical), eq(physical.getPortNumber()));
+        reset(carrier);
+
+        final String createRequestId2 = "port-create-request-2";
+        when(carrier.createLogicalPort(eq(logical), eq(physical.getPortNumber()))).thenReturn(createRequestId2);
+        service.portDel(logical);
+        verify(carrier).createLogicalPort(eq(logical), eq(physical.getPortNumber()));
+        reset(carrier);
+
+        service.workerSuccess(createRequestId1, logical, makePortCreateResponse(physical, logical));
+        verifyNoInteractions(carrier);
+
+        service.portAdd(logical, physical.getPortNumber());
+        verify(carrier).enableUpdateSession(
+                eq(logical), eq(physical.getPortNumber()), eq(new BfdSessionData(reference, propertiesEnabled)));
+    }
+
+    @Test
+    public void lostPortDeleteRequest() {
+        NetworkBfdLogicalPortService service = makeService();
+        final String deleteRequestId = doDisableOnReadyPort(service);
+
+        service.apply(physical, reference, propertiesEnabled);
+        verifyNoInteractions(carrier);
+
+        final String createRequestId = "port-create-request";
+        when(carrier.createLogicalPort(eq(logical), eq(physical.getPortNumber()))).thenReturn(createRequestId);
+        service.workerError(deleteRequestId, logical, null);  // timeout
+        verify(carrier).createLogicalPort(eq(logical), eq(physical.getPortNumber()));
+        reset(carrier);
+
+        // no port add event, because port was not deleted
+        service.workerSuccess(createRequestId, logical, makePortCreateResponse(physical, logical));
+        verify(carrier).enableUpdateSession(
+                eq(logical), eq(physical.getPortNumber()), eq(new BfdSessionData(reference, propertiesEnabled)));
+    }
+
+    private String doDisableOnReadyPort(NetworkBfdLogicalPortService service) {
         switchOnlineStatusMonitor.update(physical.getDatapath(), true);
 
         service.portAdd(logical, physical.getPortNumber());
@@ -273,22 +343,22 @@ public class NetworkBfdLogicalPortServiceTest {
         verify(carrier).deleteLogicalPort(eq(logical));
         reset(carrier);
 
-        final String createRequestId = "port-create-request";
-        when(carrier.deleteLogicalPort(eq(logical))).thenReturn(createRequestId);
-        service.apply(physical, reference, propertiesEnabled);
-        verify(carrier).createLogicalPort(eq(logical), eq(physical.getPortNumber()));
-        reset(carrier);
-
-        service.portDel(logical);
-        verify(carrier).createLogicalPort(eq(logical), eq(physical.getPortNumber()));
-        reset(carrier);
-
-        service.portAdd(logical, physical.getPortNumber());
-        verify(carrier).enableUpdateSession(
-                eq(logical), eq(physical.getPortNumber()), eq(new BfdSessionData(reference, propertiesEnabled)));
+        return deleteRequestId;
     }
 
     private NetworkBfdLogicalPortService makeService() {
         return new NetworkBfdLogicalPortService(carrier, switchOnlineStatusMonitor, LOGICAL_PORT_OFFSET);
+    }
+
+    private CreateLogicalPortResponse makePortCreateResponse(Endpoint physical, Endpoint logical) {
+        return new CreateLogicalPortResponse(
+                "127.0.1.1",
+                LogicalPort.builder()
+                        .portNumber(physical.getPortNumber())
+                        .logicalPortNumber(logical.getPortNumber())
+                        .type(LogicalPortType.BFD)
+                        .name(String.format("P%d", logical.getPortNumber()))
+                        .build(),
+                true);
     }
 }
