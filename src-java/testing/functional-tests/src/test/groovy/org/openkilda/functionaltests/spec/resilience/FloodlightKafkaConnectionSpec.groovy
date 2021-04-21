@@ -10,6 +10,7 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchFeature
 
@@ -123,7 +124,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "System can detect switch changes if they happen while Floodlight was disconnected after it reconnects"() {
+    def "System can detect switch port changes if they happen while Floodlight was disconnected after it reconnects"() {
         when: "Controllers lose connection to kafka"
         def regions = flHelper.fls*.region
         regions.each { lockKeeper.knockoutFloodlight(it) }
@@ -135,7 +136,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         //port down on A-switch will lead to a port down on a connected Kilda switch
         lockKeeper.portsDown([isl.aswitch.inPort])
 
-        and: "Controller restores connection to kafka"
+        and: "Controllers restore connection to kafka"
         regions.each { lockKeeper.reviveFloodlight(it) }
         regionsOut = false
 
@@ -154,6 +155,48 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
             def isls = northbound.getAllLinks()
             assert islUtils.getIslInfo(isls, isl).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(isls, isl.reversed).get().state == IslChangeType.DISCOVERED
+        }
+        database.resetCosts()
+    }
+
+    @Tidy
+    def "System can detect switch state changes if they happen while Floodlight was disconnected after it reconnects"() {
+        when: "Controllers lose connection to kafka"
+        def regions = flHelper.fls*.region
+        regions.each { lockKeeper.knockoutFloodlight(it) }
+        def regionsOut = true
+        wait(floodlightAliveTimeout + WAIT_OFFSET) { assert northbound.activeSwitches.size() == 0 }
+
+        and: "Switch loses connection to mgmt controllers"
+        def sw = topology.activeSwitches.first()
+        def knockoutData = lockKeeper.knockoutSwitch(sw, RW)
+
+        and: "Controllers restore connection to kafka"
+        regions.each { lockKeeper.reviveFloodlight(it) }
+        regionsOut = false
+
+        then: "System detects that disconnected switch is no longer active"
+        def otherSwitches = topology.activeSwitches.findAll { it.dpId != sw.dpId }
+        wait(WAIT_OFFSET) {
+            assert northbound.activeSwitches*.switchId.sort { it.toLong() } == otherSwitches*.dpId.sort { it.toLong() }
+        }
+        northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
+
+        when: "Reconnect the switch back"
+        lockKeeper.reviveSwitch(sw, knockoutData)
+        knockoutData = null
+
+        then: "Switch is Active again"
+        wait(WAIT_OFFSET) {
+            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
+        }
+
+        cleanup:
+        regionsOut && regions.each { lockKeeper.reviveFloodlight(it) }
+        knockoutData && lockKeeper.reviveSwitch(sw, knockoutData)
+        wait(WAIT_OFFSET) { assert northbound.activeSwitches.size() == topology.activeSwitches.size() }
+        wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
+            northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED }
         }
         database.resetCosts()
     }
