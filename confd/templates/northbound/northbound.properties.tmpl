@@ -17,6 +17,7 @@ zookeeper.reconnect_delay = {{ getv "/kilda_zookeeper_reconnect_delay_ms"}}
 
 server.servlet.context-path=/api
 server.tomcat.max-threads=300
+server.forward-headers-strategy=NONE
 
 web.request.asyncTimeout=30000
 
