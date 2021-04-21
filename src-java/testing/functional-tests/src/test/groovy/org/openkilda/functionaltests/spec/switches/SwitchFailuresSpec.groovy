@@ -34,6 +34,7 @@ Note: For now it is only runnable on virtual env due to no ability to disconnect
 """)
 class SwitchFailuresSpec extends HealthCheckSpecification {
 
+    @Tidy
     @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER])
     def "ISL is still able to properly fail even if switches have reconnected"() {
         given: "A flow"
@@ -45,15 +46,18 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         when: "Two neighbouring switches of the flow go down simultaneously"
         def srcBlockData = lockKeeper.knockoutSwitch(isl.srcSwitch, RW)
         def dstBlockData = lockKeeper.knockoutSwitch(isl.dstSwitch, RW)
+        def switchesAreOffline = true
         def timeSwitchesBroke = System.currentTimeMillis()
         def untilIslShouldFail = { timeSwitchesBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
 
         and: "ISL between those switches looses connection"
         lockKeeper.removeFlows([isl.aswitch])
+        def aSwRuleIsDeleted = true
 
         and: "Switches go back up"
         lockKeeper.reviveSwitch(isl.srcSwitch, srcBlockData)
         lockKeeper.reviveSwitch(isl.dstSwitch, dstBlockData)
+        switchesAreOffline = false
 
         then: "ISL still remains up right before discovery timeout should end"
         sleep(untilIslShouldFail() - 2000)
@@ -76,9 +80,13 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
                     }?.payload?.last()?.action == REROUTE_FAIL)
         }
 
-        and: "Cleanup: restore connection, remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-        lockKeeper.addFlows([isl.aswitch])
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        if (switchesAreOffline) {
+            switchHelper.reviveSwitch(isl.srcSwitch, srcBlockData)
+            switchHelper.reviveSwitch(isl.dstSwitch, dstBlockData)
+        }
+        aSwRuleIsDeleted && lockKeeper.addFlows([isl.aswitch])
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -125,6 +133,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     def "System can handle situation when switch reconnects while flow is being created"() {
         when: "Start creating a flow between switches and lose connection to src before rules are set"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -165,8 +174,8 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
                 "Could not validate flow: Flow $flow.flowId is in DOWN state"
 
         when: "Switch returns back UP"
-        lockKeeper.reviveSwitch(srcSwitch, blockData)
-        Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(srcSwitch.dpId).state == SwitchChangeType.ACTIVATED }
+        switchHelper.reviveSwitch(srcSwitch, blockData)
+        def swIsOnline = true
 
         then: "Flow is still down, because ISLs had not enough time to fail, so no ISLs are discovered and no reroute happen"
         northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
@@ -188,7 +197,11 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { assert it.discrepancies.empty }
 
         and: "Flow can be removed"
-        flowHelper.deleteFlow(flow.flowId)
+        def deleteFlow = flowHelper.deleteFlow(flow.flowId)
+
+        cleanup:
+        flow && !deleteFlow && flowHelper.deleteFlow(flow.flowId)
+        blockData && !swIsOnline && switchHelper.reviveSwitch(srcSwitch, blockData)
     }
 
 }

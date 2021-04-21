@@ -57,7 +57,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore init switch properties on the switch"
-        SwitchHelper.updateSwitchProperties(sw, initSwitchProperties)
+        sw && SwitchHelper.updateSwitchProperties(sw, initSwitchProperties)
     }
 
     @Tidy

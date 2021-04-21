@@ -177,7 +177,7 @@ class SwitchesSpec extends HealthCheckSpecification {
         getSwitchFlowsResponse6*.id.sort() == [protectedFlow.flowId, singleFlow.flowId, defaultFlow.flowId].sort()
 
         cleanup: "Delete the flows"
-        [protectedFlow, singleFlow, defaultFlow].each { flowHelperV2.deleteFlow(it.flowId) }
+        [protectedFlow, singleFlow, defaultFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
         doPortDowns && portsToDown.each { antiflap.portUp(switchPair.src.dpId, it) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -221,8 +221,8 @@ class SwitchesSpec extends HealthCheckSpecification {
         switchFlowsResponseSrcSwitch*.id.sort() == [simpleFlow.flowId, singleFlow.flowId].sort()
 
         cleanup: "Revive the src switch and delete the flows"
-        [simpleFlow, singleFlow].each { flowHelperV2.deleteFlow(it.flowId) }
-        switchHelper.reviveSwitch(switchToDisconnect, blockData)
+        [simpleFlow, singleFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
+        blockData && switchHelper.reviveSwitch(switchToDisconnect, blockData)
     }
 
     @Tidy
@@ -321,6 +321,8 @@ class SwitchesSpec extends HealthCheckSpecification {
         e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
     }
 
+    @Tidy
+    @Tags(LOW_PRIORITY)
     def "System returns human readable error when #data.descr non-existing switch"() {
         when: "Make action from description on non-existing switch"
         data.operation()

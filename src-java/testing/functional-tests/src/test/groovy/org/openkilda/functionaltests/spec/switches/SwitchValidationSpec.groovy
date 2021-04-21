@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -12,6 +13,7 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -64,6 +66,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
 
+    @Tidy
     def "Able to validate and sync a terminating switch with proper rules and meters"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches.findAll { it.ofVersion != "OF_12" }
@@ -122,7 +125,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Switch validate request returns only default rules information"
         Wrappers.wait(WAIT_OFFSET) {
@@ -131,8 +134,21 @@ class SwitchValidationSpec extends HealthCheckSpecification {
             srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(srcSwitch.dpId)
             dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(dstSwitch.dpId)
         }
+        def testIsCompleted = true
+
+        cleanup:
+        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
+        if (srcSwitch && dstSwitch && !testIsCompleted) {
+            [srcSwitch, dstSwitch].each { northbound.synchronizeSwitch(it.dpId, true)}
+            [srcSwitch, dstSwitch].each { sw ->
+                Wrappers.wait(RULES_INSTALLATION_TIME) {
+                    northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(sw.dpId)
+                }
+            }
+        }
     }
 
+    @Tidy
     def "Able to validate and sync a transit switch with proper rules and no meters"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
@@ -166,14 +182,31 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
-        pathHelper.getInvolvedSwitches(flowPath).each { sw ->
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flowPath)
+        involvedSwitches.each { sw ->
             def switchValidateInfo = northbound.validateSwitch(sw.dpId)
             switchValidateInfo.verifyRuleSectionsAreEmpty(sw.dpId)
             if (sw.description.contains("OF_13")) {
                 switchValidateInfo.verifyMeterSectionsAreEmpty(sw.dpId)
+            }
+        }
+        def testIsCompleted = true
+
+        cleanup:
+        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
+        if (involvedSwitches && !testIsCompleted) {
+            involvedSwitches.each { northbound.synchronizeSwitch(it.dpId, true) }
+            withPool {
+                involvedSwitches.eachParallel { sw ->
+                    def switchValidateInfo = northbound.validateSwitch(sw.dpId)
+                    switchValidateInfo.verifyRuleSectionsAreEmpty(sw.dpId)
+                    if (sw.description.contains("OF_13")) {
+                        switchValidateInfo.verifyMeterSectionsAreEmpty(sw.dpId)
+                    }
+                }
             }
         }
     }
@@ -306,6 +339,7 @@ misconfigured"
         }
     }
 
+    @Tidy
     def "Able to validate and sync a switch with missing ingress rule + meter"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches.findAll { it.ofVersion != "OF_12" }
@@ -376,7 +410,7 @@ misconfigured"
         }
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -385,8 +419,21 @@ misconfigured"
             srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(srcSwitch.dpId)
             dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(dstSwitch.dpId)
         }
+        def testIsCompleted = true
+
+        cleanup:
+        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
+        if (srcSwitch && dstSwitch && !testIsCompleted) {
+            [srcSwitch, dstSwitch].each { northbound.synchronizeSwitch(it.dpId, true)}
+            [srcSwitch, dstSwitch].each { sw ->
+                Wrappers.wait(RULES_INSTALLATION_TIME) {
+                    northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(sw.dpId)
+                }
+            }
+        }
     }
 
+    @Tidy
     def "Able to validate and sync a switch with missing ingress rule (unmetered)"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches.findAll { it.ofVersion != "OF_12" }
@@ -429,7 +476,7 @@ misconfigured"
         }
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -438,8 +485,19 @@ misconfigured"
             srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(srcSwitch.dpId)
             dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(dstSwitch.dpId)
         }
+        def testIsCompleted = true
+
+        cleanup:
+        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
+        if (srcSwitch && dstSwitch && !testIsCompleted) {
+            [srcSwitch, dstSwitch].each { northbound.synchronizeSwitch(it.dpId, true)}
+            [srcSwitch, dstSwitch].each { sw ->
+                northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(sw.dpId)
+            }
+        }
     }
 
+    @Tidy
     def "Able to validate and sync a switch with missing transit rule"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
@@ -481,7 +539,7 @@ misconfigured"
         }
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections on all involved switches"
         Wrappers.wait(WAIT_OFFSET) {
@@ -493,8 +551,25 @@ misconfigured"
                 }
             }
         }
+        def testIsCompleted = true
+
+        cleanup:
+        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
+        if (involvedSwitches && !testIsCompleted) {
+            involvedSwitches.each { northbound.synchronizeSwitch(it.dpId, true) }
+            withPool {
+                involvedSwitches.eachParallel { sw ->
+                    def switchValidateInfo = northbound.validateSwitch(sw.dpId)
+                    switchValidateInfo.verifyRuleSectionsAreEmpty(sw.dpId)
+                    if (sw.description.contains("OF_13")) {
+                        switchValidateInfo.verifyMeterSectionsAreEmpty(sw.dpId)
+                    }
+                }
+            }
+        }
     }
 
+    @Tidy
     def "Able to validate and sync a switch with missing egress rule"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
@@ -527,8 +602,8 @@ misconfigured"
         def dstSwitchValidateInfo = northbound.validateSwitch(switchPair.dst.dpId)
         dstSwitchValidateInfo.rules.proper.sort() == rulesOnDst*.cookie.sort()
         dstSwitchValidateInfo.verifyRuleSectionsAreEmpty(switchPair.dst.dpId, ["missing", "excess"])
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
-        def transitSwitches = involvedSwitches[1..-2].findAll { !it.description.contains("OF_12") }
+        def involvedSwitchIds = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
+        def transitSwitches = involvedSwitchIds[1..-2].findAll { !it.description.contains("OF_12") }
 
         transitSwitches.each { switchId ->
             def transitSwitchValidateInfo = northbound.validateSwitch(switchId)
@@ -548,14 +623,30 @@ misconfigured"
         }
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections on all involved switches"
         Wrappers.wait(WAIT_OFFSET) {
-            involvedSwitches.findAll { !it.description.contains("OF_12") }.each { switchId ->
+            involvedSwitchIds.findAll { !it.description.contains("OF_12") }.each { switchId ->
                 def switchValidateInfo = northbound.validateSwitch(switchId)
                 switchValidateInfo.verifyRuleSectionsAreEmpty(switchId)
                 switchValidateInfo.verifyMeterSectionsAreEmpty(switchId)
+            }
+        }
+        def testIsCompleted = true
+
+        cleanup:
+        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
+        if (involvedSwitchIds && !testIsCompleted) {
+            involvedSwitchIds.each { northbound.synchronizeSwitch(it, true) }
+            withPool {
+                involvedSwitchIds.eachParallel { swId ->
+                    def switchValidateInfo = northbound.validateSwitch(swId)
+                    switchValidateInfo.verifyRuleSectionsAreEmpty(swId)
+                    if (swId.description.contains("OF_13")) {
+                        switchValidateInfo.verifyMeterSectionsAreEmpty(swId)
+                    }
+                }
             }
         }
     }
@@ -656,7 +747,7 @@ misconfigured"
         assert syncResultsMap[switchPair.src.dpId].meters.removed.meterId[0] == excessMeterId
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections on all involved switches"
         Wrappers.wait(WAIT_OFFSET) {
@@ -668,6 +759,7 @@ misconfigured"
         }
 
         cleanup:
+        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         producer && producer.close()
     }
 
@@ -794,6 +886,7 @@ misconfigured"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Able to validate and sync a missing 'protected path' egress rule"() {
         given: "A flow with protected path"
         def swPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
@@ -853,10 +946,11 @@ misconfigured"
             it.rules.proper.sort() == rulesPerSwitch[swPair.src.dpId]
         }
 
-        and: "Cleanup: delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Able to validate and sync a missing 'connected device' #data.descr rule"() {
         given: "A flow with enabled connected devices"
         def swPair = topologyHelper.switchPairs.find {
@@ -902,7 +996,7 @@ misconfigured"
         }
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        def deleteFlow = flowHelper.deleteFlow(flow.id)
 
         then: "Switch validation is empty"
         verifyAll(northbound.validateSwitch(flow.destination.datapath)) {
@@ -911,6 +1005,7 @@ misconfigured"
         }
 
         cleanup:
+        flow && !deleteFlow && flowHelper.deleteFlow(flow.id)
         initialProps.each {
             switchHelper.updateSwitchProperties(it.key, it.value)
         }

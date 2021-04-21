@@ -283,7 +283,7 @@ on a #switchType switch"() {
         newMeterEntries.empty
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         switchType         | switches
@@ -363,7 +363,7 @@ meters in flow rules at all (#data.flowType flow)"() {
         }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [
@@ -444,7 +444,7 @@ meters in flow rules at all (#data.flowType flow)"() {
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         [flowRate, data] << [
@@ -502,7 +502,7 @@ meters in flow rules at all (#data.flowType flow)"() {
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         flowRate << [
@@ -562,7 +562,7 @@ meters in flow rules at all (#data.flowType flow)"() {
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         flowRate << [150, 1000, 1024, 5120, 10240, 2480, 960000]
@@ -639,7 +639,7 @@ meters in flow rules at all (#data.flowType flow)"() {
         }
 
         cleanup: "Delete flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [
@@ -688,7 +688,7 @@ meters in flow rules at all (#data.flowType flow)"() {
         exc.responseBodyAsString.to(MessageError).errorMessage == "Can't update meter: Flow '$flow.flowId' is unmetered"
 
         cleanup: "Delete the created flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Memoized

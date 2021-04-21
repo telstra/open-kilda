@@ -14,7 +14,6 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.PortBlinker
-import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PortChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchFeature
@@ -63,6 +62,7 @@ class PortAntiflapSpec extends HealthCheckSpecification {
         getNorthbound().toggleFeature(FeatureTogglesDto.builder().floodlightRoutePeriodicSync(true).build())
     }
 
+    @Tidy
     @Tags(SMOKE)
     def "Flapping port is brought down only after antiflap warmup and stable port is brought up only after cooldown \
 timeout"() {
@@ -79,31 +79,37 @@ timeout"() {
 
         then: "Right before warmup timeout runs out the related ISL remains up"
         sleep(untilWarmupEnds() - 1000)
-        islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+        islUtils.getIslInfo(isl).get().state == DISCOVERED
 
         and: "After warmup timeout the related ISL goes down"
         Wrappers.wait(untilWarmupEnds() / 1000.0 + WAIT_OFFSET / 2) {
-            islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+            islUtils.getIslInfo(isl).get().state == FAILED
         }
 
         and: "ISL remains down even after cooldown timeout"
         TimeUnit.SECONDS.sleep(antiflapCooldown + 1)
-        islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+        islUtils.getIslInfo(isl).get().state == FAILED
 
         when: "Port stops flapping, ending in UP state"
         blinker.stop(true)
 
         then: "Right before cooldown timeout runs out the ISL remains down"
         sleep(untilCooldownEnds() - 1000)
-        islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+        islUtils.getIslInfo(isl).get().state == FAILED
 
         and: "After cooldown timeout the ISL goes up"
         Wrappers.wait(untilCooldownEnds() / 1000.0 + WAIT_OFFSET / 2 + discoveryInterval) {
-            islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+            islUtils.getIslInfo(isl).get().state == DISCOVERED
         }
+        def linkIsUp = true
 
         cleanup:
         blinker?.isRunning() && blinker.stop(true)
+        if (isl && !linkIsUp) {
+            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+                islUtils.getIslInfo(isl).get().state == DISCOVERED
+            }
+        }
     }
 
     @Tidy
@@ -119,13 +125,15 @@ timeout"() {
 
         then: "Related ISL goes down in about 'antiflapMin' seconds"
         Wrappers.wait(antiflapMin + 2) {
-            islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+            islUtils.getIslInfo(isl).get().state == FAILED
         }
 
         cleanup: "Bring port up"
-        antiflap.portUp(sw.dpId, islPort)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+        islPort && antiflap.portUp(sw.dpId, islPort)
+        if (isl) {
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+                islUtils.getIslInfo(isl).get().state == DISCOVERED
+            }
         }
     }
 
@@ -134,6 +142,7 @@ timeout"() {
      * directly to kafka, because currently it is the only way to simulate an incredibly rapid port flapping that
      * may sometimes occur on hardware switches(overheat?)
      */
+    @Tidy
     @Tags(SMOKE)
     def "System properly registers events order when port flaps incredibly fast (end with Up)"() {
 
@@ -146,13 +155,22 @@ timeout"() {
 
         then: "Related ISL is FAILED"
         Wrappers.wait(WAIT_OFFSET / 2.0) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(isl).get().state == FAILED
         }
 
         and: "After the port cools down the ISL is discovered again"
         TimeUnit.SECONDS.sleep(antiflapCooldown - 1)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(isl).get().state == DISCOVERED
+        }
+        def linkIsUp = true
+
+        cleanup:
+        blinker?.isRunning() && blinker.stop(true)
+        if (isl && !linkIsUp) {
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+                assert islUtils.getIslInfo(isl).get().state == DISCOVERED
+            }
         }
     }
 
@@ -175,19 +193,19 @@ timeout"() {
 
         then: "Related ISL is FAILED"
         Wrappers.wait(WAIT_OFFSET / 2.0) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(isl).get().state == FAILED
         }
 
         and: "ISL remains failed even after the port cools down"
         Wrappers.timedLoop(antiflapCooldown + discoveryInterval + WAIT_OFFSET / 2) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(isl).get().state == FAILED
             TimeUnit.SECONDS.sleep(1)
         }
 
         and: "cleanup: restore broken ISL"
         new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, 0)
                 .kafkaChangePort(PortChangeType.UP)
-        Wrappers.wait(WAIT_OFFSET) { islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED }
+        Wrappers.wait(WAIT_OFFSET) { islUtils.getIslInfo(isl).get().state == DISCOVERED }
     }
 
     @Tidy
@@ -244,7 +262,6 @@ timeout"() {
             assert rv.state == DISCOVERED
             assert rv.actualState == DISCOVERED
         }
-        database.resetCosts()
     }
 
     def cleanup() {
