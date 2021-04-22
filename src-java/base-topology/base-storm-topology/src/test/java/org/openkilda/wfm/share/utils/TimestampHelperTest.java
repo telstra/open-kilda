@@ -17,8 +17,13 @@ package org.openkilda.wfm.share.utils;
 
 import static org.junit.Assert.assertEquals;
 import static org.openkilda.wfm.share.utils.TimestampHelper.noviflowTimestamp;
+import static org.openkilda.wfm.share.utils.TimestampHelper.noviflowTimestampToInstant;
+import static org.openkilda.wfm.share.utils.TimestampHelper.noviflowTimestampsToDuration;
 
 import org.junit.Test;
+
+import java.time.Duration;
+import java.time.Instant;
 
 public class TimestampHelperTest {
 
@@ -31,5 +36,30 @@ public class TimestampHelperTest {
         long timestampNovi = (seconds << 32) + nanoseconds;
 
         assertEquals(123456789_987654321L, noviflowTimestamp(timestampNovi));
+    }
+
+    @Test
+    public void testNoviflowTimstampToInstant() {
+        long seconds = 123456789;
+        long nanoseconds = 987654321;
+
+        long timestampNovi = (seconds << 32) + nanoseconds;
+
+        Instant expected = Instant.ofEpochSecond(seconds, nanoseconds);
+        assertEquals(expected, noviflowTimestampToInstant(timestampNovi));
+    }
+
+    @Test
+    public void testNoviflowTimstampsToDuration() {
+        long seconds = 123456789;
+        long nanoseconds = 987654321;
+
+        long t0 = (seconds << 32) + nanoseconds;
+        seconds++;
+        nanoseconds++;
+        long t1 = (seconds << 32) + nanoseconds;
+
+        Duration expected = Duration.ofSeconds(1).plus(Duration.ofNanos(1));
+        assertEquals(expected, noviflowTimestampsToDuration(t0, t1));
     }
 }

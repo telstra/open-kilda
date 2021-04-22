@@ -17,9 +17,12 @@ package org.openkilda.wfm.topology.flowmonitoring.model;
 
 import lombok.Data;
 
+import java.time.Duration;
+import java.time.Instant;
+
 @Data
 public class FlowPathLatency {
 
-    private long timestamp;
-    private long latency;
+    private Instant timestamp;
+    private Duration latency;
 }

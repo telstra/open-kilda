@@ -45,6 +45,8 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -52,7 +54,7 @@ import java.util.stream.Collectors;
 
 @RunWith(MockitoJUnitRunner.class)
 public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
-    private static final long FLOW_RTT_STATS_EXPIRATION_TIME = 3;
+    private static final Duration FLOW_RTT_STATS_EXPIRATION_TIME = Duration.ofSeconds(3);
 
     private static final SwitchId SRC_SWITCH = new SwitchId(1);
     private static final SwitchId DST_SWITCH = new SwitchId(2);
@@ -89,7 +91,7 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
 
     @Test
     public void shouldSendCheckLatencyRequests() {
-        when(clock.millis()).thenReturn(1000L);
+        when(clock.instant()).thenReturn(Instant.now());
         dummyFactory.makeFlow(new FlowEndpoint(SRC_SWITCH, 8), new FlowEndpoint(SRC_SWITCH, 9));
         Flow flow = createFlow();
         service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
@@ -121,7 +123,7 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
     @Test
     public void shouldChangeFlowPathInCache() {
         Flow flow = createFlow();
-        when(clock.millis()).thenReturn(1000L);
+        when(clock.instant()).thenReturn(Instant.now());
         service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
 
         Long maxLatency = 100L;
@@ -150,14 +152,15 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
     @Test
     public void shouldSendCheckFlowSlaRequests() {
         Flow flow = createFlow();
-        when(clock.millis()).thenReturn(1000L);
+        Instant now = Instant.now();
+        when(clock.instant()).thenReturn(now);
         service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
 
-        long t0 = 1234;
-        long t1 = 2345;
+        long t0 = (now.getEpochSecond() << 32) + 1234;
+        long t1 = (now.getEpochSecond() << 32) + 2345;
         FlowRttStatsData flowRttStatsData = FlowRttStatsData.builder()
                 .flowId(flow.getFlowId())
-                .direction(FlowDirection.FORWARD.name())
+                .direction(FlowDirection.FORWARD.name().toLowerCase())
                 .t0(t0)
                 .t1(t1)
                 .build();
@@ -166,7 +169,7 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
 
         List<Link> expectedForwardPath = getLinks(SRC_SWITCH, ISL_SRC_PORT, DST_SWITCH, ISL_DST_PORT);
         verify(carrier).emitCheckFlowLatencyRequest(flow.getFlowId(), FlowDirection.FORWARD,
-                TimestampHelper.noviflowTimestamp(t1) - TimestampHelper.noviflowTimestamp(t0),
+                TimestampHelper.noviflowTimestampsToDuration(t0, t1),
                 flow.getMaxLatency(), flow.getMaxLatencyTier2());
         List<Link> expectedReversePath = reverse(expectedForwardPath);
         verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.REVERSE, expectedReversePath,

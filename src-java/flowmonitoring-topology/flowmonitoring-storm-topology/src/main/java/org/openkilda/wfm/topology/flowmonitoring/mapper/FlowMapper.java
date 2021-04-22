@@ -79,9 +79,8 @@ public interface FlowMapper {
     Link toLink(PathSegment pathSegment);
 
     @Mapping(target = "timestamp", expression = "java(org.openkilda.wfm.share.utils.TimestampHelper"
-            + ".noviflowTimestamp(data.getT1()))")
+            + ".noviflowTimestampToInstant(data.getT1()))")
     @Mapping(target = "latency", expression = "java(org.openkilda.wfm.share.utils.TimestampHelper"
-            + ".noviflowTimestamp(data.getT1()) - org.openkilda.wfm.share.utils.TimestampHelper"
-            + ".noviflowTimestamp(data.getT0()))")
+            + ".noviflowTimestampsToDuration(data.getT0(), data.getT1()))")
     FlowPathLatency toFlowPathLatency(FlowRttStatsData data);
 }

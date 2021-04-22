@@ -37,6 +37,10 @@ public interface FlowMonitoringTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getNetworkFlowMonitoringNotifyTopic();
     }
 
+    default String getKafkaOtsdbTopic() {
+        return getKafkaTopics().getOtsdbTopic();
+    }
+
     @Key("flow.sla.check.interval.seconds")
     @Default("30")
     int getFlowSlaCheckIntervalSeconds();
@@ -48,4 +52,8 @@ public interface FlowMonitoringTopologyConfig extends AbstractTopologyConfig {
     @Key("isl.rtt.latency.expiration")
     @Default("10")
     int getIslRttLatencyExpiration();
+
+    @Key("opentsdb.metric.prefix")
+    @Default("kilda.")
+    String getMetricPrefix();
 }
