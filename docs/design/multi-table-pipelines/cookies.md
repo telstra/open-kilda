@@ -114,3 +114,52 @@ Constraints:
 * SERVICE_FLAG == 0
 * TYPE_FIELD == EXCLUSION_FLOW(0x00B)
 * FLOW_REVERSE_DIRECTION_FLAG or FLOW_FORWARD_DIRECTION_FLAG must be set, but not both of them
+
+##Cookies description
+
+|Cookie|Name|Description|
+|------|----|-----------|
+|`0x8000_0000_0000_0001`|`DROP_RULE`|Drops all packets|
+|`0x8000_0000_0000_0002`|`VERIFICATION_BROADCAST_RULE`|Catches discovery packets and sends them to controller|
+|`0x8000_0000_0000_0003`|`VERIFICATION_UNICAST_RULE`|Catches Vlan ping packets and sends them to controller|
+|`0x8000_0000_0000_0004`|`DROP_VERIFICATION_LOOP_RULE`|Drops uncatched discovery packets|
+|`0x8000_0000_0000_0005`|`CATCH_BFD_RULE`|Cathces BFD packets|
+|`0x8000_0000_0000_0006`|`ROUND_TRIP_LATENCY_RULE`|Catches round trip packets and sends them to controller|
+|`0x8000_0000_0000_0007`|`VERIFICATION_UNICAST_VXLAN_RULE`|Catches VXLAN ping packets and sends them to controller|
+|`0x8000_0000_0000_0008`|`MULTITABLE_PRE_INGRESS_PASS_THROUGH`|Sends packets from pre-ingress table to ingress table|
+|`0x8000_0000_0000_0009`|`MULTITABLE_INGRESS_DROP`|Drops uncatched packets in ingress table|
+|`0x8000_0000_0000_000A`|`MULTITABLE_POST_INGRESS_DROP`|Drops uncatched packets in post-ingress table|
+|`0x8000_0000_0000_000B`|`MULTITABLE_EGRESS_PASS_THROUGH`|Sends packets from egress table to transit table|
+|`0x8000_0000_0000_000C`|`MULTITABLE_TRANSIT_DROP`|Drops uncatched packets in transit table|
+|`0x8000_0000_0000_000D`|`LLDP_INPUT_PRE_DROP`|Sends LLDP packets received from not ISL/Customer ports to controller|
+|`0x8000_0000_0000_000E`|`LLDP_TRANSIT`|Sends LLDP packet from ISL port to controller|
+|`0x8000_0000_0000_000F`|`LLDP_INGRESS`|Sends LLDP packets received from customer ports (but not from customer traffic) to controller|
+|`0x8000_0000_0000_0010`|`LLDP_POST_INGRESS`|Sends LLDP packets received from customer ports via transit vlan flows to controller|
+|`0x8000_0000_0000_0011`|`LLDP_POST_INGRESS_VXLAN`|Sends LLDP packets received from customer ports via VXLAN flows to controller|
+|`0x8000_0000_0000_0012`|`LLDP_POST_INGRESS_ONE_SWITCH`|Sends LLDP packets received from customer ports via one switch flows to controller|
+|`0x8000_0000_0000_0013`|`ARP_INPUT_PRE_DROP`|Sends ARP packets received from not ISL/Customer ports to controller|
+|`0x8000_0000_0000_0014`|`ARP_TRANSIT`|Sends ARP packet from ISL port to controller|
+|`0x8000_0000_0000_0015`|`ARP_INGRESS`|Sends ARP packets received from customer ports (but not from customer traffic) to controller|
+|`0x8000_0000_0000_0016`|`ARP_POST_INGRESS`|Sends ARP packets received from customer ports via transit vlan flows to controller|
+|`0x8000_0000_0000_0017`|`ARP_POST_INGRESS_VXLAN`|Sends ARP packets received from customer ports via VXLAN flows to controller|
+|`0x8000_0000_0000_0018`|`ARP_POST_INGRESS_ONE_SWITCH`|Sends ARP packets received from customer ports via one switch flows to controller|
+|`0x8000_0000_0000_0019`|`SERVER_42_OUTPUT_VLAN`|Sends flow RTT packet back to server42 for Vlan Flows|
+|`0x8000_0000_0000_001A`|`SERVER_42_OUTPUT_VXLAN`|Sends flow RTT packet back to server42 for VXLAN Flows|
+|`0x8000_0000_0000_001B`|`SERVER_42_TURNING`|Catches flow RTT packer, swaps ETH src and dst and sends back to IN_PORT|
+|`0x8010_0000_XXXX_XXXX`|`LLDP_INPUT_CUSTOMER`|Marks LLDP packets from port XXX by metadata|
+|`0x8020_0000_XXXX_XXXX`|`MULTI_TABLE_ISL_VLAN_EGRESS`|Moves Vlan packets received from ISL port XXX from input table to egress table|
+|`0x8030_0000_XXXX_XXXX`|`MULTI_TABLE_ISL_VXLAN_EGRESS`|Moves VXLAN packets received from ISL port XXX from input table to egress table|
+|`0x8040_0000_XXXX_XXXX`|`MULTI_TABLE_ISL_VXLAN_TRANSIT`|Moves VXLAN packets received from ISL port XXX from input table to transit table|
+|`0x8050_0000_XXXX_XXXX`|`MULTI_TABLE_INGRESS_RULES`|Moves packets received from Customer port XXX from input table to pre-ingress table|
+|`0x8060_0000_XXXX_XXXX`|`ARP_INPUT_CUSTOMER_TYPE`|Marks ARP packets from port XXX by metadata|
+|`0x0080_0000_0YYY_XXXX`|`QINQ_OUTER_VLAN`|QinQ rule for matching packets from port XXX by outer VLAN YYY|
+|`0x8090_0000_XXXX_XXXX`|`SERVER_42_INPUT`|Receives server42 flow RTT packet from port XXX, puts timestamp into packet (if switch has such support) and move packet to pre-ingress table|
+|`0x80A0_0000_0000_0000`|`APPLICATION_MIRROR_FLOW`|Flow mirror traffic for application purposes.|
+|`0x4000_0000_000X_XXXX`|`INGRESS_FORWARD`|Receives Customer packets, push transit encapsulation if needed and sends to port. Path direction - forward, XXX - path unmasked cookie|
+|`0x2000_0000_000X_XXXX`|`INGRESS_REVERSE`|Receives Customer packets, push transit encapsulation if needed and sends to port. Path direction - reverse, XXX - path unmasked cookie|
+|`0x4008_0000_000X_XXXX`|`FLOW_LOOP_FORWARD`|Makes flow loop for forward direction (sends all customer traffic back to IN_PORT). XXX - path unmasked cookie|
+|`0x2008_0000_000X_XXXX`|`FLOW_LOOP_REVERSE`|Makes flow loop for reverse direction (sends all customer traffic back to IN_PORT). XXX - path unmasked cookie|
+|`0x40B0_0000_000X_XXXX`|`EXCLUSION_FLOW_FORWARD`|Filter packets by 5-tuple to not mirror it. Forward direction. XXX - exlusion ID|
+|`0x20B0_0000_000X_XXXX`|`EXCLUSION_FLOW_REVERSE`|Filter packets by 5-tuple to not mirror it. Reverse direction. XXX - exlusion ID|
+|`0x40C0_0000_000X_XXXX`|`SERVER_42_INGRESS_FORWARD`|Receives server42 flow RTT packet from SERVER_42_INPUT, push transit encapsulation and sends to ISL port. (It's a copy of regular flow INGRESS_FORWARD rule but with matching by server42 input port). XXX - path unmasked cookie|
+|`0x20C0_0000_000X_XXXX`|`SERVER_42_INGRESS_REVERSE`|Receives server42 flow RTT packet from SERVER_42_INPUT, push transit encapsulation and sends to ISL port. (It's a copy of regular flow INGRESS_REVERSE rule but with matching by server42 input port). XXX - path unmasked cookie|
