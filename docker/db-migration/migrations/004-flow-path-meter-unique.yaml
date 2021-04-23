@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: tdurakov
+      changes:
+        - tagDatabase:
+            tag: 004-flow-path-meter-unique
+
+  - changeSet:
+      id: add_flow_path_meter_unique_constraint
+      author: tdurakov
+      changes:
+        - sql: "CREATE PROPERTY flow_path.meter_id IF NOT EXISTS LONG"
+        - sql: "CREATE INDEX flow_path_meter on flow_path (src_switch_id , meter_id) UNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DROP INDEX flow_path.flow_path_meter IF EXISTS"
+        - sql: "DROP PROPERTY flow_path.meter_id IF EXISTS"
