@@ -21,8 +21,7 @@ import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Description;
 import com.sabre.oss.conf4j.annotation.Key;
-
-import javax.validation.constraints.Min;
+import jakarta.validation.constraints.Min;
 
 @Configuration
 public interface NbWorkerTopologyConfig extends AbstractTopologyConfig {

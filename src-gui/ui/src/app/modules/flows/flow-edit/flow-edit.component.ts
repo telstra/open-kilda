@@ -83,7 +83,9 @@ export class FlowEditComponent implements OnInit {
       allocate_protected_path:[null],
       ignore_bandwidth:[null],
        pinned:[null],
-       periodic_pings:[null]
+       periodic_pings:[null],       
+      max_latency:[""],
+      max_latency_tier2:[""]
     });
 
     this.vlanPorts = Array.from({ length: 4095 }, (v, k) => {
@@ -122,6 +124,8 @@ export class FlowEditComponent implements OnInit {
           ignore_bandwidth:flow['ignore_bandwidth'] || null,
           pinned:flow['pinned'] || null,
           periodic_pings:flow['periodic-pings'] || null,
+          max_latency:flow['max-latency'] || '',
+          max_latency_tier2:flow['max-latency-tier2'] || "",
         };
         this.flowId = flow.flowid;
         this.flowEditForm.setValue(this.flowDetail);
@@ -248,23 +252,27 @@ export class FlowEditComponent implements OnInit {
 
     var flowData = {
       source: {
-        "switch-id": this.flowEditForm.controls["source_switch"].value,
-        "port-id": this.flowEditForm.controls["source_port"].value,
-        "vlan-id": this.flowEditForm.controls["source_vlan"].value
+        "switch_id": this.flowEditForm.controls["source_switch"].value,
+        "port_number": this.flowEditForm.controls["source_port"].value,
+        "vlan_id": this.flowEditForm.controls["source_vlan"].value,
+        "inner_vlan_id":0,
       },
       destination: {
-        "switch-id": this.flowEditForm.controls["target_switch"].value,
-        "port-id": this.flowEditForm.controls["target_port"].value,
-        "vlan-id": this.flowEditForm.controls["target_vlan"].value
+        "switch_id": this.flowEditForm.controls["target_switch"].value,
+        "port_number": this.flowEditForm.controls["target_port"].value,
+        "vlan_id": this.flowEditForm.controls["target_vlan"].value,
+        "inner_vlan_id":0,
       },
-      flowid: this.flowEditForm.controls["flowid"].value,
-      "maximum-bandwidth": this.flowEditForm.controls["maximum_bandwidth"].value,
-       description: this.flowEditForm.controls["description"].value,
-      "diverse-flowid":this.flowEditForm.controls["diverse_flowid"].value,
+      "flow_id": this.flowEditForm.controls["flowid"].value,
+      "maximum_bandwidth": this.flowEditForm.controls["maximum_bandwidth"].value,
+      "description": this.flowEditForm.controls["description"].value,
+      "diverse_flow_id":this.flowEditForm.controls["diverse_flowid"].value,
       "allocate_protected_path":this.flowEditForm.controls["allocate_protected_path"].value,
       "ignore_bandwidth":this.flowEditForm.controls['ignore_bandwidth'].value || null,
-       pinned:this.flowEditForm.controls['pinned'].value || null,
-      "periodic-pings":this.flowEditForm.controls['periodic_pings'].value || null,
+      "pinned":this.flowEditForm.controls['pinned'].value || null,
+      "periodic_pings":this.flowEditForm.controls['periodic_pings'].value || null,
+      "max_latency":this.flowEditForm.controls['max_latency'].value || 0,
+      "max_latency_tier2":this.flowEditForm.controls['max_latency_tier2'].value || 0,
     };
 
     const modalRef = this.modalService.open(ModalconfirmationComponent);
@@ -280,7 +288,7 @@ export class FlowEditComponent implements OnInit {
             localStorage.removeItem('flows');
             localStorage.removeItem('filterFlag');          
             localStorage.removeItem('flowsinventory'); 
-            this.router.navigate(["/flows/details/" + response.flowid]);
+            this.router.navigate(["/flows/details/" + response.flow_id]);
             this.loaderService.hide();
           },
           error => {

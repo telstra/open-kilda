@@ -61,12 +61,17 @@ class BandwidthSpec extends HealthCheckSpecification {
 
         when: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
+        def flowIsDeleted = true
 
         then: "Available bandwidth on ISLs is changed to the initial value before flow creation"
         def linksAfterFlowDelete = northbound.getAllLinks()
         checkBandwidth(flowPathAfterUpdate, linksBeforeFlowCreate, linksAfterFlowDelete)
+
+        cleanup:
+        flow && !flowIsDeleted && northboundV2.deleteFlow(flow.id)
     }
 
+    @Tidy
     def "Longer path is chosen in case of not enough available bandwidth on a shorter path"() {
         given: "Two active switches with two possible flow paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -101,8 +106,8 @@ class BandwidthSpec extends HealthCheckSpecification {
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
         pathHelper.getCost(flow2Path) > pathHelper.getCost(flow1Path)
 
-        and: "Delete created flows"
-        [flow1.id, flow2.id].each { flowHelper.deleteFlow(it) }
+        cleanup: "Delete created flows"
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
     }
 
     @Tidy
@@ -162,6 +167,7 @@ class BandwidthSpec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     def "Able to exceed bandwidth limit on ISL when creating/updating a flow with ignore_bandwidth=true"() {
         given: "Two active switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -199,10 +205,11 @@ class BandwidthSpec extends HealthCheckSpecification {
         flowPathAfterUpdate == flowPath
         checkBandwidth(flowPathAfterUpdate, linksBeforeFlowCreate, linksAfterFlowUpdate)
 
-        and: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Delete the flow"
+        flow && flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     def "Able to update bandwidth to maximum link speed without using alternate links"() {
         given: "Two active neighboring switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -240,8 +247,8 @@ class BandwidthSpec extends HealthCheckSpecification {
         and: "The same path is used by updated flow"
         PathHelper.convert(northbound.getFlowPath(flow.id)) == flowPath
 
-        and: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Delete the flow"
+        flow && flowHelper.deleteFlow(flow.id)
     }
 
     def cleanup() {

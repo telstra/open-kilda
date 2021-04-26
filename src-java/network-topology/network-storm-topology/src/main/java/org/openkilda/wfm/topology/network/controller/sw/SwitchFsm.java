@@ -21,14 +21,23 @@ import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.messaging.model.SwitchAvailabilityData;
+import org.openkilda.messaging.model.SwitchAvailabilityEntry;
 import org.openkilda.model.Isl;
+import org.openkilda.model.Speaker;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchConnect;
+import org.openkilda.model.SwitchConnectMode;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SpeakerRepository;
+import org.openkilda.persistence.repositories.SwitchConnectRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.tx.TransactionManager;
@@ -45,6 +54,7 @@ import org.openkilda.wfm.topology.network.model.OnlineStatus;
 import org.openkilda.wfm.topology.network.model.facts.HistoryFacts;
 import org.openkilda.wfm.topology.network.service.ISwitchCarrier;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -53,7 +63,9 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -62,18 +74,19 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> {
-
-    private final NetworkTopologyDashboardLogger logWrapper = new NetworkTopologyDashboardLogger(log);
+    private final NetworkTopologyDashboardLogger logWrapper;
 
     private final TransactionManager transactionManager;
-    private final RetryPolicy transactionRetryPolicy;
+    private final RetryPolicy<?> transactionRetryPolicy;
     private final SwitchRepository switchRepository;
+    private final SwitchConnectRepository switchConnectRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
+    private final SpeakerRepository speakerRepository;
+
     private final SwitchId switchId;
 
     private final Set<SwitchFeature> features = new HashSet<>();
@@ -93,16 +106,22 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     public SwitchFsm(PersistenceManager persistenceManager, SwitchId switchId, NetworkOptions options) {
         this.transactionManager = persistenceManager.getTransactionManager();
         this.transactionRetryPolicy = transactionManager.getDefaultRetryPolicy()
-                .withMaxDuration(options.getDbRepeatMaxDurationSeconds(), TimeUnit.SECONDS);
-        this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+                .handle(ConstraintViolationException.class)
+                .withMaxDuration(Duration.ofSeconds(options.getDbRepeatMaxDurationSeconds()));
+
+        final RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        this.switchRepository = repositoryFactory.createSwitchRepository();
+        this.switchConnectRepository = repositoryFactory.createSwitchConnectRepository();
+        this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
+        this.kildaConfigurationRepository = repositoryFactory
+                .createKildaConfigurationRepository();
+        this.speakerRepository = repositoryFactory.createSpeakerRepository();
 
         this.switchId = switchId;
-        this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
-        this.kildaConfigurationRepository = persistenceManager.getRepositoryFactory()
-                .createKildaConfigurationRepository();
 
         this.options = options;
 
+        logWrapper = new NetworkTopologyDashboardLogger(log);
         logWrapper.onSwitchAdd(switchId);
     }
 
@@ -125,7 +144,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         speakerData = context.getSpeakerData();
         syncAttempts = options.getCountSynchronizationAttempts();
 
-        transactionManager.doInTransaction(transactionRetryPolicy, this::persistSwitchData);
+        transactionManager.doInTransaction(
+                transactionRetryPolicy, () -> persistSwitchData(context.getAvailabilityData()));
 
         performActionsDependingOnAttemptsCount(context);
     }
@@ -143,6 +163,11 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     public void syncTimeout(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         log.debug("Received sync timeout for switch {}", switchId);
         processSyncResponse(context);
+    }
+
+    public void connectionsUpdate(
+            SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+        persistSwitchConnections(context.getAvailabilityData());
     }
 
     public void setupEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
@@ -164,7 +189,13 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     public void offlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                              SwitchFsmContext context) {
         logWrapper.onSwitchOffline(switchId);
-        transactionManager.doInTransaction(transactionRetryPolicy, () -> updatePersistentStatus(SwitchStatus.INACTIVE));
+        transactionManager.doInTransaction(
+                transactionRetryPolicy,
+                () -> {
+                    Switch sw = lookupSwitchCreateIfMissing();
+                    updatePersistentStatus(sw, SwitchStatus.INACTIVE);
+                    persistSwitchConnections(sw, context.getAvailabilityData());
+                });
         context.getOutput().sendSwitchStateChanged(switchId, SwitchStatus.INACTIVE);
         for (AbstractPort port : portByNumber.values()) {
             updateOnlineStatus(port, context, OnlineStatus.of(false, context.getIsRegionOffline()));
@@ -392,13 +423,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         port.updateOnlineStatus(context.getOutput(), onlineStatus);
     }
 
-    private void persistSwitchData() {
-        Switch sw = switchRepository.findById(switchId)
-                .orElseGet(() -> {
-                    Switch newSwitch = Switch.builder().switchId(switchId).build();
-                    switchRepository.add(newSwitch);
-                    return newSwitch;
-                });
+    private void persistSwitchData(SwitchAvailabilityData availabilityData) {
+        Switch sw = lookupSwitchCreateIfMissing();
 
         InetSocketAddress socketAddress = speakerData.getSwitchSocketAddress();
 
@@ -423,6 +449,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         sw.setFeatures(speakerData.getFeatures());
 
         persistSwitchProperties(sw);
+        persistSwitchConnections(sw, availabilityData);
     }
 
     private void persistSwitchProperties(Switch sw) {
@@ -439,10 +466,79 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         }
     }
 
+    private void persistSwitchConnections(SwitchAvailabilityData availabilityData) {
+        transactionManager.doInTransaction(
+                transactionRetryPolicy,
+                () -> persistSwitchConnections(lookupSwitchCreateIfMissing(), availabilityData));
+    }
+
+    private void persistSwitchConnections(Switch sw, SwitchAvailabilityData availabilityData) {
+        List<SwitchAvailabilityEntry> goal;
+        if (availabilityData != null) {
+            goal = availabilityData.getConnections();
+        } else {
+            log.warn(
+                    "Got \"null\" instead of {} availability data (treating it as an empty connections set)", switchId);
+            goal = Collections.emptyList();
+        }
+
+        Map<ConnectReference, SwitchConnect> extra = new HashMap<>();
+        for (SwitchConnect entry : switchConnectRepository.findBySwitchId(switchId)) {
+            extra.put(new ConnectReference(entry), entry);
+        }
+
+        for (SwitchAvailabilityEntry entry : goal) {
+            ConnectReference ref = new ConnectReference(entry);
+            persistSingleSwitchConnect(sw, entry, extra.remove(ref));
+        }
+
+        for (SwitchConnect connect : extra.values()) {
+            switchConnectRepository.remove(connect);
+        }
+    }
+
     private void updatePersistentStatus(SwitchStatus status) {
         switchRepository.findById(switchId)
-                .ifPresent(entry -> {
-                    entry.setStatus(status);
+                .ifPresent(entry -> updatePersistentStatus(entry, status));
+    }
+
+    private void updatePersistentStatus(Switch sw, SwitchStatus status) {
+        sw.setStatus(status);
+    }
+
+    private void persistSingleSwitchConnect(Switch sw, SwitchAvailabilityEntry goal, SwitchConnect current) {
+        SwitchConnect target = current;
+        if (current == null) {
+            target = SwitchConnect.builder(lookupSpeakerCreateIfMissing(goal.getRegionName()), sw)
+                    .mode(goal.getConnectMode())
+                    .build();
+        }
+
+        target.setMaster(goal.isMaster());
+        target.setConnectedAt(goal.getConnectedAt());
+        target.setSwitchAddress(goal.getSwitchAddress());
+        target.setSpeakerAddress(goal.getSpeakerAddress());
+
+        if (current == null) {
+            switchConnectRepository.add(target);
+        }
+    }
+
+    private Switch lookupSwitchCreateIfMissing() {
+        return switchRepository.findById(switchId)
+                .orElseGet(() -> {
+                    Switch newSwitch = Switch.builder().switchId(switchId).build();
+                    switchRepository.add(newSwitch);
+                    return newSwitch;
+                });
+    }
+
+    private Speaker lookupSpeakerCreateIfMissing(String name) {
+        return speakerRepository.findByName(name)
+                .orElseGet(() -> {
+                    Speaker speaker = Speaker.builder().name(name).build();
+                    speakerRepository.add(speaker);
+                    return speaker;
                 });
     }
 
@@ -492,9 +588,13 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                     // extra parameters
                     PersistenceManager.class, SwitchId.class, NetworkOptions.class);
 
+            final String connectionsUpdateMethod = "connectionsUpdate";
+
             // INIT
             builder.transition().from(SwitchFsmState.INIT).to(SwitchFsmState.SYNC).on(SwitchFsmEvent.ONLINE);
             builder.transition().from(SwitchFsmState.INIT).to(SwitchFsmState.PENDING).on(SwitchFsmEvent.HISTORY);
+            builder.internalTransition().within(SwitchFsmState.INIT).on(SwitchFsmEvent.CONNECTIONS_UPDATE)
+                    .callMethod(connectionsUpdateMethod);
 
             // PENDING
             builder.onEntry(SwitchFsmState.PENDING).callMethod("applyHistory");
@@ -502,8 +602,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                     .callMethod("initPortsFromHistory");
             builder.transition().from(SwitchFsmState.PENDING).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
 
-
-            // SYNCHRONIZE
+            // SYNC
             builder.transition().from(SwitchFsmState.SYNC).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.SYNC_ENDED);
             builder.transition().from(SwitchFsmState.SYNC).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
             builder.internalTransition().within(SwitchFsmState.SYNC).on(SwitchFsmEvent.SYNC_RESPONSE)
@@ -512,6 +611,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                     .callMethod("syncError");
             builder.internalTransition().within(SwitchFsmState.SYNC).on(SwitchFsmEvent.SYNC_TIMEOUT)
                     .callMethod("syncTimeout");
+            builder.internalTransition().within(SwitchFsmState.SYNC).on(SwitchFsmEvent.CONNECTIONS_UPDATE)
+                    .callMethod(connectionsUpdateMethod);
             builder.onEntry(SwitchFsmState.SYNC)
                     .callMethod("syncEnter");
 
@@ -533,6 +634,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                     .callMethod("handlePortLinkStateChange");
             builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_DOWN)
                     .callMethod("handlePortLinkStateChange");
+            builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.CONNECTIONS_UPDATE)
+                    .callMethod(connectionsUpdateMethod);
             builder.onEntry(SwitchFsmState.ONLINE)
                     .callMethod("onlineEnter");
 
@@ -541,6 +644,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
             builder.transition().from(SwitchFsmState.OFFLINE).to(SwitchFsmState.DELETED)
                     .on(SwitchFsmEvent.SWITCH_REMOVE)
                     .callMethod("removePortsFsm");
+            builder.internalTransition().within(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.CONNECTIONS_UPDATE)
+                    .callMethod(connectionsUpdateMethod);
             builder.onEntry(SwitchFsmState.OFFLINE)
                     .callMethod("offlineEnter");
 
@@ -565,6 +670,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         private final ISwitchCarrier output;
 
         private SpeakerSwitchView speakerData;
+        private SwitchAvailabilityData availabilityData;
+
         private HistoryFacts history;
         private SwitchSyncResponse syncResponse;
         private String syncKey;
@@ -589,8 +696,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         SYNC_ERROR,
         SYNC_TIMEOUT,
 
-        ONLINE,
-        OFFLINE,
+        ONLINE, OFFLINE,
+        CONNECTIONS_UPDATE,
 
         PORT_ADD, PORT_DEL, PORT_UP, SWITCH_REMOVE, PORT_DOWN
     }
@@ -603,5 +710,20 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         ONLINE,
         SETUP,
         DELETED
+    }
+
+    @Value
+    @AllArgsConstructor
+    private static class ConnectReference {
+        String regionName;
+        SwitchConnectMode mode;
+
+        ConnectReference(SwitchAvailabilityEntry connect) {
+            this(connect.getRegionName(), connect.getConnectMode());
+        }
+
+        ConnectReference(SwitchConnect connect) {
+            this(connect.getSpeaker().getName(), connect.getMode());
+        }
     }
 }

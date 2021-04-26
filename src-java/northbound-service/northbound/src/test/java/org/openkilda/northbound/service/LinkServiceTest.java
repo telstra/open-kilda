@@ -466,8 +466,8 @@ public class LinkServiceTest {
         }
 
         @Bean
-        public LinkService linkService() {
-            return new LinkServiceImpl();
+        public LinkService linkService(MessagingChannel messagingChannel) {
+            return new LinkServiceImpl(messagingChannel);
         }
 
         @Bean

@@ -13,6 +13,9 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchConnectMode
+import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
@@ -70,6 +73,7 @@ class MflStatSpec extends HealthCheckSpecification {
 
         when: "Leave src switch only with management controller and disconnect from stats"
         def statsBlockData = lockKeeper.knockoutSwitch(srcSwitch, RO)
+        switchIsConnectedToFl(srcSwitch.dpId, true, false)
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -86,7 +90,9 @@ class MflStatSpec extends HealthCheckSpecification {
 
         when: "Leave src switch only with stats controller and disconnect from management"
         lockKeeper.reviveSwitch(srcSwitch, statsBlockData)
+        switchIsConnectedToFl(srcSwitch.dpId, true, true)
         def mgmtBlockData = lockKeeper.knockoutSwitch(srcSwitch, RW)
+        switchIsConnectedToFl(srcSwitch.dpId, false, true)
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -102,6 +108,7 @@ class MflStatSpec extends HealthCheckSpecification {
 
         when: "Disconnect the src switch from both management and statistic controllers"
         statsBlockData = lockKeeper.knockoutSwitch(srcSwitch, RO)
+        switchIsConnectedToFl(srcSwitch.dpId, false, false)
         Wrappers.wait(WAIT_OFFSET) { assert !(srcSwitch.dpId in northbound.getActiveSwitches()*.switchId) }
 
         and: "Generate traffic on the given flow"
@@ -119,6 +126,7 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Restore default controllers on the src switches"
         lockKeeper.reviveSwitch(srcSwitch, statsBlockData)
         lockKeeper.reviveSwitch(srcSwitch, mgmtBlockData)
+        switchIsConnectedToFl(srcSwitch.dpId, true, true)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert srcSwitch.dpId in northbound.getActiveSwitches()*.switchId
             assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.empty
@@ -171,6 +179,7 @@ class MflStatSpec extends HealthCheckSpecification {
 
         when: "Src switch is only left with management controller (no stats controller)"
         def statsBlockData = lockKeeper.knockoutSwitch(srcSwitch, RO)
+        switchIsConnectedToFl(srcSwitch.dpId, true, false)
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -187,7 +196,9 @@ class MflStatSpec extends HealthCheckSpecification {
 
         when: "Set only statistic controller on the src switch and disconnect from management"
         lockKeeper.reviveSwitch(srcSwitch, statsBlockData)
+        switchIsConnectedToFl(srcSwitch.dpId, true, true)
         def mgmtBlockData = lockKeeper.knockoutSwitch(srcSwitch, RW)
+        switchIsConnectedToFl(srcSwitch.dpId, false, true)
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -203,6 +214,7 @@ class MflStatSpec extends HealthCheckSpecification {
 
         when: "Disconnect the src switch from both management and statistic controllers"
         statsBlockData = lockKeeper.knockoutSwitch(srcSwitch, RO)
+        switchIsConnectedToFl(srcSwitch.dpId, false, false)
         Wrappers.wait(WAIT_OFFSET) { assert !(srcSwitch.dpId in northbound.getActiveSwitches()*.switchId) }
 
         and: "Generate traffic on the given flow"
@@ -220,6 +232,7 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Restore default controllers on the src switch"
         lockKeeper.reviveSwitch(srcSwitch, statsBlockData)
         lockKeeper.reviveSwitch(srcSwitch, mgmtBlockData)
+        switchIsConnectedToFl(srcSwitch.dpId, true, true)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert srcSwitch.dpId in northbound.getActiveSwitches()*.switchId
             assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.empty
@@ -259,9 +272,12 @@ class MflStatSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         when: "Src switch is only left with 1 management controller (no stats controllers)"
-        def regionToStay = srcSwitch.regions.find { flHelper.getFlByRegion(it).mode == RW }
+        def regionToStay = findMgmtFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName.first()
         def blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
-        switchHelper.waitForSwitchFlConnection(srcSwitch, false, flHelper.getFlsByRegions(srcSwitch.regions - regionToStay))
+        with (northboundV2.getSwitchConnections(srcSwitch.dpId).connections) {
+            it*.regionName == [regionToStay]
+            it*.connectMode == [SwitchConnectMode.READ_WRITE.toString()]
+        }
 
         and: "Generate traffic on the given flow"
         Date startTime = new Date()
@@ -284,9 +300,9 @@ class MflStatSpec extends HealthCheckSpecification {
 
         when: "Src switch is only left with the other management controller (no stats controllers)"
         lockKeeper.reviveSwitch(srcSwitch, blockData)
-        regionToStay = srcSwitch.regions.find { flHelper.getFlByRegion(it).mode == RW && it != regionToStay }
+        regionToStay = findMgmtFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName - regionToStay
         blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
-        switchHelper.waitForSwitchFlConnection(srcSwitch, false, flHelper.getFlsByRegions(srcSwitch.regions - regionToStay))
+        assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == [regionToStay]
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -304,9 +320,9 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Set only 1 statistic controller on the src switch and disconnect from management"
         initStats = newStats
         lockKeeper.reviveSwitch(srcSwitch, blockData)
-        regionToStay = srcSwitch.regions.find { flHelper.getFlByRegion(it).mode == RO }
+        regionToStay = findStatFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName.first()
         blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
-        switchHelper.waitForSwitchFlConnection(srcSwitch, false, flHelper.getFlsByRegions(srcSwitch.regions - regionToStay))
+        assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == [regionToStay]
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -322,9 +338,9 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Set only other statistic controller on the src switch and disconnect from management"
         initStats = newStats
         lockKeeper.reviveSwitch(srcSwitch, blockData)
-        regionToStay = srcSwitch.regions.find { flHelper.getFlByRegion(it).mode == RO && it != regionToStay }
+        regionToStay = findStatFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName - regionToStay
         blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
-        switchHelper.waitForSwitchFlConnection(srcSwitch, false, flHelper.getFlsByRegions(srcSwitch.regions - regionToStay))
+        assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == [regionToStay]
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -339,6 +355,7 @@ class MflStatSpec extends HealthCheckSpecification {
 
         cleanup:
         blockData && switchHelper.reviveSwitch(srcSwitch, blockData, true)
+        switchIsConnectedToFl(srcSwitch.dpId, true, true)
         // make sure that flow is UP after switchUP event
         Wrappers.wait(WAIT_OFFSET + rerouteDelay) {
             assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
@@ -348,6 +365,26 @@ class MflStatSpec extends HealthCheckSpecification {
             but sometimes for no good reason the flow is IN_PROGRESS
             then as a result system can't delete the flow*/
             flowHelperV2.deleteFlow(flow.flowId)
+        }
+    }
+
+    def switchIsConnectedToFl(SwitchId switchId, Boolean mgmt, Boolean stats) {
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            def switchConnectionInfo = northboundV2.getSwitchConnections(switchId)
+            assert !findMgmtFls(switchConnectionInfo).empty == mgmt
+            assert !findStatFls(switchConnectionInfo).empty == stats
+        }
+    }
+
+    def findStatFls(SwitchConnectionsResponse switchConnections) {
+        return switchConnections.connections.findAll {
+            it.connectMode == SwitchConnectMode.READ_ONLY.toString()
+        }
+    }
+
+    def findMgmtFls(SwitchConnectionsResponse switchConnections) {
+        return switchConnections.connections.findAll {
+            it.connectMode == SwitchConnectMode.READ_WRITE.toString()
         }
     }
 }

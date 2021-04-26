@@ -2,7 +2,7 @@ description = 'Kilda Path Computatation Engine Library'
 dependencies {
     implementation project(':kilda-configuration')
     implementation project(':kilda-model')
-    implementation project(':kilda-persistence-tinkerpop')
+    implementation project(':kilda-persistence-api')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
 
     implementation 'com.google.guava:guava'
@@ -11,9 +11,10 @@ dependencies {
     implementation 'org.slf4j:slf4j-api'
     testRuntimeOnly 'org.slf4j:slf4j-simple'
 
-    testImplementation 'junit:junit'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
     testImplementation 'org.hamcrest:hamcrest-library'
-    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
 
     compileOnly 'org.projectlombok:lombok'
     testCompileOnly 'org.projectlombok:lombok'

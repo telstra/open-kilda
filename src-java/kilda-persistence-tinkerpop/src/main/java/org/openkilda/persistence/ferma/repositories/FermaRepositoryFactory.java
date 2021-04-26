@@ -33,6 +33,8 @@ import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SpeakerRepository;
+import org.openkilda.persistence.repositories.SwitchConnectRepository;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -108,6 +110,11 @@ public class FermaRepositoryFactory implements RepositoryFactory {
     }
 
     @Override
+    public SwitchConnectRepository createSwitchConnectRepository() {
+        return new FermaSwitchConnectRepository(graphFactory, transactionManager);
+    }
+
+    @Override
     public TransitVlanRepository createTransitVlanRepository() {
         return new FermaTransitVlanRepository(graphFactory, transactionManager);
     }
@@ -172,7 +179,6 @@ public class FermaRepositoryFactory implements RepositoryFactory {
         return new FermaPathSegmentRepository(graphFactory, transactionManager, createIslRepository());
     }
 
-
     @Override
     public ApplicationRepository createApplicationRepository() {
         return new FermaApplicationRepository(graphFactory, transactionManager);
@@ -186,5 +192,10 @@ public class FermaRepositoryFactory implements RepositoryFactory {
     @Override
     public MirrorGroupRepository createMirrorGroupRepository() {
         return new FermaMirrorGroupRepository(graphFactory, transactionManager);
+    }
+
+    @Override
+    public SpeakerRepository createSpeakerRepository() {
+        return new FermaSpeakerRepository(graphFactory, transactionManager);
     }
 }

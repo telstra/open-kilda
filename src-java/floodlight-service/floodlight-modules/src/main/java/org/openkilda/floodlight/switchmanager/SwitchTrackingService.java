@@ -276,7 +276,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         return new SpeakerSwitchView(new SwitchId(sw.getId().getLong()),
                                      (InetSocketAddress) sw.getInetAddress(),
                                      (InetSocketAddress) (sw.getConnectionByCategory(
-                                                     LogicalOFMessageCategory.MAIN).getRemoteInetAddress()),
+                                                     LogicalOFMessageCategory.MAIN).getLocalInetAddress()),
                                      sw.getOFFactory().getVersion().toString(),
                                      description, features, ports);
     }

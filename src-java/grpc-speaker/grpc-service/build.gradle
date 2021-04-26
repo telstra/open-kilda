@@ -1,31 +1,33 @@
 plugins {
-    id 'org.springframework.boot' version '2.2.1.RELEASE'
+    id 'org.springframework.boot' version '2.2.13.RELEASE'
+}
+
+configurations {
+    // This conflicts with spring-boot-starter-log4j2
+    compile.exclude module: 'spring-boot-starter-logging'
 }
 
 description = 'GRPC service'
 dependencies {
-    implementation(platform('org.springframework:spring-framework-bom:4.3.10.RELEASE'))
-    implementation(platform('org.springframework.boot:spring-boot-dependencies:1.5.6.RELEASE')) {
-        exclude group: 'org.projectlombok'
-        exclude group: 'org.slf4j'
-        exclude group: 'ch.qos.logback'
-    }
+    implementation(platform('org.springframework:spring-framework-bom:5.2.13.RELEASE'))
+    implementation(platform('org.springframework.boot:spring-boot-dependencies:2.2.13.RELEASE'))
 
     implementation project(':grpc-api')
     implementation project(':kilda-configuration')
     implementation project(':blue-green')
 
-    implementation('org.springframework.boot:spring-boot-starter') {
-        exclude(module: 'spring-boot-starter-logging')
-    }
+    implementation('org.springframework.boot:spring-boot-starter')
     implementation 'org.springframework.boot:spring-boot-starter-log4j2'
-    implementation('org.springframework.boot:spring-boot-starter-web') {
-        exclude(module: 'spring-boot-starter-logging')
-    }
+    implementation('org.springframework.boot:spring-boot-starter-web')
     implementation 'org.springframework.security:spring-security-config'
     implementation 'org.springframework.security:spring-security-web'
-    implementation('org.springframework.kafka:spring-kafka:1.2.2.RELEASE') {
-        exclude(group: 'org.apache.kafka', module: 'kafka-clients')
+    implementation ('org.springframework.kafka:spring-kafka') {
+        version {
+            strictly '2.3.13.RELEASE'
+        }
+        // This conflicts with kafka_2.11
+        exclude module:'kafka_2.12'
+        exclude group: 'org.apache.kafka', module: 'kafka-clients'
     }
     implementation('org.apache.kafka:kafka-clients') {
         version {
@@ -49,17 +51,16 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.commons:commons-lang3'
     implementation 'com.sabre.oss.conf4j:conf4j-spring-boot'
-    implementation('io.springfox:springfox-swagger2') {
-        exclude(module: 'mapstruct')
-    }
+    implementation 'io.springfox:springfox-swagger2'
     implementation 'io.springfox:springfox-swagger-ui'
     implementation files('lib/noviflow-grpc-lib-1.0.jar')
     //system group: 'io.grpc.noviflow', name: 'noviflow-grpc-lib', version:'1.0'
 
     testImplementation('org.springframework.boot:spring-boot-starter-test') {
-        exclude(module: 'commons-logging')
+        exclude module: 'commons-logging'
     }
-    testImplementation 'junit:junit'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
     testImplementation 'io.grpc:grpc-testing'
 
     implementation 'org.mapstruct:mapstruct'

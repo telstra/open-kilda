@@ -35,6 +35,7 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import java.util.Map;
@@ -127,7 +128,8 @@ public class MessageConsumerConfig {
     @Bean
     public ConsumerFactory<String, CommandMessage> consumerFactory() {
         return new DefaultKafkaConsumerFactory<>(consumerConfigs(),
-                new StringDeserializer(), new JsonDeserializer<>(CommandMessage.class));
+                new StringDeserializer(), new ErrorHandlingDeserializer2(
+                        new JsonDeserializer<>(CommandMessage.class)));
     }
 
     /**

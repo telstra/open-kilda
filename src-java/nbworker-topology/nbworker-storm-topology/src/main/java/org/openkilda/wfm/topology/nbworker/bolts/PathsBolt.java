@@ -26,6 +26,7 @@ import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.topology.nbworker.services.PathsService;
 
 import org.apache.storm.task.OutputCollector;
@@ -75,6 +76,8 @@ public class PathsBolt extends PersistenceOperationsBolt {
             throw new MessageException(ErrorType.INTERNAL_ERROR, e.getMessage(), "Database error.");
         } catch (SwitchNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Switch not found.");
+        } catch (SwitchPropertiesNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Switch properties not found.");
         } catch (UnroutableFlowException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(),
                     String.format("Couldn't found any path from switch '%s' to switch '%s'.",

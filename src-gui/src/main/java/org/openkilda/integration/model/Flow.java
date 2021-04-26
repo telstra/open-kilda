@@ -34,7 +34,7 @@ import java.util.List;
         "last-updated"})
 public class Flow {
 
-    @JsonProperty("flowid")
+    @JsonProperty("flow_id")
     private String id;
 
     @JsonProperty("source")
@@ -46,13 +46,13 @@ public class Flow {
     @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth;
     
-    @JsonProperty("maximum-bandwidth")
+    @JsonProperty("maximum_bandwidth")
     private int maximumBandwidth;
 
     @JsonProperty("description")
     private String description;
 
-    @JsonProperty("last-updated")
+    @JsonProperty("last_updated")
     private String lastUpdated;
     
     @JsonProperty("status")
@@ -61,7 +61,7 @@ public class Flow {
     @JsonProperty("timeout")
     private int timeout;
     
-    @JsonProperty("diverse-flowid")
+    @JsonProperty("diverse_flow_id")
     private String diverseFlowId;
     
     @JsonProperty("allocate_protected_path")
@@ -70,13 +70,13 @@ public class Flow {
     @JsonProperty("pinned")
     private boolean pinned;
     
-    @JsonProperty("encapsulation-type")
+    @JsonProperty("encapsulation_type")
     private String encapsulationType;
     
-    @JsonProperty("path-computation-strategy")
+    @JsonProperty("path_computation_strategy")
     private String pathComputationStrategy;
     
-    @JsonProperty("periodic-pings")
+    @JsonProperty("periodic_pings")
     private boolean periodicPings;
 
     @JsonProperty("created")
@@ -85,8 +85,11 @@ public class Flow {
     @JsonProperty("diverse_with")
     private List<String> diverseWith;
     
-    @JsonProperty("max-latency")
-    private int maxLatency;
+    @JsonProperty("max_latency")
+    private Long maxLatency;
+    
+    @JsonProperty("max_latency_tier2")
+    private Long maxLatencyTier2;
 
     @JsonProperty("priority")
     private int priority;
@@ -94,10 +97,10 @@ public class Flow {
     @JsonProperty("status_info")
     private String statusInfo;
     
-    @JsonProperty("target-path-computation-strategy")
+    @JsonProperty("target_path_computation_strategy")
     private String targetPathComputationStrategy;
     
-    @JsonProperty("status-details")
+    @JsonProperty("status_details")
     private StatusDetail statusDetails;
     
     

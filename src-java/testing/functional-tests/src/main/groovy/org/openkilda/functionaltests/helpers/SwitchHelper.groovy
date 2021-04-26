@@ -413,7 +413,10 @@ class SwitchHelper {
     /**
      * Waits for certain switch to appear/disappear from switch list in certain floodlights.
      * Useful when knocking out switches
+     *
+     * @deprecated use 'northboundV2.getSwitchConnections(switchId)' instead
      */
+    @Deprecated
     static void waitForSwitchFlConnection(Switch sw, boolean shouldBePresent, List<Floodlight> floodlights) {
         Wrappers.wait(WAIT_OFFSET) {
             withPool {

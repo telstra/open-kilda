@@ -28,14 +28,12 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor'
     testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
 
-    testImplementation 'junit:junit'
-    testImplementation 'pl.pragmatists:JUnitParams'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
     testImplementation 'org.hamcrest:hamcrest-library'
-    testImplementation 'org.mockito:mockito-core'
-    testRuntimeOnly 'org.apache.curator:curator-test'
-    testRuntimeOnly 'org.clojure:clojure'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
     testRuntimeOnly 'org.hibernate.validator:hibernate-validator'
-    testRuntimeOnly 'org.glassfish:javax.el'
+    testRuntimeOnly 'org.glassfish:jakarta.el'
     testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
     testRuntimeOnly 'javax.servlet:javax.servlet-api'
 

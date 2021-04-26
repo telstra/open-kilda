@@ -15,13 +15,31 @@
 
 package org.openkilda.northbound.service.impl;
 
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.northbound.messaging.MessagingChannel;
+import org.openkilda.northbound.utils.RequestCorrelationId;
+
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
-public class BaseService {
+public abstract class BaseService {
+    private final MessagingChannel messagingChannel;
+
+    protected BaseService(MessagingChannel messagingChannel) {
+        this.messagingChannel = messagingChannel;
+    }
+
     protected CompletionException maskConcurrentException(Throwable e) {
         if (e instanceof CompletionException) {
             return (CompletionException) e;
         }
         return new CompletionException(e);
+    }
+
+    protected CompletableFuture<InfoData> sendRequest(String topic, CommandData payload) {
+        CommandMessage message = new CommandMessage(payload, System.currentTimeMillis(), RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(topic, message);
     }
 }

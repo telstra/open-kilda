@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.utils;
 
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+
 import org.openkilda.messaging.MessageContext;
 
 import com.google.common.util.concurrent.FutureCallback;
@@ -46,7 +48,7 @@ public class CompletableFutureAdapter<T> extends CompletableFuture<T> {
                     completeExceptionally(t);
                 }
             }
-        });
+        }, directExecutor());
     }
 
     @Override

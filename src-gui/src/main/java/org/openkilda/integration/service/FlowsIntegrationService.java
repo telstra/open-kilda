@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -159,7 +159,7 @@ public class FlowsIntegrationService {
     public List<Flow> getAllFlowList() {
         try {
             HttpResponse response = restClientManager.invoke(
-                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW, HttpMethod.GET, 
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW_V2, HttpMethod.GET, 
                     "", "application/json", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponseList(response, Flow.class);
@@ -182,7 +182,7 @@ public class FlowsIntegrationService {
             HttpResponse response = restClientManager.invoke(
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW_REROUTE
                             .replace("{flow_id}", UriUtils.encodePath(flowId, "UTF-8")),
-                    HttpMethod.PATCH, "", "", applicationService.getAuthHeader());
+                    HttpMethod.POST, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 FlowPath flowPath = restClientManager.getResponse(response, FlowPath.class);
                 return flowPath;
@@ -233,7 +233,7 @@ public class FlowsIntegrationService {
     public Flow getFlowById(String flowId) {
         try {
             HttpResponse response = restClientManager.invoke(
-                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW + "/"
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW_V2 + "/"
                             + UriUtils.encodePath(flowId, "UTF-8"),
                     HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
@@ -259,7 +259,7 @@ public class FlowsIntegrationService {
     public Flow createFlow(Flow flow) {
         try {
             HttpResponse response = restClientManager.invoke(
-                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW, HttpMethod.PUT,
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW_V2, HttpMethod.POST,
                     objectMapper.writeValueAsString(flow), "application/json", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponse(response, Flow.class);

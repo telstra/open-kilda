@@ -25,6 +25,7 @@ import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.FlowPathFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
+import org.openkilda.persistence.ferma.frames.SwitchConnectFrame;
 import org.openkilda.persistence.ferma.frames.SwitchFrame;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchStatusConverter;
@@ -34,11 +35,14 @@ import org.openkilda.persistence.tx.TransactionRequired;
 
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.structure.Direction;
+import org.apache.tinkerpop.gremlin.structure.Edge;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -113,7 +117,7 @@ public class FermaSwitchRepository extends FermaGenericRepository<Switch, Switch
     public boolean removeIfNoDependant(Switch entity) {
         SwitchData data = entity.getData();
         if (data instanceof SwitchFrame) {
-            if (!((SwitchFrame) data).getElement().edges(Direction.BOTH).hasNext()) {
+            if (! isMeaningfulRelationsExists((SwitchFrame) data)) {
                 ((SwitchFrame) data).remove();
                 return true;
             }
@@ -139,5 +143,16 @@ public class FermaSwitchRepository extends FermaGenericRepository<Switch, Switch
     @Override
     protected SwitchData doDetach(Switch entity, SwitchFrame frame) {
         return Switch.SwitchCloner.INSTANCE.deepCopy(frame);
+    }
+
+    private boolean isMeaningfulRelationsExists(SwitchFrame frame) {
+        Iterator<Edge> iterator = frame.getElement().edges(Direction.BOTH);
+        while (iterator.hasNext()) {
+            Edge entry = iterator.next();
+            if (! Objects.equals(SwitchConnectFrame.FRAME_LABEL, entry.label())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

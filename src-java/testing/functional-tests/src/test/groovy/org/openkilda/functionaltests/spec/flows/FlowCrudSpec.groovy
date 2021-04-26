@@ -84,6 +84,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         "The port $port on the switch '$swId' is occupied by an ISL ($endpoint endpoint collision)."
     }
 
+    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTags([
         @IterationTag(tags = [SMOKE_SWITCHES], take = 1),
@@ -132,6 +133,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         then: "The flow is not present in NB"
         !northbound.getAllFlows().find { it.id == flow.id }
+        def flowIsDeleted = true
 
         and: "ISL bandwidth is restored"
         Wrappers.wait(WAIT_OFFSET) {
@@ -141,6 +143,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "No rule discrepancies on every switch of the flow"
         switches.each { sw -> Wrappers.wait(WAIT_OFFSET) { verifySwitchRules(sw.dpId) } }
+
+        cleanup:
+        !flowIsDeleted && flow && flowHelper.deleteFlow(flow.id)
 
         where:
         /*Some permutations may be missed, since at current implementation we only take 'direct' possible flows
@@ -153,6 +158,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         flow = data.flow as FlowPayload
     }
 
+    @Tidy
     @Unroll("Able to create a second flow if #data.description")
     @Tags(SMOKE)
     def "Able to create multiple flows on certain combinations of switch-port-vlans"() {
@@ -168,8 +174,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
         then: "Both flows are successfully created"
         northbound.getAllFlows()*.id.containsAll(flows*.id)
 
-        and: "Cleanup: delete flows"
-        flows.each { flowHelper.deleteFlow(it.id) }
+        cleanup: "Delete flows"
+        flows.each { it && flowHelper.deleteFlow(it.id) }
 
         where:
         data << [
@@ -333,6 +339,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE])
     def "Able to create single switch single port flow with different vlan (#flow.source.datapath)"(FlowPayload flow) {
         given: "A flow"
@@ -349,14 +356,19 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         then: "The flow is not present in NB"
         !northbound.getAllFlows().find { it.id == flow.id }
+        def flowIsDeleted = true
 
         and: "No rule discrepancies on the switch after delete"
         Wrappers.wait(WAIT_OFFSET) { verifySwitchRules(flow.source.datapath) }
+
+        cleanup:
+        !flowIsDeleted && flowHelper.deleteFlow(flow.id)
 
         where:
         flow << getSingleSwitchSinglePortFlows()
     }
 
+    @Tidy
     def "Able to validate flow with zero bandwidth"() {
         given: "A flow with zero bandwidth"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -369,8 +381,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
         then: "Validation of flow with zero bandwidth must be succeed"
         northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
 
-        and: "Cleanup: delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Delete the flow"
+        flow && flowHelper.deleteFlow(flow.id)
     }
 
     @Tidy
@@ -463,12 +475,13 @@ class FlowCrudSpec extends HealthCheckSpecification {
         errorDetails.errorDescription == data.getErrorDescription(flow1, conflictingFlow, "update")
 
         cleanup:
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
 
         where:
         data << getConflictingData()
     }
 
+    @Tidy
     def "A flow cannot be created with asymmetric forward and reverse paths"() {
         given: "Two active neighboring switches with two possible flow paths at least and different number of hops"
         List<List<PathNode>> possibleFlowPaths = []
@@ -499,8 +512,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def reverseIsls = pathHelper.getInvolvedIsls(PathHelper.convert(flowPath, "reversePath"))
         forwardIsls.collect { it.reversed }.reverse() == reverseIsls
 
-        and: "Delete the flow and reset costs"
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Delete the flow and reset costs"
+        flow && flowHelper.deleteFlow(flow.id)
         database.resetCosts()
     }
 
@@ -565,6 +578,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     def "Removing flow while it is still in progress of being created should not cause rule discrepancies"() {
         given: "A potential flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -603,7 +617,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Remove the flow"
-        flowHelper.deleteFlow(flow.id)
+        flow && flowHelper.deleteFlow(flow.id)
     }
 
     @Tidy
@@ -625,7 +639,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         errorDetails.errorDescription == data.errorDescription(isl)
 
         cleanup:
-        !exc && flowHelper.deleteFlow(flow.id)
+        !exc && flow && flowHelper.deleteFlow(flow.id)
 
         where:
         data << [
@@ -673,7 +687,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         error.errorDescription == data.message(isl)
 
         cleanup:
-        flowHelper.deleteFlow(flow.id)
+        flow && flowHelper.deleteFlow(flow.id)
 
         where:
         data << [
@@ -715,12 +729,13 @@ class FlowCrudSpec extends HealthCheckSpecification {
         errorDetails.errorDescription == getPortViolationError("source", isl.srcPort, isl.srcSwitch.dpId)
 
         cleanup:
-        !exc && flowHelper.deleteFlow(flow.id)
+        !exc && flow && flowHelper.deleteFlow(flow.id)
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
         database.resetCosts()
     }
 
+    @Tidy
     def "Unable to create a flow on an isl port when ISL status is MOVED"() {
         given: "An inactive isl with moved state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -734,6 +749,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
             [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }
         }
+        def islIsMoved = true
 
         when: "Try to create a flow using ISL src port"
         def flow = flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)
@@ -747,15 +763,18 @@ class FlowCrudSpec extends HealthCheckSpecification {
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == getPortViolationError("source", isl.srcPort, isl.srcSwitch.dpId)
 
-        and: "Cleanup: Restore status of the ISL and delete new created ISL"
-        islUtils.replug(newIsl, true, isl, false, false)
-        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
-        islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
-        northbound.deleteLink(islUtils.toLinkParameters(newIsl))
-        Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
+        cleanup: "Restore status of the ISL and delete new created ISL"
+        if (islIsMoved) {
+            islUtils.replug(newIsl, true, isl, false, false)
+            islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+            islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
+            northbound.deleteLink(islUtils.toLinkParameters(newIsl))
+            Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
+        }
         database.resetCosts()
     }
 
+    @Tidy
     def "Able to CRUD #flowDescription single switch pinned flow"() {
         when: "Create a flow"
         def sw = topology.getActiveSwitches().first()
@@ -777,8 +796,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
         !newFlowInfo.pinned
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
-        and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Delete the flow"
+        flow && flowHelper.deleteFlow(flow.id)
 
         where:
         flowDescription | bandwidth
@@ -786,6 +805,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         "an unmetered"  | 0
     }
 
+    @Tidy
     def "Able to CRUD #flowDescription pinned flow"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -807,8 +827,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
         !newFlowInfo.pinned
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
-        and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Delete the flow"
+        flow && flowHelper.deleteFlow(flow.id)
 
         where:
         flowDescription | bandwidth
@@ -817,6 +837,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2576")
+    @Tidy
     @Tags(VIRTUAL)
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
         given: "A deactivated switch"
@@ -832,11 +853,13 @@ class FlowCrudSpec extends HealthCheckSpecification {
         exc.rawStatusCode == 404
         exc.responseBodyAsString.to(MessageError).errorMessage == "Switch $sw.dpId not found"
 
-        and: "Cleanup: Activate the switch and reset costs"
-        switchHelper.reviveSwitch(sw, blockData, true)
+        cleanup: "Activate the switch and reset costs"
+        blockData && switchHelper.reviveSwitch(sw, blockData, true)
+        !exc && flowHelper.deleteFlow(flow.id)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2625")
+    @Tidy
     def "System recreates excess meter when flow is created with the same meterId"() {
         given: "A Noviflow switch"
         def sw = topology.activeSwitches.find { it.noviflow || it.virtual } ?:
@@ -883,10 +906,11 @@ class FlowCrudSpec extends HealthCheckSpecification {
         validateSwitchInfo.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "misconfigured", "excess"])
         validateSwitchInfo.meters.proper.size() == amountOfFlows * 2 // one flow creates two meters
 
-        and: "Cleanup: Delete the flows and excess meters"
-        flows.each { flowHelper.deleteFlow(it) }
+        cleanup: "Delete the flows and excess meters"
+        flows.each { it && flowHelper.deleteFlow(it) }
     }
 
+    @Tidy
     @Tags(LOW_PRIORITY)
     def "System doesn't create flow when reverse path has different bandwidth than forward path on the second link"() {
         given: "Two active not neighboring switches"
@@ -929,10 +953,13 @@ class FlowCrudSpec extends HealthCheckSpecification {
         e.statusCode == HttpStatus.NOT_FOUND
         e.responseBodyAsString.to(MessageError).errorMessage.contains("Could not create flow")
 
-        and: "Restore topology, delete the flow and reset costs"
-        withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort) } }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+        cleanup: "Restore topology, delete the flow and reset costs"
+        !e && flowHelperV2.deleteFlow(flow.id)
+        if (islsToBreak) {
+            withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort) } }
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+                assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+            }
         }
         database.resetCosts()
         islsToModify.each {

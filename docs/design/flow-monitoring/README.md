@@ -17,13 +17,31 @@ ISL cache structure:
 ISL | last RTT latency | RTT latency expiration time | last one way latency
 --- | --- | --- | ---
 
-![Flow-monitoring](flow-monitoring.png "Flow monitoring")
+![Flow-monitoring-topology](flow-monitoring-topology.png "Flow monitoring")
 
-On the topology startup both caches initialized with data from the database. During the topology lifetime system events helps to keep caches in actual states. `flow-hs` will notify `flow-monitor` about any flow path changes using additional events. All flow-modifying FSMs will execute `NOTIFY_FLOW_MONITOR` action before the finish. 
+On the topology startup both caches initialized with data from the database. During the topology lifetime system events helps to keep caches in actual states. `flow-hs` will notify `flow-monitor` about any flow path changes using additional events. All flow-modifying FSMs will execute `NOTIFY_FLOW_MONITOR` action before the finish. `network` topology will notify `flow-monitor` about ISL changes.
 
 ![Isl-cache-update](isl-cache-update.png "Isl cache update")
 ![Flow-cache-update](flow-cache-update.png "Flow cache update")
+![Flow-latency-check](flow-latency-check.png "Flow latency check")
 
 ## Flow SLA reactions
 
-To be discussed and documented in the future.
+Every calculated flow latency value will be sent to stats topology and saved in openTSDB.
+
+Flow SLA reactions are applied only to flows with latency-based path computation strategies. Flow has two levels of latency SLA called max_latency and max_latency_tier_2. When actual flow latency is lower than max_latency flow is considered as UP, when latency is in between max_latency and max_latency_tier_2 flow is considered as DEGRADED, in other case flow is considered as DOWN. Timeout is used to prevent flow status flapping when latency is fluctuating around one of the SLA levels. Flow latency should exceed SLA level and stay stable for a timeout time window before system will change actual flow status. 
+![Flow-latency-monitoring](flow-latency-monitoring.png "Flow latency monitoring")
+
+Flows with zero or null max_latency value are excluded from the monitoring. Flows with a valid max_latency value but with null or zero max_latency_tier_2 act like max_latency_tier_2 is infinity. So they may go to the DEGRADED status but can't go to the DOWN status based on the latency.
+
+Auto reroute is triggered by the system when flow changes status to DEGRADED or DOWN only when flow has latency-based path computation strategy. DEGRADED status for flow may be caused by different reasons so when flow is moved from DEGRADED state to UP flow sync is required to determine actual flow status. Flow latency FSM doesn't change flow status directly. Only flow reroute or sync triggered by monitoring should manipulate with flow statuses.
+
+Current flow latency will be stored in DB and updated every time flow latency changes its status or periodically.
+
+Finite state machine with the following structure will be used to cover logic described above.
+Every flow latency measurement produces one of the following events: `healthy`, `tier1failed` and `tier2failed`. Latency value, `maxLatency`, `maxLatencyTier2`, threshold value and last event type is used to determine what event is produced as shown on the following picture.
+![Flow-latency-events](flow-latency-events.png "Flow latency events")
+
+When flow latency FSM detects stable state it produces corresponding `stable-healthy`, `stable-tier1failed` or `stable-tier2failed` event and sends required reroute/sync request.
+
+![Flow-latency-fsm](flow-latency-fsm.png "Flow latency fsm")

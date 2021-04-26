@@ -31,6 +31,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
+    @Tidy
     def "Not able to reroute to a path with not enough bandwidth available"() {
         given: "A flow with alternate paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -69,7 +70,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         rerouteResponse.path.path.each { assert it.seqId == seqId++ }
         PathHelper.convert(northbound.getFlowPath(flow.id)) == currentPath
 
-        and: "Remove the flow, restore the bandwidth on ISLs, reset costs"
+        cleanup: "Remove the flow, restore the bandwidth on ISLs, reset costs"
         flowHelper.deleteFlow(flow.id)
         changedIsls.each {
             database.resetIslBandwidth(it)
@@ -77,6 +78,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     def "Able to reroute to a better path if it has enough bandwidth"() {
         given: "A flow with alternate paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -119,11 +121,11 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
 
         and: "'Thin' ISL has 0 available bandwidth left"
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
-
-        and: "Remove the flow, restore bandwidths on ISLs, reset costs"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
-        flowHelper.deleteFlow(flow.id)
-        [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
+
+        cleanup: "Remove the flow, restore bandwidths on ISLs, reset costs"
+        flow && flowHelper.deleteFlow(flow.id)
+        thinIsl && [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
     }
 
     /**
@@ -187,9 +189,10 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Remove the flow"
-        flowHelper.deleteFlow(flow.id)
+        flow && flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     def "Able to reroute to a path with not enough bandwidth available in case ignoreBandwidth=true"() {
         given: "A flow with alternate paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -240,14 +243,15 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Remove the flow, restore the bandwidth on ISLs, reset costs"
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Remove the flow, restore the bandwidth on ISLs, reset costs"
+        flow && flowHelper.deleteFlow(flow.id)
         changedIsls.each {
             database.resetIslBandwidth(it)
             database.resetIslBandwidth(it.reversed)
         }
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "Intentional flow reroute with VXLAN encapsulation is not causing any packet loss"() {
         given: "A vxlan flow"
@@ -302,8 +306,8 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
             assert it.consumerReport.lostPercent < 1
         }
 
-        and: "Remove the flow"
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Remove the flow"
+        flow && flowHelper.deleteFlow(flow.id)
     }
 
     def cleanup() {

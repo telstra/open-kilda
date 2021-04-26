@@ -51,6 +51,8 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SpeakerRepository;
+import org.openkilda.persistence.repositories.SwitchConnectRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.tx.TransactionCallbackWithoutResult;
@@ -108,10 +110,16 @@ public class NetworkSwitchServiceTest {
     private SwitchRepository switchRepository;
 
     @Mock
+    private SwitchConnectRepository switchConnectRepository;
+
+    @Mock
     private KildaConfigurationRepository kildaConfigurationRepository;
 
     @Mock
     private SwitchPropertiesRepository switchPropertiesRepository;
+
+    @Mock
+    private SpeakerRepository speakerRepository;
 
     private final SpeakerSwitchDescription switchDescription = SpeakerSwitchDescription.builder()
             .manufacturer("OF vendor A")
@@ -155,10 +163,10 @@ public class NetworkSwitchServiceTest {
         reset(transactionManager);
 
         when(transactionManager.getDefaultRetryPolicy())
-                .thenReturn(new RetryPolicy().withMaxRetries(2));
+                .thenReturn(new RetryPolicy<>().withMaxRetries(2));
         doAnswer(invocation -> {
-            RetryPolicy retryPolicy = invocation.getArgument(0);
-            TransactionCallbackWithoutResult tr = invocation.getArgument(1);
+            RetryPolicy<?> retryPolicy = invocation.getArgument(0);
+            TransactionCallbackWithoutResult<?> tr = invocation.getArgument(1);
             Failsafe.with(retryPolicy)
                     .run(tr::doInTransaction);
             return null;
@@ -173,8 +181,10 @@ public class NetworkSwitchServiceTest {
 
         reset(repositoryFactory);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
+        when(repositoryFactory.createSwitchConnectRepository()).thenReturn(switchConnectRepository);
         when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
         when(repositoryFactory.createKildaConfigurationRepository()).thenReturn(kildaConfigurationRepository);
+        when(repositoryFactory.createSpeakerRepository()).thenReturn(speakerRepository);
     }
 
     @Test

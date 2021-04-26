@@ -83,7 +83,7 @@ class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flows"
-        [flowToBreak.flowId, intactFlow.flowId].each { flowHelperV2.deleteFlow(it) }
+        [flowToBreak, intactFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
 
         where:
         flowConfig      | switchPair                                        | item | switchNo | flowType
@@ -193,7 +193,7 @@ class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
         assert responseValidateFlow2.size() == 4
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     /**

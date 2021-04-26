@@ -44,7 +44,7 @@ public class SwitchMonitorService {
 
     private final SwitchMonitorCarrier carrier;
 
-    private final Map<SwitchId, SwitchMonitorEntry> monitors = new HashMap<>();
+    private final Map<SwitchId, SwitchMonitor> monitors = new HashMap<>();
 
     public SwitchMonitorService(Clock clock, SwitchMonitorCarrier carrier) {
         this.clock = clock;
@@ -55,10 +55,10 @@ public class SwitchMonitorService {
      * Handle timer tick.
      */
     public void handleTimerTick() {
-        Iterator<Entry<SwitchId, SwitchMonitorEntry>> iter;
+        Iterator<Entry<SwitchId, SwitchMonitor>> iter;
         Instant now = clock.instant();
         for (iter = monitors.entrySet().iterator(); iter.hasNext(); ) {
-            Entry<SwitchId, SwitchMonitorEntry> entry = iter.next();
+            Entry<SwitchId, SwitchMonitor> entry = iter.next();
             Optional<Instant> becomeUnavailable = entry.getValue().getBecomeUnavailableAt();
             if (becomeUnavailable.isPresent()) {
                 Duration delay = Duration.between(becomeUnavailable.get(), now);
@@ -75,23 +75,23 @@ public class SwitchMonitorService {
      */
     public void handleRegionOfflineNotification(String region) {
         log.debug("Got region \"{}\" OFFLINE notification", region);
-        for (SwitchMonitorEntry entry : monitors.values()) {
+        for (SwitchMonitor entry : monitors.values()) {
             entry.handleRegionOfflineNotification(region);
         }
     }
 
     public void handleStatusUpdateNotification(SwitchInfoData notification, String region) {
-        SwitchMonitorEntry entry = lookupOrCreateSwitchMonitor(notification.getSwitchId());
+        SwitchMonitor entry = lookupOrCreateSwitchMonitor(notification.getSwitchId());
         entry.handleStatusUpdateNotification(notification, region);
     }
 
     public void handleNetworkDumpResponse(NetworkDumpSwitchData response, String region) {
-        SwitchMonitorEntry entry = lookupOrCreateSwitchMonitor(response.getSwitchId());
+        SwitchMonitor entry = lookupOrCreateSwitchMonitor(response.getSwitchId());
         entry.handleNetworkDumpResponse(response, region);
     }
 
     public void handlePortStatusUpdateNotification(PortInfoData notification, String region) {
-        SwitchMonitorEntry entry = lookupOrCreateSwitchMonitor(notification.getSwitchId());
+        SwitchMonitor entry = lookupOrCreateSwitchMonitor(notification.getSwitchId());
         entry.handlePortStatusUpdateNotification(notification, region);
     }
 
@@ -100,7 +100,7 @@ public class SwitchMonitorService {
         return monitors.containsKey(switchId);
     }
 
-    private SwitchMonitorEntry lookupOrCreateSwitchMonitor(SwitchId switchId) {
-        return monitors.computeIfAbsent(switchId, key -> new SwitchMonitorEntry(carrier, clock, switchId));
+    private SwitchMonitor lookupOrCreateSwitchMonitor(SwitchId switchId) {
+        return monitors.computeIfAbsent(switchId, key -> new SwitchMonitor(carrier, clock, switchId));
     }
 }

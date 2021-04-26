@@ -73,7 +73,7 @@ class FlowSyncV2Spec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
@@ -138,7 +138,7 @@ class FlowSyncV2Spec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         cleanup: "Delete the flow and link props, reset link costs"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
     }

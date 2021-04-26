@@ -19,7 +19,7 @@ grpc.speaker.kafka.listener.threads={{ getv "/kilda_grpc_speaker_kafka_listener_
 grpc.speaker.kafka.session.timeout={{ getv "/kilda_grpc_speaker_kafka_session_timeout" }}
 grpc.speaker.kafka.messages.expiration.minutes=15
 
-server.contextPath=/api/v1
+server.servlet.context-path=/api/v1
 security.rest.username.env=REST_USERNAME
 security.rest.password.env=REST_PASSWORD
 security.rest.username.default={{ getv "/kilda_grpc_basicauth_username" }}

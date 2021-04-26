@@ -23,6 +23,7 @@ import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.service.SwitchService;
@@ -158,5 +159,14 @@ public class SwitchControllerV2 extends BaseController {
                                                               + "need to pass an empty string.")
                                                       @RequestBody SwitchPatchDto dto) {
         return switchService.patchSwitch(switchId, dto);
+    }
+
+    /**
+     * Return active switch connections to the speakers.
+     */
+    @ApiOperation(value = "Get active switch connections", response = SwitchConnectionsResponse.class)
+    @GetMapping(path = "/{switch_id}/connections")
+    public CompletableFuture<SwitchConnectionsResponse> getConnections(@PathVariable("switch_id") SwitchId switchId) {
+        return switchService.getSwitchConnections(switchId);
     }
 }

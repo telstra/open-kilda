@@ -16,20 +16,31 @@
 package org.openkilda.wfm.topology.flowhs.validation;
 
 import static org.mockito.Mockito.mock;
+import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
+import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
+import org.openkilda.wfm.topology.flowhs.validation.FlowValidator.EndpointDescriptor;
 
+import com.google.common.collect.Sets;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import java.util.HashSet;
 
 public class FlowValidatorTest {
     public static final SwitchId SWITCH_ID_1 = new SwitchId(1);
     public static final SwitchId SWITCH_ID_2 = new SwitchId(2);
+    public static final int PORT_1 = 10;
+    public static final EndpointDescriptor SRC_ENDPOINT = EndpointDescriptor.makeSource(
+            FlowEndpoint.builder().switchId(SWITCH_ID_1).portNumber(PORT_1).build());
 
     public static FlowValidator flowValidator;
 
@@ -135,5 +146,37 @@ public class FlowValidatorTest {
                 .build();
 
         flowValidator.checkForEqualsEndpoints(firstFlow, secondFlow);
+    }
+
+    @Test(expected = InvalidFlowException.class)
+    public void checkForEncapsulationTypeRequirementNullTypesTest() throws InvalidFlowException {
+        SwitchProperties properties = SwitchProperties.builder()
+                .supportedTransitEncapsulation(null)
+                .build();
+        flowValidator.checkForEncapsulationTypeRequirement(SRC_ENDPOINT, properties, TRANSIT_VLAN);
+    }
+
+    @Test(expected = InvalidFlowException.class)
+    public void checkForEncapsulationTypeRequirementEmptyTypesTest() throws InvalidFlowException {
+        SwitchProperties properties = SwitchProperties.builder()
+                .supportedTransitEncapsulation(new HashSet<>())
+                .build();
+        flowValidator.checkForEncapsulationTypeRequirement(SRC_ENDPOINT, properties, TRANSIT_VLAN);
+    }
+
+    @Test(expected = InvalidFlowException.class)
+    public void checkForEncapsulationTypeRequirementDifferentTypeTest() throws InvalidFlowException {
+        SwitchProperties properties = SwitchProperties.builder()
+                .supportedTransitEncapsulation(Sets.newHashSet(VXLAN))
+                .build();
+        flowValidator.checkForEncapsulationTypeRequirement(SRC_ENDPOINT, properties, TRANSIT_VLAN);
+    }
+
+    @Test
+    public void checkForEncapsulationTypeRequirementCorrectTypeTest() throws InvalidFlowException {
+        SwitchProperties properties = SwitchProperties.builder()
+                .supportedTransitEncapsulation(Sets.newHashSet(VXLAN, TRANSIT_VLAN))
+                .build();
+        flowValidator.checkForEncapsulationTypeRequirement(SRC_ENDPOINT, properties, TRANSIT_VLAN);
     }
 }

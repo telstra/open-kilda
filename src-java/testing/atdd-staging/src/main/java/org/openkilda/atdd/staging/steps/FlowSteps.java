@@ -66,6 +66,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -75,7 +76,6 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class FlowSteps implements En {
@@ -201,7 +201,7 @@ public class FlowSteps implements En {
             try {
                 result = Failsafe.with(retryPolicy()
                         .abortWhen(null)
-                        .retryIf(Objects::nonNull))
+                        .handleResultIf(Objects::nonNull))
                         .get(() -> northboundService.getFlow(flow.getId()));
             } catch (HttpClientErrorException ex) {
                 log.info(format("The flow '%s' doesn't exist. It is expected.", flow.getId()));
@@ -365,7 +365,7 @@ public class FlowSteps implements En {
     private void eachFlowIsUp(Set<FlowPayload> flows) {
         for (FlowPayload flow : flows) {
             FlowIdStatusPayload status = Failsafe.with(retryPolicy()
-                    .retryIf(p -> p == null || ((FlowIdStatusPayload) p).getStatus() != FlowState.UP))
+                    .handleResultIf(p -> p == null || ((FlowIdStatusPayload) p).getStatus() != FlowState.UP))
                     .get(() -> northboundService.getFlowStatus(flow.getId()));
 
             assertNotNull(format("The flow status for '%s' can't be retrived from Northbound.", flow.getId()), status);
@@ -376,9 +376,9 @@ public class FlowSteps implements En {
         }
     }
 
-    private RetryPolicy retryPolicy() {
-        return new RetryPolicy()
-                .withDelay(2, TimeUnit.SECONDS)
+    private <T> RetryPolicy<T> retryPolicy() {
+        return new RetryPolicy<T>()
+                .withDelay(Duration.ofSeconds(2))
                 .withMaxRetries(10);
     }
 

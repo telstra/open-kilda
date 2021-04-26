@@ -40,6 +40,7 @@ import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 
@@ -287,4 +288,6 @@ public interface SwitchService {
      * @return switch.
      */
     CompletableFuture<SwitchDtoV2> patchSwitch(SwitchId switchId, SwitchPatchDto dto);
+
+    CompletableFuture<SwitchConnectionsResponse> getSwitchConnections(SwitchId switchId);
 }

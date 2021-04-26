@@ -19,7 +19,6 @@ import static org.junit.Assert.assertEquals;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
-import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
@@ -80,7 +79,7 @@ public class FlowControllerTest {
 
         MvcResult result = mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(APPLICATION_JSON_VALUE))
                 .andReturn();
         SwapFlowEndpointPayload response
                 = MAPPER.readValue(result.getResponse().getContentAsString(), SwapFlowEndpointPayload.class);

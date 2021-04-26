@@ -83,7 +83,7 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         }
 
         when: "Delete flows"
-        [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
+        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
         def flowsAreDeleted = true
 
         then: "Flows' histories contain 'groupId' information in 'delete' operation"
@@ -95,7 +95,7 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         }
 
         cleanup:
-        !flowsAreDeleted && [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
+        !flowsAreDeleted && [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     @Tidy
@@ -149,7 +149,7 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         allInvolvedIsls.unique(false) == allInvolvedIsls
 
         cleanup: "Delete flows"
-        [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
+        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     @Tidy
@@ -205,7 +205,7 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
 
         cleanup: "Delete flows"
         northbound.deleteLinkProps(northbound.getAllLinkProps())
-        [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
+        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     @Tidy
@@ -241,8 +241,8 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         flow2Path == flow1Path
 
         cleanup: "Restore topology, delete flows and reset costs"
+        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
-        [flow1, flow2].each { flowHelperV2.deleteFlow(it.flowId) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -295,7 +295,7 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         involvedIsls.unique(false) == involvedIsls
 
         cleanup: "Delete flows and link props"
-        [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
+        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
@@ -346,9 +346,10 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         verifySegmentsStats([flow1Path, flow2Path, flow3Path], expectedValuesMap)
 
         cleanup: "Delete flows"
-        [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
+        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
+    @Tidy
     @Issue("https://github.com/telstra/open-kilda/issues/2072")
     @Ignore("Functionality is currently not supported yet")
     def "Able to get flow paths with correct overlapping segments stats (single-switch flows)"() {
@@ -391,10 +392,11 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         ]
         verifySegmentsStats([flow1Path, flow2Path, flow3Path], expectedValuesMap)
 
-        and: "Delete flows"
-        [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
+        cleanup: "Delete flows"
+        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
+    @Tidy
     @Issue("https://github.com/telstra/open-kilda/issues/2072")
     @Ignore("Functionality is currently not supported yet")
     def "Able to get flow paths with correct overlapping segments stats (casual + single-switch flows)"() {
@@ -444,8 +446,8 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         ]
         verifySegmentsStats([flow1Path, flow2Path, flow3Path], expectedValuesMap)
 
-        and: "Delete flows"
-        [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
+        cleanup: "Delete flows"
+        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     SwitchPair getSwitchPair(minNotOverlappingPaths) {

@@ -12,6 +12,7 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
@@ -39,6 +40,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
+    @Tidy
     @Tags(HARDWARE)
     def "System allows to create/update encapsulation type for a flow\
 (#encapsulationCreate.toString() -> #encapsulationUpdate.toString())"() {
@@ -159,8 +161,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Delete the flow"
+        flow && flowHelper.deleteFlow(flow.id)
 
         where:
         encapsulationCreate | encapsulationUpdate
@@ -168,6 +170,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         FlowEncapsulationType.VXLAN | FlowEncapsulationType.TRANSIT_VLAN
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "Able to CRUD a metered pinned flow with 'VXLAN' encapsulation"() {
         when: "Create a flow"
@@ -193,11 +196,14 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         !newFlowInfo.pinned
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
-        and: "Cleanup: Delete the flow"
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Delete the flow"
+        if (flow) {
+            Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+            flowHelper.deleteFlow(flow.id)
+        }
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "Able to CRUD a vxlan flow with protected path"() {
         given: "Two active VXLAN supported switches with two available path at least"
@@ -319,10 +325,11 @@ class VxlanFlowSpec extends HealthCheckSpecification {
             assert direction.discrepancies.empty
         }
 
-        and: "Cleanup: Delete the flow and reset costs"
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Delete the flow and reset costs"
+        flow && flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "System allows tagged traffic via default flow(0<->0) with 'VXLAN' encapsulation"() {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
@@ -357,8 +364,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(defaultFlow.id)
+        cleanup: "Delete the flow"
+        flow && flowHelper.deleteFlow(defaultFlow.id)
     }
 
     @Tidy
@@ -367,7 +374,9 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
             [swP.src, swP.dst].every { sw -> !isVxlanEnabled(sw.dpId) }
         }
-        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
+        assumeTrue("Unable to find required switches in topology", switchPair as boolean)
+        def srcEncapsulationTypes = northbound.getSwitchProperties(switchPair.src.dpId).supportedTransitEncapsulation
+                .collect { it.toString().toUpperCase() }
 
         when: "Try to create a flow"
         def flow = flowHelper.randomFlow(switchPair)
@@ -376,8 +385,11 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        // TODO(andriidovhan)fix errorMessage when the 2587 issue is fixed
+        exc.rawStatusCode == 400
+        def createErrorDetails = exc.responseBodyAsString.to(MessageError)
+        createErrorDetails.errorMessage == "Could not create flow"
+        createErrorDetails.errorDescription == getUnsupportedVxlanErrorDescription(
+                "source", switchPair.src.dpId, srcEncapsulationTypes)
 
         cleanup:
         !exc && flowHelper.deleteFlow(flow.id)
@@ -435,7 +447,9 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
             isVxlanEnabled(it.src.dpId) && !isVxlanEnabled(it.dst.dpId)
         }
-        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
+        assumeTrue("Unable to find required switches in topology", switchPair as boolean)
+        def dstEncapsulationTypes = northbound.getSwitchProperties(switchPair.dst.dpId).supportedTransitEncapsulation
+                .collect { it.toString().toUpperCase() }
 
         when: "Try to create a flow"
         def flow = flowHelper.randomFlow(switchPair)
@@ -444,13 +458,17 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        // TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
+        exc.rawStatusCode == 400
+        def createErrorDetails = exc.responseBodyAsString.to(MessageError)
+        createErrorDetails.errorMessage == "Could not create flow"
+        createErrorDetails.errorDescription == getUnsupportedVxlanErrorDescription(
+                "destination", switchPair.dst.dpId, dstEncapsulationTypes)
 
         cleanup:
         !exc && flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "System allows to create/update encapsulation type for a one-switch flow\
 (#encapsulationCreate.toString() -> #encapsulationUpdate.toString())"() {
@@ -512,8 +530,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Delete the flow"
+        flow && flowHelper.deleteFlow(flow.id)
 
         where:
         encapsulationCreate | encapsulationUpdate
@@ -527,6 +545,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
             [swP.src, swP.dst].every { sw -> !isVxlanEnabled(sw.dpId) }
         }
+        def srcEncapsulationTypes = northbound.getSwitchProperties(switchPair.src.dpId).supportedTransitEncapsulation
+                .collect { it.toString().toUpperCase() }
         def flow = flowHelper.randomFlow(switchPair)
         flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
         flowHelper.addFlow(flow)
@@ -536,15 +556,24 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        //TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
+        exc.rawStatusCode == 400
+        def createErrorDetails = exc.responseBodyAsString.to(MessageError)
+        createErrorDetails.errorMessage == "Could not update flow"
+        createErrorDetails.errorDescription == getUnsupportedVxlanErrorDescription(
+                "source", switchPair.src.dpId, srcEncapsulationTypes)
 
         cleanup:
-        flowHelper.deleteFlow(flow.id)
+        flow && flowHelper.deleteFlow(flow.id)
     }
 
     def isVxlanEnabled(SwitchId switchId) {
         return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
                 .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+    }
+
+    def getUnsupportedVxlanErrorDescription(endpointName, dpId, supportedEncapsulationTypes) {
+        return "Flow's $endpointName endpoint $dpId doesn't support requested encapsulation type " +
+                "$FlowEncapsulationType.VXLAN. Choose one of the supported encapsulation types " +
+                "$supportedEncapsulationTypes or update switch properties and add needed encapsulation type."
     }
 }

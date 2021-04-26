@@ -446,7 +446,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         flowLoopDstSw[0].switchId == switchPair.dst.dpId
 
         cleanup: "Delete the flows"
-        [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
+        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     @Tidy

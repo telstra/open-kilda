@@ -23,7 +23,6 @@ import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.MacAddress;
-import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSharedSegmentCookie;
 
@@ -469,25 +468,6 @@ public interface ISwitchManager extends IFloodlightService {
      * @throws SwitchOperationException Switch not found
      */
     List<Long> removeMultitableEndpointIslRules(final DatapathId dpid, final int port) throws SwitchOperationException;
-
-    /**
-     * Installs server 42 Ingress flow witch matches Server 42 RTT packets.
-     *
-     * @param dpid datapathId of the switch
-     * @param dstDpid datapathId of the egress switch
-     * @param server42Port port from which RTT packet will be received
-     * @param outputPort port to forward the packet out
-     * @param customerPort port from switch receives real customer traffic (used in match be metadata)
-     * @param inputVlanId input vlan to match on, 0 means not to match on vlan
-     * @param transitTunnelId vlan to add before outputing on outputPort
-     * @param encapsulationType flow encapsulation type
-     * @return transaction id
-     * @throws SwitchOperationException Switch not found
-     */
-    long installServer42IngressFlow(
-            DatapathId dpid, DatapathId dstDpid, Long cookie, MacAddress server42MacAddress, int server42Port,
-            int outputPort, int customerPort, int inputVlanId, int transitTunnelId, OutputVlanType outputVlanType,
-            FlowEncapsulationType encapsulationType, boolean multiTable) throws SwitchOperationException;
 
     /**
      * Installs flow on a transit switch.

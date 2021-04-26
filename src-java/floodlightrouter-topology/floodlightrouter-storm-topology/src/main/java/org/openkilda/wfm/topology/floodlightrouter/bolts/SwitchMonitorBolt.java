@@ -21,6 +21,11 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.switches.SwitchAvailabilityUpdateNotification;
+import org.openkilda.messaging.info.switches.SwitchConnectNotification;
+import org.openkilda.messaging.info.switches.SwitchDisconnectNotification;
+import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.messaging.model.SwitchAvailabilityData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
@@ -101,7 +106,24 @@ public class SwitchMonitorBolt extends AbstractBolt implements SwitchMonitorCarr
     }
 
     @Override
-    public void networkStatusUpdateNotification(SwitchId switchId, InfoData notification) {
+    public void sendSwitchConnectNotification(
+            SwitchId switchId, SpeakerSwitchView speakerData, SwitchAvailabilityData availabilityData) {
+        sendOtherNotification(switchId, new SwitchConnectNotification(speakerData, availabilityData));
+    }
+
+    @Override
+    public void sendSwitchDisconnectNotification(
+            SwitchId switchId, SwitchAvailabilityData availabilityData, boolean isRegionOffline) {
+        sendOtherNotification(switchId, new SwitchDisconnectNotification(switchId, availabilityData, isRegionOffline));
+    }
+
+    @Override
+    public void sendSwitchAvailabilityUpdateNotification(SwitchId switchId, SwitchAvailabilityData availabilityData) {
+        sendOtherNotification(switchId, new SwitchAvailabilityUpdateNotification(switchId, availabilityData));
+    }
+
+    @Override
+    public void sendOtherNotification(SwitchId switchId, InfoData notification) {
         InfoMessage message = new InfoMessage(
                 notification, clock.instant().toEpochMilli(), getCommandContext().getCorrelationId());
         getOutput().emit(STREAM_NETWORK_ID, getCurrentTuple(), makeNetworkTuple(switchId.toString(), message));

@@ -136,8 +136,9 @@ public abstract class IConstants {
         public static final String VERSION_ONE = "/v1";
         public static final String VERSION_TWO = "/v2";
         public static final String GET_FLOW = VERSION_ONE + "/flows";
-        public static final String GET_FLOW_STATUS = GET_FLOW + "/status/";
-        public static final String GET_FLOW_REROUTE = GET_FLOW + "/{flow_id}/reroute";
+        public static final String GET_FLOW_V2 = VERSION_TWO + "/flows";
+        public static final String GET_FLOW_STATUS = GET_FLOW_V2 + "/status/";
+        public static final String GET_FLOW_REROUTE = GET_FLOW_V2 + "/{flow_id}/reroute";
         public static final String GET_FLOW_VALIDATE = GET_FLOW + "/{flow_id}/validate";
         public static final String GET_PATH_FLOW = GET_FLOW + "/path";
         public static final String GET_SWITCHES = VERSION_ONE + "/switches";
@@ -145,7 +146,7 @@ public abstract class IConstants {
         public static final String GET_SWITCH_RULES = GET_SWITCHES + "/{switch_id}/rules";
         public static final String GET_LINKS = VERSION_ONE + "/links";
         public static final String GET_LINK_PROPS = VERSION_ONE + "/link/props";
-        public static final String UPDATE_FLOW = GET_FLOW + "/{flow_id}";
+        public static final String UPDATE_FLOW = GET_FLOW_V2 + "/{flow_id}";
         public static final String GET_FLOW_PATH = GET_FLOW + "/{flow_id}/path";
         public static final String RESYNC_FLOW = GET_FLOW + "/{flow_id}/sync";
         public static final String CONFIG_SWITCH_PORT = GET_SWITCHES + "/{switch_id}/port/{port_no}/config";
@@ -303,7 +304,6 @@ public abstract class IConstants {
         public static final String SAML_SETTING = "saml_setting";
         
         public static final String TOPOLOGY_WORLD_MAP_VIEW = "topology_world_map_view";
-        
     }
 
     public final class Settings {
@@ -315,7 +315,6 @@ public abstract class IConstants {
         public static final String TOPOLOGY_SETTING = "topology_setting";
     }
     
-
     public interface SamlUrl {
       
         public static final String SAML = "/saml/";

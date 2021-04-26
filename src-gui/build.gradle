@@ -70,12 +70,7 @@ dependencies {
 
 group = 'org.openkilda'
 description = 'OpenKilda-GUI'
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(8)
-    }
-}
+sourceCompatibility = '1.8'
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
