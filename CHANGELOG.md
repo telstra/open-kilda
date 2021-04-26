@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.91.0 (26/04/2021)
+
+### Features:
+-  [#4196](https://github.com/telstra/open-kilda/pull/4196) update func tests according to multyfloodligth-monitoring [**tests**]
+-  [#4167](https://github.com/telstra/open-kilda/pull/4167) Multifloodlight monitoring [**floodlight**][**northbound**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#4133](https://github.com/telstra/open-kilda/pull/4133) Added error message for unsupported encapsulation type during create/update/swap (Issue: [#2587](https://github.com/telstra/open-kilda/issues/2587)) 
+-  [#4207](https://github.com/telstra/open-kilda/pull/4207) Handle exceptions during deserialization in NorthBound and GRPC (Issue: [#4128](https://github.com/telstra/open-kilda/issues/4128)) [**northbound**]
+-  [#4213](https://github.com/telstra/open-kilda/pull/4213) Correct grpc speaker consumer group id 
+
+### Improvements:
+-  [#4128](https://github.com/telstra/open-kilda/pull/4128) Upgrade and fix gradle dependencies [**floodlight**][**northbound**][**storm-topologies**]
+-  [#4206](https://github.com/telstra/open-kilda/pull/4206) Use the same consumer group for both northbound colors [**northbound**]
+-  [#4181](https://github.com/telstra/open-kilda/pull/4181) Improvement in flows to update new fields and upgrade to v2 (Issue: [#4178](https://github.com/telstra/open-kilda/issues/4178)) [**gui**]
+-  [#4190](https://github.com/telstra/open-kilda/pull/4190) improve/add cleanup in all specs in the 'flow' package [**tests**]
+-  [#4158](https://github.com/telstra/open-kilda/pull/4158) Sync server42 ingress rule via Speaker command 
+
+### Other changes:
+-  [#4171](https://github.com/telstra/open-kilda/pull/4171) Cleanup the folder with documentation [**docs**]
+-  [#4112](https://github.com/telstra/open-kilda/pull/4112) Update flow monitoring feature design (Issue: [#3968](https://github.com/telstra/open-kilda/issues/3968)) [**docs**]
+-  [#4184](https://github.com/telstra/open-kilda/pull/4184) Increase stability of s42 spec [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.90.0...v1.91.0).
+
+### Affected Components:
+portstate, gui, nbworker, stats-router, reroute, connected, network, ping, isllatency, stats, fl, flow-monitor, swmanager, grpc, router, flow-hs, nb, otsdb
+
+### Upgrade notes:
+Release contains DB migration, see [instructions](https://github.com/telstra/open-kilda/blob/develop/docker/db-migration/migrations/README.md) see instructions for its installation.
+
+---
+
 ## v1.90.0 (13/04/2021)
 
 ### Bug Fixes:
