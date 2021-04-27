@@ -37,7 +37,7 @@ public class UrlEntity extends BaseEntity {
 
     @Id
     @Column(name = "url_id", nullable = false)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer urlId;
 
     @Column(name = "name", nullable = false)

@@ -30,7 +30,7 @@ public class StatusEntity extends BaseEntity {
 
     @Id
     @Column(name = "status_id", nullable = false)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer statusId;
 
     @Column(name = "status_code", nullable = false)

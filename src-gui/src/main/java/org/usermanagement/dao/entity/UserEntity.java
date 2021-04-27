@@ -46,7 +46,7 @@ public class UserEntity extends BaseEntity implements Serializable {
 
     @Id
     @Column(name = "USER_ID", nullable = false)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long userId;
 
     @Column(name = "USERNAME", nullable = false)

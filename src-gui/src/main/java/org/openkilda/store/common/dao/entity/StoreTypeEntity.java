@@ -39,7 +39,7 @@ public class StoreTypeEntity {
 
     @Id
     @Column(name = "store_type_id", nullable = false)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer storeTypeId;
 
     @Column(name = "store_type_name", nullable = false)

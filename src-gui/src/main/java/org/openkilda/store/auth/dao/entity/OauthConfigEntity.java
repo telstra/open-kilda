@@ -42,7 +42,7 @@ public class OauthConfigEntity extends BaseEntity {
 
     @Id
     @Column(name = "oauth_config_id", nullable = false)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer oauthConfigId;
 
     @Column(name = "username", nullable = false)

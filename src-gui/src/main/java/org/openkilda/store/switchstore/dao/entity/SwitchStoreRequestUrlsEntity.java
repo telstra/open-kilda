@@ -41,7 +41,7 @@ import javax.persistence.Table;
 public class SwitchStoreRequestUrlsEntity extends BaseEntity {
     @Id
     @Column(name = "switch_store_url_id", nullable = false)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer switchStoreUrlId;
 
     @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)

@@ -33,7 +33,7 @@ public class AuthTypeEntity {
 
     @Id
     @Column(name = "auth_type_id", nullable = false)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer authTypeId;
 
     @Column(name = "auth_type_name", nullable = false)

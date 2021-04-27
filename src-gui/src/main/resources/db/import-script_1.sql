@@ -1,19 +1,19 @@
-INSERT INTO "VERSION" (Version_ID, Version_Number, Version_Deployment_Date)
+INSERT INTO VERSION_ENTITY (Version_ID, Version_Number, Version_Deployment_Date)
 VALUES (1, 1, CURRENT_TIMESTAMP);
 
 
-INSERT  INTO "KILDA_STATUS" (status_id, STATUS_CODE, STATUS) VALUES 
+INSERT  INTO KILDA_STATUS (status_id, STATUS_CODE, STATUS) VALUES 
 	(1, 'ACT', 'Active'),
 	(2, 'INA', 'Inactive');
 	
-INSERT INTO "KILDA_USER" (USER_ID, Username, Name, Password, email, Login_Time, Logout_Time, Active_Flag, Is_Authorized, is_two_fa_enabled, two_fa_key, is_two_fa_configured, CREATED_BY, CREATED_DATE, UPDATED_BY, UPDATED_DATE,STATUS_ID) VALUES 
-	(1, 'admin', 'Admin', '$2a$11$/PHW3eqqJkN2SDbrQhu44eYQkOPIMmoclx5eg8MeTk3tbay6hsVou', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true, true, false, null, false, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,1);
+INSERT INTO KILDA_USER (USER_ID, Username, Name, Password, email, Login_Time, Logout_Time, Active_Flag, Is_Authorized, is_two_fa_enabled, two_fa_key, is_two_fa_configured, CREATED_BY, CREATED_DATE, UPDATED_BY, UPDATED_DATE,STATUS_ID) VALUES 
+	(1, 'admin', 'Admin', '$2a$11$/PHW3eqqJkN2SDbrQhu44eYQkOPIMmoclx5eg8MeTk3tbay6hsVou', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'true', 'true', false, null, false, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,1);
 	
-INSERT INTO "KILDA_ROLE" (ROLE_ID, ROLE,STATUS_ID, CREATED_BY, CREATED_DATE, UPDATED_BY, UPDATED_DATE,DESCRIPTION) VALUES 
+INSERT INTO KILDA_ROLE (ROLE_ID, ROLE,STATUS_ID, CREATED_BY, CREATED_DATE, UPDATED_BY, UPDATED_DATE,DESCRIPTION) VALUES 
 	(1, 'kilda_user',1,1,CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,'Kilda User'),
 	(2, 'kilda_admin',1,1,CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP,'Kilda Admin');
 
-INSERT INTO "KILDA_PERMISSION" (PERMISSION_ID, PERMISSION, IS_EDITABLE, IS_ADMIN_PERMISSION, STATUS_ID, CREATED_BY, CREATED_DATE, UPDATED_BY, UPDATED_DATE,DESCRIPTION) VALUES 
+INSERT INTO KILDA_PERMISSION (PERMISSION_ID, PERMISSION, IS_EDITABLE, IS_ADMIN_PERMISSION, STATUS_ID, CREATED_BY, CREATED_DATE, UPDATED_BY, UPDATED_DATE,DESCRIPTION) VALUES 
 	(1, 'menu_topology', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for topology menu'),
 	(2, 'menu_flows', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for flows menu'),
 	(3, 'menu_isl', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for isl menu'),
@@ -46,7 +46,7 @@ INSERT INTO "KILDA_PERMISSION" (PERMISSION_ID, PERMISSION, IS_EDITABLE, IS_ADMIN
 	(30, 'um_assign_role_to_users', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> assign role to users'),
 	(31, 'um_assign_permission_to_roles', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission for user management -> assign permission to roles');
 	
-INSERT INTO "ROLE_PERMISSION" (ROLE_ID,PERMISSION_ID) VALUES 
+INSERT INTO ROLE_PERMISSION (ROLE_ID,PERMISSION_ID) VALUES 
 	(1, 1),
 	(1, 2),
 	(1, 3),
@@ -83,7 +83,7 @@ INSERT INTO "ROLE_PERMISSION" (ROLE_ID,PERMISSION_ID) VALUES
 	(2, 30),
 	(2, 31);
 	
-INSERT INTO "USER_ROLE" (USER_ID, ROLE_ID) VALUES 
+INSERT INTO USER_ROLE (USER_ID, ROLE_ID) VALUES 
 	(1, 2);
 
 ALTER TABLE KILDA_PERMISSION ALTER COLUMN permission_id RESTART WITH 100;
