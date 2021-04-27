@@ -149,6 +149,7 @@ public abstract class CookieBase implements Serializable {
         MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES(0x004),
         MULTI_TABLE_INGRESS_RULES(0x005),
         ARP_INPUT_CUSTOMER_TYPE(0x006),
+        // FIXME(surabujin) not used
         INGRESS_SEGMENT(0x007),   // used for ingress flow segment and for one switch flow segments
         SHARED_OF_FLOW(0x008),
         SERVER_42_INPUT(0x009),

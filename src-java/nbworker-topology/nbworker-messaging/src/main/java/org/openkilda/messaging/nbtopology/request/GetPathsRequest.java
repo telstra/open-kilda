@@ -24,6 +24,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
+import java.time.Duration;
+
 @EqualsAndHashCode(callSuper = true)
 @ReadRequest
 @Value
@@ -42,17 +44,17 @@ public class GetPathsRequest extends BaseRequest {
     PathComputationStrategy pathComputationStrategy;
 
     @JsonProperty("max_latency")
-    Long maxLatency;
+    Duration maxLatency;
 
     @JsonProperty("max_latency_tier2")
-    Long maxLatencyTier2;
+    Duration maxLatencyTier2;
 
     public GetPathsRequest(@JsonProperty("src_switch_id") SwitchId srcSwitchId,
                            @JsonProperty("dst_switch_id") SwitchId dstSwitchId,
                            @JsonProperty("encapsulation_type") FlowEncapsulationType encapsulationType,
                            @JsonProperty("path_computation_strategy") PathComputationStrategy pathComputationStrategy,
-                           @JsonProperty("max_latency") Long maxLatency,
-                           @JsonProperty("max_latency_tier2") Long maxLatencyTier2) {
+                           @JsonProperty("max_latency") Duration maxLatency,
+                           @JsonProperty("max_latency_tier2") Duration maxLatencyTier2) {
         this.srcSwitchId = srcSwitchId;
         this.dstSwitchId = dstSwitchId;
         this.encapsulationType = encapsulationType;

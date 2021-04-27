@@ -38,6 +38,7 @@ import org.openkilda.wfm.share.mappers.PathMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -65,7 +66,7 @@ public class PathsService {
      */
     public List<PathsInfoData> getPaths(
             SwitchId srcSwitchId, SwitchId dstSwitchId, FlowEncapsulationType requestEncapsulationType,
-            PathComputationStrategy requestPathComputationStrategy, Long maxLatency, Long maxLatencyTier2)
+            PathComputationStrategy requestPathComputationStrategy, Duration maxLatency, Duration maxLatencyTier2)
             throws RecoverableException, SwitchNotFoundException, UnroutableFlowException {
         if (Objects.equals(srcSwitchId, dstSwitchId)) {
             throw new IllegalArgumentException(

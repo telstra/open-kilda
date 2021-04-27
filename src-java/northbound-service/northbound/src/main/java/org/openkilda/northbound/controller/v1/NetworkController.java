@@ -36,6 +36,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -49,6 +50,9 @@ public class NetworkController extends BaseController {
     @Autowired
     private NetworkService networkService;
 
+    /**
+     * Handles paths between two endpoints requests.
+     */
     @GetMapping(path = "/paths")
     @ApiOperation(value = "Get paths between two switches", response = PathsDto.class)
     @ResponseStatus(HttpStatus.OK)
@@ -64,12 +68,16 @@ public class NetworkController extends BaseController {
             @ApiParam(value = "Maximum latency of flow path in milliseconds. Required for MAX_LATENCY strategy. "
                     + "Other strategies will ignore this parameter. If max_latency is 0 LATENCY strategy will be used "
                     + "instead of MAX_LATENCY")
-            @RequestParam(value = "max_latency", required = false) Long maxLatency,
+            @RequestParam(value = "max_latency", required = false) Long maxLatencyMs,
             @ApiParam(value = "Second tier for flow path latency in milliseconds. If there is no path with required "
                     + "max_latency, max_latency_tier2 with be used instead. Used only with MAX_LATENCY strategy. "
                     + "Other strategies will ignore this parameter.")
             @RequestParam(value = "max_latency_tier2", required = false)
-                    Long maxLatencyTier2) {
+                    Long maxLatencyTier2Ms) {
+
+        Duration maxLatency = maxLatencyMs != null ? Duration.ofMillis(maxLatencyMs) : null;
+        Duration maxLatencyTier2 = maxLatencyTier2Ms != null ? Duration.ofMillis(maxLatencyTier2Ms) : null;
+
         return networkService.getPaths(srcSwitchId, dstSwitchId, encapsulationType, pathComputationStrategy, maxLatency,
                 maxLatencyTier2);
     }

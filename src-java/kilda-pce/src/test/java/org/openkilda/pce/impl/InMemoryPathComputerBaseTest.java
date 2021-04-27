@@ -74,6 +74,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -355,7 +356,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
     @Test
     public void getNPathsCostSortByBandwidth() throws RecoverableException, UnroutableFlowException {
         List<Path> foundPaths = mockPathComputerWithoutMaxWeight().getNPaths(SWITCH_1, SWITCH_2, 10, null, COST,
-                0L, 0L);
+                Duration.ZERO, Duration.ZERO);
 
         assertEquals(5, foundPaths.size());
         assertSortedByBandwidthAndLatency(foundPaths);
@@ -365,7 +366,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
     public void getNPathsCostAndAvailableBandwidthSortByBandwidth()
             throws RecoverableException, UnroutableFlowException {
         List<Path> foundPaths = mockPathComputerWithoutMaxWeight().getNPaths(
-                SWITCH_1, SWITCH_2, 10, null, COST_AND_AVAILABLE_BANDWIDTH, 0L, 0L);
+                SWITCH_1, SWITCH_2, 10, null, COST_AND_AVAILABLE_BANDWIDTH, Duration.ZERO, Duration.ZERO);
 
         assertEquals(5, foundPaths.size());
         assertSortedByBandwidthAndLatency(foundPaths);
@@ -374,7 +375,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
     @Test
     public void getNPathsLatencySortByLatency() throws RecoverableException, UnroutableFlowException {
         List<Path> foundPaths = mockPathComputerWithoutMaxWeight().getNPaths(
-                SWITCH_1, SWITCH_2, 10, null, LATENCY, 0L, 0L);
+                SWITCH_1, SWITCH_2, 10, null, LATENCY, Duration.ZERO, Duration.ZERO);
 
         assertEquals(5, foundPaths.size());
         assertSortedByLatencyAndBandwidth(foundPaths);
@@ -398,7 +399,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         // We used MAX_LATENCY strategy with 0 max latency param. In this case LATENCY strategy must be used
         // We check it by using PathComputerWithoutMaxWeight() mock instead of mockPathComputerWithMaxWeight()
         List<Path> foundPaths = mockPathComputerWithoutMaxWeight().getNPaths(
-                SWITCH_1, SWITCH_2, 10, null, MAX_LATENCY, 0L, null);
+                SWITCH_1, SWITCH_2, 10, null, MAX_LATENCY, Duration.ZERO, null);
 
         assertEquals(5, foundPaths.size());
         assertSortedByLatencyAndBandwidth(foundPaths);
@@ -407,7 +408,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
     @Test
     public void getNPathsMaxLatencySortByLatency() throws RecoverableException, UnroutableFlowException {
         List<Path> foundPaths = mockPathComputerWithMaxWeight().getNPaths(
-                SWITCH_1, SWITCH_2, 10, null, MAX_LATENCY, 1000L, 0L);
+                SWITCH_1, SWITCH_2, 10, null, MAX_LATENCY, Duration.ofNanos(1000L), Duration.ZERO);
 
         assertEquals(5, foundPaths.size());
         assertSortedByLatencyAndBandwidth(foundPaths);
