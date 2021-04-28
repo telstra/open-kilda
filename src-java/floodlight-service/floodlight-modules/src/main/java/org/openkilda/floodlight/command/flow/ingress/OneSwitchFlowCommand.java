@@ -20,6 +20,7 @@ import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
+import org.openkilda.model.MirrorConfig;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -36,10 +37,10 @@ public abstract class OneSwitchFlowCommand extends IngressFlowSegmentBase {
     OneSwitchFlowCommand(
             MessageContext messageContext, UUID commandId, FlowSegmentMetadata metadata,
             FlowEndpoint endpoint, MeterConfig meterConfig, @NonNull FlowEndpoint egressEndpoint,
-            RulesContext rulesContext) {
+            RulesContext rulesContext, MirrorConfig mirrorConfig) {
         super(
                 messageContext, endpoint.getSwitchId(), commandId, metadata, endpoint, meterConfig,
-                egressEndpoint.getSwitchId(), rulesContext);
+                egressEndpoint.getSwitchId(), rulesContext, mirrorConfig);
         this.egressEndpoint = egressEndpoint;
     }
 

@@ -22,6 +22,7 @@ import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
+import org.openkilda.model.MirrorConfig;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -39,8 +40,9 @@ public class OneSwitchFlowVerifyCommand extends OneSwitchFlowInstallCommand {
             @JsonProperty("endpoint") FlowEndpoint endpoint,
             @JsonProperty("meter_config") MeterConfig meterConfig,
             @JsonProperty("egress_endpoint") FlowEndpoint egressEndpoint,
-            @JsonProperty("rules_context") RulesContext rulesContext) {
-        super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, rulesContext);
+            @JsonProperty("rules_context") RulesContext rulesContext,
+            @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
+        super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, rulesContext, mirrorConfig);
     }
 
     @Override

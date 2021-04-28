@@ -33,7 +33,7 @@ public abstract class IngressServer42FlowCommand extends IngressFlowSegmentComma
                                FlowEndpoint endpoint, SwitchId egressSwitchId, int islPort,
                                @NonNull FlowTransitEncapsulation encapsulation, RulesContext rulesContext) {
         super(messageContext, commandId, metadata, endpoint, null, egressSwitchId, islPort, encapsulation,
-                rulesContext);
+                rulesContext, null);
     }
 
     public String toString() {

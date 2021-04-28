@@ -22,6 +22,7 @@ import org.openkilda.floodlight.utils.OfFlowModDelMultiTableMessageBuilderFactor
 import org.openkilda.floodlight.utils.OfFlowModDelSingleTableMessageBuilderFactory;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -50,10 +51,11 @@ public class TransitFlowSegmentRemoveCommand extends TransitFlowSegmentCommand {
             @JsonProperty("metadata") FlowSegmentMetadata metadata,
             @JsonProperty("ingress_isl_port") int ingressIslPort,
             @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
-            @JsonProperty("egress_isl_port") int egressIslPort) {
+            @JsonProperty("egress_isl_port") int egressIslPort,
+            @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
         super(
                 context, switchId, commandId, metadata, ingressIslPort, encapsulation, egressIslPort,
-                makeFlowModBuilderFactory(metadata.isMultiTable()));
+                makeFlowModBuilderFactory(metadata.isMultiTable()), mirrorConfig);
     }
 
     @Override

@@ -773,7 +773,7 @@ public class StatsTopologyTest extends AbstractStormTest {
                 false,
                 (isForward && flow.getDetectConnectedDevices().isSrcLldp())
                         || (!isForward && flow.getDetectConnectedDevices().isDstLldp()),
-                false
+                false, null
         );
         sendFlowCommand(installOneSwitchFlow);
     }

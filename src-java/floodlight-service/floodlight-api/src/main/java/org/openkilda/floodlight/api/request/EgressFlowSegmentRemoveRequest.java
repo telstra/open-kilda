@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.MirrorConfig;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -43,8 +44,9 @@ public class EgressFlowSegmentRemoveRequest extends EgressFlowSegmentRequest {
             @JsonProperty("endpoint") FlowEndpoint endpoint,
             @JsonProperty("ingress_endpoint") FlowEndpoint ingressEndpoint,
             @JsonProperty("isl_port") int islPort,
-            @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation) {
-        super(messageContext, commandId, metadata, endpoint, ingressEndpoint, islPort, encapsulation);
+            @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
+            @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
+        super(messageContext, commandId, metadata, endpoint, ingressEndpoint, islPort, encapsulation, mirrorConfig);
     }
 
     public EgressFlowSegmentRemoveRequest(EgressFlowSegmentRequest other, UUID commandId) {

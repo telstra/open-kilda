@@ -39,7 +39,7 @@ public abstract class IngressFlowLoopSegmentRequest extends FlowSegmentRequest {
     @SuppressWarnings("squid:S00107")
     protected IngressFlowLoopSegmentRequest(MessageContext context, UUID commandId, FlowSegmentMetadata metadata,
                                             FlowEndpoint endpoint) {
-        super(context, endpoint.getSwitchId(), commandId, metadata);
+        super(context, endpoint.getSwitchId(), commandId, metadata, null);
 
         this.endpoint = endpoint;
     }

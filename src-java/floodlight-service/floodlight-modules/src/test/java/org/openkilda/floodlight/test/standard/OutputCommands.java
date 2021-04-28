@@ -25,13 +25,13 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.CATCH_BFD_RUL
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_MASK;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.MINIMAL_POSITIVE_PRIORITY;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_GROUP_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_RULE_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.VERIFICATION_RULE_VXLAN_PRIORITY;
 
 import org.openkilda.floodlight.OFFactoryMock;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.GroupId;
 import org.openkilda.model.cookie.Cookie;
 
 import com.google.common.collect.ImmutableList;
@@ -304,7 +304,8 @@ public interface OutputCommands {
                 .setInstructions(Arrays.asList(
                         ofFactory.instructions().buildMeter().setMeterId(2L).build(),
                         ofFactory.instructions().applyActions(singletonList(
-                                ofFactory.actions().group(OFGroup.of(ROUND_TRIP_LATENCY_GROUP_ID))))))
+                                ofFactory.actions()
+                                        .group(OFGroup.of(GroupId.ROUND_TRIP_LATENCY_GROUP_ID.intValue()))))))
                 .build();
     }
 

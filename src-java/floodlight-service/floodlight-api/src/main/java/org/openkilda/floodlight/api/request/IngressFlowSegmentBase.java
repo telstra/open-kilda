@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -49,8 +50,8 @@ abstract class IngressFlowSegmentBase extends FlowSegmentRequest {
     IngressFlowSegmentBase(
             MessageContext context, UUID commandId, FlowSegmentMetadata metadata, @NonNull FlowEndpoint endpoint,
             MeterConfig meterConfig, @NonNull SwitchId egressSwitchId,
-            RulesContext rulesContext) {
-        super(context, endpoint.getSwitchId(), commandId, metadata);
+            RulesContext rulesContext, MirrorConfig mirrorConfig) {
+        super(context, endpoint.getSwitchId(), commandId, metadata, mirrorConfig);
 
         this.endpoint = endpoint;
         this.meterConfig = meterConfig;

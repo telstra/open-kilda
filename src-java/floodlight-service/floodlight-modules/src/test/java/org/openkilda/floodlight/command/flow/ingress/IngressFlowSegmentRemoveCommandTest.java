@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -80,7 +80,7 @@ public class IngressFlowSegmentRemoveCommandTest extends IngressCommandRemoveTes
                 MeterConfig meterConfig, SwitchId egressSwitchId, Integer islPort,
                 FlowTransitEncapsulation encapsulation, RulesContext rulesContext) {
             super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
-                    rulesContext);
+                    rulesContext, null);
         }
 
         @Override

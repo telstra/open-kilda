@@ -20,6 +20,7 @@ import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -29,6 +30,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -109,6 +111,10 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     @JsonProperty("enable_arp")
     private boolean enableArp;
 
+    @JsonProperty("mirror_config")
+    @Getter @Setter
+    protected MirrorConfig mirrorConfig;
+
     /**
      * Instance constructor.
      *
@@ -127,6 +133,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
      * @param meterId source meter id
      * @param enableLldp install LLDP shared rule if True
      * @param enableArp install ARP shared rule if True
+     * @param mirrorConfig   flow mirror config
      * @throws IllegalArgumentException if any of arguments is null
      */
     @JsonCreator
@@ -145,7 +152,8 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                                 @JsonProperty("meter_id") final Long meterId,
                                 @JsonProperty("multi_table") final boolean multiTable,
                                 @JsonProperty("enable_lldp") final boolean enableLldp,
-                                @JsonProperty("enable_arp") final boolean enableArp) {
+                                @JsonProperty("enable_arp") final boolean enableArp,
+                                @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, multiTable);
         setInputVlanId(inputVlanId);
         setInputInnerVlanId(inputInnerVlanId);
@@ -156,6 +164,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
         setMeterId(meterId);
         setEnableLldp(enableLldp);
         setEnableArp(enableArp);
+        setMirrorConfig(mirrorConfig);
     }
 
     /**

@@ -29,7 +29,7 @@ public abstract class IngressFlowLoopCommand extends IngressFlowSegmentBase {
     IngressFlowLoopCommand(MessageContext messageContext, UUID commandId, FlowSegmentMetadata metadata,
                            FlowEndpoint endpoint) {
         super(messageContext, endpoint.getSwitchId(), commandId, metadata, endpoint,
-                null, endpoint.getSwitchId(), null);
+                null, endpoint.getSwitchId(), null, null);
     }
 
     /**

@@ -18,15 +18,24 @@ package org.openkilda.floodlight.command;
 import org.openkilda.floodlight.command.flow.egress.EgressFlowSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.egress.EgressFlowSegmentRemoveCommand;
 import org.openkilda.floodlight.command.flow.egress.EgressFlowSegmentVerifyCommand;
+import org.openkilda.floodlight.command.flow.egress.EgressMirrorFlowSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.egress.EgressMirrorFlowSegmentRemoveCommand;
+import org.openkilda.floodlight.command.flow.egress.EgressMirrorFlowSegmentVerifyCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowLoopSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowLoopSegmentRemoveCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowLoopSegmentVerifyCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentRemoveCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentVerifyCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressMirrorFlowSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressMirrorFlowSegmentRemoveCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressMirrorFlowSegmentVerifyCommand;
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowRemoveCommand;
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowVerifyCommand;
+import org.openkilda.floodlight.command.flow.ingress.OneSwitchMirrorFlowInstallCommand;
+import org.openkilda.floodlight.command.flow.ingress.OneSwitchMirrorFlowRemoveCommand;
+import org.openkilda.floodlight.command.flow.ingress.OneSwitchMirrorFlowVerifyCommand;
 import org.openkilda.floodlight.command.flow.transit.TransitFlowLoopSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.transit.TransitFlowLoopSegmentRemoveCommand;
 import org.openkilda.floodlight.command.flow.transit.TransitFlowLoopSegmentVerifyCommand;
@@ -98,7 +107,27 @@ import java.util.concurrent.CompletionException;
         @Type(value = TransitFlowLoopSegmentRemoveCommand.class,
                 name = "org.openkilda.floodlight.api.request.TransitFlowLoopSegmentRemoveRequest"),
         @Type(value = TransitFlowLoopSegmentVerifyCommand.class,
-                name = "org.openkilda.floodlight.api.request.TransitFlowLoopSegmentVerifyRequest")
+                name = "org.openkilda.floodlight.api.request.TransitFlowLoopSegmentVerifyRequest"),
+
+        @Type(value = IngressMirrorFlowSegmentInstallCommand.class,
+                name = "org.openkilda.floodlight.api.request.IngressMirrorFlowSegmentInstallRequest"),
+        @Type(value = IngressMirrorFlowSegmentRemoveCommand.class,
+                name = "org.openkilda.floodlight.api.request.IngressMirrorFlowSegmentRemoveRequest"),
+        @Type(value = IngressMirrorFlowSegmentVerifyCommand.class,
+                name = "org.openkilda.floodlight.api.request.IngressMirrorFlowSegmentVerifyRequest"),
+        @Type(value = EgressMirrorFlowSegmentInstallCommand.class,
+                name = "org.openkilda.floodlight.api.request.EgressMirrorFlowSegmentInstallRequest"),
+        @Type(value = EgressMirrorFlowSegmentRemoveCommand.class,
+                name = "org.openkilda.floodlight.api.request.EgressMirrorFlowSegmentRemoveRequest"),
+        @Type(value = EgressMirrorFlowSegmentVerifyCommand.class,
+                name = "org.openkilda.floodlight.api.request.EgressMirrorFlowSegmentVerifyRequest"),
+        @Type(value = OneSwitchMirrorFlowInstallCommand.class,
+                name = "org.openkilda.floodlight.api.request.OneSwitchMirrorFlowInstallRequest"),
+        @Type(value = OneSwitchMirrorFlowRemoveCommand.class,
+                name = "org.openkilda.floodlight.api.request.OneSwitchMirrorFlowRemoveRequest"),
+        @Type(value = OneSwitchMirrorFlowVerifyCommand.class,
+                name = "org.openkilda.floodlight.api.request.OneSwitchMirrorFlowVerifyRequest")
+
 })
 @Getter
 public abstract class SpeakerCommand<T extends SpeakerCommandReport> {

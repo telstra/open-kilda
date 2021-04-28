@@ -32,6 +32,7 @@ import static org.projectfloodlight.openflow.protocol.OFInstructionType.APPLY_AC
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.KildaCoreConfig;
+import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
@@ -88,7 +89,7 @@ public class IngressFlowLoopSegmentInstallCommandTest {
     @Test
     public void ingressFlowLoopDoubleTagMultiTableTest() throws Exception {
         IngressFlowLoopSegmentInstallCommand command = createCommand(VLAN_1, VLAN_2, true);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
+        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
         assertCommon(mod, INGRESS_TABLE_ID);
         assertEquals(3, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
@@ -105,7 +106,7 @@ public class IngressFlowLoopSegmentInstallCommandTest {
     @Test
     public void ingressFlowLoopSigleTagMultiTableTest() throws Exception {
         IngressFlowLoopSegmentInstallCommand command = createCommand(VLAN_1, 0, true);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
+        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
         assertCommon(mod, INGRESS_TABLE_ID);
         assertEquals(2, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
@@ -122,7 +123,7 @@ public class IngressFlowLoopSegmentInstallCommandTest {
     @Test
     public void ingressFlowLoopDefaultTagMultiTableTest() throws Exception {
         IngressFlowLoopSegmentInstallCommand command = createCommand(0, 0, true);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
+        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
         assertCommon(mod, INGRESS_TABLE_ID);
         assertEquals(1, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
@@ -135,7 +136,7 @@ public class IngressFlowLoopSegmentInstallCommandTest {
     @Test
     public void ingressFlowLoopSigleTagSingleTableTest() throws Exception {
         IngressFlowLoopSegmentInstallCommand command = createCommand(VLAN_1, 0, false);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
+        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
         assertCommon(mod, INPUT_TABLE_ID);
         assertEquals(2, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
@@ -149,7 +150,7 @@ public class IngressFlowLoopSegmentInstallCommandTest {
     @Test
     public void ingressFlowLoopDefaultTagSingleTableTest() throws Exception {
         IngressFlowLoopSegmentInstallCommand command = createCommand(0, 0, false);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
+        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
         assertCommon(mod, INPUT_TABLE_ID);
         assertEquals(1, stream(mod.getMatch().getMatchFields().spliterator(), false).count());

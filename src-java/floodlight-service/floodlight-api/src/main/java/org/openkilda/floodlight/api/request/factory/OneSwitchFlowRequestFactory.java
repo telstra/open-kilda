@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
+import org.openkilda.model.MirrorConfig;
 
 import lombok.Builder;
 
@@ -35,9 +36,9 @@ public class OneSwitchFlowRequestFactory extends FlowSegmentRequestFactory {
     @Builder
     public OneSwitchFlowRequestFactory(
             MessageContext messageContext, FlowSegmentMetadata metadata, FlowEndpoint endpoint, MeterConfig meterConfig,
-            FlowEndpoint egressEndpoint, RulesContext rulesContext) {
+            FlowEndpoint egressEndpoint, RulesContext rulesContext, MirrorConfig mirrorConfig) {
         this(new RequestBlank(messageContext, metadata, endpoint, meterConfig, egressEndpoint,
-                rulesContext));
+                rulesContext, mirrorConfig));
     }
 
     private OneSwitchFlowRequestFactory(OneSwitchFlowRequest requestBlank) {
@@ -63,8 +64,8 @@ public class OneSwitchFlowRequestFactory extends FlowSegmentRequestFactory {
     private static class RequestBlank extends OneSwitchFlowRequest {
         RequestBlank(
                 MessageContext context, FlowSegmentMetadata metadata, FlowEndpoint endpoint, MeterConfig meterConfig,
-                FlowEndpoint egressEndpoint, RulesContext rulesContext) {
-            super(context, dummyCommandId, metadata, endpoint, meterConfig, egressEndpoint, rulesContext);
+                FlowEndpoint egressEndpoint, RulesContext rulesContext, MirrorConfig mirrorConfig) {
+            super(context, dummyCommandId, metadata, endpoint, meterConfig, egressEndpoint, rulesContext, mirrorConfig);
         }
     }
 }
