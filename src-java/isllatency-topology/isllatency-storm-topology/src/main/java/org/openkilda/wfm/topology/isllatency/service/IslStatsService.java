@@ -35,6 +35,8 @@ import java.util.TreeMap;
 
 @Slf4j
 public class IslStatsService {
+    private static final String ORIGIN_ONE_WAY_LATENCY = "one_way_latency";
+
     private final IslStatsCarrier carrier;
     private final long latencyTimeout;
     private Map<IslKey, LatencyRecord> roundTripLatencyStorage;
@@ -59,15 +61,15 @@ public class IslStatsService {
      */
     public void handleRoundTripLatencyMetric(long timestamp, IslRoundTripLatency data, Endpoint destination) {
         if (data.getLatency() < 0) {
-            log.warn("Received invalid round trip latency {} for ISL {}_{} ===> {}_{}. Packet Id: {}",
+            log.warn("Received invalid round trip latency {} for ISL {}_{} ===> {}_{}. Packet Id: {}. Origin: {}",
                     data.getLatency(), data.getSrcSwitchId(), data.getSrcPortNo(),
-                    destination.getDatapath(), destination.getPortNumber(), data.getPacketId());
+                    destination.getDatapath(), destination.getPortNumber(), data.getPacketId(), data.getOrigin());
             return;
         }
 
-        log.debug("Received round trip latency {} for ISL {}_{} ===> {}_{}. Packet Id: {}",
+        log.debug("Received round trip latency {} for ISL {}_{} ===> {}_{}. Packet Id: {}. Origin: {}",
                 data.getLatency(), data.getSrcSwitchId(), data.getSrcPortNo(),
-                destination.getDatapath(), destination.getPortNumber(), data.getPacketId());
+                destination.getDatapath(), destination.getPortNumber(), data.getPacketId(), data.getOrigin());
 
         IslKey islKey = new IslKey(data, destination);
         roundTripLatencyStorage.put(islKey, new LatencyRecord(data.getLatency(), timestamp));
@@ -83,7 +85,8 @@ public class IslStatsService {
                 destination.getDatapath(),
                 destination.getPortNumber(),
                 data.getLatency(),
-                timestamp);
+                timestamp,
+                data.getOrigin());
     }
 
     /**
@@ -179,7 +182,8 @@ public class IslStatsService {
                     key.getDstSwitchId(),
                     key.getDstPort(),
                     record.getValue(),
-                    record.getKey());
+                    record.getKey(),
+                    ORIGIN_ONE_WAY_LATENCY);
         }
     }
 
@@ -207,7 +211,8 @@ public class IslStatsService {
                 forward.getDstSwitchId(),
                 forward.getDstPort(),
                 reverseRoundTripLatency,
-                timestamp);
+                timestamp,
+                ORIGIN_ONE_WAY_LATENCY);
     }
 
     @VisibleForTesting

@@ -15,7 +15,7 @@
 
 package org.openkilda.server42.control.serverstub;
 
-import org.openkilda.server42.control.messaging.flowrtt.Control.Flow;
+import org.openkilda.server42.control.messaging.flowrtt.FlowRttControl.Flow;
 
 import lombok.Builder;
 import lombok.Value;

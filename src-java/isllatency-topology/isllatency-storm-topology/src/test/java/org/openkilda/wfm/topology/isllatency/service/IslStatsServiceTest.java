@@ -19,6 +19,7 @@ import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -88,7 +89,7 @@ public class IslStatsServiceTest {
         for (int i = 0; i < 10; i++) {
             sendForwardRoundTripLatency(i, time);
             inOrderCarrier.verify(carrier, times(1))
-                    .emitLatency(SWITCH_ID_1, PORT_1, SWITCH_ID_2, PORT_2, i, time.toEpochMilli());
+                    .emitLatency(SWITCH_ID_1, PORT_1, SWITCH_ID_2, PORT_2, i, time.toEpochMilli(), null);
 
             time = time.plusSeconds(LATENCY_TIMEOUT / 2);
         }
@@ -421,7 +422,7 @@ public class IslStatsServiceTest {
 
         verify(carrier, times(expected.size()))
                 .emitLatency(eq(SWITCH_ID_1), eq(PORT_1), eq(SWITCH_ID_2), eq(PORT_2),
-                        latencyCaptor.capture(), timestampCaptor.capture());
+                        latencyCaptor.capture(), timestampCaptor.capture(), any());
 
         assertLatencyRecords(expected, latencyCaptor.getAllValues(), timestampCaptor.getAllValues());
     }

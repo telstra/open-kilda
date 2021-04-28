@@ -61,7 +61,7 @@ public class IslStatsBoltTest {
     @Test
     public void buildTsdbTupleFromIslOneWayLatency() throws JsonEncodeException, IOException {
         List<Object> tsdbTuple = statsBolt.buildTsdbTuple(
-                SWITCH1_ID, NODE1.getPortNo(), SWITCH2_ID, NODE2.getPortNo(), LATENCY, TIMESTAMP);
+                SWITCH1_ID, NODE1.getPortNo(), SWITCH2_ID, NODE2.getPortNo(), LATENCY, TIMESTAMP, null);
         assertTsdbTuple(tsdbTuple);
     }
 

@@ -60,7 +60,8 @@ kilda_northbound_password: "kilda"
 
 kilda_kafka_topic_server42_control_storm: "kilda.server42-storm.commands.priv"
 kilda_kafka_topic_server42_control: "kilda.server42-control.commands-reply.priv"
-kilda_kafka_topic_server42_stats: "kilda.server42-stats.flowrtt.priv"
+kilda_kafka_topic_server42_stats_flowrtt: "kilda.server42-stats.flowrtt.priv"
+kilda_kafka_topic_server42_stats_islrtt: "kilda.server42-stats.islrtt.priv"
 
 # interval in ticks (seconds) between sending disco packets
 kilda_discovery_generic_interval: 3

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package org.openkilda.server42.stats.messaging.flowrtt;
+package org.openkilda.server42.stats.messaging;
 
 
 message FlowLatencyPacket {
@@ -11,6 +11,15 @@ message FlowLatencyPacket {
     uint64 packet_id = 5;
 }
 
-message FlowLatencyPacketBucket {
-    repeated FlowLatencyPacket packet = 1;
+message IslLatencyPacket {
+    string switch_id = 1;
+    int32 port = 2;
+    int64 t0 = 3;
+    int64 t1 = 4;
+    uint64 packet_id = 5;
+}
+
+message LatencyPacketBucket {
+    repeated FlowLatencyPacket flowLatencyPacket = 1;
+	repeated IslLatencyPacket islLatencyPacket = 2;
 }

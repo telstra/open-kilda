@@ -38,6 +38,7 @@ import org.apache.storm.tuple.Fields;
 public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfig> {
     public static final String ISL_STATUS_SPOUT_ID = "isl-status-spout";
     public static final String ISL_LATENCY_SPOUT_ID = "isl-latency-spout";
+    public static final String ISL_RTT_LATENCY_SPOUT_ID = "isl-rtt-latency-spout";
 
     public static final String ISL_LATENCY_OTSDB_BOLT_ID = "isl-latency-otsdb-bolt";
     public static final String ISL_LATENCY_BOLT_ID = "isl-latency-bolt";
@@ -157,6 +158,7 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
         RouterBolt routerBolt = new RouterBolt(ZooKeeperSpout.SPOUT_ID);
         declareBolt(builder, routerBolt, ROUTER_BOLT_ID)
                 .shuffleGrouping(ISL_LATENCY_SPOUT_ID)
+                .shuffleGrouping(ISL_RTT_LATENCY_SPOUT_ID)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
@@ -165,6 +167,7 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
 
         logger.debug("connecting to {} topic", topoIslLatencyTopic);
         declareKafkaSpout(builder, topoIslLatencyTopic, ISL_LATENCY_SPOUT_ID);
+        declareKafkaSpout(builder, topologyConfig.getServer42StatsIslRttTopic(), ISL_RTT_LATENCY_SPOUT_ID);
         declareKafkaSpout(builder, topologyConfig.getKafkaNetworkIslStatusTopic(), ISL_STATUS_SPOUT_ID);
     }
 

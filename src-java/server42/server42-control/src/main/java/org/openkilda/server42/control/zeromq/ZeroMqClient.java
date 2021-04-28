@@ -16,8 +16,8 @@
 
 package org.openkilda.server42.control.zeromq;
 
-import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacket;
-import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacketResponse;
+import org.openkilda.server42.control.messaging.Control.CommandPacket;
+import org.openkilda.server42.control.messaging.Control.CommandPacketResponse;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import lombok.extern.slf4j.Slf4j;

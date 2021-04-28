@@ -15,15 +15,22 @@
 
 package org.openkilda.server42.control.serverstub;
 
-import org.openkilda.server42.control.messaging.flowrtt.Control.AddFlow;
-import org.openkilda.server42.control.messaging.flowrtt.Control.ClearFlowsFilter;
-import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacket;
-import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacketResponse;
-import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacketResponse.Builder;
-import org.openkilda.server42.control.messaging.flowrtt.Control.Flow;
-import org.openkilda.server42.control.messaging.flowrtt.Control.ListFlowsFilter;
-import org.openkilda.server42.control.messaging.flowrtt.Control.PushSettings;
-import org.openkilda.server42.control.messaging.flowrtt.Control.RemoveFlow;
+import static java.util.Collections.emptySet;
+
+import org.openkilda.server42.control.messaging.Control.CommandPacket;
+import org.openkilda.server42.control.messaging.Control.CommandPacketResponse;
+import org.openkilda.server42.control.messaging.Control.CommandPacketResponse.Builder;
+import org.openkilda.server42.control.messaging.Control.PushSettings;
+import org.openkilda.server42.control.messaging.flowrtt.FlowRttControl.AddFlow;
+import org.openkilda.server42.control.messaging.flowrtt.FlowRttControl.ClearFlowsFilter;
+import org.openkilda.server42.control.messaging.flowrtt.FlowRttControl.Flow;
+import org.openkilda.server42.control.messaging.flowrtt.FlowRttControl.ListFlowsFilter;
+import org.openkilda.server42.control.messaging.flowrtt.FlowRttControl.RemoveFlow;
+import org.openkilda.server42.control.messaging.islrtt.IslRttControl.AddIsl;
+import org.openkilda.server42.control.messaging.islrtt.IslRttControl.ClearIslsFilter;
+import org.openkilda.server42.control.messaging.islrtt.IslRttControl.IslEndpoint;
+import org.openkilda.server42.control.messaging.islrtt.IslRttControl.ListIslsFilter;
+import org.openkilda.server42.control.messaging.islrtt.IslRttControl.RemoveIsl;
 
 import com.google.protobuf.Any;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -36,7 +43,10 @@ import org.zeromq.ZMQ;
 import org.zeromq.ZMQ.Socket;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 
@@ -50,6 +60,7 @@ import javax.annotation.PostConstruct;
 public class ControlServer extends Thread {
 
     private HashMap<FlowKey, Flow> flows = new HashMap<>();
+    private HashMap<String, Set<Integer>> isls = new HashMap<>();
 
     @Value("${openkilda.server42.control.zeromq.control.server.endpoint}")
     private String bindEndpoint;
@@ -132,6 +143,54 @@ public class ControlServer extends Thread {
                             Any command = commandPacket.getCommand(0);
                             PushSettings settings = command.unpack(PushSettings.class);
                             log.info(settings.toString());
+                            break;
+                        case ADD_ISL:
+                            for (Any any : commandPacket.getCommandList()) {
+                                AddIsl addIsl = any.unpack(AddIsl.class);
+                                IslEndpoint endpoint = addIsl.getIsl();
+                                isls.computeIfAbsent(endpoint.getSwitchId(), k -> new HashSet<>())
+                                        .add(endpoint.getPort());
+                                statsServer.addIsl(endpoint.getSwitchId(), endpoint.getPort());
+                            }
+                            break;
+                        case REMOVE_ISL:
+                            for (Any any : commandPacket.getCommandList()) {
+                                RemoveIsl removeIsl = any.unpack(RemoveIsl.class);
+                                IslEndpoint endpoint = removeIsl.getIsl();
+                                isls.getOrDefault(endpoint.getSwitchId(), emptySet()).remove(endpoint.getPort());
+                                statsServer.removeIsl(endpoint.getSwitchId(), endpoint.getPort());
+                            }
+                            break;
+                        case CLEAR_ISLS:
+                            if (commandPacket.getCommandCount() > 0) {
+                                ClearIslsFilter filter = commandPacket.getCommand(0).unpack(ClearIslsFilter.class);
+                                Set<Integer> ports = Optional.ofNullable(isls.get(filter.getSwitchId()))
+                                        .orElse(emptySet());
+                                isls.remove(filter.getSwitchId());
+                                ports.forEach(p -> statsServer.removeIsl(filter.getSwitchId(), p));
+                            } else {
+                                isls.clear();
+                                statsServer.clearIsls();
+                            }
+                            break;
+                        case LIST_ISLS:
+                            if (commandPacket.getCommandCount() > 0) {
+                                ListIslsFilter filter = commandPacket.getCommand(0).unpack(ListIslsFilter.class);
+                                Optional.ofNullable(isls.get(filter.getSwitchId()))
+                                        .orElse(emptySet())
+                                        .forEach(port -> builder.addResponse(Any.pack(
+                                                IslEndpoint.newBuilder()
+                                                        .setSwitchId(filter.getSwitchId())
+                                                        .setPort(port)
+                                                        .build())));
+                            } else {
+                                isls.forEach((switchId, ports) ->
+                                        ports.forEach(port -> builder.addResponse(Any.pack(
+                                                IslEndpoint.newBuilder()
+                                                        .setSwitchId(switchId)
+                                                        .setPort(port)
+                                                        .build()))));
+                            }
                             break;
                         case UNRECOGNIZED:
                         default:

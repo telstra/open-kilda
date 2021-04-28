@@ -19,5 +19,6 @@ import org.openkilda.model.SwitchId;
 
 
 public interface IslStatsCarrier {
-    void emitLatency(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort, long latency, long timestamp);
+    void emitLatency(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort, long latency, long timestamp,
+                     String origin);
 }

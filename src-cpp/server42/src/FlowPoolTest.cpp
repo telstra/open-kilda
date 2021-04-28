@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(pb_test) {
             std::chrono::high_resolution_clock::now());
 
     for (uint32_t i = 0; i < 2000000; i++) {
-        org::openkilda::server42::stats::messaging::flowrtt::FlowLatencyPacket flowLatencyPacket;
+        org::openkilda::server42::stats::messaging::FlowLatencyPacket flowLatencyPacket;
         flowLatencyPacket.set_flow_id("payload->flow_id");
         flowLatencyPacket.set_t0(i * 2);
         flowLatencyPacket.set_t1(i * 3);
