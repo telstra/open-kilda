@@ -21,3 +21,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 003-add-switch-connections.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 004-add-mirror-classes.yaml

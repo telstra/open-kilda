@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -33,11 +33,12 @@ public class FlowSegmentCookie extends Cookie {
     static final BitField FLOW_REVERSE_DIRECTION_FLAG = new BitField(0x2000_0000_0000_0000L);
     static final BitField FLOW_FORWARD_DIRECTION_FLAG = new BitField(0x4000_0000_0000_0000L);
     static final BitField FLOW_LOOP_FLAG              = new BitField(0x0008_0000_0000_0000L);
+    static final BitField FLOW_MIRROR_FLAG            = new BitField(0x0004_0000_0000_0000L);
 
     // used by unit tests to check fields intersections
     static final BitField[] ALL_FIELDS = ArrayUtils.addAll(
             CookieBase.ALL_FIELDS, FLOW_FORWARD_DIRECTION_FLAG, FLOW_REVERSE_DIRECTION_FLAG, FLOW_EFFECTIVE_ID_FIELD,
-            FLOW_LOOP_FLAG);
+            FLOW_LOOP_FLAG, FLOW_MIRROR_FLAG);
 
     private static final Set<CookieType> VALID_TYPES = ImmutableSet.of(
                     CookieType.SERVICE_OR_FLOW_SEGMENT,
@@ -49,7 +50,7 @@ public class FlowSegmentCookie extends Cookie {
     }
 
     public FlowSegmentCookie(FlowPathDirection direction, long flowEffectiveId) {
-        this(CookieType.SERVICE_OR_FLOW_SEGMENT, direction, flowEffectiveId, false);
+        this(CookieType.SERVICE_OR_FLOW_SEGMENT, direction, flowEffectiveId, false, false);
     }
 
     FlowSegmentCookie(CookieType type, long value) {
@@ -57,8 +58,9 @@ public class FlowSegmentCookie extends Cookie {
     }
 
     @Builder
-    private FlowSegmentCookie(CookieType type, FlowPathDirection direction, long flowEffectiveId, boolean looped) {
-        super(makeValue(type, direction, flowEffectiveId, looped), type);
+    private FlowSegmentCookie(CookieType type, FlowPathDirection direction, long flowEffectiveId, boolean looped,
+                              boolean mirror) {
+        super(makeValue(type, direction, flowEffectiveId, looped, mirror), type);
     }
 
     @Override
@@ -89,7 +91,8 @@ public class FlowSegmentCookie extends Cookie {
                 .type(getType())
                 .direction(getDirection())
                 .flowEffectiveId(getFlowEffectiveId())
-                .looped(isLooped());
+                .looped(isLooped())
+                .mirror(isMirror());
     }
 
     /**
@@ -126,13 +129,17 @@ public class FlowSegmentCookie extends Cookie {
         return getField(FLOW_LOOP_FLAG) == 1;
     }
 
+    public boolean isMirror() {
+        return getField(FLOW_MIRROR_FLAG) == 1;
+    }
+
     public static FlowSegmentCookieBuilder builder() {
         return new FlowSegmentCookieBuilder()
                 .type(CookieType.SERVICE_OR_FLOW_SEGMENT);
     }
 
     private static long makeValue(CookieType type, FlowPathDirection direction, long flowEffectiveId,
-                                  boolean looped) {
+                                  boolean looped, boolean mirror) {
         if (!VALID_TYPES.contains(type)) {
             throw new IllegalArgumentException(formatIllegalTypeError(type, VALID_TYPES));
         }
@@ -144,6 +151,9 @@ public class FlowSegmentCookie extends Cookie {
         long result = setField(value, FLOW_EFFECTIVE_ID_FIELD, flowEffectiveId);
         if (looped) {
             result = setField(result, FLOW_LOOP_FLAG, 1);
+        }
+        if (mirror) {
+            result = setField(result, FLOW_MIRROR_FLAG, 1);
         }
         return result;
     }

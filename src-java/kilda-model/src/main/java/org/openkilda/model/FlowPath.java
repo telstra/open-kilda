@@ -17,6 +17,8 @@ package org.openkilda.model;
 
 import static java.lang.String.format;
 
+import org.openkilda.model.FlowMirrorPoints.FlowMirrorPointsData;
+import org.openkilda.model.FlowMirrorPoints.FlowMirrorPointsDataImpl;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
@@ -44,6 +46,8 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -256,6 +260,9 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
 
         void setDestWithMultiTable(boolean destWithMultiTable);
 
+        Set<FlowMirrorPoints> getFlowMirrorPointsSet();
+
+        void addFlowMirrorPoints(FlowMirrorPoints flowMirrorPoints);
     }
 
     /**
@@ -288,6 +295,11 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         @EqualsAndHashCode.Exclude
         @NonNull List<PathSegment> segments = new ArrayList<>();
         Set<FlowApplication> applications;
+
+        @Setter(AccessLevel.NONE)
+        @ToString.Exclude
+        @EqualsAndHashCode.Exclude
+        final Set<FlowMirrorPoints> flowMirrorPointsSet = new HashSet<>();
 
         public void setPathId(PathId pathId) {
             this.pathId = pathId;
@@ -358,6 +370,33 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
             }
 
             this.segments = new ArrayList<>(segments);
+        }
+
+
+        @Override
+        public void addFlowMirrorPoints(FlowMirrorPoints flowMirrorPoints) {
+            boolean toBeAdded = true;
+            Iterator<FlowMirrorPoints> it = this.flowMirrorPointsSet.iterator();
+            while (it.hasNext()) {
+                FlowMirrorPoints each = it.next();
+                if (flowMirrorPoints == each) {
+                    toBeAdded = false;
+                    break;
+                }
+                if (flowMirrorPoints.getMirrorSwitchId().equals(each.getMirrorSwitchId())
+                        && flowMirrorPoints.getMirrorGroup().getGroupId().equals(each.getMirrorGroup().getGroupId())) {
+                    it.remove();
+                    // Quit as no duplicates expected.
+                    break;
+                }
+            }
+            if (toBeAdded) {
+                this.flowMirrorPointsSet.add(flowMirrorPoints);
+                FlowMirrorPointsData data = flowMirrorPoints.getData();
+                if (data instanceof FlowMirrorPointsDataImpl) {
+                    ((FlowMirrorPointsDataImpl) data).flowPath = this.flowPath;
+                }
+            }
         }
     }
 

@@ -28,5 +28,10 @@ public enum MirrorGroupType {
     /**
      * Mirror for the controller.
      */
-    CONTROLLER;
+    CONTROLLER,
+
+    /**
+     * Mirror for checking the integrity of traffic.
+     */
+    TRAFFIC_INTEGRITY;
 }
