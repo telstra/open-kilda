@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MeterConfig;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -47,8 +48,8 @@ public abstract class IngressFlowSegmentRequest extends IngressFlowSegmentBase {
     protected IngressFlowSegmentRequest(
             MessageContext context, UUID commandId, FlowSegmentMetadata metadata,
             FlowEndpoint endpoint, MeterConfig meterConfig, SwitchId egressSwitchId, int islPort,
-            @NonNull FlowTransitEncapsulation encapsulation, RulesContext rulesContext) {
-        super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, rulesContext);
+            @NonNull FlowTransitEncapsulation encapsulation, RulesContext rulesContext, MirrorConfig mirrorConfig) {
+        super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, rulesContext, mirrorConfig);
 
         this.islPort = islPort;
         this.encapsulation = encapsulation;
@@ -57,6 +58,6 @@ public abstract class IngressFlowSegmentRequest extends IngressFlowSegmentBase {
     protected IngressFlowSegmentRequest(@NonNull IngressFlowSegmentRequest other, @NonNull UUID commandId) {
         this(
                 other.messageContext, commandId, other.metadata, other.endpoint, other.meterConfig,
-                other.egressSwitchId, other.islPort, other.encapsulation, other.rulesContext);
+                other.egressSwitchId, other.islPort, other.encapsulation, other.rulesContext, other.mirrorConfig);
     }
 }

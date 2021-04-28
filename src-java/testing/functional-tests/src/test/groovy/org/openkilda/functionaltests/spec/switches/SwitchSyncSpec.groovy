@@ -183,7 +183,7 @@ class SwitchSyncSpec extends BaseSpecification {
                 new InstallIngressFlow(UUID.randomUUID(), flow.flowId, excessRuleCookie, srcSwitch.dpId, 1, 2, 1, 0, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId, dstSwitch.dpId, false,
-                        false, false)).toJson()))
+                        false, false, null)).toJson()))
         involvedSwitches[1..-2].each { transitSw ->
             producer.send(new ProducerRecord(speakerTopic, transitSw.toString(), buildMessage(
                     new InstallTransitFlow(UUID.randomUUID(), flow.flowId, excessRuleCookie, transitSw.dpId, 1, 2, 1,
@@ -194,7 +194,7 @@ class SwitchSyncSpec extends BaseSpecification {
                 new InstallIngressFlow(UUID.randomUUID(), flow.flowId, excessRuleCookie, dstSwitch.dpId, 1, 2, 1, 0, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId, srcSwitch.dpId, false,
-                        false, false)).toJson()))
+                        false, false, null)).toJson()))
 
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }

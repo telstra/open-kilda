@@ -44,7 +44,7 @@ public abstract class TransitFlowSegmentRequest extends FlowSegmentRequest {
     protected TransitFlowSegmentRequest(
             MessageContext context, SwitchId switchId, UUID commandId, FlowSegmentMetadata metadata,
             int ingressIslPort, int egressIslPort, @NonNull FlowTransitEncapsulation encapsulation) {
-        super(context, switchId, commandId, metadata);
+        super(context, switchId, commandId, metadata, null);
 
         this.ingressIslPort = ingressIslPort;
         this.egressIslPort = egressIslPort;

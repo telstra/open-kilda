@@ -65,7 +65,7 @@ public class FlowCommandFactory {
                 egressEndpoint.getPortNumber(),
                 encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
                 egressEndpoint.getOuterVlanId(), egressEndpoint.getInnerVlanId(), getOutputVlanType(flow, flowPath),
-                multiTable, ingressEndpoint);
+                multiTable, ingressEndpoint, null);
     }
 
     /**
@@ -88,7 +88,7 @@ public class FlowCommandFactory {
                 egressEndpoint.getSwitchId(), inputPortNo, egressEndpoint.getPortNumber(),
                 encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
                 egressEndpoint.getOuterVlanId(), egressEndpoint.getInnerVlanId(), getOutputVlanType(flow, flowPath),
-                multiTable, ingressEndpoint);
+                multiTable, ingressEndpoint, null);
     }
 
     /**
@@ -139,7 +139,7 @@ public class FlowCommandFactory {
                 outputPortNo, ingressEndpoint.getOuterVlanId(), ingressEndpoint.getInnerVlanId(),
                 encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
                 getOutputVlanType(flow, flowPath), flow.getBandwidth(), meterId,
-                egressEndpoint.getSwitchId(), multiTable, enableLldp, enableArp);
+                egressEndpoint.getSwitchId(), multiTable, enableLldp, enableArp, null);
     }
 
     /**
@@ -162,7 +162,7 @@ public class FlowCommandFactory {
                 ingressEndpoint.getSwitchId(), ingressEndpoint.getPortNumber(), 0,
                 encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
                 egressEndpoint.getOuterVlanId(), egressEndpoint.getInnerVlanId(), getOutputVlanType(flow, flowPath),
-                multiTable, ingressEndpoint);
+                multiTable, ingressEndpoint, null);
     }
 
     /**
@@ -232,7 +232,8 @@ public class FlowCommandFactory {
                 egressEndpoint.getPortNumber(),
                 ingressEndpoint.getOuterVlanId(), ingressEndpoint.getInnerVlanId(),
                 egressEndpoint.getOuterVlanId(), egressEndpoint.getInnerVlanId(),
-                getOutputVlanType(flow, flowPath), flow.getBandwidth(), meterId, multiTable, enableLldp, enableArp);
+                getOutputVlanType(flow, flowPath), flow.getBandwidth(), meterId, multiTable, enableLldp, enableArp,
+                null);
     }
 
     private OutputVlanType getOutputVlanType(Flow flow, FlowPath flowPath) {

@@ -53,7 +53,7 @@ public class TransitFlowLoopSegmentRemoveCommand extends TransitFlowSegmentComma
             @JsonProperty("egress_isl_port") int egressIslPort) {
         super(
                 context, switchId, commandId, metadata, ingressIslPort, encapsulation, egressIslPort,
-                makeFlowModBuilderFactory(metadata.isMultiTable()));
+                makeFlowModBuilderFactory(metadata.isMultiTable()), null);
     }
 
     @Override

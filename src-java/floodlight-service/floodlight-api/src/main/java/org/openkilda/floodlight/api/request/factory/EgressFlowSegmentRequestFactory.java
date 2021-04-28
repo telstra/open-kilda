@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.MirrorConfig;
 
 import lombok.Builder;
 
@@ -34,8 +35,10 @@ public class EgressFlowSegmentRequestFactory extends FlowSegmentRequestFactory {
     @Builder
     public EgressFlowSegmentRequestFactory(
             MessageContext messageContext, FlowSegmentMetadata metadata, FlowEndpoint endpoint,
-            FlowEndpoint ingressEndpoint, int islPort, FlowTransitEncapsulation encapsulation) {
-        this(new RequestBlank(messageContext, metadata, endpoint, ingressEndpoint, islPort, encapsulation));
+            FlowEndpoint ingressEndpoint, int islPort, FlowTransitEncapsulation encapsulation,
+            MirrorConfig mirrorConfig) {
+        this(new RequestBlank(messageContext, metadata, endpoint, ingressEndpoint, islPort, encapsulation,
+                mirrorConfig));
     }
 
     private EgressFlowSegmentRequestFactory(EgressFlowSegmentRequest requestBlank) {
@@ -61,8 +64,10 @@ public class EgressFlowSegmentRequestFactory extends FlowSegmentRequestFactory {
     private static class RequestBlank extends EgressFlowSegmentRequest {
         RequestBlank(
                 MessageContext messageContext, FlowSegmentMetadata metadata, FlowEndpoint endpoint,
-                FlowEndpoint ingressEndpoint, int islPort, FlowTransitEncapsulation encapsulation) {
-            super(messageContext, dummyCommandId, metadata, endpoint, ingressEndpoint, islPort, encapsulation);
+                FlowEndpoint ingressEndpoint, int islPort, FlowTransitEncapsulation encapsulation,
+                MirrorConfig mirrorConfig) {
+            super(messageContext, dummyCommandId, metadata, endpoint, ingressEndpoint, islPort, encapsulation,
+                    mirrorConfig);
         }
     }
 }

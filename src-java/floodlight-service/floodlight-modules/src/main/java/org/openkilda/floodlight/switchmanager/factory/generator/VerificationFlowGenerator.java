@@ -22,7 +22,6 @@ import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSetDs
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.prepareFlowModBuilder;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.INPUT_TABLE_ID;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_GROUP_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.VERIFICATION_RULE_PRIORITY;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
@@ -34,6 +33,7 @@ import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.SwitchManagerConfig;
 import org.openkilda.floodlight.switchmanager.factory.SwitchFlowTuple;
+import org.openkilda.model.GroupId;
 import org.openkilda.model.SwitchFeature;
 
 import com.google.common.collect.ImmutableList;
@@ -170,7 +170,7 @@ public class VerificationFlowGenerator extends MeteredFlowGenerator {
                 .build());
 
         return ofFactory.buildGroupAdd()
-                .setGroup(OFGroup.of(ROUND_TRIP_LATENCY_GROUP_ID))
+                .setGroup(OFGroup.of(GroupId.ROUND_TRIP_LATENCY_GROUP_ID.intValue()))
                 .setGroupType(OFGroupType.ALL)
                 .setBuckets(bucketList)
                 .build();

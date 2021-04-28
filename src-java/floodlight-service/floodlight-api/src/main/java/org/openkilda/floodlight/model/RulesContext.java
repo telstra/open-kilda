@@ -30,7 +30,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
-@Builder
+@Builder(toBuilder = true)
 public class RulesContext implements Serializable {
     private boolean removeCustomerCatchRule;
     private boolean removeCustomerLldpRule;

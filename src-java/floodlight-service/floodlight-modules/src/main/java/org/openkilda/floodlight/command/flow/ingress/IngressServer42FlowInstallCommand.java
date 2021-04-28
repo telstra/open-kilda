@@ -19,13 +19,13 @@ import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallMultiTableFlowModFactory;
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallSingleTableFlowModFactory;
+import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MacAddress;
-import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 
 import lombok.Getter;
@@ -69,7 +69,7 @@ public class IngressServer42FlowInstallCommand extends IngressServer42FlowComman
     }
 
     @Override
-    protected List<OFFlowMod> makeFlowModMessages(MeterId effectiveMeterId) {
+    protected List<OFFlowMod> makeFlowModMessages(EffectiveIds effectiveIds) {
         return makeServer42IngressFlowModMessages();
     }
 

@@ -29,6 +29,7 @@ import static org.projectfloodlight.openflow.protocol.OFInstructionType.APPLY_AC
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.KildaCoreConfig;
+import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
@@ -104,7 +105,7 @@ public class IngressServer42FlowInstallCommandTest {
     @Test
     public void server42IngressFlowDoubleTagMultiTableVlan() throws Exception {
         IngressServer42FlowInstallCommand command = createCommand(VLAN_1, VLAN_2, VLAN_ENCAPSULATION, true);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
+        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
         assertCommonMultiTable(mod);
         assertEquals(3, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
@@ -122,7 +123,7 @@ public class IngressServer42FlowInstallCommandTest {
     @Test
     public void server42IngressFlowSingleTagMultiTableVlan() throws Exception {
         IngressServer42FlowInstallCommand command = createCommand(VLAN_1, 0, VLAN_ENCAPSULATION, true);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
+        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
         assertCommonMultiTable(mod);
         assertEquals(3, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
@@ -140,7 +141,7 @@ public class IngressServer42FlowInstallCommandTest {
     @Test
     public void server42IngressFlowDefaultMultiTableVlan() throws Exception {
         IngressServer42FlowInstallCommand command = createCommand(0, 0, VLAN_ENCAPSULATION, true);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
+        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
         assertCommonMultiTable(mod);
         assertEquals(2, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
@@ -159,7 +160,7 @@ public class IngressServer42FlowInstallCommandTest {
     @Test
     public void server42IngressFlowDoubleTagMultiTableVxlan() throws Exception {
         IngressServer42FlowInstallCommand command = createCommand(VLAN_1, VLAN_2, VXLAN_ENCAPSULATION, true);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
+        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
         assertCommonMultiTable(mod);
         assertEquals(3, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
@@ -175,7 +176,7 @@ public class IngressServer42FlowInstallCommandTest {
     @Test
     public void server42IngressFlowSigleTagMultiTableVxlan() throws Exception {
         IngressServer42FlowInstallCommand command = createCommand(VLAN_1, 0, VXLAN_ENCAPSULATION, true);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
+        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
         assertCommonMultiTable(mod);
         assertEquals(3, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
@@ -191,7 +192,7 @@ public class IngressServer42FlowInstallCommandTest {
     @Test
     public void server42IngressFlowDefaultMultiTableVxlan() throws Exception {
         IngressServer42FlowInstallCommand command = createCommand(0, 0, VXLAN_ENCAPSULATION, true);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
+        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
         assertCommonMultiTable(mod);
         assertEquals(2, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
@@ -208,7 +209,7 @@ public class IngressServer42FlowInstallCommandTest {
     @Test
     public void server42IngressFlowSingleTagSingleTableVlan() throws Exception {
         IngressServer42FlowInstallCommand command = createCommand(VLAN_1, 0, VLAN_ENCAPSULATION, false);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
+        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
         assertCommonSingleTable(mod);
         assertEquals(6, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
@@ -227,7 +228,7 @@ public class IngressServer42FlowInstallCommandTest {
     @Test
     public void server42IngressFlowDefaultSingleTableVlan() throws Exception {
         IngressServer42FlowInstallCommand command = createCommand(0, 0, VLAN_ENCAPSULATION, false);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
+        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
         assertCommonSingleTable(mod);
         assertEquals(5, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
@@ -247,7 +248,7 @@ public class IngressServer42FlowInstallCommandTest {
     @Test
     public void server42IngressFlowSingleTagSingleTableVxlan() throws Exception {
         IngressServer42FlowInstallCommand command = createCommand(VLAN_1, 0, VXLAN_ENCAPSULATION, false);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
+        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
         assertCommonSingleTable(mod);
         assertEquals(6, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
@@ -262,7 +263,7 @@ public class IngressServer42FlowInstallCommandTest {
     @Test
     public void server42IngressFlowDefaultSingleTableVxlan() throws Exception {
         IngressServer42FlowInstallCommand command = createCommand(0, 0, VXLAN_ENCAPSULATION, false);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(null));
+        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
         assertCommonSingleTable(mod);
         assertEquals(5, stream(mod.getMatch().getMatchFields().spliterator(), false).count());

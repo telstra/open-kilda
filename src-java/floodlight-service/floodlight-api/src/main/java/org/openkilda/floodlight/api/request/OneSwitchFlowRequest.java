@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
+import org.openkilda.model.MirrorConfig;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -41,9 +42,9 @@ public class OneSwitchFlowRequest extends IngressFlowSegmentBase {
     protected OneSwitchFlowRequest(
             MessageContext context, UUID commandId, FlowSegmentMetadata metadata, FlowEndpoint endpoint,
             MeterConfig meterConfig, @NonNull FlowEndpoint egressEndpoint,
-            RulesContext rulesContext) {
+            RulesContext rulesContext, MirrorConfig mirrorConfig) {
         super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint.getSwitchId(),
-                rulesContext);
+                rulesContext, mirrorConfig);
 
         if (! getSwitchId().equals(egressEndpoint.getSwitchId())) {
             throw new IllegalArgumentException(String.format(
@@ -57,6 +58,6 @@ public class OneSwitchFlowRequest extends IngressFlowSegmentBase {
     protected OneSwitchFlowRequest(@NonNull OneSwitchFlowRequest other, @NonNull UUID commandId) {
         this(
                 other.messageContext, commandId, other.metadata, other.endpoint, other.meterConfig,
-                other.egressEndpoint, other.rulesContext);
+                other.egressEndpoint, other.rulesContext, other.mirrorConfig);
     }
 }

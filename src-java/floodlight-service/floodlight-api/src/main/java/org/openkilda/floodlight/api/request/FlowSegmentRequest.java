@@ -17,10 +17,13 @@ package org.openkilda.floodlight.api.request;
 
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.messaging.MessageContext;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -36,10 +39,16 @@ public abstract class FlowSegmentRequest extends SpeakerRequest {
     @JsonProperty("metadata")
     protected final FlowSegmentMetadata metadata;
 
+    @JsonInclude(Include.NON_NULL)
+    @JsonProperty("mirror_config")
+    protected final MirrorConfig mirrorConfig;
+
     public FlowSegmentRequest(
-            MessageContext context, SwitchId switchId, UUID commandId, @NonNull FlowSegmentMetadata metadata) {
+            MessageContext context, SwitchId switchId, UUID commandId, @NonNull FlowSegmentMetadata metadata,
+            MirrorConfig mirrorConfig) {
         super(context, switchId, commandId);
         this.metadata = metadata;
+        this.mirrorConfig = mirrorConfig;
     }
 
     @JsonIgnore

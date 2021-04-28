@@ -21,6 +21,7 @@ import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -30,6 +31,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -111,6 +113,10 @@ public class InstallIngressFlow extends InstallTransitFlow {
     @JsonProperty("egress_switch_id")
     protected SwitchId egressSwitchId;
 
+    @JsonProperty("mirror_config")
+    @Getter @Setter
+    protected MirrorConfig mirrorConfig;
+
     /**
      * Instance constructor.
      *
@@ -130,6 +136,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
      * @param egressSwitchId id of the ingress switch
      * @param multiTable     multitable flag
      * @param enableLldp lldp flag. Packets will be send to LLDP rule if True.
+     * @param mirrorConfig   flow mirror config
      * @throws IllegalArgumentException if any of mandatory parameters is null
      */
     @JsonCreator
@@ -150,7 +157,8 @@ public class InstallIngressFlow extends InstallTransitFlow {
                               @JsonProperty("egress_switch_id") final SwitchId egressSwitchId,
                               @JsonProperty("multi_table") final boolean multiTable,
                               @JsonProperty("enable_lldp") final boolean enableLldp,
-                              @JsonProperty("enable_arp") final boolean enableArp) {
+                              @JsonProperty("enable_arp") final boolean enableArp,
+                              @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
                 transitEncapsulationType, multiTable);
         setInputVlanId(inputVlanId);
@@ -161,6 +169,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
         setEnableLldp(enableLldp);
         setEgressSwitchId(egressSwitchId);
         setEnableArp(enableArp);
+        setMirrorConfig(mirrorConfig);
     }
 
     /**
