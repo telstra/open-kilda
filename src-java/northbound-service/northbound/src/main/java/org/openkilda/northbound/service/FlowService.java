@@ -297,4 +297,13 @@ public interface FlowService {
      */
     CompletableFuture<FlowMirrorPointResponseV2> createFlowMirrorPoint(String flowId,
                                                                        FlowMirrorPointPayload request);
+
+    /**
+     * Delete new flow mirror point.
+     *
+     * @param flowId  flow id
+     * @param mirrorPointId flow mirror point id
+     * @return deleted flow mirror point
+     */
+    CompletableFuture<FlowMirrorPointResponseV2> deleteFlowMirrorPoint(String flowId, String mirrorPointId);
 }

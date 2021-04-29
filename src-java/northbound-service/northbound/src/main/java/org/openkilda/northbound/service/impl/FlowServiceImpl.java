@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import org.openkilda.messaging.command.flow.CreateFlowLoopRequest;
 import org.openkilda.messaging.command.flow.DeleteFlowLoopRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowMirrorPointCreateRequest;
+import org.openkilda.messaging.command.flow.FlowMirrorPointDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
@@ -803,6 +804,20 @@ public class FlowServiceImpl implements FlowService {
                     ErrorType.PARAMETERS_INVALID, ex.getMessage(),
                     "Can not parse arguments of the mirror point create request");
         }
+
+        CommandMessage command = new CommandMessage(request, System.currentTimeMillis(), correlationId);
+
+        return messagingChannel.sendAndGet(flowHsTopic, command)
+                .thenApply(FlowMirrorPointResponse.class::cast)
+                .thenApply(flowMapper::toFlowMirrorPointResponseV2);
+    }
+
+    @Override
+    public CompletableFuture<FlowMirrorPointResponseV2> deleteFlowMirrorPoint(String flowId, String mirrorPointId) {
+        logger.info("Processing flow mirror point deletion: {}, for flow {}", mirrorPointId, flowId);
+
+        final String correlationId = RequestCorrelationId.getId();
+        FlowMirrorPointDeleteRequest request = new FlowMirrorPointDeleteRequest(flowId, mirrorPointId);
 
         CommandMessage command = new CommandMessage(request, System.currentTimeMillis(), correlationId);
 
