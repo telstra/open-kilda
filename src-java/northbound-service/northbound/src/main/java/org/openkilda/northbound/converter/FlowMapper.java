@@ -31,6 +31,8 @@ import org.openkilda.messaging.model.PatchEndpoint;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.nbtopology.response.FlowLoopDto;
+import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse;
+import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse.FlowMirrorPoint;
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
@@ -58,6 +60,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatus;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointsResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPathV2;
@@ -523,6 +526,10 @@ public abstract class FlowMapper {
                                                                                 FlowMirrorPointPayload payload);
 
     public abstract FlowMirrorPointResponseV2 toFlowMirrorPointResponseV2(FlowMirrorPointResponse response);
+
+    public abstract FlowMirrorPointsResponseV2 toFlowMirrorPointsResponseV2(FlowMirrorPointsDumpResponse response);
+
+    public abstract FlowMirrorPointPayload toFlowMirrorPointPayload(FlowMirrorPoint flowMirrorPoint);
 
     /**
      * Convert {@link String} to {@link FlowPathDirection}.

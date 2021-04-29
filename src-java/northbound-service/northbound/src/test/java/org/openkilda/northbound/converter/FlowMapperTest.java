@@ -24,6 +24,8 @@ import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRequest.Type;
 import org.openkilda.messaging.info.flow.FlowMirrorPointResponse;
 import org.openkilda.messaging.model.FlowPatch;
+import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse;
+import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse.FlowMirrorPoint;
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
@@ -37,12 +39,16 @@ import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointsResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 
+import org.assertj.core.util.Lists;
 import org.junit.Test;
 import org.mapstruct.factory.Mappers;
+
+import java.util.List;
 
 public class FlowMapperTest {
     private static final String FLOW_ID = "flow1";
@@ -314,5 +320,59 @@ public class FlowMapperTest {
         assertEquals(response.getSinkEndpoint().getPortNumber(), apiResponse.getSinkEndpoint().getPortNumber());
         assertEquals(response.getSinkEndpoint().getOuterVlanId(), apiResponse.getSinkEndpoint().getVlanId());
         assertEquals(response.getSinkEndpoint().getInnerVlanId(), apiResponse.getSinkEndpoint().getInnerVlanId());
+    }
+
+    @Test
+    public void testFlowMirrorPointsDumpResponseToFlowMirrorPointsResponseV2() {
+        FlowMirrorPoint firstPoint = FlowMirrorPoint.builder()
+                .mirrorPointId(MIRROR_POINT_ID_A)
+                .mirrorPointDirection(MIRROR_POINT_DIRECTION_A)
+                .mirrorPointSwitchId(SRC_SWITCH_ID)
+                .sinkEndpoint(FlowEndpoint.builder()
+                        .switchId(SRC_SWITCH_ID)
+                        .portNumber(SRC_PORT)
+                        .outerVlanId(SRC_VLAN)
+                        .innerVlanId(SRC_INNER_VLAN)
+                        .build())
+                .build();
+        FlowMirrorPoint secondPoint = FlowMirrorPoint.builder()
+                .mirrorPointId(MIRROR_POINT_ID_B)
+                .mirrorPointDirection(MIRROR_POINT_DIRECTION_B)
+                .mirrorPointSwitchId(SRC_SWITCH_ID)
+                .sinkEndpoint(FlowEndpoint.builder()
+                        .switchId(DST_SWITCH_ID)
+                        .portNumber(DST_PORT)
+                        .outerVlanId(DST_VLAN)
+                        .innerVlanId(DST_INNER_VLAN)
+                        .build())
+                .build();
+        List<FlowMirrorPoint> points = Lists.newArrayList(firstPoint, secondPoint);
+        FlowMirrorPointsDumpResponse response = FlowMirrorPointsDumpResponse.builder()
+                .flowId(FLOW_ID)
+                .points(points)
+                .build();
+
+        FlowMirrorPointsResponseV2 apiResponse = flowMapper.toFlowMirrorPointsResponseV2(response);
+
+        assertEquals(response.getFlowId(), apiResponse.getFlowId());
+        assertEquals(2, apiResponse.getPoints().size());
+
+        FlowMirrorPointPayload firstPayload = apiResponse.getPoints().get(0);
+        assertEquals(firstPoint.getMirrorPointId(), firstPayload.getMirrorPointId());
+        assertEquals(firstPoint.getMirrorPointDirection(), firstPayload.getMirrorPointDirection());
+        assertEquals(firstPoint.getMirrorPointSwitchId(), firstPayload.getMirrorPointSwitchId());
+        assertEquals(firstPoint.getSinkEndpoint().getSwitchId(), firstPayload.getSinkEndpoint().getSwitchId());
+        assertEquals(firstPoint.getSinkEndpoint().getPortNumber(), firstPayload.getSinkEndpoint().getPortNumber());
+        assertEquals(firstPoint.getSinkEndpoint().getOuterVlanId(), firstPayload.getSinkEndpoint().getVlanId());
+        assertEquals(firstPoint.getSinkEndpoint().getInnerVlanId(), firstPayload.getSinkEndpoint().getInnerVlanId());
+
+        FlowMirrorPointPayload secondPayload = apiResponse.getPoints().get(1);
+        assertEquals(secondPoint.getMirrorPointId(), secondPayload.getMirrorPointId());
+        assertEquals(secondPoint.getMirrorPointDirection(), secondPayload.getMirrorPointDirection());
+        assertEquals(secondPoint.getMirrorPointSwitchId(), secondPayload.getMirrorPointSwitchId());
+        assertEquals(secondPoint.getSinkEndpoint().getSwitchId(), secondPayload.getSinkEndpoint().getSwitchId());
+        assertEquals(secondPoint.getSinkEndpoint().getPortNumber(), secondPayload.getSinkEndpoint().getPortNumber());
+        assertEquals(secondPoint.getSinkEndpoint().getOuterVlanId(), secondPayload.getSinkEndpoint().getVlanId());
+        assertEquals(secondPoint.getSinkEndpoint().getInnerVlanId(), secondPayload.getSinkEndpoint().getInnerVlanId());
     }
 }

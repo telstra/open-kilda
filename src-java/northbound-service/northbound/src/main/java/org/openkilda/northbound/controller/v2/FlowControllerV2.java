@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointsResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
@@ -293,5 +294,12 @@ public class FlowControllerV2 extends BaseController {
             @PathVariable("flow_id") String flowId,
             @PathVariable("mirror_point_id") String mirrorPointId) {
         return flowService.deleteFlowMirrorPoint(flowId, mirrorPointId);
+    }
+
+    @ApiOperation(value = "Get list of flow mirror points", response = FlowMirrorPointsResponseV2.class)
+    @GetMapping(path = "/{flow_id}/mirror")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowMirrorPointsResponseV2> getFlowMirrorPoints(@PathVariable("flow_id") String flowId) {
+        return flowService.getFlowMirrorPoints(flowId);
     }
 }

@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -29,10 +29,13 @@ import org.openkilda.messaging.model.FlowPathDto.FlowPathDtoBuilder;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
 import org.openkilda.messaging.model.PatchEndpoint;
 import org.openkilda.messaging.nbtopology.request.FlowsDumpRequest;
+import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse.FlowMirrorPoint;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowFilter;
+import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathComputationStrategy;
@@ -57,6 +60,7 @@ import org.openkilda.wfm.share.service.IntersectionComputer;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsCarrier;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import lombok.Builder;
 import lombok.Data;
@@ -543,6 +547,43 @@ public class FlowOperationsService {
             return flowRepository.findLoopedByLoopSwitchId(switchId);
         }
         return flowRepository.findLoopedByFlowIdAndLoopSwitchId(flowId, switchId);
+    }
+
+    /**
+     * Dump flow mirror points by flow id.
+     */
+    public List<FlowMirrorPoint> getFlowMirrorPoints(String flowId) throws FlowNotFoundException {
+        return transactionManager.doInTransaction(() -> {
+            Optional<Flow> foundFlow = flowRepository.findById(flowId);
+            if (!foundFlow.isPresent()) {
+                return Optional.<List<FlowMirrorPoint>>empty();
+            }
+            Flow flow = foundFlow.get();
+
+            List<FlowMirrorPoint> points = new ArrayList<>();
+
+            for (FlowPath flowPath : Lists.newArrayList(flow.getForwardPath(), flow.getReversePath())) {
+                String direction = flowPath.isForward() ? "forward" : "reverse";
+                for (FlowMirrorPoints mirrorPoints : flowPath.getFlowMirrorPointsSet()) {
+                    for (FlowMirrorPath mirrorPath : mirrorPoints.getMirrorPaths()) {
+                        points.add(FlowMirrorPoint.builder()
+                                .mirrorPointId(mirrorPath.getPathId().toString())
+                                .mirrorPointSwitchId(mirrorPoints.getMirrorSwitchId())
+                                .mirrorPointDirection(direction)
+                                .sinkEndpoint(FlowEndpoint.builder()
+                                        .switchId(mirrorPath.getEgressSwitchId())
+                                        .portNumber(mirrorPath.getEgressPort())
+                                        .outerVlanId(mirrorPath.getEgressOuterVlan())
+                                        .innerVlanId(mirrorPath.getEgressInnerVlan())
+                                        .build())
+                                .build());
+                    }
+                }
+            }
+
+            return Optional.of(points);
+
+        }).orElseThrow(() -> new FlowNotFoundException(flowId));
     }
 
     @Data
