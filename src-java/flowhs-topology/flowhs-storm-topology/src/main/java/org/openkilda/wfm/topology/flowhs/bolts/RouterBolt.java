@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import static java.lang.String.format;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_CREATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_CREATE_MIRROR_POINT_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_DELETE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_DELETE_MIRROR_POINT_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_PATH_SWAP_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_REROUTE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_SWAP_ENDPOINTS_HUB;
@@ -32,6 +33,7 @@ import org.openkilda.messaging.command.flow.CreateFlowLoopRequest;
 import org.openkilda.messaging.command.flow.DeleteFlowLoopRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowMirrorPointCreateRequest;
+import org.openkilda.messaging.command.flow.FlowMirrorPointDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
@@ -124,6 +126,12 @@ public class RouterBolt extends AbstractBolt {
                 FlowMirrorPointCreateRequest request = (FlowMirrorPointCreateRequest) data;
                 emitWithContext(ROUTER_TO_FLOW_CREATE_MIRROR_POINT_HUB.name(),
                         input, new Values(key, request.getFlowId(), data));
+            } else if (data instanceof FlowMirrorPointDeleteRequest) {
+                log.debug("Received a flow mirror point delete request with key {}. MessageId {}",
+                        key, input.getMessageId());
+                FlowMirrorPointDeleteRequest request = (FlowMirrorPointDeleteRequest) data;
+                emitWithContext(ROUTER_TO_FLOW_DELETE_MIRROR_POINT_HUB.name(),
+                        input, new Values(key, request.getFlowId(), data));
             } else {
                 unhandledInput(input);
             }
@@ -138,6 +146,7 @@ public class RouterBolt extends AbstractBolt {
         declarer.declareStream(ROUTER_TO_FLOW_DELETE_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_FLOW_PATH_SWAP_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_FLOW_CREATE_MIRROR_POINT_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_FLOW_DELETE_MIRROR_POINT_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_FLOW_SWAP_ENDPOINTS_HUB.name(),
                 new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
         declarer.declareStream(ZkStreams.ZK.toString(),

@@ -285,4 +285,13 @@ public class FlowControllerV2 extends BaseController {
             @RequestBody FlowMirrorPointPayload mirrorPoint) {
         return flowService.createFlowMirrorPoint(flowId, mirrorPoint);
     }
+
+    @ApiOperation(value = "Deletes the flow mirror point", response = FlowMirrorPointResponseV2.class)
+    @DeleteMapping(path = "/{flow_id}/mirror/{mirror_point_id}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowMirrorPointResponseV2> deleteFlowMirrorPoint(
+            @PathVariable("flow_id") String flowId,
+            @PathVariable("mirror_point_id") String mirrorPointId) {
+        return flowService.deleteFlowMirrorPoint(flowId, mirrorPointId);
+    }
 }
