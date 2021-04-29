@@ -621,6 +621,71 @@ class Server42RttSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
+    def "Rtt statistic is available for a flow in case switch is not connected to server42"() {
+        given: "Two active switches, only src has server42 connected"
+        def server42SwIds = topology.getActiveServer42Switches()*.dpId
+        def switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
+            it.src.dpId in server42SwIds && !(it.dst.dpId in server42SwIds)
+        }
+        assumeTrue(switchPair != null, "Was not able to find a switch with needed connection")
+
+        when: "Set server42FlowRtt toggle to true"
+        def flowRttFeatureStartState = changeFlowRttToggle(true)
+
+        and: "server42FlowRtt is enabled on src switch"
+        def initialSrcSwS42Props = northbound.getSwitchProperties(switchPair.src.dpId).server42FlowRtt
+        changeFlowRttSwitch(switchPair.src, true)
+
+        and: "Create a flow"
+        def flowCreateTime = new Date()
+        //take shorter flowid due to https://github.com/telstra/open-kilda/issues/3720
+        def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
+        flowHelperV2.addFlow(flow)
+
+        then: "Stats from server42 only for forward direction are available"
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+            !otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "forward",
+                     origin   : "server42"]).dps.isEmpty()
+            otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "reverse",
+                     origin   : "server42"]).dps.isEmpty()
+        }
+
+        and: "Stats from flow monitoring feature for reverse direction only are available"
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+            def flMonitoringReverseData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "reverse",
+                     origin   : "flow-monitoring"]).dps
+            def flMonitoringForwardData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+            [flowid   : flow.flowId,
+             direction: "forward",
+             origin   : "flow-monitoring"]).dps
+            assert flMonitoringReverseData.size() >= 1
+            assert flMonitoringForwardData.isEmpty()
+        }
+
+        when: "Disable server42FlowRtt on the src switch"
+        changeFlowRttSwitch(switchPair.src, false)
+
+        then: "Stats from flow monitoring feature for forward direction are available"
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+            otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "forward",
+                     origin   : "flow-monitoring"]).dps.size() >= 1
+        }
+
+        cleanup: "Revert system to original state"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        flowRttFeatureStartState && changeFlowRttToggle(flowRttFeatureStartState)
+        initialSrcSwS42Props && changeFlowRttSwitch(switchPair.src, initialSrcSwS42Props)
+    }
+
     def changeFlowRttSwitch(Switch sw, boolean requiredState) {
         def originalProps = northbound.getSwitchProperties(sw.dpId)
         if (originalProps.server42FlowRtt != requiredState) {
