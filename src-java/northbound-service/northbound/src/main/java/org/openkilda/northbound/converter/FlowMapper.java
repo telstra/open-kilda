@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,10 +15,12 @@
 
 package org.openkilda.northbound.converter;
 
+import org.openkilda.messaging.command.flow.FlowMirrorPointCreateRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRequest.Type;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.flow.FlowMirrorPointResponse;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.UniFlowPingResponse;
@@ -43,6 +45,7 @@ import org.openkilda.messaging.payload.flow.FlowStatusDetails;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.history.FlowStatusTimestampsEntry;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
@@ -53,6 +56,8 @@ import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatus;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPathV2;
@@ -513,4 +518,34 @@ public abstract class FlowMapper {
     @Mapping(target = "timestamp",
             expression = "java(DateTimeFormatter.ISO_INSTANT.format(entry.getStatusChangeTimestamp()))")
     public abstract FlowHistoryStatus toFlowHistoryStatus(FlowStatusTimestampsEntry entry);
+
+    public abstract FlowMirrorPointCreateRequest toFlowMirrorPointCreateRequest(String flowId,
+                                                                                FlowMirrorPointPayload payload);
+
+    public abstract FlowMirrorPointResponseV2 toFlowMirrorPointResponseV2(FlowMirrorPointResponse response);
+
+    /**
+     * Convert {@link String} to {@link FlowPathDirection}.
+     */
+    public FlowPathDirection mapFlowPathDirection(String direction) {
+        if (direction == null) {
+            return null;
+        }
+
+        return FlowPathDirection.valueOf(direction.toUpperCase());
+    }
+
+    /**
+     * Convert {@link FlowEndpoint} to {@link FlowEndpointV2}.
+     */
+    public FlowEndpointV2 mapFlowEndpointV2(FlowEndpoint input) {
+        return FlowEndpointV2.builder()
+                .switchId(input.getSwitchId())
+                .portNumber(input.getPortNumber())
+                .vlanId(input.getOuterVlanId())
+                .innerVlanId(input.getInnerVlanId())
+                .detectConnectedDevices(new DetectConnectedDevicesV2(input.isTrackLldpConnectedDevices(),
+                        input.isTrackArpConnectedDevices()))
+                .build();
+    }
 }

@@ -13,31 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.wfm.topology.flowhs.mapper;
 
-import com.fasterxml.jackson.annotation.JsonValue;
-import lombok.NonNull;
-import lombok.Value;
+import org.openkilda.messaging.command.flow.FlowMirrorPointCreateRequest;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlowMirrorPoint;
 
-import java.io.Serializable;
+import org.mapstruct.Mapper;
+import org.mapstruct.factory.Mappers;
 
-/**
- * Represents a flow path id.
- */
-@Value
-public class PathId implements Serializable {
-    private static final long serialVersionUID = 1L;
+@Mapper
+public abstract class RequestedFlowMirrorPointMapper {
 
-    @NonNull
-    String id;
+    public static final RequestedFlowMirrorPointMapper INSTANCE
+            = Mappers.getMapper(RequestedFlowMirrorPointMapper.class);
 
-    public PathId(@NonNull String id) {
-        this.id = id;
-    }
-
-    @JsonValue
-    @Override
-    public String toString() {
-        return id;
-    }
+    public abstract RequestedFlowMirrorPoint map(FlowMirrorPointCreateRequest request);
 }

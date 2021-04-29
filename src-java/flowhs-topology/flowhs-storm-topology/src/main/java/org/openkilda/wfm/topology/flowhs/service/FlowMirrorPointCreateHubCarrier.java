@@ -13,31 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.wfm.topology.flowhs.service;
 
-import com.fasterxml.jackson.annotation.JsonValue;
-import lombok.NonNull;
-import lombok.Value;
-
-import java.io.Serializable;
-
-/**
- * Represents a flow path id.
- */
-@Value
-public class PathId implements Serializable {
-    private static final long serialVersionUID = 1L;
-
-    @NonNull
-    String id;
-
-    public PathId(@NonNull String id) {
-        this.id = id;
-    }
-
-    @JsonValue
-    @Override
-    public String toString() {
-        return id;
-    }
+public interface FlowMirrorPointCreateHubCarrier extends FlowGenericCarrier {
+    /**
+     * Cancels timeout callback.
+     *
+     * @param key operation identifier.
+     */
+    void cancelTimeoutCallback(String key);
 }

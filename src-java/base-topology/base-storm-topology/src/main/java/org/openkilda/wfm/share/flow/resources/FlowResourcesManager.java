@@ -19,8 +19,13 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.GroupId;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.MirrorDirection;
+import org.openkilda.model.MirrorGroup;
+import org.openkilda.model.MirrorGroupType;
 import org.openkilda.model.PathId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.persistence.tx.TransactionManager;
@@ -46,6 +51,7 @@ public class FlowResourcesManager {
 
     private final CookiePool cookiePool;
     private final MeterPool meterPool;
+    private final MirrorGroupIdPool mirrorGroupIdPool;
     private final Map<FlowEncapsulationType, EncapsulationResourcesProvider> encapsulationResourcesProviders;
 
     public FlowResourcesManager(PersistenceManager persistenceManager, FlowResourcesConfig config) {
@@ -55,6 +61,8 @@ public class FlowResourcesManager {
                 POOL_SIZE);
         this.meterPool = new MeterPool(persistenceManager,
                 new MeterId(config.getMinFlowMeterId()), new MeterId(config.getMaxFlowMeterId()), POOL_SIZE);
+        this.mirrorGroupIdPool = new MirrorGroupIdPool(persistenceManager,
+                new GroupId(config.getMinGroupId()), new GroupId(config.getMaxGroupId()), POOL_SIZE);
 
         encapsulationResourcesProviders = ImmutableMap.<FlowEncapsulationType, EncapsulationResourcesProvider>builder()
                 .put(FlowEncapsulationType.TRANSIT_VLAN, new TransitVlanPool(persistenceManager,
@@ -186,5 +194,47 @@ public class FlowResourcesManager {
                                                                       PathId oppositePathId,
                                                                       FlowEncapsulationType encapsulationType) {
         return getEncapsulationResourcesProvider(encapsulationType).get(pathId, oppositePathId);
+    }
+
+    /**
+     * Get allocated mirror group id. The method doesn't initialize a transaction.
+     * So it requires external transaction to cover allocation failures.
+     */
+    public MirrorGroup getAllocatedMirrorGroup(SwitchId switchId, String flowId, PathId pathId,
+                                               MirrorGroupType type, MirrorDirection direction)
+            throws ResourceAllocationException {
+        try {
+            return mirrorGroupIdPool.allocate(switchId, flowId, pathId, type, direction);
+        } catch (ResourceNotAvailableException ex) {
+            throw new ResourceAllocationException("Unable to allocate cookie", ex);
+        }
+    }
+
+    /**
+     * Deallocate the mirror group id resource.
+     */
+    public void deallocateMirrorGroup(PathId pathId, SwitchId switchId) {
+        log.debug("Deallocate mirror group id on the switch: {} and path: {}", switchId, pathId);
+        mirrorGroupIdPool.deallocate(pathId, switchId);
+    }
+
+    /**
+     * Try to allocate cookie for the flow path. The method doesn't initialize a transaction.
+     * So it requires external transaction to cover allocation failures.
+     */
+    public long getAllocatedCookie(String flowId) throws ResourceAllocationException {
+        try {
+            return cookiePool.allocate(flowId);
+        } catch (ResourceNotAvailableException ex) {
+            throw new ResourceAllocationException("Unable to allocate cookie", ex);
+        }
+    }
+
+    /**
+     * Deallocate the cookie resource.
+     */
+    public void deallocateCookie(long unmaskedCookie) {
+        log.debug("Deallocate cookie: {}.", unmaskedCookie);
+        cookiePool.deallocate(unmaskedCookie);
     }
 }

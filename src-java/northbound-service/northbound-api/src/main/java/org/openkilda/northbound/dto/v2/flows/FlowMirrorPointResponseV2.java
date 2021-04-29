@@ -13,31 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.northbound.dto.v2.flows;
 
-import com.fasterxml.jackson.annotation.JsonValue;
-import lombok.NonNull;
-import lombok.Value;
+import org.openkilda.model.SwitchId;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
 
-/**
- * Represents a flow path id.
- */
-@Value
-public class PathId implements Serializable {
-    private static final long serialVersionUID = 1L;
-
-    @NonNull
-    String id;
-
-    public PathId(@NonNull String id) {
-        this.id = id;
-    }
-
-    @JsonValue
-    @Override
-    public String toString() {
-        return id;
-    }
+@Data
+@Builder
+@AllArgsConstructor
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class FlowMirrorPointResponseV2 {
+    String mirrorPointId;
+    String flowId;
+    String mirrorPointDirection;
+    SwitchId mirrorPointSwitchId;
+    FlowEndpointV2 sinkEndpoint;
 }

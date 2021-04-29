@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -43,8 +43,13 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     private static final String REROUTE_EVENT = "flow_reroute";
     private static final String REROUTE_RESULT_EVENT = "flow_reroute_result";
     private static final String STATUS_UPDATE_EVENT = "status_update";
+    private static final String FLOW_MIRROR_POINT_CREATE_EVENT = "flow_mirror_point_create";
+    private static final String FLOW_MIRROR_POINT_CREATE_RESULT_EVENT = "flow_mirror_point_create_result";
+    private static final String FLOW_MIRROR_POINT_DELETE_EVENT = "flow_mirror_point_delete";
+    private static final String FLOW_MIRROR_POINT_DELETE_RESULT_EVENT = "flow_mirror_point_create_delete";
 
     private static final String TAG = "FLOW_OPERATIONS_DASHBOARD";
+    private static final String DASHBOARD = "dashboard";
 
     public FlowOperationsDashboardLogger(Logger logger) {
         super(logger);
@@ -345,5 +350,53 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put("failure-reason", failureReason);
         invokeLogger(
                 Level.WARN, String.format("Failed reroute of the flow %s, reason: %s", flowId, failureReason), data);
+    }
+
+    /**
+     * Log a flow-mirror-point-create event.
+     */
+    public void onFlowMirrorPointCreate(String flowId, SwitchId srcSwitch, String direction,
+                                        SwitchId destSwitch, int destPort, int destVlan) {
+        Map<String, String> data = new HashMap<>();
+        data.put(DASHBOARD, "flow-mirror-point-create");
+        data.put(TAG, "flow-mirror-point-create");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, FLOW_MIRROR_POINT_CREATE_EVENT);
+        invokeLogger(Level.INFO, String.format("Create a mirror point for the flow %s: source switch %s, "
+                        + "destination endpoint %s_%d_%d, direction %s",
+                flowId, srcSwitch, destSwitch, destPort, destVlan, direction), data);
+    }
+
+    /**
+     * Log a flow-mirror-point-create-successful event.
+     */
+    public void onSuccessfulFlowMirrorPointCreate(String flowId, SwitchId srcSwitch, String direction,
+                                                  SwitchId destSwitch, int destPort, int destVlan) {
+        Map<String, String> data = new HashMap<>();
+        data.put(DASHBOARD, "flow-mirror-point-create-successful");
+        data.put(TAG, "flow-mirror-point-create-successful");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, FLOW_MIRROR_POINT_CREATE_RESULT_EVENT);
+        data.put("flow-mirror-point-create-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful create a mirror point for the flow %s: source switch %s, "
+                        + "destination endpoint %s_%d_%d, direction %s",
+                flowId, srcSwitch, destSwitch, destPort, destVlan, direction), data);
+    }
+
+    /**
+     * Log a flow-mirror-point-create-failed event.
+     */
+    public void onFailedFlowMirrorPointCreate(String flowId, SwitchId srcSwitch, String direction,
+                                              SwitchId destSwitch, int destPort, int destVlan, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(DASHBOARD, "flow-mirror-point-create-failed");
+        data.put(TAG, "flow-mirror-point-create-failed");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, FLOW_MIRROR_POINT_CREATE_RESULT_EVENT);
+        data.put("flow-mirror-point-create-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed create a mirror point for the flow %s: source switch %s, "
+                        + "destination endpoint %s_%d_%d, direction %s, reason: %s",
+                flowId, srcSwitch, destSwitch, destPort, destVlan, direction, failureReason), data);
     }
 }

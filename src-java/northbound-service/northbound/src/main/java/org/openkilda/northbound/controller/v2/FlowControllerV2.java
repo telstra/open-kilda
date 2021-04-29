@@ -24,6 +24,8 @@ import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
@@ -273,5 +275,14 @@ public class FlowControllerV2 extends BaseController {
             return Optional.of(String.format("Invalid %s value %d into %s endpoint", field, value, endpoint));
         }
         return Optional.empty();
+    }
+
+    @ApiOperation(value = "Creates a new flow mirror point", response = FlowMirrorPointResponseV2.class)
+    @PostMapping(path = "/{flow_id}/mirror")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowMirrorPointResponseV2> createFlowMirrorPoint(
+            @PathVariable("flow_id") String flowId,
+            @RequestBody FlowMirrorPointPayload mirrorPoint) {
+        return flowService.createFlowMirrorPoint(flowId, mirrorPoint);
     }
 }

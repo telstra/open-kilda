@@ -48,7 +48,8 @@ public class FlowEventData implements Serializable {
         PATH_SWAP("Flow paths swap"),
         SWAP_ENDPOINTS("Flows swap endpoints"),
         FLOW_LOOP_CREATE("Flow loop creating"),
-        FLOW_LOOP_DELETE("Flow loop deleting");
+        FLOW_LOOP_DELETE("Flow loop deleting"),
+        FLOW_MIRROR_POINT_CREATE("Flow mirror point creating");
 
         private String description;
     }

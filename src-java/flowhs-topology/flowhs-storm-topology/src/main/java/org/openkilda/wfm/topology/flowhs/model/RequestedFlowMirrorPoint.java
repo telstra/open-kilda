@@ -13,31 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.wfm.topology.flowhs.model;
 
-import com.fasterxml.jackson.annotation.JsonValue;
-import lombok.NonNull;
-import lombok.Value;
+import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowPathDirection;
+import org.openkilda.model.SwitchId;
 
-import java.io.Serializable;
+import lombok.Builder;
+import lombok.Data;
 
-/**
- * Represents a flow path id.
- */
-@Value
-public class PathId implements Serializable {
-    private static final long serialVersionUID = 1L;
+@Data
+@Builder
+public class RequestedFlowMirrorPoint {
+    private String flowId;
+    private String mirrorPointId;
+    private FlowPathDirection mirrorPointDirection;
 
-    @NonNull
-    String id;
+    private SwitchId mirrorPointSwitchId;
 
-    public PathId(@NonNull String id) {
-        this.id = id;
-    }
-
-    @JsonValue
-    @Override
-    public String toString() {
-        return id;
-    }
+    private FlowEndpoint sinkEndpoint;
 }

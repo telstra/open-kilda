@@ -104,3 +104,9 @@ Existing actions set for any type of existing OF flows (ingress, transit, egress
 will be replaced with a "goto group" action instead of an "output port" action.
 The group will have 2 or more buckets: one will represent output to the flow or ISL port, 
 the rest will represent mirror actions set (i.e. routing to the mirror paths).
+
+## FSM diagrams
+
+### FlowMirrorPointCreateFsm
+![FlowMirrorPointCreateFsm](./flow-create-mirror-point-fsm.png "FlowMirrorPointCreateFsm")
+

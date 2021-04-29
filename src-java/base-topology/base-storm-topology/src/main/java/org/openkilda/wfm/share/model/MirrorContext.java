@@ -13,31 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.wfm.share.model;
 
-import com.fasterxml.jackson.annotation.JsonValue;
-import lombok.NonNull;
-import lombok.Value;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-import java.io.Serializable;
+@Data
+@Builder
+@EqualsAndHashCode
+public class MirrorContext {
+    public static final MirrorContext DEFAULT = MirrorContext.builder().build();
 
-/**
- * Represents a flow path id.
- */
-@Value
-public class PathId implements Serializable {
-    private static final long serialVersionUID = 1L;
-
-    @NonNull
-    String id;
-
-    public PathId(@NonNull String id) {
-        this.id = id;
-    }
-
-    @JsonValue
-    @Override
-    public String toString() {
-        return id;
-    }
+    private boolean buildMirrorFactoryOnly;
+    private boolean addNewGroup;
 }

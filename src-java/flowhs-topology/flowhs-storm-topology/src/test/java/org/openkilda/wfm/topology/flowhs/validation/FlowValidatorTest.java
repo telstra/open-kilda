@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,14 +16,18 @@
 package org.openkilda.wfm.topology.flowhs.validation;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
@@ -46,11 +50,15 @@ public class FlowValidatorTest {
 
     @BeforeClass
     public static void setup() {
-        FlowRepository flowRepository = mock(FlowRepository.class);
-        SwitchRepository switchRepository = mock(SwitchRepository.class);
-        IslRepository islRepository = mock(IslRepository.class);
-        SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
-        flowValidator = new FlowValidator(flowRepository, switchRepository, islRepository, switchPropertiesRepository);
+        RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
+        when(repositoryFactory.createFlowRepository()).thenReturn(mock(FlowRepository.class));
+        when(repositoryFactory.createSwitchRepository()).thenReturn(mock(SwitchRepository.class));
+        when(repositoryFactory.createIslRepository()).thenReturn(mock(IslRepository.class));
+        when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(mock(SwitchPropertiesRepository.class));
+        when(repositoryFactory.createFlowMirrorPathRepository()).thenReturn(mock(FlowMirrorPathRepository.class));
+        PersistenceManager persistenceManager = mock(PersistenceManager.class);
+        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        flowValidator = new FlowValidator(persistenceManager);
     }
 
     @Test(expected = InvalidFlowException.class)

@@ -69,6 +69,10 @@ public class FlowEndpointV2 {
         this(switchId, portNumber, vlanId, 0, null);
     }
 
+    public FlowEndpointV2(SwitchId switchId, Integer portNumber, int vlanId, int innerVlanId) {
+        this(switchId, portNumber, vlanId, innerVlanId, null);
+    }
+
     /**
      * Sets detectConnectedDevices field.
      */

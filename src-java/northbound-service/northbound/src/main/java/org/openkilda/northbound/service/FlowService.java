@@ -32,6 +32,8 @@ import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
@@ -285,4 +287,14 @@ public interface FlowService {
      * @return deleted flow loop.
      */
     CompletableFuture<FlowLoopResponse> deleteFlowLoop(String flowId);
+
+    /**
+     * Creates new flow mirror point.
+     *
+     * @param flowId  flow id
+     * @param request flow mirror point request
+     * @return created flow mirror point
+     */
+    CompletableFuture<FlowMirrorPointResponseV2> createFlowMirrorPoint(String flowId,
+                                                                       FlowMirrorPointPayload request);
 }
