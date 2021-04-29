@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,12 +16,14 @@
 package org.openkilda.wfm.topology.flowhs;
 
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_CREATE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_CREATE_MIRROR_POINT_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_DELETE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_PATH_SWAP_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_REROUTE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_SWAP_ENDPOINTS_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_UPDATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_CREATE;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_CREATE_MIRROR_POINT;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_DELETE;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_PATH_SWAP;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_REROUTE;
@@ -50,6 +52,8 @@ import org.openkilda.wfm.topology.flowhs.bolts.FlowCreateHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowCreateHubBolt.FlowCreateConfig;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowDeleteHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowDeleteHubBolt.FlowDeleteConfig;
+import org.openkilda.wfm.topology.flowhs.bolts.FlowMirrorPointCreateHubBolt;
+import org.openkilda.wfm.topology.flowhs.bolts.FlowMirrorPointCreateHubBolt.FlowMirrorPointCreateConfig;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowPathSwapHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowPathSwapHubBolt.FlowPathSwapConfig;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowRerouteHubBolt;
@@ -90,6 +94,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         flowDeleteHub(tb, persistenceManager);
         flowSwapProtectedHub(tb, persistenceManager);
         flowSwapEndpointsHub(tb, persistenceManager);
+        flowCreateMirrorPointHub(tb, persistenceManager);
 
         speakerSpout(tb);
         flowCreateSpeakerWorker(tb);
@@ -97,6 +102,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         flowRerouteSpeakerWorker(tb);
         flowDeleteSpeakerWorker(tb);
         flowPathSwapSpeakerWorker(tb);
+        flowCreateMirrorPointSpeakerWorker(tb);
         speakerOutput(tb);
 
         coordinator(tb);
@@ -129,7 +135,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 getBoltInstancesCount(ComponentId.FLOW_CREATE_HUB.name(), ComponentId.FLOW_UPDATE_HUB.name(),
                         ComponentId.FLOW_DELETE_HUB.name(), ComponentId.FLOW_PATH_SWAP_HUB.name(),
                         ComponentId.FLOW_REROUTE_HUB.name(), ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(),
-                        ComponentId.FLOW_ROUTER_BOLT.name()));
+                        ComponentId.FLOW_ROUTER_BOLT.name(), ComponentId.FLOW_CREATE_MIRROR_POINT_HUB.name()));
         declareBolt(topologyBuilder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(ComponentId.FLOW_CREATE_HUB.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.FLOW_UPDATE_HUB.name(), ZkStreams.ZK.toString())
@@ -137,7 +143,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .allGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.FLOW_REROUTE_HUB.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(), ZkStreams.ZK.toString())
-                .allGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ZkStreams.ZK.toString());
+                .allGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ZkStreams.ZK.toString())
+                .allGrouping(ComponentId.FLOW_CREATE_MIRROR_POINT_HUB.name(), ZkStreams.ZK.toString());
     }
 
     private void inputSpout(TopologyBuilder topologyBuilder) {
@@ -296,6 +303,34 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .directGrouping(CoordinatorBolt.ID);
     }
 
+    private void flowCreateMirrorPointHub(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
+        int hubTimeout = (int) TimeUnit.SECONDS.toMillis(topologyConfig.getCreateMirrorPointHubTimeoutSeconds());
+
+        FlowMirrorPointCreateConfig config = FlowMirrorPointCreateConfig.flowMirrorPointCreateBuilder()
+                .pathAllocationRetriesLimit(topologyConfig.getPathAllocationRetriesLimit())
+                .pathAllocationRetryDelay(topologyConfig.getPathAllocationRetryDelay())
+                .speakerCommandRetriesLimit(topologyConfig.getCreateMirrorPointSpeakerCommandRetries())
+                .resourceAllocationRetriesLimit(topologyConfig.getResourceAllocationRetriesLimit())
+                .autoAck(true)
+                .timeoutMs(hubTimeout)
+                .requestSenderComponent(ComponentId.FLOW_ROUTER_BOLT.name())
+                .workerComponent(ComponentId.FLOW_CREATE_MIRROR_POINT_WORKER.name())
+                .lifeCycleEventComponent(ZooKeeperSpout.SPOUT_ID)
+                .build();
+
+        PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
+        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        FlowMirrorPointCreateHubBolt hubBolt = new FlowMirrorPointCreateHubBolt(config, persistenceManager,
+                pathComputerConfig, flowResourcesConfig);
+        declareBolt(topologyBuilder, hubBolt, ComponentId.FLOW_CREATE_MIRROR_POINT_HUB.name())
+                .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(),
+                        ROUTER_TO_FLOW_CREATE_MIRROR_POINT_HUB.name(), FLOW_FIELD)
+                .directGrouping(ComponentId.FLOW_CREATE_MIRROR_POINT_WORKER.name(),
+                        Stream.SPEAKER_WORKER_TO_HUB_CREATE_MIRROR_POINT.name())
+                .allGrouping(ZooKeeperSpout.SPOUT_ID)
+                .directGrouping(CoordinatorBolt.ID);
+    }
+
     private void speakerSpout(TopologyBuilder topologyBuilder) {
         declareKafkaSpoutForAbstractMessage(topologyBuilder, getConfig().getKafkaFlowSpeakerWorkerTopic(),
                 ComponentId.SPEAKER_WORKER_SPOUT.name());
@@ -381,6 +416,23 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .directGrouping(CoordinatorBolt.ID);
     }
 
+    private void flowCreateMirrorPointSpeakerWorker(TopologyBuilder topologyBuilder) {
+        int speakerTimeout
+                = (int) TimeUnit.SECONDS.toMillis(topologyConfig.getCreateMirrorPointSpeakerTimeoutSeconds());
+        SpeakerWorkerBolt speakerWorker = new SpeakerWorkerBolt(Config.builder()
+                .autoAck(true)
+                .defaultTimeout(speakerTimeout)
+                .workerSpoutComponent(ComponentId.SPEAKER_WORKER_SPOUT.name())
+                .hubComponent(ComponentId.FLOW_CREATE_MIRROR_POINT_HUB.name())
+                .streamToHub(SPEAKER_WORKER_TO_HUB_CREATE_MIRROR_POINT.name())
+                .build());
+        declareBolt(topologyBuilder, speakerWorker, ComponentId.FLOW_CREATE_MIRROR_POINT_WORKER.name())
+                .fieldsGrouping(ComponentId.SPEAKER_WORKER_SPOUT.name(), FIELDS_KEY)
+                .fieldsGrouping(ComponentId.FLOW_CREATE_MIRROR_POINT_HUB.name(), Stream.HUB_TO_SPEAKER_WORKER.name(),
+                        FIELDS_KEY)
+                .directGrouping(CoordinatorBolt.ID);
+    }
+
     private void speakerOutput(TopologyBuilder topologyBuilder) {
         KafkaBolt<String, AbstractMessage> flKafkaBolt = makeKafkaBolt(
                 getConfig().getKafkaSpeakerFlowTopic(), AbstractMessageSerializer.class);
@@ -394,6 +446,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .shuffleGrouping(ComponentId.FLOW_DELETE_SPEAKER_WORKER.name(),
                         Stream.SPEAKER_WORKER_REQUEST_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_PATH_SWAP_SPEAKER_WORKER.name(),
+                        Stream.SPEAKER_WORKER_REQUEST_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_CREATE_MIRROR_POINT_WORKER.name(),
                         Stream.SPEAKER_WORKER_REQUEST_SENDER.name());
     }
 
@@ -427,7 +481,9 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .shuffleGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
-                .shuffleGrouping(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name());
+                .shuffleGrouping(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_CREATE_MIRROR_POINT_HUB.name(),
+                        Stream.HUB_TO_NB_RESPONSE_SENDER.name());
     }
 
     private void rerouteTopologyOutput(TopologyBuilder topologyBuilder) {
@@ -481,7 +537,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .shuffleGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
                 .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
                 .shuffleGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
-                .shuffleGrouping(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name());
+                .shuffleGrouping(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
+                .shuffleGrouping(ComponentId.FLOW_CREATE_MIRROR_POINT_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name());
     }
 
     @Override
@@ -511,12 +568,14 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         FLOW_REROUTE_HUB("flow.reroute.hub.bolt"),
         FLOW_DELETE_HUB("flow.delete.hub.bolt"),
         FLOW_SWAP_ENDPOINTS_HUB("flow.swap.endpoints.hub.bolt"),
+        FLOW_CREATE_MIRROR_POINT_HUB("flow.create.mirror.point.hub.bolt"),
 
         FLOW_CREATE_SPEAKER_WORKER("flow.create.worker.bolt"),
         FLOW_UPDATE_SPEAKER_WORKER("flow.update.worker.bolt"),
         FLOW_PATH_SWAP_SPEAKER_WORKER("flow.pathswap.worker.bolt"),
         FLOW_REROUTE_SPEAKER_WORKER("flow.reroute.worker.bolt"),
         FLOW_DELETE_SPEAKER_WORKER("flow.delete.worker.bolt"),
+        FLOW_CREATE_MIRROR_POINT_WORKER("flow.create.mirror.point.worker.bolt"),
 
         NB_RESPONSE_SENDER("nb.kafka.bolt"),
         REROUTE_RESPONSE_SENDER("reroute.kafka.bolt"),
@@ -551,6 +610,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         ROUTER_TO_FLOW_REROUTE_HUB,
         ROUTER_TO_FLOW_DELETE_HUB,
         ROUTER_TO_FLOW_SWAP_ENDPOINTS_HUB,
+        ROUTER_TO_FLOW_CREATE_MIRROR_POINT_HUB,
 
         HUB_TO_SPEAKER_WORKER,
         HUB_TO_HISTORY_BOLT,
@@ -561,6 +621,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         SPEAKER_WORKER_TO_HUB_REROUTE,
         SPEAKER_WORKER_TO_HUB_DELETE,
         SPEAKER_WORKER_TO_HUB_PATH_SWAP,
+        SPEAKER_WORKER_TO_HUB_CREATE_MIRROR_POINT,
 
         SWAP_ENDPOINTS_HUB_TO_ROUTER_BOLT,
         UPDATE_HUB_TO_SWAP_ENDPOINTS_HUB,

@@ -133,4 +133,16 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Key("flow.pathswap.speaker.command.retries")
     @Default("3")
     int getPathSwapSpeakerCommandRetries();
+
+    @Key("flow.create.mirror.point.hub.timeout.seconds")
+    @Default("30")
+    int getCreateMirrorPointHubTimeoutSeconds();
+
+    @Key("flow.create.mirror.point.speaker.timeout.seconds")
+    @Default("10")
+    int getCreateMirrorPointSpeakerTimeoutSeconds();
+
+    @Key("flow.create.mirror.point.speaker.command.retries")
+    @Default("3")
+    int getCreateMirrorPointSpeakerCommandRetries();
 }

@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,8 +19,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
+import org.openkilda.messaging.command.flow.FlowMirrorPointCreateRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRequest.Type;
+import org.openkilda.messaging.info.flow.FlowMirrorPointResponse;
 import org.openkilda.messaging.model.FlowPatch;
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
@@ -28,10 +30,13 @@ import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
@@ -83,6 +88,11 @@ public class FlowMapperTest {
             = new FlowUpdatePayload(FLOW_ID, SRC_FLOW_ENDPOINT_PAYLOAD, DST_FLOW_ENDPOINT_PAYLOAD, BANDWIDTH,
             IGNORE_BANDWIDTH, PERIODIC_PINGS, ALLOCATE_PROTECTED_PATH, DESCRIPTION, "created", "lastUpdated",
             DIVERSE_FLOW_ID, "status", LATENCY, PRIORITY, PINNED, ENCAPSULATION_TYPE, PATH_COMPUTATION_STRATEGY);
+
+    private static final String MIRROR_POINT_ID_A = "mirror_point_id_a";
+    private static final String MIRROR_POINT_ID_B = "mirror_point_id_b";
+    private static final String MIRROR_POINT_DIRECTION_A = "forward";
+    private static final String MIRROR_POINT_DIRECTION_B = "reverse";
 
     private static final long MS_TO_NS_MULTIPLIER = 1000000L;
 
@@ -256,5 +266,53 @@ public class FlowMapperTest {
         assertEquals(flowPatchDto.getEncapsulationType(), flowPatch.getEncapsulationType().name().toLowerCase());
         assertEquals(flowPatchDto.getPathComputationStrategy(),
                 flowPatch.getPathComputationStrategy().name().toLowerCase());
+    }
+
+    @Test
+    public void testFlowMirrorPointCreatePayloadToFlowMirrorPointCreateRequest() {
+        FlowMirrorPointPayload payload = FlowMirrorPointPayload.builder()
+                .mirrorPointId(MIRROR_POINT_ID_A)
+                .mirrorPointDirection(MIRROR_POINT_DIRECTION_A)
+                .mirrorPointSwitchId(SRC_SWITCH_ID)
+                .sinkEndpoint(new FlowEndpointV2(DST_SWITCH_ID, DST_PORT, DST_VLAN, DST_INNER_VLAN))
+                .build();
+
+        FlowMirrorPointCreateRequest request = flowMapper.toFlowMirrorPointCreateRequest(FLOW_ID, payload);
+
+        assertEquals(FLOW_ID, request.getFlowId());
+        assertEquals(payload.getMirrorPointId(), request.getMirrorPointId());
+        assertEquals(payload.getMirrorPointDirection(), request.getMirrorPointDirection().toString().toLowerCase());
+        assertEquals(payload.getMirrorPointSwitchId(), request.getMirrorPointSwitchId());
+        assertEquals(payload.getSinkEndpoint().getSwitchId(), request.getSinkEndpoint().getSwitchId());
+        assertEquals(payload.getSinkEndpoint().getPortNumber(), request.getSinkEndpoint().getPortNumber());
+        assertEquals(payload.getSinkEndpoint().getVlanId(), request.getSinkEndpoint().getOuterVlanId());
+        assertEquals(payload.getSinkEndpoint().getInnerVlanId(), request.getSinkEndpoint().getInnerVlanId());
+    }
+
+    @Test
+    public void testFlowMirrorPointResponseToFlowMirrorPointCreatePayload() {
+        FlowMirrorPointResponse response = FlowMirrorPointResponse.builder()
+                .flowId(FLOW_ID)
+                .mirrorPointId(MIRROR_POINT_ID_A)
+                .mirrorPointDirection(MIRROR_POINT_DIRECTION_A)
+                .mirrorPointSwitchId(SRC_SWITCH_ID)
+                .sinkEndpoint(FlowEndpoint.builder()
+                        .switchId(DST_SWITCH_ID)
+                        .portNumber(DST_PORT)
+                        .outerVlanId(DST_VLAN)
+                        .innerVlanId(DST_INNER_VLAN)
+                        .build())
+                .build();
+
+        FlowMirrorPointResponseV2 apiResponse = flowMapper.toFlowMirrorPointResponseV2(response);
+
+        assertEquals(response.getFlowId(), apiResponse.getFlowId());
+        assertEquals(response.getMirrorPointId(), apiResponse.getMirrorPointId());
+        assertEquals(response.getMirrorPointDirection(), apiResponse.getMirrorPointDirection());
+        assertEquals(response.getMirrorPointSwitchId(), apiResponse.getMirrorPointSwitchId());
+        assertEquals(response.getSinkEndpoint().getSwitchId(), apiResponse.getSinkEndpoint().getSwitchId());
+        assertEquals(response.getSinkEndpoint().getPortNumber(), apiResponse.getSinkEndpoint().getPortNumber());
+        assertEquals(response.getSinkEndpoint().getOuterVlanId(), apiResponse.getSinkEndpoint().getVlanId());
+        assertEquals(response.getSinkEndpoint().getInnerVlanId(), apiResponse.getSinkEndpoint().getInnerVlanId());
     }
 }

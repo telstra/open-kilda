@@ -23,11 +23,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
-import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
-import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -48,7 +44,6 @@ import java.util.Optional;
 @Slf4j
 public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final FeatureTogglesRepository featureTogglesRepository;
-    private final FlowRepository flowRepository;
     private final FlowValidator flowValidator;
     private final FlowOperationsDashboardLogger dashboardLogger;
 
@@ -56,11 +51,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
         super(persistenceManager);
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
-        flowRepository = repositoryFactory.createFlowRepository();
-        SwitchRepository switchRepository = repositoryFactory.createSwitchRepository();
-        IslRepository islRepository = repositoryFactory.createIslRepository();
-        SwitchPropertiesRepository switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
-        flowValidator = new FlowValidator(flowRepository, switchRepository, islRepository, switchPropertiesRepository);
+        flowValidator = new FlowValidator(persistenceManager);
         this.dashboardLogger = dashboardLogger;
     }
 

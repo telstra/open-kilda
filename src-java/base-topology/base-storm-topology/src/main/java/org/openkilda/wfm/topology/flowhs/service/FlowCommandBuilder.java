@@ -19,6 +19,7 @@ import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.model.MirrorContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 
@@ -72,6 +73,13 @@ public interface FlowCommandBuilder {
             PathContext pathContext);
 
     /**
+     * Build install commands for ingress rules for provided paths and mirror context.
+     */
+    List<FlowSegmentRequestFactory> buildIngressOnlyOneDirection(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath,
+            PathContext pathContext, MirrorContext mirrorContext);
+
+    /**
      * Build install commands for egress rules for provided paths.
      */
     List<FlowSegmentRequestFactory> buildEgressOnly(
@@ -82,4 +90,10 @@ public interface FlowCommandBuilder {
      */
     List<FlowSegmentRequestFactory> buildEgressOnlyOneDirection(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath);
+
+    /**
+     * Build install commands for egress rules for provided paths and mirror context.
+     */
+    List<FlowSegmentRequestFactory> buildEgressOnlyOneDirection(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath, MirrorContext mirrorContext);
 }
