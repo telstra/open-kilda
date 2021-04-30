@@ -14,7 +14,6 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.model.SwitchFeature
 
 import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
 
 import java.time.Instant
 
@@ -91,7 +90,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
 
     }
 
-    @Ignore("FIXME - Unstable")
+    @Tidy
     def "ISL is marked as 'unstable' after port down and system takes it into account during flow creation"() {
         given: "Two active neighboring switches with two parallel links"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -171,12 +170,16 @@ class UnstableIslSpec extends HealthCheckSpecification {
             assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) == firstPath
         }
 
-        and: "Restore topology, delete the flow and reset costs"
-        flowHelperV2.deleteFlow(flow.flowId)
-        broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
+        cleanup: "Restore topology, delete the flow and reset costs"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        broughtDownPorts.each { it && antiflap.portUp(it.switchId, it.portNo) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != FAILED }
+            northbound.getAllLinks().each {
+                assert it.state != FAILED
+                assert it.actualState != FAILED
+
+            }
         }
         database.resetCosts()
     }
