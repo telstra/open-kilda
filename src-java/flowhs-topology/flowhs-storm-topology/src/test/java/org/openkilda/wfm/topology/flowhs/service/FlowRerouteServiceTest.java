@@ -102,7 +102,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         testExpectedFailure(dummyRequestKey, request, commandContext, origin, FlowStatus.DOWN, ErrorType.NOT_FOUND);
 
         verify(pathComputer, times(11))
-                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), any());
+                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
     }
 
     @Test
@@ -115,7 +115,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         testExpectedFailure(dummyRequestKey, request, commandContext, origin, FlowStatus.UP, ErrorType.INTERNAL_ERROR);
 
         verify(pathComputer, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
-                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), any());
+                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
     }
 
     @Test
@@ -499,7 +499,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         transactionManager.doInTransaction(() ->
                 repositoryFactory.createFlowRepository().updateStatus(origin.getFlowId(), FlowStatus.DOWN));
 
-        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), any()))
+        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), any()))
                 .thenReturn(make2SwitchAltPathPair())
                 .thenReturn(make3SwitchesPathPair());
 
@@ -664,12 +664,12 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     private void preparePathComputation(String flowId, Throwable error)
             throws RecoverableException, UnroutableFlowException {
         doThrow(error).when(pathComputer)
-                .getPath(makeFlowArgumentMatch(flowId), any(), any());
+                .getPath(makeFlowArgumentMatch(flowId), any());
     }
 
     private void preparePathComputation(String flowId, GetPathsResult pathPair)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any(), any())).thenReturn(pathPair);
+        when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any())).thenReturn(pathPair);
     }
 
     @Override

@@ -29,13 +29,26 @@ import java.util.List;
  */
 public interface PathFinder {
     /**
-     * Find a path from the start to the end switch.
+     * Find a path from the start to the end switch with min weight.
      *
      * @return a pair of ordered lists that represents the path from start to end, or an empty list if no path found.
      */
-    FindPathResult findPathInNetwork(AvailableNetwork network,
-                                     SwitchId startSwitchId, SwitchId endSwitchId,
-                                     WeightFunction weightFunction)
+    FindPathResult findPathWithMinWeight(AvailableNetwork network,
+                                         SwitchId startSwitchId, SwitchId endSwitchId,
+                                         WeightFunction weightFunction)
+            throws UnroutableFlowException;
+
+    /**
+     * Find a path from the start to the end switch with min weight and latency limits.
+     *
+     * @return a pair of ordered lists that represents the path from start to end, or an empty list if no path found.
+     *     Returns backUpPathComputationWayUsed = true if found path has latency greater than maxLatency.
+     *     Returns empty path if found path has latency greater than latencyLimit.
+     */
+    FindPathResult findPathWithMinWeightAndLatencyLimits(AvailableNetwork network,
+                                                         SwitchId startSwitchId, SwitchId endSwitchId,
+                                                         WeightFunction weightFunction,
+                                                         long maxLatency, long latencyLimit)
             throws UnroutableFlowException;
 
     /**
@@ -44,9 +57,10 @@ public interface PathFinder {
      *
      * @return a pair of ordered lists that represents the path from start to end, or an empty list if no path found.
      */
-    FindPathResult findPathInNetwork(AvailableNetwork network,
-                                     SwitchId startSwitchId, SwitchId endSwitchId,
-                                     WeightFunction weightFunction, long maxWeight, long backUpMaxWeight)
+    FindPathResult findPathWithWeightCloseToMaxWeight(AvailableNetwork network,
+                                                      SwitchId startSwitchId, SwitchId endSwitchId,
+                                                      WeightFunction weightFunction,
+                                                      long maxWeight, long backUpMaxWeight)
             throws UnroutableFlowException;
 
     /**

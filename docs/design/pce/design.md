@@ -64,7 +64,7 @@ To calculate a path with a weight less than max weight and as close to it as pos
 + current desired path is what we were looking for
 + if current desired path is empty then no path is found
 
-### Weight function
+### Path computation strategies
 
 Weight function is defined by path computation strategy.
 For now four strategies are available:
@@ -72,7 +72,8 @@ For now four strategies are available:
 
 Manually assigned value for each link. If link is under maintenance and/or link is unstable then it's cost is increased by preconfigured value.
 
-`Link weight = cost + underMaintenance * underMaintenanceCostRise + unstable * unstableCostRise` where underMaintenance and unstable are 0 when false and 1 when true.
+Weight function:
+`Link weight = cost + underMaintenance * underMaintenanceCostRise + unstable * unstableCostRise` where `underMaintenance` and `unstable` are 0 when false and 1 when true.
 
 * Cost and available bandwidth
 
@@ -82,7 +83,10 @@ The same as Cost strategy but if two paths has the same cost then the one with m
 
 Automatically calculated value for each link. Separate maintenance/unstable penalties is used when calculating link weight based on latency in a similar way as for cost.
 
-`Link weight = latency + underMaintenance * underMaintenanceLatencyRise + unstable * unstableLatencyRise` where underMaintenance and unstable are 0 when false and 1 when true. Exact value for `underMaintenanceLatencyRise` and `unstableLatencyRise` should be estimated with respect to average and maximal latency in the network. To avoid using unstable links in best path it's possible to choose 1 to 10 seconds latency penalties.
+Weight function:
+`Link weight = latency + underMaintenance * underMaintenanceLatencyRise + unstable * unstableLatencyRise` where `underMaintenance` and `unstable` are 0 when false and 1 when true. Exact value for `underMaintenanceLatencyRise` and `unstableLatencyRise` should be estimated with respect to average and maximal latency in the network. To avoid using unstable links in best path it's possible to choose 1 to 10 seconds latency penalties.
+
+`maxLatency` and `maxLatencyTier2` params are used to limit latency for found path. PCE will return `backUpPathComputationWayUsed = true` flag if found path has latency greater than `maxLatency`. Flows with such paths should be treated as DEGRADED because found path violates latency SLA. PCE will not return path with latency greater than `maxLatencyTier2`.
 
 * Max latency
 
