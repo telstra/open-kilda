@@ -40,6 +40,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         sw << getTopology().getActiveSwitches().unique { sw -> sw.description }
     }
 
+    @Tidy
     @Tags([SMOKE])
     def "Default rules are installed when a new switch is connected"() {
         given: "A switch with no rules installed and not connected to the controller"
@@ -50,10 +51,21 @@ class DefaultRulesSpec extends HealthCheckSpecification {
 
         when: "Connect the switch to the controller"
         switchHelper.reviveSwitch(sw, blockData)
+        def switchIsActivated = true
 
         then: "Default rules are installed on the switch"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+        }
+        def testIsCompleted = true
+
+        cleanup:
+        blockData && !switchIsActivated && switchHelper.reviveSwitch(sw, blockData)
+        if (!testIsCompleted) {
+            northbound.synchronizeSwitch(sw.dpId, true)
+            Wrappers.wait(RULES_INSTALLATION_TIME) {
+                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+            }
         }
     }
 
@@ -192,6 +204,7 @@ switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) 
         ].combinations()
     }
 
+    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Able to install default rules on an #sw.ofVersion switch(#sw.dpId, install-action=INSTALL_DEFAULTS)"() {
         given: "A switch without any rules"
@@ -211,6 +224,16 @@ switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) 
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             compareRules(northbound.getSwitchRules(sw.dpId).flowEntries, defaultRules)
         }
+        def testIsCompleted = true
+
+        cleanup:
+        if (!testIsCompleted) {
+            northbound.synchronizeSwitch(sw.dpId, true)
+            Wrappers.wait(RULES_INSTALLATION_TIME) {
+                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+            }
+        }
+
 
         where:
         sw << getTopology().getActiveSwitches().unique { sw -> sw.description }
@@ -352,6 +375,7 @@ switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
         ].combinations()
     }
 
+    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to delete/install the server42 turning rule on a switch"() {
         setup: "Select a switch which support server42 turning rule"

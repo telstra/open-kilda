@@ -117,17 +117,18 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         !(sw in pathHelper.getInvolvedSwitches(flow2PathUpdated))
 
         cleanup: "Delete flows and unset maintenance mode"
-        [flow1, flow2].each { flowHelperV2.deleteFlow(it.flowId) }
+        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         northbound.setSwitchMaintenance(sw.dpId, false, false)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
+    @Tidy
     def "Link discovered by a switch under maintenance is marked as maintained"() {
         given: "An active link"
         def isl = topology.islsForActiveSwitches.first()
 
         and: "Bring port down on the switch to fail the link"
-        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        def portDown = antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
 
@@ -137,10 +138,10 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         !islUtils.getIslInfo(isl.reversed)
 
         when: "Set maintenance mode for the switch"
-        northbound.setSwitchMaintenance(isl.srcSwitch.dpId, true, false)
+        def setSwMaintenance = northbound.setSwitchMaintenance(isl.srcSwitch.dpId, true, false)
 
         and: "Bring port up to discover the deleted link"
-        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        def portUp = antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
 
         then: "The link is discovered and marked as maintained"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -154,11 +155,19 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Unset maintenance mode and reset costs"
-        northbound.setSwitchMaintenance(isl.srcSwitch.dpId, false, false)
-        def links = northbound.getAllLinks()
-        !islUtils.getIslInfo(links, isl).get().underMaintenance
-        !islUtils.getIslInfo(links, isl.reversed).get().underMaintenance
+        cleanup:
+        portDown && !portUp && antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        setSwMaintenance && northbound.setSwitchMaintenance(isl.srcSwitch.dpId, false, false)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            def islInfo = islUtils.getIslInfo(links, isl).get()
+            def reverseIslInfo = islUtils.getIslInfo(links, isl.reversed).get()
+
+            [islInfo, reverseIslInfo].each {
+                assert it.state == IslChangeType.DISCOVERED
+                assert !it.underMaintenance
+            }
+        }
         database.resetCosts()
     }
 }

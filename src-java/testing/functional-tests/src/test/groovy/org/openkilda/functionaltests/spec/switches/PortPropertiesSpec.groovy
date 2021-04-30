@@ -72,7 +72,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore init port discovery property on the port"
-        northboundV2.updatePortProperties(isl.srcSwitch.dpId, isl.srcPort,
+        isl && northboundV2.updatePortProperties(isl.srcSwitch.dpId, isl.srcPort,
                 new PortPropertiesDto(discoveryEnabled: DISCOVERY_ENABLED_DEFAULT))
     }
 
