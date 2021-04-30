@@ -73,7 +73,15 @@ class StormLcmSpec extends HealthCheckSpecification {
         def newRelation = database.dumpAllRelations()
         def newSwitches = database.dumpAllSwitches()
         expect newSwitches, sameBeanAs(switchesDump).ignoring("data.timeModify")
-        expect newRelation, sameBeanAs(relationsDump).ignoring("properties.time_modify").ignoring("properties.latency")
+        expect newRelation, sameBeanAs(relationsDump).ignoring("properties.time_modify")
+                .ignoring("properties.latency")
+                .ignoring("properties.time_create")
+                .ignoring("properties.switch_address_port")
+                .ignoring("properties.connected_at")
+                .ignoring("properties.master")
+                .ignoring("inVertex")
+                .ignoring("outVertex")
+                .ignoring("id")
 
         and: "Flows remain valid in terms of installed rules and meters"
         flows.each { flow ->
