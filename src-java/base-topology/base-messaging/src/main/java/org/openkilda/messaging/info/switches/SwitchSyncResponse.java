@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,32 +18,21 @@ package org.openkilda.messaging.info.switches;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.model.SwitchId;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
 @Builder
+@AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
+@JsonNaming(value = SnakeCaseStrategy.class)
 public class SwitchSyncResponse extends InfoData {
-
-    @JsonProperty("switch_id")
-    private SwitchId switchId;
-
-    @JsonProperty("rules")
-    private RulesSyncEntry rules;
-
-    @JsonProperty("meters")
-    private MetersSyncEntry meters;
-
-    @JsonCreator
-    public SwitchSyncResponse(@JsonProperty("switch_id") SwitchId switchId,
-                              @JsonProperty("rules") RulesSyncEntry rules,
-                              @JsonProperty("meters") MetersSyncEntry meters) {
-        this.switchId = switchId;
-        this.rules = rules;
-        this.meters = meters;
-    }
+    SwitchId switchId;
+    RulesSyncEntry rules;
+    MetersSyncEntry meters;
+    GroupSyncEntry groups;
 }

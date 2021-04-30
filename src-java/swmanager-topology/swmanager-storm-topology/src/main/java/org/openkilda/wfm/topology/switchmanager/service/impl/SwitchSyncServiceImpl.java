@@ -116,6 +116,42 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
     }
 
     @Override
+    public void handleInstallGroupResponse(String key) {
+        SwitchSyncFsm fsm = fsms.get(key);
+        if (fsm == null) {
+            logFsmNotFound(key);
+            return;
+        }
+
+        fsm.fire(SwitchSyncEvent.GROUPS_INSTALLED);
+        process(fsm);
+    }
+
+    @Override
+    public void handleModifyGroupResponse(String key) {
+        SwitchSyncFsm fsm = fsms.get(key);
+        if (fsm == null) {
+            logFsmNotFound(key);
+            return;
+        }
+
+        fsm.fire(SwitchSyncEvent.GROUPS_MODIFIED);
+        process(fsm);
+    }
+
+    @Override
+    public void handleDeleteGroupResponse(String key) {
+        SwitchSyncFsm fsm = fsms.get(key);
+        if (fsm == null) {
+            logFsmNotFound(key);
+            return;
+        }
+
+        fsm.fire(SwitchSyncEvent.GROUPS_REMOVED);
+        process(fsm);
+    }
+
+    @Override
     public void handleTaskTimeout(String key) {
         SwitchSyncFsm fsm = fsms.get(key);
         if (fsm == null) {
@@ -145,6 +181,7 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
         final List<SwitchSyncState> stopStates = Arrays.asList(
                 SwitchSyncState.RULES_COMMANDS_SEND,
                 SwitchSyncState.METERS_COMMANDS_SEND,
+                SwitchSyncState.GROUPS_COMMANDS_SEND,
                 SwitchSyncState.FINISHED,
                 SwitchSyncState.FINISHED_WITH_ERROR
         );

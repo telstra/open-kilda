@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -31,6 +31,8 @@ import org.openkilda.northbound.dto.v1.links.LinkPropsDto;
 import org.openkilda.northbound.dto.v1.links.LinkStatus;
 import org.openkilda.northbound.dto.v1.links.PathDto;
 import org.openkilda.northbound.dto.v1.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.v1.switches.GroupsSyncDto;
+import org.openkilda.northbound.dto.v1.switches.GroupsValidationDto;
 import org.openkilda.northbound.dto.v1.switches.MetersSyncDto;
 import org.openkilda.northbound.dto.v1.switches.MetersValidationDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncDto;
@@ -141,7 +143,9 @@ public class JsonSerializationTest {
                 singletonList(3L), singletonList(4L), singletonList(5L));
         MetersSyncDto meters = new MetersSyncDto(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(),
                 emptyList());
-        SwitchSyncResult dto = new SwitchSyncResult(rules, meters);
+        GroupsSyncDto groups = new GroupsSyncDto(emptyList(), emptyList(), emptyList(), emptyList(),
+                emptyList(), emptyList(), emptyList());
+        SwitchSyncResult dto = new SwitchSyncResult(rules, meters, groups);
         assertEquals(dto, pass(dto, SwitchSyncResult.class));
     }
 
@@ -150,7 +154,8 @@ public class JsonSerializationTest {
         RulesValidationDto rules = new RulesValidationDto(singletonList(0L), singletonList(1L),
                 singletonList(2L), singletonList(3L));
         MetersValidationDto meters = new MetersValidationDto(emptyList(), emptyList(), emptyList(), emptyList());
-        SwitchValidationResult dto = new SwitchValidationResult(rules, meters);
+        GroupsValidationDto groups = new GroupsValidationDto(emptyList(), emptyList(), emptyList(), emptyList());
+        SwitchValidationResult dto = new SwitchValidationResult(rules, meters, groups);
         assertEquals(dto, pass(dto, SwitchValidationResult.class));
     }
 
