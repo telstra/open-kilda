@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.switches.GroupSyncEntry;
 import org.openkilda.messaging.info.switches.MetersSyncEntry;
 import org.openkilda.messaging.info.switches.RulesSyncEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
@@ -722,7 +723,10 @@ public class NetworkSwitchServiceTest {
                         emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
         MetersSyncEntry metersSyncEntry =
                 new MetersSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
-        SwitchSyncResponse response = new SwitchSyncResponse(alphaDatapath, rulesSyncEntry, metersSyncEntry);
+        GroupSyncEntry groupSyncEntry = new GroupSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(),
+                emptyList(), emptyList(), emptyList());
+        SwitchSyncResponse response = new SwitchSyncResponse(alphaDatapath, rulesSyncEntry, metersSyncEntry,
+                groupSyncEntry);
 
         // for a randomly generated key in SwitchFsm
         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
@@ -835,7 +839,10 @@ public class NetworkSwitchServiceTest {
                 new RulesSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
         MetersSyncEntry metersSyncEntry =
                 new MetersSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
-        SwitchSyncResponse response = new SwitchSyncResponse(alphaDatapath, rulesSyncEntry, metersSyncEntry);
+        GroupSyncEntry groupSyncEntry = new GroupSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(),
+                emptyList(), emptyList(), emptyList());
+        SwitchSyncResponse response = new SwitchSyncResponse(alphaDatapath, rulesSyncEntry, metersSyncEntry,
+                groupSyncEntry);
 
 
         verify(carrier, times(SYNC_ATTEMPTS)).sendSwitchSynchronizeRequest(captor.capture(), eq(alphaDatapath));
@@ -871,7 +878,9 @@ public class NetworkSwitchServiceTest {
 
         RulesSyncEntry rulesSyncEntry =
                 new RulesSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
-        SwitchSyncResponse response = new SwitchSyncResponse(alphaDatapath, rulesSyncEntry, null);
+        GroupSyncEntry groupSyncEntry = new GroupSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(),
+                emptyList(), emptyList(), emptyList());
+        SwitchSyncResponse response = new SwitchSyncResponse(alphaDatapath, rulesSyncEntry, null, groupSyncEntry);
         service.switchManagerResponse(response, captor.getValue());
 
         verifyNewSwitchAfterSwitchSync(ports);
@@ -1026,6 +1035,8 @@ public class NetworkSwitchServiceTest {
                 new RulesSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
         MetersSyncEntry metersSyncEntry =
                 new MetersSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
-        return new SwitchSyncResponse(switchId, rulesSyncEntry, metersSyncEntry);
+        GroupSyncEntry groupSyncEntry = new GroupSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(),
+                emptyList(), emptyList(), emptyList());
+        return new SwitchSyncResponse(switchId, rulesSyncEntry, metersSyncEntry, groupSyncEntry);
     }
 }

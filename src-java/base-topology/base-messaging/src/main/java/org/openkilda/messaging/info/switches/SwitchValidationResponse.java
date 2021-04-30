@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@ package org.openkilda.messaging.info.switches;
 
 import org.openkilda.messaging.info.InfoData;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
@@ -26,18 +26,9 @@ import lombok.Value;
 @Value
 @Builder
 @EqualsAndHashCode(callSuper = false)
+@JsonNaming(value = SnakeCaseStrategy.class)
 public class SwitchValidationResponse extends InfoData {
-
-    @JsonProperty("rules")
-    private RulesValidationEntry rules;
-
-    @JsonProperty("meters")
-    private MetersValidationEntry meters;
-
-    @JsonCreator
-    public SwitchValidationResponse(@JsonProperty("rules") RulesValidationEntry rules,
-                                    @JsonProperty("meters") MetersValidationEntry meters) {
-        this.rules = rules;
-        this.meters = meters;
-    }
+    RulesValidationEntry rules;
+    MetersValidationEntry meters;
+    GroupsValidationEntry groups;
 }

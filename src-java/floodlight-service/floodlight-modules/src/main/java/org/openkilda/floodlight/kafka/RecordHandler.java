@@ -57,10 +57,13 @@ import org.openkilda.floodlight.command.flow.FlowSegmentResponseFactory;
 import org.openkilda.floodlight.command.flow.FlowSegmentSyncResponseFactory;
 import org.openkilda.floodlight.command.flow.FlowSegmentWrapperCommand;
 import org.openkilda.floodlight.command.flow.egress.EgressFlowSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.egress.EgressMirrorFlowSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowLoopSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressMirrorFlowSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressServer42FlowInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowInstallCommand;
+import org.openkilda.floodlight.command.flow.ingress.OneSwitchMirrorFlowInstallCommand;
 import org.openkilda.floodlight.command.flow.transit.TransitFlowLoopSegmentInstallCommand;
 import org.openkilda.floodlight.command.group.GroupInstallCommand;
 import org.openkilda.floodlight.command.group.GroupModifyCommand;
@@ -99,10 +102,13 @@ import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
+import org.openkilda.messaging.command.flow.InstallEgressMirrorFlow;
 import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressLoopFlow;
+import org.openkilda.messaging.command.flow.InstallIngressMirrorFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
+import org.openkilda.messaging.command.flow.InstallOneSwitchMirrorFlow;
 import org.openkilda.messaging.command.flow.InstallServer42Flow;
 import org.openkilda.messaging.command.flow.InstallServer42IngressFlow;
 import org.openkilda.messaging.command.flow.InstallSharedFlow;
@@ -1728,14 +1734,22 @@ class RecordHandler implements Runnable {
     private Optional<FlowSegmentWrapperCommand> makeSyncCommand(
             BaseFlow request, MessageContext messageContext, FlowSegmentResponseFactory responseFactory) {
         FlowSegmentWrapperCommand command;
-        if (request instanceof InstallIngressFlow) {
+        if (request instanceof InstallIngressMirrorFlow) {
+            command = makeFlowSegmentWrappedCommand(
+                    (InstallIngressMirrorFlow) request, messageContext, responseFactory);
+        } else if (request instanceof InstallIngressFlow) {
             command = makeFlowSegmentWrappedCommand((InstallIngressFlow) request, messageContext, responseFactory);
+        } else if (request instanceof InstallOneSwitchMirrorFlow) {
+            command = makeFlowSegmentWrappedCommand(
+                    (InstallOneSwitchMirrorFlow) request, messageContext, responseFactory);
         } else if (request instanceof InstallOneSwitchFlow) {
             command = makeFlowSegmentWrappedCommand((InstallOneSwitchFlow) request, messageContext, responseFactory);
         } else if (request instanceof InstallIngressLoopFlow) {
             command = makeIngressLoopWrappedCommand((InstallIngressLoopFlow) request, messageContext, responseFactory);
         } else if (request instanceof InstallTransitLoopFlow) {
             command = makeTransitLoopWrappedCommand((InstallTransitLoopFlow) request, messageContext, responseFactory);
+        } else if (request instanceof InstallEgressMirrorFlow) {
+            command = makeFlowSegmentWrappedCommand((InstallEgressMirrorFlow) request, messageContext, responseFactory);
         } else if (request instanceof InstallEgressFlow) {
             command = makeFlowSegmentWrappedCommand((InstallEgressFlow) request, messageContext, responseFactory);
         } else if (request instanceof InstallServer42IngressFlow) {
@@ -1759,6 +1773,21 @@ class RecordHandler implements Runnable {
     }
 
     private FlowSegmentWrapperCommand makeFlowSegmentWrappedCommand(
+            InstallIngressMirrorFlow request, MessageContext messageContext,
+            FlowSegmentResponseFactory responseFactory) {
+        FlowEndpoint endpoint = new FlowEndpoint(
+                request.getSwitchId(), request.getInputPort(), request.getInputVlanId(), request.getInputInnerVlanId(),
+                request.isEnableLldp(), request.isEnableArp());
+        MeterConfig meterConfig = makeMeterConfig(request.getMeterId(), request.getBandwidth());
+        IngressMirrorFlowSegmentInstallCommand command = new IngressMirrorFlowSegmentInstallCommand(
+                messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, meterConfig,
+                request.getEgressSwitchId(), request.getOutputPort(), makeTransitEncapsulation(request),
+                new RulesContext(), request.getMirrorConfig());
+
+        return new FlowSegmentWrapperCommand(command, responseFactory);
+    }
+
+    private FlowSegmentWrapperCommand makeFlowSegmentWrappedCommand(
             InstallIngressFlow request, MessageContext messageContext, FlowSegmentResponseFactory responseFactory) {
         FlowEndpoint endpoint = new FlowEndpoint(
                 request.getSwitchId(), request.getInputPort(), request.getInputVlanId(), request.getInputInnerVlanId(),
@@ -1767,6 +1796,23 @@ class RecordHandler implements Runnable {
         IngressFlowSegmentInstallCommand command = new IngressFlowSegmentInstallCommand(
                 messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, meterConfig,
                 request.getEgressSwitchId(), request.getOutputPort(), makeTransitEncapsulation(request),
+                new RulesContext(), request.getMirrorConfig());
+
+        return new FlowSegmentWrapperCommand(command, responseFactory);
+    }
+
+    private FlowSegmentWrapperCommand makeFlowSegmentWrappedCommand(
+            InstallOneSwitchMirrorFlow request, MessageContext messageContext,
+            FlowSegmentResponseFactory responseFactory) {
+        FlowEndpoint endpoint = new FlowEndpoint(
+                request.getSwitchId(), request.getInputPort(), request.getInputVlanId(), request.getInputInnerVlanId(),
+                request.isEnableLldp(), request.isEnableArp());
+        FlowEndpoint egressEndpoint = new FlowEndpoint(
+                request.getSwitchId(), request.getOutputPort(), request.getOutputVlanId(),
+                request.getOutputInnerVlanId());
+        MeterConfig meterConfig = makeMeterConfig(request.getMeterId(), request.getBandwidth());
+        OneSwitchMirrorFlowInstallCommand command = new OneSwitchMirrorFlowInstallCommand(
+                messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, meterConfig, egressEndpoint,
                 new RulesContext(), request.getMirrorConfig());
 
         return new FlowSegmentWrapperCommand(command, responseFactory);
@@ -1784,6 +1830,19 @@ class RecordHandler implements Runnable {
         OneSwitchFlowInstallCommand command = new OneSwitchFlowInstallCommand(
                 messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, meterConfig, egressEndpoint,
                 new RulesContext(), request.getMirrorConfig());
+
+        return new FlowSegmentWrapperCommand(command, responseFactory);
+    }
+
+    private FlowSegmentWrapperCommand makeFlowSegmentWrappedCommand(
+            InstallEgressMirrorFlow request, MessageContext messageContext,
+            FlowSegmentResponseFactory responseFactory) {
+        FlowEndpoint endpoint = new FlowEndpoint(
+                request.getSwitchId(), request.getOutputPort(), request.getOutputVlanId(),
+                request.getOutputInnerVlanId());
+        EgressMirrorFlowSegmentInstallCommand command = new EgressMirrorFlowSegmentInstallCommand(
+                messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, request.getIngressEndpoint(),
+                request.getInputPort(), makeTransitEncapsulation(request), request.getMirrorConfig());
 
         return new FlowSegmentWrapperCommand(command, responseFactory);
     }
