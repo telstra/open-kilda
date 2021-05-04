@@ -41,6 +41,7 @@ public final class Constants {
     public static final Integer LLDP_RULE_SINGLE_TABLE_ID = 1;
     public static final Integer LLDP_RULE_MULTI_TABLE_ID = 3;
     public static final Integer SHARED_RULE_TABLE_ID = 1;
+    public static final String DUMMY_SW_IP_1 = "192.0.2.1";
 
     private Constants() {
         throw new UnsupportedOperationException();

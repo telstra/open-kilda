@@ -16,9 +16,9 @@
 package org.openkilda.testing.service.lockkeeper.model;
 
 import lombok.Builder;
-import lombok.Value;
+import lombok.Data;
 
-@Value
+@Data
 @Builder
 public class TrafficControlData {
     Integer egressDelayMs;

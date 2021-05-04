@@ -17,9 +17,12 @@ package org.openkilda.testing.service.lockkeeper.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import lombok.Value;
+import lombok.AccessLevel;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Value
+@Data
+@NoArgsConstructor(access = AccessLevel.NONE)
 public class FloodlightResourceAddress {
 
     String region;
