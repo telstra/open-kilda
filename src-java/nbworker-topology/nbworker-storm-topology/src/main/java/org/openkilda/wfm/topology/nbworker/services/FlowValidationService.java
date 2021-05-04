@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.nbworker.services;
 
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.nbtopology.response.PathDiscrepancyEntity;
 import org.openkilda.model.EncapsulationId;
@@ -26,6 +27,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Meter;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -73,11 +75,12 @@ public class FlowValidationService {
     /**
      * Check the flow status.
      */
-    public void checkFlowStatus(String flowId) throws FlowNotFoundException, IllegalFlowStateException {
+    public Flow checkFlowStatusAndGetFlow(String flowId) throws FlowNotFoundException, IllegalFlowStateException {
         Flow flow = flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
         if (FlowStatus.DOWN.equals(flow.getStatus())) {
             throw new IllegalFlowStateException(flowId);
         }
+        return flow;
     }
 
     /**
@@ -93,7 +96,8 @@ public class FlowValidationService {
      * Validate flow.
      */
     public List<FlowValidationResponse> validateFlow(String flowId, List<SwitchFlowEntries> switchFlowEntries,
-                                                     List<SwitchMeterEntries> switchMeterEntries)
+                                                     List<SwitchMeterEntries> switchMeterEntries,
+                                                     List<SwitchGroupEntries> switchGroupEntries)
             throws FlowNotFoundException, SwitchNotFoundException {
 
         Map<SwitchId, List<SimpleSwitchRule>> switchRules = new HashMap<>();
@@ -104,9 +108,13 @@ public class FlowValidationService {
                     .filter(meterEntries -> switchRulesEntries.getSwitchId().equals(meterEntries.getSwitchId()))
                     .findFirst()
                     .orElse(null);
+            SwitchGroupEntries switchGroup = switchGroupEntries.stream()
+                    .filter(groupEntries -> switchRulesEntries.getSwitchId().equals(groupEntries.getSwitchId()))
+                    .findFirst()
+                    .orElse(null);
 
             List<SimpleSwitchRule> simpleSwitchRules = simpleSwitchRuleConverter
-                    .convertSwitchFlowEntriesToSimpleSwitchRules(switchRulesEntries, switchMeters);
+                    .convertSwitchFlowEntriesToSimpleSwitchRules(switchRulesEntries, switchMeters, switchGroup);
             switchRules.put(switchRulesEntries.getSwitchId(), simpleSwitchRules);
 
             rulesCount += Optional.ofNullable(switchRulesEntries.getFlowEntries())
@@ -161,9 +169,19 @@ public class FlowValidationService {
         List<PathDiscrepancyEntity> discrepancies = new ArrayList<>();
         List<Long> pktCounts = new ArrayList<>();
         List<Long> byteCounts = new ArrayList<>();
+        boolean ingressMirrorFlowIsPresent = false;
+        boolean egressMirrorFlowIsPresent = false;
         for (SimpleSwitchRule simpleRule : rulesFromDb) {
             discrepancies.addAll(
                     findDiscrepancy(simpleRule, rulesPerSwitch.get(simpleRule.getSwitchId()), pktCounts, byteCounts));
+
+            if (new FlowSegmentCookie(simpleRule.getCookie()).isMirror() && simpleRule.isIngressRule()) {
+                ingressMirrorFlowIsPresent = true;
+            }
+
+            if (new FlowSegmentCookie(simpleRule.getCookie()).isMirror() && simpleRule.isEgressRule()) {
+                egressMirrorFlowIsPresent = true;
+            }
         }
         int flowMetersCount = (int) rulesFromDb.stream().filter(rule -> rule.getMeterId() != null).count();
 
@@ -177,6 +195,8 @@ public class FlowValidationService {
                 .switchRulesTotal(totalSwitchRules)
                 .flowMetersTotal(flowMetersCount)
                 .switchMetersTotal(metersCount)
+                .ingressMirrorFlowIsPresent(ingressMirrorFlowIsPresent)
+                .egressMirrorFlowIsPresent(egressMirrorFlowIsPresent)
                 .build();
     }
 
@@ -301,6 +321,15 @@ public class FlowValidationService {
                             Arrays.toString(expected.getMeterFlags()), Arrays.toString(matched.getMeterFlags())));
                 }
             }
+        }
+
+        if (matched.getGroupId() != expected.getGroupId()) {
+            discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "groupId",
+                    String.valueOf(expected.getGroupId()), String.valueOf(matched.getGroupId())));
+        }
+        if (! Objects.equals(matched.getGroupBuckets(), expected.getGroupBuckets())) {
+            discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "groupBuckets",
+                    String.valueOf(expected.getGroupBuckets()), String.valueOf(matched.getGroupBuckets())));
         }
         return discrepancies;
     }
