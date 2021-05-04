@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.messaging.nbtopology.request.FlowValidationRequest;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
@@ -113,6 +114,8 @@ public class FlowValidationHubService {
                         .switchId(meterUnsupported.getSwitchId())
                         .meterEntries(Collections.emptyList())
                         .build());
+            } else if (data instanceof SwitchGroupEntries) {
+                fsm.fire(FlowValidationEvent.GROUPS_RECEIVED, data);
             } else {
                 log.warn("Key: {}; Unhandled message {}", key, message);
             }
