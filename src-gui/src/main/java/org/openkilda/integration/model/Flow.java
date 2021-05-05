@@ -34,7 +34,7 @@ import java.util.List;
         "last-updated"})
 public class Flow {
 
-    @JsonProperty("flow_id")
+    @JsonProperty("flowid")
     private String id;
 
     @JsonProperty("source")
@@ -46,13 +46,13 @@ public class Flow {
     @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth;
     
-    @JsonProperty("maximum_bandwidth")
+    @JsonProperty("maximum-bandwidth")
     private int maximumBandwidth;
 
     @JsonProperty("description")
     private String description;
 
-    @JsonProperty("last_updated")
+    @JsonProperty("last-updated")
     private String lastUpdated;
     
     @JsonProperty("status")
@@ -61,7 +61,7 @@ public class Flow {
     @JsonProperty("timeout")
     private int timeout;
     
-    @JsonProperty("diverse_flow_id")
+    @JsonProperty("diverse-flowid")
     private String diverseFlowId;
     
     @JsonProperty("allocate_protected_path")
@@ -70,13 +70,13 @@ public class Flow {
     @JsonProperty("pinned")
     private boolean pinned;
     
-    @JsonProperty("encapsulation_type")
+    @JsonProperty("encapsulation-type")
     private String encapsulationType;
     
-    @JsonProperty("path_computation_strategy")
+    @JsonProperty("path-computation-strategy")
     private String pathComputationStrategy;
     
-    @JsonProperty("periodic_pings")
+    @JsonProperty("periodic-pings")
     private boolean periodicPings;
 
     @JsonProperty("created")
@@ -85,11 +85,8 @@ public class Flow {
     @JsonProperty("diverse_with")
     private List<String> diverseWith;
     
-    @JsonProperty("max_latency")
-    private Long maxLatency;
-    
-    @JsonProperty("max_latency_tier2")
-    private Long maxLatencyTier2;
+    @JsonProperty("max-latency")
+    private int maxLatency;
 
     @JsonProperty("priority")
     private int priority;
@@ -97,79 +94,12 @@ public class Flow {
     @JsonProperty("status_info")
     private String statusInfo;
     
-    @JsonProperty("target_path_computation_strategy")
+    @JsonProperty("target-path-computation-strategy")
     private String targetPathComputationStrategy;
     
-    @JsonProperty("status_details")
+    @JsonProperty("status-details")
     private StatusDetail statusDetails;
     
-    
-    public String getId() {
-        return id;
-    }
-
-    public void setId(final String id) {
-        this.id = id;
-    }
-
-    public FlowEndpoint getSource() {
-        return source;
-    }
-
-    public void setSource(final FlowEndpoint source) {
-        this.source = source;
-    }
-
-    public FlowEndpoint getDestination() {
-        return destination;
-    }
-
-    public void setDestination(final FlowEndpoint destination) {
-        this.destination = destination;
-    }
-
-    public int getMaximumBandwidth() {
-        return maximumBandwidth;
-    }
-
-    public void setMaximumBandwidth(final int maximumBandwidth) {
-        this.maximumBandwidth = maximumBandwidth;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(final String description) {
-        this.description = description;
-    }
-
-    public String getLastUpdated() {
-        return lastUpdated;
-    }
-
-    public void setLastUpdated(final String lastUpdated) {
-        this.lastUpdated = lastUpdated;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public int getTimeout() {
-        return timeout;
-    }
-    
-
-    public void setTimeout(int timeout) {
-        this.timeout = timeout;
-    }
-    
-
     @Override
     public String toString() {
         return "Flow [id=" + id + ", source=" + source + ", destination=" + destination
