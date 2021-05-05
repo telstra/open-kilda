@@ -101,6 +101,9 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
                 }
             }
             updateRequestContext(correlationId, request, userInfo);
+        } else {
+            RequestContext requestContext = serverContext.getRequestContext();
+            requestContext.setCorrelationId(correlationId);
         }
         return true;
     }

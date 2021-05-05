@@ -22,8 +22,8 @@ import org.openkilda.integration.converter.FlowPathConverter;
 import org.openkilda.integration.exception.ContentNotFoundException;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
-import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowStatus;
+import org.openkilda.integration.model.FlowV2;
 import org.openkilda.integration.model.response.FlowPayload;
 import org.openkilda.model.FlowConnectedDevice;
 import org.openkilda.model.FlowHistory;
@@ -86,9 +86,9 @@ public class FlowsIntegrationService {
      */
     public List<FlowInfo> getFlows() {
 
-        List<Flow> flowList = getAllFlowList();
+        List<FlowV2> flowList = getAllFlowList();
         if (flowList != null) {
-            return flowConverter.toFlowsInfo(flowList);
+            return flowConverter.toFlowV2sInfo(flowList);
         }
         return null;
     }
@@ -156,13 +156,13 @@ public class FlowsIntegrationService {
      *
      * @return the all flow list
      */
-    public List<Flow> getAllFlowList() {
+    public List<FlowV2> getAllFlowList() {
         try {
             HttpResponse response = restClientManager.invoke(
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW_V2, HttpMethod.GET, 
                     "", "application/json", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
-                return restClientManager.getResponseList(response, Flow.class);
+                return restClientManager.getResponseList(response, FlowV2.class);
             }
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while getting all flow list", e);
@@ -230,14 +230,14 @@ public class FlowsIntegrationService {
      * @param flowId the flow id
      * @return the flow by id
      */
-    public Flow getFlowById(String flowId) {
+    public FlowV2 getFlowById(String flowId) {
         try {
             HttpResponse response = restClientManager.invoke(
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW_V2 + "/"
                             + UriUtils.encodePath(flowId, "UTF-8"),
                     HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
-                Flow flow = restClientManager.getResponse(response, Flow.class);
+                FlowV2 flow = restClientManager.getResponse(response, FlowV2.class);
                 return flow;
             }
         } catch (InvalidResponseException e) {
@@ -256,13 +256,13 @@ public class FlowsIntegrationService {
      * @param flow the flow
      * @return the flow
      */
-    public Flow createFlow(Flow flow) {
+    public FlowV2 createFlow(FlowV2 flow) {
         try {
             HttpResponse response = restClientManager.invoke(
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW_V2, HttpMethod.POST,
                     objectMapper.writeValueAsString(flow), "application/json", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
-                return restClientManager.getResponse(response, Flow.class);
+                return restClientManager.getResponse(response, FlowV2.class);
             }
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while creating flow", e);
@@ -281,7 +281,7 @@ public class FlowsIntegrationService {
      * @param flow the flow
      * @return the flow
      */
-    public Flow updateFlow(String flowId, Flow flow) {
+    public FlowV2 updateFlow(String flowId, FlowV2 flow) {
         try {
             HttpResponse response = restClientManager.invoke(
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.UPDATE_FLOW.replace("{flow_id}",
@@ -289,7 +289,7 @@ public class FlowsIntegrationService {
                     HttpMethod.PUT, objectMapper.writeValueAsString(flow), "application/json",
                     applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
-                return restClientManager.getResponse(response, Flow.class);
+                return restClientManager.getResponse(response, FlowV2.class);
             }
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while updating flow:" + flowId, e);
@@ -307,14 +307,14 @@ public class FlowsIntegrationService {
      * @param flowId the flow id
      * @return the flow
      */
-    public Flow deleteFlow(String flowId) {
+    public FlowV2 deleteFlow(String flowId) {
         try {
             HttpResponse response = restClientManager.invoke(
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.UPDATE_FLOW.replace("{flow_id}",
                             UriUtils.encodePath(flowId, "UTF-8")),
                     HttpMethod.DELETE, "", "application/json", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
-                return restClientManager.getResponse(response, Flow.class);
+                return restClientManager.getResponse(response, FlowV2.class);
             }
             return null;
         } catch (InvalidResponseException e) {
@@ -358,7 +358,7 @@ public class FlowsIntegrationService {
      * @param flowId the flow id
      * @return the string
      */
-    public String flowPing(Flow flow, String flowId) {
+    public String flowPing(FlowV2 flow, String flowId) {
         try {
             HttpResponse response = restClientManager.invoke(
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.FLOW_PING.replace("{flow_id}",
