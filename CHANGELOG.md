@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.91.1 (05/05/2021)
+
+### Bug Fixes:
+-  [#4243](https://github.com/telstra/open-kilda/pull/4243) Hotfix to fix issue in getting flow of ISL (Issue: [#4242](https://github.com/telstra/open-kilda/issues/4242)) [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.91.0...v1.91.1).
+
+### Affected Components:
+gui
+
+---
+
 ## v1.91.0 (26/04/2021)
 
 ### Features:
