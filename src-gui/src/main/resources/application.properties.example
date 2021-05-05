@@ -2,6 +2,12 @@
 server.port=1010
 server.contextPath=/openkilda
 
+#SSL Configurations
+server.ssl.enabled = true
+server.ssl.key-alias = kilda
+server.ssl.key-store = classpath:keystore-kilda.jks
+server.ssl.key-store-password = openkilda
+
 #Derby database configuration (In Memory)
 spring.jpa.database=default
 spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.DerbyTenSevenDialect
@@ -22,7 +28,7 @@ logging.config=classpath:logback.xml
 spring.mvc.throw-exception-if-no-handler-found=true
  
 #Northbound Base URL
-nb.base.url=http://northbound.pendev:8080/api/v1
+nb.base.url=http://northbound.pendev:8080/api
 
 #OPEN TSDB Base URL
 opentsdb.base.url=http://opentsdb.pendev:4242
@@ -55,3 +61,11 @@ status.cron.time=43200000
 
 #Currently working for 2FA app name
 application.name=Open Kilda
+
+# Enable response compression
+server.compression.enabled=true
+# The comma-separated list of mime types that should be compressed
+server.compression.mime-types=text/html,text/plain,text/css,text/javascript,application/javascript,application/json
+
+# Compress the response only if the response size is at least 1KB
+server.compression.min-response-size=1

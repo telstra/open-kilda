@@ -18,8 +18,8 @@ package org.openkilda.controller;
 import org.openkilda.auth.context.ServerContext;
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
-import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowStatus;
+import org.openkilda.integration.model.FlowV2;
 import org.openkilda.integration.model.response.FlowPayload;
 import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
@@ -81,7 +81,7 @@ public class FlowController extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody Collection<FlowCount> getFlowCount() {
         Collection<FlowCount> flowsInfo = new ArrayList<FlowCount>();
-        List<Flow> flows = flowService.getAllFlowList();
+        List<FlowV2> flows = flowService.getAllFlowList();
         if (flows != null) {
             flowsInfo = flowService.getFlowsCount(flows);
         }
@@ -189,7 +189,7 @@ public class FlowController extends BaseController {
     @RequestMapping(method = RequestMethod.PUT)
     @ResponseStatus(HttpStatus.CREATED)
     @Permissions(values = { IConstants.Permission.FW_FLOW_CREATE })
-    public @ResponseBody Flow createFlow(@RequestBody final Flow flow) {
+    public @ResponseBody FlowV2 createFlow(@RequestBody final FlowV2 flow) {
         LOGGER.info("Create flow. Flow id: '" + flow.getId() + "'");
         return flowService.createFlow(flow);
     }
@@ -206,7 +206,8 @@ public class FlowController extends BaseController {
     @RequestMapping(value = "/{flowId}", method = RequestMethod.PUT)
     @ResponseStatus(HttpStatus.CREATED)
     @Permissions(values = { IConstants.Permission.FW_FLOW_UPDATE })
-    public @ResponseBody Flow updateFlow(@PathVariable("flowId") final String flowId, @RequestBody final Flow flow) {
+    public @ResponseBody FlowV2 updateFlow(@PathVariable("flowId") final String flowId, 
+            @RequestBody final FlowV2 flow) {
         LOGGER.info("Update flow. Flow id: '" + flowId + "'");
         return flowService.updateFlow(flowId, flow);
     }
@@ -224,7 +225,7 @@ public class FlowController extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = { IConstants.Permission.FW_FLOW_DELETE })
     @ResponseBody
-    public Flow deleteFlow(@RequestBody final UserInfo userInfo, @PathVariable("flowId") final String flowId) {
+    public FlowV2 deleteFlow(@RequestBody final UserInfo userInfo, @PathVariable("flowId") final String flowId) {
         LOGGER.info("Delete flow. Flow id: '" + flowId + "'");
         if (serverContext.getRequestContext() != null) {
             userInfo.setUserId(serverContext.getRequestContext().getUserId());
@@ -279,7 +280,7 @@ public class FlowController extends BaseController {
     @RequestMapping(value = "/{flowId}/ping", method = RequestMethod.PUT)
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = { IConstants.Permission.FW_FLOW_PING })
-    public @ResponseBody String flowPing(@PathVariable final String flowId, @RequestBody final Flow flow) {
+    public @ResponseBody String flowPing(@PathVariable final String flowId, @RequestBody final FlowV2 flow) {
         LOGGER.info("Flow ping. Flow id: '" + flowId + "'");
         activityLogger.log(ActivityType.FLOW_PING, flowId);
         return flowService.flowPing(flowId, flow);

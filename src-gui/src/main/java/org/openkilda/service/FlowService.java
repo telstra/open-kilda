@@ -19,8 +19,8 @@ import org.openkilda.constants.IConstants;
 import org.openkilda.integration.converter.FlowConverter;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
-import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowStatus;
+import org.openkilda.integration.model.FlowV2;
 import org.openkilda.integration.model.response.FlowPayload;
 import org.openkilda.integration.service.FlowsIntegrationService;
 import org.openkilda.integration.service.SwitchIntegrationService;
@@ -140,7 +140,7 @@ public class FlowService {
      *            the flows
      * @return the flow count
      */
-    public Collection<FlowCount> getFlowsCount(final List<Flow> flows) {
+    public Collection<FlowCount> getFlowsCount(final List<FlowV2> flows) {
         Map<FlowCount, FlowCount> infoByFlowInfo = new HashMap<>();
         Map<String, String> csNames = switchIntegrationService.getSwitchNames();
 
@@ -187,7 +187,7 @@ public class FlowService {
      *
      * @return the all flow list
      */
-    public List<Flow> getAllFlowList() {
+    public List<FlowV2> getAllFlowList() {
         return flowsIntegrationService.getAllFlowList();
     }
 
@@ -223,7 +223,7 @@ public class FlowService {
      */
     public FlowInfo getFlowById(String flowId, boolean controller) throws AccessDeniedException {
         FlowInfo flowInfo = new FlowInfo();
-        Flow flow = null;
+        FlowV2 flow = null;
         try {
             flow = flowsIntegrationService.getFlowById(flowId);
         } catch (InvalidResponseException ex) {
@@ -234,7 +234,7 @@ public class FlowService {
         }
         Map<String, String> csNames = switchIntegrationService.getSwitchNames();
         if (flow != null) {
-            flowInfo = flowConverter.toFlowInfo(flow, csNames);
+            flowInfo = flowConverter.toFlowV2Info(flow, csNames);
         }
         UserInfo userInfo = userService.getLoggedInUserInfo();
         try {
@@ -320,7 +320,7 @@ public class FlowService {
      *            the flow
      * @return the flow
      */
-    public Flow createFlow(Flow flow) {
+    public FlowV2 createFlow(FlowV2 flow) {
         flow = flowsIntegrationService.createFlow(flow);
         activityLogger.log(ActivityType.CREATE_FLOW, flow.getId());
         return flow;
@@ -335,7 +335,7 @@ public class FlowService {
      *            the flow
      * @return the flow
      */
-    public Flow updateFlow(String flowId, Flow flow) {
+    public FlowV2 updateFlow(String flowId, FlowV2 flow) {
         activityLogger.log(ActivityType.UPDATE_FLOW, flow.getId());
         flow = flowsIntegrationService.updateFlow(flowId, flow);
         return flow;
@@ -350,9 +350,9 @@ public class FlowService {
      *            the user info
      * @return the flow
      */
-    public Flow deleteFlow(String flowId, UserInfo userInfo) {
+    public FlowV2 deleteFlow(String flowId, UserInfo userInfo) {
         if (userService.validateOtp(userInfo.getUserId(), userInfo.getCode())) {
-            Flow flow = flowsIntegrationService.deleteFlow(flowId);
+            FlowV2 flow = flowsIntegrationService.deleteFlow(flowId);
             activityLogger.log(ActivityType.DELETE_FLOW, flow.getId());
             return flow;
         } else {
@@ -380,7 +380,7 @@ public class FlowService {
      * @param flow the flow
      * @return the string
      */
-    public String flowPing(String flowId, Flow flow) {
+    public String flowPing(String flowId, FlowV2 flow) {
         return flowsIntegrationService.flowPing(flow, flowId);
     }
 
