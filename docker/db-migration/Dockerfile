@@ -51,7 +51,8 @@ RUN GNUPGHOME="$(mktemp -d)"
 # Download JDBC libraries and plugins
 
 ADD --chown=liquibase:liquibase https://repo1.maven.org/maven2/com/orientechnologies/orientdb-jdbc/3.0.34/orientdb-jdbc-3.0.34-all.jar /liquibase/lib/orientdb-jdbc-3.0.34-all.jar
-ADD --chown=liquibase:liquibase https://dl.bintray.com/till-krullmann/tools/org/unbroken-dome/liquibase-orientdb/liquibase-orientdb/0.3.0/liquibase-orientdb-0.3.0.jar /liquibase/lib/liquibase-orientdb-0.3.0.jar
+#ADD --chown=liquibase:liquibase https://dl.bintray.com/till-krullmann/tools/org/unbroken-dome/liquibase-orientdb/liquibase-orientdb/0.3.0/liquibase-orientdb-0.3.0.jar /liquibase/lib/liquibase-orientdb-0.3.0.jar
+COPY --chown=liquibase:liquibase lib/liquibase-orientdb-0.3.0.jar /liquibase/lib/liquibase-orientdb-0.3.0.jar
 
 # black magic satisfying dependencies of `liquibase-orientdb-0.3.0.jar`
 ADD --chown=liquibase:liquibase https://repo1.maven.org/maven2/org/apache/commons/commons-lang3/3.6/commons-lang3-3.6.jar /liquibase/lib/commons-lang3-3.6.jar
