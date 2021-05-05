@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.92.0 (05/05/2021)
+
+### Features:
+-  [#4201](https://github.com/telstra/open-kilda/pull/4201) Rework LATENCY path computation strategy (Issue: [#3968](https://github.com/telstra/open-kilda/issues/3968))
+
+### Improvements:
+-  [#4228](https://github.com/telstra/open-kilda/pull/4228) unignore/fix unstableIslSpec [**tests**]
+-  [#4235](https://github.com/telstra/open-kilda/pull/4235) refactor test according to #4231 [**tests**]
+-  [#4211](https://github.com/telstra/open-kilda/pull/4211) Test/fix according to rc191 [**tests**]
+-  [#4218](https://github.com/telstra/open-kilda/pull/4218) add "cleanup" in the "switch" package [**tests**]
+
+### Other changes:
+-  [#4240](https://github.com/telstra/open-kilda/pull/4240) Fix Liquibase dependency - put liquibase-orientdb-0.3.0 into the repo
+-  [#4215](https://github.com/telstra/open-kilda/pull/4215) Unignore contention test and reveal #4214 [**tests**]
+-  [#4219](https://github.com/telstra/open-kilda/pull/4219) Add required waits after sw knockout in MflStatSpec [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.91.1...v1.92.0).
+
+### Affected Components:
+flow-hs
+
+---
+
 ## v1.91.1 (05/05/2021)
 
 ### Bug Fixes:
