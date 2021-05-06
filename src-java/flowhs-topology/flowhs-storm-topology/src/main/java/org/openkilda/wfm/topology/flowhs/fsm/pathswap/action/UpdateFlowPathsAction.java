@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -52,10 +52,17 @@ public class UpdateFlowPathsAction extends NbTrackableAction<FlowPathSwapFsm, St
 
             FlowPath oldPrimaryForward = flow.getForwardPath();
             FlowPath oldPrimaryReverse = flow.getReversePath();
-            flow.setForwardPath(flow.getProtectedForwardPath());
-            flow.setReversePath(flow.getProtectedReversePath());
+            FlowPath newPrimaryForward = flow.getProtectedForwardPath();
+            FlowPath newPrimaryReverse = flow.getProtectedReversePath();
+
+            setMirrorPointsToNewPath(oldPrimaryForward.getPathId(), newPrimaryForward.getPathId());
+            setMirrorPointsToNewPath(oldPrimaryReverse.getPathId(), newPrimaryReverse.getPathId());
+
+            flow.setForwardPath(newPrimaryForward);
+            flow.setReversePath(newPrimaryReverse);
             flow.setProtectedForwardPath(oldPrimaryForward);
             flow.setProtectedReversePath(oldPrimaryReverse);
+
             return flow;
         });
 
@@ -66,7 +73,8 @@ public class UpdateFlowPathsAction extends NbTrackableAction<FlowPathSwapFsm, St
 
         stateMachine.saveActionToHistory("The flow paths were updated");
         CommandContext commandContext = stateMachine.getCommandContext();
-        InfoData flowData = new FlowResponse(FlowMapper.INSTANCE.map(f, getDiverseWithFlowIds(f)));
+        InfoData flowData =
+                new FlowResponse(FlowMapper.INSTANCE.map(f, getDiverseWithFlowIds(f), getFlowMirrorPaths(f)));
         Message response = new InfoMessage(flowData, commandContext.getCreateTime(), commandContext.getCorrelationId());
         return Optional.of(response);
     }

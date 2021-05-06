@@ -29,6 +29,7 @@ import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.model.MirrorContext;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteContext;
@@ -104,10 +105,12 @@ public class EmitCommandRequestsAction
         FlowPath oppositePath = path.isForward() ? flow.getReversePath() : flow.getForwardPath();
 
         CommandContext context = stateMachine.getCommandContext();
+        SpeakerRequestBuildContext speakerContext =
+                buildBaseSpeakerContextForInstall(path.getSrcSwitchId(), path.getDestSwitchId());
         if (mirrorPoints.getMirrorSwitchId().equals(path.getSrcSwitchId())) {
             return new ArrayList<>(commandBuilder
                     .buildIngressOnlyOneDirection(context, flow, path, oppositePath,
-                            buildBasePathContextForInstall(path.getSrcSwitchId()),
+                            speakerContext.getForward(),
                             MirrorContext.builder()
                                     .buildMirrorFactoryOnly(true)
                                     .build()));

@@ -13,22 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.model;
+package org.openkilda.messaging.model;
 
-import lombok.Builder;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
 
 @Data
-@Builder(toBuilder = true)
-@EqualsAndHashCode
-public class MirrorContext {
-    public static final MirrorContext DEFAULT = MirrorContext.builder().build();
-
-    private boolean buildMirrorFactoryOnly;
-    private boolean addNewGroup;
-    private boolean removeFlowOperation;
-
-    @Builder.Default
-    private boolean removeGroup = true;
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
+public class MirrorPointStatusDto implements Serializable {
+    String mirrorPointId;
+    String status;
 }

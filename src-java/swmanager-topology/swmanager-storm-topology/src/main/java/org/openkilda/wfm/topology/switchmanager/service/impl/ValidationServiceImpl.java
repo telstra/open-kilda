@@ -125,15 +125,17 @@ public class ValidationServiceImpl implements ValidationService {
                 .collect(Collectors.toSet());
     }
 
-    private Set<Long> getExpectedMirrorPointsCookies(Collection<FlowPath> paths) {
+    private Set<Long> getExpectedMirrorPointsCookies(SwitchId switchId, Collection<FlowPath> paths) {
         Set<Long> cookies = new HashSet<>();
         paths.forEach(path -> {
-            path.getFlowMirrorPointsSet().forEach(mirrorPoints -> {
-                Collection<FlowMirrorPath> flowMirrorPaths = mirrorPoints.getMirrorPaths();
-                if (!flowMirrorPaths.isEmpty()) {
-                    cookies.add(path.getCookie().toBuilder().mirror(true).build().getValue());
-                }
-            });
+            path.getFlowMirrorPointsSet().stream()
+                    .filter(mirrorPoints -> switchId.equals(mirrorPoints.getMirrorSwitchId()))
+                    .forEach(mirrorPoints -> {
+                        Collection<FlowMirrorPath> flowMirrorPaths = mirrorPoints.getMirrorPaths();
+                        if (!flowMirrorPaths.isEmpty()) {
+                            cookies.add(path.getCookie().toBuilder().mirror(true).build().getValue());
+                        }
+                    });
         });
         return cookies;
     }
@@ -470,7 +472,7 @@ public class ValidationServiceImpl implements ValidationService {
         if (server42FlowRtt) {
             result.addAll(getExpectedServer42IngressCookies(switchId, affectedPaths));
         }
-        result.addAll(getExpectedMirrorPointsCookies(affectedPaths));
+        result.addAll(getExpectedMirrorPointsCookies(switchId, affectedPaths));
         return result;
     }
 

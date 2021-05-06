@@ -24,6 +24,7 @@ import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchConnectionsResponse;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslEndpoint;
@@ -35,6 +36,7 @@ import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -73,6 +75,7 @@ public class SwitchOperationsService {
     private SwitchConnectRepository switchConnectRepository;
     private PortPropertiesRepository portPropertiesRepository;
     private SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
+    private FlowMirrorPointsRepository flowMirrorPointsRepository;
     private TransactionManager transactionManager;
     private LinkOperationsService linkOperationsService;
     private IslRepository islRepository;
@@ -93,6 +96,7 @@ public class SwitchOperationsService {
         this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.switchConnectRepository = repositoryFactory.createSwitchConnectRepository();
         this.switchConnectedDeviceRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
+        this.flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
         this.carrier = carrier;
     }
 
@@ -403,6 +407,13 @@ public class SwitchOperationsService {
             if (updatedSwitchProperties.getServer42Vlan() == null) {
                 throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_vlan"));
             }
+        }
+
+        Collection<FlowMirrorPoints> flowMirrorPoints = flowMirrorPointsRepository.findBySwitchId(switchId);
+        if (!flowMirrorPoints.isEmpty()
+                && (updatedSwitchProperties.isSwitchLldp() || updatedSwitchProperties.isSwitchArp())) {
+            throw new IllegalSwitchPropertiesException(format("Flow mirror point is created on the switch %s, "
+                    + "switchLldp or switchArp can not be set to true.", switchId));
         }
     }
 
