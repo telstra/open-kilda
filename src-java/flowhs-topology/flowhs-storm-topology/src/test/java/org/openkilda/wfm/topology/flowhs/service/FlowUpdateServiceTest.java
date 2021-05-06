@@ -94,7 +94,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     @Test
     public void shouldFailUpdateFlowIfNoPathAvailable() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
-        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), anyCollection(), any()))
+        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), anyCollection()))
                 .thenThrow(new UnroutableFlowException(injectedErrorMessage));
 
         FlowRequest request = makeRequest()
@@ -105,13 +105,13 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         Flow result = testExpectedFailure(request, origin, ErrorType.NOT_FOUND);
         Assert.assertEquals(origin.getBandwidth(), result.getBandwidth());
 
-        verify(pathComputer, times(11)).getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), any());
+        verify(pathComputer, times(11)).getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
     }
 
     @Test
     public void shouldFailUpdateFlowIfRecoverableException() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
-        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), anyCollection(), any()))
+        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), anyCollection()))
                 .thenThrow(new RecoverableException(injectedErrorMessage));
 
         FlowRequest request = makeRequest()
@@ -121,7 +121,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         testExpectedFailure(request, origin, ErrorType.INTERNAL_ERROR);
 
         verify(pathComputer, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
-                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), any());
+                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
     }
 
     @Test
@@ -661,7 +661,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
 
     private void preparePathComputation(String flowId, GetPathsResult pathPair)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any(), any())).thenReturn(pathPair);
+        when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any())).thenReturn(pathPair);
     }
 
     private FlowUpdateService makeService() {

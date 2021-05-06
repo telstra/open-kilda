@@ -8,9 +8,11 @@ import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.Message
@@ -54,6 +56,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
 
+    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE])
     def "Switch validation is able to store correct information on a #switchType switch in the 'proper' section"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
@@ -93,7 +96,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess"])
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -101,6 +104,9 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(sw.dpId)
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty(sw.dpId)
         }
+
+        cleanup:
+        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         switchType         | switches
@@ -260,13 +266,23 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         syncResponse.meters.installed*.meterId.containsAll(meterIds)
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
             def switchValidateInfoAfterDelete = northbound.validateSwitch(sw.dpId)
             switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(sw.dpId)
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty(sw.dpId)
+        }
+        def testIsCompleted = true
+
+        cleanup:
+        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
+        if (!testIsCompleted) {
+            northbound.synchronizeSwitch(sw.dpId, true)
+            Wrappers.wait(RULES_INSTALLATION_TIME) {
+                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+            }
         }
 
         where:
@@ -345,6 +361,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
+    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Switch validation is able to detect rule info into the 'missing' section on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
@@ -380,13 +397,23 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         syncResponse.rules.installed.containsAll(createdCookies)
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
             def switchValidateInfoAfterDelete = northbound.validateSwitch(sw.dpId)
             switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(sw.dpId)
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty(sw.dpId)
+        }
+        def testIsCompleted = true
+
+        cleanup:
+        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
+        if (!testIsCompleted) {
+            northbound.synchronizeSwitch(sw.dpId, true)
+            Wrappers.wait(RULES_INSTALLATION_TIME) {
+                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+            }
         }
 
         where:
@@ -475,6 +502,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
+    @Tidy
     def "Able to get the switch validate info on a NOT supported switch"() {
         given: "Not supported switch"
         def sw = topology.activeSwitches.find { it.ofVersion == "OF_12" }
@@ -490,6 +518,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         !response.meters
     }
 
+    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to validate and sync a #switchType switch having missing rules of single-port single-switch flow"() {
         assumeTrue(sw as boolean, "Unable to find $switchType switch in topology")
@@ -519,12 +548,22 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Switch validation returns empty sections"
         with(northbound.validateSwitch(sw.dpId)) {
             it.verifyRuleSectionsAreEmpty(sw.dpId)
             it.verifyMeterSectionsAreEmpty(sw.dpId)
+        }
+        def testIsCompleted = true
+
+        cleanup:
+        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
+        if (!testIsCompleted) {
+            northbound.synchronizeSwitch(sw.dpId, true)
+            Wrappers.wait(RULES_INSTALLATION_TIME) {
+                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+            }
         }
 
         where:
@@ -579,6 +618,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
     private static Message buildMessage(final BaseInstallFlow commandData) {
         InstallFlowForSwitchManagerRequest data = new InstallFlowForSwitchManagerRequest(commandData)
-        return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null);
+        return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null)
     }
 }

@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
@@ -41,7 +42,7 @@ class ContentionV2Spec extends BaseSpecification {
         }
 
         cleanup: "Remove flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/3411")
@@ -86,13 +87,13 @@ class ContentionV2Spec extends BaseSpecification {
         }
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2563")
-    def "Reroute can be simultaneously performed with sync rules requests and not cause any rule discrepancies"() {
+    @Tidy
+    def "Reroute can be simultaneously performed with sync rules requests, removeExcess=#removeExcess"() {
         given: "A flow with reroute potential"
         def switches = topologyHelper.getNotNeighboringSwitchPair()
-        def flow = flowHelper.randomFlow(switches)
-        flowHelper.addFlow(flow)
-        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
+        def flow = flowHelperV2.randomFlow(switches)
+        flowHelperV2.addFlow(flow)
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
         def newPath = switches.paths.find { it != currentPath }
         switches.paths.findAll { it != newPath }.each { pathHelper.makePathMorePreferable(newPath, it) }
         def relatedSwitches = (pathHelper.getInvolvedSwitches(currentPath) +
@@ -100,16 +101,15 @@ class ContentionV2Spec extends BaseSpecification {
 
         when: "Flow reroute is simultaneously requested together with sync rules requests for all related switches"
         withPool {
-            def rerouteTask = { northboundV2.rerouteFlow(flow.id) }
+            def rerouteTask = { northboundV2.rerouteFlow(flow.flowId) }
             rerouteTask.callAsync()
-            sleep(100) //experimentally find out that this ensures better overlapping of DB operations
-            relatedSwitches.eachParallel { northbound.synchronizeSwitch(it.dpId, true) } //#2563 to fire at this line
+            3.times { relatedSwitches.eachParallel { northbound.synchronizeSwitch(it.dpId, removeExcess) } }
         }
 
         then: "Flow is Up and path has changed"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.id).status == FlowState.UP
-            assert pathHelper.convert(northbound.getFlowPath(flow.id)) == newPath
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == newPath
         }
 
         and: "Related switches have no rule discrepancies"
@@ -120,17 +120,20 @@ class ContentionV2Spec extends BaseSpecification {
                 validation.verifyMeterSectionsAreEmpty(it.dpId, ["missing", "misconfigured", "excess"])
             }
         }
+        def switchesOk = true
 
         and: "Flow is healthy"
-        northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
-        and: "Cleanup: remove flow and reset costs"
-        flowHelperV2.deleteFlow(flow.id)
+        cleanup: "remove flow and reset costs"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
+        !switchesOk && relatedSwitches.each { northbound.synchronizeSwitch(it.dpId, true) }
 
-        where:
-        //Race condition is being tested here, so need multiple runs to ensure stability
-        i << (1..4)
+        where: removeExcess << [
+                false,
+//                true https://github.com/telstra/open-kilda/issues/4214
+        ]
     }
 
 }

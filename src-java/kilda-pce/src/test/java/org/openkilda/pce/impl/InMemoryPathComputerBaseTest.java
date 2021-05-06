@@ -324,30 +324,6 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldUseBackupStrategiesWhenNoPathFound() throws RecoverableException, UnroutableFlowException {
-        createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "00:", 1, 150, 200);
-
-        Switch srcSwitch = getSwitchById("00:01");
-        Switch destSwitch = getSwitchById("00:04");
-
-        Flow flow = new TestFlowBuilder()
-                .srcSwitch(srcSwitch)
-                .destSwitch(destSwitch)
-                .maxLatency(100)
-                .maxLatencyTier2(101)
-                .pathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
-                .build();
-
-        PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
-                new BestWeightAndShortestPathFinder(5), config);
-        GetPathsResult path = pathComputer.getPath(flow, PathComputationStrategy.LATENCY);
-
-        assertTrue(path.isBackUpPathComputationWayUsed());
-        assertNotNull(path.getForward());
-        assertNotNull(path.getReverse());
-    }
-
-    @Test
     public void shouldUseBackUpWeightWhenNoPathFoundInMaxLatencyStrat()
             throws RecoverableException, UnroutableFlowException {
         // 1 - 2 - 4

@@ -50,7 +50,7 @@ antiflap.cooldown=7
 pce.isl.cost.when.unstable=10000
 pce.isl.cost.when.under.maintenance=10000
 
-isl.unstable.timeout.sec=15
+isl.unstable.timeout.sec=18
 
 burst.coefficient=1.05
 

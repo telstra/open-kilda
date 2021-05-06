@@ -56,6 +56,12 @@ class IslReplugSpec extends HealthCheckSpecification {
         then: "Replugged ISL status changes to MOVED"
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
 
+        and: "Round trip status is not ACTIVE for the 'moved' ISL in both directions"
+        //https://github.com/telstra/open-kilda/issues/4231
+//        [isl, isl.reversed].each {
+//            assert northbound.getLink(it).roundTripStatus != DISCOVERED
+//        }
+
         and: "New ISL becomes DISCOVERED"
         Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
             [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }

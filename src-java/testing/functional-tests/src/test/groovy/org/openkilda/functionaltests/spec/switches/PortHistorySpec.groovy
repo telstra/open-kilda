@@ -115,7 +115,6 @@ class PortHistorySpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
             }
         }
-        database.resetCosts()
 
         where:
         [islDescription, historySizeOnDstSw, isl] << [
@@ -159,7 +158,6 @@ class PortHistorySpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
             }
         }
-        database.resetCosts()
     }
 
     @Tidy
@@ -171,6 +169,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         portHistory.isEmpty()
     }
 
+    @Tidy
     def "Port history is available when switch is DEACTIVATED"() {
         given: "A direct link"
         def timestampBefore = System.currentTimeMillis()
@@ -203,15 +202,15 @@ class PortHistorySpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
             }
         }
-        database.resetCosts()
         switchToDisconnect && switchHelper.reviveSwitch(switchToDisconnect, blockData)
     }
 
+    @Tidy
     def "Port history is able to show ANTI_FLAP statistic"() {
         given: "floodlightRoutePeriodicSync is disabled"
-        northbound.toggleFeature(FeatureTogglesDto.builder()
-                                                  .floodlightRoutePeriodicSync(false)
-                                                  .build())
+        def updateToogles = northbound.toggleFeature(FeatureTogglesDto.builder()
+                .floodlightRoutePeriodicSync(false)
+                .build())
 
         and: "A port in a stable state"
         def isl = getTopology().islsForActiveSwitches.first()
@@ -259,18 +258,19 @@ class PortHistorySpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: revert system to original state"
-        northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+        cleanup:
+        if (isl) {
+            northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+            Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
+                assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+            }
+            Wrappers.wait(antiflapCooldown + WAIT_OFFSET) {
+                antiflap.assertPortIsStable(isl.srcSwitch.dpId, isl.srcPort)
+            }
         }
-        northbound.toggleFeature(FeatureTogglesDto.builder()
+        updateToogles && northbound.toggleFeature(FeatureTogglesDto.builder()
                 .floodlightRoutePeriodicSync(true)
                 .build())
-        Wrappers.wait(antiflapCooldown + WAIT_OFFSET) {
-            antiflap.assertPortIsStable(isl.srcSwitch.dpId, isl.srcPort)
-        }
-        database.resetCosts()
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/3007")
@@ -318,6 +318,9 @@ class PortHistorySpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
+    }
+
+    def cleanup() {
         database.resetCosts()
     }
 

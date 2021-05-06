@@ -74,6 +74,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         dstSwDefaultRules = northbound.getSwitchRules(dstSwitch.dpId).flowEntries
     }
 
+    @Tidy
     @Tags([VIRTUAL, SMOKE])
     def "Pre-installed flow rules are not deleted from a new switch connected to the controller"() {
         given: "A switch with proper flow rules installed (including default) and not connected to the controller"
@@ -98,8 +99,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         then: "Previously installed rules are not deleted from the switch"
         compareRules(northbound.getSwitchRules(srcSwitch.dpId).flowEntries, defaultPlusFlowRules)
 
-        and: "Cleanup: Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        cleanup: "Delete the flow"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
@@ -123,7 +124,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow and install default rules if necessary"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (data.deleteRulesAction in [DeleteRulesAction.DROP_ALL, DeleteRulesAction.REMOVE_DEFAULTS]) {
             northbound.installSwitchRules(srcSwitch.dpId, InstallRulesAction.INSTALL_DEFAULTS)
             Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -201,7 +202,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow and install default rules if necessary"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (data.deleteRulesAction in [DeleteRulesAction.DROP_ALL, DeleteRulesAction.REMOVE_DEFAULTS]) {
             northbound.installSwitchRules(srcSwitch.dpId, InstallRulesAction.INSTALL_DEFAULTS)
             Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -268,7 +269,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [
@@ -308,7 +309,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         northbound.getSwitchRules(data.switch.dpId).flowEntries.size() == data.defaultRules.size() + flowRulesCount
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [[description : "cookie",
@@ -346,7 +347,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [[description      : "inPort",
@@ -402,7 +403,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         northbound.getSwitchRules(data.switch.dpId).flowEntries*.cookie.sort() == originalRules
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [[description      : "inPort",
@@ -501,7 +502,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow and reset costs"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
 
         where:
@@ -597,7 +598,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
@@ -654,7 +655,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         checkTrafficCountersInRules(flow.destination, false)
 
         cleanup: "Revive the ISL back (bring switch port up), delete the flow and reset costs"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         portDown && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -804,7 +805,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
          }
 
         cleanup: "Revive the ISL back (bring switch port up), delete the flow and reset costs"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         portDown && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -899,7 +900,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow and reset costs"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     void compareRules(actualRules, expectedRules) {

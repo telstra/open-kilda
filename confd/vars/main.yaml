@@ -99,7 +99,7 @@ kilda_isl_cost_when_unstable: 10000
 kilda_isl_cost_when_under_maintenance: 10000
 kilda_isl_latency_when_unstable: 10000000000
 kilda_isl_latency_when_under_maintenance: 10000000000
-kilda_isl_unstable_timeout_sec: 15
+kilda_isl_unstable_timeout_sec: 18
 
 kilda_port_up_down_throttling_delay_seconds_min: 1
 kilda_port_up_down_throttling_delay_seconds_warm_up: 3

@@ -274,10 +274,10 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Src switch is only left with 1 management controller (no stats controllers)"
         def regionToStay = findMgmtFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName.first()
         def blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
-        with (northboundV2.getSwitchConnections(srcSwitch.dpId).connections) {
+        Wrappers.wait(WAIT_OFFSET / 2) { with (northboundV2.getSwitchConnections(srcSwitch.dpId).connections) {
             it*.regionName == [regionToStay]
             it*.connectMode == [SwitchConnectMode.READ_WRITE.toString()]
-        }
+        } }
 
         and: "Generate traffic on the given flow"
         Date startTime = new Date()
@@ -302,7 +302,9 @@ class MflStatSpec extends HealthCheckSpecification {
         lockKeeper.reviveSwitch(srcSwitch, blockData)
         regionToStay = findMgmtFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName - regionToStay
         blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
-        assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == [regionToStay]
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == [regionToStay]
+        }
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -322,7 +324,9 @@ class MflStatSpec extends HealthCheckSpecification {
         lockKeeper.reviveSwitch(srcSwitch, blockData)
         regionToStay = findStatFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName.first()
         blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
-        assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == [regionToStay]
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == [regionToStay]
+        }
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -340,7 +344,9 @@ class MflStatSpec extends HealthCheckSpecification {
         lockKeeper.reviveSwitch(srcSwitch, blockData)
         regionToStay = findStatFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName - regionToStay
         blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
-        assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == [regionToStay]
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == [regionToStay]
+        }
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
