@@ -395,6 +395,7 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
                 FlowMirrorPointsData data = flowMirrorPoints.getData();
                 if (data instanceof FlowMirrorPointsDataImpl) {
                     ((FlowMirrorPointsDataImpl) data).flowPath = this.flowPath;
+                    data.getMirrorGroup().setPathId(this.flowPath.getPathId());
                 }
             }
         }

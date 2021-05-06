@@ -33,5 +33,9 @@ public class HandleNotDeallocatedResourcesAction extends
         stateMachine.getFlowResources().forEach(resources ->
                 stateMachine.saveErrorToHistory("Failed to deallocate resources",
                         format("Failed to deallocate resources: %s", resources)));
+
+        stateMachine.getFlowMirrorPathResources().forEach(resources ->
+                stateMachine.saveErrorToHistory("Failed to deallocate resources",
+                        format("Failed to deallocate resources: %s", resources)));
     }
 }

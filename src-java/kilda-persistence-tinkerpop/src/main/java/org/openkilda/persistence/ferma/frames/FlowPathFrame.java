@@ -323,9 +323,11 @@ public abstract class FlowPathFrame extends KildaBaseVertexFrame implements Flow
             // A path must be added via corresponding repository first.
             throw new IllegalArgumentException("Unable to link to transient flow mirror points " + flowMirrorPoints);
         }
+        PathId flowPathId = getPathId();
         frame.setProperty(FlowMirrorPointsFrame.FLOW_PATH_ID_PROPERTY,
-                PathIdConverter.INSTANCE.toGraphProperty(getPathId()));
+                PathIdConverter.INSTANCE.toGraphProperty(flowPathId));
         linkOut(frame, HAS_SEGMENTS_EDGE);
+        flowMirrorPoints.getMirrorGroup().setPathId(flowPathId);
         if (this.flowMirrorPointsSet != null) {
             this.flowMirrorPointsSet.add(flowMirrorPoints);
         }

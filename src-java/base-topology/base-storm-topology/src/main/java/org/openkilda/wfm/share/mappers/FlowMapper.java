@@ -17,12 +17,15 @@ package org.openkilda.wfm.share.mappers;
 
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
+import org.openkilda.messaging.model.MirrorPointStatusDto;
 import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowStatusDetails;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.MeterId;
@@ -37,6 +40,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -69,15 +73,42 @@ public abstract class FlowMapper {
     @Mapping(target = "meterId", ignore = true)
     @Mapping(target = "transitEncapsulationId", ignore = true)
     @Mapping(target = "diverseWith", ignore = true)
+    @Mapping(target = "mirrorPointStatuses", ignore = true)
     public abstract FlowDto map(Flow flow);
 
     /**
      * Convert {@link Flow} to {@link FlowDto} with diverse flow ids.
      */
-    public FlowDto map(Flow flow, Set<String> diverseWith) {
+    public FlowDto map(Flow flow, Set<String> diverseWith, List<FlowMirrorPath> flowMirrorPaths) {
         FlowDto flowDto = map(flow);
         flowDto.setDiverseWith(diverseWith);
+        flowDto.setMirrorPointStatuses(map(flowMirrorPaths));
         return flowDto;
+    }
+
+    public abstract List<MirrorPointStatusDto> map(List<FlowMirrorPath> flowMirrorPaths);
+
+    @Mapping(source = "pathId", target = "mirrorPointId")
+    public abstract MirrorPointStatusDto map(FlowMirrorPath flowMirrorPath);
+
+    /**
+     * Convert {@link FlowPathStatus} to {@link String}.
+     */
+    public String map(FlowPathStatus flowPathStatus) {
+        if (flowPathStatus == null) {
+            return null;
+        }
+        return flowPathStatus.toString().toLowerCase();
+    }
+
+    /**
+     * Convert {@link PathId} to {@link String}.
+     */
+    public String map(PathId pathId) {
+        if (pathId == null) {
+            return null;
+        }
+        return pathId.getId();
     }
 
     /**

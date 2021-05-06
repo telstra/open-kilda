@@ -23,6 +23,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.metrics.TimedExecution;
+import org.openkilda.wfm.share.model.MirrorContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.PathSwappingRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
@@ -57,6 +58,7 @@ public class RemoveOldRulesAction extends
         Flow originalFlow = getOriginalFlowWithPaths(stateMachine, stateMachine.getOriginalFlow());
 
         SpeakerRequestBuildContext speakerContext = SpeakerRequestBuildContext.EMPTY;
+        MirrorContext mirrorContext = MirrorContext.builder().removeFlowOperation(true).build();
 
         if (stateMachine.getOldPrimaryForwardPath() != null) {
             FlowPath oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
@@ -68,10 +70,11 @@ public class RemoveOldRulesAction extends
                         buildPathContextForRemovalIngressOnly(oldReverse.getSrcSwitchId()));
 
                 factories.addAll(commandBuilder.buildAll(
-                        stateMachine.getCommandContext(), originalFlow, oldForward, oldReverse, speakerContext));
+                        stateMachine.getCommandContext(), originalFlow, oldForward, oldReverse, speakerContext,
+                        mirrorContext));
             } else {
                 factories.addAll(commandBuilder.buildAll(
-                        stateMachine.getCommandContext(), originalFlow, oldForward, speakerContext));
+                        stateMachine.getCommandContext(), originalFlow, oldForward, speakerContext, mirrorContext));
 
             }
         } else if (stateMachine.getOldPrimaryReversePath() != null) {
@@ -79,7 +82,7 @@ public class RemoveOldRulesAction extends
             speakerContext.setForward(buildPathContextForRemovalIngressOnly(oldReverse.getSrcSwitchId()));
 
             factories.addAll(commandBuilder.buildAll(
-                    stateMachine.getCommandContext(), originalFlow, oldReverse, speakerContext));
+                    stateMachine.getCommandContext(), originalFlow, oldReverse, speakerContext, mirrorContext));
         }
 
         if (stateMachine.getOldProtectedForwardPath() != null) {
@@ -88,15 +91,15 @@ public class RemoveOldRulesAction extends
             if (stateMachine.getOldProtectedReversePath() != null) {
                 FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
                 factories.addAll(commandBuilder.buildAllExceptIngress(
-                        stateMachine.getCommandContext(), originalFlow, oldForward, oldReverse));
+                        stateMachine.getCommandContext(), originalFlow, oldForward, oldReverse, mirrorContext));
             } else {
                 factories.addAll(commandBuilder.buildAllExceptIngress(
-                        stateMachine.getCommandContext(), originalFlow, oldForward));
+                        stateMachine.getCommandContext(), originalFlow, oldForward, mirrorContext));
             }
         } else if (stateMachine.getOldProtectedReversePath() != null) {
             FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
             factories.addAll(commandBuilder.buildAllExceptIngress(
-                    stateMachine.getCommandContext(), originalFlow, oldReverse));
+                    stateMachine.getCommandContext(), originalFlow, oldReverse, mirrorContext));
         }
 
         stateMachine.clearPendingAndRetriedAndFailedCommands();

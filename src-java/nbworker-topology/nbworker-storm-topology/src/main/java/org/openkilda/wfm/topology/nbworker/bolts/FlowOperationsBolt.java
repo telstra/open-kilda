@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -132,7 +132,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
                     .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
                     .map(FlowPath::getFlow)
                     .distinct()
-                    .map(FlowMapper.INSTANCE::map)
+                    .map(f -> FlowMapper.INSTANCE.map(f, flowOperationsService.getDiverseFlowsId(f),
+                            flowOperationsService.getFlowMirrorPaths(f)))
                     .map(FlowResponse::new)
                     .collect(Collectors.toList());
         } catch (IslNotFoundException e) {
@@ -148,7 +149,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         try {
             return flowOperationsService.getFlowsForEndpoint(srcSwitch, srcPort).stream()
                     .distinct()
-                    .map(FlowMapper.INSTANCE::map)
+                    .map(f -> FlowMapper.INSTANCE.map(f, flowOperationsService.getDiverseFlowsId(f),
+                            flowOperationsService.getFlowMirrorPaths(f)))
                     .map(FlowResponse::new)
                     .collect(Collectors.toList());
         } catch (SwitchNotFoundException e) {
@@ -246,10 +248,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         try {
             String flowId = readRequest.getFlowId();
             Flow f = flowOperationsService.getFlow(flowId);
-            FlowDto dto = FlowMapper.INSTANCE.map(f);
-            if (f.getGroupId() != null) {
-                dto.setDiverseWith(flowOperationsService.getDiverseFlowsId(flowId, f.getGroupId()));
-            }
+            FlowDto dto = FlowMapper.INSTANCE.map(f, flowOperationsService.getDiverseFlowsId(f),
+                    flowOperationsService.getFlowMirrorPaths(f));
             FlowResponse response = new FlowResponse(dto);
             return Collections.singletonList(response);
         } catch (FlowNotFoundException e) {
@@ -265,7 +265,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
     private List<FlowResponse> processFlowsDumpRequest(FlowsDumpRequest request) {
         try {
             return flowOperationsService.getAllFlows(request).stream()
-                    .map(FlowMapper.INSTANCE::map)
+                    .map(f -> FlowMapper.INSTANCE.map(f, flowOperationsService.getDiverseFlowsId(f),
+                            flowOperationsService.getFlowMirrorPaths(f)))
                     .map(FlowResponse::new)
                     .collect(Collectors.toList());
         } catch (Exception e) {
