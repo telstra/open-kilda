@@ -17,6 +17,8 @@ package org.openkilda.wfm.share.hubandspoke;
 
 import static java.util.Objects.requireNonNull;
 
+import org.openkilda.persistence.PersistenceManager;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -47,8 +49,8 @@ public abstract class HubBolt extends CoordinatedBolt {
 
     protected transient OutputCollector collector;
 
-    public HubBolt(Config config) {
-        super(config.isAutoAck(), config.getTimeoutMs(), config.getLifeCycleEventComponent());
+    public HubBolt(PersistenceManager persistenceManager, Config config) {
+        super(persistenceManager, config.isAutoAck(), config.getTimeoutMs(), config.getLifeCycleEventComponent());
 
         requireNonNull(config.getRequestSenderComponent(),
                 "A component that sends income requests should be not null");

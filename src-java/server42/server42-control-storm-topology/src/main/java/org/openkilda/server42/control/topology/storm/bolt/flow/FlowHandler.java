@@ -48,11 +48,10 @@ public class FlowHandler extends AbstractBolt
     public static final String STREAM_CONTROL_COMMANDS_ID = "control.commands";
     public static final Fields STREAM_CONTROL_COMMANDS_FIELDS = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_KEY,
             FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
-    private final PersistenceManager persistenceManager;
     private transient FlowRttService flowRttService;
 
     public FlowHandler(PersistenceManager persistenceManager) {
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager);
     }
 
     protected void init() {

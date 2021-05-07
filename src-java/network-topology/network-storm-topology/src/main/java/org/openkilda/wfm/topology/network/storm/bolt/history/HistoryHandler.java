@@ -29,11 +29,10 @@ import org.apache.storm.tuple.Tuple;
 
 @Slf4j
 public class HistoryHandler extends AbstractBolt {
-    private final PersistenceManager persistenceManager;
     private transient HistoryService historyService;
 
     public HistoryHandler(PersistenceManager persistenceManager) {
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager);
     }
 
     @Override

@@ -27,7 +27,6 @@ import org.openkilda.persistence.ferma.frames.converters.InstantLongConverter;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 
-import com.google.common.collect.Lists;
 import org.apache.tinkerpop.gremlin.process.traversal.Order;
 import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
@@ -45,10 +44,6 @@ import java.util.stream.Collectors;
  */
 public class FermaFlowEventRepository extends FermaGenericRepository<FlowEvent, FlowEventData, FlowEventFrame>
         implements FlowEventRepository {
-    public static final List<String> FLOW_STATUS_ACTION_PARTS =
-            Lists.newArrayList("The flow status was set to ", "The flow status was reverted to ");
-    public static final String FLOW_DELETED_ACTION = "Flow was deleted successfully";
-
     public FermaFlowEventRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
         super(graphFactory, transactionManager);
     }
@@ -105,10 +100,10 @@ public class FermaFlowEventRepository extends FermaGenericRepository<FlowEvent, 
         findByFlowIdAndTimeFrame(flowId, timeFrom, timeTo, maxCount).forEach(flowEvent -> {
             for (FlowEventAction flowEventAction : flowEvent.getEventActions()) {
                 String action = flowEventAction.getAction();
-                if (action.equals(FLOW_DELETED_ACTION)) {
+                if (action.equals(FlowEvent.FLOW_DELETED_ACTION)) {
                     statuses.add(new FlowStatusView(flowEventAction.getTimestamp(), "DELETED"));
                 }
-                for (String actionPart : FLOW_STATUS_ACTION_PARTS) {
+                for (String actionPart : FlowEvent.FLOW_STATUS_ACTION_PARTS) {
                     if (action.contains(actionPart)) {
                         statuses.add(new FlowStatusView(
                                 flowEventAction.getTimestamp(), action.replace(actionPart, "")));

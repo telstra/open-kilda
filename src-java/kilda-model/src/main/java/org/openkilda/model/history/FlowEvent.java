@@ -20,6 +20,7 @@ import org.openkilda.model.CompositeDataEntity;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.BeanSerializer;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.collect.Lists;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -49,6 +50,10 @@ import java.util.stream.Collectors;
 @DefaultSerializer(BeanSerializer.class)
 @ToString
 public class FlowEvent implements CompositeDataEntity<FlowEvent.FlowEventData> {
+    public static final List<String> FLOW_STATUS_ACTION_PARTS =
+            Lists.newArrayList("The flow status was set to ", "The flow status was reverted to ");
+    public static final String FLOW_DELETED_ACTION = "Flow was deleted successfully";
+
     @Getter
     @Setter
     @Delegate

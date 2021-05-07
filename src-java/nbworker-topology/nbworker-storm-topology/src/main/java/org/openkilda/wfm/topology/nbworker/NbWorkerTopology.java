@@ -136,10 +136,9 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .allGrouping(FlowMeterModifyHubBolt.ID, ZkStreams.ZK.toString())
                 .allGrouping(FlowValidationHubBolt.ID, ZkStreams.ZK.toString());
 
-        PersistenceManager persistenceManager =
-                PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
-        PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
+        PersistenceManager persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
 
+        PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
 
         HubBolt.Config validationHubConfig = HubBolt.Config.builder()

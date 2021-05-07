@@ -45,8 +45,10 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
     }
 
     @Override
-    protected void init() {
-        historyService = new HistoryService(transactionManager, repositoryFactory);
+    public void init() {
+        super.init();
+
+        historyService = new HistoryService(persistenceManager);
     }
 
     @Override

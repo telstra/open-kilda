@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.share.hubandspoke;
 
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt.CoordinatorCommand;
@@ -36,7 +37,13 @@ public abstract class CoordinatedBolt extends AbstractBolt {
     private final int defaultTimeout;
 
     public CoordinatedBolt(boolean autoAck, int defaultTimeout, String lifeCycleEventSourceComponent) {
-        super(lifeCycleEventSourceComponent);
+        this(null, autoAck, defaultTimeout, lifeCycleEventSourceComponent);
+    }
+
+    public CoordinatedBolt(
+            PersistenceManager persistenceManager, boolean autoAck, int defaultTimeout,
+            String lifeCycleEventSourceComponent) {
+        super(persistenceManager, lifeCycleEventSourceComponent);
         this.autoAck = autoAck;
         this.defaultTimeout = defaultTimeout;
     }

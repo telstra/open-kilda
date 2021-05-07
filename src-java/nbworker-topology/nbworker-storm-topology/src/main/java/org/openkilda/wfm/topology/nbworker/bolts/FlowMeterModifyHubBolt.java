@@ -31,32 +31,27 @@ import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowMeterModifyHubService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.util.List;
-import java.util.Map;
 
 public class FlowMeterModifyHubBolt extends HubBolt {
     public static final String ID = "flow.meter.mod.hub";
     public static final String INCOME_STREAM = "flow.meter.mod.stream";
 
-    private final PersistenceManager persistenceManager;
     private transient FlowMeterModifyHubService service;
     private LifecycleEvent deferredShutdownEvent;
 
     public FlowMeterModifyHubBolt(Config config, PersistenceManager persistenceManager) {
-        super(config);
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager, config);
     }
 
     @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        super.prepare(stormConf, context, collector);
+    public void init() {
+        super.init();
         service = new FlowMeterModifyHubService(persistenceManager, new FlowHubCarrierImpl(null));
     }
 

@@ -31,7 +31,6 @@ public class HistoryBolt extends AbstractBolt {
     public static final String FIELD_ID_TASK_ID = "task-id";
     public static final Fields INPUT_FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_TASK_ID, FIELD_ID_CONTEXT);
 
-    private final PersistenceManager persistenceManager;
     private transient HistoryService historyService;
 
     public static Fields newInputGroupingFields() {
@@ -43,7 +42,7 @@ public class HistoryBolt extends AbstractBolt {
     }
 
     public HistoryBolt(PersistenceManager persistenceManager) {
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager);
     }
 
     @Override

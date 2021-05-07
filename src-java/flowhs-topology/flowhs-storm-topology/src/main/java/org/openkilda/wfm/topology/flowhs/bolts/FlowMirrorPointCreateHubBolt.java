@@ -54,7 +54,6 @@ import org.apache.storm.tuple.Values;
 public class FlowMirrorPointCreateHubBolt extends HubBolt implements FlowMirrorPointCreateHubCarrier {
 
     private final FlowMirrorPointCreateConfig config;
-    private final PersistenceManager persistenceManager;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
 
@@ -67,10 +66,9 @@ public class FlowMirrorPointCreateHubBolt extends HubBolt implements FlowMirrorP
                                         PersistenceManager persistenceManager,
                                         PathComputerConfig pathComputerConfig,
                                         FlowResourcesConfig flowResourcesConfig) {
-        super(config);
+        super(persistenceManager, config);
 
         this.config = config;
-        this.persistenceManager = persistenceManager;
         this.pathComputerConfig = pathComputerConfig;
         this.flowResourcesConfig = flowResourcesConfig;
     }

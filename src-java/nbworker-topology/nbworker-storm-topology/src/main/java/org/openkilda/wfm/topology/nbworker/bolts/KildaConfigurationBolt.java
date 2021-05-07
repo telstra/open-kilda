@@ -40,7 +40,9 @@ public class KildaConfigurationBolt extends PersistenceOperationsBolt {
     }
 
     @Override
-    protected void init() {
+    public void init() {
+        super.init();
+
         kildaConfigurationService = new KildaConfigurationService(repositoryFactory, transactionManager);
     }
 

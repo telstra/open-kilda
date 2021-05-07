@@ -60,7 +60,6 @@ public class RegionTrackerBolt extends AbstractBolt implements RegionMonitorCarr
 
     private final String kafkaSpeakerTopic;
 
-    private final PersistenceManager persistenceManager;
     private final MonotonicClock.Match<TickId> monotonicTickMatch = new MonotonicClock.Match<>(
             MonotonicTick.BOLT_ID, null);
     private final MonotonicClock.Match<TickId> networkDumpTickMatch = new MonotonicClock.Match<>(
@@ -76,11 +75,10 @@ public class RegionTrackerBolt extends AbstractBolt implements RegionMonitorCarr
     public RegionTrackerBolt(
             String kafkaSpeakerTopic, PersistenceManager persistenceManager, Set<String> floodlights,
             long floodlightAliveTimeout, long floodlightAliveInterval) {
-        super();
+        super(persistenceManager);
 
         this.kafkaSpeakerTopic = kafkaSpeakerTopic;
 
-        this.persistenceManager = persistenceManager;
         this.floodlights = floodlights;
         this.floodlightAliveTimeout = floodlightAliveTimeout;
         this.floodlightAliveInterval = floodlightAliveInterval;

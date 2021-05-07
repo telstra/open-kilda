@@ -27,24 +27,21 @@ import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.util.List;
-import java.util.Map;
 
 public abstract class PersistenceOperationsBolt extends AbstractBolt {
     public static final String FIELD_ID_REQUEST = "request";
-    private final PersistenceManager persistenceManager;
+
     protected transient RepositoryFactory repositoryFactory;
     protected transient TransactionManager transactionManager;
 
     PersistenceOperationsBolt(PersistenceManager persistenceManager) {
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager);
     }
 
     protected String getCorrelationId() {
@@ -52,10 +49,11 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
     }
 
     @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
+    public void init() {
+        super.init();
+
         repositoryFactory = persistenceManager.getRepositoryFactory();
         transactionManager = persistenceManager.getTransactionManager();
-        super.prepare(stormConf, context, collector);
     }
 
     protected void handleInput(Tuple input) throws Exception {

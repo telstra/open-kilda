@@ -25,9 +25,9 @@ import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.spi.PersistenceProvider;
 
 import org.apache.storm.task.TopologyContext;
 import org.junit.Before;
@@ -55,10 +55,10 @@ public class LinkOperationsBoltTest {
     private TopologyContext topologyContext;
 
     @BeforeClass
-    public static void setupOnce() {
-        NetworkConfig networkConfig
-                = new PropertiesBasedConfigurationProvider().getConfiguration(NetworkConfig.class);
-        persistenceManager = new InMemoryGraphPersistenceManager(networkConfig);
+    public static void initPersistenceManager() {
+        PropertiesBasedConfigurationProvider configurationProvider = new PropertiesBasedConfigurationProvider();
+        persistenceManager = new InMemoryGraphPersistenceManager(configurationProvider);
+        PersistenceProvider.makeDefault(persistenceManager);
     }
 
     @Before

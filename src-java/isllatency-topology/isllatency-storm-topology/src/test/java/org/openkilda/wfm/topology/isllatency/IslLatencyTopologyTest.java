@@ -33,10 +33,10 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
@@ -96,8 +96,8 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
         launchEnvironment.setupOverlay(configOverlay);
         MultiPrefixConfigurationProvider configurationProvider = launchEnvironment.getConfigurationProvider();
 
-        persistenceManager = new InMemoryGraphPersistenceManager(
-                configurationProvider.getConfiguration(NetworkConfig.class));
+        persistenceManager = new InMemoryGraphPersistenceManager(configurationProvider);
+        PersistenceProvider.setupLoadOverlay(persistenceManager);
 
         IslLatencyTopology islLatencyTopology = new IslLatencyTopology(launchEnvironment);
         islLatencyTopologyConfig = islLatencyTopology.getConfig();
@@ -122,6 +122,7 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
         otsdbConsumer.wakeup();
         otsdbConsumer.join();
 
+        PersistenceProvider.removeLoadOverlay();
         AbstractStormTest.stopZooKafkaAndStorm();
     }
 

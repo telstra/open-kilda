@@ -49,7 +49,6 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
-import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -204,8 +203,7 @@ public class NetworkIslServiceTest {
     @Test
     @Ignore("incomplete")
     public void initialUp() {
-        persistenceManager = new InMemoryGraphPersistenceManager(
-                new PropertiesBasedConfigurationProvider().getConfiguration(NetworkConfig.class));
+        persistenceManager = new InMemoryGraphPersistenceManager(new PropertiesBasedConfigurationProvider());
 
         emulateEmptyPersistentDb();
 

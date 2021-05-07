@@ -61,17 +61,16 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
     public static final String LINK_FIELD = "link";
     public static final String LATENCY_FIELD = "latency";
 
-    private PersistenceManager persistenceManager;
     private Duration flowRttStatsExpirationTime;
     private MetricFormatter metricFormatter;
 
     private transient FlowCacheService flowCacheService;
     private transient CalculateFlowLatencyService calculateFlowLatencyService;
 
-    public FlowCacheBolt(PersistenceManager persistenceManager, Duration flowRttStatsExpirationTime,
-                         String flowStatsPrefix, String lifeCycleEventSourceComponent) {
-        super(lifeCycleEventSourceComponent);
-        this.persistenceManager = persistenceManager;
+    public FlowCacheBolt(
+            PersistenceManager persistenceManager, String lifeCycleEventSourceComponent,
+            Duration flowRttStatsExpirationTime, String flowStatsPrefix) {
+        super(persistenceManager, lifeCycleEventSourceComponent);
         this.flowRttStatsExpirationTime = flowRttStatsExpirationTime;
         this.metricFormatter = new MetricFormatter(flowStatsPrefix);
     }

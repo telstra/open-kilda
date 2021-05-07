@@ -15,7 +15,8 @@
 
 package org.openkilda.persistence.context;
 
-import org.openkilda.persistence.spi.PersistenceProvider;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.spi.PersistenceManagerSupplier;
 
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -28,15 +29,14 @@ import org.aspectj.lang.annotation.Aspect;
 @Aspect
 @Slf4j
 public class PersistenceContextInitializer {
-    private final PersistenceProvider persistenceProvider = PersistenceProvider.getInstance();
-
     /**
      * Wraps annotated method with init/close operations for the persistence context.
      */
     @Around("@annotation(persistenceContextRequired)")
     public Object aroundAdvice(ProceedingJoinPoint joinPoint,
                                PersistenceContextRequired persistenceContextRequired) throws Throwable {
-        PersistenceContextManager persistenceContextManager = persistenceProvider.getPersistenceContextManager();
+        PersistenceManager persistenceManager = PersistenceManagerSupplier.DEFAULT.get();
+        PersistenceContextManager persistenceContextManager = persistenceManager.getPersistenceContextManager();
         boolean isNewContext = !persistenceContextManager.isContextInitialized()
                 || persistenceContextRequired.requiresNew();
 
@@ -44,12 +44,28 @@ public class PersistenceContextInitializer {
             persistenceContextManager.initContext();
         }
 
+        boolean handlingException = false;
         try {
             return joinPoint.proceed(joinPoint.getArgs());
+        } catch (Throwable e) {
+            handlingException = true;
+            throw e;
         } finally {
             if (isNewContext) {
-                persistenceContextManager.closeContext();
+                close(persistenceContextManager, handlingException);
             }
+        }
+    }
+
+    private void close(PersistenceContextManager manager, boolean handlingException) throws Throwable {
+        try {
+            manager.closeContext();
+        } catch (Throwable e) {
+            if (!handlingException) {
+                throw e;
+            }
+            log.error("Absorbing exception emitted by persistence context close call, to not hide exception emitted by "
+                    + "context body", e);
         }
     }
 }

@@ -46,21 +46,21 @@ import java.util.Collections;
 
 public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
 
-    private PersistenceManager persistenceManager;
     private Duration timeout;
     private float threshold;
     private transient ActionService actionService;
 
-    public ActionBolt(PersistenceManager persistenceManager, Duration timeout, float threshold,
-                      String lifeCycleEventSourceComponent) {
-        super(lifeCycleEventSourceComponent);
-        this.persistenceManager = persistenceManager;
+    public ActionBolt(
+            PersistenceManager persistenceManager, Duration timeout, float threshold,
+            String lifeCycleEventSourceComponent) {
+        super(persistenceManager, lifeCycleEventSourceComponent);
         this.timeout = timeout;
         this.threshold = threshold;
     }
 
     @Override
     protected void init() {
+        super.init();
         actionService = new ActionService(this, persistenceManager, Clock.systemUTC(), timeout, threshold);
     }
 

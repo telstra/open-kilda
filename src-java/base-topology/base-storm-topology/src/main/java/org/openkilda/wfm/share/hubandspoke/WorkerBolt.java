@@ -18,6 +18,7 @@ package org.openkilda.wfm.share.hubandspoke;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
@@ -53,7 +54,11 @@ public abstract class WorkerBolt extends CoordinatedBolt {
     private transient Map<String, Tuple> pendingTasks;
 
     public WorkerBolt(Config config) {
-        super(config.isAutoAck(), config.getDefaultTimeout(), null);
+        this(null, config);
+    }
+
+    public WorkerBolt(PersistenceManager persistenceManager, Config config) {
+        super(persistenceManager, config.isAutoAck(), config.getDefaultTimeout(), null);
 
         requireNonNull(config.getStreamToHub(), "Stream to hub bolt cannot be null");
         requireNonNull(config.getHubComponent(), "Hub bolt id cannot be null");

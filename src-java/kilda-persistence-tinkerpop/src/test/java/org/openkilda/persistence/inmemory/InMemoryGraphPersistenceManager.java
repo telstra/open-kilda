@@ -15,72 +15,81 @@
 
 package org.openkilda.persistence.inmemory;
 
+import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.ferma.AnnotationFrameFactoryWithConverterSupport;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.PersistenceManagerBase;
+import org.openkilda.persistence.context.PersistenceContextManager;
 import org.openkilda.persistence.inmemory.repositories.InMemoryRepositoryFactory;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.tx.FlatTransactionLayout;
+import org.openkilda.persistence.tx.TransactionArea;
 import org.openkilda.persistence.tx.TransactionManager;
 
-import com.syncleus.ferma.DelegatingFramedGraph;
-import com.syncleus.ferma.typeresolvers.UntypedTypeResolver;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tinkerpop.gremlin.tinkergraph.structure.TinkerGraph;
 
 /**
  * In-memory implementation of {@link PersistenceManager}.
  * Built on top of Tinkerpop / Ferma implementation.
  */
 @Slf4j
-public class InMemoryGraphPersistenceManager implements PersistenceManager {
+public class InMemoryGraphPersistenceManager extends PersistenceManagerBase {
+    private static final InMemoryFramedGraphFactory GRAPH_SUPPLIER = new InMemoryFramedGraphFactory();
+
     private final NetworkConfig networkConfig;
 
-    private static TinkerGraph tinkerGraph = TinkerGraph.open();
-    private static transient volatile FramedGraphFactory<DelegatingFramedGraph<?>> graphFactory;
-
-    public InMemoryGraphPersistenceManager(NetworkConfig networkConfig) {
-        this.networkConfig = networkConfig;
+    public InMemoryGraphPersistenceManager(ConfigurationProvider configurationProvider) {
+        super(configurationProvider);
+        networkConfig = configurationProvider.getConfiguration(NetworkConfig.class);
     }
 
     @Override
     public TransactionManager getTransactionManager() {
-        return new InMemoryGraphTransactionManager(getGraphFactory());
+        return getTransactionManager(TransactionArea.FLAT);
     }
 
     @Override
     public RepositoryFactory getRepositoryFactory() {
-        return new InMemoryRepositoryFactory(getGraphFactory(), getTransactionManager(), networkConfig);
+        return new InMemoryRepositoryFactory(GRAPH_SUPPLIER, getTransactionManager(), networkConfig);
     }
 
-    private FramedGraphFactory<DelegatingFramedGraph<?>> getGraphFactory() {
-        if (graphFactory == null) {
-            synchronized (InMemoryGraphPersistenceManager.class) {
-                if (graphFactory == null) {
-                    graphFactory = new FramedGraphFactory<DelegatingFramedGraph<?>>() {
-                        final DelegatingFramedGraph<?> framedGraph =
-                                new DelegatingFramedGraph<>(tinkerGraph,
-                                        new AnnotationFrameFactoryWithConverterSupport(), new UntypedTypeResolver());
-
-                        @Override
-                        public DelegatingFramedGraph<?> getGraph() {
-                            return framedGraph;
-                        }
-                    };
-                }
-            }
-        }
-        return graphFactory;
+    @Override
+    public PersistenceContextManager getPersistenceContextManager() {
+        return new InMemoryPersistenceContextManager();
     }
 
     /**
      * Purge in-memory graph data.
      */
     public void purgeData() {
-        synchronized (InMemoryGraphPersistenceManager.class) {
-            if (tinkerGraph != null) {
-                tinkerGraph.clear();
-            }
+        GRAPH_SUPPLIER.purge();
+    }
+
+    @Override
+    protected TransactionManager makeTransactionManager(TransactionArea area) {
+        return new TransactionManager(new FlatTransactionLayout(), new InMemoryTransactionAdapterFactory(area), 0, 0);
+    }
+
+    /**
+     * In-memory implementation of {@link PersistenceContextManager}. It ignores context events.
+     */
+    public static class InMemoryPersistenceContextManager implements PersistenceContextManager {
+        @Override
+        public void initContext() {
+        }
+
+        @Override
+        public boolean isContextInitialized() {
+            return true;
+        }
+
+        @Override
+        public void closeContext() {
+        }
+
+        @Override
+        public boolean isTxOpen() {
+            return InMemoryTransactionAdapter.isFakedTxOpen();
         }
     }
 }
