@@ -39,3 +39,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 009-cleanup-config-class.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 010-enforce-definite-types-on-history-objects.yaml

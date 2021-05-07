@@ -46,6 +46,8 @@ bfd.port.offset = {{ getv "/kilda_bfd_port_offset" }}
 zookeeper.connect_string = {{ getv "/kilda_zookeeper_hosts"}}/{{ getv "/kilda_zookeeper_state_root" }}
 zookeeper.reconnect_delay={{ getv "/kilda_zookeeper_reconnect_delay_ms"}}
 
+persistence.implementation = {{ getv "/kilda_persistence_implementation" }}
+
 opentsdb.hosts = http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
 opentsdb.timeout = {{ getv "/kilda_opentsdb_timeout" }}
 opentsdb.batch.size = {{ getv "/kilda_opentsdb_batch_size" }}
@@ -54,6 +56,11 @@ opentsdb.client.chunked-requests.enabled = true
 opentsdb.metric.prefix = {{ getv "/kilda_opentsdb_metric_prefix" }}
 
 statistics.interval = {{ getv "/kilda_statistics_interval" }}
+
+hibernate.user = {{ getv "/kilda_hibernate_user" }}
+hibernate.password = {{ getv "/kilda_hibernate_password" }}
+hibernate.url = {{ getv "/kilda_hibernate_url" }}
+#hibernate.driver_class = com.mysql.jdbc.Driver
 
 {{if not (exists "/single_orientdb")}}
 orientdb.url=remote:{{ getv "/kilda_orientdb_hosts" }}/{{ getv "/kilda_orientdb_database" }}

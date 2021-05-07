@@ -1,0 +1,17 @@
+FROM python:3.7-slim
+
+ARG devel_user_name=root
+ARG devel_uid=0
+ARG devel_gid=0
+
+WORKDIR /kilda
+COPY build-tools build-tools
+RUN build-tools/setup-devel-user.sh "${devel_user_name}" "${devel_uid}" "${devel_gid}"
+
+USER ${devel_user_name}
+
+COPY requirements*.txt ./
+RUN pip install -r requirements.txt -r requirements-dev.txt
+
+COPY README.md setup.py build-tools ./
+COPY src src

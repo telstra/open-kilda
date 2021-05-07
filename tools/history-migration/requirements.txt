@@ -1,0 +1,6 @@
+# patched orientdb client which one does not object against newer protocol version
+https://github.com/orientechnologies/pyorient/archive/5bbe000acb0e65d49a3f85bd0ecf9d40ae155467.zip#egg=pyorient
+
+click==7.1.2
+ndjson==0.3.1
+mysql-connector-python==8.0.25
