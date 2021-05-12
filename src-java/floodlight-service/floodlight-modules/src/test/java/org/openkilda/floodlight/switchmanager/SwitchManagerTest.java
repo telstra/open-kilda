@@ -282,7 +282,7 @@ public class SwitchManagerTest {
 
     public void runInstallVerificationBroadcastRule(boolean supportsUdpPortMatch) throws Exception {
         mockGetGroupsRequest(ImmutableList.of(GroupId.ROUND_TRIP_LATENCY_GROUP_ID.intValue()));
-        mockGetMetersRequest(ImmutableList.of(meterId), true, 10L);
+        mockGetMetersRequest(ImmutableList.of(meterId), true, 10L, 100);
         mockFlowStatsRequest(VERIFICATION_BROADCAST_RULE_COOKIE);
         mockBarrierRequest();
 
@@ -316,7 +316,7 @@ public class SwitchManagerTest {
 
     @Test
     public void installVerificationUnicastRule() throws Exception {
-        mockGetMetersRequest(Lists.newArrayList(broadcastMeterId), true, 10L);
+        mockGetMetersRequest(Lists.newArrayList(broadcastMeterId), true, 10L, 100);
         mockBarrierRequest();
         expect(iofSwitch.write(anyObject(OFMeterMod.class))).andReturn(true).times(1);
         Capture<OFFlowMod> capture = prepareForInstallTest();
@@ -423,7 +423,7 @@ public class SwitchManagerTest {
 
     @Test
     public void installUnicastVerificationRuleVxlan() throws Exception {
-        mockGetMetersRequest(Lists.newArrayList(broadcastMeterId), true, 10L);
+        mockGetMetersRequest(Lists.newArrayList(broadcastMeterId), true, 10L, 100);
         mockBarrierRequest();
         expect(iofSwitch.write(anyObject(OFMeterMod.class))).andReturn(true).times(1);
         Capture<OFFlowMod> capture = prepareForInstallTest();
@@ -661,7 +661,6 @@ public class SwitchManagerTest {
 
         mockBarrierRequest();
         mockFlowStatsRequest(cookie);
-        mockGetMetersRequest(Collections.emptyList(), true, 0);
 
         replay(ofSwitchService, iofSwitch, switchDescription);
 
@@ -1064,7 +1063,7 @@ public class SwitchManagerTest {
         // define that switch is Centec
         expect(switchDescription.getManufacturerDescription()).andStubReturn("Centec Inc.");
         expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(Sets.newHashSet(METERS));
-        mockGetMetersRequest(Collections.emptyList(), true, 0);
+        mockGetMetersRequest(Collections.emptyList(), true, 0, 0);
         mockBarrierRequest();
 
         Capture<OFMeterMod> capture = EasyMock.newCapture(CaptureType.ALL);
@@ -1105,7 +1104,8 @@ public class SwitchManagerTest {
         expect(switchDescription.getManufacturerDescription()).andStubReturn("Centec Inc.");
         expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(Sets.newHashSet(METERS));
         mockBarrierRequest();
-        mockGetMetersRequest(Lists.newArrayList(unicastMeterId), false, expectedRate);
+        mockGetMetersRequest(Lists.newArrayList(unicastMeterId), false, expectedRate,
+                config.getSystemMeterBurstSizeInPackets());
 
         Capture<OFMeterMod> capture = EasyMock.newCapture(CaptureType.ALL);
         expect(iofSwitch.write(capture(capture))).andReturn(true).times(2);
@@ -1113,7 +1113,7 @@ public class SwitchManagerTest {
         replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
 
         // when
-        Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
+        Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST);
         OFMeterMod ofMeterMod = buildMeterMod(iofSwitch.getOFFactory(), expectedRate,
                 config.getSystemMeterBurstSizeInPackets(), unicastMeterId, flags);
         switchManager.processMeter(iofSwitch, ofMeterMod);
@@ -1148,13 +1148,53 @@ public class SwitchManagerTest {
         expect(iofSwitch.write(capture(capture))).andReturn(true).times(2);
 
         mockBarrierRequest();
-        mockGetMetersRequest(Lists.newArrayList(unicastMeter), true, originRate);
+        mockGetMetersRequest(Lists.newArrayList(unicastMeter), true, originRate,
+                config.getSystemMeterBurstSizeInPackets());
         replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
 
         //when
         Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
         OFMeterMod ofMeterMod = buildMeterMod(iofSwitch.getOFFactory(), updatedRate,
                 config.getSystemMeterBurstSizeInPackets(), unicastMeter, flags);
+        switchManager.processMeter(iofSwitch, ofMeterMod);
+
+        final List<OFMeterMod> actual = capture.getValues();
+        assertEquals(2, actual.size());
+
+        // verify meters deletion
+        assertThat(actual.get(0), hasProperty("command", equalTo(OFMeterModCommand.DELETE)));
+        // verify meter installation
+        assertThat(actual.get(1), hasProperty("command", equalTo(OFMeterModCommand.ADD)));
+        assertThat(actual.get(1), hasProperty("meterId", equalTo(unicastMeter)));
+        assertThat(actual.get(1), hasProperty("flags", containsInAnyOrder(flags.toArray())));
+    }
+
+    @Test
+    public void shouldRenstallMetersIfBurstSizeIsUpdated() throws Exception {
+        long unicastMeter = createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE).getValue();
+        long originBurstSize = config.getSystemMeterBurstSizeInPackets();
+        long updatedBurstSize = config.getSystemMeterBurstSizeInPackets() + 10;
+
+        // given
+        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
+        expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
+        expect(iofSwitch.getId()).andStubReturn(dpid);
+        expect(switchDescription.getManufacturerDescription()).andStubReturn(StringUtils.EMPTY);
+        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(Sets.newHashSet(PKTPS_FLAG));
+        Capture<OFMeterMod> capture = EasyMock.newCapture(CaptureType.ALL);
+        // 1 meter deletion + 1 meters installation
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(2);
+
+        mockBarrierRequest();
+        mockGetMetersRequest(Lists.newArrayList(unicastMeter), true, config.getUnicastRateLimit(),
+                originBurstSize);
+        replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
+
+        //when
+        Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
+        OFMeterMod ofMeterMod = buildMeterMod(iofSwitch.getOFFactory(), config.getUnicastRateLimit(),
+                updatedBurstSize, unicastMeter, flags);
         switchManager.processMeter(iofSwitch, ofMeterMod);
 
         final List<OFMeterMod> actual = capture.getValues();
@@ -1185,7 +1225,8 @@ public class SwitchManagerTest {
                 .andReturn(Sets.newHashSet(GROUP_PACKET_OUT_CONTROLLER, NOVIFLOW_COPY_FIELD, PKTPS_FLAG))
                 .times(8);
         mockBarrierRequest();
-        mockGetMetersRequest(Lists.newArrayList(unicastMeterId, broadcastMeterId), true, expectedRate);
+        mockGetMetersRequest(Lists.newArrayList(unicastMeterId, broadcastMeterId), true, expectedRate,
+                config.getBroadcastRateLimit());
         mockGetGroupsRequest(Lists.newArrayList(GroupId.ROUND_TRIP_LATENCY_GROUP_ID.intValue()));
         replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
 
@@ -1309,17 +1350,19 @@ public class SwitchManagerTest {
         return capture;
     }
 
-    private void mockGetMetersRequest(List<Long> meterIds, boolean supportsPkts, long rate) throws Exception {
+    private void mockGetMetersRequest(List<Long> meterIds, boolean supportsPkts, long rate, long burstSize)
+            throws Exception {
         List<OFMeterConfig> meterConfigs = new ArrayList<>(meterIds.size());
         for (Long meterId : meterIds) {
             OFMeterBandDrop bandDrop = mock(OFMeterBandDrop.class);
             expect(bandDrop.getRate()).andStubReturn(rate);
+            expect(bandDrop.getBurstSize()).andStubReturn(burstSize);
 
             OFMeterConfig meterConfig = mock(OFMeterConfig.class);
             expect(meterConfig.getEntries()).andStubReturn(Collections.singletonList(bandDrop));
             expect(meterConfig.getMeterId()).andStubReturn(meterId);
 
-            Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.STATS,
+            Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.STATS, OFMeterFlags.BURST,
                     supportsPkts ? OFMeterFlags.PKTPS : OFMeterFlags.KBPS);
             expect(meterConfig.getFlags()).andStubReturn(flags);
             replay(bandDrop, meterConfig);
