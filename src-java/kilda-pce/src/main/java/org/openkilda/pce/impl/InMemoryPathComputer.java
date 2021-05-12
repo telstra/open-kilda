@@ -91,8 +91,6 @@ public class InMemoryPathComputer implements PathComputer {
         WeightFunction weightFunction = getWeightFunctionByStrategy(strategy);
         FindPathResult findPathResult;
         try {
-            network.reduceByWeight(weightFunction);
-
             findPathResult = findPathInNetwork(flow, network, weightFunction, strategy);
         } catch (UnroutableFlowException e) {
             String message = format("Failed to find path with requested bandwidth=%s: %s",

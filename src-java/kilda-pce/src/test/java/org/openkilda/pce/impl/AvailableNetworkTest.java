@@ -78,27 +78,6 @@ public class AvailableNetworkTest {
     }
 
     @Test
-    public void shouldReduceByWeight() {
-        int cost = 1;
-        AvailableNetwork network = new AvailableNetwork();
-        addLink(network, SRC_SWITCH, DST_SWITCH, 1, 1, 20, 5);
-        addLink(network, SRC_SWITCH, DST_SWITCH, 5, 5, cost, 3);
-        addLink(network, DST_SWITCH, SRC_SWITCH, 1, 1, 20, 5);
-        addLink(network, DST_SWITCH, SRC_SWITCH, 5, 5, cost, 3);
-
-        network.reduceByWeight(WEIGHT_FUNCTION);
-
-        Node srcNode = network.getSwitch(SRC_SWITCH);
-        Node dstNode = network.getSwitch(DST_SWITCH);
-        assertThat(srcNode.getOutgoingLinks(), Matchers.hasSize(1));
-        assertThat(srcNode.getIncomingLinks(), Matchers.hasSize(1));
-        assertThat(dstNode.getOutgoingLinks(), Matchers.hasSize(1));
-        assertThat(dstNode.getIncomingLinks(), Matchers.hasSize(1));
-        assertEquals(cost, srcNode.getIncomingLinks().iterator().next().getCost());
-        assertEquals(cost, srcNode.getOutgoingLinks().iterator().next().getCost());
-    }
-
-    @Test
     public void shouldKeepLinksWithOtherSwitchesAfterReducing() {
         AvailableNetwork network = new AvailableNetwork();
         addLink(network, SRC_SWITCH, new SwitchId("00:00"), 1, 1, 20, 5);
@@ -106,73 +85,8 @@ public class AvailableNetworkTest {
         addLink(network, DST_SWITCH, SRC_SWITCH, 1, 1, 20, 5);
         addLink(network, new SwitchId("00:00"), SRC_SWITCH, 2, 2, 10, 3);
 
-        network.reduceByWeight(WEIGHT_FUNCTION);
-
         assertThat(network.getSwitch(SRC_SWITCH).getOutgoingLinks(), Matchers.hasSize(2));
         assertThat(network.getSwitch(SRC_SWITCH).getIncomingLinks(), Matchers.hasSize(2));
-    }
-
-    @Test
-    public void shouldReduceTheSameIslBothSide() {
-        int cost = 700;
-        AvailableNetwork network = new AvailableNetwork();
-        addLink(network, SRC_SWITCH, DST_SWITCH, 1, 2, cost, 5);
-        addLink(network, SRC_SWITCH, DST_SWITCH, 3, 1, cost, 5);
-        addLink(network, DST_SWITCH, SRC_SWITCH, 2, 1, cost, 5);
-        addLink(network, DST_SWITCH, SRC_SWITCH, 1, 3, cost, 5);
-
-        network.reduceByWeight(WEIGHT_FUNCTION);
-
-        assertThat(network.getSwitch(SRC_SWITCH).getOutgoingLinks(), Matchers.hasSize(1));
-        assertThat(network.getSwitch(SRC_SWITCH).getIncomingLinks(), Matchers.hasSize(1));
-        assertThat(network.getSwitch(DST_SWITCH).getOutgoingLinks(), Matchers.hasSize(1));
-        assertThat(network.getSwitch(DST_SWITCH).getIncomingLinks(), Matchers.hasSize(1));
-
-        assertEquals(
-                network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next().getSrcPort(),
-                network.getSwitch(SRC_SWITCH).getIncomingLinks().iterator().next().getDestPort());
-        assertEquals(
-                network.getSwitch(DST_SWITCH).getOutgoingLinks().iterator().next().getSrcPort(),
-                network.getSwitch(DST_SWITCH).getIncomingLinks().iterator().next().getDestPort());
-
-        assertEquals(
-                network.getSwitch(DST_SWITCH).getOutgoingLinks().iterator().next().getDestPort(),
-                network.getSwitch(SRC_SWITCH).getIncomingLinks().iterator().next().getDestPort());
-        assertEquals(
-                network.getSwitch(DST_SWITCH).getIncomingLinks().iterator().next().getDestPort(),
-                network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next().getDestPort());
-    }
-
-    @Test
-    public void shouldReduceWithDiversity() {
-        int cost = 700;
-        final WeightFunction weightFunction = WEIGHT_FUNCTION;
-
-        AvailableNetwork network = new AvailableNetwork();
-        addLink(network, SRC_SWITCH, DST_SWITCH, 1, 2, cost, 5);
-        addLink(network, SRC_SWITCH, DST_SWITCH, 3, 1, cost, 5);
-        addLink(network, DST_SWITCH, SRC_SWITCH, 2, 1, cost, 5);
-        addLink(network, DST_SWITCH, SRC_SWITCH, 1, 3, cost, 5);
-
-        network.processDiversitySegments(singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 3, 1, 0)), DUMMY_FLOW);
-        network.processDiversitySegments(singletonList(buildPathSegment(DST_SWITCH, SRC_SWITCH, 1, 3, 0)), DUMMY_FLOW);
-        network.reduceByWeight(weightFunction);
-
-        assertThat(network.getSwitch(SRC_SWITCH).getOutgoingLinks(), Matchers.hasSize(1));
-        assertThat(network.getSwitch(SRC_SWITCH).getIncomingLinks(), Matchers.hasSize(1));
-        assertThat(network.getSwitch(DST_SWITCH).getOutgoingLinks(), Matchers.hasSize(1));
-        assertThat(network.getSwitch(DST_SWITCH).getIncomingLinks(), Matchers.hasSize(1));
-
-        long expectedWeight = cost + 200L;
-        assertEquals(expectedWeight,
-                weightFunction.apply(network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next()).toLong());
-        assertEquals(expectedWeight,
-                weightFunction.apply(network.getSwitch(DST_SWITCH).getOutgoingLinks().iterator().next()).toLong());
-
-        assertEquals(expectedWeight,
-                weightFunction.apply(network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next()).toLong());
-        assertEquals(expectedWeight,
-                weightFunction.apply(network.getSwitch(DST_SWITCH).getIncomingLinks().iterator().next()).toLong());
     }
 
     private static final SwitchId SWITCH_1 = new SwitchId("00:00:00:00:00:00:00:01");

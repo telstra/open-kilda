@@ -220,7 +220,6 @@ public class BestWeightAndShortestPathFinderTest {
         addBidirectionalLink(network, SWITCH_ID_3, SWITCH_ID_5, 7, 8, 100);
         addBidirectionalLink(network, SWITCH_ID_4, SWITCH_ID_5, 9, 10, 100);
 
-        network.reduceByWeight(WEIGHT_FUNCTION);
         return network;
     }
 
@@ -545,7 +544,6 @@ public class BestWeightAndShortestPathFinderTest {
         addBidirectionalLink(network, SWITCH_ID_3, SWITCH_ID_5, 7, 8, 100);
         addBidirectionalLink(network, SWITCH_ID_4, SWITCH_ID_5, 9, 10, 100);
 
-        network.reduceByWeight(WEIGHT_FUNCTION);
         return network;
     }
 
@@ -620,7 +618,6 @@ public class BestWeightAndShortestPathFinderTest {
         addLink(network, SWITCH_ID_4, SWITCH_ID_5, 9, 10, 100, 100, false, false);
         addLink(network, SWITCH_ID_5, SWITCH_ID_4, 10, 9, 100, 100, false, false);
 
-        network.reduceByWeight(WEIGHT_FUNCTION);
         return network;
     }
 
@@ -653,7 +650,6 @@ public class BestWeightAndShortestPathFinderTest {
         addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_3, 3, 4, 2000000000); //cost near to MAX_INTEGER
         addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_3, 5, 6, 1);
 
-        network.reduceByWeight(WEIGHT_FUNCTION);
         return network;
     }
 
@@ -746,7 +742,6 @@ public class BestWeightAndShortestPathFinderTest {
         addLink(network, SWITCH_ID_F, SWITCH_ID_A,
                 50, 7, 0, 3, false, false);
 
-        network.reduceByWeight(WEIGHT_FUNCTION);
         return network;
     }
 
@@ -835,7 +830,6 @@ public class BestWeightAndShortestPathFinderTest {
         addLink(network, SWITCH_ID_E, SWITCH_ID_B,
                 2, 3, 0, 0, false, false);
 
-        network.reduceByWeight(WEIGHT_FUNCTION);
         return network;
     }
 
@@ -940,7 +934,6 @@ public class BestWeightAndShortestPathFinderTest {
         addBidirectionalLink(network, SWITCH_ID_D, SWITCH_ID_E, 4, 2, 3);
         addBidirectionalLink(network, SWITCH_ID_E, SWITCH_ID_F, 3, 2, 2);
 
-        network.reduceByWeight(WEIGHT_FUNCTION);
         return network;
     }
 
