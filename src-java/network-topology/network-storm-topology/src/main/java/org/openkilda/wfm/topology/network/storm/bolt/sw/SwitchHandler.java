@@ -247,8 +247,8 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
         return getCurrentTuple().getStringByField(FIELD_ID_KEY);
     }
 
-    public void processSwitchBecomeManaged(SpeakerSwitchView switchView) {
-        service.switchBecomeManaged(switchView);
+    public void processSwitchBecomeManaged(SpeakerSwitchView switchView, String dumpId) {
+        service.switchBecomeManaged(switchView, dumpId);
     }
 
     public void processSwitchAddWithHistory(HistoryFacts history) {

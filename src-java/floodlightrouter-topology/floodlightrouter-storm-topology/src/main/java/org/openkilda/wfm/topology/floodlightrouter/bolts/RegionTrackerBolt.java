@@ -45,7 +45,6 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class RegionTrackerBolt extends AbstractBolt implements RegionMonitorCarrier {
@@ -64,19 +63,19 @@ public class RegionTrackerBolt extends AbstractBolt implements RegionMonitorCarr
     private final PersistenceManager persistenceManager;
     private final MonotonicClock.Match<TickId> monotonicTickMatch = new MonotonicClock.Match<>(
             MonotonicTick.BOLT_ID, null);
+    private final MonotonicClock.Match<TickId> networkDumpTickMatch = new MonotonicClock.Match<>(
+            MonotonicTick.BOLT_ID, TickId.NETWORK_DUMP);
 
     private final Set<String> floodlights;
     private final long floodlightAliveTimeout;
     private final long floodlightAliveInterval;
-    private final long floodlightDumpInterval;
-    private long lastNetworkDumpTimestamp;
 
     private transient FeatureTogglesRepository featureTogglesRepository;
     private transient FloodlightTracker floodlightTracker;
 
     public RegionTrackerBolt(
             String kafkaSpeakerTopic, PersistenceManager persistenceManager, Set<String> floodlights,
-            long floodlightAliveTimeout, long floodlightAliveInterval, long floodlightDumpInterval) {
+            long floodlightAliveTimeout, long floodlightAliveInterval) {
         super();
 
         this.kafkaSpeakerTopic = kafkaSpeakerTopic;
@@ -85,7 +84,6 @@ public class RegionTrackerBolt extends AbstractBolt implements RegionMonitorCarr
         this.floodlights = floodlights;
         this.floodlightAliveTimeout = floodlightAliveTimeout;
         this.floodlightAliveInterval = floodlightAliveInterval;
-        this.floodlightDumpInterval = TimeUnit.SECONDS.toMillis(floodlightDumpInterval);
     }
 
     @Override
@@ -96,12 +94,18 @@ public class RegionTrackerBolt extends AbstractBolt implements RegionMonitorCarr
             if (event != null && shouldHandleLifeCycleEvent(event.getSignal())) {
                 handleLifeCycleEvent(event);
             }
-        } else if (active && monotonicTickMatch.isTick(input)) {
+        } else if (!active) {
+            log.debug("Because the topology is inactive ignoring input tuple: {}", input);
+        } else if (monotonicTickMatch.isTick(input)) {
             handleTick();
-        } else if (active && SpeakerToNetworkProxyBolt.BOLT_ID.equals(source)) {
+        } else if (networkDumpTickMatch.isTick(input)) {
+            handleNetworkDump();
+        } else if (SpeakerToNetworkProxyBolt.BOLT_ID.equals(source)) {
             handleNetworkNotification(input);
-        } else if (active) {
-            super.dispatch(input);
+        } else {
+            if (active) {
+                super.dispatch(input);
+            }
         }
     }
 
@@ -133,11 +137,18 @@ public class RegionTrackerBolt extends AbstractBolt implements RegionMonitorCarr
     private void handleTick() {
         floodlightTracker.emitAliveRequests();
         floodlightTracker.handleAliveExpiration();
+    }
 
-        long now = System.currentTimeMillis();
-        if (now >= lastNetworkDumpTimestamp + floodlightDumpInterval) {
-            doNetworkDump();
-            lastNetworkDumpTimestamp = now;
+    private void handleNetworkDump() {
+        if (!queryPeriodicSyncFeatureToggle()) {
+            log.warn("Skip periodic network sync (disabled by feature toggle)");
+            return;
+        }
+
+        log.debug("Do periodic network dump request");
+        String dumpId = getCommandContext().getCorrelationId();
+        for (String region : floodlights) {
+            emitNetworkDumpRequest(region, dumpId);
         }
     }
 
@@ -188,14 +199,19 @@ public class RegionTrackerBolt extends AbstractBolt implements RegionMonitorCarr
                 STREAM_SPEAKER_ID, getCurrentTuple(), makeSpeakerTuple(null, message, region));
     }
 
+    @Override
+    public void emitNetworkDumpRequest(String region) {
+        emitNetworkDumpRequest(region, null);
+    }
+
     /**
      * Send network dump requests for target region.
      */
     @Override
-    public void emitNetworkDumpRequest(String region) {
+    public void emitNetworkDumpRequest(String region, String dumpId) {
         String correlationId = getCommandContext().fork(String.format("network-dump(%s)", region)).getCorrelationId();
         CommandMessage command = new CommandMessage(
-                new NetworkCommandData(), System.currentTimeMillis(), correlationId);
+                new NetworkCommandData(dumpId), System.currentTimeMillis(), correlationId);
 
         log.info("Send network dump request (correlation-id: {})", correlationId);
         getOutput().emit(STREAM_SPEAKER_ID, getCurrentTuple(), makeSpeakerTuple(correlationId, command, region));
@@ -204,18 +220,6 @@ public class RegionTrackerBolt extends AbstractBolt implements RegionMonitorCarr
     @Override
     public void emitRegionBecameUnavailableNotification(String region) {
         getOutput().emit(STREAM_REGION_NOTIFICATION_ID, getCurrentTuple(), makeRegionNotificationTuple(region));
-    }
-
-    private void doNetworkDump() {
-        if (!queryPeriodicSyncFeatureToggle()) {
-            log.warn("Skip periodic network sync (disabled by feature toggle)");
-            return;
-        }
-
-        log.debug("Do periodic network dump request");
-        for (String region : floodlights) {
-            emitNetworkDumpRequest(region);
-        }
     }
 
     private boolean queryPeriodicSyncFeatureToggle() {
