@@ -69,9 +69,9 @@ class ConfigurationSpec extends HealthCheckSpecification {
         northboundV2.getFlow(flow2.flowId).encapsulationType == newFlowEncapsulationType.toString().toLowerCase()
 
         cleanup: "Restore default configuration and delete the flow"
-        northbound.updateKildaConfiguration(
+        newFlowEncapsulationType && northbound.updateKildaConfiguration(
                 new KildaConfigurationDto(flowEncapsulationType: defaultEncapsulationType))
-        [flow1.flowId, flow2.flowId].each { flowHelper.deleteFlow(it) }
+        [flow1, flow2].each { it && flowHelper.deleteFlow(it.flowId) }
     }
 
     @Tidy
@@ -142,10 +142,9 @@ class ConfigurationSpec extends HealthCheckSpecification {
 
         cleanup: "Revert system to origin state"
         blockData && !switchIsActivated && switchHelper.reviveSwitch(sw, blockData, true)
-        northbound.updateKildaConfiguration(initConf)
-        northbound.updateSwitchProperties(sw.dpId, northbound.getSwitchProperties(sw.dpId).tap {
-            multiTable = initConf.useMultiTable
-        })
+        initConf && newMultiTableValue && northbound.updateKildaConfiguration(initConf)
+        initConf && newMultiTableValue && northbound.updateSwitchProperties(sw.dpId,
+                northbound.getSwitchProperties(sw.dpId).tap { multiTable = initConf.useMultiTable })
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
         }
