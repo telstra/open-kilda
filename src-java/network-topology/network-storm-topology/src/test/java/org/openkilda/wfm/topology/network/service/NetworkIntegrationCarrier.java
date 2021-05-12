@@ -357,7 +357,7 @@ public class NetworkIntegrationCarrier
     }
 
     @Override
-    public void islChangedNotifyFlowMonitor(IslReference reference) {
+    public void islChangedNotifyFlowMonitor(IslReference reference, boolean removed) {
         // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
     }
 }

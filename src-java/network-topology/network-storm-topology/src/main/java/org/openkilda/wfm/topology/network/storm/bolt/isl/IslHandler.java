@@ -61,8 +61,6 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.Optional;
-
 public class IslHandler extends AbstractBolt implements IIslCarrier {
     public static final String BOLT_ID = ComponentId.ISL_HANDLER.toString();
 
@@ -216,18 +214,13 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     }
 
     @Override
-    public void islChangedNotifyFlowMonitor(IslReference reference) {
-        Optional<Endpoint> src = Optional.ofNullable(reference.getSource());
-        Optional<Endpoint> dst = Optional.ofNullable(reference.getDest());
+    public void islChangedNotifyFlowMonitor(IslReference reference, boolean removed) {
+        Endpoint src = reference.getSource();
+        Endpoint dst = reference.getDest();
         IslChangedInfoData islChangedInfoData = IslChangedInfoData.builder()
-                .source(NetworkEndpoint.builder()
-                        .datapath(src.map(Endpoint::getDatapath).orElse(null))
-                        .portNumber(src.map(Endpoint::getPortNumber).orElse(null))
-                        .build())
-                .destination(NetworkEndpoint.builder()
-                        .datapath(dst.map(Endpoint::getDatapath).orElse(null))
-                        .portNumber(dst.map(Endpoint::getPortNumber).orElse(null))
-                        .build())
+                .source(new NetworkEndpoint(src.getDatapath(), src.getPortNumber()))
+                .destination(new NetworkEndpoint(dst.getDatapath(), dst.getPortNumber()))
+                .removed(removed)
                 .build();
         emit(STREAM_FLOW_MONITORING_ID, getCurrentTuple(), makeIslChangedTuple(islChangedInfoData));
     }
