@@ -27,6 +27,7 @@ import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 import org.openkilda.testing.service.lockkeeper.model.ChangeSwIpRequest;
 import org.openkilda.testing.service.lockkeeper.model.ContainerName;
 import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress;
+import org.openkilda.testing.service.lockkeeper.model.MeterModify;
 import org.openkilda.testing.service.lockkeeper.model.SwitchModify;
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData;
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlRequest;
@@ -227,6 +228,15 @@ public class LockKeeperVirtualImpl implements LockKeeperService {
                     new HttpEntity<>(new ContainerName(flHelper.getFlByRegion(region).getContainer()),
                             buildJsonHeaders()), String.class);
         });
+    }
+
+    @Override
+    public void updateBurstSizeAndRate(Switch sw, Long meterId, Long burstSize, Long rate) {
+        log.debug("Update meterId: '{}', burstSize: '{}' and rate: '{}' on sw: '{}'", meterId, burstSize, rate,
+                sw.getName());
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/meter/update", HttpMethod.POST,
+                new HttpEntity<>(new MeterModify(sw.getName(), meterId, burstSize, rate), buildJsonHeaders()),
+                String.class);
     }
 
     @Override

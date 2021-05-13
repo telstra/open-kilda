@@ -216,6 +216,17 @@ def get_container_ip(name):
     return Response(response)
 
 
+@app.route("/meter/update", methods=['POST'])
+def update_burst_size_and_rate():
+    body = request.get_json()
+    sw = body['name']
+    meter_id = body['meterId']
+    burst_size = body['burstSize']
+    rate = body['rate']
+    switches[sw].update_burst_size_and_rate(meter_id, burst_size, rate)
+    return jsonify({'status': 'ok'})
+
+
 @app.route('/floodlight/nat/input', methods=['POST'])
 def nat_change_ip():
     body = request.get_json()

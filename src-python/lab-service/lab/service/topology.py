@@ -123,6 +123,12 @@ class Switch:
         cmd = ['set-controller {} {}'.format(self.name, cnt)]
         vsctl(cmd)
 
+    def update_burst_size_and_rate(self, meter_id, burst_size, rate):
+        cmd = '-O {of_ver} mod-meter {sw} meter={meter_id},pktps,burst,stats,bands=type=drop,' \
+              'rate={rate},burst_size={burst_size}'.format(sw=self.name, of_ver=self.of_ver, meter_id=meter_id,
+                                                           burst_size=burst_size, rate=rate)
+        ofctl([cmd])
+
 
 class ASwitch(Switch):
     def add_route_flows(self, mappings):
