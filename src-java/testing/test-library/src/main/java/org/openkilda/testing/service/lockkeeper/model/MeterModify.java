@@ -23,7 +23,7 @@ import lombok.Value;
 public class MeterModify {
 
     @NonNull
-    String name;
+    String switchName;
 
     Long meterId;
 

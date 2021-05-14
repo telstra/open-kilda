@@ -219,7 +219,7 @@ def get_container_ip(name):
 @app.route("/meter/update", methods=['POST'])
 def update_burst_size_and_rate():
     body = request.get_json()
-    sw = body['name']
+    sw = body['switchName']
     meter_id = body['meterId']
     burst_size = body['burstSize']
     rate = body['rate']
