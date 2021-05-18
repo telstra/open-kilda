@@ -356,7 +356,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private void sendIslRemovedNotification(IIslCarrier carrier) {
         carrier.islRemovedNotification(reference.getSource(), reference);
         carrier.islRemovedNotification(reference.getDest(), reference);
-        carrier.islChangedNotifyFlowMonitor(IslReference.of(reference.getSource()));
+        carrier.islChangedNotifyFlowMonitor(reference, true);
     }
 
     private void sendRemoveMultiTable(IIslCarrier carrier) {
@@ -415,7 +415,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     private void sendIslChangedNotification(IIslCarrier carrier) {
-        carrier.islChangedNotifyFlowMonitor(reference);
+        carrier.islChangedNotifyFlowMonitor(reference, false);
     }
 
     /**

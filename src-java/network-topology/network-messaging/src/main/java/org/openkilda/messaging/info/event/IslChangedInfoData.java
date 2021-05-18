@@ -32,12 +32,15 @@ public class IslChangedInfoData extends InfoData {
 
     private NetworkEndpoint source;
     private NetworkEndpoint destination;
+    private boolean removed;
 
     @Builder(toBuilder = true)
     @JsonCreator
     public IslChangedInfoData(@JsonProperty("source") NetworkEndpoint source,
-                              @JsonProperty("destination") NetworkEndpoint destination) {
+                              @JsonProperty("destination") NetworkEndpoint destination,
+                              @JsonProperty("removed") boolean removed) {
         this.source = source;
         this.destination = destination;
+        this.removed = removed;
     }
 }

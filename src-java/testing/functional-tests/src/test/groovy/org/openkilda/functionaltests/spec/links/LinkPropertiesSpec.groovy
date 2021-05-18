@@ -63,6 +63,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         northbound.deleteLinkProps(linkProps)
     }
 
+    @Tidy
     def "Unable to create link property with invalid switchId format"() {
         when: "Try creating link property with invalid switchId format"
         def linkProp = new LinkPropsDto("I'm invalid", 1, "00:00:00:00:00:00:00:02", 1, [:])
@@ -73,6 +74,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         response.messages.first() == "Can not parse input string: \"${linkProp.srcSwitch}\""
     }
 
+    @Tidy
     def "Unable to create link property with non-numeric value for #key"() {
         when: "Try creating link property with non-numeric values"
         def linkProp = new LinkPropsDto("00:00:00:00:00:00:00:01", 1, "00:00:00:00:00:00:00:02", 1, [(key): "1000L"])
@@ -149,6 +151,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     def "Updating cost and max bandwidth via link props actually updates cost and max bandwidth on ISLs"() {
         given: "An active ISL"
         def isl = topology.islsForActiveSwitches.first()
@@ -185,6 +188,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
 
         when: "Delete link props"
         northbound.deleteLinkProps(linkProps)
+        def linkPropsAreDeleted = true
 
         then: "Cost on ISLs is changed to the default value"
         database.getIslCost(isl) == Constants.DEFAULT_COST
@@ -194,6 +198,9 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         def links = northbound.getAllLinks()
         islUtils.getIslInfo(links, isl).get().maxBandwidth == initialMaxBandwidth
         islUtils.getIslInfo(links, isl.reversed).get().maxBandwidth == initialMaxBandwidth
+
+        cleanup:
+        !linkPropsAreDeleted && northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
     @Tags(SMOKE)
@@ -214,7 +221,6 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         !islUtils.getIslInfo(isl)
         !islUtils.getIslInfo(isl.reversed)
 
-
         and: "Set cost and max bandwidth on the deleted link via link props"
         def costValue = "12345"
         def maxBandwidthValue = "54321"
@@ -226,6 +232,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
+        def islIsUp = true
 
         then: "The discovered link gets cost from link props"
         database.getIslCost(isl) == costValue.toInteger()
@@ -236,9 +243,15 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         islUtils.getIslInfo(links, isl).get().maxBandwidth == maxBandwidthValue.toInteger()
         islUtils.getIslInfo(links, isl.reversed).get().maxBandwidth == maxBandwidthValue.toInteger()
 
-        and: "Delete link props"
+        cleanup: "Delete link props"
+        if (!islIsUp) {
+            antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+                assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+            }
+        }
         //DELETE /link/props deletes props for both directions, even if only one direction specified
-        northbound.deleteLinkProps(linkProps)
+        linkProps && northbound.deleteLinkProps(linkProps)
         northbound.getAllLinkProps().empty
     }
 

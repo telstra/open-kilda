@@ -23,13 +23,12 @@ import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.messaging.model.SwitchAvailabilityData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm;
 import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm.SwitchFsmContext;
 import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm.SwitchFsmEvent;
-import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm.SwitchFsmState;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.facts.HistoryFacts;
+import org.openkilda.wfm.topology.network.utils.GenerationTracker;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,11 +37,14 @@ import java.util.Map;
 
 @Slf4j
 public class NetworkSwitchService {
+    private static final long SWITCH_GENERATION_TRACKING_LIMIT = 32;
+
     private final SwitchFsm.SwitchFsmFactory controllerFactory;
     private final Map<SwitchId, SwitchFsm> controller = new HashMap<>();
-    private final FsmExecutor<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> controllerExecutor;
 
     private final PersistenceManager persistenceManager;
+    private final GenerationTracker<String> dumpGenerationTracker = new GenerationTracker<>(
+            SWITCH_GENERATION_TRACKING_LIMIT);
 
     private final NetworkOptions options;
 
@@ -55,7 +57,6 @@ public class NetworkSwitchService {
         this.options = options;
 
         controllerFactory = SwitchFsm.factory();
-        controllerExecutor = controllerFactory.produceExecutor();
 
         log.info("Discovery switch service configuration: bfd-logical-port-offset:{}",
                  options.getBfdLogicalPortOffset());
@@ -66,14 +67,11 @@ public class NetworkSwitchService {
      */
     public void switchAddWithHistory(HistoryFacts history) {
         log.info("Switch service receive switch ADD from history request for {}", history.getSwitchId());
-        SwitchFsm switchFsm = controllerFactory.produce(persistenceManager, history.getSwitchId(),
-                                                        options);
-
+        SwitchFsm switchFsm = locateControllerCreateIfAbsent(history.getSwitchId());
         SwitchFsmContext fsmContext = SwitchFsmContext.builder(carrier)
                 .history(history)
                 .build();
-        controller.put(history.getSwitchId(), switchFsm);
-        controllerExecutor.fire(switchFsm, SwitchFsmEvent.HISTORY, fsmContext);
+        fire(switchFsm, SwitchFsmEvent.HISTORY, fsmContext);
     }
 
     /**
@@ -110,10 +108,11 @@ public class NetworkSwitchService {
                 .builder(carrier)
                 .speakerData(speakerData)
                 .availabilityData(availabilityData)
+                .periodicDumpGeneration(dumpGenerationTracker.getLastSeenGeneration())
                 .build();
 
         SwitchFsm fsm = locateControllerCreateIfAbsent(switchId);
-        controllerExecutor.fire(fsm, SwitchFsmEvent.ONLINE, context);
+        fire(fsm, SwitchFsmEvent.ONLINE, context);
     }
 
     public void switchDisconnect(SwitchId switchId, boolean isRegionOffline) {
@@ -131,7 +130,7 @@ public class NetworkSwitchService {
                 .isRegionOffline(isRegionOffline)
                 .availabilityData(availabilityData)
                 .build();
-        controllerExecutor.fire(fsm, SwitchFsmEvent.OFFLINE, context);
+        fire(fsm, SwitchFsmEvent.OFFLINE, context);
     }
 
     /**
@@ -144,7 +143,7 @@ public class NetworkSwitchService {
                 .builder(carrier)
                 .availabilityData(availabilityData)
                 .build();
-        controllerExecutor.fire(
+        fire(
                 locateControllerCreateIfAbsent(switchId), SwitchFsmEvent.CONNECTIONS_UPDATE, context);
     }
 
@@ -156,7 +155,7 @@ public class NetworkSwitchService {
         SwitchFsmContext.SwitchFsmContextBuilder fsmContextBuilder =
                 SwitchFsmContext.builder(carrier).syncResponse(payload).syncKey(key);
         SwitchFsm fsm = locateController(payload.getSwitchId());
-        controllerExecutor.fire(fsm, SwitchFsmEvent.SYNC_RESPONSE, fsmContextBuilder.build());
+        fire(fsm, SwitchFsmEvent.SYNC_RESPONSE, fsmContextBuilder.build());
     }
 
     /**
@@ -168,7 +167,7 @@ public class NetworkSwitchService {
         SwitchFsmContext.SwitchFsmContextBuilder fsmContextBuilder =
                 SwitchFsmContext.builder(carrier).syncKey(key);
         SwitchFsm fsm = locateController(payload.getSwitchId());
-        controllerExecutor.fire(fsm, SwitchFsmEvent.SYNC_ERROR, fsmContextBuilder.build());
+        fire(fsm, SwitchFsmEvent.SYNC_ERROR, fsmContextBuilder.build());
     }
 
     /**
@@ -179,19 +178,33 @@ public class NetworkSwitchService {
         SwitchFsmContext.SwitchFsmContextBuilder fsmContextBuilder =
                 SwitchFsmContext.builder(carrier).syncKey(key);
         SwitchFsm fsm = locateController(switchId);
-        controllerExecutor.fire(fsm, SwitchFsmEvent.SYNC_TIMEOUT, fsmContextBuilder.build());
+        fire(fsm, SwitchFsmEvent.SYNC_TIMEOUT, fsmContextBuilder.build());
     }
 
     /**
      * Handle switch MANAGED notification.
      */
-    public void switchBecomeManaged(SpeakerSwitchView switchView) {
-        log.debug("Switch service receive MANAGED notification for {}", switchView.getDatapath());
-        SwitchFsm fsm = locateControllerCreateIfAbsent(switchView.getDatapath());
-        SwitchFsmContext context = SwitchFsmContext.builder(carrier)
-                .speakerData(switchView)
-                .build();
-        controllerExecutor.fire(fsm, SwitchFsmEvent.ONLINE, context);
+    public void switchBecomeManaged(SpeakerSwitchView switchView, String dumpId) {
+        SwitchId switchId = switchView.getDatapath();
+        log.debug("Switch service receive MANAGED notification for {}", switchId);
+
+        long actualGeneration = dumpGenerationTracker.getLastSeenGeneration();
+        SwitchFsmContext.SwitchFsmContextBuilder context = SwitchFsmContext.builder(carrier)
+                .speakerData(switchView);
+        if (dumpId != null) {
+            long generation = dumpGenerationTracker.identify(dumpId);
+            log.debug("Map dumpId into generation {} => {} for {}", dumpId, generation, switchId);
+            context.periodicDumpGeneration(generation);
+        } else {
+            log.debug("Do not make generation lookup for partial network dump entry (switchId: {})", switchId);
+        }
+
+        SwitchFsm fsm = locateControllerCreateIfAbsent(switchId);
+        fire(fsm, SwitchFsmEvent.ONLINE, context.build());
+
+        if (actualGeneration != dumpGenerationTracker.getLastSeenGeneration()) {
+            lookupMissingSwitches();
+        }
     }
 
     /**
@@ -225,7 +238,7 @@ public class NetworkSwitchService {
 
         if (event != null) {
             SwitchFsm switchFsm = locateController(payload.getSwitchId());
-            controllerExecutor.fire(switchFsm, event, fsmContext.build());
+            fire(switchFsm, event, fsmContext.build());
         }
     }
 
@@ -241,7 +254,7 @@ public class NetworkSwitchService {
         }
 
         SwitchFsmContext context = SwitchFsmContext.builder(carrier).build();
-        controllerExecutor.fire(fsm, SwitchFsmEvent.SWITCH_REMOVE, context);
+        fire(fsm, SwitchFsmEvent.SWITCH_REMOVE, context);
         if (fsm.isTerminated()) {
             controller.remove(datapath);
             log.debug("Switch service removed FSM {}", datapath);
@@ -251,6 +264,16 @@ public class NetworkSwitchService {
     }
 
     // -- private --
+
+    /**
+     * Find switches not mentioned in N last periodic dumps (lost OFFLINE event).
+     */
+    private void lookupMissingSwitches() {
+        long lastGeneration = dumpGenerationTracker.getLastSeenGeneration();
+        for (SwitchFsm entry : controller.values()) {
+            entry.ensureOnline(carrier, lastGeneration);
+        }
+    }
 
     private SwitchFsm locateController(SwitchId datapath) {
         SwitchFsm switchFsm = controller.get(datapath);
@@ -262,6 +285,11 @@ public class NetworkSwitchService {
 
     private SwitchFsm locateControllerCreateIfAbsent(SwitchId datapath) {
         return controller.computeIfAbsent(
-                datapath, key -> controllerFactory.produce(persistenceManager, datapath, options));
+                datapath, key -> controllerFactory.produce(
+                        persistenceManager, datapath, options, dumpGenerationTracker.getLastSeenGeneration()));
+    }
+
+    private void fire(SwitchFsm switchFsm, SwitchFsmEvent event, SwitchFsmContext context) {
+        SwitchFsm.SwitchFsmFactory.EXECUTOR.fire(switchFsm, event, context);
     }
 }

@@ -38,5 +38,5 @@ public interface IIslCarrier {
 
     void islRemovedNotification(Endpoint endpoint, IslReference reference);
 
-    void islChangedNotifyFlowMonitor(IslReference reference);
+    void islChangedNotifyFlowMonitor(IslReference reference, boolean removed);
 }

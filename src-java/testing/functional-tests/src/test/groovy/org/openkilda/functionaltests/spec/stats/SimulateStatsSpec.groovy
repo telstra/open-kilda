@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.stats
 
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.Destination
 import org.openkilda.messaging.Message
@@ -42,6 +43,7 @@ class SimulateStatsSpec extends HealthCheckSpecification {
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix
 
+    @Tidy
     def "Flow stats with big values are properly being saved to stats db (noviflow boundaries)"() {
         given: "A flow"
         def (Switch src, Switch dst) = topology.activeSwitches
@@ -91,10 +93,8 @@ class SimulateStatsSpec extends HealthCheckSpecification {
             true
         }
 
-        and: "Remove flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-
         cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         producer && producer.close()
     }
 

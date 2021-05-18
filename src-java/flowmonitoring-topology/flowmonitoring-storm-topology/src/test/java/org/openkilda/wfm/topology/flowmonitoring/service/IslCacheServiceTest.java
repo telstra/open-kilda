@@ -144,6 +144,8 @@ public class IslCacheServiceTest extends InMemoryGraphBasedTest {
 
         IslChangedInfoData islChangedInfoData = IslChangedInfoData.builder()
                 .source(NetworkEndpoint.builder().datapath(FIRST_SWITCH).portNumber(ISL_SRC_PORT).build())
+                .destination(NetworkEndpoint.builder().datapath(SECOND_SWITCH).portNumber(ISL_DST_PORT).build())
+                .removed(true)
                 .build();
         service.handleIslChangedData(islChangedInfoData);
 

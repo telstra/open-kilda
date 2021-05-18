@@ -37,6 +37,7 @@ class LinkSpec extends HealthCheckSpecification {
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
 
+    @Tidy
     @Tags([SMOKE_SWITCHES, SMOKE, LOCKKEEPER])
     def "Link (not BFD) status is properly changed when link connectivity is broken (not port down)"() {
         given: "A link going through a-switch"
@@ -49,6 +50,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         when: "Remove a one-way flow on an a-switch for simulating lost connection(not port down)"
         lockKeeper.removeFlows([isl.aswitch])
+        def linkFrIsBroken = true
 
         then: "Status of the link is not changed to FAILED until discoveryTimeout is exceeded"
         Wrappers.timedLoop(waitTime) {
@@ -77,6 +79,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         when: "Fail the other part of ISL"
         lockKeeper.removeFlows([isl.aswitch.reversed])
+        def linkRvIsBroken = true
 
         then: "Status remains FAILED and actual status is changed to failed for both directions"
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
@@ -89,6 +92,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         when: "Add the removed flow rules for one direction"
         lockKeeper.addFlows([isl.aswitch])
+        linkFrIsBroken = false
 
         then: "The link remains FAILED, but actual status for one direction is DISCOVERED"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -101,6 +105,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         when: "Add the remaining missing rules on a-switch"
         lockKeeper.addFlows([isl.aswitch.reversed])
+        linkRvIsBroken = false
 
         then: "Link status and actual status both changed to DISCOVERED in both directions"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -110,8 +115,23 @@ class LinkSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
             assert islUtils.getIslInfo(links, isl.reversed).get().actualState == DISCOVERED
         }
+
+        cleanup:
+        if (linkFrIsBroken || linkRvIsBroken) {
+            linkFrIsBroken && lockKeeper.addFlows([isl.aswitch])
+            linkRvIsBroken && lockKeeper.addFlows([isl.aswitch.reversed])
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+                def links = northbound.getAllLinks()
+                assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
+                assert islUtils.getIslInfo(links, isl).get().actualState == DISCOVERED
+                assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
+                assert islUtils.getIslInfo(links, isl.reversed).get().actualState == DISCOVERED
+            }
+        }
+        database.resetCosts()
     }
 
+    @Tidy
     @Tags(SMOKE)
     def "Get all flows (UP/DOWN) going through a particular link"() {
         given: "Two active not neighboring switches"
@@ -156,6 +176,7 @@ class LinkSpec extends HealthCheckSpecification {
         topology.getBusyPortsForSwitch(switchPair.src).each { port ->
             antiflap.portDown(switchPair.src.dpId, port)
         }
+        def portsAreDown = true
 
         then: "All flows go to 'Down' status"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
@@ -189,28 +210,41 @@ class LinkSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().every { it.state == DISCOVERED }
         }
+        portsAreDown = false
 
         then: "All flows go to 'Up' status"
         Wrappers.wait(rerouteDelay + PATH_INSTALLATION_TIME) {
             [flow1, flow2, flow3, flow4].each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
         }
 
-        and: "Delete all created flows and reset costs"
-        [flow1, flow2, flow3, flow4].each { flowHelperV2.deleteFlow(it.flowId) }
+        cleanup: "Delete all created flows and reset costs"
+        [flow1, flow2, flow3, flow4].each { it && flowHelperV2.deleteFlow(it.flowId) }
+        if (portsAreDown) {
+            topology.getBusyPortsForSwitch(switchPair.src).each { port ->
+                antiflap.portUp(switchPair.src.dpId, port)
+            }
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+                northbound.getAllLinks().every { it.state == DISCOVERED }
+            }
+        }
         database.resetCosts()
     }
 
+    @Tidy
     def "ISL should immediately fail if the port went down while switch was disconnected"() {
         when: "A switch disconnects"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
         def blockData = switchHelper.knockoutSwitch(isl.srcSwitch, RW)
+        def swIsDown = true
 
         and: "One of its ports goes down"
         //Bring down port on a-switch, which will lead to a port down on the Kilda switch
         lockKeeper.portsDown([isl.aswitch.inPort])
+        def portIsDown = true
 
         and: "The switch reconnects back with a port being down"
         switchHelper.reviveSwitch(isl.srcSwitch, blockData)
+        swIsDown = false
 
         then: "The related ISL immediately goes down"
         Wrappers.wait(WAIT_OFFSET) {
@@ -221,19 +255,31 @@ class LinkSpec extends HealthCheckSpecification {
 
         when: "The switch disconnects again"
         blockData = lockKeeper.knockoutSwitch(isl.srcSwitch, RW)
+        swIsDown = true
 
         and: "The DOWN port is brought back to UP state"
         lockKeeper.portsUp([isl.aswitch.inPort])
+        portIsDown = false
 
         and: "The switch reconnects back with a port being up"
         lockKeeper.reviveSwitch(isl.srcSwitch, blockData)
         Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(isl.srcSwitch.dpId).state == SwitchChangeType.ACTIVATED }
+        swIsDown = false
 
         then: "The related ISL is discovered again"
         Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
             assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
+        }
+
+        cleanup:
+        if (portIsDown || swIsDown) {
+            swIsDown && lockKeeper.reviveSwitch(isl.srcSwitch, blockData)
+            portIsDown && lockKeeper.portsUp([isl.aswitch.inPort])
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+                northbound.getAllLinks().every { it.state == DISCOVERED }
+            }
         }
         database.resetCosts()
     }
@@ -319,10 +365,12 @@ class LinkSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.contains("ISL must NOT be in active state")
     }
 
+    @Tidy
     def "Able to delete an inactive #islDescription link and re-discover it back afterwards"() {
         given: "An inactive link"
         assumeTrue(isl as boolean, "Unable to locate $islDescription ISL for this test")
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        def portIsDown = true
         TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getLink(isl).actualState == FAILED
@@ -338,12 +386,23 @@ class LinkSpec extends HealthCheckSpecification {
 
         when: "Removed link becomes active again (port brought UP)"
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        portIsDown = false
 
         then: "The link is rediscovered in both directions"
         Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
             assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
+        }
+
+        cleanup:
+        if (portIsDown) {
+            antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+            Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
+                def links = northbound.getAllLinks()
+                assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
+                assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
+            }
         }
         database.resetCosts()
 
@@ -356,6 +415,7 @@ class LinkSpec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     def "Reroute all flows going through a particular link"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -394,8 +454,8 @@ class LinkSpec extends HealthCheckSpecification {
             assert PathHelper.convert(northbound.getFlowPath(flow2.flowId)) != flow2Path
         }
 
-        and: "Delete flows and delete link props"
-        [flow1, flow2].each { flowHelperV2.deleteFlow(it.flowId) }
+        cleanup: "Delete flows and delete link props"
+        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 

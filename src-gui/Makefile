@@ -8,8 +8,8 @@ build/libs/${APP}.war: .deps/node .deps/resources
 	./gradlew build
 
 .deps/node: .deps
-	docker run --rm -e LOCAL_UID=`id -u $(USER)` -e LOCAL_GID=`id -g $(USER)` -v $(CURDIR)/src:/app/src -v $(CURDIR)/ui:/app/ui node:10-alpine \
-		sh -c 'npm cache clean -f && npm install -g @angular/cli@latest --unsafe-perm && cd /app/ui && npm install && ng build --prod && chown -R $$LOCAL_UID:$$LOCAL_GID /app/src /app/ui'
+	docker run --rm -e LOCAL_UID=`id -u $(USER)` -e LOCAL_GID=`id -g $(USER)` -v $(CURDIR)/src:/app/src -v $(CURDIR)/ui:/app/ui node:14.17-alpine  \
+		sh -c 'npm cache clean -f && npm install -g @angular/cli@12.0.0 --unsafe-perm && cd /app/ui && npm install && ng build --prod && chown -R $$LOCAL_UID:$$LOCAL_GID /app/src /app/ui'
 	touch $@
 
 .deps/resources: .deps

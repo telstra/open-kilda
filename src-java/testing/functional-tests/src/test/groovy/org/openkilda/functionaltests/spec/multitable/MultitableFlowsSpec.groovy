@@ -8,6 +8,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDEN
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -19,6 +20,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -53,6 +55,7 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
+    @Tidy
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "System can use both single-table and multi-table switches in flow path at the same time, change switch table \
 mode with existing flows and hold flows of different table-mode types"() {
@@ -199,6 +202,7 @@ mode with existing flows and hold flows of different table-mode types"() {
             }
         }
         [flow, flow2].each { flowHelperV2.deleteFlow(it.flowId) }
+        def flowsAreDeleted = true
 
         then: "Flow rules are deleted from switches"
         involvedSwitches.each { sw ->
@@ -207,11 +211,13 @@ mode with existing flows and hold flows of different table-mode types"() {
             }
         }
 
-        and: "Cleanup: Revert system to original state"
-        revertSwitchesToInitState(involvedSwitches, initSwProps)
+        cleanup: "Revert system to original state"
+        !flowsAreDeleted && [flow, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
+        initSwProps && revertSwitchesToInitState(involvedSwitches, initSwProps)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
+    @Tidy
     def "Single-switch flow rules are (re)installed according to switch property while rerouting,syncing,updating"() {
         given: "An active switch"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.MULTI_TABLE) }
@@ -229,7 +235,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         then: "Flow rules are created in multi table mode"
         def flowInfoFromDb
         def sharedRules
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             flowInfoFromDb = database.getFlow(flow.flowId)
             sharedRules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
                 new Cookie(it.cookie).type == CookieType.SHARED_OF_FLOW
@@ -261,7 +267,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         and: "Flow rules are still in multi table mode"
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
                 rules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
                 rules.find { it.cookie == flowInfoFromDb.reversePath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
@@ -279,7 +285,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         then: "Rules on the switch are reinstalled in single table mode"
         def flowInfoFromDb2
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             flowInfoFromDb2 = database.getFlow(flow.flowId)
             verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
                 rules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }.tableId == SINGLE_TABLE_ID
@@ -302,14 +308,14 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         and: "Flow is valid and UP"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        Wrappers.wait(WAIT_OFFSET / 2) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        wait(WAIT_OFFSET / 2) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         when: "Update the flow"
         flowHelperV2.updateFlow(flow.flowId, flow.tap { it.description = it.description + " updated" })
 
         then: "Flow rules on the switch are recreated in multi table mode"
         def flowInfoFromDb3
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             flowInfoFromDb3 = database.getFlow(flow.flowId)
             verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
                 rules.find { it.cookie == flowInfoFromDb3.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
@@ -323,7 +329,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         and: "Reroute(intentional) the flow via APIv1"
         with(northbound.rerouteFlow(flow.flowId)) { !it.rerouted }
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+        wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
@@ -336,7 +342,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         when: "Reroute(intentional) the flow via APIv2"
         with(northboundV2.rerouteFlow(flow.flowId)) { !it.rerouted }
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+        wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
@@ -351,6 +357,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
+        def flowIsDeleted = true
 
         then: "Flow rules are deleted"
         northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
@@ -358,8 +365,9 @@ mode with existing flows and hold flows of different table-mode types"() {
             cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES || !cookie.serviceFlag
         }.empty
 
-        and: "Cleanup: revert system to original state"
-        revertSwitchToInitState(sw, initSwProps)
+        cleanup:
+        !flowIsDeleted && flow && flowHelperV2.deleteFlow(flow.flowId)
+        initSwProps && revertSwitchToInitState(sw, initSwProps)
     }
 
     @Tags([SMOKE_SWITCHES])
@@ -408,7 +416,7 @@ mode with existing flows and hold flows of different table-mode types"() {
                 changeSwitchPropsMultiTableValue(initSwProps[involvedSwitches[1].dpId], false))
 
         then: "Flow rules are still in multi table mode on all switches"
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             verifyAll(northbound.getSwitchRules(involvedSwitches[0].dpId).flowEntries) { rules ->
                 rules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
                 rules.find { it.cookie == flowInfoFromDb.reversePath.cookie.value }.tableId == EGRESS_RULE_MULTI_TABLE_ID
@@ -431,13 +439,13 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         when: "Synchronize the flow"
         with(northbound.synchronizeFlow(flow.flowId)) { !it.rerouted }
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
         then: "Rules on the transit switch are recreated in single table mode"
         def flowInfoFromDb2
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             flowInfoFromDb2 = database.getFlow(flow.flowId)
             flowHelper.verifyRulesOnProtectedFlow(flow.flowId)
         }
@@ -474,7 +482,7 @@ mode with existing flows and hold flows of different table-mode types"() {
           }))
 
         then: "Flow rules on the src switch are recreated in single table mode"
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             flowHelper.verifyRulesOnProtectedFlow(flow.flowId)
         }
 
@@ -529,14 +537,14 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         then: "Flow rules are created in single table mode"
         def flowInfoFromDb = database.getFlow(flow.flowId)
-        Wrappers.wait(RULES_INSTALLATION_TIME) { flowHelper.verifyRulesOnProtectedFlow(flow.flowId) }
+        wait(RULES_INSTALLATION_TIME) { flowHelper.verifyRulesOnProtectedFlow(flow.flowId) }
 
         when: "Update switch properties(multi_table: true) on the transit switch"
         northbound.updateSwitchProperties(involvedSwitches[1].dpId,
                 changeSwitchPropsMultiTableValue(initSwProps[involvedSwitches[1].dpId], true))
 
         then: "Flow rules are still in single table mode on the transit switch"
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             verifyAll(northbound.getSwitchRules(involvedSwitches[1].dpId).flowEntries) { rules ->
                 rules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.tableId == SINGLE_TABLE_ID
                 rules.find { it.cookie == flowInfoFromDb.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
@@ -545,7 +553,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         when: "Reroute(intentional) the flow via APIv1"
         with(northbound.rerouteFlow(flow.flowId)) { !it.rerouted }
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+        wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
@@ -586,7 +594,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         and: "Init intentional reroute via APIv2"
         with(northboundV2.rerouteFlow(flow.flowId)) { it.rerouted }
         def newFlowPath
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+        wait(rerouteDelay + WAIT_OFFSET) {
             newFlowPath = northbound.getFlowPath(flow.flowId)
             assert PathHelper.convert(newFlowPath) != desiredPath
         }
@@ -594,7 +602,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         then: "Flow rules are recreated in multi table mode on the dst switch(the flow was rerouted)"
         //flow rules are still in single table mode on the src switch
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             with(database.getFlow(flow.flowId)) { flowInfo ->
                 verifyAll(northbound.getSwitchRules(involvedSwitches[0].dpId).flowEntries) { rules ->
                     rules.find { it.cookie == flowInfo.forwardPath.cookie.value }.tableId == SINGLE_TABLE_ID
@@ -634,13 +642,13 @@ mode with existing flows and hold flows of different table-mode types"() {
         def flowIsls = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow.flowId)))
         def islToBreak = flowIsls[0]
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+        wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != PathHelper.convert(newFlowPath)
         }
 
         then: "Flow rules on the src and dst switches are recreated according to the new switch properties"
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             with(database.getFlow(flow.flowId)) { flowInfo ->
                 verifyAll(northbound.getSwitchRules(involvedSwitches[0].dpId).flowEntries) { rules ->
                     rules.find { it.cookie == flowInfo.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
@@ -665,7 +673,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         cleanup: "Restore init switch properties and delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
         revertSwitchesToInitState(involvedSwitches, initSwProps)
@@ -715,7 +723,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         and: "Enable protected path on the flow"
         northboundV2.updateFlow(flow.flowId, flow.tap { it.allocateProtectedPath = true })
-        Wrappers.wait(WAIT_OFFSET, 1) {
+        wait(WAIT_OFFSET, 1) {
             with(northboundV2.getFlow(flow.flowId).statusDetails) {
                 mainPath == "Up"
                 protectedPath == "Up"
@@ -723,7 +731,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         then: "Flow rules on the dst switch are recreated in the single table mode"
-        Wrappers.wait(PATH_INSTALLATION_TIME) {
+        wait(PATH_INSTALLATION_TIME) {
             flowHelper.verifyRulesOnProtectedFlow(flow.flowId)
         }
 
@@ -736,7 +744,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         def currentProtectedPath = PathHelper.convert(northbound.getFlowPath(flow.flowId).protectedPath)
         northbound.swapFlowPath(flow.flowId)
         def newFlowPath
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == UPDATE_SUCCESS
             newFlowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
@@ -745,7 +753,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         then: "Flow rules are still in the same table mode"
         with(database.getFlow(flow.flowId)) { flowInfo ->
-            Wrappers.wait(RULES_INSTALLATION_TIME) {
+            wait(RULES_INSTALLATION_TIME) {
                 verifyAll(northbound.getSwitchRules(involvedSwitches[0].dpId).flowEntries) { rules ->
                     rules.find { it.cookie == flowInfo.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
                     rules.find { it.cookie == flowInfo.reversePath.cookie.value }.tableId == EGRESS_RULE_MULTI_TABLE_ID
@@ -765,9 +773,9 @@ mode with existing flows and hold flows of different table-mode types"() {
         def flowIsls = pathHelper.getInvolvedIsls(newFlowPath)
         def islToBreak = flowIsls[0]
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(islToBreak).state == IslChangeType.FAILED }
+        wait(WAIT_OFFSET) { assert northbound.getLink(islToBreak).state == IslChangeType.FAILED }
         def newFlowPath2
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+        wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP ||
                     northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
             newFlowPath2 = PathHelper.convert(northbound.getFlowPath(flow.flowId))
@@ -777,7 +785,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         then: "Flow rules are still in the same table mode as previously"
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             with(database.getFlow(flow.flowId)) { flowInfo ->
                 verifyAll(northbound.getSwitchRules(involvedSwitches[0].dpId).flowEntries) { rules ->
                     rules.find { it.cookie == flowInfo.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
@@ -797,7 +805,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         cleanup: "Restore init switch properties and delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
         revertSwitchesToInitState(involvedSwitches, initSwProps)
@@ -805,6 +813,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         database.resetCosts()
     }
 
+    @Tidy
     def "Single switch flow rules are not reinstalled according to switch props when the update procedure is failed"() {
         given: "An active switch"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.MULTI_TABLE) }
@@ -820,7 +829,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         flowHelperV2.addFlow(flow)
 
         def flowInfoFromDb
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             flowInfoFromDb = database.getFlow(flow.flowId)
             verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
                 rules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
@@ -834,7 +843,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         and: "Update the flow: enable protected path"
         northboundV2.updateFlow(flow.flowId, flowHelperV2.toRequest(northboundV2.getFlow(flow.flowId)
                                                                                 .tap { it.allocateProtectedPath = true }))
-        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+        wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -844,7 +853,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         errorDetails.errorDescription == "Couldn't setup protected path for one-switch flow"
 
         and: "Flow rules are still in multi table mode"
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
                 rules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
                 rules.find { it.cookie == flowInfoFromDb.reversePath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
@@ -856,6 +865,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
+        def flowIsDeleted = true
 
         then: "Flow rules are deleted"
         northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
@@ -863,10 +873,12 @@ mode with existing flows and hold flows of different table-mode types"() {
             cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES || !cookie.serviceFlag
         }.empty
 
-        and: "Cleanup: revert system to original state"
-        revertSwitchToInitState(sw, initSwProps)
+        cleanup:
+        !flowIsDeleted && flow && flowHelperV2.deleteFlow(flow.flowId)
+        initSwProps && revertSwitchToInitState(sw, initSwProps)
     }
 
+    @Tidy
     def "Flow rules are not recreated when pinned flow changes state to up/down"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null
@@ -908,10 +920,11 @@ mode with existing flows and hold flows of different table-mode types"() {
         def islToBreak = flowIsls[0]
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         //flow is pinned, so that's why the flow is not rerouted
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == desiredPath
         }
+        def islIsDown = true
 
         and: "Update switch properties(multi_table: true) on the dst switch"
         northbound.updateSwitchProperties(involvedSwitches[2].dpId,
@@ -919,13 +932,14 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         and: "Restore the failed flow ISL (bring switch port up)"
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+        wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == desiredPath
         }
+        islIsDown = false
 
         then: "Flow rules are still in single table mode on the transit switch"
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             verifyAll(northbound.getSwitchRules(involvedSwitches[0].dpId).flowEntries) { rules ->
                 rules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.tableId == SINGLE_TABLE_ID
                 rules.find { it.cookie == flowInfoFromDb.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
@@ -950,10 +964,10 @@ mode with existing flows and hold flows of different table-mode types"() {
         //https://github.com/telstra/open-kilda/issues/3639
 //        when: "Synchronize the flow"
 //        with(northbound.synchronizeFlow(flow.flowId)) { it.rerouted }
-//        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+//        wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 //
 //        then: "Flow rules are reinstalled according to switch props"
-//        Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
+//        wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
 //            with(database.getFlow(flow.flowId)) { flowInfo ->
 //                verifyAll(northbound.getSwitchRules(involvedSwitches[0].dpId).flowEntries) { rules ->
 //                    rules.find { it.cookie == flowInfo.forwardPath.cookie.value }.tableId == SINGLE_TABLE_ID
@@ -968,9 +982,10 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
+        def flowIsDeleted = true
 
         then: "Flow rules are deleted"
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             involvedSwitches.each { sw ->
                 assert northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
                     def cookie = new Cookie(it.cookie)
@@ -979,12 +994,20 @@ mode with existing flows and hold flows of different table-mode types"() {
             }
         }
 
-        and: "Cleanup: revert system to original state"
-        revertSwitchesToInitState(involvedSwitches, initSwProps)
+        cleanup:
+        flow && !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
+        if (islToBreak && islIsDown) {
+            antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+            wait(discoveryInterval + WAIT_OFFSET) {
+                assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
+            }
+        }
+        initSwProps && revertSwitchesToInitState(involvedSwitches, initSwProps)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
     }
 
+    @Tidy
     @Tags([SMOKE_SWITCHES])
     def "Flow rules are re(installed) according to switch props while syncing switch and rules"() {
         given: "Three active switches"
@@ -1024,7 +1047,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         then: "Flow rules are still in multi table on all involved switches"
         def flowInfoFromDb
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             flowInfoFromDb = database.getFlow(flow.flowId)
             verifyAll(northbound.getSwitchRules(involvedSwitches[0].dpId).flowEntries) { rules ->
                 rules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
@@ -1181,11 +1204,12 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         cleanup: "Revert system to origin state"
-        flowHelper.deleteFlow(flow.flowId)
-        revertSwitchesToInitState(involvedSwitches, initSwProps)
+        flow && flowHelper.deleteFlow(flow.flowId)
+        initSwProps && revertSwitchesToInitState(involvedSwitches, initSwProps)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
+    @Tidy
     def "System detects excess rules after removing multi table flow from a switch with single table mode"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null
@@ -1264,8 +1288,8 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         cleanup: "Revert the system to origin state"
-        !isFlowDeleted && flowHelper.deleteFlow(flow.flowId)
-        revertSwitchesToInitState(involvedSwitches, initSwProps)
+        flow && !isFlowDeleted && flowHelper.deleteFlow(flow.flowId)
+        initSwProps && revertSwitchesToInitState(involvedSwitches, initSwProps)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
@@ -1313,7 +1337,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         then: "Switch is added with disabled multiTable mode"
         !northbound.getSwitchProperties(sw.dpId).multiTable
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             with(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
                 northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
                 rules.findAll { it.instructions.goToTable }.empty
@@ -1382,7 +1406,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         assert northboundV2.rerouteFlow(flow.flowId).rerouted
 
         then: "Reroute is done successfully"
-        Wrappers.wait(RULES_INSTALLATION_TIME * 2) {
+        wait(RULES_INSTALLATION_TIME * 2) {
             def reroutes = northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }
             assert reroutes.size() == 1
             assert reroutes.last().payload.last().action == REROUTE_SUCCESS
@@ -1410,7 +1434,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         when: "Swap flow paths"
         northbound.swapFlowPath(flow.flowId)
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
         flowInfoFromDb = database.getFlow(flow.flowId)
 
         then: "Flow rules for main path are in singletable mode, protected in multitable mode on src"
@@ -1452,7 +1476,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
     void checkDefaultRulesOnSwitch(Switch sw) {
         // sometimes it takes too much time on jenkins(up to 17 seconds)
-        Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET, 1) {
+        wait(RULES_INSTALLATION_TIME + WAIT_OFFSET, 1) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
         }
     }

@@ -8,6 +8,7 @@ import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 
@@ -18,6 +19,7 @@ Sometimes an ISL have different port speed on its edges.
 In that case, we need to set ISL capacity and all bandwidth parameters according to minimal speed value.
 Eg. 10G on one side, and 1G on another side, the ISL should have a 1G capacity.""")
 class IslMinPortSpeedSpec extends HealthCheckSpecification {
+    @Tidy
     @Tags([SMOKE, TOPOLOGY_DEPENDENT])
     def "System sets min port speed for isl capacity"() {
         given: "Two ports with different port speed"
@@ -48,11 +50,14 @@ class IslMinPortSpeedSpec extends HealthCheckSpecification {
             islUtils.getIslInfo(newIsl).get().maxBandwidth == [port.maxSpeed, newDstPort.maxSpeed].min()
         }
 
-        and: "Cleanup: Replug the link back and delete the moved ISL"
-        islUtils.replug(newIsl, true, isl, false, false)
-        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
-        islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
-        northbound.deleteLink(islUtils.toLinkParameters(newIsl))
-        Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
+        cleanup: "Replug the link back and delete the moved ISL"
+        if (newIsl){
+            islUtils.replug(newIsl, true, isl, false, false)
+            islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+            islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
+            northbound.deleteLink(islUtils.toLinkParameters(newIsl))
+            Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
+            database.resetCosts()
+        }
     }
 }

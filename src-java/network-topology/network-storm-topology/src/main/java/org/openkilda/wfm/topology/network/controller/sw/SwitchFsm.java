@@ -56,6 +56,7 @@ import org.openkilda.wfm.topology.network.service.ISwitchCarrier;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Getter;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.RetryPolicy;
@@ -87,7 +88,10 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private final KildaConfigurationRepository kildaConfigurationRepository;
     private final SpeakerRepository speakerRepository;
 
+    @Getter
     private final SwitchId switchId;
+    @Getter
+    private long lastPeriodicDumpGenerationContainingSwitch;
 
     private final Set<SwitchFeature> features = new HashSet<>();
     private final Map<Integer, AbstractPort> portByNumber = new HashMap<>();
@@ -103,7 +107,9 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         return new SwitchFsmFactory();
     }
 
-    public SwitchFsm(PersistenceManager persistenceManager, SwitchId switchId, NetworkOptions options) {
+    public SwitchFsm(
+            PersistenceManager persistenceManager, SwitchId switchId, NetworkOptions options,
+            Long periodicDumpGeneration) {
         this.transactionManager = persistenceManager.getTransactionManager();
         this.transactionRetryPolicy = transactionManager.getDefaultRetryPolicy()
                 .handle(ConstraintViolationException.class)
@@ -120,9 +126,25 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         this.switchId = switchId;
 
         this.options = options;
+        this.lastPeriodicDumpGenerationContainingSwitch = periodicDumpGeneration;
 
         logWrapper = new NetworkTopologyDashboardLogger(log);
         logWrapper.onSwitchAdd(switchId);
+    }
+
+    // -- API --
+
+    public void ensureOnline(ISwitchCarrier carrier, long lastSeenPeriodicDumpGeneration) {
+        if (lastSeenPeriodicDumpGeneration
+                < lastPeriodicDumpGenerationContainingSwitch + options.getSwitchOfflineGenerationLag()) {
+            return;
+        }
+
+        SwitchFsmContext context = SwitchFsmContext.builder(carrier)
+                .periodicDumpGeneration(lastSeenPeriodicDumpGeneration)
+                .missingInPeriodicDumps(true)
+                .build();
+        SwitchFsmFactory.EXECUTOR.fire(this, SwitchFsmEvent.OFFLINE, context);
     }
 
     // -- FSM actions --
@@ -143,6 +165,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     public void syncEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         speakerData = context.getSpeakerData();
         syncAttempts = options.getCountSynchronizationAttempts();
+
+        updateDumpGeneration(context);
 
         transactionManager.doInTransaction(
                 transactionRetryPolicy, () -> persistSwitchData(context.getAvailabilityData()));
@@ -189,6 +213,14 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     public void offlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                              SwitchFsmContext context) {
         logWrapper.onSwitchOffline(switchId);
+        if (context.isMissingInPeriodicDumps()) {
+            log.info(
+                    "Force switch {} to become OFFLINE due to missing in {} consecutive network dumps (last seen "
+                            + "dump generation {}, actual generation {})",
+                    switchId, options.getSwitchOfflineGenerationLag(), lastPeriodicDumpGenerationContainingSwitch,
+                    context.getPeriodicDumpGeneration());
+        }
+
         transactionManager.doInTransaction(
                 transactionRetryPolicy,
                 () -> {
@@ -196,6 +228,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                     updatePersistentStatus(sw, SwitchStatus.INACTIVE);
                     persistSwitchConnections(sw, context.getAvailabilityData());
                 });
+
         context.getOutput().sendSwitchStateChanged(switchId, SwitchStatus.INACTIVE);
         for (AbstractPort port : portByNumber.values()) {
             updateOnlineStatus(port, context, OnlineStatus.of(false, context.getIsRegionOffline()));
@@ -210,6 +243,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     public void syncState(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+        updateDumpGeneration(context);
         updatePorts(context, context.getSpeakerData(), false);
     }
 
@@ -264,24 +298,33 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         updatePortLinkMode(port, context);
     }
 
-    /**
-     * Removed ports FSM on SWITCH_REMOVE event.
-     */
-    public void removePortsFsm(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
-                               SwitchFsmContext context) {
-        List<AbstractPort> ports = new ArrayList<>(portByNumber.values());
-        for (AbstractPort port : ports) {
-            portDel(port, context);
-        }
-    }
-
     public void deletedEnterAction(
             SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         logWrapper.onSwitchDelete(switchId);
+
+        removeAllPorts(context);
         context.getOutput().switchRemovedNotification(switchId);
     }
 
+    public void syncDumpGenerationAction(
+            SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+        updateDumpGeneration(context);
+    }
+
     // -- private/service methods --
+
+    private void updateDumpGeneration(SwitchFsmContext context) {
+        if (context.getPeriodicDumpGeneration() != null) {
+            long update = context.getPeriodicDumpGeneration();
+            if (lastPeriodicDumpGenerationContainingSwitch < update) {
+                log.debug(
+                        "Receive periodic dump generation update for {} (current: {}, update: {}, result: {})",
+                        switchId, lastPeriodicDumpGenerationContainingSwitch, update,
+                        lastPeriodicDumpGenerationContainingSwitch);
+                lastPeriodicDumpGenerationContainingSwitch = update;
+            }
+        }
+    }
 
     private void processSyncResponse(SwitchFsmContext context) {
         if (isAwaitingResponse(context.getSyncKey())) {
@@ -408,6 +451,13 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         portByNumber.remove(port.getPortNumber());
         port.portDel(context.getOutput());
         logWrapper.onPortDelete(port);
+    }
+
+    public void removeAllPorts(SwitchFsmContext context) {
+        List<AbstractPort> ports = new ArrayList<>(portByNumber.values());
+        for (AbstractPort port : ports) {
+            portDel(port, context);
+        }
     }
 
     private void updatePortLinkMode(AbstractPort port, LinkStatus status, SwitchFsmContext context) {
@@ -580,19 +630,24 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     // -- service data types --
 
     public static class SwitchFsmFactory {
+        public static FsmExecutor<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> EXECUTOR
+                = new FsmExecutor<>(SwitchFsmEvent.NEXT);
+
         private final StateMachineBuilder<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> builder;
 
         SwitchFsmFactory() {
             builder = StateMachineBuilderFactory.create(
                     SwitchFsm.class, SwitchFsmState.class, SwitchFsmEvent.class, SwitchFsmContext.class,
                     // extra parameters
-                    PersistenceManager.class, SwitchId.class, NetworkOptions.class);
+                    PersistenceManager.class, SwitchId.class, NetworkOptions.class, Long.class);
 
             final String connectionsUpdateMethod = "connectionsUpdate";
 
             // INIT
             builder.transition().from(SwitchFsmState.INIT).to(SwitchFsmState.SYNC).on(SwitchFsmEvent.ONLINE);
             builder.transition().from(SwitchFsmState.INIT).to(SwitchFsmState.PENDING).on(SwitchFsmEvent.HISTORY);
+            builder.transition().from(SwitchFsmState.INIT).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
+            builder.transition().from(SwitchFsmState.INIT).to(SwitchFsmState.DELETED).on(SwitchFsmEvent.SWITCH_REMOVE);
             builder.internalTransition().within(SwitchFsmState.INIT).on(SwitchFsmEvent.CONNECTIONS_UPDATE)
                     .callMethod(connectionsUpdateMethod);
 
@@ -601,10 +656,13 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
             builder.transition().from(SwitchFsmState.PENDING).to(SwitchFsmState.SYNC).on(SwitchFsmEvent.ONLINE)
                     .callMethod("initPortsFromHistory");
             builder.transition().from(SwitchFsmState.PENDING).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
+            builder.transition().from(SwitchFsmState.PENDING).to(SwitchFsmState.DELETED)
+                    .on(SwitchFsmEvent.SWITCH_REMOVE);
+            builder.internalTransition().within(SwitchFsmState.PENDING).on(SwitchFsmEvent.CONNECTIONS_UPDATE)
+                    .callMethod(connectionsUpdateMethod);
 
             // SYNC
-            builder.transition().from(SwitchFsmState.SYNC).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.SYNC_ENDED);
-            builder.transition().from(SwitchFsmState.SYNC).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
+            builder.onEntry(SwitchFsmState.SYNC).callMethod("syncEnter");
             builder.internalTransition().within(SwitchFsmState.SYNC).on(SwitchFsmEvent.SYNC_RESPONSE)
                     .callMethod("syncPerformed");
             builder.internalTransition().within(SwitchFsmState.SYNC).on(SwitchFsmEvent.SYNC_ERROR)
@@ -613,8 +671,10 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                     .callMethod("syncTimeout");
             builder.internalTransition().within(SwitchFsmState.SYNC).on(SwitchFsmEvent.CONNECTIONS_UPDATE)
                     .callMethod(connectionsUpdateMethod);
-            builder.onEntry(SwitchFsmState.SYNC)
-                    .callMethod("syncEnter");
+            builder.internalTransition().within(SwitchFsmState.SYNC).on(SwitchFsmEvent.ONLINE)
+                    .callMethod("syncDumpGenerationAction");
+            builder.transition().from(SwitchFsmState.SYNC).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.SYNC_ENDED);
+            builder.transition().from(SwitchFsmState.SYNC).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
 
             // SETUP
             builder.transition()
@@ -623,6 +683,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                     .callMethod("setupEnter");
 
             // ONLINE
+            builder.onEntry(SwitchFsmState.ONLINE).callMethod("onlineEnter");
             builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.ONLINE)
                     .callMethod("syncState");
             builder.transition().from(SwitchFsmState.ONLINE).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
@@ -636,31 +697,27 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                     .callMethod("handlePortLinkStateChange");
             builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.CONNECTIONS_UPDATE)
                     .callMethod(connectionsUpdateMethod);
-            builder.onEntry(SwitchFsmState.ONLINE)
-                    .callMethod("onlineEnter");
 
             // OFFLINE
             builder.transition().from(SwitchFsmState.OFFLINE).to(SwitchFsmState.SYNC).on(SwitchFsmEvent.ONLINE);
             builder.transition().from(SwitchFsmState.OFFLINE).to(SwitchFsmState.DELETED)
-                    .on(SwitchFsmEvent.SWITCH_REMOVE)
-                    .callMethod("removePortsFsm");
+                    .on(SwitchFsmEvent.SWITCH_REMOVE);
             builder.internalTransition().within(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.CONNECTIONS_UPDATE)
                     .callMethod(connectionsUpdateMethod);
             builder.onEntry(SwitchFsmState.OFFLINE)
                     .callMethod("offlineEnter");
 
             // DELETED
-            builder.onEntry(SwitchFsmState.DELETED)
-                    .callMethod("deletedEnterAction");
+            builder.onEntry(SwitchFsmState.DELETED).callMethod("deletedEnterAction");
             builder.defineFinalState(SwitchFsmState.DELETED);
         }
 
-        public FsmExecutor<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> produceExecutor() {
-            return new FsmExecutor<>(SwitchFsmEvent.NEXT);
-        }
-
-        public SwitchFsm produce(PersistenceManager persistenceManager, SwitchId switchId, NetworkOptions options) {
-            return builder.newStateMachine(SwitchFsmState.INIT, persistenceManager, switchId, options);
+        public SwitchFsm produce(
+                PersistenceManager persistenceManager, SwitchId switchId, NetworkOptions options, long dumpGeneration) {
+            SwitchFsm fsm = builder.newStateMachine(
+                    SwitchFsmState.INIT, persistenceManager, switchId, options, dumpGeneration);
+            fsm.start();
+            return fsm;
         }
     }
 
@@ -680,6 +737,9 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         private Boolean portEnabled;
 
         private Boolean isRegionOffline;
+        private boolean missingInPeriodicDumps;
+
+        private Long periodicDumpGeneration;
 
         public static SwitchFsmContextBuilder builder(ISwitchCarrier output) {
             return (new SwitchFsmContextBuilder()).output(output);

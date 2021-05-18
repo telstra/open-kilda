@@ -19,6 +19,7 @@ import spock.lang.Narrative
  environment (using v2 APIs)""")
 class ContentionV2Spec extends BaseSpecification {
 
+    @Tidy
     def "Parallel flow creation requests with the same name creates only 1 flow"() {
         when: "Create the same flow in parallel multiple times"
         def flowsAmount = 20
