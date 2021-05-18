@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.93.0 (17/05/2021)
+
+### Bug Fixes:
+-  [#4255](https://github.com/telstra/open-kilda/pull/4255) Upgrading node and angular cli to fix gui build issue (Issue: [#4254](https://github.com/telstra/open-kilda/issues/4254)) [**gui**]
+-  [#4148](https://github.com/telstra/open-kilda/pull/4148) Fix deserialization error in flow-monitoring on ISL delete event
+-  [#4249](https://github.com/telstra/open-kilda/pull/4249) Fix isl cache unit test [**tests**]
+
+### Improvements:
+-  [#4200](https://github.com/telstra/open-kilda/pull/4200) Test/improve cleanups [**tests**]
+-  [#4208](https://github.com/telstra/open-kilda/pull/4208) add test for a flow with latency according to #4201 [**tests**]
+-  [#3923](https://github.com/telstra/open-kilda/pull/3923) Workaround for loss of switch disconnect event [**storm-topologies**]
+-  [#4248](https://github.com/telstra/open-kilda/pull/4248) Update Floodlight version to fix unit tests [**tests**]
+-  [#4223](https://github.com/telstra/open-kilda/pull/4223) Document aimed to describe OF cookies format [**docs**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.92.0...v1.93.0).
+
+### Affected Components:
+flow-monitor, gui, network
+
+---
+
 ## v1.92.0 (05/05/2021)
 
 ### Features:
