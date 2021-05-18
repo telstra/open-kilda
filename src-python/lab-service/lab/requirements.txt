@@ -1,4 +1,4 @@
 python-logstash
 flask
-docker
+docker<=4.4.4
 requests
