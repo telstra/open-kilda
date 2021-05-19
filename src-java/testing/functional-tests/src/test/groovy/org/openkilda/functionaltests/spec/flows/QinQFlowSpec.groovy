@@ -30,7 +30,6 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Shared
 
 import javax.inject.Provider
@@ -896,7 +895,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/3858")
     def "System doesn't rebuild flow path to more preferable path while updating innerVlanId"() {
         given: "Two active switches connected to traffgens with two possible paths at least"
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected*.dpId ?:
