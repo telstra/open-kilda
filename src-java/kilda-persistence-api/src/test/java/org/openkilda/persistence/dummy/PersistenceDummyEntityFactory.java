@@ -78,11 +78,16 @@ public class PersistenceDummyEntityFactory {
     private final IslDefaults islDefaults = new IslDefaults();
 
     @Getter
-    private final FlowDefaults flowDefaults = new FlowDefaults();
+    private FlowDefaults flowDefaults;
 
     @Getter
     private final FlowPathDefaults flowPathDefaults = new FlowPathDefaults();
 
+
+    public PersistenceDummyEntityFactory(PersistenceManager persistenceManager, FlowDefaults flowDefaults) {
+        this(persistenceManager);
+        this.flowDefaults = flowDefaults;
+    }
 
     public PersistenceDummyEntityFactory(PersistenceManager persistenceManager) {
         txManager = persistenceManager.getTransactionManager();
@@ -97,6 +102,8 @@ public class PersistenceDummyEntityFactory {
         flowCookieRepository = repositoryFactory.createFlowCookieRepository();
         transitVlanRepository = repositoryFactory.createTransitVlanRepository();
         transitVxLanRepository = repositoryFactory.createVxlanRepository();
+
+        flowDefaults = new FlowDefaults();
     }
 
     /**

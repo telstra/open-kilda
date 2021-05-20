@@ -147,3 +147,10 @@ flow.delete.speaker.timeout.seconds = 10
 flow.delete.speaker.command.retries = 3
 
 blue.green.mode = {{ getv "/kilda_blue_green_mode" "blue" }}
+
+# flow-monitoring topology
+flow.sla.check.interval.seconds = {{ getv "/kilda_flow_sla_check_interval_seconds" }}
+flow.rtt.stats.expiration.seconds = {{ getv "/kilda_flow_rtt_stats_expiration_seconds" }}
+isl.rtt.latency.expiration.seconds = {{ getv "/kilda_isl_rtt_latency_expiration_seconds" }}
+flow.latency.sla.timeout.seconds = {{ getv "/kilda_flow_latency_sla_timeout_seconds" }}
+flow.latency.sla.threshold.percent = {{ getv "/kilda_flow_latency_sla_threshold_percent" }}

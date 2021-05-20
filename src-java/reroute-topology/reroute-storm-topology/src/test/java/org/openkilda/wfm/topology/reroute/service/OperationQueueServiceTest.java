@@ -17,9 +17,9 @@ package org.openkilda.wfm.topology.reroute.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
+import static org.openkilda.messaging.command.flow.FlowRerouteRequest.createManualFlowRerouteRequest;
 
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
-import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.wfm.topology.reroute.bolts.OperationQueueCarrier;
 import org.openkilda.wfm.topology.reroute.service.OperationQueueService.FlowQueueData;
 
@@ -38,8 +38,10 @@ public class OperationQueueServiceTest {
 
     @Test
     public void shouldAddFirst() {
-        service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_A, new FlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
-        service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_C, new FlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
+        service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_A,
+                createManualFlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
+        service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_C,
+                createManualFlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
 
         FlowQueueData flowQueueData = service.getFlowCommands().get(TEST_FLOW_ID);
 
@@ -71,8 +73,10 @@ public class OperationQueueServiceTest {
 
     @Test
     public void shouldAddLast() {
-        service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_A, new FlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
-        service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_B, new FlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
+        service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_A,
+                createManualFlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
+        service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_B,
+                createManualFlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
 
         FlowQueueData flowQueueData = service.getFlowCommands().get(TEST_FLOW_ID);
 
@@ -95,8 +99,10 @@ public class OperationQueueServiceTest {
 
     @Test
     public void shouldHandleTimeout() {
-        service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_A, new FlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
-        service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_B, new FlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
+        service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_A,
+                createManualFlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
+        service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_B,
+                createManualFlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
 
         FlowQueueData flowQueueData = service.getFlowCommands().get(TEST_FLOW_ID);
 

@@ -57,4 +57,12 @@ public class UpdateFlowInfo extends InfoData {
         this.maxLatency = maxLatency;
         this.maxLatencyTier2 = maxLatencyTier2;
     }
+
+    public Long getMaxLatency() {
+        return maxLatency == null || maxLatency == 0 ? Long.MAX_VALUE : maxLatency;
+    }
+
+    public Long getMaxLatencyTier2() {
+        return maxLatencyTier2 == null || maxLatencyTier2 == 0 ? Long.MAX_VALUE : maxLatencyTier2;
+    }
 }

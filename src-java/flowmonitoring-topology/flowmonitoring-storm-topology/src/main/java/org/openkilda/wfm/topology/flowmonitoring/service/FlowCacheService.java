@@ -94,20 +94,16 @@ public class FlowCacheService {
     private void checkFlowLatency(String flowId, FlowState flowState) {
         Instant current = clock.instant();
         if (isExpired(flowState.getForwardPathLatency().getTimestamp(), current)) {
-            carrier.emitCalculateFlowLatencyRequest(flowId, FlowDirection.FORWARD,
-                    flowState.getForwardPath(), flowState.getMaxLatency(), flowState.getMaxLatencyTier2());
+            carrier.emitCalculateFlowLatencyRequest(flowId, FlowDirection.FORWARD, flowState.getForwardPath());
         } else {
             carrier.emitCheckFlowLatencyRequest(flowId, FlowDirection.FORWARD,
-                    flowState.getForwardPathLatency().getLatency(),
-                    flowState.getMaxLatency(), flowState.getMaxLatencyTier2());
+                    flowState.getForwardPathLatency().getLatency());
         }
         if (isExpired(flowState.getReversePathLatency().getTimestamp(), current)) {
-            carrier.emitCalculateFlowLatencyRequest(flowId, FlowDirection.REVERSE,
-                    flowState.getReversePath(), flowState.getMaxLatency(), flowState.getMaxLatencyTier2());
+            carrier.emitCalculateFlowLatencyRequest(flowId, FlowDirection.REVERSE, flowState.getReversePath());
         } else {
             carrier.emitCheckFlowLatencyRequest(flowId, FlowDirection.REVERSE,
-                    flowState.getReversePathLatency().getLatency(),
-                    flowState.getMaxLatency(), flowState.getMaxLatencyTier2());
+                    flowState.getReversePathLatency().getLatency());
         }
     }
 
