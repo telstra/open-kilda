@@ -310,6 +310,8 @@ public abstract class FlowMapper {
     @Mapping(target = "maxLatencyTier2",
             expression = "java(f.getMaxLatencyTier2() != null ? f.getMaxLatencyTier2() / 1000000L : null)")
     @Mapping(target = "loopSwitchId", source = "f.loopSwitchId")
+    @Mapping(target = "forwardPathLatencyNs", source = "f.forwardLatency")
+    @Mapping(target = "reversePathLatencyNs", source = "f.reverseLatency")
     protected abstract FlowResponseV2 generatedMap(FlowDto f, FlowEndpointV2 source, FlowEndpointV2 destination);
 
     @Mapping(target = "id", source = "flowId")

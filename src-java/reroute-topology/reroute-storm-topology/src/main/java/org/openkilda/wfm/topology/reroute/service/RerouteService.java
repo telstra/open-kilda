@@ -391,7 +391,7 @@ public class RerouteService {
     /**
      * Process manual reroute request.
      */
-    public void processManualRerouteRequest(MessageSender sender, String correlationId, FlowRerouteRequest request) {
+    public void processRerouteRequest(MessageSender sender, String correlationId, FlowRerouteRequest request) {
         Optional<Flow> flow = flowRepository.findById(request.getFlowId());
         FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(flow.orElse(null))
                 .correlationId(correlationId)
@@ -400,7 +400,11 @@ public class RerouteService {
                 .effectivelyDown(request.isEffectivelyDown())
                 .reason(request.getReason())
                 .build();
-        sender.emitManualRerouteCommand(request.getFlowId(), flowThrottlingData);
+        if (request.isManual()) {
+            sender.emitManualRerouteCommand(request.getFlowId(), flowThrottlingData);
+        } else {
+            sender.emitRerouteCommand(request.getFlowId(), flowThrottlingData);
+        }
     }
 
     /**

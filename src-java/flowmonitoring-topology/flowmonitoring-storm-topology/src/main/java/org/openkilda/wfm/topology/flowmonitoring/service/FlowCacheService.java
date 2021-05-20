@@ -92,20 +92,16 @@ public class FlowCacheService {
     private void checkFlowLatency(String flowId, FlowState flowState) {
         long currentTimeMillis = clock.millis();
         if (currentTimeMillis > flowState.getForwardPathLatency().getTimestamp() + flowRttStatsExpirationTime) {
-            carrier.emitCalculateFlowLatencyRequest(flowId, FlowDirection.FORWARD,
-                    flowState.getForwardPath(), flowState.getMaxLatency(), flowState.getMaxLatencyTier2());
+            carrier.emitCalculateFlowLatencyRequest(flowId, FlowDirection.FORWARD, flowState.getForwardPath());
         } else {
             carrier.emitCheckFlowLatencyRequest(flowId, FlowDirection.FORWARD,
-                    flowState.getForwardPathLatency().getLatency(),
-                    flowState.getMaxLatency(), flowState.getMaxLatencyTier2());
+                    flowState.getForwardPathLatency().getLatency());
         }
         if (currentTimeMillis > flowState.getReversePathLatency().getTimestamp() + flowRttStatsExpirationTime) {
-            carrier.emitCalculateFlowLatencyRequest(flowId, FlowDirection.REVERSE,
-                    flowState.getReversePath(), flowState.getMaxLatency(), flowState.getMaxLatencyTier2());
+            carrier.emitCalculateFlowLatencyRequest(flowId, FlowDirection.REVERSE, flowState.getReversePath());
         } else {
             carrier.emitCheckFlowLatencyRequest(flowId, FlowDirection.REVERSE,
-                    flowState.getReversePathLatency().getLatency(),
-                    flowState.getMaxLatency(), flowState.getMaxLatencyTier2());
+                    flowState.getReversePathLatency().getLatency());
         }
     }
 }

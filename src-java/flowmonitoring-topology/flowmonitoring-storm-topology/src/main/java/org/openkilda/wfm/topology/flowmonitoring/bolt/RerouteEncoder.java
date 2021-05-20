@@ -13,16 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowmonitoring.service;
+package org.openkilda.wfm.topology.flowmonitoring.bolt;
 
-import org.openkilda.server42.messaging.FlowDirection;
-import org.openkilda.wfm.topology.flowmonitoring.model.Link;
+import org.openkilda.wfm.share.bolt.KafkaEncoder;
+import org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.ComponentId;
 
-import java.util.List;
-
-public interface FlowCacheBoltCarrier {
-
-    void emitCalculateFlowLatencyRequest(String flowId, FlowDirection direction, List<Link> flowPath);
-
-    void emitCheckFlowLatencyRequest(String flowId, FlowDirection direction, long latency);
+public class RerouteEncoder extends KafkaEncoder {
+    public static final String BOLT_ID = ComponentId.REROUTE_ENCODER.toString();
 }

@@ -74,6 +74,8 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     public static final String SRC_ARP_PROPERTY = "detect_src_arp_connected_devices";
     public static final String DST_ARP_PROPERTY = "detect_dst_arp_connected_devices";
     public static final String LOOP_SWITCH_ID_PROPERTY = "loop_switch_id";
+    public static final String FORWAWRD_LATENCY_PROPERTY = "forward_latency";
+    public static final String REVERSE_LATENCY_PROPERTY = "reverse_latency";
 
     private Switch srcSwitch;
     private Switch destSwitch;
@@ -349,6 +351,22 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     @Property(LOOP_SWITCH_ID_PROPERTY)
     @Convert(SwitchIdConverter.class)
     public abstract void setLoopSwitchId(SwitchId loopSwitchId);
+
+    @Override
+    @Property(FORWAWRD_LATENCY_PROPERTY)
+    public abstract long getForwardLatency();
+
+    @Override
+    @Property(FORWAWRD_LATENCY_PROPERTY)
+    public abstract void setForwardLatency(long forwardLatency);
+
+    @Override
+    @Property(REVERSE_LATENCY_PROPERTY)
+    public abstract long getReverseLatency();
+
+    @Override
+    @Property(REVERSE_LATENCY_PROPERTY)
+    public abstract void setReverseLatency(long reverseLatency);
 
     @Override
     public Switch getSrcSwitch() {

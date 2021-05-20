@@ -40,14 +40,10 @@ public interface FlowMapper {
 
     @Mapping(target = "forwardPath", expression = "java(toLinks(flow.getForwardPath().getSegments()))")
     @Mapping(target = "reversePath", expression = "java(toLinks(flow.getReversePath().getSegments()))")
-    @Mapping(target = "maxLatency", source = "maxLatency")
-    @Mapping(target = "maxLatencyTier2", source = "maxLatencyTier2")
     FlowState toFlowState(Flow flow);
 
     @Mapping(target = "forwardPath", source = "info.flowPath.forwardPath")
     @Mapping(target = "reversePath", source = "info.flowPath.reversePath")
-    @Mapping(target = "maxLatency", source = "maxLatency")
-    @Mapping(target = "maxLatencyTier2", source = "maxLatencyTier2")
     FlowState toFlowState(UpdateFlowInfo info);
 
     /**

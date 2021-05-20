@@ -58,25 +58,35 @@ public class FlowRerouteRequest extends CommandData {
     @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth;
 
+    @JsonProperty("manual")
+    private boolean manual;
+
     /**
      * Create Simplified request usable only for northbound API.
      */
     public FlowRerouteRequest(String flowId, boolean force, boolean ignoreBandwidth, String reason) {
-        this(flowId, force, false, ignoreBandwidth, Collections.emptySet(), reason);
+        this(flowId, force, false, ignoreBandwidth, Collections.emptySet(), reason, true);
+    }
+
+    public FlowRerouteRequest(String flowId, boolean force, boolean effectivelyDown,
+                              boolean ignoreBandwidth, Set<IslEndpoint> affectedIsl, String reason) {
+        this(flowId, force, effectivelyDown, ignoreBandwidth, affectedIsl, reason, false);
     }
 
     @JsonCreator
     public FlowRerouteRequest(@NonNull @JsonProperty("flowid") String flowId,
                               @JsonProperty("force") boolean force,
-                              @JsonProperty("effectively_down")  boolean effectivelyDown,
+                              @JsonProperty("effectively_down") boolean effectivelyDown,
                               @JsonProperty("ignore_bandwidth") boolean ignoreBandwidth,
                               @NonNull @JsonProperty("path_ids") Set<IslEndpoint> affectedIsl,
-                              @JsonProperty("reason") String reason) {
+                              @JsonProperty("reason") String reason,
+                              @JsonProperty("manual") boolean manual) {
         this.flowId = flowId;
         this.force = force;
         this.effectivelyDown = effectivelyDown;
         this.affectedIsl = affectedIsl;
         this.reason = reason;
         this.ignoreBandwidth = ignoreBandwidth;
+        this.manual = manual;
     }
 }

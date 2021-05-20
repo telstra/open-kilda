@@ -97,11 +97,9 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
         service.processFlowLatencyCheck();
 
         List<Link> expectedForwardPath = getLinks(SRC_SWITCH, ISL_SRC_PORT, DST_SWITCH, ISL_DST_PORT);
-        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.FORWARD, expectedForwardPath,
-                flow.getMaxLatency(), flow.getMaxLatencyTier2());
+        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.FORWARD, expectedForwardPath);
         List<Link> expectedReversePath = reverse(expectedForwardPath);
-        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.REVERSE, expectedReversePath,
-                flow.getMaxLatency(), flow.getMaxLatencyTier2());
+        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.REVERSE, expectedReversePath);
 
         verifyNoMoreInteractions(carrier);
     }
@@ -138,11 +136,9 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
         service.processFlowLatencyCheck();
 
         List<Link> expectedForwardPath = getLinks(SRC_SWITCH, ISL_SRC_PORT_2, DST_SWITCH, ISL_DST_PORT_2);
-        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.FORWARD, expectedForwardPath,
-                maxLatency, maxLatencyTier2);
+        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.FORWARD, expectedForwardPath);
         List<Link> expectedReversePath = reverse(expectedForwardPath);
-        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.REVERSE, expectedReversePath,
-                maxLatency, maxLatencyTier2);
+        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.REVERSE, expectedReversePath);
 
         verifyNoMoreInteractions(carrier);
     }
@@ -166,11 +162,9 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
 
         List<Link> expectedForwardPath = getLinks(SRC_SWITCH, ISL_SRC_PORT, DST_SWITCH, ISL_DST_PORT);
         verify(carrier).emitCheckFlowLatencyRequest(flow.getFlowId(), FlowDirection.FORWARD,
-                TimestampHelper.noviflowTimestamp(t1) - TimestampHelper.noviflowTimestamp(t0),
-                flow.getMaxLatency(), flow.getMaxLatencyTier2());
+                TimestampHelper.noviflowTimestamp(t1) - TimestampHelper.noviflowTimestamp(t0));
         List<Link> expectedReversePath = reverse(expectedForwardPath);
-        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.REVERSE, expectedReversePath,
-                flow.getMaxLatency(), flow.getMaxLatencyTier2());
+        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.REVERSE, expectedReversePath);
 
         verifyNoMoreInteractions(carrier);
     }
