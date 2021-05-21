@@ -39,7 +39,9 @@ namespace org::openkilda {
             newPacket.addLayer(&newVlanLayer);
         }
 
-        pcpp::VlanLayer newVlanLayer2(arg.tunnel_id, false, 1, PCPP_ETHERTYPE_IP);
+        uint16_t nextType2 = arg.inner_tunnel_id ? PCPP_ETHERTYPE_VLAN : PCPP_ETHERTYPE_IP;
+
+        pcpp::VlanLayer newVlanLayer2(arg.tunnel_id, false, 1, nextType2);
         if (arg.tunnel_id) {
             newPacket.addLayer(&newVlanLayer2);
         }
