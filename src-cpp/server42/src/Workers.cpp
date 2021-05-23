@@ -44,23 +44,73 @@ namespace org::openkilda {
         return timestamp;
     }
 
+    void do_write_isl_packets(pcpp::DpdkDevice* device,
+                              org::openkilda::isl_pool_t& m_isl_pool,
+                              std::mutex& m_pool_guard) {
+
+        BOOST_LOG_TRIVIAL(info) << "tick isl_pool_size: " << m_isl_pool.table.size();
+
+        std::lock_guard<std::mutex> guard(m_pool_guard);
+        pcpp::MBufRawPacket **start = m_isl_pool.table.data();
+        pcpp::MBufRawPacket **end = start + m_isl_pool.table.size();
+
+        const uint64_t timestamp = htobe64(get_current_timestamp());
+
+        const auto chunk_size = long(Config::chunk_size);
+        uint_fast8_t error_count = 0;
+        for (pcpp::MBufRawPacket **pos = start; pos < end; pos += chunk_size) {
+            uint16_t send = 0;
+            uint_fast8_t tries = 0;
+
+            pcpp::MBufRawPacket mbuf_send_buffer[Config::chunk_size];
+            pcpp::MBufRawPacket *mbuf_send_buffer_p[Config::chunk_size];
+
+            for (uint_fast8_t i = 0; i < std::min(chunk_size, end - pos); ++i) {
+                mbuf_send_buffer[i].initFromRawPacket(*(pos+i), device);
+                mbuf_send_buffer_p[i] = &mbuf_send_buffer[i];
+                mbuf_send_buffer_p[i]->setFreeMbuf(true);
+
+                //TODO: can be switched to raw memory arithmetics
+                pcpp::Packet parsed_packet(mbuf_send_buffer_p[i], false, pcpp::UDP);
+                auto *udp_layer = parsed_packet.getLayerOfType<pcpp::UdpLayer>();
+                auto *payload = reinterpret_cast<org::openkilda::IslPayload *>(udp_layer->getLayerPayload());
+                payload->t0 = timestamp;
+            }
+
+            while (send != std::min(chunk_size, end - pos)) {
+                send = device->sendPackets(mbuf_send_buffer_p, std::min(chunk_size, end - pos), 0, false);
+                if (send != std::min(chunk_size, end - pos)) {
+                    if(++tries > 3) {
+                        ++error_count;
+                        break;
+                    }
+                }
+            }
+            if (error_count > 5) {
+                BOOST_LOG_TRIVIAL(error) << "Errors while send packets, drop send try";
+                break;
+            }
+        }
+    }
+
     bool write_thread(boost::atomic<bool> &alive,
                       pcpp::DpdkDevice* device,
-                      org::openkilda::flow_pool_t& m_pool,
-                      std::mutex& m_pool_guard) {
+                      org::openkilda::flow_pool_t& m_flow_pool,
+                      std::mutex& m_pool_guard,
+                      org::openkilda::isl_pool_t& m_isl_pool) {
 
         const uint64_t cycles_in_one_second = rte_get_timer_hz();
         const uint64_t cycles_in_500_ms = cycles_in_one_second / 2;
 
         while (alive.load()) {
             try {
-                BOOST_LOG_TRIVIAL(info) << "tick pool_size: " << m_pool.table.size();
+                BOOST_LOG_TRIVIAL(info) << "tick flow_pool_size: " << m_flow_pool.table.size();
 
                 uint64_t start_tsc = rte_get_timer_cycles();
                 {
                     std::lock_guard<std::mutex> guard(m_pool_guard);
-                    pcpp::MBufRawPacket **start = m_pool.table.data();
-                    pcpp::MBufRawPacket **end = start + m_pool.table.size();
+                    pcpp::MBufRawPacket **start = m_flow_pool.table.data();
+                    pcpp::MBufRawPacket **end = start + m_flow_pool.table.size();
 
                     const uint64_t timestamp = htobe64(get_current_timestamp());
 
@@ -81,7 +131,7 @@ namespace org::openkilda {
                             //TODO: can be switched to raw memory arithmetics
                             pcpp::Packet parsed_packet(mbuf_send_buffer_p[i], false, pcpp::UDP);
                             auto *udp_layer = parsed_packet.getLayerOfType<pcpp::UdpLayer>();
-                            auto *payload = reinterpret_cast<org::openkilda::Payload *>(udp_layer->getLayerPayload());
+                            auto *payload = reinterpret_cast<org::openkilda::FlowPayload *>(udp_layer->getLayerPayload());
                             payload->t0 = timestamp;
                         }
 
@@ -100,6 +150,9 @@ namespace org::openkilda {
                         }
                     }
                 }
+
+                do_write_isl_packets(device, m_isl_pool, m_pool_guard);
+
                 while (true) {
                     uint64_t current_tsc = rte_get_timer_cycles();
                     if (unlikely(current_tsc - start_tsc >= cycles_in_500_ms)) {
@@ -115,7 +168,6 @@ namespace org::openkilda {
 
         return true;
     }
-
 
     bool read_thread(
             boost::atomic<bool> &alive,
@@ -223,9 +275,11 @@ namespace org::openkilda {
                     auto udp = parsed_packet.getLayerOfType<pcpp::UdpLayer>();
 
                     if (likely(eth->getDestMac() == src_mac && udp)) {
-                        if (udp->getLayerPayloadSize() == sizeof(Payload)) {
+                        auto udpSrcPort = ntohs(udp->getUdpHeader()->portSrc);
+                        if (udpSrcPort == Config::flow_rtt_caught_packet_udp_src_port
+                                && udp->getLayerPayloadSize() == sizeof(FlowPayload)) {
                             packet_id++;
-                            auto payload = reinterpret_cast<const org::openkilda::Payload *>(udp->getLayerPayload());
+                            auto payload = reinterpret_cast<const org::openkilda::FlowPayload *>(udp->getLayerPayload());
                             auto packet = bucket.add_flowlatencypacket();
 
                             BOOST_LOG_TRIVIAL(debug) << "flow_id: " << payload->flow_id << " "
@@ -247,10 +301,35 @@ namespace org::openkilda {
                             packet->set_packet_id(packet_id);
                             packet->set_direction(payload->direction);
                             BOOST_LOG_TRIVIAL(debug) << packet->DebugString();
+                        } else if (udpSrcPort == Config::isl_rtt_caught_packet_catch_udp_src_port
+                                && udp->getLayerPayloadSize() == sizeof(IslPayload)) {
+                            packet_id++;
+                            auto payload = reinterpret_cast<const org::openkilda::IslPayload *>(udp->getLayerPayload());
+                            auto packet = bucket.add_isllatencypacket();
+
+                            BOOST_LOG_TRIVIAL(debug) << "switch_id: " << payload->switch_id << " "
+                                                     << "port: " << payload->port << " "
+                                                     << "t0 raw: " << payload->t0 << " "
+                                                     << "t1 raw: " << payload->t1 << " "
+                                                     << "t0: " << be64toh(payload->t0) << " "
+                                                     << "t1: " << be64toh(payload->t1) << " "
+                                                     << "packet_id: " << packet_id;
+
+                            packet->set_switch_id(payload->switch_id);
+                            packet->set_port(payload->port);
+                            packet->set_t0(be64toh(payload->t0));
+
+                            if (payload->t1) {
+                                packet->set_t1(be64toh(payload->t1));
+                            } else {
+                                packet->set_t1(mbuf_table[i]->timestamp);
+                            }
+                            packet->set_packet_id(packet_id);
+                            BOOST_LOG_TRIVIAL(debug) << packet->DebugString();
                         } else {
                             BOOST_LOG_TRIVIAL(error)
                                 << "drop packet by invalid payload size: " << udp->getLayerPayloadSize() << " "
-                                << "expected: " << sizeof(Payload);
+                                << "or by invalid UDP src port: " << udpSrcPort;
                         }
                     } else {
                         if (eth->getDestMac() != src_mac) {
@@ -266,10 +345,10 @@ namespace org::openkilda {
                     rte_pktmbuf_free(mbuf_table[i]);
                 }
 
-                if (bucket.flowlatencypacket_size()) {
+                if (bucket.flowlatencypacket_size() || bucket.isllatencypacket_size()) {
 
                     zmq::message_t message(bucket.ByteSizeLong());
-                    BOOST_LOG_TRIVIAL(debug) << "flow_bucket <" << bucket.DebugString() << ">";
+                    BOOST_LOG_TRIVIAL(debug) << "latency_bucket <" << bucket.DebugString() << ">";
                     bucket.SerializeToArray(message.data(), message.size());
 
                     /*
@@ -281,7 +360,7 @@ namespace org::openkilda {
                     while (!socket.send(message, zmq::send_flags::dontwait) && alive) {}
 
                 } else {
-                    BOOST_LOG_TRIVIAL(info) << "flow_bucket packet_size==0 " << bucket.DebugString() << "\n" << std::flush;
+                    BOOST_LOG_TRIVIAL(info) << "latency_bucket packet_size==0 " << bucket.DebugString() << "\n" << std::flush;
                 }
 
             } catch (zmq::error_t &exception) {
@@ -330,29 +409,61 @@ namespace org::openkilda {
                 eth->setSourceMac(src);
 
                 auto *udp_layer = parsed_packet.getLayerOfType<pcpp::UdpLayer>();
+                auto udpDstPort = ntohs(udp_layer->getUdpHeader()->portDst);
 
-                auto *payload = reinterpret_cast<org::openkilda::Payload *>(udp_layer->getLayerPayload());
+                if (udpDstPort == Config::flow_rtt_generated_packet_udp_dst_port
+                    && udp_layer->getLayerPayloadSize() == sizeof(FlowPayload)) {
+                    udp_layer->getUdpHeader()->portSrc = htons(Config::flow_rtt_caught_packet_udp_src_port);
 
-                std::string flow_id(payload->flow_id);
+                    auto *payload = reinterpret_cast<org::openkilda::FlowPayload *>(udp_layer->getLayerPayload());
 
-                if (!fake_duration.count(flow_id)) {
-                    fake_duration[flow_id] = base_latency(rd) * cycles_in_1_ms;
-                }
+                    std::string flow_id(payload->flow_id);
 
-                std::shared_ptr<pcpp::MBufRawPacket> mbuf_raw_ptr(new pcpp::MBufRawPacket());
+                    if (!fake_duration.count(flow_id)) {
+                        fake_duration[flow_id] = base_latency(rd) * cycles_in_1_ms;
+                    }
 
-                mbuf_raw_ptr->initFromRawPacket(rx_mbuf[i], device);
+                    std::shared_ptr <pcpp::MBufRawPacket> mbuf_raw_ptr(new pcpp::MBufRawPacket());
 
-                uint64_t latency_time = fake_duration[flow_id];
-                const uint64_t delta_based_direction = 3 * cycles_in_1_ms;
-                if (payload->direction) {
+                    mbuf_raw_ptr->initFromRawPacket(rx_mbuf[i], device);
+
+                    uint64_t latency_time = fake_duration[flow_id];
+                    const uint64_t delta_based_direction = 3 * cycles_in_1_ms;
+                    if (payload->direction) {
+                        latency_time += delta_based_direction;
+                    } else {
+                        latency_time -= delta_based_direction;
+                    }
+
+                    queue.push(std::make_tuple(start_tsc + latency_time, mbuf_raw_ptr));
+                } else if (udpDstPort == Config::isl_rtt_generated_packet_udp_dst_port
+                        && udp_layer->getLayerPayloadSize() == sizeof(IslPayload)) {
+                    udp_layer->getUdpHeader()->portSrc = htons(Config::isl_rtt_caught_packet_catch_udp_src_port);
+
+                    auto *payload = reinterpret_cast<org::openkilda::IslPayload *>(udp_layer->getLayerPayload());
+
+                    std::string isl_key(str(boost::format("%1%-%2%") % payload->switch_id % payload->port));
+
+                    if (!fake_duration.count(isl_key)) {
+                        fake_duration[isl_key] = base_latency(rd) * cycles_in_1_ms;
+                    }
+
+                    std::shared_ptr <pcpp::MBufRawPacket> mbuf_raw_ptr(new pcpp::MBufRawPacket());
+
+                    mbuf_raw_ptr->initFromRawPacket(rx_mbuf[i], device);
+
+                    uint64_t latency_time = fake_duration[isl_key];
+                    const uint64_t delta_based_direction = 3 * cycles_in_1_ms;
                     latency_time += delta_based_direction;
-                } else {
-                    latency_time -= delta_based_direction;
-                }
 
-                queue.push(std::make_tuple(start_tsc + latency_time, mbuf_raw_ptr));
+                    queue.push(std::make_tuple(start_tsc + latency_time, mbuf_raw_ptr));
+                } else {
+                    BOOST_LOG_TRIVIAL(error)
+                            << "drop packet by invalid payload size: " << udp_layer->getLayerPayloadSize() << " "
+                            << "or by invalid UDP dst port: " << udpDstPort;
+                }
             }
+
 
             std::vector<pcpp::MBufRawPacket *> send_buf;
             std::vector<std::shared_ptr<pcpp::MBufRawPacket>> holder;

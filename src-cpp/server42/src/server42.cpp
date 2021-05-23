@@ -148,7 +148,8 @@ worker_artefact_t build_write_thread(SharedContext &shared_context) {
     auto ptr = boost::make_shared<DpdkCoreThread>(boost::bind(write_thread, _2,
                                                               shared_context.primary_device,
                                                               boost::ref(shared_context.flow_pool),
-                                                              boost::ref(shared_context.flow_pool_guard)));
+                                                              boost::ref(shared_context.pool_guard),
+                                                              boost::ref(shared_context.isl_pool)));
     return boost::make_tuple(ptr, "write_thread");
 }
 
@@ -255,8 +256,9 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    std::mutex flow_pool_guard;
+    std::mutex pool_guard;
     org::openkilda::flow_pool_t flow_pool;
+    org::openkilda::isl_pool_t isl_pool;
 
     boost::shared_ptr<rte_ring> rx_ring = init_ring(config);
     if (!rx_ring) {
@@ -266,8 +268,9 @@ int main(int argc, char *argv[]) {
 
     SharedContext shared_context = {
             .primary_device = device,
-            .flow_pool_guard = flow_pool_guard,
+            .pool_guard = pool_guard,
             .flow_pool = flow_pool,
+            .isl_pool = isl_pool,
             .rx_ring = rx_ring
     };
 

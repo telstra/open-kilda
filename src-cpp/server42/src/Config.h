@@ -45,7 +45,10 @@ namespace org::openkilda {
         static constexpr int loopback_device_port_id = 1;
         static constexpr int maximum_cores = 128;
         static constexpr int chunk_size = 64;
-        static constexpr int generated_packet_udp_dst_port = 58168;
+        static constexpr boost::uint16_t flow_rtt_generated_packet_udp_dst_port = 58168;
+        static constexpr boost::uint16_t flow_rtt_caught_packet_udp_src_port = 4701;
+        static constexpr boost::uint16_t isl_rtt_generated_packet_udp_dst_port = 58169;
+        static constexpr boost::uint16_t isl_rtt_caught_packet_catch_udp_src_port = 4711;
 
         static constexpr int dpdk_device_configuration_receive_descriptors_number = 2048;
         static constexpr int dpdk_device_configuration_transmit_descriptors_number = 2048;

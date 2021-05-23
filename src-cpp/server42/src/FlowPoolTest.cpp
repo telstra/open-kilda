@@ -2,7 +2,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "FlowPool.h"
+#include "PacketPool.h"
 #include "FlowMetadata.h"
 #include "statistics.pb.h"
 
@@ -23,53 +23,53 @@ public:
 };
 
 
-BOOST_AUTO_TEST_CASE(flow_pool_basic_add) {
+BOOST_AUTO_TEST_CASE(packet_pool_basic_add) {
 
-    org::openkilda::FlowPool<BasicAllocator> flow;
+    org::openkilda::PacketPool<BasicAllocator> pool;
 
-    flow.add_flow("test-01", BasicAllocator::allocate(100), 1);
-    flow.add_flow("test-02", BasicAllocator::allocate(1000), 2);
-    flow.remove_flow("test-01");
+    pool.add_packet("test-01", BasicAllocator::allocate(100), 1);
+    pool.add_packet("test-02", BasicAllocator::allocate(1000), 2);
+    pool.remove_packet("test-01");
 
-    BOOST_TEST(flow.table.size() == 1);
+    BOOST_TEST(pool.table.size() == 1);
 }
 
 #define C1M 150
 //#define C1M 3
 
-BOOST_AUTO_TEST_CASE(flow_pool_basic_add_1m) {
-    org::openkilda::FlowPool<BasicAllocator> flow;
+BOOST_AUTO_TEST_CASE(packet_pool_basic_add_1m) {
+    org::openkilda::PacketPool<BasicAllocator> pool;
     for (uint32_t i = 0; i < C1M; ++i) {
         std::stringstream ss;
         ss << "test-" << i;
-        flow.add_flow(ss.str(), BasicAllocator::allocate(i), i);
+        pool.add_packet(ss.str(), BasicAllocator::allocate(i), i);
     }
 
-    std::cout << flow.table.size();
+    std::cout << pool.table.size();
 
-    BOOST_TEST(flow.table.size() == C1M);
+    BOOST_TEST(pool.table.size() == C1M);
 
     for (uint32_t i = 0; i < C1M; ++i) {
         std::stringstream ss;
         ss << "test-" << i;
-        flow.remove_flow(ss.str());
+        pool.remove_packet(ss.str());
         //std::cout << flow.table.size() << "\n" << std::flush;
     }
 
-    BOOST_TEST(flow.table.size() == 0);
+    BOOST_TEST(pool.table.size() == 0);
 }
 
-BOOST_AUTO_TEST_CASE(flow_pool_basic_iteration_1m) {
+BOOST_AUTO_TEST_CASE(packet_pool_basic_iteration_1m) {
 
-    org::openkilda::FlowPool<BasicAllocator> flow;
+    org::openkilda::PacketPool<BasicAllocator> pool;
     for (uint32_t i = 0; i < C1M; ++i) {
         std::stringstream ss;
         ss << "test-" << i;
-        flow.add_flow(ss.str(), BasicAllocator::allocate(i), i);
+        pool.add_packet(ss.str(), BasicAllocator::allocate(i), i);
     }
 
-    int **start = flow.table.data();
-    int **end = flow.table.data() + flow.table.size();
+    int **start = pool.table.data();
+    int **end = pool.table.data() + pool.table.size();
 
     for (int **pos = start; pos < end; pos += 64) {
         //m_Device->sendPackets(pos, std::min(64L, end - pos));

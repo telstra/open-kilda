@@ -7,15 +7,16 @@
 
 #include <pcapplusplus/DpdkDevice.h>
 
-#include "FlowPool.h"
+#include "PacketPool.h"
 #include "PacketGenerator.h"
 
 
 namespace org::openkilda {
     struct SharedContext {
         pcpp::DpdkDevice *primary_device;
-        std::mutex &flow_pool_guard;
+        std::mutex &pool_guard;
         flow_pool_t &flow_pool;
+        isl_pool_t &isl_pool;
         boost::shared_ptr<rte_ring> rx_ring;
     };
 }
