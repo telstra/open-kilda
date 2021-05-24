@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.extension.fixture
 
+import static groovyx.gpars.GParsPool.withPool
 import org.openkilda.functionaltests.extension.spring.ContextAwareGlobalExtension
 import org.openkilda.model.IslStatus
 import org.openkilda.model.cookie.Cookie
@@ -43,6 +44,8 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
     FloodlightsHelper flHelper
     @Autowired
     Database database
+    @Value('${use.multitable}')
+    boolean useMultitable
 
     @Override
     void delayedVisitSpec(SpecInfo spec) {
@@ -75,12 +78,23 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
 
     def runVerifications() {
         assert northboundV2.getAllFlows().empty
-        northbound.getAllSwitches().each {
-            def validation = northbound.validateSwitch(it.switchId)
-            validation.verifyRuleSectionsAreEmpty(it.switchId)
-            validation.verifyMeterSectionsAreEmpty(it.switchId)
-            if (it.ofVersion == "OF_13") {
-                assert northbound.getSwitchRules(it.switchId).flowEntries.find { it.cookie == Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE }
+        withPool {
+            northbound.getAllSwitches().eachParallel { sw ->
+                def validation = northbound.validateSwitch(sw.switchId)
+                validation.verifyRuleSectionsAreEmpty(sw.switchId)
+                validation.verifyMeterSectionsAreEmpty(sw.switchId)
+                if (sw.ofVersion == "OF_13") {
+                    assert northbound.getSwitchRules(sw.switchId).flowEntries.find { it.cookie == Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE }
+                }
+                def swProps = northbound.getSwitchProperties(sw.switchId)
+                assert swProps.multiTable == useMultitable
+                def s42Config = topology.switches.find { sw.switchId == it.dpId}.prop
+                if (s42Config) {
+                    assert swProps.server42FlowRtt == s42Config.server42FlowRtt
+                    assert swProps.server42Port == s42Config.server42Port
+                    assert swProps.server42MacAddress == s42Config.server42MacAddress
+                    assert swProps.server42Vlan == s42Config.server42Vlan
+                }
             }
         }
         def regionVerifications = new SoftAssertions()
@@ -93,13 +107,15 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
             }
         }
         regionVerifications.verify()
-        database.getAllIsls().each {
-            assert it.timeUnstable == null
-            assert it.status == IslStatus.ACTIVE
-            assert it.actualStatus == IslStatus.ACTIVE
-            assert it.availableBandwidth == it.maxBandwidth
-            assert it.availableBandwidth == it.speed
-            assert it.cost == Constants.DEFAULT_COST || it.cost == 0
+        withPool {
+            database.getAllIsls().eachParallel {
+                assert it.timeUnstable == null
+                assert it.status == IslStatus.ACTIVE
+                assert it.actualStatus == IslStatus.ACTIVE
+                assert it.availableBandwidth == it.maxBandwidth
+                assert it.availableBandwidth == it.speed
+                assert it.cost == Constants.DEFAULT_COST || it.cost == 0
+            }
         }
         assert northbound.getAllLinkProps().empty
     }
