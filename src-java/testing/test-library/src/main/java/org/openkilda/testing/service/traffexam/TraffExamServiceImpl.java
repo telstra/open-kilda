@@ -21,6 +21,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.TraffGenConfig;
 import org.openkilda.testing.service.labservice.LabService;
 import org.openkilda.testing.service.traffexam.model.Address;
 import org.openkilda.testing.service.traffexam.model.AddressResponse;
+import org.openkilda.testing.service.traffexam.model.AddressStats;
 import org.openkilda.testing.service.traffexam.model.ArpData;
 import org.openkilda.testing.service.traffexam.model.ConsumerEndpoint;
 import org.openkilda.testing.service.traffexam.model.Endpoint;
@@ -397,6 +398,16 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         restTemplate.put(
                 makeHostUri(address.getHost()).path("address/").path(address.getId().toString()).path("/udp").build(),
                 udpData);
+    }
+
+    @Override
+    public AddressStats getStats(Address address) {
+        return restTemplate.getForObject(
+                makeHostUri(address.getHost())
+                        .path("address/")
+                        .path(address.getId().toString())
+                        .path("/stats").build(),
+                AddressStats.class);
     }
 
     private <T extends Endpoint> T assignEndpoint(Host host, T payload) {
