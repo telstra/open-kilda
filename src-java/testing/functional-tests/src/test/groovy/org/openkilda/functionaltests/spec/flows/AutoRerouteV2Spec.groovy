@@ -16,6 +16,7 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -27,6 +28,7 @@ import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.messaging.payload.history.FlowHistoryEntry
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.model.SwitchStatus
@@ -35,6 +37,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 
+import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
@@ -48,9 +51,10 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(SMOKE)
-    def "Flow is rerouted when one of the flow ISLs fails"() {
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = /vxlan/)
+    def "Flow is rerouted when one of the #description flow ISLs fails"() {
         given: "A flow with one alternative path at least"
-        def (FlowRequestV2 flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
+        def (FlowRequestV2 flow, allFlowPaths) = flowData(topologyHelper.getAllNeighboringSwitchPairs(), 1)
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
 
@@ -73,6 +77,15 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         islToFail && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+        }
+
+        where:
+        description | flowData
+        "vlan"      | { List<SwitchPair> switchPairs, Integer minAltPathsCount ->
+            getFlowWithPaths(switchPairs, minAltPathsCount)
+        }
+        "vxlan"     | { List<SwitchPair> switchPairs, Integer minAltPathsCount ->
+            getVxlanFlowWithPaths(switchPairs, minAltPathsCount)
         }
     }
 
@@ -854,6 +867,21 @@ triggering one more reroute of the current path"
 
     def findSw(SwitchId swId) {
         topology.switches.find { it.dpId == swId }
+    }
+
+    def getVxlanFlowWithPaths(List<SwitchPair> switchPairs, int minAltPathsCount) {
+        def switchPair = switchPairs.find {swP ->
+            swP.paths.findAll { path ->
+                pathHelper.getInvolvedSwitches(path).every { isVxlanEnabled(it.dpId) }
+            }.size() > minAltPathsCount
+        } ?: assumeTrue(false, "No suiting switches found")
+        return [flowHelperV2.randomFlow(switchPair), switchPair.paths]
+    }
+
+    @Memoized
+    def isVxlanEnabled(SwitchId switchId) {
+        return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
+                .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 
     def cleanup() {
