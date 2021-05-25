@@ -73,6 +73,7 @@ Constraints:
 
 Possible values of shared segments:
 * QINQ_OUTER_VLAN == 0
+* SERVER42_QINQ_OUTER_VLAN == 1
 
 ## Port colour cookies (org.openkilda.model.cookie.PortColourCookie)
 OF flows used to "colour" switches port's kind in multi-table mode.
@@ -153,6 +154,7 @@ Constraints:
 |`0x8050_0000_XXXX_XXXX`|`MULTI_TABLE_INGRESS_RULES`|Moves packets received from Customer port XXX from input table to pre-ingress table|
 |`0x8060_0000_XXXX_XXXX`|`ARP_INPUT_CUSTOMER_TYPE`|Marks ARP packets from port XXX by metadata|
 |`0x0080_0000_0YYY_XXXX`|`QINQ_OUTER_VLAN`|QinQ rule for matching packets from port XXX by outer VLAN YYY|
+|`0x0081_0000_0YYY_XXXX`|`SERVER42_QINQ_OUTER_VLAN`|Server42 QinQ rule for matching packets from port XXX by outer VLAN YYY|
 |`0x8090_0000_XXXX_XXXX`|`SERVER_42_INPUT`|Receives server42 flow RTT packet from port XXX, puts timestamp into packet (if switch has such support) and move packet to pre-ingress table|
 |`0x80A0_0000_0000_0000`|`APPLICATION_MIRROR_FLOW`|Flow mirror traffic for application purposes.|
 |`0x4000_0000_000X_XXXX`|`INGRESS_FORWARD`|Receives Customer packets, push transit encapsulation if needed and sends to port. Path direction - forward, XXX - path unmasked cookie|
