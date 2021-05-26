@@ -22,6 +22,7 @@ import org.openkilda.pce.Path.Segment;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,7 +39,7 @@ public abstract class PathMapper {
      */
     public org.openkilda.messaging.info.network.Path map(org.openkilda.pce.Path path) {
         if (path == null || path.getSegments().isEmpty()) {
-            return new org.openkilda.messaging.info.network.Path(0L, 0L, new ArrayList<>());
+            return new org.openkilda.messaging.info.network.Path(0L, Duration.ZERO, new ArrayList<>());
         }
 
         List<PathNodePayload> nodes = new ArrayList<>();
@@ -61,6 +62,6 @@ public abstract class PathMapper {
         }
 
         return new org.openkilda.messaging.info.network.Path(path.getMinAvailableBandwidth(),
-                path.getLatency(), nodes);
+                Duration.ofNanos(path.getLatency()), nodes);
     }
 }

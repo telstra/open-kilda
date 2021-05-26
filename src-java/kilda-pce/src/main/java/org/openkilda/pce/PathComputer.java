@@ -23,6 +23,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -66,6 +67,6 @@ public interface PathComputer {
      */
     List<Path> getNPaths(SwitchId srcSwitch, SwitchId dstSwitch, int count,
                          FlowEncapsulationType flowEncapsulationType, PathComputationStrategy pathComputationStrategy,
-                         Long maxLatency, Long maxLatencyTier2)
+                         Duration maxLatency, Duration maxLatencyTier2)
             throws RecoverableException, UnroutableFlowException;
 }
