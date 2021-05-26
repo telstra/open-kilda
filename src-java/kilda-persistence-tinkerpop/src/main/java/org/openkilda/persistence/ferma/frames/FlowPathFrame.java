@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowApplication;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath.FlowPathData;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.GroupId;
@@ -45,6 +46,7 @@ import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.VertexProperty;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -57,6 +59,7 @@ import java.util.stream.Collectors;
 public abstract class FlowPathFrame extends KildaBaseVertexFrame implements FlowPathData {
     public static final String FRAME_LABEL = "flow_path";
     public static final String OWNS_SEGMENTS_EDGE = "owns";
+    public static final String HAS_SEGMENTS_EDGE = "has";
     public static final String PATH_ID_PROPERTY = "path_id";
     public static final String FLOW_ID_PROPERTY = "flow_id";
     public static final String SRC_SWITCH_ID_PROPERTY = "src_switch_id";
@@ -71,6 +74,7 @@ public abstract class FlowPathFrame extends KildaBaseVertexFrame implements Flow
     private Switch destSwitch;
     private Flow flow;
     private List<PathSegment> segments;
+    private Set<FlowMirrorPoints> flowMirrorPointsSet;
 
     @Override
     @Property(PATH_ID_PROPERTY)
@@ -291,5 +295,39 @@ public abstract class FlowPathFrame extends KildaBaseVertexFrame implements Flow
             }
         }
         return flow;
+    }
+
+    @Override
+    public Set<FlowMirrorPoints> getFlowMirrorPointsSet() {
+        if (flowMirrorPointsSet == null) {
+            flowMirrorPointsSet = traverse(v -> v.out(HAS_SEGMENTS_EDGE)
+                    .hasLabel(FlowMirrorPointsFrame.FRAME_LABEL))
+                    .toListExplicit(FlowMirrorPointsFrame.class).stream()
+                    .map(FlowMirrorPoints::new)
+                    .collect(Collectors.toSet());
+        }
+        return Collections.unmodifiableSet(flowMirrorPointsSet);
+    }
+
+    @Override
+    public void addFlowMirrorPoints(FlowMirrorPoints flowMirrorPoints) {
+        FlowMirrorPoints.FlowMirrorPointsData data = flowMirrorPoints.getData();
+        FlowMirrorPointsFrame frame;
+        if (data instanceof FlowMirrorPointsFrame) {
+            frame = (FlowMirrorPointsFrame) data;
+            // Unlink the mirror points from the previous owner.
+            frame.getElement().edges(Direction.IN, FlowPathFrame.HAS_SEGMENTS_EDGE)
+                    .forEachRemaining(Edge::remove);
+        } else {
+            // We intentionally don't allow to add transient entities.
+            // A path must be added via corresponding repository first.
+            throw new IllegalArgumentException("Unable to link to transient flow mirror points " + flowMirrorPoints);
+        }
+        frame.setProperty(FlowMirrorPointsFrame.FLOW_PATH_ID_PROPERTY,
+                PathIdConverter.INSTANCE.toGraphProperty(getPathId()));
+        linkOut(frame, HAS_SEGMENTS_EDGE);
+        if (this.flowMirrorPointsSet != null) {
+            this.flowMirrorPointsSet.add(flowMirrorPoints);
+        }
     }
 }

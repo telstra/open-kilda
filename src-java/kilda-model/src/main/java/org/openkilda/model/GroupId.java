@@ -22,14 +22,14 @@ import lombok.Value;
 import java.io.Serializable;
 
 @Value
-public final class GroupId implements Comparable<GroupId>, Serializable {
+public class GroupId implements Comparable<GroupId>, Serializable {
     private static final long serialVersionUID = 1L;
 
+    public static final GroupId ROUND_TRIP_LATENCY_GROUP_ID = new GroupId(1);
     public static final GroupId MIN_FLOW_GROUP_ID = new GroupId(2);
-
     public static final GroupId MAX_FLOW_GROUP_ID = new GroupId(2500);
 
-    private final long value;
+    long value;
 
     @JsonCreator
     public GroupId(long value) {
@@ -39,6 +39,10 @@ public final class GroupId implements Comparable<GroupId>, Serializable {
     @JsonValue
     public long getValue() {
         return value;
+    }
+
+    public int intValue() {
+        return (int) value;
     }
 
     @Override
