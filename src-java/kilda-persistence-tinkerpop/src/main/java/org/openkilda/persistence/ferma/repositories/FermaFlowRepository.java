@@ -282,6 +282,24 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
     }
 
     @Override
+    public Collection<Flow> findByEndpointSwitchAndOuterVlan(SwitchId switchId, int vlan) {
+        Map<String, Flow> result = new HashMap<>();
+        framedGraph().traverse(g -> g.V()
+                .hasLabel(FlowFrame.FRAME_LABEL)
+                .has(FlowFrame.SRC_SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
+                .has(FlowFrame.SRC_VLAN_PROPERTY, vlan))
+                .frameExplicit(FlowFrame.class)
+                .forEachRemaining(frame -> result.put(frame.getFlowId(), new Flow(frame)));
+        framedGraph().traverse(g -> g.V()
+                .hasLabel(FlowFrame.FRAME_LABEL)
+                .has(FlowFrame.DST_SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
+                .has(FlowFrame.DST_VLAN_PROPERTY, vlan))
+                .frameExplicit(FlowFrame.class)
+                .forEachRemaining(frame -> result.put(frame.getFlowId(), new Flow(frame)));
+        return result.values();
+    }
+
+    @Override
     public Collection<Flow> findByEndpointSwitchWithMultiTableSupport(SwitchId switchId) {
         Map<String, Flow> result = new HashMap<>();
         framedGraph().traverse(g -> g.V()

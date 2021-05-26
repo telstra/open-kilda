@@ -151,6 +151,40 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
         return results;
     }
 
+    protected List<String> findServer42OuterVlanMatchSharedRuleUsage(FlowEndpoint needle) {
+        // TODO(snikitin) Replace with some optimised DB request
+        if (!FlowEndpoint.isVlanIdSet(needle.getOuterVlanId())) {
+            return Collections.emptyList();
+        }
+
+        List<String> flowIds = new ArrayList<>();
+        for (Flow flow : flowRepository.findByEndpointSwitchAndOuterVlan(
+                needle.getSwitchId(), needle.getOuterVlanId())) {
+            if (flow.getSrcSwitchId().equals(flow.getDestSwitchId())) {
+                // skip one switch flows
+                continue;
+            }
+            for (FlowSideAdapter flowSide : new FlowSideAdapter[]{
+                    new FlowSourceAdapter(flow),
+                    new FlowDestAdapter(flow)}) {
+                FlowEndpoint endpoint = flowSide.getEndpoint();
+                if (needle.getSwitchId().equals(endpoint.getSwitchId())
+                        && needle.getOuterVlanId() == endpoint.getOuterVlanId()) {
+                    boolean multitableEnabled = flow.getPaths().stream()
+                            .filter(path -> flow.isActualPathId(path.getPathId()))
+                            .filter(path -> !path.isProtected())
+                            .filter(path -> path.getSrcSwitchId().equals(endpoint.getSwitchId()))
+                            .anyMatch(FlowPath::isSrcWithMultiTable);
+                    if (multitableEnabled) {
+                        flowIds.add(flow.getFlowId());
+                        break;
+                    }
+                }
+            }
+        }
+        return flowIds;
+    }
+
     protected Set<String> getDiverseWithFlowIds(Flow flow) {
         return flow.getGroupId() == null ? Collections.emptySet() :
                 flowRepository.findFlowsIdByGroupId(flow.getGroupId()).stream()
@@ -175,6 +209,7 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
         SwitchProperties switchProperties = getSwitchProperties(switchId);
         boolean serverFlowRtt = switchProperties.isServer42FlowRtt() && isServer42FlowRttFeatureToggle();
         return PathContext.builder()
+                .installServer42OuterVlanMatchSharedRule(serverFlowRtt && switchProperties.isMultiTable())
                 .installServer42InputRule(serverFlowRtt && switchProperties.isMultiTable())
                 .installServer42IngressRule(serverFlowRtt)
                 .server42Port(switchProperties.getServer42Port())
