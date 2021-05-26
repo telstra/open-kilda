@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowmonitoring;
 
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ACTION_STREAM_ID;
+import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.STATS_STREAM_ID;
 
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
@@ -31,6 +32,8 @@ import org.openkilda.wfm.topology.flowmonitoring.bolts.TickBolt;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.TopologyBuilder;
+
+import java.time.Duration;
 
 public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopologyConfig> {
 
@@ -59,6 +62,8 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
 
         actionBolt(tb);
 
+        statsBolt(tb);
+
         zooKeeperBolt(tb);
 
         return tb.createTopology();
@@ -75,7 +80,7 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
     }
 
     private void islSpout(TopologyBuilder topologyBuilder) {
-        declareKafkaSpout(topologyBuilder, getConfig().getKafkaTopics().getNetworkFlowMonitoringNotifyTopic(),
+        declareKafkaSpout(topologyBuilder, getConfig().getNetworkFlowMonitoringNotifyTopic(),
                 ComponentId.ISL_SPOUT.name());
     }
 
@@ -90,7 +95,7 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
 
     private void flowCacheBolt(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         FlowCacheBolt flowCacheBolt = new FlowCacheBolt(persistenceManager,
-                getConfig().getFlowRttStatsExpirationSeconds(), ZooKeeperSpout.SPOUT_ID);
+                Duration.ofSeconds(getConfig().getFlowRttStatsExpirationSeconds()), ZooKeeperSpout.SPOUT_ID);
         declareBolt(topologyBuilder, flowCacheBolt, ComponentId.FLOW_CACHE_BOLT.name())
                 .allGrouping(ComponentId.FLOW_SPOUT.name())
                 .allGrouping(ComponentId.FLOW_LATENCY_SPOUT.name())
@@ -99,8 +104,8 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
     }
 
     private void islCacheBolt(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
-        IslCacheBolt islCacheBolt = new IslCacheBolt(persistenceManager, getConfig().getIslRttLatencyExpiration(),
-                ZooKeeperSpout.SPOUT_ID);
+        IslCacheBolt islCacheBolt = new IslCacheBolt(persistenceManager, getConfig().getMetricPrefix(),
+                getConfig().getIslRttLatencyExpiration(), ZooKeeperSpout.SPOUT_ID);
         declareBolt(topologyBuilder, islCacheBolt, ComponentId.ISL_CACHE_BOLT.name())
                 .allGrouping(ComponentId.ISL_LATENCY_SPOUT.name())
                 .allGrouping(ComponentId.ISL_SPOUT.name())
@@ -112,6 +117,12 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
         declareBolt(topologyBuilder, new ActionBolt(), ComponentId.ACTION_BOLT.name())
                 .shuffleGrouping(ComponentId.FLOW_CACHE_BOLT.name(), ACTION_STREAM_ID.name())
                 .shuffleGrouping(ComponentId.ISL_CACHE_BOLT.name(), ACTION_STREAM_ID.name());
+    }
+
+    private void statsBolt(TopologyBuilder topologyBuilder) {
+        declareBolt(topologyBuilder, createKafkaBolt(getConfig().getKafkaOtsdbTopic()),
+                ComponentId.STATS_BOLT.name())
+                .shuffleGrouping(ComponentId.ISL_CACHE_BOLT.name(), STATS_STREAM_ID.name());
     }
 
     private void zooKeeperSpout(TopologyBuilder topology) {
@@ -144,6 +155,8 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
         ISL_CACHE_BOLT("isl.cache.bolt"),
         ACTION_BOLT("action.bolt"),
 
+        STATS_BOLT("stats.bolt"),
+
         TICK_BOLT("tick.bolt");
 
         private final String value;
@@ -160,7 +173,8 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
     }
 
     public enum Stream {
-        ACTION_STREAM_ID
+        ACTION_STREAM_ID,
+        STATS_STREAM_ID
     }
 
     /**

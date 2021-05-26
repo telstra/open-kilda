@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowmonitoring.service;
 import org.openkilda.server42.messaging.FlowDirection;
 import org.openkilda.wfm.topology.flowmonitoring.model.Link;
 
+import java.time.Duration;
 import java.util.List;
 
 public interface FlowCacheBoltCarrier {
@@ -25,6 +26,6 @@ public interface FlowCacheBoltCarrier {
     void emitCalculateFlowLatencyRequest(String flowId, FlowDirection direction, List<Link> flowPath,
                                          Long maxLatency, Long maxLatencyTier2);
 
-    void emitCheckFlowLatencyRequest(String flowId, FlowDirection direction, long latency,
+    void emitCheckFlowLatencyRequest(String flowId, FlowDirection direction, Duration latency,
                                      Long maxLatency, Long maxLatencyTier2);
 }
