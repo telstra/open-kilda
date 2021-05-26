@@ -124,9 +124,12 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.first()
 
         when: "Create a flow"
-        def amountOfFlowRules = northbound.getSwitchProperties(sw.dpId).multiTable ? 4 : 0
-        def amountOfRules = northbound.getSwitchRules(sw.dpId).flowEntries.size() + amountOfFlowRules
+        def amountOfMultiTableFlRules = northbound.getSwitchProperties(sw.dpId).multiTable ? 4 : 0 //2 SHARED_OF_FLOW, 2 MULTI_TABLE_INGRESS_RULES
+        def amountOfFlowRules = 2 //SERVICE_OR_FLOW_SEGMENT(ingress/egress)
+        def amountOfSwRules = northbound.getSwitchRules(sw.dpId).flowEntries.size()
+        def amountOfRules = amountOfSwRules + amountOfFlowRules + amountOfMultiTableFlRules
         def amountOfMeters = northbound.getAllMeters(sw.dpId).meterEntries.size()
+        def amountOfFlowMeters = 2
         def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchFlow(sw).tap { it.maximumBandwidth = 5000 })
         def meterIds = getCreatedMeterIds(sw.dpId)
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
@@ -181,9 +184,9 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchHelper.verifyBurstSizeIsCorrect(sw, burstSize, burst.actualValue.toLong())
 
             assert direction.flowRulesTotal == 1
-            assert direction.switchRulesTotal == amountOfRules + 2
+            assert direction.switchRulesTotal == amountOfRules
             assert direction.flowMetersTotal == 1
-            assert direction.switchMetersTotal == amountOfMeters + 2
+            assert direction.switchMetersTotal == amountOfMeters + amountOfFlowMeters
         }
 
         when: "Restore correct bandwidth via DB"

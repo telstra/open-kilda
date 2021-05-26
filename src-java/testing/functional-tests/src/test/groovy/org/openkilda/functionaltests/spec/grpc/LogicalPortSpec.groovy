@@ -107,7 +107,11 @@ class LogicalPortSpec extends GrpcBaseSpecification {
     @Tags(HARDWARE)
     def "Not able to delete non-existent logical port number on the #switches.switchId switch"() {
         when: "Try to delete incorrect logicalPortNumber"
-        def validLogicalPorts = 100..63487
+        /** info from manual:
+         *  Value between 100 and 63487except for the NS-21100 where the value must be between 113 and 63487
+         *  and for the WB-5000 and SM-5000 Series where the value must be between 1000 and 63487.
+        */
+        def validLogicalPorts = 1000..63487
         def busyLogicalPorts = grpc.getSwitchLogicalPorts(switches.address)*.logicalPortNumber.sort()
         Integer nonExistentLogicalPort = (validLogicalPorts - busyLogicalPorts).first()
         grpc.deleteSwitchLogicalPort(switches.address, nonExistentLogicalPort)
