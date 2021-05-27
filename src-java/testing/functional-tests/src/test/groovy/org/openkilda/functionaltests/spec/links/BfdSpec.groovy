@@ -252,7 +252,8 @@ class BfdSpec extends HealthCheckSpecification {
         cleanup:
         isl && lockKeeper.addFlows([isl.aswitch])
         !isLinkUp && antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        Wrappers.wait(discoveryAuxiliaryInterval + discoveryInterval + WAIT_OFFSET) {
+            assert northbound.getLink(isl).actualState == IslChangeType.DISCOVERED
             assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
             assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED
         }
