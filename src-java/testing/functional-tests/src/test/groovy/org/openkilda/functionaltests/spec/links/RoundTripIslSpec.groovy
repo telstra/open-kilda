@@ -88,6 +88,9 @@ class RoundTripIslSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(allLinks, isl).get().roundTripStatus == DISCOVERED
             assert islUtils.getIslInfo(allLinks, isl.reversed).get().roundTripStatus == DISCOVERED
         }
+        Wrappers.wait(discoveryAuxiliaryInterval + discoveryInterval + WAIT_OFFSET) {
+            northbound.getAllLinks().each { assert it.actualState != FAILED }
+        }
         database.resetCosts()
 
         where:
