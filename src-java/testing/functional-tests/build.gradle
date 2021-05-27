@@ -87,11 +87,11 @@ tasks.withType(Test) {
             unstableLog.write "true"
         }
     }
-    retry { //test-retry plugin config
-        maxRetries = 1
-        maxFailures = 3
-        failOnPassedAfterRetry = false
-    }
+//    retry { //test-retry plugin config
+//        maxRetries = 1
+//        maxFailures = 3
+//        failOnPassedAfterRetry = false
+//    }
 }
 
 testlogger {
