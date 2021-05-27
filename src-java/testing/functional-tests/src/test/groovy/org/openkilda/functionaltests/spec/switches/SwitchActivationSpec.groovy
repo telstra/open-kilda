@@ -55,8 +55,10 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         }*.cookie
         def srcSwProps = northbound.getSwitchProperties(switchPair.src.dpId)
         def amountOfMultiTableRules = srcSwProps.multiTable ? 1 : 0
-        def amountOfServer42Rules = srcSwProps.server42FlowRtt ? 1 : 0
-        def amountOfFlowRules = 2 + amountOfMultiTableRules + amountOfServer42Rules
+        def amountOfServer42IngressRules = srcSwProps.server42FlowRtt ? 1 : 0
+        def amountOfServer42SharedRules = srcSwProps.multiTable && srcSwProps.server42FlowRtt
+                && flow.source.vlanId ? 1 : 0
+        def amountOfFlowRules = 2 + amountOfMultiTableRules + amountOfServer42IngressRules + amountOfServer42SharedRules
         def createdHexCookies = createdCookies.collect { Long.toHexString(it) }
         assert createdCookies.size() == amountOfFlowRules
 
