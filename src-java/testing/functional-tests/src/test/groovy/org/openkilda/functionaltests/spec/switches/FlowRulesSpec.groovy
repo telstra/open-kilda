@@ -468,8 +468,15 @@ class FlowRulesSpec extends HealthCheckSpecification {
             def swProps = northbound.getSwitchProperties(switchId)
             def switchIdInSrcOrDst = (switchId in [switchPair.src.dpId, switchPair.dst.dpId])
             def defaultAmountOfFlowRules = 2 // ingress + egress
-            def rulesCount = defaultAmountOfFlowRules + (switchIdInSrcOrDst && swProps.multiTable ? 1 : 0) +
-                    (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
+            def amountOfServer42Rules = (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
+            if (swProps.multiTable && swProps.server42FlowRtt) {
+                if ((flow.destination.getSwitchId() == switchId && flow.destination.vlanId) || (
+                        flow.source.getSwitchId() == switchId && flow.source.vlanId))
+                    amountOfServer42Rules += 1
+            }
+            def rulesCount = defaultAmountOfFlowRules + amountOfServer42Rules +
+                    (switchIdInSrcOrDst && swProps.multiTable ? 1 : 0)
+
             [switchId, (rulesCount)]
         }
         involvedSwitches.each { switchId ->
