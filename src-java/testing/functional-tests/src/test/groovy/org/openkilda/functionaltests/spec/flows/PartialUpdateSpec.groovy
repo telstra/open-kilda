@@ -411,6 +411,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags([LOW_PRIORITY])
     def "Partial update with empty body does not actually update flow in any way"() {
         given: "A flow"
         def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -675,7 +676,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(LOW_PRIORITY)
     def "Able to update a flow port and vlan for a single-switch single-port flow using partial update"() {
         given: "An active single-switch single-port flow"
         def sw = topology.activeSwitches.first()
