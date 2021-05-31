@@ -135,7 +135,7 @@ public class NetworkBfdLogicalPortService {
     }
 
     private void handle(BfdLogicalPortFsm controller, Event event) {
-        handle(controller, event, BfdLogicalPortFsmContext.EMPTY);
+        handle(controller, event, BfdLogicalPortFsmContext.getEmpty());
     }
 
     private void handle(BfdLogicalPortFsm controller, Event event, BfdLogicalPortFsmContext context) {

@@ -111,7 +111,7 @@ public class Server42InputFlowGenerator implements SwitchFlowGenerator {
                 server42Port, server42macAddress);
 
         if (!flowMod.isPresent()) {
-            return SwitchFlowTuple.EMPTY;
+            return SwitchFlowTuple.getEmpty();
         }
 
         return SwitchFlowTuple.builder()

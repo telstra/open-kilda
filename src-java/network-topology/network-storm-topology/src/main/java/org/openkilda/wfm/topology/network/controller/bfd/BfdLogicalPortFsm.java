@@ -379,7 +379,9 @@ public class BfdLogicalPortFsm extends AbstractBaseFsm<BfdLogicalPortFsm, State,
     @Value
     @Builder
     public static class BfdLogicalPortFsmContext {
-        public static BfdLogicalPortFsmContext EMPTY = BfdLogicalPortFsmContext.builder().build();
+        public static BfdLogicalPortFsmContext getEmpty() {
+            return BfdLogicalPortFsmContext.builder().build();
+        }
 
         BfdSessionData sessionData;
 
