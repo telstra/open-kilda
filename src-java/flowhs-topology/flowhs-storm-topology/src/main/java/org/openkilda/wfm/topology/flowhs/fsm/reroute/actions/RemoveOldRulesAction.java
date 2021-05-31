@@ -56,7 +56,7 @@ public class RemoveOldRulesAction extends
 
         Flow originalFlow = getOriginalFlowWithPaths(stateMachine, stateMachine.getOriginalFlow());
 
-        SpeakerRequestBuildContext speakerContext = SpeakerRequestBuildContext.EMPTY;
+        SpeakerRequestBuildContext speakerContext = SpeakerRequestBuildContext.getEmpty();
 
         if (stateMachine.getOldPrimaryForwardPath() != null) {
             FlowPath oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
