@@ -203,7 +203,7 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
         if (Objects.equals(srcSwitchId, dstSwitchId)) {
             // At this moment all context props in buildBasePathContextForInstall() are about server42.
             // But server42 is not used for single switch flow.
-            return SpeakerRequestBuildContext.EMPTY;
+            return SpeakerRequestBuildContext.getEmpty();
         }
 
         return SpeakerRequestBuildContext.builder()
