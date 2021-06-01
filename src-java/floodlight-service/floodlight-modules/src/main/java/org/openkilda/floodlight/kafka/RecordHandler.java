@@ -65,6 +65,7 @@ import org.openkilda.floodlight.command.flow.ingress.IngressServer42FlowInstallC
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchMirrorFlowInstallCommand;
 import org.openkilda.floodlight.command.flow.transit.TransitFlowLoopSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.transit.TransitFlowSegmentInstallCommand;
 import org.openkilda.floodlight.command.group.GroupInstallCommand;
 import org.openkilda.floodlight.command.group.GroupModifyCommand;
 import org.openkilda.floodlight.command.group.GroupRemoveCommand;
@@ -367,25 +368,6 @@ class RecordHandler implements Runnable {
     private void doDiscoverPathCommand(CommandData data) {
         DiscoverPathCommandData command = (DiscoverPathCommandData) data;
         logger.warn("NOT IMPLEMENTED: sending discover Path to {}", command);
-    }
-
-    /**
-     * Installs transit flow on the switch.
-     *
-     * @param command command message for flow installation
-     */
-    private void installTransitFlow(final InstallTransitFlow command) throws SwitchOperationException {
-        logger.debug("Creating a transit flow: {}", command);
-
-        context.getSwitchManager().installTransitFlow(
-                DatapathId.of(command.getSwitchId().toLong()),
-                command.getId(),
-                command.getCookie(),
-                command.getInputPort(),
-                command.getOutputPort(),
-                command.getTransitEncapsulationId(),
-                command.getTransitEncapsulationType(),
-                command.isMultiTable());
     }
 
     private void installSharedFlow(InstallSharedFlow command) throws SwitchOperationException, FlowCommandException {
@@ -1403,8 +1385,6 @@ class RecordHandler implements Runnable {
             processInstallServer42Rule((InstallServer42Flow) command);
         } else if (Cookie.isDefaultRule(command.getCookie())) {
             processInstallDefaultFlowByCookie(command.getSwitchId(), command.getCookie());
-        } else if (command instanceof InstallTransitFlow) {
-            installTransitFlow((InstallTransitFlow) command);
         } else if (command instanceof InstallSharedFlow) {
             installSharedFlow((InstallSharedFlow) command);
         } else {
@@ -1755,6 +1735,8 @@ class RecordHandler implements Runnable {
         } else if (request instanceof InstallServer42IngressFlow) {
             command = makeFlowSegmentWrappedCommand(
                     (InstallServer42IngressFlow) request, messageContext, responseFactory);
+        } else if (request instanceof InstallTransitFlow) {
+            command = makeFlowSegmentWrappedCommand((InstallTransitFlow) request, messageContext, responseFactory);
         } else {
             command = null;
         }
@@ -1855,6 +1837,15 @@ class RecordHandler implements Runnable {
         EgressFlowSegmentInstallCommand command = new EgressFlowSegmentInstallCommand(
                 messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, request.getIngressEndpoint(),
                 request.getInputPort(), makeTransitEncapsulation(request), request.getMirrorConfig());
+
+        return new FlowSegmentWrapperCommand(command, responseFactory);
+    }
+
+    private FlowSegmentWrapperCommand makeFlowSegmentWrappedCommand(
+            InstallTransitFlow request, MessageContext messageContext, FlowSegmentResponseFactory responseFactory) {
+        TransitFlowSegmentInstallCommand command = new TransitFlowSegmentInstallCommand(
+                messageContext, request.getSwitchId(), EMPTY_COMMAND_ID, makeSegmentMetadata(request),
+                request.getInputPort(), makeTransitEncapsulation(request), request.getOutputPort(), null);
 
         return new FlowSegmentWrapperCommand(command, responseFactory);
     }

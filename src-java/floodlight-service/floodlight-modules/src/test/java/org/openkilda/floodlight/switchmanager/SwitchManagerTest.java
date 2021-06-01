@@ -39,10 +39,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.openkilda.floodlight.Constants.inputPort;
 import static org.openkilda.floodlight.Constants.meterId;
-import static org.openkilda.floodlight.Constants.outputPort;
-import static org.openkilda.floodlight.Constants.transitVlanId;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.LATENCY_PACKET_UDP_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.OVS_MANUFACTURER;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildMeterMod;
@@ -429,34 +426,6 @@ public class SwitchManagerTest {
         Capture<OFFlowMod> capture = prepareForInstallTest();
         switchManager.installUnicastVerificationRuleVxlan(defaultDpid);
         assertEquals(scheme.installUnicastVerificationRuleVxlan(defaultDpid), capture.getValue());
-    }
-
-    @Test
-    public void installTransitFlowUsingTransitVlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
-
-        switchManager.installTransitFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId,
-                encapsulationType, false);
-
-        assertEquals(
-                scheme.transitFlowMod(inputPort, outputPort, transitVlanId, cookie, encapsulationType),
-                capture.getValue());
-    }
-
-    @Test
-    public void installTransitFlowUsingVxlan() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
-
-        switchManager.installTransitFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId,
-                encapsulationType, false);
-
-        assertEquals(
-                scheme.transitFlowMod(inputPort, outputPort, transitVlanId, cookie, encapsulationType),
-                capture.getValue());
     }
 
     @Test

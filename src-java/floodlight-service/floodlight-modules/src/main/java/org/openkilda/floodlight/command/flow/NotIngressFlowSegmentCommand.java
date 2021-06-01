@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.flow;
 
+import static org.openkilda.floodlight.switchmanager.SwitchManager.VXLAN_UDP_DST;
+
 import org.openkilda.floodlight.error.NotImplementedEncapsulationException;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.utils.OfAdapter;
@@ -77,8 +79,7 @@ public abstract class NotIngressFlowSegmentCommand extends FlowSegmentCommand {
     protected void makeTransitVxLanMatch(OFFactory of, Match.Builder match) {
         match.setExact(MatchField.ETH_TYPE, EthType.IPv4);
         match.setExact(MatchField.IP_PROTO, IpProtocol.UDP);
-        // There is no better place for this constant (at least now)
-        match.setExact(MatchField.UDP_DST, TransportPort.of(4789));
+        match.setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST));
         OfAdapter.INSTANCE.matchVxLanVni(of, match, encapsulation.getId());
     }
 }
