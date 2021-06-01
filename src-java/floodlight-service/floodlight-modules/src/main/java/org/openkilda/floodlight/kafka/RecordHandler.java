@@ -1862,8 +1862,9 @@ class RecordHandler implements Runnable {
     private FlowSegmentWrapperCommand makeTransitLoopWrappedCommand(
             InstallTransitLoopFlow request, MessageContext messageContext, FlowSegmentResponseFactory responseFactory) {
         TransitFlowLoopSegmentInstallCommand command = new TransitFlowLoopSegmentInstallCommand(
-                messageContext, request.getSwitchId(), EMPTY_COMMAND_ID, makeSegmentMetadata(request),
-                request.getInputPort(), makeTransitEncapsulation(request), request.getOutputPort());
+                messageContext, request.getSwitchId(), request.getIngressEndpoint().getSwitchId(),
+                EMPTY_COMMAND_ID, makeSegmentMetadata(request), request.getInputPort(),
+                makeTransitEncapsulation(request), request.getOutputPort());
 
         return new FlowSegmentWrapperCommand(command, responseFactory);
     }

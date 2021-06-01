@@ -33,7 +33,7 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import java.util.List;
 import java.util.UUID;
 
-public class TransitFlowLoopSegmentRemoveCommand extends TransitFlowSegmentCommand {
+public class TransitFlowLoopSegmentRemoveCommand extends TransitFlowLoopSegmentCommand {
     private static OfFlowModBuilderFactory makeFlowModBuilderFactory(boolean isMultiTable) {
         if (isMultiTable) {
             return new OfFlowModDelMultiTableMessageBuilderFactory(SwitchManager.FLOW_LOOP_PRIORITY);
@@ -46,24 +46,20 @@ public class TransitFlowLoopSegmentRemoveCommand extends TransitFlowSegmentComma
     public TransitFlowLoopSegmentRemoveCommand(
             @JsonProperty("message_context") MessageContext context,
             @JsonProperty("switch_id") SwitchId switchId,
+            @JsonProperty("egress_switch_id") SwitchId egressSwitchId,
             @JsonProperty("command_id") UUID commandId,
             @JsonProperty("metadata") FlowSegmentMetadata metadata,
             @JsonProperty("ingress_isl_port") int ingressIslPort,
             @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
             @JsonProperty("egress_isl_port") int egressIslPort) {
         super(
-                context, switchId, commandId, metadata, ingressIslPort, encapsulation, egressIslPort,
-                makeFlowModBuilderFactory(metadata.isMultiTable()), null);
+                context, switchId, egressSwitchId, commandId, metadata, ingressIslPort, encapsulation, egressIslPort,
+                makeFlowModBuilderFactory(metadata.isMultiTable()));
     }
 
     @Override
     protected List<OFInstruction> makeTransitModMessageInstructions(OFFactory of) {
         return ImmutableList.of();  // do not add instructions into delete request
-    }
-
-    @Override
-    protected int getTableId() {
-        return SwitchManager.EGRESS_TABLE_ID;
     }
 
     @Override
