@@ -45,7 +45,8 @@ public class FlowRttMetricGenBolt extends MetricGenBolt {
             FlowRttStatsData data = (FlowRttStatsData) message.getData();
             Map<String, String> tags = ImmutableMap.of(
                     "direction", data.getDirection(),
-                    "flowid", data.getFlowId()
+                    "flowid", data.getFlowId(),
+                    "origin", "server42"
             );
 
             long t0 = noviflowTimestamp(data.getT0());
