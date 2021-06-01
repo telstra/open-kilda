@@ -13,6 +13,8 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
@@ -423,6 +425,53 @@ class FlowStatSpec extends HealthCheckSpecification {
         def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
         [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
             stats.values().each { assert it != 0 }
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    def "System is able to collect stats after partial updating(port) on a flow endpoint"() {
+        given: "Two active neighboring switches connected to the traffgens"
+        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
+        def switchPair = topologyHelper.switchPairs.find {
+            [it.src, it.dst].every { it.dpId in traffGenSwitches }
+        } ?: assumeTrue(false, "No suiting switches found")
+
+        and: "A flow with updated port on src endpoint via partial update"
+        def traffgenPortOnSrcSw = topology.activeTraffGens.find { it.switchConnected ==  switchPair.src}.switchPort
+        def srcFlowPort = (topology.getAllowedPortsForSwitch(
+                topology.find(switchPair.src.dpId)) - traffgenPortOnSrcSw).last()
+
+        def flow = flowHelperV2.randomFlow(switchPair).tap { it.source.portNumber = srcFlowPort }
+        flowHelperV2.addFlow(flow)
+
+        flowHelperV2.partialUpdate(flow.flowId, new FlowPatchV2().tap {
+            source = new FlowPatchEndpoint().tap {portNumber = traffgenPortOnSrcSw }
+        })
+
+        when: "Generate traffic on the flow"
+        Date startTime = new Date()
+        def traffExam = traffExamProvider.get()
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(northbound.getFlow(flow.flowId),
+                (int) flow.maximumBandwidth, 5)
+        exam.setResources(traffExam.startExam(exam, true))
+        assert traffExam.waitExam(exam).hasTraffic()
+
+        then: "System collects stats for ingress/egress cookies"
+        def flowInfo = database.getFlow(flow.flowId)
+        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
+        def metric = metricPrefix + "flow.raw.bytes"
+        def waitInterval = 5
+        Wrappers.wait(statsRouterInterval, waitInterval) {
+            // https://github.com/telstra/open-kilda/issues/4246
+//            otsdb.query(startTime, metric, tags + [cookie: flowInfo.forwardPath.cookie.value]).dps.each {
+//                assert it.value != 0
+//            }
+            otsdb.query(startTime, metric, tags + [cookie: flowInfo.reversePath.cookie.value]).dps.each {
+                assert it.value != 0
+            }
         }
 
         cleanup:

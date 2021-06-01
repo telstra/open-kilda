@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.Optional;
 
 public interface MirrorGroupRepository extends Repository<MirrorGroup> {
+    Collection<MirrorGroup> findAll();
 
     /**
      * Find group by Path Id.
@@ -42,11 +43,31 @@ public interface MirrorGroupRepository extends Repository<MirrorGroup> {
     Collection<MirrorGroup> findBySwitchId(SwitchId switchId);
 
     /**
+     * Find group by Group Id.
+     *
+     * @param groupId group ID
+     * @return a collection of {@link MirrorGroup}
+     */
+    Optional<MirrorGroup> findByGroupId(GroupId groupId);
+
+    /**
+     * Find group by Path Id and Switch Id.
+     *
+     * @param pathId path ID
+     * @param switchId switch ID
+     * @return a collection of {@link MirrorGroup}
+     */
+    Optional<MirrorGroup> findByPathIdAndSwitchId(PathId pathId, SwitchId switchId);
+
+    boolean exists(SwitchId switchId, GroupId groupId);
+
+    /**
      * Find a group id which is not assigned to any flow.
      *
      * @param switchId       the switch defines where the group is applied on.
-     * @param defaultGroupId the potential group to be checked first.
+     * @param lowestGroupId the lowest value for a potential group id.
+     * @param highestGroupId the highest value for a potential group id.
      * @return a meter id or {@link Optional#empty()} if no meter available.
      */
-    Optional<GroupId> findUnassignedGroupId(SwitchId switchId, GroupId defaultGroupId);
+    Optional<GroupId> findFirstUnassignedGroupId(SwitchId switchId, GroupId lowestGroupId, GroupId highestGroupId);
 }

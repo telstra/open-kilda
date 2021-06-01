@@ -564,6 +564,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
+
         and: "All related switches have no discrepancies in rules"
         switches.each {
             def validation = northbound.validateSwitch(it.dpId)
@@ -572,6 +573,10 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
             def swProps = northbound.getSwitchProperties(it.dpId)
             def amountOfMultiTableRules = swProps.multiTable ? 1 : 0
             def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId,dstSwitch.dpId]) ? 1 : 0
+            if (swProps.multiTable && swProps.server42FlowRtt) {
+                if ((flow.destination.getSwitchId() == it.dpId && flow.destination.vlanId) || (flow.source.getSwitchId() == it.dpId && flow.source.vlanId))
+                    amountOfServer42Rules += 1
+            }
             def amountOfFlowRules = 2 + amountOfMultiTableRules + amountOfServer42Rules
             assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
         }

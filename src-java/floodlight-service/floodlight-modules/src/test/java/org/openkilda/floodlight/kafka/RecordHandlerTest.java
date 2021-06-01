@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.kafka;
 
 import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.mock;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
@@ -33,6 +34,8 @@ import org.openkilda.messaging.command.flow.ReinstallServer42FlowForSwitchManage
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.FlowSharedSegmentCookie;
+import org.openkilda.model.cookie.FlowSharedSegmentCookie.SharedSegmentType;
 import org.openkilda.model.cookie.PortColourCookie;
 
 import com.google.common.collect.Lists;
@@ -47,6 +50,7 @@ public class RecordHandlerTest {
     public static final int CUSTOMER_PORT = 15;
     public static final int SERVER42_PORT = 42;
     public static final int SERVER42_VLAN = 2;
+    public static final int VLAN_1 = 1;
     public static final MacAddress SERVER42_MAC_ADDRESS = new MacAddress("42:42:42:42:42:42");
     public static final String CORRELATION_ID = "corr";
 
@@ -186,6 +190,31 @@ public class RecordHandlerTest {
                 .outputPort(0)
                 .server42MacAddress(SERVER42_MAC_ADDRESS)
                 .server42Vlan(SERVER42_VLAN)
+                .build();
+
+        recordHandler.handleCommand(
+                new CommandMessage(new InstallFlowForSwitchManagerRequest(request), 0, CORRELATION_ID));
+        verify(switchManager);
+    }
+
+    @Test
+    public void installServer42SharedTest() throws SwitchOperationException {
+        FlowSharedSegmentCookie cookie = FlowSharedSegmentCookie
+                .builder(SharedSegmentType.SERVER42_QINQ_OUTER_VLAN)
+                .portNumber(SERVER42_PORT)
+                .vlanId(VLAN_1)
+                .build();
+
+        switchManager.installServer42OuterVlanMatchSharedFlow(DATAPATH_ID, cookie);
+        expectLastCall().once();
+        replay(switchManager);
+
+        InstallServer42Flow request = InstallServer42Flow.builder()
+                .id("shared")
+                .switchId(SWITCH_ID)
+                .cookie(cookie.getValue())
+                .inputPort(SERVER42_PORT)
+                .outputPort(0)
                 .build();
 
         recordHandler.handleCommand(

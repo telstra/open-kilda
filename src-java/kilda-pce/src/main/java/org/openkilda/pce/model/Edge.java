@@ -20,11 +20,13 @@ import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.ToString;
 
 @Getter
 @AllArgsConstructor
 @Builder(toBuilder = true)
 @EqualsAndHashCode(of = {"srcSwitch", "destSwitch", "srcPort", "destPort"})
+@ToString(exclude = {"diversityGroupUseCounter", "diversityGroupPerPopUseCounter"})
 public class Edge {
     @NonNull
     private Node srcSwitch;

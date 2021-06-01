@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.share.utils;
 
+import java.time.Duration;
+import java.time.Instant;
+
 public final class TimestampHelper {
     private static final long TEN_TO_NINE = 1_000_000_000;
 
@@ -27,5 +30,21 @@ public final class TimestampHelper {
         long seconds = (timestamp >> 32);
         long nanoseconds = (timestamp & 0xFFFFFFFFL);
         return seconds * TEN_TO_NINE + nanoseconds;
+    }
+
+    /**
+     * Transform noviflow nanosecond precision time representation into {@link Instant}.
+     */
+    public static Instant noviflowTimestampToInstant(Long timestamp) {
+        long seconds = (timestamp >> 32);
+        long nanoseconds = (timestamp & 0xFFFFFFFFL);
+        return Instant.ofEpochSecond(seconds, nanoseconds);
+    }
+
+    /**
+     * Transform difference between two noviflow nanosecond precision time values into {@link Duration}.
+     */
+    public static Duration noviflowTimestampsToDuration(Long t0, Long t1) {
+        return Duration.between(noviflowTimestampToInstant(t0), noviflowTimestampToInstant(t1));
     }
 }

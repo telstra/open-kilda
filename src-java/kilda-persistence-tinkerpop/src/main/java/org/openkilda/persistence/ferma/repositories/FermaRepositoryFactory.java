@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -24,6 +24,8 @@ import org.openkilda.persistence.repositories.ExclusionIdRepository;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
+import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
+import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -197,5 +199,16 @@ public class FermaRepositoryFactory implements RepositoryFactory {
     @Override
     public SpeakerRepository createSpeakerRepository() {
         return new FermaSpeakerRepository(graphFactory, transactionManager);
+    }
+
+    @Override
+    public FlowMirrorPointsRepository createFlowMirrorPointsRepository() {
+        return new FermaFlowMirrorPointsRepository(graphFactory, createFlowMirrorPathRepository(),
+                transactionManager);
+    }
+
+    @Override
+    public FlowMirrorPathRepository createFlowMirrorPathRepository() {
+        return new FermaFlowMirrorPathRepository(graphFactory, transactionManager);
     }
 }

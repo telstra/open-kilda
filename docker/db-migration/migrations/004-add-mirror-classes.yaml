@@ -1,0 +1,45 @@
+---
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: dpoltavets
+      changes:
+        - tagDatabase:
+            tag: 004-add-mirror-classes
+  - changeSet:
+      id: flow_mirror_points
+      author: dpoltavets
+      changes:
+        - sql: "CREATE CLASS flow_mirror_points IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY flow_mirror_points.flow_path_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_mirror_points.mirror_switch_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_mirror_points.mirror_group_id IF NOT EXISTS LONG"
+        - sql: "CREATE INDEX flow_mirror_points.flow_path_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror_points.mirror_switch_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror_points.mirror_group_id UNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror_points_unique on flow_mirror_points (flow_path_id, mirror_switch_id) UNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DROP CLASS flow_mirror_points"
+  - changeSet:
+      id: flow_mirror_path
+      author: dpoltavets
+      changes:
+        - sql: "CREATE CLASS flow_mirror_path IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY flow_mirror_path.path_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_mirror_path.mirror_switch_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_mirror_path.egress_switch_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_mirror_path.egress_port IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_mirror_path.egress_outer_vlan IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_mirror_path.egress_inner_vlan IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_mirror_path.cookie IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY flow_mirror_path.status IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX flow_mirror_path.path_id UNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror_path.mirror_switch_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror_path.egress_switch_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror_path.egress_port NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror_path.egress_outer_vlan NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror_path.egress_inner_vlan NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror_path.cookie UNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror_path.status NOTUNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DROP CLASS flow_mirror_path"

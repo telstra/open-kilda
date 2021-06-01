@@ -27,10 +27,15 @@ import lombok.EqualsAndHashCode;
 @AllArgsConstructor
 @EqualsAndHashCode
 public class SpeakerRequestBuildContext {
-    public static final SpeakerRequestBuildContext EMPTY = SpeakerRequestBuildContext.builder()
-            .forward(PathContext.builder().build())
-            .reverse(PathContext.builder().build())
-            .build();
+    /**
+     * Returns empty build context.
+     */
+    public static SpeakerRequestBuildContext getEmpty() {
+        return SpeakerRequestBuildContext.builder()
+                .forward(PathContext.builder().build())
+                .reverse(PathContext.builder().build())
+                .build();
+    }
 
     private PathContext forward;
     private PathContext reverse;
@@ -49,8 +54,10 @@ public class SpeakerRequestBuildContext {
 
         private boolean removeServer42InputRule;
         private boolean removeServer42IngressRule;
+        private boolean removeServer42OuterVlanMatchSharedRule;
         private boolean installServer42InputRule;
         private boolean installServer42IngressRule;
+        private boolean installServer42OuterVlanMatchSharedRule;
         private Integer server42Port;
         private MacAddress server42MacAddress;
     }

@@ -17,10 +17,12 @@ package org.openkilda.messaging.payload.network;
 
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
 
+import java.time.Duration;
 import java.util.List;
 
 @Value
@@ -32,14 +34,29 @@ public class PathDto {
     @JsonProperty("latency")
     private Long latency;
 
+    @JsonProperty("latency_ns")
+    private Long latencyNs;
+
+    @JsonProperty("latency_ms")
+    private Long latencyMs;
+
     @JsonProperty("nodes")
     private List<PathNodePayload> nodes;
 
+    public PathDto(Long bandwidth, Duration latency, List<PathNodePayload> nodes) {
+        this(bandwidth, latency.toNanos(), latency.toNanos(), latency.toMillis(), nodes);
+    }
+
+    @JsonCreator
     public PathDto(@JsonProperty("bandwidth") Long bandwidth,
                    @JsonProperty("latency") Long latency,
+                   @JsonProperty("latency_ns") Long latencyNs,
+                   @JsonProperty("latency_ms") Long latencyMs,
                    @JsonProperty("nodes") List<PathNodePayload> nodes) {
         this.bandwidth = bandwidth;
         this.latency = latency;
+        this.latencyNs = latencyNs;
+        this.latencyMs = latencyMs;
         this.nodes = nodes;
     }
 }

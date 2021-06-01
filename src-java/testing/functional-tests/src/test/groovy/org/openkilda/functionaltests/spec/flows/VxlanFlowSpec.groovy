@@ -447,7 +447,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
             isVxlanEnabled(it.src.dpId) && !isVxlanEnabled(it.dst.dpId)
         }
-        assumeTrue("Unable to find required switches in topology", switchPair as boolean)
+        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
         def dstEncapsulationTypes = northbound.getSwitchProperties(switchPair.dst.dpId).supportedTransitEncapsulation
                 .collect { it.toString().toUpperCase() }
 

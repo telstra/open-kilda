@@ -860,7 +860,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         northbound.deleteSwitchRules(swP.src.dpId, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
 
         then: "System detects missing rules on the src switch"
-        def amountOfServer42Rules = northbound.getSwitchProperties(swP.src.dpId).server42FlowRtt ? 1 : 0
+        def amountOfServer42Rules = northbound.getSwitchProperties(swP.src.dpId).server42FlowRtt ? 2 : 0
         with(northbound.validateSwitch(swP.src.dpId).rules) {
             it.excess.empty
             it.excessHex.empty

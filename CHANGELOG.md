@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.94.0 (01/06/2021)
+
+### Features:
+-  [#4229](https://github.com/telstra/open-kilda/pull/4229) Add flow mirror points models. (Issue: [#3849](https://github.com/telstra/open-kilda/issues/3849))
+-  [#4220](https://github.com/telstra/open-kilda/pull/4220) Send flow monitoring stats to openTSDB
+-  [#4191](https://github.com/telstra/open-kilda/pull/4191) Server 42 QinQ support (Issue: [#4158](https://github.com/telstra/open-kilda/issues/4158)) [**floodlight**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#4261](https://github.com/telstra/open-kilda/pull/4261) Specify the docker version for lab-api
+-  [#4272](https://github.com/telstra/open-kilda/pull/4272) Do not install/remove server42 QinQ shared rule for single switch flows
+-  [#4275](https://github.com/telstra/open-kilda/pull/4275) Use method instead of constant for empty speaker context.
+-  [#4247](https://github.com/telstra/open-kilda/pull/4247) Added @ToString into Edge class to make logs correct
+
+### Improvements:
+-  [#4226](https://github.com/telstra/open-kilda/pull/4226) Improve get paths api response [**northbound**][**storm-topologies**]
+-  [#4265](https://github.com/telstra/open-kilda/pull/4265) extend CleanupVerifierExtension [**tests**]
+-  [#3977](https://github.com/telstra/open-kilda/pull/3977) extend server42Spec [**tests**]
+-  [#4245](https://github.com/telstra/open-kilda/pull/4245) fix/refactor tests in vxlanFlowSpec, logicalPortSpec, swValidationSingleSwFlowSpec [**tests**]
+-  [#4250](https://github.com/telstra/open-kilda/pull/4250) add test according to #4246 [**tests**]
+
+### Other changes:
+-  [#4107](https://github.com/telstra/open-kilda/pull/4107) Flow traffic mirroring design (Issue: [#3849](https://github.com/telstra/open-kilda/issues/3849)) [**docs**]
+-  [#4204](https://github.com/telstra/open-kilda/pull/4204) Server42: build with main makefile [**configuration**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.93.0...v1.94.0).
+
+### Affected Components:
+swmanager, flow-hs, fl, nb, flow-monitor, orientdb, nbworker
+
+### Upgrade notes:
+If you have an older version of Kilda installed, then you must migrate the data stored in OrientDB.
+Follow the [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
 ## v1.93.0 (17/05/2021)
 
 ### Bug Fixes:

@@ -98,7 +98,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     public List<FlowSegmentRequestFactory> buildAllExceptIngress(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath) {
         return makeRequests(context, flow, path, oppositePath, false, true, true,
-                SpeakerRequestBuildContext.EMPTY);
+                SpeakerRequestBuildContext.getEmpty());
     }
 
     @Override
@@ -127,7 +127,8 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     @Override
     public List<FlowSegmentRequestFactory> buildEgressOnly(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath) {
-        return makeRequests(context, flow, path, oppositePath, false, false, true, SpeakerRequestBuildContext.EMPTY);
+        return makeRequests(context, flow, path, oppositePath, false, false, true,
+                SpeakerRequestBuildContext.getEmpty());
     }
 
     @Override
@@ -135,7 +136,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath) {
 
         return makeRequests(context, flow, path, oppositePath, false, false, true,
-                SpeakerRequestBuildContext.EMPTY.getForward());
+                SpeakerRequestBuildContext.getEmpty().getForward());
 
     }
 
@@ -217,8 +218,10 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 pathContext.isUpdateMeter(),
                 pathContext.isRemoveServer42InputRule(),
                 pathContext.isRemoveServer42IngressRule(),
+                pathContext.isRemoveServer42OuterVlanMatchSharedRule(),
                 pathContext.isInstallServer42InputRule(),
                 pathContext.isInstallServer42IngressRule(),
+                pathContext.isInstallServer42OuterVlanMatchSharedRule(),
                 pathContext.getServer42Port(),
                 pathContext.getServer42MacAddress());
     }

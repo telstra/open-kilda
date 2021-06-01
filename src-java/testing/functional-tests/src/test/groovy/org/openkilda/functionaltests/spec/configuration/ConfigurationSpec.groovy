@@ -142,8 +142,8 @@ class ConfigurationSpec extends HealthCheckSpecification {
 
         cleanup: "Revert system to origin state"
         blockData && !switchIsActivated && switchHelper.reviveSwitch(sw, blockData, true)
-        initConf && newMultiTableValue && northbound.updateKildaConfiguration(initConf)
-        initConf && newMultiTableValue && northbound.updateSwitchProperties(sw.dpId,
+        initConf && northbound.updateKildaConfiguration(initConf)
+        initConf && northbound.updateSwitchProperties(sw.dpId,
                 northbound.getSwitchProperties(sw.dpId).tap { multiTable = initConf.useMultiTable })
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()

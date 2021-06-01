@@ -28,7 +28,11 @@ import org.openkilda.persistence.ferma.frames.converters.MirrorGroupTypeConverte
 import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 
+import com.syncleus.ferma.FramedGraph;
 import com.syncleus.ferma.annotations.Property;
+
+import java.util.List;
+import java.util.Optional;
 
 public abstract class MirrorGroupFrame extends KildaBaseVertexFrame implements MirrorGroupData {
     public static final String FRAME_LABEL = "mirror_group";
@@ -95,4 +99,13 @@ public abstract class MirrorGroupFrame extends KildaBaseVertexFrame implements M
     @Property(PATH_ID_PROPERTY)
     @Convert(PathIdConverter.class)
     public abstract void setPathId(PathId pathId);
+
+    public static Optional<MirrorGroupFrame> load(FramedGraph graph, String switchId, String pathId) {
+        List<? extends MirrorGroupFrame> mirrorGroupFrames = graph.traverse(input -> input.V()
+                .hasLabel(FRAME_LABEL)
+                .has(SWITCH_ID_PROPERTY, switchId)
+                .has(PATH_ID_PROPERTY, pathId))
+                .toListExplicit(MirrorGroupFrame.class);
+        return mirrorGroupFrames.isEmpty() ? Optional.empty() : Optional.of(mirrorGroupFrames.get(0));
+    }
 }

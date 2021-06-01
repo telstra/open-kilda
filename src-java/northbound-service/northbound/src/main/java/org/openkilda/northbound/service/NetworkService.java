@@ -20,6 +20,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -32,5 +33,5 @@ public interface NetworkService {
      */
     CompletableFuture<PathsDto> getPaths(
             SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType encapsulationType,
-            PathComputationStrategy pathComputationStrategy, Long maxLatency, Long maxLatencyTier2);
+            PathComputationStrategy pathComputationStrategy, Duration maxLatencyMs, Duration maxLatencyTier2);
 }

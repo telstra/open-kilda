@@ -29,6 +29,8 @@ import org.openkilda.wfm.topology.flowmonitoring.model.FlowState;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -36,13 +38,13 @@ import java.util.stream.Collectors;
 public class FlowCacheService {
 
     private Clock clock;
-    private long flowRttStatsExpirationTime;
+    private Duration flowRttStatsExpirationTime;
     private FlowCacheBoltCarrier carrier;
 
     private Map<String, FlowState> flowStates;
 
     public FlowCacheService(PersistenceManager persistenceManager, Clock clock,
-                            long flowRttStatsExpirationTime, FlowCacheBoltCarrier carrier) {
+                            Duration flowRttStatsExpirationTime, FlowCacheBoltCarrier carrier) {
         this.clock = clock;
         this.flowRttStatsExpirationTime = flowRttStatsExpirationTime;
         this.carrier = carrier;
@@ -63,7 +65,7 @@ public class FlowCacheService {
             log.warn("Skipping flow RTT stats for an unknown flow '{}'.", flowRttStatsData.getFlowId());
             return;
         }
-        if (FORWARD.name().equals(flowRttStatsData.getDirection())) {
+        if (FORWARD.name().toLowerCase().equals(flowRttStatsData.getDirection())) {
             flowState.setForwardPathLatency(FlowMapper.INSTANCE.toFlowPathLatency(flowRttStatsData));
         } else {
             flowState.setReversePathLatency(FlowMapper.INSTANCE.toFlowPathLatency(flowRttStatsData));
@@ -90,8 +92,8 @@ public class FlowCacheService {
     }
 
     private void checkFlowLatency(String flowId, FlowState flowState) {
-        long currentTimeMillis = clock.millis();
-        if (currentTimeMillis > flowState.getForwardPathLatency().getTimestamp() + flowRttStatsExpirationTime) {
+        Instant current = clock.instant();
+        if (isExpired(flowState.getForwardPathLatency().getTimestamp(), current)) {
             carrier.emitCalculateFlowLatencyRequest(flowId, FlowDirection.FORWARD,
                     flowState.getForwardPath(), flowState.getMaxLatency(), flowState.getMaxLatencyTier2());
         } else {
@@ -99,7 +101,7 @@ public class FlowCacheService {
                     flowState.getForwardPathLatency().getLatency(),
                     flowState.getMaxLatency(), flowState.getMaxLatencyTier2());
         }
-        if (currentTimeMillis > flowState.getReversePathLatency().getTimestamp() + flowRttStatsExpirationTime) {
+        if (isExpired(flowState.getReversePathLatency().getTimestamp(), current)) {
             carrier.emitCalculateFlowLatencyRequest(flowId, FlowDirection.REVERSE,
                     flowState.getReversePath(), flowState.getMaxLatency(), flowState.getMaxLatencyTier2());
         } else {
@@ -107,5 +109,9 @@ public class FlowCacheService {
                     flowState.getReversePathLatency().getLatency(),
                     flowState.getMaxLatency(), flowState.getMaxLatencyTier2());
         }
+    }
+
+    public boolean isExpired(Instant timestamp, Instant current) {
+        return timestamp == null || current.isAfter(timestamp.plus(flowRttStatsExpirationTime));
     }
 }

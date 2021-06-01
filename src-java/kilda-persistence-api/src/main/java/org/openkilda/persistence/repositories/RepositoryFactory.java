@@ -73,4 +73,8 @@ public interface RepositoryFactory {
     MirrorGroupRepository createMirrorGroupRepository();
 
     SpeakerRepository createSpeakerRepository();
+
+    FlowMirrorPointsRepository createFlowMirrorPointsRepository();
+
+    FlowMirrorPathRepository createFlowMirrorPathRepository();
 }

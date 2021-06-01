@@ -51,6 +51,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
@@ -152,39 +153,42 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
     @Test
     public void findNPathsByTransitVlanIgnoreMaxLatency()
             throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
-        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, LATENCY, 1L, 2L);
+        List<PathsInfoData> paths = pathsService.getPaths(
+                SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, LATENCY, Duration.ofNanos(1L), Duration.ofNanos(2L));
         assertTransitVlanAndLatencyPaths(paths);
     }
 
     @Test
     public void findNPathsByVxlanAndEnoughMaxLatencyZeroTier2Latency()
             throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
-        long maxLatency = MIN_LATENCY * 2 + 1;
+        Duration maxLatency = Duration.ofNanos(MIN_LATENCY * 2 + 1);
         List<PathsInfoData> paths = pathsService.getPaths(
-                SWITCH_ID_1, SWITCH_ID_2, VXLAN, MAX_LATENCY, maxLatency, 0L);
+                SWITCH_ID_1, SWITCH_ID_2, VXLAN, MAX_LATENCY, maxLatency, Duration.ZERO);
         assertMaxLatencyPaths(paths, maxLatency, 1, VXLAN);
     }
 
     @Test
     public void findNPathsByTransitVlanAndTooSmallMaxLatency()
             throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
-        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, MAX_LATENCY, 1L, 0L);
+        List<PathsInfoData> paths = pathsService.getPaths(
+                SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, MAX_LATENCY, Duration.ofNanos(1L), Duration.ZERO);
         assertTrue(paths.isEmpty());
     }
 
     @Test
     public void findNPathsByTransitVlanAndTooSmallMaxLatencyAndTier2Latency()
             throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
-        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, MAX_LATENCY, 1L, 2L);
+        List<PathsInfoData> paths = pathsService.getPaths(
+                SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, MAX_LATENCY, Duration.ofNanos(1L), Duration.ofNanos(2L));
         assertTrue(paths.isEmpty());
     }
 
     @Test
     public void findNPathsByTransitVlanAndTooSmallMaxLatencyEnoughTier2Latency()
             throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
-        long maxLatencyTier2 = MIN_LATENCY * 2 + 1;
-        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, MAX_LATENCY, 1L,
-                maxLatencyTier2);
+        Duration maxLatencyTier2 = Duration.ofNanos(MIN_LATENCY * 2 + 1);
+        List<PathsInfoData> paths = pathsService.getPaths(
+                SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, MAX_LATENCY, Duration.ofNanos(1L), maxLatencyTier2);
         assertMaxLatencyPaths(paths, maxLatencyTier2, 1, TRANSIT_VLAN);
     }
 
@@ -192,8 +196,8 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
     public void findNPathsByTransitVlanAndZeroMaxLatency()
             throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
         // as max latency param is 0 LATENCY starategy will be used instead. It means all 500 paths will be returned
-        List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, MAX_LATENCY, 0L,
-                null);
+        List<PathsInfoData> paths = pathsService.getPaths(
+                SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, MAX_LATENCY, Duration.ZERO, null);
         assertTransitVlanAndLatencyPaths(paths);
     }
 
@@ -256,13 +260,13 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         assertVxlanAndCostPathes(paths);
     }
 
-    private void assertMaxLatencyPaths(List<PathsInfoData> paths, long maxLatency, long expectedCount,
+    private void assertMaxLatencyPaths(List<PathsInfoData> paths, Duration maxLatency, long expectedCount,
                                        FlowEncapsulationType encapsulationType) {
         assertEquals(expectedCount, paths.size());
         assertPathLength(paths);
 
         for (PathsInfoData path : paths) {
-            assertTrue(path.getPath().getLatency() < maxLatency);
+            assertTrue(path.getPath().getLatency().minus(maxLatency).isNegative());
             Optional<SwitchProperties> properties = switchPropertiesRepository
                     .findBySwitchId(path.getPath().getNodes().get(1).getSwitchId());
             assertTrue(properties.isPresent());

@@ -41,6 +41,7 @@ import org.openkilda.pce.model.WeightFunction;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -144,8 +145,12 @@ public class InMemoryPathComputer implements PathComputer {
     @Override
     public List<Path> getNPaths(SwitchId srcSwitchId, SwitchId dstSwitchId, int count,
                                 FlowEncapsulationType flowEncapsulationType,
-                                PathComputationStrategy pathComputationStrategy, Long maxLatency, Long maxLatencyTier2)
+                                PathComputationStrategy pathComputationStrategy,
+                                Duration maxLatency, Duration maxLatencyTier2)
             throws RecoverableException, UnroutableFlowException {
+        final long maxLatencyNs = maxLatency != null ? maxLatency.toNanos() : 0;
+        final long maxLatencyTier2Ns = maxLatencyTier2 != null ? maxLatencyTier2.toNanos() : 0;
+
         Flow flow = Flow.builder()
                 .flowId("") // just any id, as not used.
                 .srcSwitch(Switch.builder().switchId(srcSwitchId).build())
@@ -153,8 +158,8 @@ public class InMemoryPathComputer implements PathComputer {
                 .ignoreBandwidth(false)
                 .encapsulationType(flowEncapsulationType)
                 .bandwidth(1) // to get ISLs with non zero available bandwidth
-                .maxLatency(maxLatency)
-                .maxLatencyTier2(maxLatencyTier2)
+                .maxLatency(maxLatencyNs)
+                .maxLatencyTier2(maxLatencyTier2Ns)
                 .build();
 
         AvailableNetwork availableNetwork = availableNetworkFactory.getAvailableNetwork(flow, Collections.emptyList());
@@ -174,9 +179,7 @@ public class InMemoryPathComputer implements PathComputer {
                 break;
             case MAX_LATENCY:
                 paths = pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitchId, dstSwitchId, count,
-                        getWeightFunctionByStrategy(pathComputationStrategy),
-                        Optional.ofNullable(maxLatency).orElse(0L),
-                        Optional.ofNullable(maxLatencyTier2).orElse(0L));
+                        getWeightFunctionByStrategy(pathComputationStrategy), maxLatencyNs, maxLatencyTier2Ns);
                 break;
             default:
                 throw new UnsupportedOperationException(String.format(

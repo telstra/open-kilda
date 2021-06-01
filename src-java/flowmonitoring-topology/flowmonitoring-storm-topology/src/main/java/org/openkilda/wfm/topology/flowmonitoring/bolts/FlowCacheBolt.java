@@ -40,6 +40,7 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.util.List;
 
 public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier {
@@ -51,11 +52,11 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
     public static final String MAX_LATENCY_TIER_2_FIELD = "max-latency-tier-2";
 
     private PersistenceManager persistenceManager;
-    private long flowRttStatsExpirationTime;
+    private Duration flowRttStatsExpirationTime;
 
     private transient FlowCacheService flowCacheService;
 
-    public FlowCacheBolt(PersistenceManager persistenceManager, long flowRttStatsExpirationTime,
+    public FlowCacheBolt(PersistenceManager persistenceManager, Duration flowRttStatsExpirationTime,
                          String lifeCycleEventSourceComponent) {
         super(lifeCycleEventSourceComponent);
         this.persistenceManager = persistenceManager;
@@ -97,7 +98,7 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
     }
 
     @Override
-    public void emitCheckFlowLatencyRequest(String flowId, FlowDirection direction, long latency,
+    public void emitCheckFlowLatencyRequest(String flowId, FlowDirection direction, Duration latency,
                                             Long maxLatency, Long maxLatencyTier2) {
         emit(ACTION_STREAM_ID.name(), getCurrentTuple(), new Values(flowId, direction, latency,
                 maxLatency, maxLatencyTier2, getCommandContext()));

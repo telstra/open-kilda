@@ -137,7 +137,7 @@ public class SpeakerFlowSegmentRequestBuilderTest extends InMemoryGraphBasedTest
         Flow flow = buildFlow(sw, 1, 10, sw, 2, 12, 1000);
         List<FlowSegmentRequestFactory> commands = target.buildAll(
                 COMMAND_CONTEXT, flow, flow.getForwardPath(), flow.getReversePath(),
-                SpeakerRequestBuildContext.EMPTY);
+                SpeakerRequestBuildContext.getEmpty());
 
         assertEquals(2, commands.size());
 
@@ -184,7 +184,7 @@ public class SpeakerFlowSegmentRequestBuilderTest extends InMemoryGraphBasedTest
 
         // then produce path segment request factories
         List<FlowSegmentRequestFactory> commands = target.buildIngressOnly(
-                COMMAND_CONTEXT, goal, goalForwardPath, goalReversePath, SpeakerRequestBuildContext.EMPTY);
+                COMMAND_CONTEXT, goal, goalForwardPath, goalReversePath, SpeakerRequestBuildContext.getEmpty());
         boolean haveMatch = false;
         for (FlowSegmentRequestFactory entry : commands) {
             // search command for flow source side
@@ -210,7 +210,7 @@ public class SpeakerFlowSegmentRequestBuilderTest extends InMemoryGraphBasedTest
                 Objects.requireNonNull(flow.getForwardPath()), Objects.requireNonNull(flow.getReversePath()));
 
         List<FlowSegmentRequestFactory> commands = target.buildIngressOnly(
-                COMMAND_CONTEXT, flow, SpeakerRequestBuildContext.EMPTY);
+                COMMAND_CONTEXT, flow, SpeakerRequestBuildContext.getEmpty());
         assertEquals(2, commands.size());
 
         verifyForwardIngressRequest(flow, commands.get(0).makeInstallRequest(commandIdGenerator.generate()));

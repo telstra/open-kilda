@@ -34,10 +34,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -58,7 +57,7 @@ public class NetworkServiceImpl implements NetworkService {
     @Override
     public CompletableFuture<PathsDto> getPaths(
             SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType encapsulationType,
-            PathComputationStrategy pathComputationStrategy, Long maxLatency, Long maxLatencyTier2) {
+            PathComputationStrategy pathComputationStrategy, Duration maxLatency, Duration maxLatencyTier2) {
         String correlationId = RequestCorrelationId.getId();
 
         if (PathComputationStrategy.MAX_LATENCY.equals(pathComputationStrategy) && maxLatency == null) {
@@ -67,10 +66,6 @@ public class NetworkServiceImpl implements NetworkService {
                     + "max_latency parameter. If max_latency will be equal to 0 LATENCY strategy will be used instead "
                     + "of MAX_LATENCY.");
         }
-
-        // convert milliseconds to nanoseconds
-        maxLatency = Optional.ofNullable(maxLatency).map(TimeUnit.MILLISECONDS::toNanos).orElse(null);
-        maxLatencyTier2 = Optional.ofNullable(maxLatencyTier2).map(TimeUnit.MILLISECONDS::toNanos).orElse(null);
 
         GetPathsRequest request = new GetPathsRequest(srcSwitch, dstSwitch, encapsulationType, pathComputationStrategy,
                 maxLatency, maxLatencyTier2);
