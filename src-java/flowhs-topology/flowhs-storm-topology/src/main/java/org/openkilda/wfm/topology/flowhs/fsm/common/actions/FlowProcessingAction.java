@@ -56,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -199,13 +200,19 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
     }
 
     protected SpeakerRequestBuildContext buildBaseSpeakerContextForInstall(SwitchId srcSwitchId, SwitchId dstSwitchId) {
+        if (Objects.equals(srcSwitchId, dstSwitchId)) {
+            // At this moment all context props in buildBasePathContextForInstall() are about server42.
+            // But server42 is not used for single switch flow.
+            return SpeakerRequestBuildContext.getEmpty();
+        }
+
         return SpeakerRequestBuildContext.builder()
                 .forward(buildBasePathContextForInstall(srcSwitchId))
                 .reverse(buildBasePathContextForInstall(dstSwitchId))
                 .build();
     }
 
-    protected PathContext buildBasePathContextForInstall(SwitchId switchId) {
+    private PathContext buildBasePathContextForInstall(SwitchId switchId) {
         SwitchProperties switchProperties = getSwitchProperties(switchId);
         boolean serverFlowRtt = switchProperties.isServer42FlowRtt() && isServer42FlowRttFeatureToggle();
         return PathContext.builder()

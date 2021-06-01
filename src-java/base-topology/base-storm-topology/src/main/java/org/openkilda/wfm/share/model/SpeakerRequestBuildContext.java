@@ -27,10 +27,15 @@ import lombok.EqualsAndHashCode;
 @AllArgsConstructor
 @EqualsAndHashCode
 public class SpeakerRequestBuildContext {
-    public static final SpeakerRequestBuildContext EMPTY = SpeakerRequestBuildContext.builder()
-            .forward(PathContext.builder().build())
-            .reverse(PathContext.builder().build())
-            .build();
+    /**
+     * Returns empty build context.
+     */
+    public static SpeakerRequestBuildContext getEmpty() {
+        return SpeakerRequestBuildContext.builder()
+                .forward(PathContext.builder().build())
+                .reverse(PathContext.builder().build())
+                .build();
+    }
 
     private PathContext forward;
     private PathContext reverse;

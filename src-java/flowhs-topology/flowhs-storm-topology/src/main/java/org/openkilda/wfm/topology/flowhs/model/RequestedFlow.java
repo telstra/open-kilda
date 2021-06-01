@@ -22,6 +22,8 @@ import org.openkilda.model.SwitchId;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.Objects;
+
 @Data
 @Builder
 public class RequestedFlow {
@@ -53,4 +55,8 @@ public class RequestedFlow {
     private DetectConnectedDevices detectConnectedDevices;
 
     private SwitchId loopSwitchId;
+
+    public boolean isOneSwitchFlow() {
+        return Objects.equals(srcSwitch, destSwitch);
+    }
 }
