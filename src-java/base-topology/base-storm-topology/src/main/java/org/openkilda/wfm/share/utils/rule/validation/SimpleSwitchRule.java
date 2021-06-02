@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -29,10 +29,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Data
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(exclude = {"pktCount", "byteCount", "version"})
+@EqualsAndHashCode(exclude = {"pktCount", "byteCount", "version", "ingressRule", "egressRule"})
 public class SimpleSwitchRule {
     private SwitchId switchId;
     private long cookie;
@@ -49,6 +49,11 @@ public class SimpleSwitchRule {
     private Long meterRate;
     private Long meterBurstSize;
     private String[] meterFlags;
+    private int groupId;
+    @Default
+    private List<SimpleGroupBucket> groupBuckets = Collections.emptyList();
+    private boolean ingressRule;
+    private boolean egressRule;
 
     @Override
     public String toString() {
@@ -63,5 +68,12 @@ public class SimpleSwitchRule {
                 + ", in:" + inPort + "-" + inVlan
                 + ", out:" + outPort + outVlanString
                 + '}';
+    }
+
+    @Data
+    @AllArgsConstructor
+    public static class SimpleGroupBucket {
+        private int outPort;
+        private int outVlan;
     }
 }

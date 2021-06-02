@@ -32,4 +32,6 @@ public interface FlowMirrorPointsRepository extends Repository<FlowMirrorPoints>
     Optional<FlowMirrorPoints> findByGroupId(GroupId groupId);
 
     Optional<FlowMirrorPoints> findByPathIdAndSwitchId(PathId pathId, SwitchId switchId);
+
+    Collection<FlowMirrorPoints> findBySwitchId(SwitchId switchId);
 }

@@ -100,7 +100,8 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
 
         produceSpeakerResponses(service);
 
-        verify(carrier, times(4)).sendSpeakerRequest(any());
+        // 4 flow rules + 4 mirror rules
+        verify(carrier, times(8)).sendSpeakerRequest(any());
         verifyFlowIsMissing(flow);
     }
 
@@ -133,8 +134,8 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
                     .build());
         }
 
-        // 4 times sending 4 rules = 16 requests.
-        verify(carrier, times(16)).sendSpeakerRequest(any());
+        // 4 times sending 8 (4 flow rules + 4 mirror rules) rules = 32 requests.
+        verify(carrier, times(32)).sendSpeakerRequest(any());
         verifyFlowIsMissing(flow);
     }
 
@@ -148,7 +149,8 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
         verifyFlowStatus(flowId, FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
 
-        verify(carrier, times(4)).sendSpeakerRequest(any());
+        // 4 flow rules + 4 mirror rules
+        verify(carrier, times(8)).sendSpeakerRequest(any());
 
         service.handleTimeout(dummyRequestKey);
 
@@ -192,7 +194,8 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
 
         produceSpeakerResponses(service);
 
-        verify(carrier, times(4)).sendSpeakerRequest(any());
+        // 4 flow rules + 4 mirror rules
+        verify(carrier, times(8)).sendSpeakerRequest(any());
         verifyFlowIsMissing(target);
     }
 
@@ -216,7 +219,8 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
 
         produceSpeakerResponses(service);
 
-        verify(carrier, times(4)).sendSpeakerRequest(any());
+        // 4 flow rules + 4 mirror rules
+        verify(carrier, times(8)).sendSpeakerRequest(any());
         verifyFlowIsMissing(target);
     }
 
@@ -235,7 +239,8 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
         verifyFlowStatus(target.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
 
-        verify(carrier, times(4)).sendSpeakerRequest(any());
+        // 4 flow rules + 4 mirror rules
+        verify(carrier, times(8)).sendSpeakerRequest(any());
         produceSpeakerResponses(service);
 
         // FIXME(surabujin): The flow become untouchable from kilda API (because it stack in IN_PROGRESS state
@@ -256,7 +261,8 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
 
         produceSpeakerResponses(service);
 
-        verify(carrier, times(4)).sendSpeakerRequest(any());
+        // 4 flow rules + 4 mirror rules
+        verify(carrier, times(8)).sendSpeakerRequest(any());
         verifyFlowIsMissing(target);
     }
 

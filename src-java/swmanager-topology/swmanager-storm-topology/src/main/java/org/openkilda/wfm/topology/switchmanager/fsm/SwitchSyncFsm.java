@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,6 +19,9 @@ import static java.util.Collections.emptyList;
 import static org.apache.storm.shade.org.apache.commons.collections.ListUtils.union;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.EXCESS_RULES_REMOVED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.GROUPS_INSTALLED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.GROUPS_MODIFIED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.GROUPS_REMOVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.METERS_REMOVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.MISCONFIGURED_RULES_REINSTALLED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.MISSING_RULES_INSTALLED;
@@ -27,10 +30,12 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchS
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.TIMEOUT;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_EXCESS_METERS;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_EXCESS_RULES;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_GROUP_MIRROR_CONFIGS;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_MISCONFIGURED_RULES;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_MISSING_RULES;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.FINISHED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.FINISHED_WITH_ERROR;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.GROUPS_COMMANDS_SEND;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.INITIALIZED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.METERS_COMMANDS_SEND;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.RULES_COMMANDS_SEND;
@@ -40,7 +45,10 @@ import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.DeleteGroupRequest;
 import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.InstallGroupRequest;
+import org.openkilda.messaging.command.switches.ModifyGroupRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -48,15 +56,20 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.rule.SwitchSyncErrorData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowReinstallResponse;
+import org.openkilda.messaging.info.switches.GroupInfoEntry;
+import org.openkilda.messaging.info.switches.GroupSyncEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MetersSyncEntry;
 import org.openkilda.messaging.info.switches.RulesSyncEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
+import org.openkilda.model.GroupId;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState;
+import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
@@ -74,6 +87,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncState, SwitchSyncEvent, Object> {
 
+    private static final String COMMANDS_PROCESSING_FAILED_BY_TIMEOUT_METHOD_NAME = "commandsProcessingFailedByTimeout";
     private static final String FINISHED_WITH_ERROR_METHOD_NAME = "finishedWithError";
     private static final String FINISHED_METHOD_NAME = "finished";
     private static final String ERROR_LOG_MESSAGE = "Key: {}, message: {}";
@@ -92,11 +106,17 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     private List<ReinstallDefaultFlowForSwitchManagerRequest> misconfiguredRules = emptyList();
     private List<RemoveFlow> excessRules = emptyList();
     private List<Long> excessMeters = emptyList();
+    private List<MirrorConfig> missingGroups = emptyList();
+    private List<MirrorConfig> misconfiguredGroups = emptyList();
+    private List<Integer> excessGroups = emptyList();
 
     private int missingRulesPendingResponsesCount = 0;
     private int excessRulesPendingResponsesCount = 0;
     private int reinstallDefaultRulesPendingResponsesCount = 0;
     private int excessMetersPendingResponsesCount = 0;
+    private int missingGroupsPendingResponsesCount = 0;
+    private int misconfiguredGroupsPendingResponsesCount = 0;
+    private int excessGroupsPendingResponsesCount = 0;
 
     public SwitchSyncFsm(SwitchManagerCarrier carrier, String key, CommandBuilder commandBuilder,
                          SwitchValidateRequest request, ValidationResult validationResult) {
@@ -146,7 +166,23 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         builder.externalTransition().from(COMPUTE_EXCESS_METERS).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(COMPUTE_EXCESS_METERS).to(RULES_COMMANDS_SEND).on(NEXT)
+        builder.externalTransition().from(COMPUTE_EXCESS_METERS).to(COMPUTE_GROUP_MIRROR_CONFIGS).on(NEXT)
+                .callMethod("computeGroupMirrorConfigs");
+        builder.externalTransition().from(COMPUTE_GROUP_MIRROR_CONFIGS).to(FINISHED_WITH_ERROR).on(ERROR)
+                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
+
+        builder.externalTransition().from(COMPUTE_GROUP_MIRROR_CONFIGS).to(GROUPS_COMMANDS_SEND).on(NEXT)
+                .callMethod("sendGroupsCommands");
+        builder.internalTransition().within(GROUPS_COMMANDS_SEND).on(GROUPS_INSTALLED).callMethod("groupsInstalled");
+        builder.internalTransition().within(GROUPS_COMMANDS_SEND).on(GROUPS_MODIFIED).callMethod("groupsModified");
+        builder.internalTransition().within(GROUPS_COMMANDS_SEND).on(GROUPS_REMOVED).callMethod("groupsRemoved");
+
+        builder.externalTransition().from(GROUPS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(TIMEOUT)
+                .callMethod(COMMANDS_PROCESSING_FAILED_BY_TIMEOUT_METHOD_NAME);
+        builder.externalTransition().from(GROUPS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(ERROR)
+                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
+
+        builder.externalTransition().from(GROUPS_COMMANDS_SEND).to(RULES_COMMANDS_SEND).on(NEXT)
                 .callMethod("sendRulesCommands");
         builder.internalTransition().within(RULES_COMMANDS_SEND).on(MISSING_RULES_INSTALLED)
                 .callMethod("missingRuleInstalled");
@@ -156,7 +192,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                 .callMethod("misconfiguredRuleReinstalled");
 
         builder.externalTransition().from(RULES_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(TIMEOUT)
-                .callMethod("commandsProcessingFailedByTimeout");
+                .callMethod(COMMANDS_PROCESSING_FAILED_BY_TIMEOUT_METHOD_NAME);
         builder.externalTransition().from(RULES_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
@@ -165,7 +201,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         builder.internalTransition().within(METERS_COMMANDS_SEND).on(METERS_REMOVED).callMethod("meterRemoved");
 
         builder.externalTransition().from(METERS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(TIMEOUT)
-                .callMethod("commandsProcessingFailedByTimeout");
+                .callMethod(COMMANDS_PROCESSING_FAILED_BY_TIMEOUT_METHOD_NAME);
         builder.externalTransition().from(METERS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
         builder.externalTransition().from(METERS_COMMANDS_SEND).to(FINISHED).on(NEXT)
@@ -186,7 +222,6 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     protected void computeMissingRules(SwitchSyncState from, SwitchSyncState to,
                                        SwitchSyncEvent event, Object context) {
         installedRulesCookies = new ArrayList<>(validationResult.getValidateRulesResult().getMissingRules());
-
         if (!installedRulesCookies.isEmpty()) {
             log.info("Compute install rules (switch={}, key={})", switchId, key);
             try {
@@ -342,6 +377,99 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         continueIfMetersCommandsDone();
     }
 
+    protected void computeGroupMirrorConfigs(SwitchSyncState from, SwitchSyncState to,
+                                             SwitchSyncEvent event, Object context) {
+
+        List<Integer> missingGroupIds = validationResult.getValidateGroupsResult().getMissingGroups().stream()
+                .map(GroupInfoEntry::getGroupId)
+                .collect(Collectors.toList());
+
+        if (!missingGroupIds.isEmpty()) {
+            log.info("Compute mirror configs for install groups (switch={}, key={})", switchId, key);
+            try {
+                missingGroups = commandBuilder.buildMirrorConfigs(switchId, missingGroupIds);
+            } catch (Exception e) {
+                sendException(e);
+            }
+        }
+
+        List<Integer> misconfiguredGroupIds = validationResult.getValidateGroupsResult().getMisconfiguredGroups()
+                .stream()
+                .map(GroupInfoEntry::getGroupId)
+                .collect(Collectors.toList());
+        if (!misconfiguredGroupIds.isEmpty()) {
+            log.info("Compute mirror configs for modify groups (switch={}, key={})", switchId, key);
+            try {
+                misconfiguredGroups = commandBuilder.buildMirrorConfigs(switchId, misconfiguredGroupIds);
+            } catch (Exception e) {
+                sendException(e);
+            }
+        }
+
+        excessGroups = validationResult.getValidateGroupsResult().getExcessGroups().stream()
+                .map(GroupInfoEntry::getGroupId)
+                .collect(Collectors.toList());
+    }
+
+    protected void sendGroupsCommands(SwitchSyncState from, SwitchSyncState to,
+                                      SwitchSyncEvent event, Object context) {
+        if (missingGroups.isEmpty() && misconfiguredGroups.isEmpty() && excessGroups.isEmpty()) {
+            log.info("Nothing to do with groups (switch={}, key={})", switchId, key);
+            fire(NEXT);
+        }
+
+        if (!missingGroups.isEmpty()) {
+            log.info("Request to install switch groups has been sent (switch={}, key={})", switchId, key);
+            missingGroupsPendingResponsesCount = missingGroups.size();
+
+            for (MirrorConfig mirrorConfig : missingGroups) {
+                carrier.sendCommandToSpeaker(key, new InstallGroupRequest(switchId, mirrorConfig));
+            }
+        }
+
+        if (!misconfiguredGroups.isEmpty()) {
+            log.info("Request to modify switch groups has been sent (switch={}, key={})", switchId, key);
+            misconfiguredGroupsPendingResponsesCount = misconfiguredGroups.size();
+
+            for (MirrorConfig mirrorConfig : misconfiguredGroups) {
+                carrier.sendCommandToSpeaker(key, new ModifyGroupRequest(switchId, mirrorConfig));
+            }
+        }
+
+        if (!excessGroups.isEmpty()) {
+            log.info("Request to remove switch groups has been sent (switch={}, key={})", switchId, key);
+            excessGroupsPendingResponsesCount = excessGroups.size();
+
+            for (Integer groupId : excessGroups) {
+                carrier.sendCommandToSpeaker(key, new DeleteGroupRequest(switchId, new GroupId(groupId)));
+            }
+        }
+
+        continueIfGroupsSynchronized();
+    }
+
+    protected void groupsInstalled(SwitchSyncState from, SwitchSyncState to,
+                                   SwitchSyncEvent event, Object context) {
+        log.info("Switch group installed (switch={}, key={})", switchId, key);
+        missingGroupsPendingResponsesCount--;
+        continueIfGroupsSynchronized();
+
+    }
+
+    protected void groupsModified(SwitchSyncState from, SwitchSyncState to,
+                                  SwitchSyncEvent event, Object context) {
+        log.info("Switch group modified (switch={}, key={})", switchId, key);
+        misconfiguredGroupsPendingResponsesCount--;
+        continueIfGroupsSynchronized();
+    }
+
+    protected void groupsRemoved(SwitchSyncState from, SwitchSyncState to,
+                                 SwitchSyncEvent event, Object context) {
+        log.info("Switch group removed (switch={}, key={})", switchId, key);
+        excessGroupsPendingResponsesCount--;
+        continueIfGroupsSynchronized();
+    }
+
     private void continueIfRulesSynchronized() {
         if (missingRulesPendingResponsesCount == 0
                 && excessRulesPendingResponsesCount == 0
@@ -352,6 +480,14 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     private void continueIfMetersCommandsDone() {
         if (excessMetersPendingResponsesCount == 0) {
+            fire(NEXT);
+        }
+    }
+
+    private void continueIfGroupsSynchronized() {
+        if (missingGroupsPendingResponsesCount == 0
+                && misconfiguredGroupsPendingResponsesCount == 0
+                && excessGroupsPendingResponsesCount == 0) {
             fire(NEXT);
         }
     }
@@ -370,6 +506,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                             SwitchSyncEvent event, Object context) {
         ValidateRulesResult validateRulesResult = validationResult.getValidateRulesResult();
         ValidateMetersResult validateMetersResult = validationResult.getValidateMetersResult();
+        ValidateGroupsResult validateGroupsResult = validationResult.getValidateGroupsResult();
 
         RulesSyncEntry rulesEntry = new RulesSyncEntry(validateRulesResult.getMissingRules(),
                 validateRulesResult.getMisconfiguredRules(),
@@ -389,11 +526,33 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                     request.isRemoveExcess() ? validateMetersResult.getExcessMeters() : emptyList());
         }
 
-        SwitchSyncResponse response = new SwitchSyncResponse(switchId, rulesEntry, metersEntry);
+        List<Integer> installedGroupsIds = missingGroups.stream().map(MirrorConfig::getGroupId)
+                .map(GroupId::intValue).collect(Collectors.toList());
+        List<Integer> modifiedGroupsIds = misconfiguredGroups.stream().map(MirrorConfig::getGroupId)
+                .map(GroupId::intValue).collect(Collectors.toList());
+
+        GroupSyncEntry groupEntry = GroupSyncEntry.builder()
+                .proper(validateGroupsResult.getProperGroups())
+                .misconfigured(validateGroupsResult.getMisconfiguredGroups())
+                .missing(validateGroupsResult.getMissingGroups())
+                .excess(validateGroupsResult.getExcessGroups())
+                .installed(mapToGroupEntryList(installedGroupsIds, validateGroupsResult.getMissingGroups()))
+                .modified(mapToGroupEntryList(modifiedGroupsIds, validateGroupsResult.getMisconfiguredGroups()))
+                .removed(mapToGroupEntryList(excessGroups, validateGroupsResult.getExcessGroups()))
+                .build();
+
+        SwitchSyncResponse response = new SwitchSyncResponse(switchId, rulesEntry, metersEntry, groupEntry);
         InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), key);
 
         carrier.cancelTimeoutCallback(key);
         carrier.response(key, message);
+    }
+
+    private List<GroupInfoEntry> mapToGroupEntryList(List<Integer> groupIds,
+                                                     List<GroupInfoEntry> groupEntries) {
+        return groupEntries.stream()
+                .filter(entry -> groupIds.contains(entry.getGroupId()))
+                .collect(Collectors.toList());
     }
 
     protected void finishedWithError(SwitchSyncState from, SwitchSyncState to,
@@ -420,8 +579,10 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         COMPUTE_MISCONFIGURED_RULES,
         COMPUTE_EXCESS_RULES,
         COMPUTE_EXCESS_METERS,
+        COMPUTE_GROUP_MIRROR_CONFIGS,
         RULES_COMMANDS_SEND,
         METERS_COMMANDS_SEND,
+        GROUPS_COMMANDS_SEND,
         FINISHED_WITH_ERROR,
         FINISHED
     }
@@ -433,6 +594,9 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         MISCONFIGURED_RULES_REINSTALLED,
         RULES_SYNCHRONIZED,
         METERS_REMOVED,
+        GROUPS_INSTALLED,
+        GROUPS_MODIFIED,
+        GROUPS_REMOVED,
         TIMEOUT,
         ERROR
     }

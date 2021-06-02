@@ -27,10 +27,13 @@ import org.openkilda.messaging.info.flow.UniFlowPingResponse;
 import org.openkilda.messaging.model.DetectConnectedDevicesDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPatch;
+import org.openkilda.messaging.model.MirrorPointStatusDto;
 import org.openkilda.messaging.model.PatchEndpoint;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.nbtopology.response.FlowLoopDto;
+import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse;
+import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse.FlowMirrorPoint;
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
@@ -58,12 +61,14 @@ import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatus;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointsResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPathV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.flows.MirrorPointStatus;
 import org.openkilda.northbound.dto.v2.flows.PathStatus;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 
@@ -524,6 +529,10 @@ public abstract class FlowMapper {
 
     public abstract FlowMirrorPointResponseV2 toFlowMirrorPointResponseV2(FlowMirrorPointResponse response);
 
+    public abstract FlowMirrorPointsResponseV2 toFlowMirrorPointsResponseV2(FlowMirrorPointsDumpResponse response);
+
+    public abstract FlowMirrorPointPayload toFlowMirrorPointPayload(FlowMirrorPoint flowMirrorPoint);
+
     /**
      * Convert {@link String} to {@link FlowPathDirection}.
      */
@@ -548,4 +557,6 @@ public abstract class FlowMapper {
                         input.isTrackArpConnectedDevices()))
                 .build();
     }
+
+    public abstract MirrorPointStatus toMirrorPointStatus(MirrorPointStatusDto dto);
 }

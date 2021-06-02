@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -29,7 +30,6 @@ import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -70,7 +70,8 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
         List<SwitchFlowEntries> flowEntries =
                 isTransitVlan ? getSwitchFlowEntriesWithTransitVlan() : getSwitchFlowEntriesWithVxlan();
         List<SwitchMeterEntries> meterEntries = getSwitchMeterEntries();
-        List<FlowValidationResponse> result = service.validateFlow(TEST_FLOW_ID_A, flowEntries, meterEntries);
+        List<FlowValidationResponse> result = service.validateFlow(TEST_FLOW_ID_A, flowEntries, meterEntries,
+                emptyList());
         assertEquals(4, result.size());
         assertEquals(0, result.get(0).getDiscrepancies().size());
         assertEquals(0, result.get(1).getDiscrepancies().size());
@@ -88,7 +89,7 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
         flowEntries =
                 isTransitVlan ? getWrongSwitchFlowEntriesWithTransitVlan() : getWrongSwitchFlowEntriesWithVxlan();
         meterEntries = getWrongSwitchMeterEntries();
-        result = service.validateFlow(TEST_FLOW_ID_A, flowEntries, meterEntries);
+        result = service.validateFlow(TEST_FLOW_ID_A, flowEntries, meterEntries, emptyList());
         assertEquals(4, result.size());
         assertEquals(6, result.get(0).getDiscrepancies().size());
         assertEquals(3, result.get(1).getDiscrepancies().size());
@@ -130,7 +131,8 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
         buildOneSwitchPortFlow();
         List<SwitchFlowEntries> switchEntries = getSwitchFlowEntriesOneSwitchFlow();
         List<SwitchMeterEntries> meterEntries = getSwitchMeterEntriesOneSwitchFlow();
-        List<FlowValidationResponse> result = service.validateFlow(TEST_FLOW_ID_B, switchEntries, meterEntries);
+        List<FlowValidationResponse> result = service.validateFlow(TEST_FLOW_ID_B, switchEntries, meterEntries,
+                emptyList());
         assertEquals(2, result.size());
         assertEquals(0, result.get(0).getDiscrepancies().size());
         assertEquals(0, result.get(1).getDiscrepancies().size());
@@ -138,7 +140,7 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
 
     @Test(expected = FlowNotFoundException.class)
     public void shouldValidateFlowUsingNotExistingFlow() throws FlowNotFoundException, SwitchNotFoundException {
-        service.validateFlow("test", new ArrayList<>(), new ArrayList<>());
+        service.validateFlow("test",  emptyList(),  emptyList(),  emptyList());
     }
 
     @Test
@@ -148,7 +150,8 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
 
         List<SwitchFlowEntries> flowEntries = getSwitchFlowEntriesWithTransitVlan();
         List<SwitchMeterEntries> meterEntries = getSwitchMeterEntriesWithESwitch();
-        List<FlowValidationResponse> result = service.validateFlow(TEST_FLOW_ID_A, flowEntries, meterEntries);
+        List<FlowValidationResponse> result = service.validateFlow(TEST_FLOW_ID_A, flowEntries, meterEntries,
+                emptyList());
         assertEquals(4, result.size());
         assertEquals(0, result.get(0).getDiscrepancies().size());
         assertEquals(0, result.get(1).getDiscrepancies().size());

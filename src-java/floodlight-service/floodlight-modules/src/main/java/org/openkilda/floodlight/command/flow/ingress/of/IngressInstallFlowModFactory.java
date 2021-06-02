@@ -64,7 +64,7 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
         }
 
         instructions.add(of.instructions().applyActions(applyActions));
-        if (command.getMetadata().isMultiTable()) {
+        if (command.getMetadata().isMultiTable() && effectiveGroupId == null) {
             instructions.add(of.instructions().gotoTable(TableId.of(SwitchManager.POST_INGRESS_TABLE_ID)));
             instructions.addAll(makeMetadataInstructions());
         }

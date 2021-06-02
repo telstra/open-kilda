@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.pathswap.action;
 
+import org.openkilda.floodlight.api.request.factory.EgressMirrorFlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.request.factory.TransitFlowLoopSegmentRequestFactory;
 import org.openkilda.model.Flow;
@@ -66,7 +67,8 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowPathSwap
                         stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse, speakerContext));
         commands.addAll(commandBuilder.buildEgressOnly(stateMachine.getCommandContext(),
                 flow, newPrimaryForward, newPrimaryReverse).stream()
-                .filter(f -> f instanceof TransitFlowLoopSegmentRequestFactory)
+                .filter(f -> f instanceof TransitFlowLoopSegmentRequestFactory
+                        || f instanceof EgressMirrorFlowSegmentRequestFactory)
                 .collect(Collectors.toList()));
 
         // Installation of ingress rules for protected paths is skipped. These paths are activated on swap.

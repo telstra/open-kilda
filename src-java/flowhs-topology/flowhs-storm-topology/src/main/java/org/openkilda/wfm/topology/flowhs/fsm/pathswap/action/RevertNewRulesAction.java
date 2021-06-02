@@ -19,6 +19,7 @@ import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.MirrorContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapContext;
@@ -60,6 +61,12 @@ public class RevertNewRulesAction
         installCommands.addAll(commandBuilder.buildIngressOnly(
                 stateMachine.getCommandContext(), flow, flow.getForwardPath(), flow.getReversePath(), installContext));
 
+        installCommands.addAll(commandBuilder.buildEgressOnly(stateMachine.getCommandContext(),
+                flow, flow.getForwardPath(), flow.getReversePath(),
+                MirrorContext.builder()
+                        .buildMirrorFactoryOnly(true)
+                        .build()));
+
         stateMachine.getIngressCommands().clear();  // need to clean previous requests
         SpeakerInstallSegmentEmitter.INSTANCE.emitBatch(
                 stateMachine.getCarrier(), installCommands, stateMachine.getIngressCommands());
@@ -73,7 +80,16 @@ public class RevertNewRulesAction
 
         removeCommands.addAll(commandBuilder.buildIngressOnly(
                 stateMachine.getCommandContext(), flow, flow.getProtectedForwardPath(),
-                flow.getProtectedReversePath(), removeContext));
+                flow.getProtectedReversePath(), removeContext,
+                MirrorContext.builder()
+                        .removeFlowOperation(true)
+                        .build()));
+        removeCommands.addAll(commandBuilder.buildEgressOnlyOneDirection(stateMachine.getCommandContext(),
+                flow, flow.getProtectedForwardPath(), flow.getProtectedReversePath(),
+                MirrorContext.builder()
+                        .buildMirrorFactoryOnly(true)
+                        .removeFlowOperation(true)
+                        .build()));
 
         stateMachine.getRemoveCommands().clear();
         SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(

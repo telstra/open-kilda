@@ -26,6 +26,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.MirrorContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
@@ -82,6 +83,7 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
 
         CommandContext commandContext = stateMachine.getCommandContext();
         // Remove possible installed segments
+        MirrorContext mirrorContext = MirrorContext.builder().removeFlowOperation(true).build();
         Collection<FlowSegmentRequestFactory> revertCommands = new ArrayList<>();
         if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
@@ -95,9 +97,10 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
                         switch (stateMachine.getFlowLoopOperation()) {
                             case NONE:
                                 revertCommands.addAll(commandBuilder.buildIngressOnlyOneDirection(commandContext,
-                                        flow, newForward, newReverse, speakerRequestBuildContext.getForward()));
+                                        flow, newForward, newReverse, speakerRequestBuildContext.getForward(),
+                                        mirrorContext));
                                 revertCommands.addAll(commandBuilder.buildEgressOnlyOneDirection(commandContext,
-                                        oldFlow, newReverse, newForward));
+                                        oldFlow, newReverse, newForward, mirrorContext));
                                 break;
                             case CREATE:
                                 revertCommands.addAll(commandBuilder.buildAll(commandContext, flow,
@@ -116,9 +119,10 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
                         switch (stateMachine.getFlowLoopOperation()) {
                             case NONE:
                                 revertCommands.addAll(commandBuilder.buildIngressOnlyOneDirection(commandContext,
-                                        flow, newReverse, newForward, speakerRequestBuildContext.getReverse()));
+                                        flow, newReverse, newForward, speakerRequestBuildContext.getReverse(),
+                                        mirrorContext));
                                 revertCommands.addAll(commandBuilder.buildEgressOnlyOneDirection(commandContext,
-                                        oldFlow, newForward, newReverse));
+                                        oldFlow, newForward, newReverse, mirrorContext));
                                 break;
                             case CREATE:
                                 revertCommands.addAll(commandBuilder.buildAll(commandContext, flow,
@@ -135,16 +139,16 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
                         break;
                     default:
                         revertCommands.addAll(commandBuilder.buildIngressOnly(commandContext, flow, newForward,
-                                newReverse, speakerRequestBuildContext));
+                                newReverse, speakerRequestBuildContext, mirrorContext));
                         revertCommands.addAll(commandBuilder.buildEgressOnly(commandContext, oldFlow, newForward,
-                                newReverse));
+                                newReverse, mirrorContext));
                         break;
                 }
             } else {
 
                 revertCommands.addAll(commandBuilder.buildAll(
                         stateMachine.getCommandContext(), flow, newForward, newReverse,
-                        getSpeakerRequestBuildContextForRemoval(stateMachine, true)));
+                        getSpeakerRequestBuildContextForRemoval(stateMachine, true), mirrorContext));
             }
         }
         if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
@@ -157,23 +161,23 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
                     case SOURCE:
                         if (stateMachine.getFlowLoopOperation() == NONE) {
                             revertCommands.addAll(commandBuilder.buildEgressOnlyOneDirection(commandContext,
-                                    oldFlow, newReverse, newForward));
+                                    oldFlow, newReverse, newForward, mirrorContext));
                         }
                         break;
                     case DESTINATION:
                         if (stateMachine.getFlowLoopOperation() == NONE) {
                             revertCommands.addAll(commandBuilder.buildEgressOnlyOneDirection(commandContext,
-                                    oldFlow, newForward, newReverse));
+                                    oldFlow, newForward, newReverse, mirrorContext));
                         }
                         break;
                     default:
                         revertCommands.addAll(commandBuilder.buildEgressOnly(commandContext, oldFlow, newForward,
-                                newReverse));
+                                newReverse, mirrorContext));
                         break;
                 }
             } else {
                 revertCommands.addAll(commandBuilder.buildAllExceptIngress(
-                        stateMachine.getCommandContext(), flow, newForward, newReverse));
+                        stateMachine.getCommandContext(), flow, newForward, newReverse, mirrorContext));
             }
         }
 

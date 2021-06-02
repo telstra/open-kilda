@@ -17,8 +17,8 @@ package org.openkilda.messaging.nbtopology.response;
 
 import org.openkilda.messaging.info.InfoData;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
@@ -26,55 +26,20 @@ import lombok.Value;
 import java.util.List;
 
 @Value
+@Builder
 @EqualsAndHashCode(callSuper = false)
+@JsonNaming(value = SnakeCaseStrategy.class)
 public class FlowValidationResponse extends InfoData {
 
-    @JsonProperty("flow_id")
-    private String flowId;
-
-    @JsonProperty("as_expected")
-    private Boolean asExpected;
-
-    @JsonProperty("pkt_counts")
-    private List<Long> pktCounts;
-
-    @JsonProperty("byte_counts")
-    private List<Long> byteCounts;
-
-    @JsonProperty("discrepancies")
-    private List<PathDiscrepancyEntity> discrepancies;
-
-    @JsonProperty("flow_rules_total")
-    private Integer flowRulesTotal;
-
-    @JsonProperty("switch_rules_total")
-    private Integer switchRulesTotal;
-
-    @JsonProperty("flow_meters_total")
-    private Integer flowMetersTotal;
-
-    @JsonProperty("switch_meters_total")
-    private Integer switchMetersTotal;
-
-    @Builder
-    @JsonCreator
-    public FlowValidationResponse(@JsonProperty("flow_id") String flowId,
-                                  @JsonProperty("as_expected") Boolean asExpected,
-                                  @JsonProperty("pkt_counts") List<Long> pktCounts,
-                                  @JsonProperty("byte_counts") List<Long> byteCounts,
-                                  @JsonProperty("discrepancies") List<PathDiscrepancyEntity> discrepancies,
-                                  @JsonProperty("flow_rules_total") Integer flowRulesTotal,
-                                  @JsonProperty("switch_rules_total") Integer switchRulesTotal,
-                                  @JsonProperty("flow_meters_total") Integer flowMetersTotal,
-                                  @JsonProperty("switch_meters_total") Integer switchMetersTotal) {
-        this.flowId = flowId;
-        this.asExpected = asExpected;
-        this.pktCounts = pktCounts;
-        this.byteCounts = byteCounts;
-        this.discrepancies = discrepancies;
-        this.flowRulesTotal = flowRulesTotal;
-        this.switchRulesTotal = switchRulesTotal;
-        this.flowMetersTotal = flowMetersTotal;
-        this.switchMetersTotal = switchMetersTotal;
-    }
+    String flowId;
+    Boolean asExpected;
+    List<Long> pktCounts;
+    List<Long> byteCounts;
+    List<PathDiscrepancyEntity> discrepancies;
+    Integer flowRulesTotal;
+    Integer switchRulesTotal;
+    Integer flowMetersTotal;
+    Integer switchMetersTotal;
+    Boolean ingressMirrorFlowIsPresent;
+    Boolean egressMirrorFlowIsPresent;
 }
