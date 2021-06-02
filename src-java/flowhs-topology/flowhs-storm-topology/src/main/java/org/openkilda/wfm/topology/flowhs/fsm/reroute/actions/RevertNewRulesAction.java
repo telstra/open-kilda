@@ -21,6 +21,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.MirrorContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
@@ -74,6 +75,7 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowRerouteF
                 .forEach((key, value) -> stateMachine.addPendingCommand(key, value.getSwitchId()));
 
         // Remove possible installed flow segments
+        MirrorContext mirrorContext = MirrorContext.builder().removeFlowOperation(true).build();
         Collection<FlowSegmentRequestFactory> removeCommands = new ArrayList<>();
         if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
@@ -83,13 +85,13 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowRerouteF
                     newForward.getSrcSwitchId(), newReverse.getSrcSwitchId());
 
             removeCommands.addAll(commandBuilder.buildAll(
-                    stateMachine.getCommandContext(), flow, newForward, newReverse, speakerContext));
+                    stateMachine.getCommandContext(), flow, newForward, newReverse, speakerContext, mirrorContext));
         }
         if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
             removeCommands.addAll(commandBuilder.buildAllExceptIngress(
-                    stateMachine.getCommandContext(), flow, newForward, newReverse));
+                    stateMachine.getCommandContext(), flow, newForward, newReverse, mirrorContext));
         }
 
         stateMachine.getRemoveCommands().clear();

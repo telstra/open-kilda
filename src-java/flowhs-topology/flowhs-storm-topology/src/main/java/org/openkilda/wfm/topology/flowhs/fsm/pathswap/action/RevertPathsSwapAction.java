@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -47,8 +47,14 @@ public class RevertPathsSwapAction extends FlowProcessingAction<FlowPathSwapFsm,
 
             FlowPath oldPrimaryForward = flow.getForwardPath();
             FlowPath oldPrimaryReverse = flow.getReversePath();
-            flow.setForwardPathId(flow.getProtectedForwardPathId());
-            flow.setReversePathId(flow.getProtectedReversePathId());
+            PathId newPrimaryForward = flow.getProtectedForwardPathId();
+            PathId newPrimaryReverse = flow.getProtectedReversePathId();
+
+            setMirrorPointsToNewPath(oldPrimaryForward.getPathId(), newPrimaryForward);
+            setMirrorPointsToNewPath(oldPrimaryReverse.getPathId(), newPrimaryReverse);
+
+            flow.setForwardPathId(newPrimaryForward);
+            flow.setReversePathId(newPrimaryReverse);
             flow.setProtectedForwardPathId(oldPrimaryForward.getPathId());
             flow.setProtectedReversePathId(oldPrimaryReverse.getPathId());
             return new FlowPathPair(oldPrimaryForward, oldPrimaryReverse);

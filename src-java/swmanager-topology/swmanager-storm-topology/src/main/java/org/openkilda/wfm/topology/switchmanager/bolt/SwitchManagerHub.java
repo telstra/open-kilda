@@ -37,7 +37,10 @@ import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchGroupEntries;
+import org.openkilda.messaging.info.switches.DeleteGroupResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
+import org.openkilda.messaging.info.switches.InstallGroupResponse;
+import org.openkilda.messaging.info.switches.ModifyGroupResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
@@ -169,6 +172,12 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                 syncService.handleReinstallDefaultRulesResponse(key, (FlowReinstallResponse) data);
             } else if (data instanceof DeleteMeterResponse) {
                 syncService.handleRemoveMetersResponse(key);
+            } else if (data instanceof InstallGroupResponse) {
+                syncService.handleInstallGroupResponse(key);
+            } else if (data instanceof ModifyGroupResponse) {
+                syncService.handleModifyGroupResponse(key);
+            } else if (data instanceof DeleteGroupResponse) {
+                syncService.handleDeleteGroupResponse(key);
             } else if (data instanceof SwitchRulesResponse) {
                 switchRuleService.rulesResponse(key, (SwitchRulesResponse) data);
             } else {

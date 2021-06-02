@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -42,6 +42,12 @@ public class DeallocateResourcesAction extends FlowProcessingAction<FlowDeleteFs
 
     @Override
     public void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
+        stateMachine.getFlowMirrorPathResources().forEach(mirrorPathResources -> {
+            mirrorPathResources.getUnmaskedCookies().forEach(resourcesManager::deallocateCookie);
+            resourcesManager.deallocateMirrorGroup(mirrorPathResources.getFlowPathId(),
+                    mirrorPathResources.getMirrorSwitchId());
+        });
+
         Collection<FlowResources> flowResources = stateMachine.getFlowResources();
         flowResources.forEach(resources -> {
             transactionManager.doInTransaction(() ->

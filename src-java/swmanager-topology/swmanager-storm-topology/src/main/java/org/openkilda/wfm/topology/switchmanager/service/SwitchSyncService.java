@@ -32,6 +32,12 @@ public interface SwitchSyncService {
 
     void handleRemoveMetersResponse(String key);
 
+    void handleInstallGroupResponse(String key);
+
+    void handleModifyGroupResponse(String key);
+
+    void handleDeleteGroupResponse(String key);
+
     void handleTaskTimeout(String key);
 
     void handleTaskError(String key, ErrorMessage message);

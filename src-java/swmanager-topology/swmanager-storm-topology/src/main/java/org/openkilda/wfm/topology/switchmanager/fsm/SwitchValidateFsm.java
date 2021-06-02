@@ -291,7 +291,8 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         if (request.isPerformSync()) {
             ValidationResult results = new ValidationResult(
                     validationContext.getActualOfFlows(), validationContext.getMetersValidationReport() != null,
-                    validationContext.getOfFlowsValidationReport(), validationContext.getMetersValidationReport());
+                    validationContext.getOfFlowsValidationReport(), validationContext.getMetersValidationReport(),
+                    validationContext.getValidateGroupsResult());
             carrier.runSwitchSync(key, request, results);
         } else {
             SwitchValidationResponse response = ValidationMapper.INSTANCE.toSwitchResponse(validationContext);

@@ -101,6 +101,16 @@ public class FermaFlowMirrorPointsRepositoryTest extends InMemoryGraphBasedTest 
     }
 
     @Test
+    public void shouldFindByMirrorSwitchId() {
+        createFlowPathWithFlowMirrorPoints();
+
+        Collection<FlowMirrorPoints> flowMirrorPoints
+                = flowMirrorPointsRepository.findBySwitchId(switchA.getSwitchId());
+        assertEquals(1, flowMirrorPoints.size());
+        assertEquals(switchA.getSwitchId(), flowMirrorPoints.iterator().next().getMirrorSwitch().getSwitchId());
+    }
+
+    @Test
     public void shouldDeleteFlowPath() {
         FlowMirrorPoints flowMirrorPoints = createTestFlowMirrorPoints();
 
