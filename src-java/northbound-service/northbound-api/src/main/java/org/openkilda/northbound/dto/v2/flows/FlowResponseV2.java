@@ -24,6 +24,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
 
+import java.util.List;
 import java.util.Set;
 
 @Data
@@ -60,4 +61,6 @@ public class FlowResponseV2 {
 
     private String created;
     private String lastUpdated;
+
+    private List<MirrorPointStatus> mirrorPointStatuses;
 }

@@ -108,6 +108,17 @@ public class FermaFlowMirrorPointsRepository
     }
 
     @Override
+    public Collection<FlowMirrorPoints> findBySwitchId(SwitchId switchId) {
+        return framedGraph().traverse(g -> g.V()
+                .hasLabel(FlowMirrorPointsFrame.FRAME_LABEL)
+                .has(FlowMirrorPointsFrame.MIRROR_SWITCH_ID_PROPERTY,
+                        SwitchIdConverter.INSTANCE.toGraphProperty(switchId)))
+                .toListExplicit(FlowMirrorPointsFrame.class).stream()
+                .map(FlowMirrorPoints::new)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     protected FlowMirrorPointsFrame doAdd(FlowMirrorPointsData data) {
         FlowMirrorPointsFrame frame = KildaBaseVertexFrame.addNewFramedVertex(framedGraph(),
                 FlowMirrorPointsFrame.FRAME_LABEL, FlowMirrorPointsFrame.class);

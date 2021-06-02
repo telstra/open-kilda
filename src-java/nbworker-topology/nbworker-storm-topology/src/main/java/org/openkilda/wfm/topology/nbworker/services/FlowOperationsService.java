@@ -123,20 +123,25 @@ public class FlowOperationsService {
     }
 
     /**
-     * Return flows in the same flow group.
-     *
-     * @param flowId flow id
-     * @param groupId group id
-     * @return list of flow ids
+     * Return flow ids in the same flow group.
      */
-    public Set<String> getDiverseFlowsId(String flowId, String groupId) {
-        if (groupId == null) {
-            return null;
-        }
+    public Set<String> getDiverseFlowsId(Flow flow) {
+        return flow.getGroupId() == null ? Collections.emptySet() :
+                flowRepository.findFlowsIdByGroupId(flow.getGroupId()).stream()
+                        .filter(flowId -> !flowId.equals(flow.getFlowId()))
+                        .collect(Collectors.toSet());
+    }
 
-        return flowRepository.findFlowsIdByGroupId(groupId).stream()
-                .filter(id -> !id.equals(flowId))
-                .collect(Collectors.toSet());
+    /**
+     * Return flow mirror paths by flow.
+     */
+    public List<FlowMirrorPath> getFlowMirrorPaths(Flow flow) {
+        return flow.getPaths().stream()
+                .map(FlowPath::getFlowMirrorPointsSet)
+                .flatMap(Collection::stream)
+                .map(FlowMirrorPoints::getMirrorPaths)
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -356,7 +361,8 @@ public class FlowOperationsService {
             FlowRequest flowRequest = RequestedFlowMapper.INSTANCE.toFlowRequest(updatedFlow);
             carrier.sendUpdateRequest(addChangedFields(flowRequest, flowPatch));
         } else {
-            carrier.sendNorthboundResponse(new FlowResponse(FlowMapper.INSTANCE.map(updatedFlow)));
+            carrier.sendNorthboundResponse(new FlowResponse(FlowMapper.INSTANCE.map(updatedFlow,
+                    getDiverseFlowsId(updatedFlow), getFlowMirrorPaths(updatedFlow))));
         }
 
         return updateFlowResult.getUpdatedFlow();

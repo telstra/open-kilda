@@ -13,25 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.wfm.share.flow.resources;
 
-import org.openkilda.model.FlowMirrorPoints;
-import org.openkilda.model.GroupId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 
-import java.util.Collection;
-import java.util.Optional;
+import lombok.Builder;
+import lombok.Value;
 
-public interface FlowMirrorPointsRepository extends Repository<FlowMirrorPoints> {
+import java.util.Set;
 
-    Collection<FlowMirrorPoints> findAll();
-
-    boolean exists(PathId pathId, SwitchId switchId);
-
-    Optional<FlowMirrorPoints> findByGroupId(GroupId groupId);
-
-    Optional<FlowMirrorPoints> findByPathIdAndSwitchId(PathId pathId, SwitchId switchId);
-
-    Collection<FlowMirrorPoints> findBySwitchId(SwitchId switchId);
+@Value
+@Builder
+public class FlowMirrorPathResources {
+    PathId flowPathId;
+    SwitchId mirrorSwitchId;
+    Set<Long> unmaskedCookies;
 }

@@ -463,9 +463,24 @@ public class FlowValidator {
                         format("Couldn't get switch properties for %s switch %s.", descriptor.name, switchId),
                         ErrorType.DATA_INVALID));
 
+        checkForConnectedDevisesConflict(mirrorPoint.getMirrorPointSwitchId());
         checkForMultiTableRequirement(descriptor, properties);
         checkFlowForIslConflicts(descriptor);
         checkFlowForFlowConflicts(mirrorPoint.getMirrorPointId(), descriptor);
         checkFlowForSinkEndpointConflicts(descriptor);
+    }
+
+    private void checkForConnectedDevisesConflict(SwitchId switchId)
+            throws InvalidFlowException {
+        SwitchProperties properties = switchPropertiesRepository.findBySwitchId(switchId)
+                .orElseThrow(() -> new InvalidFlowException(
+                        format("Couldn't get switch properties for switch %s.", switchId),
+                        ErrorType.DATA_INVALID));
+
+        if (properties.isSwitchLldp() || properties.isSwitchArp()) {
+            String errorMessage = format("Connected devices feature is active on the switch %s, "
+                    + "flow mirror point cannot be created on this switch.", switchId);
+            throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
+        }
     }
 }

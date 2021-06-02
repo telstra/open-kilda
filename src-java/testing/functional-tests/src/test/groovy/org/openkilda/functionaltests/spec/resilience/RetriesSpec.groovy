@@ -262,8 +262,9 @@ and at least 1 path must remain safe"
                 [
                         description: "swap paths",
                         historyAction: PATH_SWAP_ACTION,
-                        retriesAmount: 9,
-                        // swap:  install: 3 attempts, revert: delete 3 attempts + install 3 attempts
+                        retriesAmount: 15,
+                        // swap:  install: 3 attempts, revert: delete 9 attempts + install 3 attempts
+                        // delete: 3 attempts * (1 flow rule + 1 ingress mirror rule + 1 egress mirror rule) = 9 attempts
                         action:  { FlowRequestV2 f ->
                             getNorthbound().swapFlowPath(f.flowId) }
                 ]
@@ -287,8 +288,8 @@ and at least 1 path must remain safe"
         then: "Flow history shows failed delete rule retry attempts but flow deletion is successful at the end"
         wait(WAIT_OFFSET) {
             def history = northbound.getFlowHistory(flow.flowId).last().payload
-            //egress and ingress rule on a broken switch, 3 retries each = total 6
-            assert history.count { it.details ==~ /Failed to remove the rule.*Retrying \(attempt \d+\)/ } == 6
+            //egress and ingress rule and egress and ingress mirror rule on a broken switch, 3 retries each = total 12
+            assert history.count { it.details ==~ /Failed to remove the rule.*Retrying \(attempt \d+\)/ } == 12
             assert history.last().action == DELETE_SUCCESS
         }
         !northboundV2.getFlowStatus(flow.flowId)
@@ -352,8 +353,9 @@ and at least 1 path must remain safe"
         wait(WAIT_OFFSET) {
             assert northbound.getFlowHistory(flow.flowId).findAll {
                 it.action == REROUTE_ACTION
-            }.last().payload*.details.findAll{ it =~ /.+ Retrying/}.size() == 9
-            //install: 3 attempts, revert: delete 3 attempts + install 3 attempts
+            }.last().payload*.details.findAll{ it =~ /.+ Retrying/}.size() == 15
+            //install: 3 attempts, revert: delete 9 attempts + install 3 attempts
+            // delete: 3 attempts * (1 flow rule + 1 ingress mirror rule + 1 egress mirror rule) = 9 attempts
         }
 
         then: "Flow is not rerouted"
