@@ -148,10 +148,10 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             [switchPair.src, switchPair.dst].each {
                 /** - one rule of each type for one flow;
-                 * - no SERVER_42_INPUT cookie in singleTable;
-                 * - SERVER_42_INPUT is installed for each different flow port (if there are 10 flows on port number 5,
-                 * then there will be installed one INPUT rule);
-                 * - SERVER_42_INGRESS is installed for each flow.
+                 * - no SERVER_42_FLOW_RTT_INGRESS cookie in singleTable;
+                 * - SERVER_42_FLOW_RTT_INGRESS is installed for each different flow port
+                 * (if there are 10 flows on port number 5, then there will be installed one INPUT rule);
+                 * - SERVER_42_FLOW_RTT_INGRESS is installed for each flow.
                  */
                 def amountOfRules = northbound.getSwitchProperties(it.dpId).multiTable ? 4 : 2
                 assert northbound.getSwitchRules(it.dpId).flowEntries.findAll {
@@ -442,7 +442,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         when: "Delete ingress server42 rule related to the flow on the src switch"
         def cookieToDelete = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.find {
-            new Cookie(it.cookie).getType() == CookieType.SERVER_42_INGRESS
+            new Cookie(it.cookie).getType() == CookieType.SERVER_42_FLOW_RTT_INGRESS
         }.cookie
         northbound.deleteSwitchRules(switchPair.src.dpId, cookieToDelete)
 
@@ -486,7 +486,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert northbound.validateSwitch(switchPair.src.dpId).rules.missing.empty
             assert northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-                new Cookie(it.cookie).getType() == CookieType.SERVER_42_INGRESS
+                new Cookie(it.cookie).getType() == CookieType.SERVER_42_FLOW_RTT_INGRESS
             }*.cookie.size() == 1
         }
 
@@ -703,8 +703,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             def amountOfS42Rules = sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) ? 2 : 1
             def s42Rules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                it.cookie in  [Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE,
-                               Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE]
+                it.cookie in  [SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE,
+                               SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE]
             }
             assert requiredState ? (s42Rules.size() == amountOfS42Rules) : s42Rules.empty
         }
