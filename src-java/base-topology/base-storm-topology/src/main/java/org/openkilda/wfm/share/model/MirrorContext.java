@@ -27,4 +27,5 @@ public class MirrorContext {
 
     private boolean buildMirrorFactoryOnly;
     private boolean addNewGroup;
+    private boolean removeFlowOperation;
 }

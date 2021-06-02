@@ -110,3 +110,5 @@ the rest will represent mirror actions set (i.e. routing to the mirror paths).
 ### FlowMirrorPointCreateFsm
 ![FlowMirrorPointCreateFsm](./flow-create-mirror-point-fsm.png "FlowMirrorPointCreateFsm")
 
+### FlowMirrorPointDeleteFsm
+![FlowMirrorPointDeleteFsm](./flow-delete-mirror-point-fsm.png "FlowMirrorPointDeleteFsm")

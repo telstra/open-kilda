@@ -57,4 +57,10 @@ public class FlowValidationDto {
 
     @JsonProperty("switch_meters_total")
     private Integer switchMetersTotal;
+
+    @JsonProperty("ingress_mirror_flow_is_present")
+    private Boolean ingressMirrorFlowIsPresent;
+
+    @JsonProperty("egress_mirror_flow_is_present")
+    private Boolean egressMirrorFlowIsPresent;
 }

@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import org.openkilda.messaging.command.flow.CreateFlowLoopRequest;
 import org.openkilda.messaging.command.flow.DeleteFlowLoopRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowMirrorPointCreateRequest;
+import org.openkilda.messaging.command.flow.FlowMirrorPointDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
@@ -43,6 +44,7 @@ import org.openkilda.messaging.model.FlowPatch;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
 import org.openkilda.messaging.nbtopology.request.FlowConnectedDeviceRequest;
+import org.openkilda.messaging.nbtopology.request.FlowMirrorPointsDumpRequest;
 import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
 import org.openkilda.messaging.nbtopology.request.FlowReadRequest;
 import org.openkilda.messaging.nbtopology.request.FlowValidationRequest;
@@ -53,6 +55,7 @@ import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowStatusTimestampsRequest;
 import org.openkilda.messaging.nbtopology.request.MeterModifyRequest;
 import org.openkilda.messaging.nbtopology.response.FlowLoopsResponse;
+import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse;
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.payload.flow.DiverseGroupPayload;
@@ -81,6 +84,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointsResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
@@ -809,5 +813,33 @@ public class FlowServiceImpl implements FlowService {
         return messagingChannel.sendAndGet(flowHsTopic, command)
                 .thenApply(FlowMirrorPointResponse.class::cast)
                 .thenApply(flowMapper::toFlowMirrorPointResponseV2);
+    }
+
+    @Override
+    public CompletableFuture<FlowMirrorPointResponseV2> deleteFlowMirrorPoint(String flowId, String mirrorPointId) {
+        logger.info("Processing flow mirror point deletion: {}, for flow {}", mirrorPointId, flowId);
+
+        final String correlationId = RequestCorrelationId.getId();
+        FlowMirrorPointDeleteRequest request = new FlowMirrorPointDeleteRequest(flowId, mirrorPointId);
+
+        CommandMessage command = new CommandMessage(request, System.currentTimeMillis(), correlationId);
+
+        return messagingChannel.sendAndGet(flowHsTopic, command)
+                .thenApply(FlowMirrorPointResponse.class::cast)
+                .thenApply(flowMapper::toFlowMirrorPointResponseV2);
+    }
+
+    @Override
+    public CompletableFuture<FlowMirrorPointsResponseV2> getFlowMirrorPoints(String flowId) {
+        logger.info("Processing flow mirror point getting for flow {}", flowId);
+
+        final String correlationId = RequestCorrelationId.getId();
+        FlowMirrorPointsDumpRequest request = new FlowMirrorPointsDumpRequest(flowId);
+
+        CommandMessage command = new CommandMessage(request, System.currentTimeMillis(), correlationId);
+
+        return messagingChannel.sendAndGet(nbworkerTopic, command)
+                .thenApply(FlowMirrorPointsDumpResponse.class::cast)
+                .thenApply(flowMapper::toFlowMirrorPointsResponseV2);
     }
 }

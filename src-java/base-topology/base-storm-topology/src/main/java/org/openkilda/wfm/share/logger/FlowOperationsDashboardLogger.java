@@ -399,4 +399,47 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
                         + "destination endpoint %s_%d_%d, direction %s, reason: %s",
                 flowId, srcSwitch, destSwitch, destPort, destVlan, direction, failureReason), data);
     }
+
+    /**
+     * Log a flow-mirror-point-delete event.
+     */
+    public void onFlowMirrorPointDelete(String flowId, String flowMirrorPointId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(DASHBOARD, "flow-mirror-point-delete");
+        data.put(TAG, "flow-mirror-point-delete");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, FLOW_MIRROR_POINT_DELETE_EVENT);
+        invokeLogger(Level.INFO, String.format("Delete the flow mirror point %s for the flow %s",
+                flowMirrorPointId, flowId), data);
+    }
+
+    /**
+     * Log a flow-delete-successful event.
+     */
+    public void onSuccessfulFlowMirrorPointDelete(String flowId, String flowMirrorPointId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(DASHBOARD, "flow-mirror-point-delete-successful");
+        data.put(TAG, "flow-mirror-point-delete-successful");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, FLOW_MIRROR_POINT_DELETE_RESULT_EVENT);
+        data.put("delete-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful delete of the flow mirror point %s for the flow %s",
+                flowMirrorPointId, flowId), data);
+    }
+
+    /**
+     * Log a flow-delete-failed event.
+     */
+    public void onFailedFlowMirrorPointDelete(String flowId, String flowMirrorPointId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(DASHBOARD, "flow-mirror-point-delete-failed");
+        data.put(TAG, "flow-mirror-point-delete-failed");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, FLOW_MIRROR_POINT_DELETE_RESULT_EVENT);
+        data.put("delete-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed delete of the flow mirror point %s for the flow %s, reason: %s",
+                flowMirrorPointId, flowId, failureReason), data);
+    }
+
 }

@@ -26,6 +26,7 @@ import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.MirrorContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
@@ -66,6 +67,7 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Set<PathId> processed = new HashSet<>();
+        MirrorContext mirrorContext = MirrorContext.builder().removeFlowOperation(true).build();
         for (FlowPath path : flow.getPaths()) {
             PathId pathId = path.getPathId();
             if (processed.add(pathId)) {
@@ -80,7 +82,7 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
 
                     if (protectedPaths.contains(pathId)) {
                         commands.addAll(commandBuilder.buildAllExceptIngress(
-                                stateMachine.getCommandContext(), flow, path, oppositePath));
+                                stateMachine.getCommandContext(), flow, path, oppositePath, mirrorContext));
                     } else {
                         SpeakerRequestBuildContext speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
                                 .forward(buildPathContext(flow, path))
@@ -88,7 +90,7 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                                 .deleteOperation(true)
                                 .build();
                         commands.addAll(commandBuilder.buildAll(stateMachine.getCommandContext(), flow,
-                                path, oppositePath, speakerRequestBuildContext));
+                                path, oppositePath, speakerRequestBuildContext, mirrorContext));
                     }
                 } else {
                     log.warn("No opposite path found for {}, trying to delete as unpaired path", pathId);
@@ -97,7 +99,7 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
 
                     if (protectedPaths.contains(pathId)) {
                         commands.addAll(commandBuilder.buildAllExceptIngress(
-                                stateMachine.getCommandContext(), flow, path, null));
+                                stateMachine.getCommandContext(), flow, path, null, mirrorContext));
                     } else {
                         SpeakerRequestBuildContext speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
                                 .forward(buildPathContext(flow, path))
@@ -105,7 +107,8 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                                 .deleteOperation(true)
                                 .build();
                         commands.addAll(commandBuilder.buildAll(
-                                stateMachine.getCommandContext(), flow, path, null, speakerRequestBuildContext));
+                                stateMachine.getCommandContext(), flow, path, null, speakerRequestBuildContext,
+                                mirrorContext));
                     }
                 }
             }

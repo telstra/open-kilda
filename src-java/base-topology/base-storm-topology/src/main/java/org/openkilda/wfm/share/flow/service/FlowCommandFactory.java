@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,9 +17,12 @@ package org.openkilda.wfm.share.flow.service;
 
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
+import org.openkilda.messaging.command.flow.InstallEgressMirrorFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressLoopFlow;
+import org.openkilda.messaging.command.flow.InstallIngressMirrorFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
+import org.openkilda.messaging.command.flow.InstallOneSwitchMirrorFlow;
 import org.openkilda.messaging.command.flow.InstallServer42IngressFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.InstallTransitLoopFlow;
@@ -29,6 +32,7 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.CookieBase.CookieType;
@@ -66,6 +70,30 @@ public class FlowCommandFactory {
                 encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
                 egressEndpoint.getOuterVlanId(), egressEndpoint.getInnerVlanId(), getOutputVlanType(flow, flowPath),
                 multiTable, ingressEndpoint, null);
+    }
+
+    /**
+     * Generate install egress mirror flow command.
+     *
+     * @param flowPath flow path with segments to be used for building of install rules.
+     * @param inputPortNo the number of input port.
+     * @param encapsulationResources the encapsulation resources.
+     * @param multiTable use multi table.
+     * @return install egress flow command
+     */
+    public InstallEgressMirrorFlow buildInstallEgressMirrorFlow(FlowPath flowPath, int inputPortNo,
+                                                                EncapsulationResources encapsulationResources,
+                                                                boolean multiTable, MirrorConfig mirrorConfig) {
+        Flow flow = flowPath.getFlow();
+        FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
+        FlowEndpoint egressEndpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
+
+        return new InstallEgressMirrorFlow(transactionIdGenerator.generate(), flow.getFlowId(),
+                flowPath.getCookie().toBuilder().mirror(true).build().getValue(),
+                egressEndpoint.getSwitchId(), inputPortNo, egressEndpoint.getPortNumber(),
+                encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
+                egressEndpoint.getOuterVlanId(), egressEndpoint.getInnerVlanId(), getOutputVlanType(flow, flowPath),
+                multiTable, ingressEndpoint, mirrorConfig);
     }
 
     /**
@@ -143,6 +171,35 @@ public class FlowCommandFactory {
     }
 
     /**
+     * Generate install ingress flow command.
+     *
+     * @param flow the flow.
+     * @param flowPath flow path with segments to be used for building of install rules.
+     * @param outputPortNo the number of output port.
+     * @param encapsulationResources the encapsulation resources.
+     * @param multiTable  \
+     * @return install ingress flow command
+     */
+    public InstallIngressMirrorFlow buildInstallIngressMirrorFlow(Flow flow, FlowPath flowPath, int outputPortNo,
+                                                                  EncapsulationResources encapsulationResources,
+                                                                  boolean multiTable, MirrorConfig mirrorConfig) {
+        boolean enableLldp = needToInstallOrRemoveLldpFlow(flowPath);
+        boolean enableArp = needToInstallOrRemoveArpFlow(flowPath);
+
+        Long meterId = Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null);
+
+        FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
+        FlowEndpoint egressEndpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
+
+        return new InstallIngressMirrorFlow(transactionIdGenerator.generate(), flow.getFlowId(),
+                flowPath.getCookie().toBuilder().mirror(true).build().getValue(), ingressEndpoint.getSwitchId(),
+                ingressEndpoint.getPortNumber(), outputPortNo, ingressEndpoint.getOuterVlanId(),
+                ingressEndpoint.getInnerVlanId(), encapsulationResources.getTransitEncapsulationId(),
+                encapsulationResources.getEncapsulationType(), getOutputVlanType(flow, flowPath), flow.getBandwidth(),
+                meterId, egressEndpoint.getSwitchId(), multiTable, enableLldp, enableArp, mirrorConfig);
+    }
+
+    /**
      * Generate install ingress flow loop command.
      *
      * @param flow the flow.
@@ -211,7 +268,7 @@ public class FlowCommandFactory {
     }
 
     /**
-     * Generate install one swithc flow command.
+     * Generate install one switch flow command.
      *
      * @param flow the flow.
      * @param flowPath flow path with segments to be used for building of install rules.
@@ -234,6 +291,31 @@ public class FlowCommandFactory {
                 egressEndpoint.getOuterVlanId(), egressEndpoint.getInnerVlanId(),
                 getOutputVlanType(flow, flowPath), flow.getBandwidth(), meterId, multiTable, enableLldp, enableArp,
                 null);
+    }
+
+    /**
+     * Generate install one switch mirror flow command.
+     *
+     * @param flow the flow.
+     * @param flowPath flow path with segments to be used for building of install rules.
+     * @return install one switch flow command
+     */
+    public InstallOneSwitchMirrorFlow makeOneSwitchMirrorRule(Flow flow, FlowPath flowPath, MirrorConfig mirrorConfig) {
+        boolean enableLldp = needToInstallOrRemoveLldpFlow(flowPath);
+        boolean enableArp = needToInstallOrRemoveArpFlow(flowPath);
+        boolean multiTable = flowPath.isSrcWithMultiTable();
+
+        FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
+        FlowEndpoint egressEndpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
+
+        Long meterId = Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null);
+        return new InstallOneSwitchMirrorFlow(transactionIdGenerator.generate(),
+                flow.getFlowId(), flowPath.getCookie().toBuilder().mirror(true).build().getValue(),
+                ingressEndpoint.getSwitchId(), ingressEndpoint.getPortNumber(), egressEndpoint.getPortNumber(),
+                ingressEndpoint.getOuterVlanId(), ingressEndpoint.getInnerVlanId(),
+                egressEndpoint.getOuterVlanId(), egressEndpoint.getInnerVlanId(),
+                getOutputVlanType(flow, flowPath), flow.getBandwidth(), meterId, multiTable, enableLldp, enableArp,
+                mirrorConfig);
     }
 
     private OutputVlanType getOutputVlanType(Flow flow, FlowPath flowPath) {

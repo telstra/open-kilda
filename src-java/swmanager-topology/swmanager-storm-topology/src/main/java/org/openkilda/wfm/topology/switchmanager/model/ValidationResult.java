@@ -28,4 +28,5 @@ public class ValidationResult {
 
     ValidateRulesResult validateRulesResult;
     ValidateMetersResult validateMetersResult;
+    ValidateGroupsResult validateGroupsResult;
 }

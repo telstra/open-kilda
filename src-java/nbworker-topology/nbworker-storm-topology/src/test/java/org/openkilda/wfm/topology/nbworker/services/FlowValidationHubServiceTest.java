@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.switches.DumpGroupsForNbWorkerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -60,14 +61,17 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
             public void sendCommandToSpeakerWorker(String key, CommandData commandData) {
                 assertEquals(TEST_KEY, key);
                 assertTrue(commandData instanceof DumpRulesForNbworkerRequest
-                        || commandData instanceof DumpMetersForNbworkerRequest);
+                        || commandData instanceof DumpMetersForNbworkerRequest
+                        || commandData instanceof DumpGroupsForNbWorkerRequest);
 
                 List<SwitchId> switchIds =
                         Lists.newArrayList(TEST_SWITCH_ID_A, TEST_SWITCH_ID_B, TEST_SWITCH_ID_C, TEST_SWITCH_ID_E);
                 if (commandData instanceof DumpRulesForNbworkerRequest) {
                     assertTrue(switchIds.contains(((DumpRulesForNbworkerRequest) commandData).getSwitchId()));
-                } else {
+                } else if (commandData instanceof DumpMetersForNbworkerRequest) {
                     assertTrue(switchIds.contains(((DumpMetersForNbworkerRequest) commandData).getSwitchId()));
+                } else {
+                    assertTrue(switchIds.contains(((DumpGroupsForNbWorkerRequest) commandData).getSwitchId()));
                 }
             }
 
@@ -78,7 +82,7 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
                 try {
                     assertEquals(flowValidationService
                             .validateFlow(TEST_FLOW_ID_A, getSwitchFlowEntriesWithTransitVlan(),
-                            getSwitchMeterEntries()), message);
+                                    getSwitchMeterEntries(), getSwitchGroupEntries()), message);
                 } catch (FlowNotFoundException | SwitchNotFoundException e) {
                     //tested in the FlowValidationServiceTest
                 }
@@ -119,6 +123,9 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
         getSwitchMeterEntries().forEach(switchMeterEntries ->
                 flowValidationHubService.handleAsyncResponse(TEST_KEY, new InfoMessage(switchMeterEntries,
                         System.currentTimeMillis(), TEST_KEY)));
+        getSwitchGroupEntries().forEach(switchGroupEntries ->
+                flowValidationHubService.handleAsyncResponse(TEST_KEY, new InfoMessage(switchGroupEntries,
+                        System.currentTimeMillis(), TEST_KEY)));
     }
 
     @Test
@@ -129,14 +136,17 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
             public void sendCommandToSpeakerWorker(String key, CommandData commandData) {
                 assertEquals(TEST_KEY, key);
                 assertTrue(commandData instanceof DumpRulesForNbworkerRequest
-                        || commandData instanceof DumpMetersForNbworkerRequest);
+                        || commandData instanceof DumpMetersForNbworkerRequest
+                        || commandData instanceof DumpGroupsForNbWorkerRequest);
 
                 List<SwitchId> switchIds =
                         Lists.newArrayList(TEST_SWITCH_ID_A, TEST_SWITCH_ID_B, TEST_SWITCH_ID_C, TEST_SWITCH_ID_E);
                 if (commandData instanceof DumpRulesForNbworkerRequest) {
                     assertTrue(switchIds.contains(((DumpRulesForNbworkerRequest) commandData).getSwitchId()));
-                } else {
+                } else if (commandData instanceof DumpMetersForNbworkerRequest) {
                     assertTrue(switchIds.contains(((DumpMetersForNbworkerRequest) commandData).getSwitchId()));
+                } else {
+                    assertTrue(switchIds.contains(((DumpGroupsForNbWorkerRequest) commandData).getSwitchId()));
                 }
             }
 
@@ -186,14 +196,17 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
             public void sendCommandToSpeakerWorker(String key, CommandData commandData) {
                 assertEquals(TEST_KEY, key);
                 assertTrue(commandData instanceof DumpRulesForNbworkerRequest
-                        || commandData instanceof DumpMetersForNbworkerRequest);
+                        || commandData instanceof DumpMetersForNbworkerRequest
+                        || commandData instanceof DumpGroupsForNbWorkerRequest);
 
                 List<SwitchId> switchIds =
                         Lists.newArrayList(TEST_SWITCH_ID_A, TEST_SWITCH_ID_B, TEST_SWITCH_ID_C, TEST_SWITCH_ID_E);
                 if (commandData instanceof DumpRulesForNbworkerRequest) {
                     assertTrue(switchIds.contains(((DumpRulesForNbworkerRequest) commandData).getSwitchId()));
-                } else {
+                } else if (commandData instanceof DumpMetersForNbworkerRequest) {
                     assertTrue(switchIds.contains(((DumpMetersForNbworkerRequest) commandData).getSwitchId()));
+                } else {
+                    assertTrue(switchIds.contains(((DumpGroupsForNbWorkerRequest) commandData).getSwitchId()));
                 }
             }
 
@@ -242,6 +255,9 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
                         System.currentTimeMillis(), TEST_KEY)));
         getSwitchMeterEntries().forEach(switchMeterEntries ->
                 flowValidationHubService.handleAsyncResponse(TEST_KEY, new InfoMessage(switchMeterEntries,
+                        System.currentTimeMillis(), TEST_KEY)));
+        getSwitchGroupEntries().forEach(switchGroupEntries ->
+                flowValidationHubService.handleAsyncResponse(TEST_KEY, new InfoMessage(switchGroupEntries,
                         System.currentTimeMillis(), TEST_KEY)));
 
     }
