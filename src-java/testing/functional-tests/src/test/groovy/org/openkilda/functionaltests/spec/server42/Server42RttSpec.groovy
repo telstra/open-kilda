@@ -17,9 +17,9 @@ import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.model.system.FeatureTogglesDto
-import org.openkilda.model.SwitchFeature
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
@@ -75,7 +75,8 @@ class Server42RttSpec extends HealthCheckSpecification {
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             statsData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
-                     direction: "forward"]).dps
+                     direction: "forward",
+                     origin   : "server42"]).dps
             assert statsData && !statsData.empty
         }
 
@@ -173,7 +174,8 @@ class Server42RttSpec extends HealthCheckSpecification {
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             def statsData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
-                     direction: "forward"]).dps
+                     direction: "forward",
+                     origin   : "server42"]).dps
             assert statsData && !statsData.empty
         }
 
@@ -181,7 +183,8 @@ class Server42RttSpec extends HealthCheckSpecification {
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             def statsData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : reversedFlow.flowId,
-                     direction: "reverse"]).dps
+                     direction: "reverse",
+                     origin   : "server42"]).dps
             assert statsData && !statsData.empty
         }
 
@@ -237,12 +240,14 @@ class Server42RttSpec extends HealthCheckSpecification {
         then: "Expect no flow rtt stats for forward flow"
         otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                 [flowid   : flow.flowId,
-                 direction: "forward"]).dps.isEmpty()
+                 direction: "forward",
+                 origin   : "server42"]).dps.isEmpty()
 
         and: "Expect no flow rtt stats for reversed flow"
         otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                 [flowid   : reversedFlow.flowId,
-                 direction: "reverse"]).dps.isEmpty()
+                 direction: "reverse",
+                 origin   : "server42"]).dps.isEmpty()
 
         when: "Enable global rtt toggle"
         changeFlowRttToggle(true)
@@ -254,12 +259,14 @@ class Server42RttSpec extends HealthCheckSpecification {
         then: "Expect no flow rtt stats for forward flow"
         otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                 [flowid   : flow.flowId,
-                 direction: "forward"]).dps.isEmpty()
+                 direction: "forward",
+                 origin   : "server42"]).dps.isEmpty()
 
         and: "Expect no flow rtt stats for reversed flow"
         otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                 [flowid   : reversedFlow.flowId,
-                 direction: "reverse"]).dps.isEmpty()
+                 direction: "reverse",
+                 origin   : "server42"]).dps.isEmpty()
 
         when: "Enable switch rtt toggle on src and dst"
         changeFlowRttSwitch(switchPair.src, true)
@@ -270,7 +277,8 @@ class Server42RttSpec extends HealthCheckSpecification {
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             def statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
-                     direction: "forward"]).dps
+                     direction: "forward",
+                     origin   : "server42"]).dps
             assert statsData && !statsData.empty
         }
 
@@ -278,7 +286,8 @@ class Server42RttSpec extends HealthCheckSpecification {
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             def statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                     [flowid   : reversedFlow.flowId,
-                     direction: "reverse"]).dps
+                     direction: "reverse",
+                     origin   : "server42"]).dps
             assert statsData && !statsData.empty
         }
         //behavior below varies between physical switches and virtual stub due to 'turning rule'
@@ -291,7 +300,8 @@ class Server42RttSpec extends HealthCheckSpecification {
 //        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
 //            def statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
 //                    [flowid   : flow.flowId,
-//                     direction: "forward"]).dps
+//                     direction: "forward",
+//                     origin   : "server42"]).dps
 //            assert statsData && !statsData.empty
 //        }
 //
@@ -299,7 +309,8 @@ class Server42RttSpec extends HealthCheckSpecification {
 //        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
 //            def statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
 //                    [flowid   : reversedFlow.flowId,
-//                     direction: "reverse"]).dps
+//                     direction: "reverse",
+//                     origin   : "server42"]).dps
 //            assert statsData && !statsData.empty
 //        }
         when: "Disable global toggle"
@@ -312,12 +323,14 @@ class Server42RttSpec extends HealthCheckSpecification {
         then: "Expect no flow rtt stats for forward flow"
         otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                 [flowid   : flow.flowId,
-                 direction: "forward"]).dps.isEmpty()
+                 direction: "forward",
+                 origin   : "server42"]).dps.isEmpty()
 
         and: "Expect no flow rtt stats for reversed flow"
         otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                 [flowid   : reversedFlow.flowId,
-                 direction: "reverse"]).dps.isEmpty()
+                 direction: "reverse",
+                 origin   : "server42"]).dps.isEmpty()
 
         cleanup: "Revert system to original state"
         revertToOrigin([flow, reversedFlow], flowRttFeatureStartState, initialSwitchRtt)
@@ -358,11 +371,13 @@ class Server42RttSpec extends HealthCheckSpecification {
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             def fwData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
-                     direction: "forward"]).dps
+                     direction: "forward",
+                     origin   : "server42"]).dps
             assert fwData && !fwData.empty
             def reverseData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
-                     direction: "reverse"]).dps
+                     direction: "reverse",
+                     origin   : "server42"]).dps
             assert reverseData && !reverseData.empty
         }
 
@@ -377,14 +392,16 @@ class Server42RttSpec extends HealthCheckSpecification {
 //        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
 //            def fwData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
 //                    [flowid   : flow.flowId,
-//                     direction: "forward"]).dps
+//                     direction: "forward",
+//                     origin   : "server42"]).dps
 //            assert fwData && !fwData.empty
 //        }
 
         and: "Stats are not available in reverse direction"
         otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
                 [flowid   : flow.flowId,
-                 direction: "reverse"]).dps.isEmpty()
+                 direction: "reverse",
+                 origin   : "server42"]).dps.isEmpty()
 
         cleanup: "Revert system to original state"
         revertToOrigin([flow], flowRttFeatureStartState, initialSwitchRtt)
@@ -412,10 +429,12 @@ class Server42RttSpec extends HealthCheckSpecification {
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
-                     direction: "forward"]).dps.size() > 0
+                     direction: "forward",
+                     origin   : "server42"]).dps.size() > 0
             assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
-                     direction: "reverse"]).dps.size() > 0
+                     direction: "reverse",
+                     origin   : "server42"]).dps.size() > 0
         }
 
         when: "Delete ingress server42 rule related to the flow on the src switch"
@@ -438,20 +457,24 @@ class Server42RttSpec extends HealthCheckSpecification {
         TimeUnit.SECONDS.sleep(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET)
         def statsDataForward = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                 [flowid   : flow.flowId,
-                 direction: "forward"]).dps
+                 direction: "forward",
+                 origin   : "server42"]).dps
         def statsDataReverse = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                 [flowid   : flow.flowId,
-                 direction: "reverse"]).dps
+                 direction: "reverse",
+                 origin   : "server42"]).dps
         def newStatsDataReverse
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             newStatsDataReverse = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
-                     direction: "reverse"]).dps
+                     direction: "reverse",
+                     origin   : "server42"]).dps
             assert newStatsDataReverse.size() > statsDataReverse.size()
         }
         otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                 [flowid   : flow.flowId,
-                 direction: "forward"]).dps.size() == statsDataForward.size()
+                 direction: "forward",
+                 origin   : "server42"]).dps.size() == statsDataForward.size()
 
         when: "Synchronize the flow"
         with(northbound.synchronizeFlow(flow.flowId)) { !it.rerouted }
@@ -468,10 +491,12 @@ class Server42RttSpec extends HealthCheckSpecification {
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET, 1) {
             assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
-                     direction: "forward"]).dps.size() > statsDataForward.size()
+                     direction: "forward",
+                     origin   : "server42"]).dps.size() > statsDataForward.size()
             assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
-                     direction: "reverse"]).dps.size() > newStatsDataReverse.size()
+                     direction: "reverse",
+                     origin   : "server42"]).dps.size() > newStatsDataReverse.size()
         }
 
         cleanup: "Revert system to original state"
@@ -512,10 +537,12 @@ class Server42RttSpec extends HealthCheckSpecification {
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             assert !otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow1.flowId,
-                     direction: "forward"]).dps.isEmpty()
+                     direction: "forward",
+                     origin   : "server42"]).dps.isEmpty()
             assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow2.flowId,
-                     direction: "forward"]).dps.isEmpty()
+                     direction: "forward",
+                     origin   : "server42"]).dps.isEmpty()
         }
 
         when: "Try to swap src endpoints for two flows"
@@ -563,17 +590,20 @@ class Server42RttSpec extends HealthCheckSpecification {
         TimeUnit.SECONDS.sleep(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET)
         def flow1Stat = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                 [flowid   : flow1.flowId,
-                 direction: "forward"]).dps
+                 direction: "forward",
+                 origin   : "server42"]).dps
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             assert !otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow2.flowId,
-                     direction: "forward"]).dps.isEmpty()
+                     direction: "forward",
+                     origin   : "server42"]).dps.isEmpty()
         }
 
         and: "server42 stats are not available any more for the flow1 in the forward direction"
         otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                 [flowid   : flow1.flowId,
-                 direction: "forward"]).dps.size() == flow1Stat.size()
+                 direction: "forward",
+                 origin   : "server42"]).dps.size() == flow1Stat.size()
 
         cleanup:
         flow1 && flowHelperV2.deleteFlow(flow1.flowId)

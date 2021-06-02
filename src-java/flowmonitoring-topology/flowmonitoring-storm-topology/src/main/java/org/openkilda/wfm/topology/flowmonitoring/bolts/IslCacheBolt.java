@@ -141,7 +141,7 @@ public class IslCacheBolt extends AbstractBolt {
         Map<String, String> tags = ImmutableMap.of(
                 "flowid", flowId,
                 "direction", direction.name().toLowerCase(),
-                "calculated", "true"
+                "origin", "flow-monitoring"
         );
 
         Datapoint datapoint = new Datapoint(metricFormatter.format("flow.rtt"),
