@@ -22,7 +22,10 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowMatchField;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
+import org.openkilda.messaging.info.rule.GroupBucket;
+import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -92,6 +95,9 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
     private static final long FLOW_A_REVERSE_COOKIE_PROTECTED = new FlowSegmentCookie(
             FlowPathDirection.REVERSE, 2L).getValue();
     private static final long FLOW_A_BANDWIDTH = 10000;
+    private static final int FLOW_GROUP_ID_A = 20;
+    private static final int FLOW_GROUP_ID_A_OUT_PORT = 21;
+    private static final int FLOW_GROUP_ID_A_OUT_VLAN = 22;
     private static final int FLOW_B_SRC_PORT = 1;
     private static final int FLOW_B_SRC_VLAN = 15;
     private static final int FLOW_B_DST_VLAN = 16;
@@ -499,11 +505,6 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
                 .build());
 
         switchMeterEntries.add(SwitchMeterEntries.builder()
-                .switchId(TEST_SWITCH_ID_B)
-                .meterEntries(Collections.emptyList())
-                .build());
-
-        switchMeterEntries.add(SwitchMeterEntries.builder()
                 .switchId(TEST_SWITCH_ID_C)
                 .meterEntries(Collections.singletonList(MeterEntry.builder()
                         .meterId(FLOW_A_REVERSE_METER_ID)
@@ -656,5 +657,30 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
                 .fieldName("vlan_vid")
                 .fieldValue(String.valueOf(dstVlan))
                 .build();
+    }
+
+    protected List<SwitchGroupEntries> getSwitchGroupEntries() {
+        List<SwitchGroupEntries> switchGroupEntries = new ArrayList<>();
+        switchGroupEntries.add(SwitchGroupEntries.builder()
+                .switchId(TEST_SWITCH_ID_A)
+                .groupEntries(Lists.newArrayList(GroupEntry.builder()
+                        .groupId(FLOW_GROUP_ID_A)
+                        .buckets(Lists.newArrayList(new GroupBucket(0, FlowApplyActions.builder()
+                                        .flowOutput(String.valueOf(FLOW_GROUP_ID_A_OUT_PORT))
+                                        .setFieldActions(Collections.singletonList(
+                                                getFlowSetFieldAction(FLOW_GROUP_ID_A_OUT_VLAN)))
+                                        .build()),
+                                new GroupBucket(0, FlowApplyActions.builder()
+                                        .flowOutput(String.valueOf(FLOW_A_SEGMENT_B_DST_PORT_PROTECTED))
+                                        .build())))
+                        .build()))
+                .build());
+
+        switchGroupEntries.add(SwitchGroupEntries.builder()
+                .switchId(TEST_SWITCH_ID_C)
+                .groupEntries(Collections.emptyList())
+                .build());
+
+        return switchGroupEntries;
     }
 }

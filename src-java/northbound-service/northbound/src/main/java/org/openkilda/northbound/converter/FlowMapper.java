@@ -27,6 +27,7 @@ import org.openkilda.messaging.info.flow.UniFlowPingResponse;
 import org.openkilda.messaging.model.DetectConnectedDevicesDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPatch;
+import org.openkilda.messaging.model.MirrorPointStatusDto;
 import org.openkilda.messaging.model.PatchEndpoint;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.SwapFlowDto;
@@ -67,6 +68,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowPathV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.flows.MirrorPointStatus;
 import org.openkilda.northbound.dto.v2.flows.PathStatus;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 
@@ -555,4 +557,6 @@ public abstract class FlowMapper {
                         input.isTrackArpConnectedDevices()))
                 .build();
     }
+
+    public abstract MirrorPointStatus toMirrorPointStatus(MirrorPointStatusDto dto);
 }

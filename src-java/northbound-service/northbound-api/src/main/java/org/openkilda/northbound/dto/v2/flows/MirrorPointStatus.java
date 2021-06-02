@@ -13,33 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.nbtopology.response;
-
-import org.openkilda.messaging.info.InfoData;
+package org.openkilda.northbound.dto.v2.flows;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
+import lombok.Data;
 
-import java.util.List;
-
-@Value
+@Data
 @Builder
-@EqualsAndHashCode(callSuper = false)
+@AllArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class FlowValidationResponse extends InfoData {
-
-    String flowId;
-    Boolean asExpected;
-    List<Long> pktCounts;
-    List<Long> byteCounts;
-    List<PathDiscrepancyEntity> discrepancies;
-    Integer flowRulesTotal;
-    Integer switchRulesTotal;
-    Integer flowMetersTotal;
-    Integer switchMetersTotal;
-    Boolean ingressMirrorFlowIsPresent;
-    Boolean egressMirrorFlowIsPresent;
+public class MirrorPointStatus {
+    String mirrorPointId;
+    String status;
 }

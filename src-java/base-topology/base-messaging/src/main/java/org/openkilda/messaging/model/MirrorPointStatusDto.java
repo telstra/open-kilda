@@ -13,26 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.switches;
+package org.openkilda.messaging.model;
 
-import org.openkilda.messaging.command.CommandData;
-import org.openkilda.model.SwitchId;
-
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Value
-@EqualsAndHashCode(callSuper = false)
-@JsonNaming(value = SnakeCaseStrategy.class)
-public class DumpGroupsForNbWorkerRequest extends CommandData {
-    SwitchId switchId;
+import java.io.Serializable;
 
-    @JsonCreator
-    public DumpGroupsForNbWorkerRequest(@JsonProperty("switch_id") SwitchId switchId) {
-        this.switchId = switchId;
-    }
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
+public class MirrorPointStatusDto implements Serializable {
+    String mirrorPointId;
+    String status;
 }
