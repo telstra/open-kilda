@@ -22,7 +22,6 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.model.Edge;
 import org.openkilda.pce.model.Node;
-import org.openkilda.pce.model.WeightFunction;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.ToString;
@@ -168,20 +167,5 @@ public class AvailableNetwork {
         }
 
 
-    }
-
-    /**
-     * Call this function to reduce the network to single (directed) links between src and dst switches.
-     */
-    public void reduceByWeight(WeightFunction weightFunction) {
-        for (Node node : switches.values()) {
-            Set<Edge> reduced = node.reduceByWeight(weightFunction);
-            reduced.forEach(e -> {
-                switches.get(e.getSrcSwitch().getSwitchId()).getIncomingLinks().remove(e);
-                switches.get(e.getSrcSwitch().getSwitchId()).getOutgoingLinks().remove(e);
-                switches.get(e.getDestSwitch().getSwitchId()).getIncomingLinks().remove(e);
-                switches.get(e.getDestSwitch().getSwitchId()).getOutgoingLinks().remove(e);
-            });
-        }
     }
 }
