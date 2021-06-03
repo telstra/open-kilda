@@ -158,9 +158,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
 
             return new LinkPropsResponse(request, LinkPropsMapper.INSTANCE.map(result), null);
         } catch (LinkPropsException e) {
-            log.error(e.getMessage(), e);
-
-            return new LinkPropsResponse(request, null, e.getMessage());
+            throw new MessageException(ErrorType.DATA_INVALID, "Can't create/update link props", e.getMessage());
         } catch (Exception e) {
             log.error("Unhandled exception in create or update linkprops operation.", e);
 

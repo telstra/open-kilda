@@ -15,9 +15,12 @@
 
 package org.openkilda.wfm.share.mappers;
 
+import static java.lang.String.format;
+
 import org.openkilda.messaging.model.LinkPropsDto;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.model.LinkProps;
+import org.openkilda.wfm.error.LinkPropsException;
 
 import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.Mapper;
@@ -78,10 +81,18 @@ public abstract class LinkPropsMapper {
             for (Map.Entry<String, String> entry : linkProps.getProps().entrySet()) {
                 switch (entry.getKey()) {
                     case LinkProps.COST_PROP_NAME:
-                        dbLinkProps.setCost(Integer.valueOf(entry.getValue()));
+                        try {
+                            dbLinkProps.setCost(Integer.valueOf(entry.getValue()));
+                        } catch (NumberFormatException e) {
+                            throw new LinkPropsException(format("Bad cost value '%s'", entry.getValue()), e);
+                        }
                         break;
                     case LinkProps.MAX_BANDWIDTH_PROP_NAME:
-                        dbLinkProps.setMaxBandwidth(Long.valueOf(entry.getValue()));
+                        try {
+                            dbLinkProps.setMaxBandwidth(Long.valueOf(entry.getValue()));
+                        } catch (NumberFormatException e) {
+                            throw new LinkPropsException(format("Bad max bandwidth value '%s'", entry.getValue()), e);
+                        }
                         break;
                     default:
                         log.warn("Unsupported IslProps properties: {}", entry);

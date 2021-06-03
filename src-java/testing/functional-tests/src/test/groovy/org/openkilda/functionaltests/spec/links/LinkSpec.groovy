@@ -636,7 +636,8 @@ class LinkSpec extends HealthCheckSpecification {
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Requested maximum bandwidth is too small"
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Can't create/update link props"
+        exc.responseBodyAsString.to(MessageError).errorDescription == "Not enough available bandwidth for operation"
 
         when: "Update max bandwidth to the value equal to max bandwidth of the created flow"
         northbound.updateLinkMaxBandwidth(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort,
