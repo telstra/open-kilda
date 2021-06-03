@@ -26,7 +26,9 @@ import org.projectfloodlight.openflow.protocol.OFMeterMod;
 @Builder
 public class SwitchFlowTuple {
 
-    public static final SwitchFlowTuple EMPTY = SwitchFlowTuple.builder().build();
+    public static SwitchFlowTuple getEmpty() {
+        return SwitchFlowTuple.builder().build();
+    }
 
     private IOFSwitch sw;
     private OFFlowMod flow;

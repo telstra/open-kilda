@@ -53,7 +53,7 @@ public abstract class LldpFlowGenerator extends MeteredFlowGenerator {
 
         OFFlowMod flowMod = getLldpFlowMod(sw, ofInstructionMeter, actionList);
         if (flowMod == null) {
-            return SwitchFlowTuple.EMPTY;
+            return SwitchFlowTuple.getEmpty();
         }
 
         return SwitchFlowTuple.builder()

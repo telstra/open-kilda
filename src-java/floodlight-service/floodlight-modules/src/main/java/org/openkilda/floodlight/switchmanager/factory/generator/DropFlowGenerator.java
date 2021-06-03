@@ -37,7 +37,7 @@ public class DropFlowGenerator implements SwitchFlowGenerator {
         OFFactory ofFactory = sw.getOFFactory();
 
         if (ofFactory.getVersion() == OF_12) {
-            return SwitchFlowTuple.EMPTY;
+            return SwitchFlowTuple.getEmpty();
         }
 
         OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie, MINIMAL_POSITIVE_PRIORITY, tableId)

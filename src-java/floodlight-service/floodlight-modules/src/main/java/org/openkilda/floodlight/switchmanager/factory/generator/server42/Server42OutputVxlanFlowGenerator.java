@@ -78,7 +78,7 @@ public class Server42OutputVxlanFlowGenerator implements SwitchFlowGenerator {
     public SwitchFlowTuple generateFlow(IOFSwitch sw) {
         Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
         if (!features.contains(NOVIFLOW_PUSH_POP_VXLAN)) {
-            return SwitchFlowTuple.EMPTY;
+            return SwitchFlowTuple.getEmpty();
         }
 
         OFFactory ofFactory = sw.getOFFactory();

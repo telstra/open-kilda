@@ -57,7 +57,7 @@ public class Server42TurningFlowGenerator implements SwitchFlowGenerator {
     @Override
     public SwitchFlowTuple generateFlow(IOFSwitch sw) {
         if (!featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_SWAP_ETH_SRC_ETH_DST)) {
-            return SwitchFlowTuple.EMPTY;
+            return SwitchFlowTuple.getEmpty();
         }
 
         OFFactory ofFactory = sw.getOFFactory();

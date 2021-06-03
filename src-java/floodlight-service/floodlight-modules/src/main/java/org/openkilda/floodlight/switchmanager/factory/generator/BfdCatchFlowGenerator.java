@@ -50,7 +50,7 @@ public class BfdCatchFlowGenerator implements SwitchFlowGenerator {
     public SwitchFlowTuple generateFlow(IOFSwitch sw) {
         Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
         if (!features.contains(SwitchFeature.BFD)) {
-            return SwitchFlowTuple.EMPTY;
+            return SwitchFlowTuple.getEmpty();
         }
 
         OFFactory ofFactory = sw.getOFFactory();

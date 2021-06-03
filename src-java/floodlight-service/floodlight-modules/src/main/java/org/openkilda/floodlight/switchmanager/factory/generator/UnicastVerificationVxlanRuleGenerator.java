@@ -64,7 +64,7 @@ public class UnicastVerificationVxlanRuleGenerator extends MeteredFlowGenerator 
     public SwitchFlowTuple generateFlow(IOFSwitch sw) {
         // should be replaced with fair feature detection based on ActionId's during handshake
         if (!featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_PUSH_POP_VXLAN)) {
-            return SwitchFlowTuple.EMPTY;
+            return SwitchFlowTuple.getEmpty();
         }
 
         ArrayList<OFAction> actionList = new ArrayList<>();
