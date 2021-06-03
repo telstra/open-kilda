@@ -230,7 +230,7 @@ public class RerouteQueueService {
         if (throttlingData != null) {
             FlowRerouteRequest request = new FlowRerouteRequest(flowId, throttlingData.isForce(),
                     throttlingData.isEffectivelyDown(), throttlingData.isIgnoreBandwidth(),
-                    throttlingData.getAffectedIsl(), throttlingData.getReason());
+                    throttlingData.getAffectedIsl(), throttlingData.getReason(), false);
             carrier.sendRerouteRequest(throttlingData.getCorrelationId(), request);
         }
     }

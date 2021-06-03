@@ -13,15 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowmonitoring.bolts;
+package org.openkilda.wfm.topology.flowmonitoring.service;
 
-import org.openkilda.wfm.share.bolt.MonotonicClock;
-import org.openkilda.wfm.topology.flowmonitoring.bolts.TickBolt.TickId;
+public interface FlowSlaMonitoringCarrier {
 
-public class TickBolt extends MonotonicClock<TickId> {
-    public TickBolt(Integer interval) {
-        super(new MonotonicClock.ClockConfig<>(), interval);
-    }
+    void saveFlowLatency(String flowId, String direction, long latency);
 
-    enum TickId {}
+    void sendFlowSyncRequest(String flowId);
+
+    void sendFlowRerouteRequest(String flowId);
 }

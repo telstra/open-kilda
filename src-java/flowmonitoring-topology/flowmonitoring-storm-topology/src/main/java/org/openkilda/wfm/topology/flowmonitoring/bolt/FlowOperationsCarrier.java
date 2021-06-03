@@ -13,17 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowmonitoring.service;
+package org.openkilda.wfm.topology.flowmonitoring.bolt;
 
-import org.openkilda.server42.messaging.FlowDirection;
-import org.openkilda.wfm.topology.flowmonitoring.model.Link;
+public interface FlowOperationsCarrier {
 
-import java.time.Duration;
-import java.util.List;
+    void sendFlowSyncRequest(String flowId);
 
-public interface FlowCacheBoltCarrier {
-
-    void emitCalculateFlowLatencyRequest(String flowId, FlowDirection direction, List<Link> flowPath);
-
-    void emitCheckFlowLatencyRequest(String flowId, FlowDirection direction, Duration latency);
+    void sendFlowRerouteRequest(String flowId);
 }

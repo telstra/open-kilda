@@ -24,3 +24,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 004-add-mirror-classes.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 005-add-flow-latency-properties.yaml

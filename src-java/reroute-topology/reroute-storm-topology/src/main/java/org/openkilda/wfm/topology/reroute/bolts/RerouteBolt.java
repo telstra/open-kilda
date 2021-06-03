@@ -111,7 +111,7 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
         } else if (commandData instanceof RerouteInactiveFlows) {
             rerouteService.rerouteInactiveFlows(this, correlationId, (RerouteInactiveFlows) commandData);
         } else if (commandData instanceof FlowRerouteRequest) {
-            rerouteService.processManualRerouteRequest(this, correlationId, (FlowRerouteRequest) commandData);
+            rerouteService.processRerouteRequest(this, correlationId, (FlowRerouteRequest) commandData);
         } else {
             unhandledInput(getCurrentTuple());
         }

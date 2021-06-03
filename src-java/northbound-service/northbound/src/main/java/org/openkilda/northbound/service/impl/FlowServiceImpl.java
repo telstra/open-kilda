@@ -17,6 +17,7 @@ package org.openkilda.northbound.service.impl;
 
 import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.FLOW_ID;
+import static org.openkilda.messaging.command.flow.FlowRerouteRequest.createManualFlowRerouteRequest;
 import static org.openkilda.northbound.utils.async.AsyncUtils.collectResponses;
 
 import org.openkilda.messaging.Destination;
@@ -635,8 +636,7 @@ public class FlowServiceImpl implements FlowService {
     public CompletableFuture<FlowRerouteResponseV2> rerouteFlowV2(String flowId) {
         logger.info("Processing flow reroute: {}", flowId);
 
-        FlowRerouteRequest payload = new FlowRerouteRequest(flowId, false, false,
-                "initiated via Northbound");
+        FlowRerouteRequest payload = createManualFlowRerouteRequest(flowId, false, false, "initiated via Northbound");
         CommandMessage command = new CommandMessage(
                 payload, System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
 
@@ -649,8 +649,7 @@ public class FlowServiceImpl implements FlowService {
     private CompletableFuture<FlowReroutePayload> reroute(String flowId, boolean forced) {
         logger.debug("Reroute flow: {}={}, forced={}", FLOW_ID, flowId, forced);
         String correlationId = RequestCorrelationId.getId();
-        FlowRerouteRequest payload = new FlowRerouteRequest(flowId, forced, false,
-                "initiated via Northbound");
+        FlowRerouteRequest payload = createManualFlowRerouteRequest(flowId, forced, false, "initiated via Northbound");
         CommandMessage command = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 
