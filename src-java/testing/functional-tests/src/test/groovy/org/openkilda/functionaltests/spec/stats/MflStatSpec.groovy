@@ -300,10 +300,14 @@ class MflStatSpec extends HealthCheckSpecification {
 
         when: "Src switch is only left with the other management controller (no stats controllers)"
         lockKeeper.reviveSwitch(srcSwitch, blockData)
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections.size() == 4
+        }
+        //TODO (andriidovhan) rework, regionToStay should be array or string during whole test
         regionToStay = findMgmtFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName - regionToStay
         blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
         Wrappers.wait(WAIT_OFFSET / 2) {
-            assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == [regionToStay]
+            assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == regionToStay
         }
 
         and: "Generate traffic on the given flow"
@@ -322,6 +326,9 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Set only 1 statistic controller on the src switch and disconnect from management"
         initStats = newStats
         lockKeeper.reviveSwitch(srcSwitch, blockData)
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections.size() == 4
+        }
         regionToStay = findStatFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName.first()
         blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
         Wrappers.wait(WAIT_OFFSET / 2) {
@@ -342,10 +349,13 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Set only other statistic controller on the src switch and disconnect from management"
         initStats = newStats
         lockKeeper.reviveSwitch(srcSwitch, blockData)
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections.size() == 4
+        }
         regionToStay = findStatFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName - regionToStay
         blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
         Wrappers.wait(WAIT_OFFSET / 2) {
-            assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == [regionToStay]
+            assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == regionToStay
         }
 
         and: "Generate traffic on the given flow"

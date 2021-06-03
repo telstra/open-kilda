@@ -169,7 +169,10 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
                                 dstEnabled: true, encapsulation: FlowEncapsulationType.VXLAN)
                         //each of the above datapieces may repeat multiple times depending on amount of available TG switches
                 ].collectMany { dataPiece ->
-                    getUniqueSwitchPairs().collect {
+                    getUniqueSwitchPairs().findAll {
+                        //for protected flow
+                        it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
+                    }.collect {
                         def newDataPiece = dataPiece.clone()
                         newDataPiece.switchPair = it
                         newDataPiece

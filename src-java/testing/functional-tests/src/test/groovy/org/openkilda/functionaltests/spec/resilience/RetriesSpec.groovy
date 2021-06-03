@@ -523,7 +523,7 @@ and at least 1 path must remain safe"
             database.setSwitchStatus(brokenSwitch.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(brokenSwitch, blockData)
         }
-        originalMode && swPair.src.changeMultitable(originalMode)
+        (originalMode != null) && swPair.src.changeMultitable(originalMode)
         !done && currentSwitches && (currentSwitches + otherSwitches).unique { it.dpId }.each {
             northbound.synchronizeSwitch(it.dpId, true) }
         broughtDownIsls && broughtDownIsls.each { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
@@ -609,7 +609,7 @@ and at least 1 path must remain safe"
             database.setSwitchStatus(brokenSwitch.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(brokenSwitch, blockData)
         }
-        originalMode && swPair.src.changeMultitable(originalMode)
+        (originalMode != null) && swPair.src.changeMultitable(originalMode)
         broughtDownIsls && broughtDownIsls.each { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
         isl && antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         wait(WAIT_OFFSET * 2) {
