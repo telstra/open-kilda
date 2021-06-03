@@ -21,6 +21,9 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointsResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
@@ -194,6 +197,26 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
         return restTemplate.exchange(uriBuilder.build().toString(),
                 HttpMethod.GET, new HttpEntity(buildHeadersWithCorrelationId()), FlowHistoryStatusesResponse.class,
                 flowId).getBody();
+    }
+
+    @Override
+    public FlowMirrorPointResponseV2 createMirrorPoint(String flowId, FlowMirrorPointPayload mirrorPoint) {
+        HttpEntity<FlowMirrorPointPayload> httpEntity = new HttpEntity<>(mirrorPoint, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v2/flows/{flow_id}/mirror", HttpMethod.POST, httpEntity,
+                FlowMirrorPointResponseV2.class, flowId).getBody();
+    }
+
+    @Override
+    public FlowMirrorPointsResponseV2 getMirrorPoints(String flowId) {
+        return restTemplate.exchange("/api/v2/flows/{flow_id}/mirror", HttpMethod.GET,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), FlowMirrorPointsResponseV2.class, flowId).getBody();
+    }
+
+    @Override
+    public FlowMirrorPointResponseV2 deleteMirrorPoint(String flowId, String mirrorPointId) {
+        return restTemplate.exchange("/api/v2/flows/{flow_id}/mirror/{mirror_point_id}", HttpMethod.DELETE,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), FlowMirrorPointResponseV2.class, flowId,
+                mirrorPointId).getBody();
     }
 
     @Override

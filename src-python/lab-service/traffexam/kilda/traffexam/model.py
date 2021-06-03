@@ -297,6 +297,7 @@ class ProducerEndpoint(_Endpoint):
     burst_pkt = Default(0)
     time = Default(10)
     use_udp = Default(False)
+    buffer_length = Default(None)
 
     def __init__(self, remote_address, **fields):
         super().__init__(**fields)

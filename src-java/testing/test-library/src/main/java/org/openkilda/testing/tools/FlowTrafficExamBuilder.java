@@ -80,8 +80,6 @@ public class FlowTrafficExamBuilder {
         //noinspection ConstantConditions
         Host destHost = traffExam.hostByName(dest.get().getName());
 
-        // burst value is hardcoded into floddlight-modules as 1000 kbit/sec, so to overcome this burst we need at least
-        // 1024 * 1024 / 8 / 1500 = 87.3...
         Exam forward = Exam.builder()
                 .flow(flow)
                 .source(sourceHost)
@@ -89,7 +87,7 @@ public class FlowTrafficExamBuilder {
                 .dest(destHost)
                 .destVlans(dstVlanIds)
                 .bandwidthLimit(new Bandwidth(bandwidth))
-                .burstPkt(100)
+                .burstPkt(0)
                 .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
                 .build();
         Exam reverse = Exam.builder()
@@ -99,11 +97,15 @@ public class FlowTrafficExamBuilder {
                 .dest(sourceHost)
                 .destVlans(srcVlanIds)
                 .bandwidthLimit(new Bandwidth(bandwidth))
-                .burstPkt(100)
+                .burstPkt(0)
                 .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
                 .build();
 
         return new FlowBidirectionalExam(forward, reverse);
+    }
+
+    public FlowBidirectionalExam buildBidirectionalExam(FlowPayload flow) throws FlowNotApplicableException {
+        return buildBidirectionalExam(flow, 100, null);
     }
 
 
@@ -165,6 +167,11 @@ public class FlowTrafficExamBuilder {
     public Exam buildExam(FlowPayload flow, int bandwidth)
             throws FlowNotApplicableException {
         return buildExam(flow, bandwidth, null);
+    }
+
+    public Exam buildExam(FlowPayload flow)
+            throws FlowNotApplicableException {
+        return buildExam(flow, 100, null);
     }
 
     private void checkIsFlowApplicable(FlowPayload flow, boolean sourceApplicable, boolean destApplicable)

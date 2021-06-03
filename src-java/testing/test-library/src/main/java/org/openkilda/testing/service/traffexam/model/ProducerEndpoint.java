@@ -43,6 +43,9 @@ public class ProducerEndpoint extends Endpoint {
     @JsonProperty("use_udp")
     private boolean useUdp = false;
 
+    @JsonProperty("buffer_length")
+    private Integer bufferLength = null;
+
     @JsonProperty("remote_address")
     private final EndpointAddress targetAddress;
 

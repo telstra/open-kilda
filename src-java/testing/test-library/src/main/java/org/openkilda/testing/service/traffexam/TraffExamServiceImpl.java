@@ -175,12 +175,7 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
     }
 
     @Override
-    public ExamResources startExam(Exam exam) throws NoResultsFoundException, OperationalException {
-        return startExam(exam, false);
-    }
-
-    @Override
-    public synchronized ExamResources startExam(Exam exam, boolean udp) throws NoResultsFoundException,
+    public synchronized ExamResources startExam(Exam exam) throws NoResultsFoundException,
             OperationalException {
         checkHostPresence(exam.getSource());
         checkHostPresence(exam.getDest());
@@ -216,7 +211,8 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
             if (exam.getTimeLimitSeconds() != null) {
                 producer.setTime(exam.getTimeLimitSeconds());
             }
-            producer.setUseUdp(udp);
+            producer.setUseUdp(exam.isUdp());
+            producer.setBufferLength(exam.getBufferLength());
             try {
                 //give consumer some time to fully roll. Probably should be fixed on service's side, this is workaround
                 TimeUnit.MILLISECONDS.sleep(300);

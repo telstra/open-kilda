@@ -81,10 +81,11 @@ class TopologyHelper {
         swPair.src in tgSwitches && swPair.dst in tgSwitches
     }
 
-    List<SwitchPair> getSwitchPairs() {
+    List<SwitchPair> getSwitchPairs(boolean includeReverse = false) {
         //get deep copy
         def mapper = new ObjectMapper()
-        return mapper.readValue(mapper.writeValueAsString(getSwitchPairsCached()), SwitchPair[]).toList()
+        def result = mapper.readValue(mapper.writeValueAsString(getSwitchPairsCached()), SwitchPair[]).toList()
+        return includeReverse ? result.collectMany { [it, it.reversed] } : result
     }
 
     Switch findSwitch(SwitchId swId) {

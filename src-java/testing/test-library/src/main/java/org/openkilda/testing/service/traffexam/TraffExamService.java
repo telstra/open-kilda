@@ -38,9 +38,6 @@ public interface TraffExamService {
     ExamResources startExam(Exam exam)
             throws NoResultsFoundException, OperationalException;
 
-    ExamResources startExam(Exam exam, boolean udp)
-            throws NoResultsFoundException, OperationalException;
-
     ExamReport waitExam(Exam exam);
 
     ExamReport waitExam(Exam exam, boolean cleanup);
