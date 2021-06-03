@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -29,9 +29,9 @@ public class PathId implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @NonNull
-    private final String id;
+    String id;
 
-    public PathId(String id) {
+    public PathId(@NonNull String id) {
         this.id = id;
     }
 

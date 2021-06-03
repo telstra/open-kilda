@@ -56,6 +56,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.OnReceivedRemoveOrR
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.PostResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RemoveOldRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RevertFlowStatusAction;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RevertMirrorPointsSettingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RevertNewRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RevertPathsSwapAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RevertResourceAllocationAction;
@@ -262,7 +263,8 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .perform(new EmitNonIngressRulesVerifyRequestsAction());
             builder.transitions().from(State.NON_INGRESS_RULES_INSTALLED)
                     .toAmong(State.PATHS_SWAP_REVERTED, State.PATHS_SWAP_REVERTED)
-                    .onEach(Event.TIMEOUT, Event.ERROR);
+                    .onEach(Event.TIMEOUT, Event.ERROR)
+                    .perform(new RevertMirrorPointsSettingAction(persistenceManager));
 
             builder.internalTransition().within(State.VALIDATING_NON_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
                     .perform(new ValidateNonIngressRulesAction(speakerCommandRetriesLimit));
@@ -368,6 +370,8 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
             builder.onEntry(State.REVERTING_PATHS_SWAP)
                     .perform(reportErrorAction);
+            builder.onExit(State.REVERTING_PATHS_SWAP)
+                    .perform(new RevertMirrorPointsSettingAction(persistenceManager));
             builder.transition().from(State.REVERTING_PATHS_SWAP).to(State.PATHS_SWAP_REVERTED)
                     .on(Event.NEXT)
                     .perform(new RevertPathsSwapAction(persistenceManager));
@@ -389,7 +393,8 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .perform(new HandleNotCompletedCommandsAction());
 
             builder.transition().from(State.NEW_RULES_REVERTED)
-                    .to(State.REVERTING_ALLOCATED_RESOURCES).on(Event.NEXT);
+                    .to(State.REVERTING_ALLOCATED_RESOURCES).on(Event.NEXT)
+                    .perform(new RevertMirrorPointsSettingAction(persistenceManager));
 
             builder.onEntry(State.REVERTING_ALLOCATED_RESOURCES)
                     .perform(reportErrorAction);

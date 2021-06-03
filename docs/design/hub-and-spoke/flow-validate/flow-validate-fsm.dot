@@ -1,18 +1,18 @@
 digraph {
-    compound=true;
-    subgraph cluster_StateMachine {
-    label="org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm";
-    RECEIVE_DATA [label="RECEIVE_DATA"];
-    INITIALIZED [label="INITIALIZED"];
-    VALIDATE_FLOW [label="VALIDATE_FLOW"];
-    FINISHED_WITH_ERROR [label="FINISHED_WITH_ERROR"];
-    FINISHED [label="FINISHED"];
+compound=true;
+subgraph cluster_StateMachine {
+label="org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm";
+INITIALIZED [label="INITIALIZED"];
+FINISHED [label="FINISHED"];
+FINISHED_WITH_ERROR [label="FINISHED_WITH_ERROR"];
+VALIDATE_FLOW [label="VALIDATE_FLOW"];
+RECEIVE_DATA [label="RECEIVE_DATA"];
 
-    RECEIVE_DATA -> RECEIVE_DATA [ label="RULES_RECEIVED"];
-    RECEIVE_DATA -> RECEIVE_DATA [ label="METERS_RECEIVED"];
-    RECEIVE_DATA -> FINISHED_WITH_ERROR [ label="ERROR"];
-    RECEIVE_DATA -> FINISHED_WITH_ERROR [ label="TIMEOUT"];
-    RECEIVE_DATA -> VALIDATE_FLOW [ label="NEXT"];
-    INITIALIZED -> RECEIVE_DATA [ label="NEXT"];
-    VALIDATE_FLOW -> FINISHED_WITH_ERROR [ label="ERROR"];
-    VALIDATE_FLOW -> FINISHED [ label="NEXT"];}}
+INITIALIZED -> RECEIVE_DATA [ label="NEXT"];
+VALIDATE_FLOW -> FINISHED_WITH_ERROR [ label="ERROR"];
+VALIDATE_FLOW -> FINISHED [ label="NEXT"];
+RECEIVE_DATA -> RECEIVE_DATA [ label="RULES_RECEIVED"];
+RECEIVE_DATA -> RECEIVE_DATA [ label="METERS_RECEIVED"];
+RECEIVE_DATA -> RECEIVE_DATA [ label="GROUPS_RECEIVED"];
+RECEIVE_DATA -> FINISHED_WITH_ERROR [ label="ERROR"];
+RECEIVE_DATA -> VALIDATE_FLOW [ label="NEXT"];}}

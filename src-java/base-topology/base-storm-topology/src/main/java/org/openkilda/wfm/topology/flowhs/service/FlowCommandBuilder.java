@@ -19,6 +19,7 @@ import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.model.MirrorContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 
@@ -31,9 +32,28 @@ public interface FlowCommandBuilder {
     List<FlowSegmentRequestFactory> buildAll(CommandContext context, Flow flow, FlowPath path,
                                              SpeakerRequestBuildContext speakerRequestBuildContext);
 
+    /**
+     * Build install commands for ingress, transit(if needed) and egress rules for provided one direction path
+     * and mirror context.
+     */
+    List<FlowSegmentRequestFactory> buildAll(CommandContext context, Flow flow, FlowPath path,
+                                             SpeakerRequestBuildContext speakerRequestBuildContext,
+                                             MirrorContext mirrorContext);
+
+    /**
+     * Build install commands for ingress, transit(if needed) and egress rules for provided paths.
+     */
     List<FlowSegmentRequestFactory> buildAll(CommandContext context, Flow flow,
                                              FlowPath forwardPath, FlowPath reversePath,
                                              SpeakerRequestBuildContext speakerRequestBuildContext);
+
+    /**
+     * Build install commands for ingress, transit(if needed) and egress rules for provided paths and mirror context.
+     */
+    List<FlowSegmentRequestFactory> buildAll(CommandContext context, Flow flow,
+                                             FlowPath forwardPath, FlowPath reversePath,
+                                             SpeakerRequestBuildContext speakerRequestBuildContext,
+                                             MirrorContext mirrorContext);
 
     /**
      * Build install commands for transit(if needed) and egress rules for active forward and reverse paths.
@@ -46,10 +66,23 @@ public interface FlowCommandBuilder {
     List<FlowSegmentRequestFactory> buildAllExceptIngress(CommandContext context, Flow flow, FlowPath path);
 
     /**
+     * Build install commands for transit(if needed) and egress rules for provided one direction path
+     * and mirror context.
+     */
+    List<FlowSegmentRequestFactory> buildAllExceptIngress(CommandContext context, Flow flow, FlowPath path,
+                                                          MirrorContext mirrorContext);
+
+    /**
      * Build install commands for transit(if needed) and egress rules for provided paths.
      */
     List<FlowSegmentRequestFactory> buildAllExceptIngress(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath);
+
+    /**
+     * Build install commands for transit(if needed) and egress rules for provided paths and mirror context.
+     */
+    List<FlowSegmentRequestFactory> buildAllExceptIngress(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath, MirrorContext mirrorContext);
 
     /**
      * Build install commands for ingress rules for active forward and reverse paths.
@@ -65,11 +98,25 @@ public interface FlowCommandBuilder {
             SpeakerRequestBuildContext speakerRequestBuildContext);
 
     /**
+     * Build install commands for ingress rules for provided paths and mirror context.
+     */
+    List<FlowSegmentRequestFactory> buildIngressOnly(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath,
+            SpeakerRequestBuildContext speakerRequestBuildContext, MirrorContext mirrorContext);
+
+    /**
      * Build install commands for ingress rules for provided paths.
      */
     List<FlowSegmentRequestFactory> buildIngressOnlyOneDirection(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath,
             PathContext pathContext);
+
+    /**
+     * Build install commands for ingress rules for provided paths and mirror context.
+     */
+    List<FlowSegmentRequestFactory> buildIngressOnlyOneDirection(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath,
+            PathContext pathContext, MirrorContext mirrorContext);
 
     /**
      * Build install commands for egress rules for provided paths.
@@ -78,8 +125,20 @@ public interface FlowCommandBuilder {
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath);
 
     /**
+     * Build install commands for egress rules for provided paths and mirror context.
+     */
+    List<FlowSegmentRequestFactory> buildEgressOnly(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath, MirrorContext mirrorContext);
+
+    /**
      * Build install commands for egress rules for provided paths.
      */
     List<FlowSegmentRequestFactory> buildEgressOnlyOneDirection(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath);
+
+    /**
+     * Build install commands for egress rules for provided paths and mirror context.
+     */
+    List<FlowSegmentRequestFactory> buildEgressOnlyOneDirection(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath, MirrorContext mirrorContext);
 }

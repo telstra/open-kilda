@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallMultiTableFlowModFactory;
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallSingleTableFlowModFactory;
+import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
@@ -26,7 +27,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MeterConfig;
-import org.openkilda.model.MeterId;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
@@ -54,9 +55,10 @@ public class IngressFlowSegmentInstallCommand extends IngressFlowSegmentCommand 
             @JsonProperty("egress_switch") SwitchId egressSwitchId,
             @JsonProperty("isl_port") int islPort,
             @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
-            @JsonProperty("rules_context") RulesContext rulesContext) {
+            @JsonProperty("rules_context") RulesContext rulesContext,
+            @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
         super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
-                rulesContext);
+                rulesContext, mirrorConfig);
     }
 
     @Override
@@ -89,8 +91,8 @@ public class IngressFlowSegmentInstallCommand extends IngressFlowSegmentCommand 
     }
 
     @Override
-    protected List<OFFlowMod> makeFlowModMessages(MeterId effectiveMeterId) {
-        List<OFFlowMod> ofMessages = super.makeFlowModMessages(effectiveMeterId);
+    protected List<OFFlowMod> makeFlowModMessages(EffectiveIds effectiveIds) {
+        List<OFFlowMod> ofMessages = super.makeFlowModMessages(effectiveIds);
         if (rulesContext != null && rulesContext.isInstallServer42IngressRule()) {
             ofMessages.addAll(makeServer42IngressFlowModMessages());
         }

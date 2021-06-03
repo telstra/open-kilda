@@ -21,6 +21,7 @@ import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchId;
 
 import lombok.Getter;
@@ -43,8 +44,9 @@ public abstract class NotIngressFlowSegmentCommand extends FlowSegmentCommand {
 
     public NotIngressFlowSegmentCommand(
             MessageContext messageContext, SwitchId switchId, UUID commandId, FlowSegmentMetadata metadata,
-            int ingressIslPort, FlowTransitEncapsulation encapsulation, OfFlowModBuilderFactory flowModBuilderFactory) {
-        super(messageContext, switchId, commandId, metadata);
+            int ingressIslPort, FlowTransitEncapsulation encapsulation, OfFlowModBuilderFactory flowModBuilderFactory,
+            MirrorConfig mirrorConfig) {
+        super(messageContext, switchId, commandId, metadata, mirrorConfig);
         this.ingressIslPort = ingressIslPort;
         this.encapsulation = encapsulation;
 

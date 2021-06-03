@@ -16,11 +16,13 @@
 package org.openkilda.floodlight.command.flow.ingress.of;
 
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentBase;
+import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
 import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.GroupId;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchFeature;
 
@@ -28,6 +30,7 @@ import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
+import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
 
@@ -42,19 +45,26 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
         super(flowModBuilderFactory, command, sw, features);
     }
 
-    protected List<OFInstruction> makeForwardMessageInstructions(MeterId effectiveMeterId, List<Integer> vlanStack) {
+    protected List<OFInstruction> makeForwardMessageInstructions(EffectiveIds effectiveIds, List<Integer> vlanStack) {
         List<OFAction> applyActions = new ArrayList<>();
         List<OFInstruction> instructions = new ArrayList<>();
 
+        MeterId effectiveMeterId = effectiveIds.getMeterId();
         if (effectiveMeterId != null) {
             OfAdapter.INSTANCE.makeMeterCall(of, effectiveMeterId, applyActions, instructions);
         }
 
         applyActions.addAll(makeTransformActions(vlanStack));
-        applyActions.add(makeOutputAction());
+
+        GroupId effectiveGroupId = effectiveIds.getGroupId();
+        if (effectiveGroupId != null) {
+            applyActions.add(makeGroupAction(effectiveGroupId));
+        } else {
+            applyActions.add(makeOutputAction());
+        }
 
         instructions.add(of.instructions().applyActions(applyActions));
-        if (command.getMetadata().isMultiTable()) {
+        if (command.getMetadata().isMultiTable() && effectiveGroupId == null) {
             instructions.add(of.instructions().gotoTable(TableId.of(SwitchManager.POST_INGRESS_TABLE_ID)));
             instructions.addAll(makeMetadataInstructions());
         }
@@ -129,5 +139,10 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
         return of.actions().buildOutput()
                 .setPort(port)
                 .build();
+    }
+
+    protected final OFAction makeGroupAction(GroupId groupId) {
+        return of.actions()
+                .group(OFGroup.of(groupId.intValue()));
     }
 }

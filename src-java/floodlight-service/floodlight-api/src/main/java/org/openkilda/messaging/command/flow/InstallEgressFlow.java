@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 import org.openkilda.messaging.Utils;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -80,6 +81,10 @@ public class InstallEgressFlow extends InstallTransitFlow {
     @Getter @Setter
     protected FlowEndpoint ingressEndpoint;
 
+    @JsonProperty("mirror_config")
+    @Getter @Setter
+    protected MirrorConfig mirrorConfig;
+
     /**
      * Instance constructor.
      *
@@ -96,6 +101,7 @@ public class InstallEgressFlow extends InstallTransitFlow {
      * @param outputVlanType output vlan tag action
      * @param multiTable     multitable flag
      * @param ingressEndpoint ingress flow endpoint
+     * @param mirrorConfig   flow mirror config
      * @throws IllegalArgumentException if any of mandatory parameters is null
      */
     @JsonCreator
@@ -111,13 +117,15 @@ public class InstallEgressFlow extends InstallTransitFlow {
                              @JsonProperty("output_inner_vlan_id") Integer outputInnerVlanId,
                              @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
                              @JsonProperty("multi_table") final boolean multiTable,
-                             @JsonProperty("ingress_endpoint") FlowEndpoint ingressEndpoint) {
+                             @JsonProperty("ingress_endpoint") FlowEndpoint ingressEndpoint,
+                             @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
                 transitEncapsulationType, multiTable);
         setOutputVlanId(outputVlanId);
         setOutputInnerVlanId(outputInnerVlanId);
         setOutputVlanType(outputVlanType);
         setIngressEndpoint(ingressEndpoint);
+        setMirrorConfig(mirrorConfig);
     }
 
     /**

@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.FlowConnectedDeviceRequest;
+import org.openkilda.messaging.nbtopology.request.FlowMirrorPointsDumpRequest;
 import org.openkilda.messaging.nbtopology.request.FlowReadRequest;
 import org.openkilda.messaging.nbtopology.request.FlowsDumpRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowLoopsRequest;
@@ -39,6 +40,8 @@ import org.openkilda.messaging.nbtopology.response.ConnectedDeviceDto;
 import org.openkilda.messaging.nbtopology.response.FlowConnectedDevicesResponse;
 import org.openkilda.messaging.nbtopology.response.FlowLoopDto;
 import org.openkilda.messaging.nbtopology.response.FlowLoopsResponse;
+import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse;
+import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse.FlowMirrorPoint;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.nbtopology.response.TypedConnectedDevicesDto;
 import org.openkilda.model.Flow;
@@ -107,6 +110,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
             result = processFlowsDumpRequest((FlowsDumpRequest) request);
         } else if (request instanceof GetFlowLoopsRequest) {
             result = processGetFlowLoopsRequest((GetFlowLoopsRequest) request);
+        } else if (request instanceof FlowMirrorPointsDumpRequest) {
+            result = processFlowMirrorPointsDumpRequest((FlowMirrorPointsDumpRequest) request);
         } else {
             unhandledInput(tuple);
         }
@@ -127,7 +132,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
                     .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
                     .map(FlowPath::getFlow)
                     .distinct()
-                    .map(FlowMapper.INSTANCE::map)
+                    .map(f -> FlowMapper.INSTANCE.map(f, flowOperationsService.getDiverseFlowsId(f),
+                            flowOperationsService.getFlowMirrorPaths(f)))
                     .map(FlowResponse::new)
                     .collect(Collectors.toList());
         } catch (IslNotFoundException e) {
@@ -143,7 +149,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         try {
             return flowOperationsService.getFlowsForEndpoint(srcSwitch, srcPort).stream()
                     .distinct()
-                    .map(FlowMapper.INSTANCE::map)
+                    .map(f -> FlowMapper.INSTANCE.map(f, flowOperationsService.getDiverseFlowsId(f),
+                            flowOperationsService.getFlowMirrorPaths(f)))
                     .map(FlowResponse::new)
                     .collect(Collectors.toList());
         } catch (SwitchNotFoundException e) {
@@ -241,10 +248,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         try {
             String flowId = readRequest.getFlowId();
             Flow f = flowOperationsService.getFlow(flowId);
-            FlowDto dto = FlowMapper.INSTANCE.map(f);
-            if (f.getGroupId() != null) {
-                dto.setDiverseWith(flowOperationsService.getDiverseFlowsId(flowId, f.getGroupId()));
-            }
+            FlowDto dto = FlowMapper.INSTANCE.map(f, flowOperationsService.getDiverseFlowsId(f),
+                    flowOperationsService.getFlowMirrorPaths(f));
             FlowResponse response = new FlowResponse(dto);
             return Collections.singletonList(response);
         } catch (FlowNotFoundException e) {
@@ -260,7 +265,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
     private List<FlowResponse> processFlowsDumpRequest(FlowsDumpRequest request) {
         try {
             return flowOperationsService.getAllFlows(request).stream()
-                    .map(FlowMapper.INSTANCE::map)
+                    .map(f -> FlowMapper.INSTANCE.map(f, flowOperationsService.getDiverseFlowsId(f),
+                            flowOperationsService.getFlowMirrorPaths(f)))
                     .map(FlowResponse::new)
                     .collect(Collectors.toList());
         } catch (Exception e) {
@@ -280,6 +286,25 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
             return Collections.singletonList(flowLoopsResponse);
         } catch (Exception e) {
             throw new MessageException(ErrorType.INTERNAL_ERROR, "Can not dump flow loops", "Internal Error");
+        }
+    }
+
+    private List<FlowMirrorPointsDumpResponse> processFlowMirrorPointsDumpRequest(
+            FlowMirrorPointsDumpRequest readRequest) {
+        try {
+            String flowId = readRequest.getFlowId();
+            List<FlowMirrorPoint> points = flowOperationsService.getFlowMirrorPoints(flowId);
+            FlowMirrorPointsDumpResponse response = FlowMirrorPointsDumpResponse.builder()
+                    .flowId(flowId)
+                    .points(points)
+                    .build();
+            return Collections.singletonList(response);
+        } catch (FlowNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, "Can not get flow mirror points: " + e.getMessage(),
+                    "Flow not found");
+        } catch (Exception e) {
+            throw new MessageException(ErrorType.INTERNAL_ERROR, "Can not get flow mirror points: " + e.getMessage(),
+                    "Internal Error");
         }
     }
 

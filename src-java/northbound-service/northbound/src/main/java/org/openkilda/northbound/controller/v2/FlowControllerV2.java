@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -24,6 +24,9 @@ import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointsResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
@@ -273,5 +276,30 @@ public class FlowControllerV2 extends BaseController {
             return Optional.of(String.format("Invalid %s value %d into %s endpoint", field, value, endpoint));
         }
         return Optional.empty();
+    }
+
+    @ApiOperation(value = "Creates a new flow mirror point", response = FlowMirrorPointResponseV2.class)
+    @PostMapping(path = "/{flow_id}/mirror")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowMirrorPointResponseV2> createFlowMirrorPoint(
+            @PathVariable("flow_id") String flowId,
+            @RequestBody FlowMirrorPointPayload mirrorPoint) {
+        return flowService.createFlowMirrorPoint(flowId, mirrorPoint);
+    }
+
+    @ApiOperation(value = "Deletes the flow mirror point", response = FlowMirrorPointResponseV2.class)
+    @DeleteMapping(path = "/{flow_id}/mirror/{mirror_point_id}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowMirrorPointResponseV2> deleteFlowMirrorPoint(
+            @PathVariable("flow_id") String flowId,
+            @PathVariable("mirror_point_id") String mirrorPointId) {
+        return flowService.deleteFlowMirrorPoint(flowId, mirrorPointId);
+    }
+
+    @ApiOperation(value = "Get list of flow mirror points", response = FlowMirrorPointsResponseV2.class)
+    @GetMapping(path = "/{flow_id}/mirror")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowMirrorPointsResponseV2> getFlowMirrorPoints(@PathVariable("flow_id") String flowId) {
+        return flowService.getFlowMirrorPoints(flowId);
     }
 }

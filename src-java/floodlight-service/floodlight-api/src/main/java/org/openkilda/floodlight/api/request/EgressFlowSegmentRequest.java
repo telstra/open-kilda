@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.MirrorConfig;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -49,8 +50,8 @@ public abstract class EgressFlowSegmentRequest extends FlowSegmentRequest {
     protected EgressFlowSegmentRequest(
             MessageContext messageContext, UUID commandId, FlowSegmentMetadata metadata,
             @NonNull FlowEndpoint endpoint, @NonNull FlowEndpoint ingressEndpoint, int islPort,
-            @NonNull FlowTransitEncapsulation encapsulation) {
-        super(messageContext, endpoint.getSwitchId(), commandId, metadata);
+            @NonNull FlowTransitEncapsulation encapsulation, MirrorConfig mirrorConfig) {
+        super(messageContext, endpoint.getSwitchId(), commandId, metadata, mirrorConfig);
 
         this.endpoint = endpoint;
         this.ingressEndpoint = ingressEndpoint;
@@ -61,6 +62,6 @@ public abstract class EgressFlowSegmentRequest extends FlowSegmentRequest {
     protected EgressFlowSegmentRequest(@NonNull EgressFlowSegmentRequest other, @NonNull UUID commandId) {
         this(
                 other.messageContext, commandId, other.metadata, other.endpoint,
-                other.ingressEndpoint, other.islPort, other.encapsulation);
+                other.ingressEndpoint, other.islPort, other.encapsulation, other.mirrorConfig);
     }
 }

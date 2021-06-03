@@ -88,6 +88,7 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.GroupId;
 import org.openkilda.model.Meter;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
@@ -207,6 +208,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int ROUND_TRIP_LATENCY_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
     public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
     public static final int FLOW_LOOP_PRIORITY = FLOW_PRIORITY + 100;
+    public static final int MIRROR_FLOW_PRIORITY = FLOW_PRIORITY + 50;
     public static final int ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
     public static final int ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 3;
     public static final int INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
@@ -241,7 +243,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             + SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY_OFFSET;
 
     public static final int BDF_DEFAULT_PORT = 3784;
-    public static final int ROUND_TRIP_LATENCY_GROUP_ID = 1;
     public static final IPv4Address STUB_VXLAN_IPV4_SRC = IPv4Address.of("127.0.0.1");
     public static final IPv4Address STUB_VXLAN_IPV4_DST = IPv4Address.of("127.0.0.2");
     public static final int STUB_VXLAN_UDP_SRC = 4500;
@@ -968,7 +969,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
 
         try {
-            deleteGroup(lookupSwitch(dpid), ROUND_TRIP_LATENCY_GROUP_ID);
+            deleteGroup(lookupSwitch(dpid), GroupId.ROUND_TRIP_LATENCY_GROUP_ID.intValue());
         } catch (OfInstallException e) {
             logger.info("Couldn't delete round trip latency group from switch {}. {}", dpid, e.getOfMessage());
         }
@@ -1027,7 +1028,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .build());
 
         return ofFactory.buildGroupAdd()
-                .setGroup(OFGroup.of(ROUND_TRIP_LATENCY_GROUP_ID))
+                .setGroup(OFGroup.of(GroupId.ROUND_TRIP_LATENCY_GROUP_ID.intValue()))
                 .setGroupType(OFGroupType.ALL)
                 .setBuckets(bucketList)
                 .build();
@@ -2329,7 +2330,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     private void installRoundTripLatencyGroup(IOFSwitch sw, OFGroupAdd groupAdd) throws OfInstallException {
-        Optional<OFGroupDescStatsEntry> groupDesc = getGroup(sw, ROUND_TRIP_LATENCY_GROUP_ID);
+        Optional<OFGroupDescStatsEntry> groupDesc = getGroup(sw, GroupId.ROUND_TRIP_LATENCY_GROUP_ID.intValue());
 
         if (groupDesc.isPresent()) {
             if (validateRoundTripLatencyGroup(sw.getId(), groupDesc.get())) {
@@ -2337,7 +2338,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 return;
             } else {
                 logger.debug("Found invalid round trip latency group on switch {}. Need to be deleted.", sw.getId());
-                deleteGroup(sw, ROUND_TRIP_LATENCY_GROUP_ID);
+                deleteGroup(sw, GroupId.ROUND_TRIP_LATENCY_GROUP_ID.intValue());
             }
         }
 

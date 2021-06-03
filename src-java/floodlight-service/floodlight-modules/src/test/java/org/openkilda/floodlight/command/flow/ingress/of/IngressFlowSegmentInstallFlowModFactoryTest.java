@@ -17,6 +17,7 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 
 import org.openkilda.floodlight.command.flow.FlowSegmentCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentInstallCommand;
+import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
@@ -74,7 +75,8 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
                         .build(), getTargetIngressTableId(), vlanTransformation);
         IngressFlowModFactory factory = makeFactory(command);
         verifyOfMessageEquals(
-                expected, factory.makeOuterOnlyVlanForwardMessage(getEffectiveMeterId(command.getMeterConfig())));
+                expected, factory.makeOuterOnlyVlanForwardMessage(
+                        new EffectiveIds(getEffectiveMeterId(command.getMeterConfig()), null)));
     }
 
     @Test
@@ -100,7 +102,8 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
                         .build(), getTargetIngressTableId(), vlanTransformation);
         IngressFlowModFactory factory = makeFactory(command);
         verifyOfMessageEquals(
-                expected, factory.makeOuterOnlyVlanForwardMessage(getEffectiveMeterId(command.getMeterConfig())));
+                expected, factory.makeOuterOnlyVlanForwardMessage(
+                        new EffectiveIds(getEffectiveMeterId(command.getMeterConfig()), null)));
     }
 
     @Test
@@ -111,7 +114,8 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
         IngressFlowSegmentInstallCommand command = makeCommand(endpoint, meterConfig, encapsulationVlan);
 
         IngressFlowModFactory factory = makeFactory(command);
-        verifyGoToTableInstruction(factory.makeOuterOnlyVlanForwardMessage(meterConfig.getId()));
+        verifyGoToTableInstruction(factory.makeOuterOnlyVlanForwardMessage(
+                new EffectiveIds(meterConfig.getId(), null)));
     }
 
     // --- makeDefaultPortForwardMessage
@@ -142,7 +146,8 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
         IngressFlowSegmentInstallCommand command = makeCommand(endpoint, meterConfig, encapsulationVlan);
 
         IngressFlowModFactory factory = makeFactory(command);
-        verifyGoToTableInstruction(factory.makeDefaultPortForwardMessage(meterConfig.getId()));
+        verifyGoToTableInstruction(factory.makeDefaultPortForwardMessage(
+                new EffectiveIds(meterConfig.getId(), null)));
     }
 
     private void testMakeDefaultPortForwardMessageVlan(IngressFlowSegmentInstallCommand command) {
@@ -153,8 +158,8 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getEndpoint().getPortNumber()))
                         .build(), getTargetIngressTableId(), vlanTransformation);
         IngressFlowModFactory factory = makeFactory(command);
-        verifyOfMessageEquals(expected, factory.makeDefaultPortForwardMessage(getEffectiveMeterId(
-                command.getMeterConfig())));
+        verifyOfMessageEquals(expected, factory.makeDefaultPortForwardMessage(
+                new EffectiveIds(getEffectiveMeterId(command.getMeterConfig()), null)));
     }
 
     private void testMakeDefaultPortForwardMessageVxLan(IngressFlowSegmentInstallCommand command) {
@@ -165,7 +170,7 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
                         .build(), getTargetIngressTableId(), Collections.emptyList());
         IngressFlowModFactory factory = makeFactory(command);
         verifyOfMessageEquals(expected, factory.makeDefaultPortForwardMessage(
-                getEffectiveMeterId(command.getMeterConfig())));
+                new EffectiveIds(getEffectiveMeterId(command.getMeterConfig()), null)));
     }
 
     // --- makeSingleVlanForwardMessage
@@ -200,7 +205,8 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
                         .build(), getTargetIngressTableId(), vlanTransformation);
         IngressFlowModFactory factory = makeFactory(command);
         verifyOfMessageEquals(
-                expected, factory.makeSingleVlanForwardMessage(getEffectiveMeterId(command.getMeterConfig())));
+                expected, factory.makeSingleVlanForwardMessage(
+                        new EffectiveIds(getEffectiveMeterId(command.getMeterConfig()), null)));
     }
 
     @Test
@@ -232,7 +238,8 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
 
         IngressFlowModFactory factory = makeFactory(command);
         verifyOfMessageEquals(
-                expected, factory.makeSingleVlanForwardMessage(getEffectiveMeterId(command.getMeterConfig())));
+                expected, factory.makeSingleVlanForwardMessage(
+                        new EffectiveIds(getEffectiveMeterId(command.getMeterConfig()), null)));
     }
 
     // --- makeDoubleVlanForwardMessage
@@ -268,7 +275,8 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
                         .build(), getTargetIngressTableId(), vlanTransformation);
         IngressFlowModFactory factory = makeFactory(command);
         verifyOfMessageEquals(
-                expected, factory.makeDoubleVlanForwardMessage(getEffectiveMeterId(command.getMeterConfig())));
+                expected, factory.makeDoubleVlanForwardMessage(
+                        new EffectiveIds(getEffectiveMeterId(command.getMeterConfig()), null)));
     }
 
     @Test
@@ -301,7 +309,8 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
                         .build(), getTargetIngressTableId(), vlanTransformation);
         IngressFlowModFactory factory = makeFactory(command);
         verifyOfMessageEquals(
-                expected, factory.makeDoubleVlanForwardMessage(getEffectiveMeterId(command.getMeterConfig())));
+                expected, factory.makeDoubleVlanForwardMessage(
+                        new EffectiveIds(getEffectiveMeterId(command.getMeterConfig()), null)));
     }
 
     // --- service methods
@@ -379,7 +388,7 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
         return new IngressFlowSegmentInstallCommand(
                 new MessageContext(commandId.toString()), commandId, makeMetadata(), endpoint, meterConfig,
                 new SwitchId(datapathIdBeta.getLong()), 1, encapsulation,
-                RulesContext.builder().build());
+                RulesContext.builder().build(), null);
     }
 
     private List<Integer> makeTransitVlanStack(FlowEndpoint ingressEndpoint, int transitVlanId) {

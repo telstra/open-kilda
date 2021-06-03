@@ -21,6 +21,7 @@ import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -78,9 +79,11 @@ public class InstallTransitLoopFlow extends InstallEgressFlow {
                                   @JsonProperty("output_inner_vlan_id") Integer outputInnerVlanId,
                                   @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
                                   @JsonProperty("multi_table") final boolean multiTable,
-                                  @JsonProperty("ingress_endpoint") FlowEndpoint ingressEndpoint) {
+                                  @JsonProperty("ingress_endpoint") FlowEndpoint ingressEndpoint,
+                                  @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
-                transitEncapsulationType, outputVlanId, outputInnerVlanId, outputVlanType, multiTable, ingressEndpoint);
+                transitEncapsulationType, outputVlanId, outputInnerVlanId, outputVlanType, multiTable, ingressEndpoint,
+                mirrorConfig);
     }
 
     /**

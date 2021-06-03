@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -133,4 +133,28 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Key("flow.pathswap.speaker.command.retries")
     @Default("3")
     int getPathSwapSpeakerCommandRetries();
+
+    @Key("flow.create.mirror.point.hub.timeout.seconds")
+    @Default("30")
+    int getCreateMirrorPointHubTimeoutSeconds();
+
+    @Key("flow.create.mirror.point.speaker.timeout.seconds")
+    @Default("10")
+    int getCreateMirrorPointSpeakerTimeoutSeconds();
+
+    @Key("flow.create.mirror.point.speaker.command.retries")
+    @Default("3")
+    int getCreateMirrorPointSpeakerCommandRetries();
+
+    @Key("flow.delete.mirror.point.hub.timeout.seconds")
+    @Default("30")
+    int getDeleteMirrorPointHubTimeoutSeconds();
+
+    @Key("flow.delete.mirror.point.speaker.timeout.seconds")
+    @Default("10")
+    int getDeleteMirrorPointSpeakerTimeoutSeconds();
+
+    @Key("flow.delete.mirror.point.speaker.command.retries")
+    @Default("3")
+    int getDeleteMirrorPointSpeakerCommandRetries();
 }

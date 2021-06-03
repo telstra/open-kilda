@@ -23,6 +23,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.MirrorContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.PathSwappingRuleRemovalAction;
@@ -59,6 +60,7 @@ public class RemoveOldRulesAction extends
 
         Flow originalFlow = getOriginalFlowWithPaths(stateMachine, stateMachine.getOriginalFlow());
 
+        MirrorContext mirrorContext = MirrorContext.builder().removeFlowOperation(true).build();
         if (stateMachine.getEndpointUpdate().isPartialUpdate()) {
             SpeakerRequestBuildContext speakerContext = getSpeakerRequestBuildContext(stateMachine, false);
             FlowPath forward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
@@ -66,11 +68,11 @@ public class RemoveOldRulesAction extends
             switch (stateMachine.getEndpointUpdate()) {
                 case SOURCE:
                     factories.addAll(buildCommandsForSourceUpdate(commandBuilder, stateMachine, originalFlow,
-                            forward, reverse, speakerContext));
+                            forward, reverse, speakerContext, mirrorContext.toBuilder().removeGroup(false).build()));
                     break;
                 case DESTINATION:
                     factories.addAll(buildCommandsForDestinationUpdate(commandBuilder, stateMachine, originalFlow,
-                            forward, reverse, speakerContext));
+                            forward, reverse, speakerContext, mirrorContext.toBuilder().removeGroup(false).build()));
                     break;
                 case BOTH:
                 default:
@@ -87,7 +89,8 @@ public class RemoveOldRulesAction extends
                         case NONE:
                         default:
                             factories.addAll(commandBuilder.buildIngressOnly(stateMachine.getCommandContext(),
-                                    originalFlow, forward, reverse, speakerContext));
+                                    originalFlow, forward, reverse, speakerContext,
+                                    mirrorContext.toBuilder().removeGroup(false).build()));
                             break;
                     }
                     break;
@@ -101,10 +104,10 @@ public class RemoveOldRulesAction extends
                     FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
                     factories.addAll(commandBuilder.buildAll(
                             stateMachine.getCommandContext(), originalFlow, oldForward, oldReverse,
-                            speakerContext));
+                            speakerContext, mirrorContext));
                 } else {
                     factories.addAll(commandBuilder.buildAll(
-                            stateMachine.getCommandContext(), originalFlow, oldForward, speakerContext));
+                            stateMachine.getCommandContext(), originalFlow, oldForward, speakerContext, mirrorContext));
 
                 }
             } else if (stateMachine.getOldPrimaryReversePath() != null) {
@@ -114,7 +117,7 @@ public class RemoveOldRulesAction extends
                 speakerContext.setReverse(PathContext.builder().build());
 
                 factories.addAll(commandBuilder.buildAll(
-                        stateMachine.getCommandContext(), originalFlow, oldReverse, speakerContext));
+                        stateMachine.getCommandContext(), originalFlow, oldReverse, speakerContext, mirrorContext));
             }
 
             if (stateMachine.getOldProtectedForwardPath() != null) {
@@ -123,15 +126,15 @@ public class RemoveOldRulesAction extends
                 if (stateMachine.getOldProtectedReversePath() != null) {
                     FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
                     factories.addAll(commandBuilder.buildAllExceptIngress(
-                            stateMachine.getCommandContext(), originalFlow, oldForward, oldReverse));
+                            stateMachine.getCommandContext(), originalFlow, oldForward, oldReverse, mirrorContext));
                 } else {
                     factories.addAll(commandBuilder.buildAllExceptIngress(
-                            stateMachine.getCommandContext(), originalFlow, oldForward));
+                            stateMachine.getCommandContext(), originalFlow, oldForward, mirrorContext));
                 }
             } else if (stateMachine.getOldProtectedReversePath() != null) {
                 FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
                 factories.addAll(commandBuilder.buildAllExceptIngress(
-                        stateMachine.getCommandContext(), originalFlow, oldReverse));
+                        stateMachine.getCommandContext(), originalFlow, oldReverse, mirrorContext));
             }
         }
 
@@ -153,12 +156,13 @@ public class RemoveOldRulesAction extends
 
     private List<FlowSegmentRequestFactory> buildCommandsForSourceUpdate(
             FlowCommandBuilder commandBuilder, FlowUpdateFsm stateMachine, Flow flow,
-            FlowPath forward, FlowPath reverse, SpeakerRequestBuildContext speakerContext) {
+            FlowPath forward, FlowPath reverse, SpeakerRequestBuildContext speakerContext,
+            MirrorContext mirrorContext) {
         switch (stateMachine.getFlowLoopOperation()) {
             case NONE:
                 return commandBuilder.buildIngressOnlyOneDirection(
                         stateMachine.getCommandContext(),
-                        flow, forward, reverse, speakerContext.getForward());
+                        flow, forward, reverse, speakerContext.getForward(), mirrorContext);
             case DELETE:
                 return commandBuilder.buildAll(stateMachine.getCommandContext(),
                         flow, forward, reverse, speakerContext).stream()
@@ -174,12 +178,13 @@ public class RemoveOldRulesAction extends
 
     private List<FlowSegmentRequestFactory> buildCommandsForDestinationUpdate(
             FlowCommandBuilder commandBuilder, FlowUpdateFsm stateMachine, Flow flow,
-            FlowPath forward, FlowPath reverse, SpeakerRequestBuildContext speakerContext) {
+            FlowPath forward, FlowPath reverse, SpeakerRequestBuildContext speakerContext,
+            MirrorContext mirrorContext) {
         switch (stateMachine.getFlowLoopOperation()) {
             case NONE:
                 return commandBuilder.buildIngressOnlyOneDirection(
                         stateMachine.getCommandContext(),
-                        flow, reverse, forward, speakerContext.getReverse());
+                        flow, reverse, forward, speakerContext.getReverse(), mirrorContext);
             case DELETE:
                 return commandBuilder.buildAll(stateMachine.getCommandContext(),
                         flow, forward, reverse, speakerContext).stream()

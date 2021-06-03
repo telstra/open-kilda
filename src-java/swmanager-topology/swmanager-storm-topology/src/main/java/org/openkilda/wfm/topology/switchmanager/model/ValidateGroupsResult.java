@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,17 +16,19 @@
 
 package org.openkilda.wfm.topology.switchmanager.model;
 
+import org.openkilda.messaging.info.switches.GroupInfoEntry;
+
 import lombok.Value;
 
 import java.util.List;
 
 @Value
 public class ValidateGroupsResult {
-    private List<Integer> missingGroups;
+    private List<GroupInfoEntry> missingGroups;
 
-    private List<Integer> properGroups;
+    private List<GroupInfoEntry> properGroups;
 
-    private List<Integer> excessGroups;
+    private List<GroupInfoEntry> excessGroups;
 
-    private List<Integer> misconfiguredGroups;
+    private List<GroupInfoEntry> misconfiguredGroups;
 }

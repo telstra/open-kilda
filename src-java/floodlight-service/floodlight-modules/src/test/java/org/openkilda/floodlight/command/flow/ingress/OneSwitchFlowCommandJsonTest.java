@@ -24,6 +24,7 @@ import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 
@@ -51,7 +52,8 @@ abstract class OneSwitchFlowCommandJsonTest
                 new FlowEndpoint(swId, 3, 4),
                 new MeterConfig(new MeterId(6), 7000),
                 new FlowEndpoint(swId, 8, 9),
-                RulesContext.builder().build());
+                RulesContext.builder().build(),
+                MirrorConfig.builder().build());
         return makeRequest(factory);
     }
 

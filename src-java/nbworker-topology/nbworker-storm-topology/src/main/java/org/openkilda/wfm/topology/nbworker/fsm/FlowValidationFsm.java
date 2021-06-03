@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.nbworker.fsm;
 
 import static java.lang.String.format;
 import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationEvent.ERROR;
+import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationEvent.GROUPS_RECEIVED;
 import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationEvent.METERS_RECEIVED;
 import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationEvent.NEXT;
 import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationEvent.RULES_RECEIVED;
@@ -26,6 +27,7 @@ import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowVali
 import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationState.RECEIVE_DATA;
 import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationState.VALIDATE_FLOW;
 
+import org.openkilda.messaging.command.switches.DumpGroupsForNbWorkerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -33,8 +35,10 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.messaging.nbtopology.request.FlowValidationRequest;
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
+import org.openkilda.model.Flow;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.FlowNotFoundException;
@@ -59,6 +63,7 @@ public class FlowValidationFsm
         extends AbstractStateMachine<FlowValidationFsm, FlowValidationState, FlowValidationEvent, Object> {
     private static final String FINISHED_WITH_ERROR_METHOD_NAME = "finishedWithError";
     private static final String FINISHED_METHOD_NAME = "finished";
+    private static final int TERMINATION_SWITCHES_COUNT = 2;
 
     private final String key;
     private final FlowValidationRequest request;
@@ -69,8 +74,10 @@ public class FlowValidationFsm
     private FlowValidationService service;
     private int awaitingRules;
     private int awaitingMeters;
-    private List<SwitchFlowEntries> receivedRules = new ArrayList<>();
-    private List<SwitchMeterEntries> receivedMeters = new ArrayList<>();
+    private int awaitingGroups;
+    private final List<SwitchFlowEntries> receivedRules = new ArrayList<>();
+    private final List<SwitchMeterEntries> receivedMeters = new ArrayList<>();
+    private final List<SwitchGroupEntries> receivedGroups = new ArrayList<>();
     private List<FlowValidationResponse> response;
 
     public FlowValidationFsm(FlowValidationHubCarrier carrier, String key, FlowValidationRequest request,
@@ -103,6 +110,7 @@ public class FlowValidationFsm
                 .callMethod("receiveData");
         builder.internalTransition().within(RECEIVE_DATA).on(RULES_RECEIVED).callMethod("receivedRules");
         builder.internalTransition().within(RECEIVE_DATA).on(METERS_RECEIVED).callMethod("receivedMeters");
+        builder.internalTransition().within(RECEIVE_DATA).on(GROUPS_RECEIVED).callMethod("receivedGroups");
 
         builder.externalTransition().from(RECEIVE_DATA).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
@@ -131,8 +139,9 @@ public class FlowValidationFsm
 
     protected void receiveData(FlowValidationState from, FlowValidationState to,
                                FlowValidationEvent event, Object context) {
+        Flow flow;
         try {
-            service.checkFlowStatus(flowId);
+            flow = service.checkFlowStatusAndGetFlow(flowId);
         } catch (FlowNotFoundException e) {
             log.error("Key: {}; Flow {} not found when sending commands to SpeakerWorkerBolt", key, flowId, e);
             sendException(e.getMessage(), "Receiving rules operation in FlowValidationFsm", ErrorType.NOT_FOUND);
@@ -152,11 +161,15 @@ public class FlowValidationFsm
         switchIds.forEach(switchId ->
                 carrier.sendCommandToSpeakerWorker(key, new DumpRulesForNbworkerRequest(switchId)));
 
-        log.debug("Key: {}; Send commands to get meters on the switches", key);
-        awaitingMeters = switchIds.size();
-        // FIXME(surabujin): - should we request meters only for termination switches?..
-        switchIds.forEach(switchId ->
-                carrier.sendCommandToSpeakerWorker(key, new DumpMetersForNbworkerRequest(switchId)));
+        log.debug("Key: {}; Send commands to get meters on the termination switches", key);
+        awaitingMeters = TERMINATION_SWITCHES_COUNT;
+        carrier.sendCommandToSpeakerWorker(key, new DumpMetersForNbworkerRequest(flow.getSrcSwitchId()));
+        carrier.sendCommandToSpeakerWorker(key, new DumpMetersForNbworkerRequest(flow.getDestSwitchId()));
+
+        log.debug("Key: {}; Send commands to get groups on the termination switches", key);
+        awaitingGroups = TERMINATION_SWITCHES_COUNT;
+        carrier.sendCommandToSpeakerWorker(key, new DumpGroupsForNbWorkerRequest(flow.getSrcSwitchId()));
+        carrier.sendCommandToSpeakerWorker(key, new DumpGroupsForNbWorkerRequest(flow.getDestSwitchId()));
     }
 
     protected void receivedRules(FlowValidationState from, FlowValidationState to,
@@ -177,8 +190,17 @@ public class FlowValidationFsm
         checkOfCompleteDataCollection();
     }
 
+    protected void receivedGroups(FlowValidationState from, FlowValidationState to,
+                                  FlowValidationEvent event, Object context) {
+        SwitchGroupEntries switchGroupEntries = (SwitchGroupEntries) context;
+        log.info("Key: {}; Switch meters received for switch {}", key, switchGroupEntries.getSwitchId());
+        receivedGroups.add(switchGroupEntries);
+        awaitingGroups--;
+        checkOfCompleteDataCollection();
+    }
+
     private void checkOfCompleteDataCollection() {
-        if (awaitingRules == 0 && awaitingMeters == 0) {
+        if (awaitingRules == 0 && awaitingMeters == 0 && awaitingGroups == 0) {
             fire(NEXT);
         }
     }
@@ -186,7 +208,7 @@ public class FlowValidationFsm
     protected void validateFlow(FlowValidationState from, FlowValidationState to,
                                 FlowValidationEvent event, Object context) {
         try {
-            response = service.validateFlow(flowId, receivedRules, receivedMeters);
+            response = service.validateFlow(flowId, receivedRules, receivedMeters, receivedGroups);
         } catch (FlowNotFoundException e) {
             log.error("Key: {}; Flow {} not found during flow validation", key, flowId, e);
             sendException(e.getMessage(), "Flow validation operation in FlowValidationFsm", ErrorType.NOT_FOUND);
@@ -234,6 +256,7 @@ public class FlowValidationFsm
         NEXT,
         RULES_RECEIVED,
         METERS_RECEIVED,
+        GROUPS_RECEIVED,
         ERROR
     }
 }

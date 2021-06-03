@@ -47,7 +47,6 @@ import static org.openkilda.floodlight.pathverification.PathVerificationService.
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.OVS_MANUFACTURER;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildMeterMod;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_GROUP_ID;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 import static org.openkilda.model.SwitchFeature.BFD;
@@ -102,6 +101,7 @@ import org.openkilda.floodlight.test.standard.OutputCommands;
 import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.GroupId;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
@@ -281,7 +281,7 @@ public class SwitchManagerTest {
     }
 
     public void runInstallVerificationBroadcastRule(boolean supportsUdpPortMatch) throws Exception {
-        mockGetGroupsRequest(ImmutableList.of(ROUND_TRIP_LATENCY_GROUP_ID));
+        mockGetGroupsRequest(ImmutableList.of(GroupId.ROUND_TRIP_LATENCY_GROUP_ID.intValue()));
         mockGetMetersRequest(ImmutableList.of(meterId), true, 10L);
         mockFlowStatsRequest(VERIFICATION_BROADCAST_RULE_COOKIE);
         mockBarrierRequest();
@@ -740,7 +740,8 @@ public class SwitchManagerTest {
         // verify group deletion
         List<OFFlowMod> groupMod = actual.subList(rulesMod.size() + metersMod.size(), actual.size());
         assertThat(groupMod, everyItem(hasProperty("command", equalTo(OFGroupModCommand.DELETE))));
-        assertThat(groupMod, hasItem(hasProperty("group", equalTo(OFGroup.of(ROUND_TRIP_LATENCY_GROUP_ID)))));
+        assertThat(groupMod, hasItem(hasProperty("group",
+                equalTo(OFGroup.of(GroupId.ROUND_TRIP_LATENCY_GROUP_ID.intValue())))));
     }
 
     @Test
@@ -1185,7 +1186,7 @@ public class SwitchManagerTest {
                 .times(8);
         mockBarrierRequest();
         mockGetMetersRequest(Lists.newArrayList(unicastMeterId, broadcastMeterId), true, expectedRate);
-        mockGetGroupsRequest(Lists.newArrayList(ROUND_TRIP_LATENCY_GROUP_ID));
+        mockGetGroupsRequest(Lists.newArrayList(GroupId.ROUND_TRIP_LATENCY_GROUP_ID.intValue()));
         replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
 
         switchManager.installDefaultRules(iofSwitch.getId());
@@ -1206,7 +1207,7 @@ public class SwitchManagerTest {
     }
 
     private boolean runValidateRoundTripLatencyGroup(List<OFBucket> buckets) {
-        return runValidateRoundTripLatencyGroup(ROUND_TRIP_LATENCY_GROUP_ID, buckets);
+        return runValidateRoundTripLatencyGroup(GroupId.ROUND_TRIP_LATENCY_GROUP_ID.intValue(), buckets);
     }
 
     private boolean runValidateRoundTripLatencyGroup(int groupId, List<OFBucket> buckets) {
