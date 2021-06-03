@@ -16,6 +16,7 @@
 package org.openkilda.testing.service.traffexam;
 
 import org.openkilda.testing.service.traffexam.model.Address;
+import org.openkilda.testing.service.traffexam.model.AddressStats;
 import org.openkilda.testing.service.traffexam.model.ArpData;
 import org.openkilda.testing.service.traffexam.model.Exam;
 import org.openkilda.testing.service.traffexam.model.ExamReport;
@@ -61,4 +62,6 @@ public interface TraffExamService {
     void sendArp(Address address, ArpData arpData);
 
     void sendUdp(Address address, UdpData udpData);
+    
+    AddressStats getStats(Address address);
 }

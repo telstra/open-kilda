@@ -97,6 +97,12 @@ def address_response(payload):
     return format_response(payload, 'address', 'addresses')
 
 
+@app.route('/address/<idnr>/stats', method='GET')
+def address_read(idnr):
+    address = _address_lookup(unpack_idnr(idnr))
+    return get_context().action.address_stats(address.iface)
+
+
 @app.route('/address/<idnr>/lldp', method='PUT')
 def address_emmit_lldp_packet(idnr):
     address = _address_lookup(unpack_idnr(idnr))
