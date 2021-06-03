@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
+import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 
 import org.openkilda.adapter.FlowSideAdapter;
@@ -71,6 +72,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.math.NumberUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -322,25 +324,27 @@ public class ValidationServiceImpl implements ValidationService {
 
         Set<Long> missingRules = new HashSet<>(expectedCookies);
         missingRules.removeAll(presentCookies);
-        if (!missingRules.isEmpty() && log.isErrorEnabled()) {
-            log.error("On switch {} the following rules are missed: {}", switchId,
-                    cookiesIntoLogRepresentation(missingRules));
-        }
 
         Set<Long> properRules = new HashSet<>(expectedCookies);
         properRules.retainAll(presentCookies);
 
         Set<Long> excessRules = new HashSet<>(presentCookies);
         excessRules.removeAll(expectedCookies);
-        if (!excessRules.isEmpty() && log.isWarnEnabled()) {
-            log.warn("On switch {} the following rules are excessive: {}", switchId,
-                    cookiesIntoLogRepresentation(excessRules));
-        }
 
         Set<Long> misconfiguredRules = new HashSet<>();
 
         validateDefaultRules(presentRules, expectedDefaultRules, missingRules, properRules, excessRules,
                 misconfiguredRules);
+
+        if (!missingRules.isEmpty() && log.isErrorEnabled()) {
+            log.error("On switch {} the following rules are missed: {}", switchId,
+                    cookiesIntoLogRepresentation(missingRules));
+        }
+
+        if (!excessRules.isEmpty() && log.isWarnEnabled()) {
+            log.warn("On switch {} the following rules are excessive: {}", switchId,
+                    cookiesIntoLogRepresentation(excessRules));
+        }
 
         return new ValidateRulesResult(
                 ImmutableList.copyOf(missingRules),
@@ -393,6 +397,29 @@ public class ValidationServiceImpl implements ValidationService {
         return rules.stream().map(Cookie::toString).collect(Collectors.joining(", ", "[", "]"));
     }
 
+    private static String metersIntoLogRepresentation(Collection<MeterInfoEntry> meters) {
+        return meters.stream().map(MeterInfoEntry::getMeterId).map(String::valueOf)
+                .collect(Collectors.joining(", ", "[", "]"));
+    }
+
+    private static String getMisconfiguredMeterDifferenceAsString(
+            MeterMisconfiguredInfoEntry expected, MeterMisconfiguredInfoEntry actual) {
+        List<String> difference = new ArrayList<>();
+        // All non-null fields in MeterMisconfiguredInfoEntry are misconfigured.
+        if (expected.getRate() != null || actual.getRate() != null) {
+            difference.add(format("expected rate=%d, actual rate=%d", expected.getRate(), actual.getRate()));
+        }
+        if (expected.getBurstSize() != null || actual.getBurstSize() != null) {
+            difference.add(format("expected burst size=%d, actual burst size=%d",
+                    expected.getBurstSize(), actual.getBurstSize()));
+        }
+        if (expected.getFlags() != null || actual.getFlags() != null) {
+            difference.add(format("expected flags=%s, actual flags=%s",
+                    Arrays.toString(expected.getFlags()), Arrays.toString(actual.getFlags())));
+        }
+        return String.join(", ", difference);
+    }
+
     @Override
     public ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters,
                                                List<MeterEntry> expectedDefaultMeters) {
@@ -415,7 +442,25 @@ public class ValidationServiceImpl implements ValidationService {
             expectedMeters.addAll(getExpectedFlowMeters(paths));
         }
 
-        return comparePresentedAndExpectedMeters(isESwitch, presentMeters, expectedMeters);
+        ValidateMetersResult result = comparePresentedAndExpectedMeters(isESwitch, presentMeters, expectedMeters);
+
+        if (!result.getMissingMeters().isEmpty() && log.isErrorEnabled()) {
+            log.error("On switch {} the following rules are missed: {}", switchId,
+                    metersIntoLogRepresentation(result.getMissingMeters()));
+        }
+
+        if (!result.getExcessMeters().isEmpty() && log.isWarnEnabled()) {
+            log.warn("On switch {} the following rules are excessive: {}", switchId,
+                    metersIntoLogRepresentation(result.getExcessMeters()));
+        }
+
+        if (!result.getMisconfiguredMeters().isEmpty() && log.isWarnEnabled()) {
+            for (MeterInfoEntry meter : result.getMisconfiguredMeters()) {
+                log.warn("On switch {} meter {} is misconfigured: {}", switchId, meter.getMeterId(),
+                        getMisconfiguredMeterDifferenceAsString(meter.getExpected(), meter.getActual()));
+            }
+        }
+        return result;
     }
 
     private Set<Long> getExpectedFlowRules(SwitchId switchId) {
