@@ -2267,35 +2267,39 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @VisibleForTesting
     void processMeter(IOFSwitch sw, OFMeterMod meterMod) {
         long meterId = meterMod.getMeterId();
-        OFMeterConfig meterConfig;
+        OFMeterConfig actualMeterConfig;
         try {
-            meterConfig = getMeter(sw.getId(), meterId);
+            actualMeterConfig = getMeter(sw.getId(), meterId);
         } catch (SwitchOperationException e) {
             logger.warn("Meter {} won't be installed on the switch {}: {}", meterId, sw.getId(), e.getMessage());
             return;
         }
 
-        OFMeterBandDrop meterBandDrop = Optional.ofNullable(meterConfig)
+        OFMeterBandDrop actualMeterBandDrop = Optional.ofNullable(actualMeterConfig)
                 .map(OFMeterConfig::getEntries)
                 .flatMap(entries -> entries.stream().findFirst())
                 .map(OFMeterBandDrop.class::cast)
                 .orElse(null);
 
         try {
-            OFMeterBandDrop ofMeterBandDrop = sw.getOFFactory().getVersion().compareTo(OF_13) > 0
+            OFMeterBandDrop expectedMeterBandDrop = sw.getOFFactory().getVersion().compareTo(OF_13) > 0
                     ? (OFMeterBandDrop) meterMod.getBands().get(0) : (OFMeterBandDrop) meterMod.getMeters().get(0);
-            long rate = ofMeterBandDrop.getRate();
-            Set<OFMeterFlags> flags = meterMod.getFlags();
+            long expectedRate = expectedMeterBandDrop.getRate();
+            long expectedBurstSize = expectedMeterBandDrop.getBurstSize();
+            Set<OFMeterFlags> expectedFlags = meterMod.getFlags();
 
-            if (meterBandDrop != null && meterBandDrop.getRate() == rate
-                    && CollectionUtils.isEqualCollection(meterConfig.getFlags(), flags)) {
+            if (actualMeterBandDrop != null && actualMeterBandDrop.getRate() == expectedRate
+                    && actualMeterBandDrop.getBurstSize() == expectedBurstSize
+                    && CollectionUtils.isEqualCollection(actualMeterConfig.getFlags(), expectedFlags)) {
                 logger.debug("Meter {} won't be reinstalled on switch {}. It already exists", meterId, sw.getId());
                 return;
             }
 
-            if (meterBandDrop != null) {
-                logger.info("Meter {} with origin rate {} will be reinstalled on {} switch.",
-                        meterId, sw.getId(), meterBandDrop.getRate());
+            if (actualMeterBandDrop != null) {
+                logger.info("Meter {} on switch {} has rate={}, burst size={} and flags={} but it must have "
+                                + "rate={}, burst size={} and flags={}. Meter will be reinstalled.",
+                        meterId, sw.getId(), actualMeterBandDrop.getRate(), actualMeterBandDrop.getBurstSize(),
+                        actualMeterConfig.getFlags(), expectedRate, expectedBurstSize, expectedFlags);
                 buildAndDeleteMeter(sw, sw.getId(), meterId);
                 sendBarrierRequest(sw);
             }
