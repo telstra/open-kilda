@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.95.0 (07/06/2021)
+
+### Features:
+-  [#4230](https://github.com/telstra/open-kilda/pull/4230) Add mirror config into floodlight commands. (Issue: [#3849](https://github.com/telstra/open-kilda/issues/3849)) [**floodlight**]
+-  [#4263](https://github.com/telstra/open-kilda/pull/4263) Add flow SLA monitoring reactions [**northbound**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#4294](https://github.com/telstra/open-kilda/pull/4294) Fix flow latency properties migration 
+-  [#4280](https://github.com/telstra/open-kilda/pull/4280) Server42-stats: read statistics from latest commited (Issue: [#3799](https://github.com/telstra/open-kilda/issues/3799)) [**storm-topologies**]
+-  [#4271](https://github.com/telstra/open-kilda/pull/4271) Use right encapsulation type during reroute if encapsulation was changed (Issue: [#4267](https://github.com/telstra/open-kilda/issues/4267)) 
+-  [#4276](https://github.com/telstra/open-kilda/pull/4276) Replace EMPTY fields with getEmpty() methods (Issue: [#4275](https://github.com/telstra/open-kilda/issues/4275)) [**floodlight**]
+-  [#4277](https://github.com/telstra/open-kilda/pull/4277) Update boost library url 
+-  [#4252](https://github.com/telstra/open-kilda/pull/4252) Reinstall meter with incorrect burst size (Issue: [#4251](https://github.com/telstra/open-kilda/issues/4251)) [**floodlight**]
+
+### Improvements:
+-  [#4260](https://github.com/telstra/open-kilda/pull/4260) Improved logs for switch validation [**storm-topologies**]
+-  [#4273](https://github.com/telstra/open-kilda/pull/4273) Fixed incorrect server42 rules count in SwitchActivationSpec [**tests**]
+-  [#4274](https://github.com/telstra/open-kilda/pull/4274) fix "cleanup" in retries/swPortConfig specs [**tests**]
+-  [#4278](https://github.com/telstra/open-kilda/pull/4278) Rework flow rtt metric tags [**storm-topologies**]
+-  [#4253](https://github.com/telstra/open-kilda/pull/4253) Remove network reduction in PCE 
+-  [#3937](https://github.com/telstra/open-kilda/pull/3937) [Server42] script for generate protobuf java files 
+-  [#4269](https://github.com/telstra/open-kilda/pull/4269) Extend traffgen api to return address stats [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.94.0...v1.95.0).
+
+### Affected Components:
+swmanager, nb, flow-monitor, fl, server42, flow-hs, stats, reroute
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
 ## v1.94.0 (01/06/2021)
 
 ### Features:
