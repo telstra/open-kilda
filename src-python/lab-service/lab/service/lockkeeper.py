@@ -216,6 +216,22 @@ def get_container_ip(name):
     return Response(response)
 
 
+@app.route('/floodlight/nat/input', methods=['POST'])
+def nat_change_ip():
+    body = request.get_json()
+    execute_commands_in_container(
+        ['iptables -t nat -A INPUT -p tcp -s {} -j SNAT --to-source {}'.format(body['ip'], body['newIp'])],
+        body.get('containerName'))
+    return jsonify({'status': "Input connections from '%s' are now changed to '%s'" % (body['ip'], body['newIp'])})
+
+
+@app.route('/floodlight/nat/input/flush', methods=['POST'])
+def nat_cleanup():
+    execute_commands_in_container(
+        ['iptables -t nat -F INPUT'], request.get_json().get('containerName'))
+    return jsonify({'status': "iptables -t nat -F INPUT"})
+
+
 def get_iptables_commands(address, operation):
     commands = []
     if 'ip' in address and 'port' in address:

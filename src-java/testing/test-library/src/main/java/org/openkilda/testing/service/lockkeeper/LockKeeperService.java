@@ -71,6 +71,10 @@ public interface LockKeeperService {
 
     void reviveFloodlight(String region);
 
+    void changeSwIp(String region, String oldIp, String newIp);
+
+    void cleanupIpChanges(String region);
+
     /**
      * Extract switch address and port from the 'inetAddress' string of Floodlight 'get switches' response.
      */
