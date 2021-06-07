@@ -4,7 +4,7 @@ databaseChangeLog:
       author: rozdy
       changes:
         - tagDatabase:
-            tag: 004-add-flow-latency-properties
+            tag: 005-add-flow-latency-properties
 
   - changeSet:
       id: add_flow_latency_properties
@@ -12,6 +12,8 @@ databaseChangeLog:
       changes:
         - sql: "CREATE PROPERTY flow.forward_latency IF NOT EXISTS LONG"
         - sql: "CREATE PROPERTY flow.reverse_latency IF NOT EXISTS LONG"
+        - sql: "UPDATE flow SET forward_latency = 0"
+        - sql: "UPDATE flow SET reverse_latency = 0"
       rollback:
         - sql: "UPDATE flow REMOVE forward_latency"
         - sql: "UPDATE flow REMOVE reverse_latency"
