@@ -13,9 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowmonitoring.bolts;
+package org.openkilda.wfm.topology.flowmonitoring.bolt;
 
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ACTION_STREAM_ID;
+import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.messaging.info.InfoData;
@@ -48,8 +49,7 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
     public static final String FLOW_DIRECTION_FIELD = "flow-direction";
     public static final String FLOW_PATH_FIELD = "flow-path";
     public static final String LATENCY_FIELD = "latency";
-    public static final String MAX_LATENCY_FIELD = "max-latency";
-    public static final String MAX_LATENCY_TIER_2_FIELD = "max-latency-tier-2";
+    public static final String FLOW_INFO_FIELD = "flow-info";
 
     private PersistenceManager persistenceManager;
     private Duration flowRttStatsExpirationTime;
@@ -84,6 +84,8 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
             } else if (payload instanceof UpdateFlowInfo) {
                 UpdateFlowInfo updateFlowInfo = (UpdateFlowInfo) payload;
                 flowCacheService.updateFlowInfo(updateFlowInfo);
+                emit(FLOW_UPDATE_STREAM_ID.name(), input, new Values(updateFlowInfo.getFlowId(), updateFlowInfo,
+                        getCommandContext()));
             } else {
                 unhandledInput(input);
             }
@@ -91,25 +93,23 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
     }
 
     @Override
-    public void emitCalculateFlowLatencyRequest(String flowId, FlowDirection direction,
-                                                List<Link> flowPath, Long maxLatency, Long maxLatencyTier2) {
-        emit(getCurrentTuple(), new Values(flowId, direction, flowPath, maxLatency, maxLatencyTier2,
-                getCommandContext()));
+    public void emitCalculateFlowLatencyRequest(String flowId, FlowDirection direction, List<Link> flowPath) {
+        emit(getCurrentTuple(), new Values(flowId, direction, flowPath, getCommandContext()));
     }
 
     @Override
-    public void emitCheckFlowLatencyRequest(String flowId, FlowDirection direction, Duration latency,
-                                            Long maxLatency, Long maxLatencyTier2) {
-        emit(ACTION_STREAM_ID.name(), getCurrentTuple(), new Values(flowId, direction, latency,
-                maxLatency, maxLatencyTier2, getCommandContext()));
+    public void emitCheckFlowLatencyRequest(String flowId, FlowDirection direction, Duration latency) {
+        emit(ACTION_STREAM_ID.name(), getCurrentTuple(), new Values(flowId, direction, latency, getCommandContext()));
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields(FLOW_ID_FIELD, FLOW_DIRECTION_FIELD,
-                FLOW_PATH_FIELD, MAX_LATENCY_FIELD, MAX_LATENCY_TIER_2_FIELD, FIELD_ID_CONTEXT));
+                FLOW_PATH_FIELD, FIELD_ID_CONTEXT));
         declarer.declareStream(ACTION_STREAM_ID.name(), new Fields(FLOW_ID_FIELD, FLOW_DIRECTION_FIELD,
-                LATENCY_FIELD, MAX_LATENCY_FIELD, MAX_LATENCY_TIER_2_FIELD, FIELD_ID_CONTEXT));
+                LATENCY_FIELD, FIELD_ID_CONTEXT));
+        declarer.declareStream(FLOW_UPDATE_STREAM_ID.name(), new Fields(FLOW_ID_FIELD, FLOW_INFO_FIELD,
+                FIELD_ID_CONTEXT));
         declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
                 ZooKeeperBolt.FIELD_ID_CONTEXT));
     }

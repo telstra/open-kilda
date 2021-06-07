@@ -39,6 +39,7 @@ import static org.openkilda.wfm.topology.stats.StatsStreamType.STATS_REQUEST;
 import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.statsWithCacheFields;
 
 import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.messaging.Message;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
@@ -155,15 +156,14 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         declareBolt(builder, buildKafkaBolt(topologyConfig.getGrpcSpeakerTopic()), STATS_GRPC_SPEAKER_BOLT.name())
                 .shuffleGrouping(STATS_REQUESTER_BOLT.name(), GRPC_REQUEST.name());
 
-        declareKafkaSpout(builder, topologyConfig.getServer42StatsFlowRttTopic(),
-                SERVER42_STATS_FLOW_RTT_SPOUT.name());
-
+        // Server42
+        inputServer42Requests(builder);
         declareBolt(builder,
                 new FlowRttMetricGenBolt(topologyConfig.getMetricPrefix(), ZooKeeperSpout.SPOUT_ID),
                 SERVER42_STATS_FLOW_RTT_METRIC_GEN.name())
                 .shuffleGrouping(SERVER42_STATS_FLOW_RTT_SPOUT.name())
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
-
+        
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
         declareBolt(builder, createKafkaBolt(openTsdbTopic),
                 "stats-opentsdb")
@@ -205,6 +205,22 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 .shuffleGrouping(id)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
+
+    /**
+     * Spout configuration for server42 requests with UNCOMMITTED_EARLIEST.
+     */
+    private void inputServer42Requests(TopologyBuilder topology) {
+        KafkaSpoutConfig<String, Message> config =
+                getKafkaSpoutConfigBuilder(topologyConfig.getServer42StatsFlowRttTopic(),
+                    SERVER42_STATS_FLOW_RTT_SPOUT.name())
+                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_EARLIEST)
+                .build();
+        logger.info("Setup kafka spout: id={}, group={}, subscriptions={}",
+                SERVER42_STATS_FLOW_RTT_SPOUT.name(), config.getConsumerGroupId(),
+                config.getSubscription().getTopicsString());
+        declareSpout(topology, new KafkaSpout<>(config), SERVER42_STATS_FLOW_RTT_SPOUT.name());
+    }
+
 
     @Override
     protected String getZkTopoName() {

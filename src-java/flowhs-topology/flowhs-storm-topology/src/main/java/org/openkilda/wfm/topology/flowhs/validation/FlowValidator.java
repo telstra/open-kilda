@@ -23,15 +23,19 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlowMirrorPoint;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
@@ -56,13 +60,14 @@ public class FlowValidator {
     private final SwitchRepository switchRepository;
     private final IslRepository islRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
+    private final FlowMirrorPathRepository flowMirrorPathRepository;
 
-    public FlowValidator(FlowRepository flowRepository, SwitchRepository switchRepository,
-                         IslRepository islRepository, SwitchPropertiesRepository switchPropertiesRepository) {
-        this.flowRepository = flowRepository;
-        this.switchRepository = switchRepository;
-        this.islRepository = islRepository;
-        this.switchPropertiesRepository = switchPropertiesRepository;
+    public FlowValidator(PersistenceManager persistenceManager) {
+        this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+        this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
+        this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
+        this.flowMirrorPathRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPathRepository();
     }
 
     /**
@@ -114,7 +119,7 @@ public class FlowValidator {
         final FlowEndpoint destination = RequestedFlowMapper.INSTANCE.mapDest(flow);
 
         checkOneSwitchFlowConflict(source, destination);
-        checkSwitchesExistsAndActive(flow);
+        checkSwitchesExistsAndActive(flow.getSrcSwitch(), flow.getDestSwitch());
 
         for (EndpointDescriptor descriptor : new EndpointDescriptor[]{
                 EndpointDescriptor.makeSource(source),
@@ -132,6 +137,7 @@ public class FlowValidator {
             checkForMultiTableRequirement(descriptor, properties);
             checkFlowForIslConflicts(descriptor);
             checkFlowForFlowConflicts(flow.getFlowId(), descriptor, bulkUpdateFlowIds);
+            checkFlowForSinkEndpointConflicts(descriptor);
         }
     }
 
@@ -185,6 +191,25 @@ public class FlowValidator {
         }
     }
 
+    private void checkFlowForSinkEndpointConflicts(EndpointDescriptor descriptor)
+            throws InvalidFlowException {
+        FlowEndpoint endpoint = descriptor.getEndpoint();
+        Optional<FlowMirrorPath> foundFlowMirrorPath = flowMirrorPathRepository.findByEgressEndpoint(
+                endpoint.getSwitchId(), endpoint.getPortNumber(), endpoint.getOuterVlanId(), endpoint.getInnerVlanId());
+        if (foundFlowMirrorPath.isPresent()) {
+            FlowMirrorPath flowMirrorPath = foundFlowMirrorPath.get();
+            String errorMessage = format("Requested endpoint '%s' conflicts "
+                            + "with existing flow mirror point '%s'.",
+                    descriptor.getEndpoint(), flowMirrorPath.getPathId());
+            throw new InvalidFlowException(errorMessage, ErrorType.ALREADY_EXISTS);
+        }
+    }
+
+    private void checkFlowForFlowConflicts(String flowMirrorId, EndpointDescriptor descriptor)
+            throws InvalidFlowException {
+        checkFlowForFlowConflicts(flowMirrorId, descriptor, new HashSet<>());
+    }
+
     /**
      * Checks a flow for endpoints' conflicts.
      *
@@ -195,7 +220,7 @@ public class FlowValidator {
         final FlowEndpoint endpoint = descriptor.getEndpoint();
 
         for (Flow entry : flowRepository.findByEndpoint(endpoint.getSwitchId(), endpoint.getPortNumber())) {
-            if (flowId.equals(entry.getFlowId()) || bulkUpdateFlowIds.contains(entry.getFlowId())) {
+            if (flowId != null && (flowId.equals(entry.getFlowId()) || bulkUpdateFlowIds.contains(entry.getFlowId()))) {
                 continue;
             }
 
@@ -224,13 +249,13 @@ public class FlowValidator {
     /**
      * Ensure switches are exists.
      *
-     * @param flow a flow to be validated.
+     * @param sourceId source flow switch id to be validated.
+     * @param destinationId destination flow switch id to be validated.
      * @throws UnavailableFlowEndpointException if switch not found.
      */
     @VisibleForTesting
-    void checkSwitchesExistsAndActive(RequestedFlow flow) throws UnavailableFlowEndpointException {
-        final SwitchId sourceId = flow.getSrcSwitch();
-        final SwitchId destinationId = flow.getDestSwitch();
+    void checkSwitchesExistsAndActive(SwitchId sourceId, SwitchId destinationId)
+            throws UnavailableFlowEndpointException {
 
         boolean sourceSwitchAvailable;
         boolean destinationSwitchAvailable;
@@ -414,6 +439,48 @@ public class FlowValidator {
 
         private static EndpointDescriptor makeDestination(FlowEndpoint endpoint) {
             return new EndpointDescriptor(endpoint, "destination");
+        }
+    }
+
+    /**
+     * Validate the flow mirror point.
+     */
+    public void flowMirrorPointValidate(RequestedFlowMirrorPoint mirrorPoint)
+            throws InvalidFlowException, UnavailableFlowEndpointException {
+
+        checkSwitchesExistsAndActive(mirrorPoint.getMirrorPointSwitchId(), mirrorPoint.getSinkEndpoint().getSwitchId());
+
+        EndpointDescriptor descriptor = EndpointDescriptor.makeDestination(FlowEndpoint.builder()
+                .switchId(mirrorPoint.getSinkEndpoint().getSwitchId())
+                .portNumber(mirrorPoint.getSinkEndpoint().getPortNumber())
+                .outerVlanId(mirrorPoint.getSinkEndpoint().getOuterVlanId())
+                .innerVlanId(mirrorPoint.getSinkEndpoint().getInnerVlanId())
+                .build());
+
+        SwitchId switchId = descriptor.endpoint.getSwitchId();
+        SwitchProperties properties = switchPropertiesRepository.findBySwitchId(switchId)
+                .orElseThrow(() -> new InvalidFlowException(
+                        format("Couldn't get switch properties for %s switch %s.", descriptor.name, switchId),
+                        ErrorType.DATA_INVALID));
+
+        checkForConnectedDevisesConflict(mirrorPoint.getMirrorPointSwitchId());
+        checkForMultiTableRequirement(descriptor, properties);
+        checkFlowForIslConflicts(descriptor);
+        checkFlowForFlowConflicts(mirrorPoint.getMirrorPointId(), descriptor);
+        checkFlowForSinkEndpointConflicts(descriptor);
+    }
+
+    private void checkForConnectedDevisesConflict(SwitchId switchId)
+            throws InvalidFlowException {
+        SwitchProperties properties = switchPropertiesRepository.findBySwitchId(switchId)
+                .orElseThrow(() -> new InvalidFlowException(
+                        format("Couldn't get switch properties for switch %s.", switchId),
+                        ErrorType.DATA_INVALID));
+
+        if (properties.isSwitchLldp() || properties.isSwitchArp()) {
+            String errorMessage = format("Connected devices feature is active on the switch %s, "
+                    + "flow mirror point cannot be created on this switch.", switchId);
+            throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
         }
     }
 }

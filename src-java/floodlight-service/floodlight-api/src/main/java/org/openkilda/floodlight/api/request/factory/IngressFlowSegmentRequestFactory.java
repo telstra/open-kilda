@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MeterConfig;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchId;
 
 import lombok.Builder;
@@ -39,9 +40,9 @@ public class IngressFlowSegmentRequestFactory extends FlowSegmentRequestFactory 
     public IngressFlowSegmentRequestFactory(
             MessageContext messageContext, FlowSegmentMetadata metadata,
             FlowEndpoint endpoint, MeterConfig meterConfig, SwitchId egressSwitchId, int islPort,
-            FlowTransitEncapsulation encapsulation, RulesContext rulesContext) {
+            FlowTransitEncapsulation encapsulation, RulesContext rulesContext, MirrorConfig mirrorConfig) {
         this(new RequestBlank(messageContext, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
-                rulesContext));
+                rulesContext, mirrorConfig));
     }
 
     private IngressFlowSegmentRequestFactory(IngressFlowSegmentRequest requestBlank) {
@@ -68,9 +69,9 @@ public class IngressFlowSegmentRequestFactory extends FlowSegmentRequestFactory 
         RequestBlank(
                 MessageContext context, FlowSegmentMetadata metadata,
                 FlowEndpoint endpoint, MeterConfig meterConfig, SwitchId egressSwitchId, int islPort,
-                FlowTransitEncapsulation encapsulation, RulesContext rulesContext) {
+                FlowTransitEncapsulation encapsulation, RulesContext rulesContext, MirrorConfig mirrorConfig) {
             super(context, dummyCommandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
-                    rulesContext);
+                    rulesContext, mirrorConfig);
         }
     }
 }

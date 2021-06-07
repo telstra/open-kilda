@@ -450,7 +450,7 @@ public class RerouteQueueServiceTest {
     private FlowRerouteRequest getFlowRerouteRequest(String flowId, FlowThrottlingData flowThrottlingData) {
         return new FlowRerouteRequest(flowId, flowThrottlingData.isForce(), flowThrottlingData.isEffectivelyDown(),
                 flowThrottlingData.isIgnoreBandwidth(),
-                flowThrottlingData.getAffectedIsl(), flowThrottlingData.getReason());
+                flowThrottlingData.getAffectedIsl(), flowThrottlingData.getReason(), false);
     }
 
     private ArgumentMatcher<ErrorData> flowNotFoundErrorData(String flowId) {

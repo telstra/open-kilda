@@ -104,6 +104,7 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
 
         cleanup:
         !portUp && antiflap.portUp(sw.dpId, port)
+        database.resetCosts()
 
         where:
         // It is impossible to understand whether ISL-free port is UP/DOWN on OF_12 switches.

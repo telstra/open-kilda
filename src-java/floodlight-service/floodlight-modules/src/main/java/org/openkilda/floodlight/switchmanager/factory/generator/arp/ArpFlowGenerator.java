@@ -53,7 +53,7 @@ public abstract class ArpFlowGenerator extends MeteredFlowGenerator {
 
         OFFlowMod flowMod = getArpFlowMod(sw, ofInstructionMeter, actionList);
         if (flowMod == null) {
-            return SwitchFlowTuple.EMPTY;
+            return SwitchFlowTuple.getEmpty();
         }
 
         return SwitchFlowTuple.builder()

@@ -55,8 +55,10 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         }*.cookie
         def srcSwProps = northbound.getSwitchProperties(switchPair.src.dpId)
         def amountOfMultiTableRules = srcSwProps.multiTable ? 1 : 0
-        def amountOfServer42Rules = srcSwProps.server42FlowRtt ? 1 : 0
-        def amountOfFlowRules = 2 + amountOfMultiTableRules + amountOfServer42Rules
+        def amountOfServer42IngressRules = srcSwProps.server42FlowRtt ? 1 : 0
+        def amountOfServer42SharedRules = srcSwProps.multiTable && srcSwProps.server42FlowRtt
+                && flow.source.vlanId ? 1 : 0
+        def amountOfFlowRules = 2 + amountOfMultiTableRules + amountOfServer42IngressRules + amountOfServer42SharedRules
         def createdHexCookies = createdCookies.collect { Long.toHexString(it) }
         assert createdCookies.size() == amountOfFlowRules
 
@@ -104,7 +106,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 1L, sw.dpId, 1, 2, 1,
                         FlowEncapsulationType.TRANSIT_VLAN, 1, 0,
-                        OutputVlanType.REPLACE, false, new FlowEndpoint(sw.dpId, 17))).toJson()))
+                        OutputVlanType.REPLACE, false, new FlowEndpoint(sw.dpId, 17), null)).toJson()))
 
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 new InstallTransitFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 2L, sw.dpId, 3, 4, 1,
@@ -114,7 +116,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
                 new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 1, 0, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, 300, excessMeterId,
-                        sw.dpId, false, false, false)).toJson()))
+                        sw.dpId, false, false, false, null)).toJson()))
         producer.flush()
 
         Wrappers.wait(WAIT_OFFSET) {

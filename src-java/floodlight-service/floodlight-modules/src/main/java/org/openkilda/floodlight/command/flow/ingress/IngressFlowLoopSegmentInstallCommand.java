@@ -19,10 +19,10 @@ import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowLoopInstallMultiTableFlowModFactory;
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowLoopInstallSingleTableFlowModFactory;
+import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
-import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchFeature;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -74,7 +74,7 @@ public class IngressFlowLoopSegmentInstallCommand extends IngressFlowLoopCommand
     }
 
     @Override
-    protected List<OFFlowMod> makeFlowModMessages(MeterId effectiveMeterId) {
+    protected List<OFFlowMod> makeFlowModMessages(EffectiveIds effectiveIds) {
         return makeIngressLoopFlowModMessages();
     }
 

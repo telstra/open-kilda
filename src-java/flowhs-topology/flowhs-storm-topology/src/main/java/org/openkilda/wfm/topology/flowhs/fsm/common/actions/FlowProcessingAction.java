@@ -28,6 +28,8 @@ import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
@@ -53,6 +55,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -126,13 +129,13 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
     }
 
     protected List<Flow> findOuterVlanMatchSharedRuleUsage(FlowEndpoint needle) {
-        if (! FlowEndpoint.isVlanIdSet(needle.getOuterVlanId())) {
+        if (!FlowEndpoint.isVlanIdSet(needle.getOuterVlanId())) {
             return Collections.emptyList();
         }
 
         List<Flow> results = new ArrayList<>();
         for (Flow flow : flowRepository.findByEndpoint(needle.getSwitchId(), needle.getPortNumber())) {
-            for (FlowSideAdapter flowSide : new FlowSideAdapter[] {
+            for (FlowSideAdapter flowSide : new FlowSideAdapter[]{
                     new FlowSourceAdapter(flow),
                     new FlowDestAdapter(flow)}) {
                 FlowEndpoint endpoint = flowSide.getEndpoint();
@@ -229,8 +232,27 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
     }
 
     protected Message buildResponseMessage(Flow flow, CommandContext commandContext) {
-        InfoData flowData = new FlowResponse(FlowMapper.INSTANCE.map(flow, getDiverseWithFlowIds(flow)));
+        InfoData flowData =
+                new FlowResponse(FlowMapper.INSTANCE.map(flow, getDiverseWithFlowIds(flow), getFlowMirrorPaths(flow)));
         return new InfoMessage(flowData, commandContext.getCreateTime(),
                 commandContext.getCorrelationId());
+    }
+
+    protected List<FlowMirrorPath> getFlowMirrorPaths(Flow flow) {
+        return flow.getPaths().stream()
+                .map(FlowPath::getFlowMirrorPointsSet)
+                .flatMap(Collection::stream)
+                .map(FlowMirrorPoints::getMirrorPaths)
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
+    }
+
+    protected void setMirrorPointsToNewPath(PathId oldFlowPathId, PathId newFlowPathId) {
+        if (newFlowPathId != null && oldFlowPathId != null) {
+            transactionManager.doInTransaction(() -> flowPathRepository.findById(oldFlowPathId)
+                    .ifPresent(oldPath -> flowPathRepository.findById(newFlowPathId)
+                            .ifPresent(newPath ->
+                                    oldPath.getFlowMirrorPointsSet().forEach(newPath::addFlowMirrorPoints))));
+        }
     }
 }

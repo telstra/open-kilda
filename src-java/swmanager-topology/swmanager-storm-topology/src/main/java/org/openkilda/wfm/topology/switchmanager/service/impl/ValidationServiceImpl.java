@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,17 +15,25 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
+import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.messaging.info.meter.MeterEntry;
+import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.rule.FlowSetFieldAction;
+import org.openkilda.messaging.info.rule.GroupBucket;
 import org.openkilda.messaging.info.rule.GroupEntry;
+import org.openkilda.messaging.info.switches.GroupInfoEntry;
+import org.openkilda.messaging.info.switches.GroupInfoEntry.PortVlanEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.GroupId;
@@ -43,6 +51,7 @@ import org.openkilda.model.cookie.FlowSharedSegmentCookie;
 import org.openkilda.model.cookie.FlowSharedSegmentCookie.SharedSegmentType;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
@@ -60,24 +69,29 @@ import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.math.NumberUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class ValidationServiceImpl implements ValidationService {
-    private FlowPathRepository flowPathRepository;
-    private SwitchRepository switchRepository;
+    private static final String VLAN_VID_SET_ACTION = "vlan_vid";
+
+    private final FlowPathRepository flowPathRepository;
+    private final SwitchRepository switchRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final FeatureTogglesRepository featureTogglesRepository;
-    private MirrorGroupRepository mirrorGroupRepository;
+    private final MirrorGroupRepository mirrorGroupRepository;
+    private final FlowMirrorPointsRepository flowMirrorPointsRepository;
     private final long flowMeterMinBurstSizeInKbits;
     private final double flowMeterBurstCoefficient;
 
@@ -89,6 +103,7 @@ public class ValidationServiceImpl implements ValidationService {
         this.mirrorGroupRepository = persistenceManager.getRepositoryFactory().createMirrorGroupRepository();
         this.flowMeterMinBurstSizeInKbits = topologyConfig.getFlowMeterMinBurstSizeInKbits();
         this.flowMeterBurstCoefficient = topologyConfig.getFlowMeterBurstCoefficient();
+        this.flowMirrorPointsRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPointsRepository();
     }
 
     @Override
@@ -112,36 +127,65 @@ public class ValidationServiceImpl implements ValidationService {
                 .collect(Collectors.toSet());
     }
 
+    private Set<Long> getExpectedMirrorPointsCookies(SwitchId switchId, Collection<FlowPath> paths) {
+        Set<Long> cookies = new HashSet<>();
+        paths.forEach(path -> {
+            path.getFlowMirrorPointsSet().stream()
+                    .filter(mirrorPoints -> switchId.equals(mirrorPoints.getMirrorSwitchId()))
+                    .forEach(mirrorPoints -> {
+                        Collection<FlowMirrorPath> flowMirrorPaths = mirrorPoints.getMirrorPaths();
+                        if (!flowMirrorPaths.isEmpty()) {
+                            cookies.add(path.getCookie().toBuilder().mirror(true).build().getValue());
+                        }
+                    });
+        });
+        return cookies;
+    }
+
     @Override
-    public ValidateGroupsResult validateGroups(SwitchId switchId, List<GroupEntry> presentGroups) {
+    public ValidateGroupsResult validateGroups(SwitchId switchId, List<GroupEntry> groupEntries) {
         Collection<MirrorGroup> expected = mirrorGroupRepository.findBySwitchId(switchId);
-        Set<Integer> expectedGroups = expected
+        Set<GroupInfoEntry> expectedGroups = expected
                 .stream()
-                .map(group -> (int) group.getGroupId().getValue()).collect(Collectors.toSet());
+                .map(group -> buildGroupInfoEntryFromDatabase(switchId, group.getGroupId()))
+                .collect(Collectors.toSet());
+
+        Set<GroupInfoEntry> presentGroups = groupEntries.stream()
+                .filter(group -> group.getGroupId() >= GroupId.MIN_FLOW_GROUP_ID.getValue()) // exclude default group
+                .map(this::buildGroupInfoEntryFromSpeaker)
+                .collect(Collectors.toSet());
 
         Set<Integer> presentGroupsIds = presentGroups.stream()
-                .map(GroupEntry::getGroupId)
-                .filter(group -> group >= GroupId.MIN_FLOW_GROUP_ID.getValue()) // NOTE(tdurakov): exclude default group
+                .map(GroupInfoEntry::getGroupId)
                 .collect(Collectors.toSet());
-        Set<Integer> missingGroups = new HashSet<>(expectedGroups);
-        missingGroups.removeAll(presentGroupsIds);
+
+        Set<GroupInfoEntry> missingGroups = new HashSet<>();
+        expectedGroups.stream()
+                .filter(entry -> !presentGroupsIds.contains(entry.getGroupId()))
+                .forEach(missingGroups::add);
         if (!missingGroups.isEmpty() && log.isErrorEnabled()) {
             log.error("On switch {} the following groups are missed: {}", switchId,
-                    missingGroups.stream().map(x -> Integer.toString(x))
+                    missingGroups.stream().map(x -> Integer.toString(x.getGroupId()))
                             .collect(Collectors.joining(", ", "[", "]")));
         }
-        Set<Integer> properGroups = new HashSet<>(expectedGroups);
-        properGroups.retainAll(presentGroupsIds);
+        Set<GroupInfoEntry> properGroups = new HashSet<>(expectedGroups);
+        properGroups.retainAll(presentGroups);
 
-        Set<Integer> excessGroups = new HashSet<>(presentGroupsIds);
-        excessGroups.removeAll(expectedGroups);
+        Set<Integer> expectedGroupsIds = expectedGroups.stream()
+                .map(GroupInfoEntry::getGroupId)
+                .collect(Collectors.toSet());
+
+        Set<GroupInfoEntry> excessGroups = new HashSet<>();
+        presentGroups.stream()
+                .filter(entry -> !expectedGroupsIds.contains(entry.getGroupId()))
+                .forEach(excessGroups::add);
         if (!excessGroups.isEmpty() && log.isWarnEnabled()) {
             log.warn("On switch {} the following groups are excessive: {}", switchId,
-                    excessGroups.stream().map(x -> Integer.toString(x))
+                    excessGroups.stream().map(x -> Integer.toString(x.getGroupId()))
                             .collect(Collectors.joining(", ", "[", "]")));
         }
 
-        Set<Integer> misconfiguredGroups = calculateMisconfiguredGroups(switchId, expected, presentGroups);
+        Set<GroupInfoEntry> misconfiguredGroups = calculateMisconfiguredGroups(expectedGroups, presentGroups);
 
         return new ValidateGroupsResult(
                 ImmutableList.copyOf(missingGroups),
@@ -150,10 +194,125 @@ public class ValidationServiceImpl implements ValidationService {
                 ImmutableList.copyOf(misconfiguredGroups));
     }
 
-    private Set<Integer> calculateMisconfiguredGroups(SwitchId switchId, Collection<MirrorGroup> expected,
-                                                      List<GroupEntry> presentGroups) {
-        // TODO(tdurakov): implement this part
-        return Collections.emptySet();
+    private Set<GroupInfoEntry> calculateMisconfiguredGroups(Set<GroupInfoEntry> expected, Set<GroupInfoEntry> actual) {
+        Set<GroupInfoEntry> misconfiguredGroups = new HashSet<>();
+
+        Map<Integer, GroupInfoEntry> actualEntries = actual.stream()
+                .collect(Collectors.toMap(GroupInfoEntry::getGroupId, entry -> entry));
+        for (GroupInfoEntry expectedEntry : expected) {
+            GroupInfoEntry actualEntry = actualEntries.get(expectedEntry.getGroupId());
+
+            if (actualEntry == null || actualEntry.equals(expectedEntry)) {
+                continue;
+            }
+
+            List<PortVlanEntry> missingData = new ArrayList<>(expectedEntry.getGroupBuckets());
+            missingData.removeAll(actualEntry.getGroupBuckets());
+
+            List<PortVlanEntry> excessData = new ArrayList<>(actualEntry.getGroupBuckets());
+            excessData.removeAll(expectedEntry.getGroupBuckets());
+
+            misconfiguredGroups.add(actualEntry.toBuilder()
+                    .missingGroupBuckets(missingData)
+                    .excessGroupBuckets(excessData)
+                    .build());
+        }
+
+        return misconfiguredGroups;
+    }
+
+    private GroupInfoEntry buildGroupInfoEntryFromDatabase(SwitchId switchId, GroupId groupId) {
+        GroupInfoEntry groupInfoEntry = null;
+        FlowMirrorPoints flowMirrorPoints = flowMirrorPointsRepository.findByGroupId(groupId).orElse(null);
+
+        if (flowMirrorPoints != null) {
+            List<PortVlanEntry> portVlanEntries = new ArrayList<>();
+            portVlanEntries.add(new PortVlanEntry(getMainMirrorPort(switchId, flowMirrorPoints.getFlowPath()), null));
+            portVlanEntries.addAll(flowMirrorPoints.getMirrorPaths().stream()
+                    .map(mirrorPath -> new PortVlanEntry(mirrorPath.getEgressPort(), mirrorPath.getEgressOuterVlan()))
+                    .collect(Collectors.toList()));
+
+            portVlanEntries.sort(this::comparePortVlanEntry);
+            groupInfoEntry = GroupInfoEntry.builder()
+                    .groupId(flowMirrorPoints.getMirrorGroupId().intValue())
+                    .groupBuckets(portVlanEntries)
+                    .build();
+        } else {
+            log.error("Excess database mirror group resource with group id: {}", groupId);
+        }
+
+        return groupInfoEntry;
+    }
+
+    private int getMainMirrorPort(SwitchId switchId, FlowPath flowPath) {
+        Flow flow = flowPath.getFlow();
+        if (flow.isOneSwitchFlow()) {
+            if (flowPath.isForward()) {
+                return flow.getDestPort();
+            }
+            return flow.getSrcPort();
+        }
+
+        if (flowPath.isForward()) {
+            if (switchId.equals(flowPath.getSrcSwitchId())) {
+                return flowPath.getSegments().get(0).getSrcPort();
+            } else {
+                return flow.getDestPort();
+            }
+        } else {
+            if (switchId.equals(flowPath.getSrcSwitchId())) {
+                return flowPath.getSegments().get(0).getSrcPort();
+            } else {
+                return flow.getSrcPort();
+            }
+        }
+    }
+
+    private GroupInfoEntry buildGroupInfoEntryFromSpeaker(GroupEntry group) {
+        List<PortVlanEntry> portVlanEntries = new ArrayList<>();
+        for (GroupBucket bucket : group.getBuckets()) {
+            FlowApplyActions actions = bucket.getApplyActions();
+            if (actions == null || !NumberUtils.isParsable(actions.getFlowOutput())) {
+                continue;
+            }
+            int bucketPort = NumberUtils.toInt(actions.getFlowOutput());
+            Integer bucketVlan = null;
+
+            if (actions.getSetFieldActions() != null
+                    && actions.getSetFieldActions().size() == 1) {
+                FlowSetFieldAction setFieldAction = actions.getSetFieldActions().get(0);
+                if (VLAN_VID_SET_ACTION.equals(setFieldAction.getFieldName())) {
+                    bucketVlan = NumberUtils.toInt(setFieldAction.getFieldValue());
+                }
+            }
+            portVlanEntries.add(new PortVlanEntry(bucketPort, bucketVlan));
+        }
+        portVlanEntries.sort(this::comparePortVlanEntry);
+
+        return GroupInfoEntry.builder()
+                .groupId(group.getGroupId())
+                .groupBuckets(portVlanEntries)
+                .build();
+    }
+
+    private int comparePortVlanEntry(PortVlanEntry portVlanEntryA, PortVlanEntry portVlanEntryB) {
+        if (Objects.equals(portVlanEntryA.getPort(), portVlanEntryB.getPort())) {
+            return compareInteger(portVlanEntryA.getVlan(), portVlanEntryB.getVlan());
+        }
+        return compareInteger(portVlanEntryA.getPort(), portVlanEntryB.getPort());
+    }
+
+    private int compareInteger(Integer value1, Integer value2) {
+        if (value1 == null && value2 == null) {
+            return 0;
+        }
+        if (value1 == null) {
+            return -1;
+        }
+        if (value2 == null) {
+            return 1;
+        }
+        return Integer.compare(value1, value2);
     }
 
     private ValidateRulesResult makeRulesResponse(Set<Long> expectedCookies, List<FlowEntry> presentRules,
@@ -165,25 +324,27 @@ public class ValidationServiceImpl implements ValidationService {
 
         Set<Long> missingRules = new HashSet<>(expectedCookies);
         missingRules.removeAll(presentCookies);
-        if (!missingRules.isEmpty() && log.isErrorEnabled()) {
-            log.error("On switch {} the following rules are missed: {}", switchId,
-                    cookiesIntoLogRepresentation(missingRules));
-        }
 
         Set<Long> properRules = new HashSet<>(expectedCookies);
         properRules.retainAll(presentCookies);
 
         Set<Long> excessRules = new HashSet<>(presentCookies);
         excessRules.removeAll(expectedCookies);
-        if (!excessRules.isEmpty() && log.isWarnEnabled()) {
-            log.warn("On switch {} the following rules are excessive: {}", switchId,
-                    cookiesIntoLogRepresentation(excessRules));
-        }
 
         Set<Long> misconfiguredRules = new HashSet<>();
 
         validateDefaultRules(presentRules, expectedDefaultRules, missingRules, properRules, excessRules,
                 misconfiguredRules);
+
+        if (!missingRules.isEmpty() && log.isErrorEnabled()) {
+            log.error("On switch {} the following rules are missed: {}", switchId,
+                    cookiesIntoLogRepresentation(missingRules));
+        }
+
+        if (!excessRules.isEmpty() && log.isWarnEnabled()) {
+            log.warn("On switch {} the following rules are excessive: {}", switchId,
+                    cookiesIntoLogRepresentation(excessRules));
+        }
 
         return new ValidateRulesResult(
                 ImmutableList.copyOf(missingRules),
@@ -236,6 +397,29 @@ public class ValidationServiceImpl implements ValidationService {
         return rules.stream().map(Cookie::toString).collect(Collectors.joining(", ", "[", "]"));
     }
 
+    private static String metersIntoLogRepresentation(Collection<MeterInfoEntry> meters) {
+        return meters.stream().map(MeterInfoEntry::getMeterId).map(String::valueOf)
+                .collect(Collectors.joining(", ", "[", "]"));
+    }
+
+    private static String getMisconfiguredMeterDifferenceAsString(
+            MeterMisconfiguredInfoEntry expected, MeterMisconfiguredInfoEntry actual) {
+        List<String> difference = new ArrayList<>();
+        // All non-null fields in MeterMisconfiguredInfoEntry are misconfigured.
+        if (expected.getRate() != null || actual.getRate() != null) {
+            difference.add(format("expected rate=%d, actual rate=%d", expected.getRate(), actual.getRate()));
+        }
+        if (expected.getBurstSize() != null || actual.getBurstSize() != null) {
+            difference.add(format("expected burst size=%d, actual burst size=%d",
+                    expected.getBurstSize(), actual.getBurstSize()));
+        }
+        if (expected.getFlags() != null || actual.getFlags() != null) {
+            difference.add(format("expected flags=%s, actual flags=%s",
+                    Arrays.toString(expected.getFlags()), Arrays.toString(actual.getFlags())));
+        }
+        return String.join(", ", difference);
+    }
+
     @Override
     public ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters,
                                                List<MeterEntry> expectedDefaultMeters) {
@@ -258,7 +442,25 @@ public class ValidationServiceImpl implements ValidationService {
             expectedMeters.addAll(getExpectedFlowMeters(paths));
         }
 
-        return comparePresentedAndExpectedMeters(isESwitch, presentMeters, expectedMeters);
+        ValidateMetersResult result = comparePresentedAndExpectedMeters(isESwitch, presentMeters, expectedMeters);
+
+        if (!result.getMissingMeters().isEmpty() && log.isErrorEnabled()) {
+            log.error("On switch {} the following rules are missed: {}", switchId,
+                    metersIntoLogRepresentation(result.getMissingMeters()));
+        }
+
+        if (!result.getExcessMeters().isEmpty() && log.isWarnEnabled()) {
+            log.warn("On switch {} the following rules are excessive: {}", switchId,
+                    metersIntoLogRepresentation(result.getExcessMeters()));
+        }
+
+        if (!result.getMisconfiguredMeters().isEmpty() && log.isWarnEnabled()) {
+            for (MeterInfoEntry meter : result.getMisconfiguredMeters()) {
+                log.warn("On switch {} meter {} is misconfigured: {}", switchId, meter.getMeterId(),
+                        getMisconfiguredMeterDifferenceAsString(meter.getExpected(), meter.getActual()));
+            }
+        }
+        return result;
     }
 
     private Set<Long> getExpectedFlowRules(SwitchId switchId) {
@@ -315,6 +517,7 @@ public class ValidationServiceImpl implements ValidationService {
         if (server42FlowRtt) {
             result.addAll(getExpectedServer42IngressCookies(switchId, affectedPaths));
         }
+        result.addAll(getExpectedMirrorPointsCookies(switchId, affectedPaths));
         return result;
     }
 

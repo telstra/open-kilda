@@ -23,9 +23,7 @@ import java.util.List;
 
 public interface FlowCacheBoltCarrier {
 
-    void emitCalculateFlowLatencyRequest(String flowId, FlowDirection direction, List<Link> flowPath,
-                                         Long maxLatency, Long maxLatencyTier2);
+    void emitCalculateFlowLatencyRequest(String flowId, FlowDirection direction, List<Link> flowPath);
 
-    void emitCheckFlowLatencyRequest(String flowId, FlowDirection direction, Duration latency,
-                                     Long maxLatency, Long maxLatencyTier2);
+    void emitCheckFlowLatencyRequest(String flowId, FlowDirection direction, Duration latency);
 }

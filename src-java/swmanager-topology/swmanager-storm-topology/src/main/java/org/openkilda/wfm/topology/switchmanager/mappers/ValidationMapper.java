@@ -15,10 +15,12 @@
 
 package org.openkilda.wfm.topology.switchmanager.mappers;
 
+import org.openkilda.messaging.info.switches.GroupsValidationEntry;
 import org.openkilda.messaging.info.switches.MetersValidationEntry;
 import org.openkilda.messaging.info.switches.RulesValidationEntry;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.wfm.topology.switchmanager.model.SwitchValidationContext;
+import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 
@@ -45,6 +47,9 @@ public abstract class ValidationMapper {
         if (validationContext.getMetersValidationReport() != null) {
             response.meters(mapReport(validationContext.getMetersValidationReport()));
         }
+        if (validationContext.getValidateGroupsResult() != null) {
+            response.groups(mapReport(validationContext.getValidateGroupsResult()));
+        }
 
         return response.build();
     }
@@ -60,4 +65,10 @@ public abstract class ValidationMapper {
     @Mapping(source = "properMeters", target = "proper")
     @Mapping(source = "excessMeters", target = "excess")
     public abstract MetersValidationEntry mapReport(ValidateMetersResult report);
+
+    @Mapping(source = "missingGroups", target = "missing")
+    @Mapping(source = "misconfiguredGroups", target = "misconfigured")
+    @Mapping(source = "properGroups", target = "proper")
+    @Mapping(source = "excessGroups", target = "excess")
+    public abstract GroupsValidationEntry mapReport(ValidateGroupsResult report);
 }

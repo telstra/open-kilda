@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 
@@ -50,7 +51,8 @@ abstract class EgressFlowSegmentCommandJsonTest
                 new FlowEndpoint(swId, 3, 4),
                 new FlowEndpoint(new SwitchId(swId.toLong() + 1), 6, 7),
                 9,
-                new FlowTransitEncapsulation(10, FlowEncapsulationType.TRANSIT_VLAN));
+                new FlowTransitEncapsulation(10, FlowEncapsulationType.TRANSIT_VLAN),
+                MirrorConfig.builder().build());
 
         return makeRequest(factory);
     }

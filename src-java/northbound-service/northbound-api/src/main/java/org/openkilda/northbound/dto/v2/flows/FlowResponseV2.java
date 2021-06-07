@@ -24,6 +24,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
 
+import java.util.List;
 import java.util.Set;
 
 @Data
@@ -57,7 +58,11 @@ public class FlowResponseV2 {
     private String pathComputationStrategy;
     private String targetPathComputationStrategy;
     private SwitchId loopSwitchId;
+    private long forwardPathLatencyNs;
+    private long reversePathLatencyNs;
 
     private String created;
     private String lastUpdated;
+
+    private List<MirrorPointStatus> mirrorPointStatuses;
 }

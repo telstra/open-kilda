@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -28,13 +28,16 @@ import org.openkilda.floodlight.command.meter.MeterRemoveReport;
 import org.openkilda.floodlight.command.meter.MeterVerifyCommand;
 import org.openkilda.floodlight.command.meter.MeterVerifyReport;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
+import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.floodlight.service.session.Session;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.GroupId;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.of.MeterSchema;
@@ -72,8 +75,8 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     IngressFlowSegmentBase(
             MessageContext messageContext, SwitchId switchId, UUID commandId, FlowSegmentMetadata metadata,
             @NonNull FlowEndpoint endpoint, MeterConfig meterConfig, @NonNull SwitchId egressSwitchId,
-            RulesContext rulesContext) {
-        super(messageContext, switchId, commandId, metadata);
+            RulesContext rulesContext, MirrorConfig mirrorConfig) {
+        super(messageContext, switchId, commandId, metadata, mirrorConfig);
         this.endpoint = endpoint;
         this.meterConfig = meterConfig;
         this.egressSwitchId = egressSwitchId;
@@ -92,33 +95,69 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     protected abstract void setupFlowModFactory();
 
     protected CompletableFuture<FlowSegmentReport> makeInstallPlan(SpeakerCommandProcessor commandProcessor) {
-        CompletableFuture<MeterId> future = CompletableFuture.completedFuture(null);
+        CompletableFuture<MeterId> meterIdFuture = CompletableFuture.completedFuture(null);
         if (meterConfig != null && rulesContext.isUpdateMeter()) {
-            future = planMeterInstall(commandProcessor)
+            meterIdFuture = planMeterInstall(commandProcessor)
                     .thenApply(this::handleMeterReport);
         }
-        return future.thenCompose(this::planOfFlowsInstall);
+
+        CompletableFuture<GroupId> groupIdFuture = CompletableFuture.completedFuture(null);
+        if (mirrorConfig != null) {
+            if (mirrorConfig.isAddNewGroup()) {
+                groupIdFuture = planGroupInstall(commandProcessor);
+            } else {
+                groupIdFuture = planGroupModify(commandProcessor);
+            }
+        }
+
+        return meterIdFuture
+                .thenCombine(groupIdFuture, EffectiveIds::new)
+                .thenCompose(this::planOfFlowsInstall);
     }
 
     protected CompletableFuture<FlowSegmentReport> makeRemovePlan(SpeakerCommandProcessor commandProcessor) {
-        CompletableFuture<MeterId> future = CompletableFuture.completedFuture(null);
-        if (meterConfig != null) {
-            future = planMeterDryRun(commandProcessor)
+        CompletableFuture<MeterId> meterIdFuture = CompletableFuture.completedFuture(null);
+        if (meterConfig != null && rulesContext.isUpdateMeter()) {
+            meterIdFuture = planMeterDryRun(commandProcessor)
                     .thenApply(this::handleMeterReport);
         }
 
-        return future.thenCompose(this::planOfFlowsRemove)
-                .thenCompose(effectiveMeterId -> planMeterRemove(commandProcessor, effectiveMeterId))
+        CompletableFuture<GroupId> groupIdFuture = CompletableFuture.completedFuture(null);
+        if (mirrorConfig != null) {
+            groupIdFuture = planGroupDryRun(commandProcessor)
+                    .thenApply(this::handleGroupReport);
+        }
+
+        CompletableFuture<EffectiveIds> future = meterIdFuture
+                .thenCombine(groupIdFuture, EffectiveIds::new)
+                .thenCompose(this::planOfFlowsRemove);
+
+        CompletableFuture<Void> meterRemoveFuture = future
+                .thenCompose(effectiveIds -> planMeterRemove(commandProcessor, effectiveIds.getMeterId()));
+
+        CompletableFuture<Void> groupRemoveFuture = future
+                .thenCompose(effectiveIds -> planGroupRemove(commandProcessor, effectiveIds.getGroupId()));
+
+        return CompletableFuture.allOf(meterRemoveFuture, groupRemoveFuture)
                 .thenApply(ignore -> makeSuccessReport());
     }
 
     protected CompletableFuture<FlowSegmentReport> makeVerifyPlan(SpeakerCommandProcessor commandProcessor) {
-        CompletableFuture<MeterId> future = CompletableFuture.completedFuture(null);
+        CompletableFuture<MeterId> meterIdFuture = CompletableFuture.completedFuture(null);
         if (meterConfig != null) {
-            future = planMeterVerify(commandProcessor)
+            meterIdFuture = planMeterVerify(commandProcessor)
                     .thenApply(this::handleMeterReport);
         }
-        return future.thenCompose(this::planOfFlowsVerify);
+
+        CompletableFuture<GroupId> groupIdFuture = CompletableFuture.completedFuture(null);
+        if (mirrorConfig != null) {
+            groupIdFuture = planGroupVerify(commandProcessor)
+                    .thenApply(this::handleGroupReport);
+        }
+
+        return meterIdFuture
+                .thenCombine(groupIdFuture, EffectiveIds::new)
+                .thenCompose(this::planOfFlowsVerify);
     }
 
     private CompletableFuture<MeterInstallReport> planMeterInstall(SpeakerCommandProcessor commandProcessor) {
@@ -153,11 +192,14 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
         return commandProcessor.chain(meterDryRun);
     }
 
-    private CompletableFuture<FlowSegmentReport> planOfFlowsInstall(MeterId effectiveMeterId) {
-        if (effectiveMeterId == null && rulesContext != null && !rulesContext.isUpdateMeter()) {
-            effectiveMeterId = getMeterConfig().getId();
+    private CompletableFuture<FlowSegmentReport> planOfFlowsInstall(EffectiveIds effectiveIds) {
+        MeterId effectiveMeterId = effectiveIds.getMeterId();
+        MeterConfig meterConfig = getMeterConfig();
+        if (effectiveMeterId == null && rulesContext != null && !rulesContext.isUpdateMeter() && meterConfig != null) {
+            effectiveIds.setMeterId(meterConfig.getId());
         }
-        List<OFFlowMod> ofMessages = makeFlowModMessages(effectiveMeterId);
+
+        List<OFFlowMod> ofMessages = makeFlowModMessages(effectiveIds);
         List<CompletableFuture<Optional<OFMessage>>> writeResults = new ArrayList<>(ofMessages.size());
         try (Session session = getSessionService().open(messageContext, getSw())) {
             for (OFFlowMod message : ofMessages) {
@@ -168,8 +210,8 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
                 .thenApply(ignore -> makeSuccessReport());
     }
 
-    private CompletableFuture<MeterId> planOfFlowsRemove(MeterId effectiveMeterId) {
-        List<OFFlowMod> ofMessages = new ArrayList<>(makeFlowModMessages(effectiveMeterId));
+    private CompletableFuture<EffectiveIds> planOfFlowsRemove(EffectiveIds effectiveIds) {
+        List<OFFlowMod> ofMessages = new ArrayList<>(makeFlowModMessages(effectiveIds));
 
         List<CompletableFuture<?>> requests = new ArrayList<>(ofMessages.size());
         try (Session session = getSessionService().open(messageContext, getSw())) {
@@ -179,11 +221,11 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
         }
 
         return CompletableFuture.allOf(requests.toArray(new CompletableFuture<?>[0]))
-                .thenApply(ignore -> effectiveMeterId);
+                .thenApply(ignore -> effectiveIds);
     }
 
-    private CompletableFuture<FlowSegmentReport> planOfFlowsVerify(MeterId effectiveMeterId) {
-        return makeVerifyPlan(makeFlowModMessages(effectiveMeterId));
+    private CompletableFuture<FlowSegmentReport> planOfFlowsVerify(EffectiveIds effectiveIds) {
+        return makeVerifyPlan(makeFlowModMessages(effectiveIds));
     }
 
     private MeterId handleMeterReport(MeterInstallReport report) {
@@ -209,35 +251,35 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
         }
     }
 
-    protected List<OFFlowMod> makeFlowModMessages(MeterId effectiveMeterId) {
+    protected List<OFFlowMod> makeFlowModMessages(EffectiveIds effectiveIds) {
         if (metadata.isMultiTable()) {
-            return makeMultiTableFlowModMessages(effectiveMeterId);
+            return makeMultiTableFlowModMessages(effectiveIds);
         } else {
-            return makeSingleTableFlowModMessages(effectiveMeterId);
+            return makeSingleTableFlowModMessages(effectiveIds);
         }
     }
 
-    protected List<OFFlowMod> makeMultiTableFlowModMessages(MeterId effectiveMeterId) {
+    protected List<OFFlowMod> makeMultiTableFlowModMessages(EffectiveIds effectiveIds) {
         List<OFFlowMod> ofMessages = new ArrayList<>(2);
         if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
             if (FlowEndpoint.isVlanIdSet(endpoint.getInnerVlanId())) {
-                ofMessages.add(flowModFactory.makeDoubleVlanForwardMessage(effectiveMeterId));
+                ofMessages.add(flowModFactory.makeDoubleVlanForwardMessage(effectiveIds));
             } else {
-                ofMessages.add(flowModFactory.makeSingleVlanForwardMessage(effectiveMeterId));
+                ofMessages.add(flowModFactory.makeSingleVlanForwardMessage(effectiveIds));
             }
         } else {
-            ofMessages.add(flowModFactory.makeDefaultPortForwardMessage(effectiveMeterId));
+            ofMessages.add(flowModFactory.makeDefaultPortForwardMessage(effectiveIds));
         }
 
         return ofMessages;
     }
 
-    protected List<OFFlowMod> makeSingleTableFlowModMessages(MeterId effectiveMeterId) {
+    protected List<OFFlowMod> makeSingleTableFlowModMessages(EffectiveIds effectiveIds) {
         List<OFFlowMod> ofMessages = new ArrayList<>();
         if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
-            ofMessages.add(flowModFactory.makeOuterOnlyVlanForwardMessage(effectiveMeterId));
+            ofMessages.add(flowModFactory.makeOuterOnlyVlanForwardMessage(effectiveIds));
         } else {
-            ofMessages.add(flowModFactory.makeDefaultPortForwardMessage(effectiveMeterId));
+            ofMessages.add(flowModFactory.makeDefaultPortForwardMessage(effectiveIds));
         }
         return ofMessages;
     }

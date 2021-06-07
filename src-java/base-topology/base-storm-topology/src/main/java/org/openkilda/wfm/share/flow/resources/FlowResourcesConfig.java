@@ -78,4 +78,18 @@ public interface FlowResourcesConfig extends Serializable {
     @Key("flow.cookie.max")
     @Default("131072")
     long getMaxFlowCookie();
+
+    /**
+     * Minimum group id value for flows.
+     */
+    @Key("flow.group-id.min")
+    @Default("10")
+    int getMinGroupId();
+
+    /**
+     * Maximum group id value for flows.
+     */
+    @Key("flow.group-id.max")
+    @Default("4000")
+    int getMaxGroupId();
 }

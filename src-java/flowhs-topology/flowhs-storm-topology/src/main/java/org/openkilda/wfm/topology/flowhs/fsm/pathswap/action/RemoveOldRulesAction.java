@@ -20,6 +20,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.MirrorContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapContext;
@@ -55,7 +56,16 @@ public class RemoveOldRulesAction
                 flow.getSrcSwitchId(), flow.getDestSwitchId());
 
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(commandBuilder.buildIngressOnly(
-                stateMachine.getCommandContext(), flow, oldPrimaryForward, oldPrimaryReverse, speakerContext));
+                stateMachine.getCommandContext(), flow, oldPrimaryForward, oldPrimaryReverse, speakerContext,
+                MirrorContext.builder()
+                        .removeFlowOperation(true)
+                        .build()));
+        commands.addAll(commandBuilder.buildEgressOnly(stateMachine.getCommandContext(),
+                flow, oldPrimaryForward, oldPrimaryReverse,
+                MirrorContext.builder()
+                        .buildMirrorFactoryOnly(true)
+                        .removeFlowOperation(true)
+                        .build()));
 
         stateMachine.clearPendingAndRetriedAndFailedCommands();
         SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(

@@ -52,6 +52,12 @@ public class FlowResponsePayload extends FlowPayload {
     @JsonProperty("loop-switch-id")
     private SwitchId loopSwitchId;
 
+    @JsonProperty("forward-latency")
+    private long forwardLatency;
+
+    @JsonProperty("reverse-latency")
+    private long reverseLatency;
+
     /**
      * Instance constructor.
      *
@@ -76,6 +82,8 @@ public class FlowResponsePayload extends FlowPayload {
      * @param pathComputationStrategy   path computation strategy
      * @param targetPathComputationStrategy     target path computation strategy
      * @param loopSwitchId              looped switch id
+     * @param forwardLatency            forward path latency nanoseconds
+     * @param reverseLatency            reverse path latency nanoseconds
      */
     @Builder(builderMethodName = "flowResponsePayloadBuilder")
     @JsonCreator
@@ -99,7 +107,9 @@ public class FlowResponsePayload extends FlowPayload {
                                @JsonProperty("encapsulation-type") String encapsulationType,
                                @JsonProperty("path-computation-strategy") String pathComputationStrategy,
                                @JsonProperty("target-path-computation-strategy") String targetPathComputationStrategy,
-                               @JsonProperty("loop-switch-id") SwitchId loopSwitchId) {
+                               @JsonProperty("loop-switch-id") SwitchId loopSwitchId,
+                               @JsonProperty("forward-latency") long forwardLatency,
+                               @JsonProperty("reverse-latency") long reverseLatency) {
         super(id, source, destination, maximumBandwidth, ignoreBandwidth, periodicPings, allocateProtectedPath,
                 description, created, lastUpdated, status, maxLatency, priority, pinned, encapsulationType,
                 pathComputationStrategy);
@@ -108,5 +118,7 @@ public class FlowResponsePayload extends FlowPayload {
         this.statusInfo = statusInfo;
         this.targetPathComputationStrategy = targetPathComputationStrategy;
         this.loopSwitchId = loopSwitchId;
+        this.forwardLatency = forwardLatency;
+        this.reverseLatency = reverseLatency;
     }
 }

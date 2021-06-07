@@ -13,15 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowmonitoring.bolts;
+package org.openkilda.wfm.topology.flowhs.mapper;
 
-import org.openkilda.wfm.share.bolt.MonotonicClock;
-import org.openkilda.wfm.topology.flowmonitoring.bolts.TickBolt.TickId;
+import org.openkilda.messaging.command.flow.FlowMirrorPointCreateRequest;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlowMirrorPoint;
 
-public class TickBolt extends MonotonicClock<TickId> {
-    public TickBolt(Integer interval) {
-        super(new MonotonicClock.ClockConfig<>(), interval);
-    }
+import org.mapstruct.Mapper;
+import org.mapstruct.factory.Mappers;
 
-    enum TickId {}
+@Mapper
+public abstract class RequestedFlowMirrorPointMapper {
+
+    public static final RequestedFlowMirrorPointMapper INSTANCE
+            = Mappers.getMapper(RequestedFlowMirrorPointMapper.class);
+
+    public abstract RequestedFlowMirrorPoint map(FlowMirrorPointCreateRequest request);
 }

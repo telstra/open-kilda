@@ -31,8 +31,10 @@ import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManager
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
+import org.openkilda.messaging.command.switches.DeleteGroupRequest;
 import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
-import org.openkilda.messaging.command.switches.DumpGroupsRequest;
+import org.openkilda.messaging.command.switches.DumpGroupsForNbWorkerRequest;
+import org.openkilda.messaging.command.switches.DumpGroupsForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
@@ -43,6 +45,8 @@ import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
 import org.openkilda.messaging.command.switches.GetExpectedDefaultMetersRequest;
 import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
+import org.openkilda.messaging.command.switches.InstallGroupRequest;
+import org.openkilda.messaging.command.switches.ModifyGroupRequest;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
@@ -92,6 +96,8 @@ public final class RouterUtils {
                 return ((SwitchRulesInstallRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpRulesRequest) {
                 return ((DumpRulesRequest) commandData).getSwitchId();
+            } else if (commandData instanceof DeleterMeterForSwitchManagerRequest) {
+                return ((DeleterMeterForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DeleteMeterRequest) {
                 return ((DeleteMeterRequest) commandData).getSwitchId();
             } else if (commandData instanceof PortConfigurationRequest) {
@@ -122,8 +128,6 @@ public final class RouterUtils {
                 return ((DumpMetersForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpMetersForNbworkerRequest) {
                 return ((DumpMetersForNbworkerRequest) commandData).getSwitchId();
-            } else if (commandData instanceof DeleterMeterForSwitchManagerRequest) {
-                return ((DeleterMeterForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof SetupBfdSession) {
                 return ((SetupBfdSession) commandData).getBfdSession().getTarget().getDatapath();
             } else if (commandData instanceof RemoveBfdSession) {
@@ -132,8 +136,16 @@ public final class RouterUtils {
                 return ((InstallIslDefaultRulesCommand) commandData).getSrcSwitch();
             } else if (commandData instanceof RemoveIslDefaultRulesCommand) {
                 return ((RemoveIslDefaultRulesCommand) commandData).getSrcSwitch();
-            } else if (commandData instanceof DumpGroupsRequest) {
-                return ((DumpGroupsRequest) commandData).getSwitchId();
+            } else if (commandData instanceof InstallGroupRequest) {
+                return ((InstallGroupRequest) commandData).getSwitchId();
+            } else if (commandData instanceof ModifyGroupRequest) {
+                return ((ModifyGroupRequest) commandData).getSwitchId();
+            } else if (commandData instanceof DeleteGroupRequest) {
+                return ((DeleteGroupRequest) commandData).getSwitchId();
+            } else if (commandData instanceof DumpGroupsForSwitchManagerRequest) {
+                return ((DumpGroupsForSwitchManagerRequest) commandData).getSwitchId();
+            } else if (commandData instanceof DumpGroupsForNbWorkerRequest) {
+                return ((DumpGroupsForNbWorkerRequest) commandData).getSwitchId();
             }
         }
 

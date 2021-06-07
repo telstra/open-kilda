@@ -56,7 +56,7 @@ public class RoundTripLatencyFlowGenerator implements SwitchFlowGenerator {
     @Override
     public SwitchFlowTuple generateFlow(IOFSwitch sw) {
         if (!featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_COPY_FIELD)) {
-            return SwitchFlowTuple.EMPTY;
+            return SwitchFlowTuple.getEmpty();
         }
 
         OFFactory ofFactory = sw.getOFFactory();

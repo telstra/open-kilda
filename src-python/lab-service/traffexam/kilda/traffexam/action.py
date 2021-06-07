@@ -15,6 +15,7 @@
 
 import functools
 import operator
+import pyroute2
 
 from scapy.all import ARP, IP, TCP, UDP, Ether, sendp
 from scapy.contrib import lldp
@@ -103,6 +104,13 @@ class TCPPush(Abstract):
             sendp(pkt, iface=iface.name, verbose=False, promisc=False)
 
 
+class AddressStats(Abstract):
+    def __call__(self, iface):
+        with pyroute2.NetNS(self.context.make_network_namespace_name()) as ipr:
+            return ipr.get_links(iface.index)[0].get_attr('IFLA_STATS')
+
+
+
 class Adapter(object):
     def __init__(self, context):
         network_namespace = self._make_network_namespace_context(context)
@@ -111,6 +119,7 @@ class Adapter(object):
         self.arp_push = ARPPush(context, network_namespace)
         self.udp_push = UDPPush(context, network_namespace)
         self.tcp_push = TCPPush(context, network_namespace)
+        self.address_stats = AddressStats(context, network_namespace)
 
     @staticmethod
     def _make_network_namespace_context(context):

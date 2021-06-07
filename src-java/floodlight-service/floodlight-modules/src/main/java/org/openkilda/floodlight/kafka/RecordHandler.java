@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -57,11 +57,17 @@ import org.openkilda.floodlight.command.flow.FlowSegmentResponseFactory;
 import org.openkilda.floodlight.command.flow.FlowSegmentSyncResponseFactory;
 import org.openkilda.floodlight.command.flow.FlowSegmentWrapperCommand;
 import org.openkilda.floodlight.command.flow.egress.EgressFlowSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.egress.EgressMirrorFlowSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowLoopSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressMirrorFlowSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressServer42FlowInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowInstallCommand;
+import org.openkilda.floodlight.command.flow.ingress.OneSwitchMirrorFlowInstallCommand;
 import org.openkilda.floodlight.command.flow.transit.TransitFlowLoopSegmentInstallCommand;
+import org.openkilda.floodlight.command.group.GroupInstallCommand;
+import org.openkilda.floodlight.command.group.GroupModifyCommand;
+import org.openkilda.floodlight.command.group.GroupRemoveCommand;
 import org.openkilda.floodlight.converter.OfFlowStatsMapper;
 import org.openkilda.floodlight.converter.OfMeterConverter;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
@@ -96,10 +102,13 @@ import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
+import org.openkilda.messaging.command.flow.InstallEgressMirrorFlow;
 import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressLoopFlow;
+import org.openkilda.messaging.command.flow.InstallIngressMirrorFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
+import org.openkilda.messaging.command.flow.InstallOneSwitchMirrorFlow;
 import org.openkilda.messaging.command.flow.InstallServer42Flow;
 import org.openkilda.messaging.command.flow.InstallServer42IngressFlow;
 import org.openkilda.messaging.command.flow.InstallSharedFlow;
@@ -111,10 +120,12 @@ import org.openkilda.messaging.command.flow.ReinstallServer42FlowForSwitchManage
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
+import org.openkilda.messaging.command.switches.DeleteGroupRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
-import org.openkilda.messaging.command.switches.DumpGroupsRequest;
+import org.openkilda.messaging.command.switches.DumpGroupsForNbWorkerRequest;
+import org.openkilda.messaging.command.switches.DumpGroupsForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
@@ -125,7 +136,9 @@ import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
 import org.openkilda.messaging.command.switches.GetExpectedDefaultMetersRequest;
 import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
+import org.openkilda.messaging.command.switches.InstallGroupRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
+import org.openkilda.messaging.command.switches.ModifyGroupRequest;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
@@ -151,7 +164,10 @@ import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.messaging.info.stats.PortStatusData;
 import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
+import org.openkilda.messaging.info.switches.DeleteGroupResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
+import org.openkilda.messaging.info.switches.InstallGroupResponse;
+import org.openkilda.messaging.info.switches.ModifyGroupResponse;
 import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
@@ -160,9 +176,11 @@ import org.openkilda.messaging.payload.switches.InstallIslDefaultRulesCommand;
 import org.openkilda.messaging.payload.switches.RemoveIslDefaultRulesCommand;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.GroupId;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
@@ -273,8 +291,16 @@ class RecordHandler implements Runnable {
             doInstallIslDefaultRule(message);
         } else if (data instanceof RemoveIslDefaultRulesCommand) {
             doRemoveIslDefaultRule(message);
-        } else if (data instanceof DumpGroupsRequest) {
-            doDumpGroupsRequest(message);
+        } else if (data instanceof DumpGroupsForSwitchManagerRequest) {
+            doDumpGroupsForSwitchManagerRequest(message);
+        } else if (data instanceof DumpGroupsForNbWorkerRequest) {
+            doDumpGroupsForNbWorkerRequest(message);
+        } else if (data instanceof InstallGroupRequest) {
+            doInstallGroupRequest(message);
+        } else if (data instanceof ModifyGroupRequest) {
+            doModifyGroupRequest(message);
+        } else if (data instanceof DeleteGroupRequest) {
+            doDeleteGroupRequest(message);
         } else if (data instanceof BroadcastWrapper) {
             handleBroadcastCommand(message, (BroadcastWrapper) data);
         } else {
@@ -1196,15 +1222,25 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doDumpGroupsRequest(final CommandMessage message) {
-        final IKafkaProducerService producerService = getKafkaProducer();
-        SwitchId switchId = ((DumpGroupsRequest) message.getData()).getSwitchId();
+    private void doDumpGroupsForSwitchManagerRequest(final CommandMessage message) {
+        SwitchId switchId = ((DumpGroupsForSwitchManagerRequest) message.getData()).getSwitchId();
         String correlationId = message.getCorrelationId();
+        dumpGroupsRequest(switchId, correlationId, context.getKafkaSwitchManagerTopic());
+    }
+
+    private void doDumpGroupsForNbWorkerRequest(final CommandMessage message) {
+        SwitchId switchId = ((DumpGroupsForNbWorkerRequest) message.getData()).getSwitchId();
+        String correlationId = message.getCorrelationId();
+        dumpGroupsRequest(switchId, correlationId, context.getKafkaNbWorkerTopic());
+    }
+
+    private void dumpGroupsRequest(SwitchId switchId, String correlationId, String topic) {
+        final IKafkaProducerService producerService = getKafkaProducer();
         try {
             logger.debug("Loading installed groups for switch {}", switchId);
 
             List<OFGroupDescStatsEntry> ofGroupDescStatsEntries = context.getSwitchManager()
-                                                                         .dumpGroups(DatapathId.of(switchId.toLong()));
+                    .dumpGroups(DatapathId.of(switchId.toLong()));
 
             List<GroupEntry> groups = ofGroupDescStatsEntries.stream()
                     .map(OfFlowStatsMapper.INSTANCE::toFlowGroupEntry)
@@ -1216,16 +1252,58 @@ class RecordHandler implements Runnable {
                     .build();
 
             InfoMessage infoMessage = new InfoMessage(response, System.currentTimeMillis(), correlationId);
-            producerService.sendMessageAndTrack(context.getKafkaSwitchManagerTopic(), correlationId, infoMessage);
+            producerService.sendMessageAndTrack(topic, correlationId, infoMessage);
         } catch (SwitchOperationException e) {
             logger.error("Dumping of groups on switch '{}' was unsuccessful: {}", switchId, e.getMessage());
             anError(ErrorType.NOT_FOUND)
                     .withMessage(e.getMessage())
                     .withDescription("The switch was not found when requesting a groups dump.")
                     .withCorrelationId(correlationId)
-                    .withTopic(context.getKafkaSwitchManagerTopic())
+                    .withTopic(topic)
                     .sendVia(producerService);
         }
+    }
+
+    private void doInstallGroupRequest(CommandMessage message) {
+        SwitchId switchId = ((InstallGroupRequest) message.getData()).getSwitchId();
+        MirrorConfig mirrorConfig = ((InstallGroupRequest) message.getData()).getMirrorConfig();
+
+        logger.debug("Install group '{}' for switch '{}'", mirrorConfig.getGroupId().intValue(), switchId);
+        handleSpeakerCommand(new GroupInstallCommand(new MessageContext(message), switchId, mirrorConfig));
+
+        InstallGroupResponse response = new InstallGroupResponse(switchId, mirrorConfig.getGroupId().intValue());
+
+        String correlationId = message.getCorrelationId();
+        InfoMessage infoMessage = new InfoMessage(response, System.currentTimeMillis(), correlationId);
+        getKafkaProducer().sendMessageAndTrack(context.getKafkaSwitchManagerTopic(), correlationId, infoMessage);
+    }
+
+    private void doModifyGroupRequest(CommandMessage message) {
+        SwitchId switchId = ((ModifyGroupRequest) message.getData()).getSwitchId();
+        MirrorConfig mirrorConfig = ((ModifyGroupRequest) message.getData()).getMirrorConfig();
+
+        logger.debug("Modify group '{}' for switch '{}'", mirrorConfig.getGroupId().intValue(), switchId);
+        handleSpeakerCommand(new GroupModifyCommand(new MessageContext(message), switchId, mirrorConfig));
+
+        ModifyGroupResponse response = new ModifyGroupResponse(switchId, mirrorConfig.getGroupId().intValue());
+
+        String correlationId = message.getCorrelationId();
+        InfoMessage infoMessage = new InfoMessage(response, System.currentTimeMillis(), correlationId);
+        getKafkaProducer().sendMessageAndTrack(context.getKafkaSwitchManagerTopic(), correlationId, infoMessage);
+    }
+
+    private void doDeleteGroupRequest(CommandMessage message) {
+        SwitchId switchId = ((DeleteGroupRequest) message.getData()).getSwitchId();
+        GroupId groupId = ((DeleteGroupRequest) message.getData()).getGroupId();
+
+        logger.debug("Delete group '{}' for switch '{}'", groupId, switchId);
+        handleSpeakerCommand(new GroupRemoveCommand(new MessageContext(message), switchId, groupId));
+
+        DeleteGroupResponse response = new DeleteGroupResponse(true);
+
+        String correlationId = message.getCorrelationId();
+        InfoMessage infoMessage = new InfoMessage(response, System.currentTimeMillis(), correlationId);
+        getKafkaProducer().sendMessageAndTrack(context.getKafkaSwitchManagerTopic(), correlationId, infoMessage);
     }
 
     private void doDumpRulesRequest(final CommandMessage message) {
@@ -1656,14 +1734,22 @@ class RecordHandler implements Runnable {
     private Optional<FlowSegmentWrapperCommand> makeSyncCommand(
             BaseFlow request, MessageContext messageContext, FlowSegmentResponseFactory responseFactory) {
         FlowSegmentWrapperCommand command;
-        if (request instanceof InstallIngressFlow) {
+        if (request instanceof InstallIngressMirrorFlow) {
+            command = makeFlowSegmentWrappedCommand(
+                    (InstallIngressMirrorFlow) request, messageContext, responseFactory);
+        } else if (request instanceof InstallIngressFlow) {
             command = makeFlowSegmentWrappedCommand((InstallIngressFlow) request, messageContext, responseFactory);
+        } else if (request instanceof InstallOneSwitchMirrorFlow) {
+            command = makeFlowSegmentWrappedCommand(
+                    (InstallOneSwitchMirrorFlow) request, messageContext, responseFactory);
         } else if (request instanceof InstallOneSwitchFlow) {
             command = makeFlowSegmentWrappedCommand((InstallOneSwitchFlow) request, messageContext, responseFactory);
         } else if (request instanceof InstallIngressLoopFlow) {
             command = makeIngressLoopWrappedCommand((InstallIngressLoopFlow) request, messageContext, responseFactory);
         } else if (request instanceof InstallTransitLoopFlow) {
             command = makeTransitLoopWrappedCommand((InstallTransitLoopFlow) request, messageContext, responseFactory);
+        } else if (request instanceof InstallEgressMirrorFlow) {
+            command = makeFlowSegmentWrappedCommand((InstallEgressMirrorFlow) request, messageContext, responseFactory);
         } else if (request instanceof InstallEgressFlow) {
             command = makeFlowSegmentWrappedCommand((InstallEgressFlow) request, messageContext, responseFactory);
         } else if (request instanceof InstallServer42IngressFlow) {
@@ -1687,6 +1773,21 @@ class RecordHandler implements Runnable {
     }
 
     private FlowSegmentWrapperCommand makeFlowSegmentWrappedCommand(
+            InstallIngressMirrorFlow request, MessageContext messageContext,
+            FlowSegmentResponseFactory responseFactory) {
+        FlowEndpoint endpoint = new FlowEndpoint(
+                request.getSwitchId(), request.getInputPort(), request.getInputVlanId(), request.getInputInnerVlanId(),
+                request.isEnableLldp(), request.isEnableArp());
+        MeterConfig meterConfig = makeMeterConfig(request.getMeterId(), request.getBandwidth());
+        IngressMirrorFlowSegmentInstallCommand command = new IngressMirrorFlowSegmentInstallCommand(
+                messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, meterConfig,
+                request.getEgressSwitchId(), request.getOutputPort(), makeTransitEncapsulation(request),
+                new RulesContext(), request.getMirrorConfig());
+
+        return new FlowSegmentWrapperCommand(command, responseFactory);
+    }
+
+    private FlowSegmentWrapperCommand makeFlowSegmentWrappedCommand(
             InstallIngressFlow request, MessageContext messageContext, FlowSegmentResponseFactory responseFactory) {
         FlowEndpoint endpoint = new FlowEndpoint(
                 request.getSwitchId(), request.getInputPort(), request.getInputVlanId(), request.getInputInnerVlanId(),
@@ -1695,7 +1796,24 @@ class RecordHandler implements Runnable {
         IngressFlowSegmentInstallCommand command = new IngressFlowSegmentInstallCommand(
                 messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, meterConfig,
                 request.getEgressSwitchId(), request.getOutputPort(), makeTransitEncapsulation(request),
-                new RulesContext());
+                new RulesContext(), request.getMirrorConfig());
+
+        return new FlowSegmentWrapperCommand(command, responseFactory);
+    }
+
+    private FlowSegmentWrapperCommand makeFlowSegmentWrappedCommand(
+            InstallOneSwitchMirrorFlow request, MessageContext messageContext,
+            FlowSegmentResponseFactory responseFactory) {
+        FlowEndpoint endpoint = new FlowEndpoint(
+                request.getSwitchId(), request.getInputPort(), request.getInputVlanId(), request.getInputInnerVlanId(),
+                request.isEnableLldp(), request.isEnableArp());
+        FlowEndpoint egressEndpoint = new FlowEndpoint(
+                request.getSwitchId(), request.getOutputPort(), request.getOutputVlanId(),
+                request.getOutputInnerVlanId());
+        MeterConfig meterConfig = makeMeterConfig(request.getMeterId(), request.getBandwidth());
+        OneSwitchMirrorFlowInstallCommand command = new OneSwitchMirrorFlowInstallCommand(
+                messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, meterConfig, egressEndpoint,
+                new RulesContext(), request.getMirrorConfig());
 
         return new FlowSegmentWrapperCommand(command, responseFactory);
     }
@@ -1711,7 +1829,20 @@ class RecordHandler implements Runnable {
         MeterConfig meterConfig = makeMeterConfig(request.getMeterId(), request.getBandwidth());
         OneSwitchFlowInstallCommand command = new OneSwitchFlowInstallCommand(
                 messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, meterConfig, egressEndpoint,
-                new RulesContext());
+                new RulesContext(), request.getMirrorConfig());
+
+        return new FlowSegmentWrapperCommand(command, responseFactory);
+    }
+
+    private FlowSegmentWrapperCommand makeFlowSegmentWrappedCommand(
+            InstallEgressMirrorFlow request, MessageContext messageContext,
+            FlowSegmentResponseFactory responseFactory) {
+        FlowEndpoint endpoint = new FlowEndpoint(
+                request.getSwitchId(), request.getOutputPort(), request.getOutputVlanId(),
+                request.getOutputInnerVlanId());
+        EgressMirrorFlowSegmentInstallCommand command = new EgressMirrorFlowSegmentInstallCommand(
+                messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, request.getIngressEndpoint(),
+                request.getInputPort(), makeTransitEncapsulation(request), request.getMirrorConfig());
 
         return new FlowSegmentWrapperCommand(command, responseFactory);
     }
@@ -1723,7 +1854,7 @@ class RecordHandler implements Runnable {
                 request.getOutputInnerVlanId());
         EgressFlowSegmentInstallCommand command = new EgressFlowSegmentInstallCommand(
                 messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, request.getIngressEndpoint(),
-                request.getInputPort(), makeTransitEncapsulation(request));
+                request.getInputPort(), makeTransitEncapsulation(request), request.getMirrorConfig());
 
         return new FlowSegmentWrapperCommand(command, responseFactory);
     }

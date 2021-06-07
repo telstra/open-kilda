@@ -680,7 +680,7 @@ misconfigured"
         producer.send(new ProducerRecord(speakerTopic, switchPair.dst.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), flow.flowId, 1L, switchPair.dst.dpId, 1, 2, 1,
                         FlowEncapsulationType.TRANSIT_VLAN, 1, 0,
-                        OutputVlanType.REPLACE, false, new FlowEndpoint(switchPair.src.dpId, 1))).toJson()))
+                        OutputVlanType.REPLACE, false, new FlowEndpoint(switchPair.src.dpId, 1), null)).toJson()))
         involvedSwitches[1..-1].findAll { !it.description.contains("OF_12") }.each { transitSw ->
             producer.send(new ProducerRecord(speakerTopic, transitSw.toString(), buildMessage(
                     new InstallTransitFlow(UUID.randomUUID(), flow.flowId, 1L, transitSw, 1, 2, 1,
@@ -690,7 +690,7 @@ misconfigured"
                 new InstallIngressFlow(UUID.randomUUID(), flow.flowId, 1L, switchPair.src.dpId, 1, 2, 1, 0, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId,
-                        switchPair.dst.dpId, false, false, false)).toJson()))
+                        switchPair.dst.dpId, false, false, false, null)).toJson()))
         producer.flush()
 
         then: "Switch validation shows excess rules and store them in the 'excess' section"

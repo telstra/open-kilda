@@ -22,6 +22,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.flow.resources.FlowMirrorPathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
@@ -80,6 +81,7 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
     private SwitchId srcSwitchId;
 
     private final Collection<FlowResources> flowResources = new ArrayList<>();
+    private final Collection<FlowMirrorPathResources> flowMirrorPathResources = new ArrayList<>();
 
     private final Set<UUID> pendingCommands = new HashSet<>();
     private final Map<UUID, Integer> retriedCommands = new HashMap<>();

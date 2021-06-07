@@ -41,7 +41,7 @@ public class DropLoopFlowGenerator implements SwitchFlowGenerator {
     public SwitchFlowTuple generateFlow(IOFSwitch sw) {
         OFFactory ofFactory = sw.getOFFactory();
         if (ofFactory.getVersion() == OF_12) {
-            return SwitchFlowTuple.EMPTY;
+            return SwitchFlowTuple.getEmpty();
         }
 
         Match.Builder builder = ofFactory.buildMatch();

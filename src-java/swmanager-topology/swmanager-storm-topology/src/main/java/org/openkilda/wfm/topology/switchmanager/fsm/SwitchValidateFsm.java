@@ -29,7 +29,7 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.Swi
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState.VALIDATE;
 
 import org.openkilda.adapter.FlowSideAdapter;
-import org.openkilda.messaging.command.switches.DumpGroupsRequest;
+import org.openkilda.messaging.command.switches.DumpGroupsForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.GetExpectedDefaultMetersRequest;
@@ -291,7 +291,8 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         if (request.isPerformSync()) {
             ValidationResult results = new ValidationResult(
                     validationContext.getActualOfFlows(), validationContext.getMetersValidationReport() != null,
-                    validationContext.getOfFlowsValidationReport(), validationContext.getMetersValidationReport());
+                    validationContext.getOfFlowsValidationReport(), validationContext.getMetersValidationReport(),
+                    validationContext.getValidateGroupsResult());
             carrier.runSwitchSync(key, request, results);
         } else {
             SwitchValidationResponse response = ValidationMapper.INSTANCE.toSwitchResponse(validationContext);
@@ -388,7 +389,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         SwitchId switchId = getSwitchId();
         log.info("Sending requests to get switch OF-groups (switch={}, key={})", switchId, key);
 
-        carrier.sendCommandToSpeaker(key, new DumpGroupsRequest(switchId));
+        carrier.sendCommandToSpeaker(key, new DumpGroupsForSwitchManagerRequest(switchId));
         pendingRequests.add(ExternalResources.ACTUAL_OF_GROUPS);
     }
 

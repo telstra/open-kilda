@@ -52,6 +52,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
@@ -130,7 +131,7 @@ public class SwitchSyncServiceImplTest {
         InstallIngressFlow installingRule = new InstallIngressFlow(UUID.randomUUID(), FLOW_ID, flowEntry.getCookie(),
                 SWITCH_ID, 1, 2, 50, 0,
                 60, FlowEncapsulationType.TRANSIT_VLAN, OutputVlanType.POP, 10L,
-                100L, EGRESS_SWITCH_ID, false, false, false);
+                100L, EGRESS_SWITCH_ID, false, false, false, null);
         when(commandBuilder.buildCommandsToSyncMissingRules(eq(SWITCH_ID), any()))
                 .thenReturn(singletonList(installingRule));
 
@@ -325,7 +326,8 @@ public class SwitchSyncServiceImplTest {
 
         ValidationResult tempResult = makeValidationResult();
         service.handleSwitchSync(KEY, request, new ValidationResult(
-                tempResult.getFlowEntries(), false, tempResult.getValidateRulesResult(), null));
+                tempResult.getFlowEntries(), false, tempResult.getValidateRulesResult(), null,
+                new ValidateGroupsResult(emptyList(), emptyList(), emptyList(), emptyList())));
 
         verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
         verify(carrier).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
@@ -346,7 +348,8 @@ public class SwitchSyncServiceImplTest {
                 true,
                 new ValidateRulesResult(missingRules, singletonList(flowEntry.getCookie()), excessRules,
                         misconfiguredRules),
-                new ValidateMetersResult(emptyList(), emptyList(), emptyList(), excessMeters));
+                new ValidateMetersResult(emptyList(), emptyList(), emptyList(), excessMeters),
+                new ValidateGroupsResult(emptyList(), emptyList(), emptyList(), emptyList()));
     }
 
     private ErrorMessage getErrorMessage() {

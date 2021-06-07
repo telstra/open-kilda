@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,12 +19,13 @@ import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowInstallMultiTableFlowModFactory;
 import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowInstallSingleTableFlowModFactory;
+import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
-import org.openkilda.model.MeterId;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchFeature;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -46,8 +47,9 @@ public class OneSwitchFlowInstallCommand extends OneSwitchFlowCommand {
             @JsonProperty("endpoint") FlowEndpoint endpoint,
             @JsonProperty("meter_config") MeterConfig meterConfig,
             @JsonProperty("egress_endpoint") FlowEndpoint egressEndpoint,
-            @JsonProperty("rules_context") RulesContext rulesContext) {
-        super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, rulesContext);
+            @JsonProperty("rules_context") RulesContext rulesContext,
+            @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
+        super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, rulesContext, mirrorConfig);
     }
 
     @Override
@@ -65,8 +67,8 @@ public class OneSwitchFlowInstallCommand extends OneSwitchFlowCommand {
     }
 
     @Override
-    protected List<OFFlowMod> makeFlowModMessages(MeterId effectiveMeterId) {
-        List<OFFlowMod> ofMessages = super.makeFlowModMessages(effectiveMeterId);
+    protected List<OFFlowMod> makeFlowModMessages(EffectiveIds effectiveIds) {
+        List<OFFlowMod> ofMessages = super.makeFlowModMessages(effectiveIds);
         ofMessages.addAll(makeSharedFlowModInstallMessages());
         return ofMessages;
     }

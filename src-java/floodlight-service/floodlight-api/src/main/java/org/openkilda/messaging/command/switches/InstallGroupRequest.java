@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.switches;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -28,12 +29,14 @@ import lombok.Value;
 @Value
 @EqualsAndHashCode(callSuper = false)
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class DumpGroupsRequest extends CommandData {
-    private SwitchId switchId;
+public class InstallGroupRequest extends CommandData {
+    SwitchId switchId;
+    MirrorConfig mirrorConfig;
 
     @JsonCreator
-    public DumpGroupsRequest(@JsonProperty("switch_id") SwitchId switchId) {
+    public InstallGroupRequest(@JsonProperty("switch_id") SwitchId switchId,
+                               @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
         this.switchId = switchId;
+        this.mirrorConfig = mirrorConfig;
     }
-
 }

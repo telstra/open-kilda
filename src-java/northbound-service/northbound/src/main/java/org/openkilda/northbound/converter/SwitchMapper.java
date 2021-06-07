@@ -16,6 +16,10 @@
 package org.openkilda.northbound.converter;
 
 import org.openkilda.messaging.info.event.SwitchChangeType;
+import org.openkilda.messaging.info.switches.GroupInfoEntry;
+import org.openkilda.messaging.info.switches.GroupInfoEntry.PortVlanEntry;
+import org.openkilda.messaging.info.switches.GroupSyncEntry;
+import org.openkilda.messaging.info.switches.GroupsValidationEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
 import org.openkilda.messaging.info.switches.MetersSyncEntry;
@@ -32,6 +36,10 @@ import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.northbound.dto.v1.switches.GroupInfoDto;
+import org.openkilda.northbound.dto.v1.switches.GroupInfoDto.PortVlanDto;
+import org.openkilda.northbound.dto.v1.switches.GroupsSyncDto;
+import org.openkilda.northbound.dto.v1.switches.GroupsValidationDto;
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto;
 import org.openkilda.northbound.dto.v1.switches.MeterMisconfiguredInfoDto;
 import org.openkilda.northbound.dto.v1.switches.MetersSyncDto;
@@ -119,6 +127,8 @@ public abstract class SwitchMapper {
 
     public abstract MetersSyncDto toMetersSyncDto(MetersSyncEntry data);
 
+    public abstract GroupsSyncDto toGroupsSyncDto(GroupSyncEntry data);
+
     @Mapping(target = "rules.missingHex", ignore = true)
     @Mapping(target = "rules.misconfiguredHex", ignore = true)
     @Mapping(target = "rules.properHex", ignore = true)
@@ -142,6 +152,12 @@ public abstract class SwitchMapper {
     public abstract MetersValidationDto toMetersValidationDto(MetersValidationEntry data);
 
     public abstract MeterInfoDto toMeterInfoDto(MeterInfoEntry data);
+
+    public abstract GroupsValidationDto toMetersGroupsValidationDto(GroupsValidationEntry data);
+
+    public abstract GroupInfoDto toGroupInfoDto(GroupInfoEntry data);
+
+    public abstract PortVlanDto toPortVlanDto(PortVlanEntry data);
 
     public abstract MeterMisconfiguredInfoDto toMeterMisconfiguredInfoDto(MeterMisconfiguredInfoEntry data);
 
