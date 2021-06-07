@@ -84,6 +84,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
         def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
         [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
+            assert stats.size() > 0
             stats.values().each { assert it != 0 }
         }
 
@@ -169,12 +170,14 @@ class FlowStatSpec extends HealthCheckSpecification {
         def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
         def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
         [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
+            assert stats.size() > 0
             stats.values().each { assert it != 0 }
         }
 
         and: "Stats is empty for protected path egress cookie"
         def protectedReverseCookie = flowInfo.protectedReversePath.cookie.value
         def protectedReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
+        protectedReverseCookieStat.size() > 0
         protectedReverseCookieStat.values().each { assert it == 0 }
 
         when: "Make the current and protected path less preferable than alternatives"
@@ -204,6 +207,7 @@ class FlowStatSpec extends HealthCheckSpecification {
             def newMainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: newMainForwardCookie]).dps
             def newMainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: newMainReverseCookie]).dps
             [newMainForwardCookieStat, newMainReverseCookieStat].each { stats ->
+                assert stats.size() > 0
                 stats.values().each { assert it != 0 }
             }
         }
@@ -211,6 +215,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         and: "Stats is empty for a new protected path egress cookie"
         def newProtectedReverseCookie = newFlowInfo.protectedReversePath.cookie.value
         def newProtectedReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: newProtectedReverseCookie]).dps
+        newProtectedReverseCookieStat.size() > 0
         newProtectedReverseCookieStat.values().each { assert it == 0 }
 
         and: "Cleanup: revert system to original state"
@@ -259,6 +264,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
         def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
         [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
+            assert stats.size() > 0
             stats.values().each { assert it != 0 }
         }
 
@@ -372,6 +378,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
         def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
         [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
+            assert stats.size() > 0
             stats.values().each { assert it != 0 }
         }
 
@@ -424,6 +431,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
         def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
         [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
+            assert stats.size() > 0
             stats.values().each { assert it != 0 }
         }
 
@@ -466,12 +474,12 @@ class FlowStatSpec extends HealthCheckSpecification {
         def waitInterval = 5
         Wrappers.wait(statsRouterInterval, waitInterval) {
             // https://github.com/telstra/open-kilda/issues/4246
-//            otsdb.query(startTime, metric, tags + [cookie: flowInfo.forwardPath.cookie.value]).dps.each {
-//                assert it.value != 0
-//            }
-            otsdb.query(startTime, metric, tags + [cookie: flowInfo.reversePath.cookie.value]).dps.each {
-                assert it.value != 0
-            }
+//            def forwardStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.forwardPath.cookie.value]).dps
+//            assert forwardStats.size() > 0
+//            assert forwardStats.values().each { it != 0 }
+            def reverseStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.reversePath.cookie.value]).dps
+            assert reverseStats.size() > 0
+            assert reverseStats.values().each { it != 0 }
         }
 
         cleanup:
