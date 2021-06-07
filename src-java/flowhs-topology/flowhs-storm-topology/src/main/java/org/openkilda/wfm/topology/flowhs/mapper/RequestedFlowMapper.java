@@ -31,6 +31,8 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
+import java.util.Optional;
+
 @Mapper(imports = {FlowEndpoint.class})
 public abstract class RequestedFlowMapper {
 
@@ -123,12 +125,28 @@ public abstract class RequestedFlowMapper {
 
     public abstract FlowEncapsulationType map(org.openkilda.messaging.payload.flow.FlowEncapsulationType source);
 
+    /**
+     * Convert {@link RequestedFlow} to source {@link FlowEndpoint}.
+     */
     public FlowEndpoint mapSource(RequestedFlow flow) {
-        return new FlowEndpoint(flow.getSrcSwitch(), flow.getSrcPort(), flow.getSrcVlan(), flow.getSrcInnerVlan());
+        org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices detectConnectedDevices
+                = Optional.ofNullable(flow.getDetectConnectedDevices())
+                .orElse(new org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices());
+        return new FlowEndpoint(flow.getSrcSwitch(), flow.getSrcPort(), flow.getSrcVlan(), flow.getSrcInnerVlan(),
+                detectConnectedDevices.isSrcLldp() || detectConnectedDevices.isSrcSwitchLldp(),
+                detectConnectedDevices.isSrcArp() || detectConnectedDevices.isSrcSwitchArp());
     }
 
+    /**
+     * Convert {@link RequestedFlow} to destination {@link FlowEndpoint}.
+     */
     public FlowEndpoint mapDest(RequestedFlow flow) {
-        return new FlowEndpoint(flow.getDestSwitch(), flow.getDestPort(), flow.getDestVlan(), flow.getDestInnerVlan());
+        org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices detectConnectedDevices
+                = Optional.ofNullable(flow.getDetectConnectedDevices())
+                .orElse(new org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices());
+        return new FlowEndpoint(flow.getDestSwitch(), flow.getDestPort(), flow.getDestVlan(), flow.getDestInnerVlan(),
+                detectConnectedDevices.isDstLldp() || detectConnectedDevices.isDstSwitchLldp(),
+                detectConnectedDevices.isDstArp() || detectConnectedDevices.isDstSwitchArp());
     }
 
     /**
