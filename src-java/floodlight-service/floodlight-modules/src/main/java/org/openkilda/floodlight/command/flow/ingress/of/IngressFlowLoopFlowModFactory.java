@@ -39,7 +39,7 @@ abstract class IngressFlowLoopFlowModFactory extends IngressInstallFlowModFactor
     }
 
     @Override
-    protected List<OFAction> makeTransformActions(List<Integer> vlanStack) {
+    protected List<OFAction> makeTransformActions(List<Integer> vlanStack, boolean groupIsPresent) {
         throw new UnsupportedOperationException("Transform actions aren't supported by flow loop factory.");
     }
 

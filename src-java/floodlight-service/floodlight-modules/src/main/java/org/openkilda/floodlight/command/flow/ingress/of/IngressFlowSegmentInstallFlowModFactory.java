@@ -33,7 +33,6 @@ import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowPushVxlanTunnel;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
@@ -54,15 +53,15 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
     }
 
     @Override
-    protected List<OFAction> makeTransformActions(List<Integer> vlanStack) {
+    protected List<OFAction> makeTransformActions(List<Integer> vlanStack, boolean groupIsPresent) {
         List<OFAction> actions = new ArrayList<>();
         FlowTransitEncapsulation encapsulation = command.getEncapsulation();
         switch (encapsulation.getType()) {
             case TRANSIT_VLAN:
-                actions.addAll(makeVlanEncapsulationTransformActions(vlanStack));
+                actions.addAll(makeVlanEncapsulationTransformActions(vlanStack, groupIsPresent));
                 break;
             case VXLAN:
-                actions.addAll(makeVxLanEncapsulationTransformActions(vlanStack));
+                actions.addAll(makeVxLanEncapsulationTransformActions(vlanStack, groupIsPresent));
                 break;
             default:
                 throw new NotImplementedEncapsulationException(
@@ -90,7 +89,7 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
                         actions.add(buildServer42CopyFirstTimestamp(of));
                     }
                 }
-                actions.addAll(makeVlanEncapsulationTransformActions(vlanStack));
+                actions.addAll(makeVlanEncapsulationTransformActions(vlanStack, false));
                 break;
             case VXLAN:
                 if (vlanStack.isEmpty()) {
@@ -112,34 +111,28 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
         return actions;
     }
 
-    private List<OFAction> makeVlanEncapsulationTransformActions(List<Integer> vlanStack) {
-        return OfAdapter.INSTANCE.makeVlanReplaceActions(
-                of, vlanStack, FlowEndpoint.makeVlanStack(command.getEncapsulation().getId()));
+    private List<OFAction> makeVlanEncapsulationTransformActions(List<Integer> vlanStack, boolean groupIsPresent) {
+        List<Integer> desiredVlanStack = groupIsPresent ? Collections.emptyList()
+                : FlowEndpoint.makeVlanStack(command.getEncapsulation().getId());
+        return OfAdapter.INSTANCE.makeVlanReplaceActions(of, vlanStack, desiredVlanStack);
     }
 
-    private List<OFAction> makeVxLanEncapsulationTransformActions(List<Integer> vlanStack) {
+    private List<OFAction> makeVxLanEncapsulationTransformActions(List<Integer> vlanStack, boolean groupIsPresent) {
         // Remove any remaining vlan's, because egress switch will reject vlan manipulation on flow that have no
         // vlan header matches
         List<OFAction> actions = new ArrayList<>(
                 OfAdapter.INSTANCE.makeVlanReplaceActions(of, vlanStack, Collections.emptyList()));
 
-        actions.add(pushVxlanAction(STUB_VXLAN_UDP_SRC));
+        if (!groupIsPresent) {
+            actions.add(pushVxlanAction(STUB_VXLAN_UDP_SRC));
+        }
 
         return actions;
     }
 
     private OFActionNoviflowPushVxlanTunnel pushVxlanAction(int udpSrcPort) {
-        return of.actions().buildNoviflowPushVxlanTunnel()
-                .setVni(command.getEncapsulation().getId())
-                .setEthSrc(MacAddress.of(sw.getId()))
-                .setEthDst(MacAddress.of(command.getEgressSwitchId().toLong()))
-                // nobody can explain why we use this constant
-                .setUdpSrc(udpSrcPort)
-                .setIpv4Src(IPv4Address.of("127.0.0.1"))
-                .setIpv4Dst(IPv4Address.of("127.0.0.2"))
-                // Set to 0x01 indicating tunnel data is present (i.e. we are passing l2 and l3 headers in this action)
-                .setFlags((short) 0x01)
-                .build();
+        return OfAdapter.INSTANCE.makePushVxlanAction(of, command.getEncapsulation().getId(),
+                MacAddress.of(sw.getId()), MacAddress.of(command.getEgressSwitchId().toLong()), udpSrcPort);
     }
 
     @Override

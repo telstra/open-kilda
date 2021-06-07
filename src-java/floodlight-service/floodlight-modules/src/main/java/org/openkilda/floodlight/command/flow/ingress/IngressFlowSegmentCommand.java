@@ -33,7 +33,6 @@ import java.util.UUID;
 public abstract class IngressFlowSegmentCommand extends IngressFlowSegmentBase {
     // payload
     protected final int islPort;
-    protected final FlowTransitEncapsulation encapsulation;
 
     @SuppressWarnings("squid:S00107")
     IngressFlowSegmentCommand(
@@ -41,9 +40,8 @@ public abstract class IngressFlowSegmentCommand extends IngressFlowSegmentBase {
             FlowEndpoint endpoint, MeterConfig meterConfig, SwitchId egressSwitchId, int islPort,
             @NonNull FlowTransitEncapsulation encapsulation, RulesContext rulesContext, MirrorConfig mirrorConfig) {
         super(messageContext, endpoint.getSwitchId(), commandId, metadata, endpoint, meterConfig,
-                egressSwitchId, rulesContext, mirrorConfig);
+                egressSwitchId, encapsulation, rulesContext, mirrorConfig);
         this.islPort = islPort;
-        this.encapsulation = encapsulation;
     }
 
     /**

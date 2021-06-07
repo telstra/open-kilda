@@ -17,7 +17,7 @@ package org.openkilda.northbound.converter;
 
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.switches.GroupInfoEntry;
-import org.openkilda.messaging.info.switches.GroupInfoEntry.PortVlanEntry;
+import org.openkilda.messaging.info.switches.GroupInfoEntry.BucketEntry;
 import org.openkilda.messaging.info.switches.GroupSyncEntry;
 import org.openkilda.messaging.info.switches.GroupsValidationEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
@@ -37,7 +37,7 @@ import org.openkilda.model.MacAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.northbound.dto.v1.switches.GroupInfoDto;
-import org.openkilda.northbound.dto.v1.switches.GroupInfoDto.PortVlanDto;
+import org.openkilda.northbound.dto.v1.switches.GroupInfoDto.BucketDto;
 import org.openkilda.northbound.dto.v1.switches.GroupsSyncDto;
 import org.openkilda.northbound.dto.v1.switches.GroupsValidationDto;
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto;
@@ -157,7 +157,7 @@ public abstract class SwitchMapper {
 
     public abstract GroupInfoDto toGroupInfoDto(GroupInfoEntry data);
 
-    public abstract PortVlanDto toPortVlanDto(PortVlanEntry data);
+    public abstract BucketDto toBucketDto(BucketEntry data);
 
     public abstract MeterMisconfiguredInfoDto toMeterMisconfiguredInfoDto(MeterMisconfiguredInfoEntry data);
 

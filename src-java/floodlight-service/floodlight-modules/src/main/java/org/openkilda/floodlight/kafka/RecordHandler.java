@@ -81,6 +81,7 @@ import org.openkilda.floodlight.kafka.dispatcher.PingRequestDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.RemoveBfdSessionDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.SetupBfdSessionDispatcher;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.floodlight.model.FlowTransitData;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
@@ -1267,9 +1268,21 @@ class RecordHandler implements Runnable {
     private void doInstallGroupRequest(CommandMessage message) {
         SwitchId switchId = ((InstallGroupRequest) message.getData()).getSwitchId();
         MirrorConfig mirrorConfig = ((InstallGroupRequest) message.getData()).getMirrorConfig();
+        FlowTransitEncapsulation encapsulation = ((InstallGroupRequest) message.getData()).getEncapsulation();
+        SwitchId egressSwitchId = ((InstallGroupRequest) message.getData()).getEgressSwitchId();
+
+        FlowTransitData flowTransitData = null;
+        if (encapsulation != null) {
+            flowTransitData = FlowTransitData.builder()
+                    .ingressSwitchId(switchId)
+                    .egressSwitchId(egressSwitchId)
+                    .encapsulation(encapsulation)
+                    .build();
+        }
 
         logger.debug("Install group '{}' for switch '{}'", mirrorConfig.getGroupId().intValue(), switchId);
-        handleSpeakerCommand(new GroupInstallCommand(new MessageContext(message), switchId, mirrorConfig));
+        handleSpeakerCommand(new GroupInstallCommand(
+                new MessageContext(message), switchId, mirrorConfig, flowTransitData));
 
         InstallGroupResponse response = new InstallGroupResponse(switchId, mirrorConfig.getGroupId().intValue());
 
@@ -1281,9 +1294,21 @@ class RecordHandler implements Runnable {
     private void doModifyGroupRequest(CommandMessage message) {
         SwitchId switchId = ((ModifyGroupRequest) message.getData()).getSwitchId();
         MirrorConfig mirrorConfig = ((ModifyGroupRequest) message.getData()).getMirrorConfig();
+        FlowTransitEncapsulation encapsulation = ((ModifyGroupRequest) message.getData()).getEncapsulation();
+        SwitchId egressSwitchId = ((ModifyGroupRequest) message.getData()).getEgressSwitchId();
+
+        FlowTransitData flowTransitData = null;
+        if (encapsulation != null) {
+            flowTransitData = FlowTransitData.builder()
+                    .ingressSwitchId(switchId)
+                    .egressSwitchId(egressSwitchId)
+                    .encapsulation(encapsulation)
+                    .build();
+        }
 
         logger.debug("Modify group '{}' for switch '{}'", mirrorConfig.getGroupId().intValue(), switchId);
-        handleSpeakerCommand(new GroupModifyCommand(new MessageContext(message), switchId, mirrorConfig));
+        handleSpeakerCommand(new GroupModifyCommand(
+                new MessageContext(message), switchId, mirrorConfig, flowTransitData));
 
         ModifyGroupResponse response = new ModifyGroupResponse(switchId, mirrorConfig.getGroupId().intValue());
 

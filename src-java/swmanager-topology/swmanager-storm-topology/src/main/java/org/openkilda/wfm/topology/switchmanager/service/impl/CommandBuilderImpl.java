@@ -36,6 +36,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.MirrorConfig.MirrorConfigData;
@@ -59,6 +60,7 @@ import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.service.FlowCommandFactory;
+import org.openkilda.wfm.topology.switchmanager.model.GroupInstallContext;
 import org.openkilda.wfm.topology.switchmanager.service.CommandBuilder;
 
 import com.fasterxml.uuid.Generators;
@@ -357,8 +359,8 @@ public class CommandBuilderImpl implements CommandBuilder {
     }
 
     @Override
-    public List<MirrorConfig> buildMirrorConfigs(SwitchId switchId, List<Integer> groupIds) {
-        List<MirrorConfig> mirrorConfigs = new ArrayList<>();
+    public List<GroupInstallContext> buildGroupInstallContexts(SwitchId switchId, List<Integer> groupIds) {
+        List<GroupInstallContext> groupInstallContexts = new ArrayList<>();
 
         Map<PathId, MirrorGroup> mirrorGroups = new HashMap<>();
         groupIds.stream()
@@ -380,7 +382,7 @@ public class CommandBuilderImpl implements CommandBuilder {
                         if (segment.getDestSwitchId().equals(flowPath.getDestSwitchId())) {
                             MirrorConfig mirrorConfig
                                     = makeMirrorConfig(flowPath, flow.getDestSwitchId(), flow.getDestPort());
-                            mirrorConfigs.add(mirrorConfig);
+                            groupInstallContexts.add(GroupInstallContext.builder().mirrorConfig(mirrorConfig).build());
 
                             log.info("Group {} is to be (re)installed on switch {}",
                                     mirrorConfig.getGroupId(), switchId);
@@ -396,7 +398,7 @@ public class CommandBuilderImpl implements CommandBuilder {
                             SwitchId swId = flowPath.isForward() ? flow.getDestSwitchId() : flow.getSrcSwitchId();
                             int port = flowPath.isForward() ? flow.getDestPort() : flow.getSrcPort();
                             MirrorConfig mirrorConfig = makeMirrorConfig(flowPath, swId, port);
-                            mirrorConfigs.add(mirrorConfig);
+                            groupInstallContexts.add(GroupInstallContext.builder().mirrorConfig(mirrorConfig).build());
                             log.info("Group {} is to be (re)installed on switch {}",
                                     mirrorConfig.getGroupId(), switchId);
                         } else if (flowPath.getSrcSwitchId().equals(switchId)) {
@@ -406,14 +408,22 @@ public class CommandBuilderImpl implements CommandBuilder {
                                 PathSegment foundIngressSegment = flowPath.getSegments().get(0);
                                 MirrorConfig mirrorConfig = makeMirrorConfig(flowPath,
                                         foundIngressSegment.getSrcSwitchId(), foundIngressSegment.getSrcPort());
-                                mirrorConfigs.add(mirrorConfig);
+                                EncapsulationResources encapsulation = getEncapsulationResources(flowPath, flow);
+                                groupInstallContexts.add(GroupInstallContext.builder()
+                                        .mirrorConfig(mirrorConfig)
+                                        .encapsulation(
+                                                new FlowTransitEncapsulation(encapsulation.getTransitEncapsulationId(),
+                                                        encapsulation.getEncapsulationType()))
+                                        .egressSwitchId(flowPath.getDestSwitchId())
+                                        .build());
                                 log.info("Group {} is to be (re)installed on switch {}",
                                         mirrorConfig.getGroupId(), switchId);
                             }
                         }
                     }
                 });
-        return mirrorConfigs;
+
+        return groupInstallContexts;
     }
 
     @VisibleForTesting

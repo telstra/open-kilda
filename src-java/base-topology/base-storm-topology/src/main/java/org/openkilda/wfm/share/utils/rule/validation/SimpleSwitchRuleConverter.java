@@ -104,6 +104,8 @@ public class SimpleSwitchRuleConverter {
             rule.setInVlan(endpoint.getOuterVlanId());
         }
 
+        int transitVlan = 0;
+        int vni = 0;
         if (flow.isOneSwitchFlow()) {
             FlowEndpoint egressEndpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
             rule.setOutPort(outPort);
@@ -120,10 +122,11 @@ public class SimpleSwitchRuleConverter {
             outPort = ingressSegment.getSrcPort();
             rule.setOutPort(outPort);
             if (flow.getEncapsulationType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
-                rule.setOutVlan(calcVlanSetSequence(
-                        ingress, flowPath, Collections.singletonList(encapsulationId.getEncapsulationId())));
+                transitVlan = encapsulationId.getEncapsulationId();
+                rule.setOutVlan(calcVlanSetSequence(ingress, flowPath, Collections.singletonList(transitVlan)));
             } else if (flow.getEncapsulationType().equals(FlowEncapsulationType.VXLAN)) {
-                rule.setTunnelId(encapsulationId.getEncapsulationId());
+                vni = encapsulationId.getEncapsulationId();
+                rule.setTunnelId(vni);
             }
         }
         List<SimpleSwitchRule> rules = Lists.newArrayList(rule);
@@ -137,12 +140,17 @@ public class SimpleSwitchRuleConverter {
                 .findFirst();
         if (foundFlowMirrorPoints.isPresent()) {
             FlowMirrorPoints flowMirrorPoints = foundFlowMirrorPoints.get();
-            rules.add(rule.toBuilder()
+            SimpleSwitchRule mirrorRule = rule.toBuilder()
                     .outPort(0)
+                    .tunnelId(0)
                     .cookie(flowPath.getCookie().toBuilder().mirror(true).build().getValue())
                     .groupId(flowMirrorPoints.getMirrorGroupId().intValue())
-                    .groupBuckets(mapGroupBuckets(flowMirrorPoints.getMirrorPaths(), outPort))
-                    .build());
+                    .groupBuckets(mapGroupBuckets(flowMirrorPoints.getMirrorPaths(), outPort, transitVlan, vni))
+                    .build();
+            if (!flow.isOneSwitchFlow()) {
+                mirrorRule.setOutVlan(Collections.emptyList());
+            }
+            rules.add(mirrorRule);
         }
 
         return rules;
@@ -243,7 +251,7 @@ public class SimpleSwitchRuleConverter {
                     .outPort(0)
                     .cookie(flowPath.getCookie().toBuilder().mirror(true).build().getValue())
                     .groupId(flowMirrorPoints.getMirrorGroupId().intValue())
-                    .groupBuckets(mapGroupBuckets(flowMirrorPoints.getMirrorPaths(), endpoint.getPortNumber()))
+                    .groupBuckets(mapGroupBuckets(flowMirrorPoints.getMirrorPaths(), endpoint.getPortNumber(), 0, 0))
                     .build());
         }
 
@@ -369,17 +377,24 @@ public class SimpleSwitchRuleConverter {
                     bucketVlan = NumberUtils.toInt(setFieldAction.getFieldValue());
                 }
             }
-            simpleGroupBuckets.add(new SimpleGroupBucket(bucketPort, bucketVlan));
+
+            int bucketVni = 0;
+            if (actions.getPushVxlan() != null) {
+                bucketVni = NumberUtils.toInt(actions.getPushVxlan());
+            }
+            simpleGroupBuckets.add(new SimpleGroupBucket(bucketPort, bucketVlan, bucketVni));
         }
         simpleGroupBuckets.sort(this::compareSimpleGroupBucket);
         return simpleGroupBuckets;
     }
 
-    private List<SimpleGroupBucket> mapGroupBuckets(Collection<FlowMirrorPath> flowMirrorPaths, int mainMirrorPort) {
-        List<SimpleGroupBucket> buckets = Lists.newArrayList(new SimpleGroupBucket(mainMirrorPort, 0));
+    private List<SimpleGroupBucket> mapGroupBuckets(Collection<FlowMirrorPath> flowMirrorPaths, int mainMirrorPort,
+                                                    int mainMirrorVlan, int mainMirrorVni) {
+        List<SimpleGroupBucket> buckets = Lists.newArrayList(
+                new SimpleGroupBucket(mainMirrorPort, mainMirrorVlan, mainMirrorVni));
         flowMirrorPaths.forEach(flowMirrorPath ->
                 buckets.add(new SimpleGroupBucket(flowMirrorPath.getEgressPort(),
-                        flowMirrorPath.getEgressOuterVlan())));
+                        flowMirrorPath.getEgressOuterVlan(), 0)));
         buckets.sort(this::compareSimpleGroupBucket);
         return buckets;
     }

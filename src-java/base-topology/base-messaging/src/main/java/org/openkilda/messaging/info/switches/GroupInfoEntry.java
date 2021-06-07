@@ -29,16 +29,17 @@ import java.util.List;
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class GroupInfoEntry implements Serializable {
     private Integer groupId;
-    private List<PortVlanEntry> groupBuckets;
+    private List<BucketEntry> groupBuckets;
 
-    private List<PortVlanEntry> missingGroupBuckets;
-    private List<PortVlanEntry> excessGroupBuckets;
+    private List<BucketEntry> missingGroupBuckets;
+    private List<BucketEntry> excessGroupBuckets;
 
     @Data
     @AllArgsConstructor
     @JsonNaming(value = SnakeCaseStrategy.class)
-    public static class PortVlanEntry implements Serializable {
+    public static class BucketEntry implements Serializable {
         private Integer port;
         private Integer vlan;
+        private Integer vni;
     }
 }

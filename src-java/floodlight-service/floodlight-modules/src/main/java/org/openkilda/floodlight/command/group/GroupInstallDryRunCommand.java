@@ -31,7 +31,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public class GroupInstallDryRunCommand extends GroupInstallCommand {
     public GroupInstallDryRunCommand(MessageContext messageContext, SwitchId switchId, MirrorConfig mirrorConfig) {
-        super(messageContext, switchId, mirrorConfig);
+        super(messageContext, switchId, mirrorConfig, null);
     }
 
     @Override

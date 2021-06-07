@@ -22,6 +22,7 @@ import org.openkilda.floodlight.converter.OfFlowStatsMapper;
 import org.openkilda.floodlight.error.SwitchIncorrectMirrorGroupException;
 import org.openkilda.floodlight.error.SwitchMissingGroupException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
+import org.openkilda.floodlight.model.FlowTransitData;
 import org.openkilda.floodlight.utils.CompletableFutureAdapter;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.info.rule.GroupBucket;
@@ -31,6 +32,8 @@ import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.MirrorConfig.MirrorConfigData;
 import org.openkilda.model.SwitchId;
 
+import org.projectfloodlight.openflow.protocol.OFBucket;
+import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsRequest;
@@ -43,9 +46,9 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 public class GroupVerifyCommand extends AbstractGroupInstall<GroupVerifyReport> {
-    public GroupVerifyCommand(
-            MessageContext messageContext, SwitchId switchId, MirrorConfig mirrorConfig) {
-        super(messageContext, switchId, mirrorConfig);
+    public GroupVerifyCommand(MessageContext messageContext, SwitchId switchId, MirrorConfig mirrorConfig,
+                              FlowTransitData flowTransitData) {
+        super(messageContext, switchId, mirrorConfig, flowTransitData);
     }
 
     @Override
@@ -95,6 +98,17 @@ public class GroupVerifyCommand extends AbstractGroupInstall<GroupVerifyReport> 
         return mirrorConfig;
     }
 
+    private void validateGroupConfig(OFGroupDescStatsEntry group) {
+        DatapathId datapathId = getSw().getId();
+        OFFactory ofFactory = getSw().getOFFactory();
+        List<OFBucket> expected = buildGroupOfBuckets(ofFactory);
+        List<OFBucket> actual = group.getBuckets();
+        if (!expected.equals(actual)) {
+            throw maskCallbackException(new SwitchIncorrectMirrorGroupException(
+                    datapathId, mirrorConfig, fromStatsEntry(group)));
+        }
+    }
+
     private MirrorConfig fromStatsEntry(OFGroupDescStatsEntry entry) {
         GroupEntry groupEntry = OfFlowStatsMapper.INSTANCE.toFlowGroupEntry(entry);
         GroupId groupId = new GroupId(groupEntry.getGroupId());
@@ -118,15 +132,5 @@ public class GroupVerifyCommand extends AbstractGroupInstall<GroupVerifyReport> 
 
         return MirrorConfig.builder().groupId(groupId).flowPort(flowPort)
                 .mirrorConfigDataSet(mirrorConfigDataSet).build();
-    }
-
-
-    private void validateGroupConfig(OFGroupDescStatsEntry group) {
-        DatapathId datapathId = getSw().getId();
-        MirrorConfig actual = fromStatsEntry(group);
-        if (!mirrorConfig.equals(actual)) {
-            throw maskCallbackException(new SwitchIncorrectMirrorGroupException(
-                    datapathId, mirrorConfig, actual));
-        }
     }
 }

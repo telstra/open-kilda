@@ -30,10 +30,12 @@ import org.openkilda.floodlight.command.meter.MeterVerifyReport;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.floodlight.model.FlowTransitData;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.floodlight.service.session.Session;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
@@ -66,6 +68,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     protected final MeterConfig meterConfig;
     protected final SwitchId egressSwitchId;
     protected final RulesContext rulesContext;
+    protected final FlowTransitEncapsulation encapsulation;
 
     // operation data
     @Getter(AccessLevel.PROTECTED)
@@ -75,11 +78,12 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     IngressFlowSegmentBase(
             MessageContext messageContext, SwitchId switchId, UUID commandId, FlowSegmentMetadata metadata,
             @NonNull FlowEndpoint endpoint, MeterConfig meterConfig, @NonNull SwitchId egressSwitchId,
-            RulesContext rulesContext, MirrorConfig mirrorConfig) {
+            FlowTransitEncapsulation encapsulation, RulesContext rulesContext, MirrorConfig mirrorConfig) {
         super(messageContext, switchId, commandId, metadata, mirrorConfig);
         this.endpoint = endpoint;
         this.meterConfig = meterConfig;
         this.egressSwitchId = egressSwitchId;
+        this.encapsulation = encapsulation;
         this.rulesContext = rulesContext;
     }
 
@@ -104,9 +108,9 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
         CompletableFuture<GroupId> groupIdFuture = CompletableFuture.completedFuture(null);
         if (mirrorConfig != null) {
             if (mirrorConfig.isAddNewGroup()) {
-                groupIdFuture = planGroupInstall(commandProcessor);
+                groupIdFuture = planGroupInstall(commandProcessor, getFlowTransitData());
             } else {
-                groupIdFuture = planGroupModify(commandProcessor);
+                groupIdFuture = planGroupModify(commandProcessor, getFlowTransitData());
             }
         }
 
@@ -151,7 +155,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
 
         CompletableFuture<GroupId> groupIdFuture = CompletableFuture.completedFuture(null);
         if (mirrorConfig != null) {
-            groupIdFuture = planGroupVerify(commandProcessor)
+            groupIdFuture = planGroupVerify(commandProcessor, getFlowTransitData())
                     .thenApply(this::handleGroupReport);
         }
 
@@ -442,5 +446,15 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
                 .collect(Collectors.joining(", "));
         throw new UnsupportedSwitchOperationException(
                 getSw().getId(), String.format("Switch %s do not support %s", switchId, requiredAsString));
+    }
+
+    private FlowTransitData getFlowTransitData() {
+        return Optional.ofNullable(encapsulation)
+                .map(transitEncapsulation -> FlowTransitData.builder()
+                        .encapsulation(transitEncapsulation)
+                        .ingressSwitchId(switchId)
+                        .egressSwitchId(egressSwitchId)
+                        .build())
+                .orElse(null);
     }
 }

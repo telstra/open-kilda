@@ -23,6 +23,7 @@ import org.openkilda.floodlight.error.SwitchGroupConflictException;
 import org.openkilda.floodlight.error.SwitchIncorrectMirrorGroupException;
 import org.openkilda.floodlight.error.SwitchMissingGroupException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
+import org.openkilda.floodlight.model.FlowTransitData;
 import org.openkilda.floodlight.service.session.Session;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.GroupId;
@@ -44,8 +45,9 @@ public class GroupInstallCommand extends AbstractGroupInstall<GroupInstallReport
 
     private SpeakerCommandProcessor commandProcessor;
 
-    public GroupInstallCommand(MessageContext messageContext, SwitchId switchId, MirrorConfig mirrorConfig) {
-        super(messageContext, switchId, mirrorConfig);
+    public GroupInstallCommand(MessageContext messageContext, SwitchId switchId, MirrorConfig mirrorConfig,
+                               FlowTransitData flowTransitData) {
+        super(messageContext, switchId, mirrorConfig, flowTransitData);
     }
 
     @Override
@@ -87,7 +89,8 @@ public class GroupInstallCommand extends AbstractGroupInstall<GroupInstallReport
         }
 
         log.info("Group conflict detected sw:{} group:{}", getSw().getId(), mirrorConfig.getGroupId());
-        GroupVerifyCommand verifyCommand = new GroupVerifyCommand(messageContext, switchId, mirrorConfig);
+        GroupVerifyCommand verifyCommand = new GroupVerifyCommand(
+                messageContext, switchId, mirrorConfig, flowTransitData);
         propagateFutureResponse(
                 future, commandProcessor.chain(verifyCommand)
                         .thenAccept(this::handleGroupVerify)

@@ -18,6 +18,7 @@ package org.openkilda.floodlight.command.group;
 import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.error.InvalidGroupIdException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
+import org.openkilda.floodlight.model.FlowTransitData;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchId;
@@ -32,8 +33,9 @@ public class GroupModifyCommand extends GroupInstallCommand {
 
     private SpeakerCommandProcessor commandProcessor;
 
-    public GroupModifyCommand(MessageContext messageContext, SwitchId switchId, MirrorConfig mirrorConfig) {
-        super(messageContext, switchId, mirrorConfig);
+    public GroupModifyCommand(MessageContext messageContext, SwitchId switchId, MirrorConfig mirrorConfig,
+                              FlowTransitData flowTransitData) {
+        super(messageContext, switchId, mirrorConfig, flowTransitData);
     }
 
     @Override
