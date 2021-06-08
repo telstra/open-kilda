@@ -27,3 +27,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 005-add-flow-latency-properties.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 006-add-flow-latency-monitoring-reactions-toggle.yaml

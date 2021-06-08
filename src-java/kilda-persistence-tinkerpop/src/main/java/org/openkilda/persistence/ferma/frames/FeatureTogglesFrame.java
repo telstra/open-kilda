@@ -94,4 +94,12 @@ public abstract class FeatureTogglesFrame extends KildaBaseVertexFrame implement
     @Override
     @Property("server42_flow_rtt")
     public abstract void setServer42FlowRtt(Boolean server42FlowRtt);
+
+    @Override
+    @Property("flow_latency_monitoring_reactions")
+    public abstract Boolean getFlowLatencyMonitoringReactions();
+
+    @Override
+    @Property("flow_latency_monitoring_reactions")
+    public abstract void setFlowLatencyMonitoringReactions(Boolean flowLatencyMonitoringReactions);
 }

@@ -28,6 +28,7 @@ import static org.openkilda.wfm.topology.flowmonitoring.fsm.FlowLatencyMonitorin
 import org.openkilda.messaging.info.flow.UpdateFlowInfo;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.PathComputationStrategy;
@@ -35,6 +36,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.dummy.FlowDefaults;
 import org.openkilda.persistence.dummy.PersistenceDummyEntityFactory;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.server42.messaging.FlowDirection;
 import org.openkilda.stubs.ManualClock;
@@ -65,6 +67,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
 
     private PersistenceDummyEntityFactory dummyFactory;
     private FlowRepository flowRepository;
+    private FeatureTogglesRepository featureTogglesRepository;
     private ActionService service;
     private Flow flow;
 
@@ -79,6 +82,8 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
         dummyFactory = new PersistenceDummyEntityFactory(persistenceManager, flowDefaults);
 
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
+        featureTogglesRepository.add(FeatureToggles.builder().flowLatencyMonitoringReactions(true).build());
 
         createTestSwitch(SRC_SWITCH);
         createTestSwitch(DST_SWITCH);
@@ -140,6 +145,39 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
         assertEquals(latency.minus(NANOSECOND).getNano(), actual.getReverseLatency());
 
         verify(carrier, times(2)).sendFlowRerouteRequest(flow.getFlowId());
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void shouldFailTier1AndDoNotSendRerouteRequestWhenToggleIsFalse() {
+        transactionManager.doInTransaction(() -> {
+            FeatureToggles featureToggles = featureTogglesRepository.find()
+                    .orElseThrow(() -> new IllegalStateException("Feature toggle not found"));
+            featureToggles.setFlowLatencyMonitoringReactions(false);
+        });
+
+        service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.FORWARD, NANOSECOND);
+        service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.REVERSE, NANOSECOND);
+
+        Duration latency = Duration.ofNanos((long) (flow.getMaxLatency() * (1 + THRESHOLD)) + 5);
+
+        for (int i = 0; i < 10; i++) {
+            clock.adjust(Duration.ofSeconds(10));
+            service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.FORWARD, latency);
+            service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.REVERSE, latency.minus(NANOSECOND));
+            service.processTick();
+            if (i == 0) {
+                assertTrue(service.fsms.values().stream().allMatch(fsm -> UNSTABLE.equals(fsm.getCurrentState())));
+            }
+        }
+
+        assertEquals(2, service.fsms.values().size());
+        assertTrue(service.fsms.values().stream().allMatch(fsm -> TIER_1_FAILED.equals(fsm.getCurrentState())));
+        Flow actual = flowRepository.findById(flow.getFlowId())
+                .orElseThrow(() -> new IllegalStateException("Flow not found"));
+        assertEquals(latency.getNano(), actual.getForwardLatency());
+        assertEquals(latency.minus(NANOSECOND).getNano(), actual.getReverseLatency());
+
         verifyNoMoreInteractions(carrier);
     }
 

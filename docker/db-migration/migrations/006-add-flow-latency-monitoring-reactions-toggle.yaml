@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: rozdy
+      changes:
+        - tagDatabase:
+            tag: 006-add-flow-latency-monitoring-reactions-toggle
+
+  - changeSet:
+      id: add_flow_latency_monitoring_reactions_toggle
+      author: rozdy
+      changes:
+        - sql: "CREATE PROPERTY config.flow_latency_monitoring_reactions IF NOT EXISTS BOOLEAN"
+        - sql: "UPDATE config SET flow_latency_monitoring_reactions = false"
+      rollback:
+        - sql: "UPDATE config REMOVE flow_latency_monitoring_reactions"
+        - sql: "DROP PROPERTY config.flow_latency_monitoring_reactions IF EXISTS"
