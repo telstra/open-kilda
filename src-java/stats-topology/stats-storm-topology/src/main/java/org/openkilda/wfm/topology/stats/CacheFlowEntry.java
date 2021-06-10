@@ -31,6 +31,7 @@ public class CacheFlowEntry implements Serializable {
     private String flowId;
     private Long cookie;
     private MeasurePoint measurePoint;
+    private MeasurePointKey measurePointKey;
 
     public CacheFlowEntry replaceCookie(Long cookie) {
         return toBuilder().cookie(cookie).build();
