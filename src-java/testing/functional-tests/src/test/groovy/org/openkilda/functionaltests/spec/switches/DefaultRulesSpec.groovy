@@ -380,7 +380,8 @@ switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to delete/install the server42 Flow RTT turning rule on a switch"() {
         setup: "Select a switch which support server42 turning rule"
-        def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST) } ?:
+        def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST)
+                ||  it.features.contains(SwitchFeature.KILDA_OVS_SWAP_FIELD)} ?:
                 assumeTrue(false, "No suiting switch found")
 
         and: "Server42 is enabled in feature toggle"
