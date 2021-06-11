@@ -5,6 +5,7 @@
 ### Features:
 -  [#4292](https://github.com/telstra/open-kilda/pull/4292) Added Kilda OVS copy and swap fields into FeatureDetecter service [**floodlight**][**storm-topologies**]
 -  [#4300](https://github.com/telstra/open-kilda/pull/4300) Use Kilda OVS [**tests**]
+-  [#4306](https://github.com/telstra/open-kilda/pull/4306) Set UDP src for VXLAN Server42 packets [**floodlight**]
 
 ### Bug Fixes:
 -  [#4299](https://github.com/telstra/open-kilda/pull/4299) Fixed typo in missing meters log [**storm-topologies**]
