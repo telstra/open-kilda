@@ -1,4 +1,4 @@
 python-logstash
-flask
+flask<2.0.0 # flask 2.0.0 is incompatible with click==7.0 from traffexam/requirements.txt
 docker<=4.4.4
 requests
