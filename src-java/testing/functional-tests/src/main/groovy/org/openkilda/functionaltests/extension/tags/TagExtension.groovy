@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.extension.tags
 
-import static org.openkilda.functionaltests.extension.ExtensionHelper.isFeatureSpecial
-
 import groovy.util.logging.Slf4j
 import org.opentest4j.TestAbortedException
 import org.spockframework.runtime.extension.AbstractGlobalExtension
@@ -60,7 +58,7 @@ class TagExtension extends AbstractGlobalExtension {
         if (!tagsExpression) {
             return
         }
-        spec.getAllFeatures().findAll { !isFeatureSpecial(it) }.each { feature ->
+        spec.getAllFeatures().each { feature ->
             if (feature.excluded) { //do not compete if feature is already excluded somehow
                 return
             }

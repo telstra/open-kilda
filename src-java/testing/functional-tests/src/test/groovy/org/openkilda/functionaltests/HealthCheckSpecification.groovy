@@ -7,23 +7,26 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.bluegreen.Signal
 import org.openkilda.functionaltests.exception.IslNotFoundException
-import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchFeature
 import org.openkilda.testing.model.topology.TopologyDefinition.Status
 import org.openkilda.testing.tools.SoftAssertions
 
+import groovy.util.logging.Slf4j
 import org.apache.zookeeper.ZooKeeper
 
-class HealthCheckSpecification extends BaseSpecification {
+@Slf4j
+class HealthCheckSpecification extends HealthCheckBaseSpecification {
 
-    @HealthCheck
-    def "Kilda is UP and topology is clean"() {
-        expect: "Kilda's health check request is successful"
-        northbound.getHealthCheck().components["kafka"] == "operational"
+    static Throwable healthCheckError
+    static boolean healthCheckRan = false
 
-        and: "All zookeeper nodes are in expected state"
+    def healthCheck() {
+        // expect: "Kilda's health check request is successful"
+        assert northbound.getHealthCheck().components["kafka"] == "operational"
+
+        // and: "All zookeeper nodes are in expected state"
         def zk = new ZooKeeper(zkConnectString, 5000, {})
         def activeColor = getActiveNetworkColor(zk)
         def zkAssertions = new SoftAssertions()
@@ -40,7 +43,7 @@ class HealthCheckSpecification extends BaseSpecification {
         }
         zkAssertions.verify()
 
-        and: "All switches and links are active. No flows and link props are present"
+        // and: "All switches and links are active. No flows and link props are present"
         def links = null
         verifyAll {
             Wrappers.wait(WAIT_OFFSET) {
@@ -60,23 +63,24 @@ class HealthCheckSpecification extends BaseSpecification {
             northbound.allLinkProps.empty
         }
 
-        and: "Link bandwidths and speeds are equal. No excess and missing switch rules are present"
-        verifyAll {
-            links.findAll { it.availableBandwidth != it.speed }.empty
-            topology.activeSwitches.each { sw ->
-                def rules = northbound.validateSwitchRules(sw.dpId)
-                assert rules.excessRules.empty, sw
-                assert rules.missingRules.empty, sw
-            }
-
-            topology.activeSwitches.findAll {
+        // and: "Link bandwidths and speeds are equal. No excess and missing switch rules are present"
+        def speedBwRulesAssertions = new SoftAssertions()
+        speedBwRulesAssertions.checkSucceeds { assert links.findAll { it.availableBandwidth != it.speed }.empty }
+        topology.activeSwitches.each { sw ->
+            def rules = northbound.validateSwitchRules(sw.dpId)
+            speedBwRulesAssertions.checkSucceeds { assert rules.excessRules.empty, sw }
+            speedBwRulesAssertions.checkSucceeds { assert rules.missingRules.empty, sw }
+        }
+        speedBwRulesAssertions.checkSucceeds {
+            assert topology.activeSwitches.findAll {
                 !it.virtual && it.ofVersion != "OF_12" && !northbound.getAllMeters(it.dpId).meterEntries.findAll {
                     it.meterId > MAX_SYSTEM_RULE_METER_ID
                 }.isEmpty()
             }.empty
         }
+        speedBwRulesAssertions.verify()
 
-        and: "Every switch is connected to the expected region"
+        // and: "Every switch is connected to the expected region"
         def regionVerifications = new SoftAssertions()
         flHelper.fls.forEach { fl ->
             def expectedSwitchIds = topology.activeSwitches.findAll { fl.region in it.regions }*.dpId
@@ -88,7 +92,7 @@ class HealthCheckSpecification extends BaseSpecification {
         }
         regionVerifications.verify()
 
-        and: "Feature toggles are in expected state"
+        // and: "Feature toggles are in expected state"
         verifyAll(northbound.getFeatureToggles()) {
             flowsRerouteOnIslDiscoveryEnabled
             createFlowEnabled
@@ -102,7 +106,7 @@ class HealthCheckSpecification extends BaseSpecification {
             //collectGrpcStats
         }
 
-        and: "Switches configurations are in expected state"
+        // and: "Switches configurations are in expected state"
         topology.activeSwitches.each { sw ->
             verifyAll(northbound.getSwitchProperties(sw.dpId)) {
                 multiTable == useMultitable && sw.features.contains(SwitchFeature.MULTI_TABLE)
@@ -121,4 +125,10 @@ class HealthCheckSpecification extends BaseSpecification {
         assert [blue, green].count { it == START } == 1
         return blue == START ? "blue" : "green"
     }
+
+    boolean getHealthCheckRan() { healthCheckRan }
+    Throwable getHealthCheckError() { healthCheckError }
+    void setHealthCheckRan(boolean hcRan) { healthCheckRan = hcRan }
+    void setHealthCheckError(Throwable t) { healthCheckError = t }
+
 }

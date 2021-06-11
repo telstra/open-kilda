@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.extension.fixture
 
-import static org.openkilda.functionaltests.extension.ExtensionHelper.isFeatureSpecial
-
 import org.openkilda.functionaltests.extension.spring.SpringContextNotifier
 
 import groovy.util.logging.Slf4j
@@ -22,13 +20,12 @@ import org.springframework.beans.factory.config.AutowireCapableBeanFactory
 @Slf4j
 class SetupOnceExtension extends AbstractGlobalExtension {
     void visitSpec(SpecInfo specInfo) {
-        def features = specInfo.features.findAll { !isFeatureSpecial(it) }
-        if(features) {
+        if(specInfo.features) {
             def setupOnceInterceptor = new SetupOnceInterceptor()
             //if there is a 'setup' method, run 'setupOnce' before 'setup'
             specInfo.fixtureMethods.find { it.kind == MethodKind.SETUP }?.addInterceptor(setupOnceInterceptor)
             //if there is no 'setup', run 'setupOnce' right before the first feature
-            features.findAll { !isFeatureSpecial(it) }*.addInterceptor(setupOnceInterceptor)
+            specInfo.features*.addInterceptor(setupOnceInterceptor)
         }
     }
 

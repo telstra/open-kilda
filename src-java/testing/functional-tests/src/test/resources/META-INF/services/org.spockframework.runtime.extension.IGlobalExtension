@@ -5,8 +5,6 @@ org.openkilda.functionaltests.extension.env.AssumeProfileExtension
 org.openkilda.functionaltests.extension.env.HardwareEnvCleanupExtension
 org.openkilda.functionaltests.extension.env.EnvExtension
 org.openkilda.functionaltests.extension.env.VirtualEnvCleanupExtension
-org.openkilda.functionaltests.extension.healthcheck.HealthCheckExtension
-org.openkilda.functionaltests.extension.FeatureOrderExtension
 org.openkilda.functionaltests.extension.TestDataLoggingExtension
 org.openkilda.functionaltests.extension.failfast.FailFastExtension
 org.openkilda.functionaltests.extension.fixture.CleanupVerifierExtension
