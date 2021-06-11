@@ -20,6 +20,7 @@ import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionRepla
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSetDstMac;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSetOutputPort;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSetSrcMac;
+import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSetUdpSrcAction;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildInstructionApplyActions;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.prepareFlowModBuilder;
@@ -95,6 +96,7 @@ public class Server42OutputVxlanFlowGenerator implements SwitchFlowGenerator {
         if (features.contains(NOVIFLOW_COPY_FIELD)) {
             actions.add(buildCopyTimestamp(ofFactory));
         }
+        actionSetUdpSrcAction(ofFactory, TransportPort.of(SERVER_42_REVERSE_UDP_PORT));
         actions.add(actionSetOutputPort(ofFactory, OFPort.of(server42Port)));
 
         OFFlowMod flowMod = prepareFlowModBuilder(
