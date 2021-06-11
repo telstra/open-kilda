@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.96.0 (11/06/2021)
+
+### Features:
+-  [#4292](https://github.com/telstra/open-kilda/pull/4292) Added Kilda OVS copy and swap fields into FeatureDetecter service [**floodlight**][**storm-topologies**]
+-  [#4300](https://github.com/telstra/open-kilda/pull/4300) Use Kilda OVS [**tests**]
+
+### Bug Fixes:
+-  [#4299](https://github.com/telstra/open-kilda/pull/4299) Fixed typo in missing meters log [**storm-topologies**]
+-  [#4279](https://github.com/telstra/open-kilda/pull/4279) Update eth src/dst for looped VXLAN packets (Issue: [#4072](https://github.com/telstra/open-kilda/issues/4072))
+-  [#4287](https://github.com/telstra/open-kilda/pull/4287) Added/updated requirements for lab service and traff exam [**tests**]
+
+### Improvements:
+-  [#4258](https://github.com/telstra/open-kilda/pull/4258) Test/fix meter burst size [**tests**]
+-  [#4234](https://github.com/telstra/open-kilda/pull/4234) Test/flow monitoring stats [**tests**]
+-  [#4268](https://github.com/telstra/open-kilda/pull/4268) add test for #4267 [**tests**]
+-  [#4284](https://github.com/telstra/open-kilda/pull/4284) Update flow-monitoring documentation [**docs**]
+-  [#4286](https://github.com/telstra/open-kilda/pull/4286) improve FlowStatSpec [**tests**]
+
+### Other changes:
+-  [#4225](https://github.com/telstra/open-kilda/pull/4225) Unignore tests due to #2585 reason. Add comments about issue #4224 [**tests**]
+-  [#4291](https://github.com/telstra/open-kilda/pull/4291) Ignore func test according to #4290 [**tests**]
+-  [#4199](https://github.com/telstra/open-kilda/pull/4199) Add tests for #3923 [**tests**]
+-  [#4239](https://github.com/telstra/open-kilda/pull/4239) Add ability to change sw ip to lockkeeper [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.95.0...v1.96.0).
+
+### Affected Components:
+flow-hs, network, swmanager, fl
+
 ## v1.95.0 (07/06/2021)
 
 ### Features:
