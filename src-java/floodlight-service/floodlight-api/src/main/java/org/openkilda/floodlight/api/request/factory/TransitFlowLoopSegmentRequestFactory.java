@@ -17,8 +17,8 @@ package org.openkilda.floodlight.api.request.factory;
 
 import org.openkilda.floodlight.api.request.TransitFlowLoopSegmentInstallRequest;
 import org.openkilda.floodlight.api.request.TransitFlowLoopSegmentRemoveRequest;
+import org.openkilda.floodlight.api.request.TransitFlowLoopSegmentRequest;
 import org.openkilda.floodlight.api.request.TransitFlowLoopSegmentVerifyRequest;
-import org.openkilda.floodlight.api.request.TransitFlowSegmentRequest;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowTransitEncapsulation;
@@ -29,16 +29,16 @@ import lombok.Builder;
 import java.util.UUID;
 
 public class TransitFlowLoopSegmentRequestFactory extends FlowSegmentRequestFactory {
-    private final TransitFlowSegmentRequest requestBlank;
+    private final TransitFlowLoopSegmentRequest requestBlank;
 
     @Builder
     public TransitFlowLoopSegmentRequestFactory(
-            MessageContext messageContext, SwitchId switchId, FlowSegmentMetadata metadata,
+            MessageContext messageContext, SwitchId switchId, SwitchId egressSwitchId, FlowSegmentMetadata metadata,
             int port, FlowTransitEncapsulation encapsulation) {
-        this(new RequestBlank(messageContext, switchId, metadata, port, encapsulation));
+        this(new RequestBlank(messageContext, switchId, egressSwitchId, metadata, port, encapsulation));
     }
 
-    private TransitFlowLoopSegmentRequestFactory(TransitFlowSegmentRequest requestBlank) {
+    private TransitFlowLoopSegmentRequestFactory(TransitFlowLoopSegmentRequest requestBlank) {
         super(requestBlank);
         this.requestBlank = requestBlank;
     }
@@ -58,11 +58,11 @@ public class TransitFlowLoopSegmentRequestFactory extends FlowSegmentRequestFact
         return new TransitFlowLoopSegmentVerifyRequest(requestBlank, commandId);
     }
 
-    private static class RequestBlank extends TransitFlowSegmentRequest {
+    private static class RequestBlank extends TransitFlowLoopSegmentRequest {
         RequestBlank(
-                MessageContext context, SwitchId switchId, FlowSegmentMetadata metadata, int port,
-                FlowTransitEncapsulation encapsulation) {
-            super(context, switchId, dummyCommandId, metadata, port, port, encapsulation);
+                MessageContext context, SwitchId switchId, SwitchId egressSwitchId, FlowSegmentMetadata metadata,
+                int port, FlowTransitEncapsulation encapsulation) {
+            super(context, switchId, egressSwitchId, dummyCommandId, metadata, port, port, encapsulation);
         }
     }
 }

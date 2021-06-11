@@ -313,7 +313,8 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                     requests.addAll(makeIngressSegmentRequests(context, path, encapsulation, ingressSide, segment,
                             egressSide, rulesContext, mirrorContext));
                     if (ingressLoopRuleRequired(flow, ingressSide)) {
-                        requests.addAll(makeLoopRequests(context, path, encapsulation, ingressSide, segment));
+                        requests.addAll(makeLoopRequests(
+                                context, path, encapsulation, ingressSide, egressSide, segment));
                     }
                 }
             } else {
@@ -401,7 +402,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
 
     private List<FlowSegmentRequestFactory> makeLoopRequests(
             CommandContext context, FlowPath path, FlowTransitEncapsulation encapsulation,
-            FlowSideAdapter flowSide, PathSegment segment) {
+            FlowSideAdapter ingressSide, FlowSideAdapter egressSide, PathSegment segment) {
         List<FlowSegmentRequestFactory> result = new ArrayList<>(2);
         PathSegmentSide segmentSide = makePathSegmentSourceSide(segment);
 
@@ -412,7 +413,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         result.add(IngressFlowLoopSegmentRequestFactory.builder()
                 .messageContext(messageContext)
                 .metadata(makeMetadata(path.getFlow().getFlowId(), cookie, segmentSide.isMultiTable()))
-                .endpoint(flowSide.getEndpoint())
+                .endpoint(ingressSide.getEndpoint())
                 .build());
 
         FlowPathDirection reverse = cookie.getDirection() == FlowPathDirection.FORWARD ? FlowPathDirection.REVERSE
@@ -421,6 +422,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         result.add(TransitFlowLoopSegmentRequestFactory.builder()
                 .messageContext(messageContext)
                 .switchId(segment.getSrcSwitch().getSwitchId())
+                .egressSwitchId(egressSide.getEndpoint().getSwitchId())
                 .metadata(makeMetadata(path.getFlow().getFlowId(), transitCookie, segmentSide.isMultiTable()))
                 .port(segment.getSrcPort())
                 .encapsulation(encapsulation)
