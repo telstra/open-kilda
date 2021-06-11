@@ -229,6 +229,12 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     }
 
     @Override
+    public void updateBurstSizeAndRate(Switch sw, Long meterId, Long burstSize, Long rate) {
+        throw new UnsupportedOperationException(
+                "updateBurstSizeAndRate method is not available on hardware env");
+    }
+
+    @Override
     public void changeSwIp(String region, String oldIp, String newIp) {
         log.debug("Change sw ip from {} to {} for region {}", oldIp, newIp, region);
         lockKeepersByRegion.get(region).exchange("/floodlight/nat/input", HttpMethod.POST,
