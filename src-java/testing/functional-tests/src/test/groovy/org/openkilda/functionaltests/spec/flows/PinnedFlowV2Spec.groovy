@@ -17,6 +17,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 
 import java.time.Instant
@@ -176,6 +177,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Ignore("https://github.com/telstra/open-kilda/issues/4290")
     def "System is not rerouting pinned flow when 'reroute link flows' is called"() {
         given: "A pinned flow with alt path available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -194,7 +196,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
 
         then: "Flow is not rerouted (but still present in reroute response)"
         affectedFlows == [flow.flowId]
-        Wrappers.timedLoop(2) {
+        Wrappers.timedLoop(4) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
         }
