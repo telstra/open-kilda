@@ -143,6 +143,7 @@ public class FlowValidator {
             checkFlowForFlowConflicts(flow.getFlowId(), descriptor, bulkUpdateFlowIds);
             checkFlowForSinkEndpointConflicts(descriptor);
             checkFlowForMirrorEndpointConflicts(flow.getFlowId(), descriptor);
+            checkFlowForServer42Conflicts(descriptor, properties);
         }
     }
 
@@ -227,6 +228,17 @@ public class FlowValidator {
                         + "lldp or arp can not be set to true.", flowId);
                 throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
             }
+        }
+    }
+
+    private void checkFlowForServer42Conflicts(EndpointDescriptor descriptor, SwitchProperties properties)
+            throws InvalidFlowException {
+        FlowEndpoint endpoint = descriptor.getEndpoint();
+        if (endpoint.getPortNumber().equals(properties.getServer42Port())) {
+            String errorMessage = format("Server 42 port in the switch properties for switch '%s' is set to '%d'. "
+                            + "It is not possible to create or update an endpoint with these parameters.",
+                    endpoint.getSwitchId(), properties.getServer42Port());
+            throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
         }
     }
 
@@ -493,6 +505,7 @@ public class FlowValidator {
         checkFlowForIslConflicts(descriptor);
         checkFlowForFlowConflicts(mirrorPoint.getMirrorPointId(), descriptor);
         checkFlowForSinkEndpointConflicts(descriptor);
+        checkFlowForServer42Conflicts(descriptor, properties);
     }
 
     private void checkForConnectedDevisesConflict(String flowId, SwitchId switchId)

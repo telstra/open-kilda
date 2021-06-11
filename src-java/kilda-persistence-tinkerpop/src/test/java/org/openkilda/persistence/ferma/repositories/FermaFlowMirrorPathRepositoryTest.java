@@ -39,13 +39,16 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 public class FermaFlowMirrorPathRepositoryTest extends InMemoryGraphBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
     static final PathId TEST_PATH_ID = new PathId("test_path_id");
     static final PathId TEST_MIRROR_PATH_ID_1 = new PathId("mirror_path_1");
     static final PathId TEST_MIRROR_PATH_ID_2 = new PathId("mirror_path_2");
+    static final PathId TEST_MIRROR_PATH_ID_3 = new PathId("mirror_path_3");
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
     static final SwitchId TEST_SWITCH_C_ID = new SwitchId(3);
@@ -114,6 +117,22 @@ public class FermaFlowMirrorPathRepositoryTest extends InMemoryGraphBasedTest {
         FlowMirrorPath foundPath = flowMirrorPathRepository.findByEgressEndpoint(switchC.getSwitchId(), 3, 4, 5).get();
         assertEquals(switchA.getSwitchId(), foundPath.getMirrorSwitchId());
         assertEquals(switchC.getSwitchId(), foundPath.getEgressSwitchId());
+    }
+
+    @Test
+    public void shouldFindByEgressSwitchIdAndPort() {
+        FlowMirrorPath pathA = createFlowPath(TEST_MIRROR_PATH_ID_1, 1, switchA, switchB, 2, 3, 4);
+        FlowMirrorPath pathB = createFlowPath(TEST_MIRROR_PATH_ID_2, 2, switchA, switchC, 3, 4, 5);
+        FlowMirrorPath pathC = createFlowPath(TEST_MIRROR_PATH_ID_3, 3, switchB, switchC, 3, 5, 6);
+        flowMirrorPoints.addPaths(pathA, pathB, pathC);
+
+        List<FlowMirrorPath> foundPaths =
+                new ArrayList<>(flowMirrorPathRepository.findByEgressSwitchIdAndPort(switchC.getSwitchId(), 3));
+        assertEquals(2, foundPaths.size());
+        assertEquals(switchA.getSwitchId(), foundPaths.get(1).getMirrorSwitchId());
+        assertEquals(switchC.getSwitchId(), foundPaths.get(1).getEgressSwitchId());
+        assertEquals(switchB.getSwitchId(), foundPaths.get(0).getMirrorSwitchId());
+        assertEquals(switchC.getSwitchId(), foundPaths.get(0).getEgressSwitchId());
     }
 
     @Test

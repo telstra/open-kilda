@@ -32,6 +32,8 @@ public interface FlowMirrorPathRepository extends Repository<FlowMirrorPath> {
 
     Optional<FlowMirrorPath> findByEgressEndpoint(SwitchId switchId, int port, int outerVlan, int innerVlan);
 
+    Collection<FlowMirrorPath> findByEgressSwitchIdAndPort(SwitchId switchId, int port);
+
     void updateStatus(PathId pathId, FlowPathStatus pathStatus);
 
     Optional<FlowMirrorPath> remove(PathId pathId);
