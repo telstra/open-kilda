@@ -21,7 +21,7 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt update \
     && apt install -y --no-install-recommends \
         software-properties-common \
-        curl \
+        wget \
         make \
         python3-pip \
         iproute2 \
@@ -29,8 +29,7 @@ RUN apt update \
         net-tools \
         iperf3 \
         iputils-ping \
-        openvswitch-switch \
-        openvswitch-common \
+        libtool-bin \
         gcc \
         build-essential \
         automake \
@@ -38,11 +37,10 @@ RUN apt update \
     && pip3 install wheel==0.34.2 \
     && pip3 install tox==3.14.4 \
     && cd /root \
-    && curl  https://www.openvswitch.org/releases/openvswitch-2.14.0.tar.gz -o openvswitch-2.14.0.tar.gz \
-    && tar -xvf openvswitch-2.14.0.tar.gz \
-    && cd  openvswitch-2.14.0 \
-    && cp ofproto/ofproto-dpif.h ofproto/ofproto-dpif.h.original \
-    && sed  -i  's/enum { N_TABLES = 255 };/enum { N_TABLES = 11 };/' ofproto/ofproto-dpif.h \
+    && wget https://github.com/timofei-durakov/ovs/archive/refs/tags/kilda.v2.15.0.1.tar.gz \
+    && tar -xvf kilda.v2.15.0.1.tar.gz \
+    && cd ovs-kilda.v2.15.0.1 \
+    && ./boot.sh \
     && ./configure --prefix=/usr --localstatedir=/var --sysconfdir=/etc \
     && make \
     && make install \
