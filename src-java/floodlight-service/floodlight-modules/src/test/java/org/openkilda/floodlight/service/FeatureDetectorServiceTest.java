@@ -23,6 +23,8 @@ import static org.openkilda.model.SwitchFeature.GROUP_PACKET_OUT_CONTROLLER;
 import static org.openkilda.model.SwitchFeature.HALF_SIZE_METADATA;
 import static org.openkilda.model.SwitchFeature.INACCURATE_METER;
 import static org.openkilda.model.SwitchFeature.INACCURATE_SET_VLAN_VID_ACTION;
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_COPY_FIELD;
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_SWAP_FIELD;
 import static org.openkilda.model.SwitchFeature.LIMITED_BURST_SIZE;
 import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
 import static org.openkilda.model.SwitchFeature.MAX_BURST_COEFFICIENT_LIMITATION;
@@ -87,6 +89,31 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
                         .setSoftwareDescription("2.12.0")
                         .build(),
                 OFVersion.OF_13, 255);
+        discoveryCheck(sw, ImmutableSet.of(
+                GROUP_PACKET_OUT_CONTROLLER, MATCH_UDP_PORT, MULTI_TABLE, PKTPS_FLAG, RESET_COUNTS_FLAG, GROUPS));
+    }
+
+    @Test
+    public void testKildaOvs() {
+        IOFSwitch sw = makeSwitchMock(SwitchDescription.builder()
+                        .setManufacturerDescription("Nicira, Inc.")
+                        .setHardwareDescription("Open vSwitch")
+                        .setSoftwareDescription("2.15.0-kilda")
+                        .build(),
+                OFVersion.OF_13, 255);
+        discoveryCheck(sw, ImmutableSet.of(
+                GROUP_PACKET_OUT_CONTROLLER, MATCH_UDP_PORT, MULTI_TABLE, PKTPS_FLAG, RESET_COUNTS_FLAG, GROUPS,
+                KILDA_OVS_COPY_FIELD, KILDA_OVS_SWAP_FIELD));
+    }
+
+    @Test
+    public void testKildaOvs15() {
+        IOFSwitch sw = makeSwitchMock(SwitchDescription.builder()
+                        .setManufacturerDescription("Nicira, Inc.")
+                        .setHardwareDescription("Open vSwitch")
+                        .setSoftwareDescription("2.15.0-kilda")
+                        .build(),
+                OFVersion.OF_15, 255);
         discoveryCheck(sw, ImmutableSet.of(
                 GROUP_PACKET_OUT_CONTROLLER, MATCH_UDP_PORT, MULTI_TABLE, PKTPS_FLAG, RESET_COUNTS_FLAG, GROUPS));
     }
