@@ -1,5 +1,6 @@
 
 <div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
+<div class=" text-right text-filters mr-3" id="buttons"></div>
   <table id="switchDataTable" datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
     <thead>
       <tr>
@@ -50,11 +51,21 @@
             <i class="fa fa-search" (click)="toggleSearch($event,'state')"></i>
             <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="state" [hidden]="!state" />
         </th>
-        <th>
+        <!-- <th>
           <span title="type">
               type
              </span>              
-        </th>
+        </th> -->
+        <!-- hidden clumn-->
+        <th>evacuate</th>
+        <th>hardware</th>
+        <th>location</th>
+        <th>manufacturer</th>
+        <th>of_version</th>
+        <th>port</th>
+        <th>serial_number</th>
+        <th>software</th>
+        <th>under_maintenance</th>
       </tr>
     </thead>
 
@@ -86,11 +97,11 @@
             <td class="divTableCell" title="{{ row['pop-location'] && row['pop-location']['pop-code'] ? checkValue(row['pop-location']['pop-code']) : ''}}" >
               {{ row['pop-location'] && row['pop-location']['pop-code'] ? checkValue(row['pop-location']['pop-code']) : '-'}}
             </td>
-            <td class="divTableCell" title="{{(flowDataOfSwitch && flowDataOfSwitch.hasOwnProperty(row.switch_id) && (flowDataOfSwitch[row.switch_id].sumofbandwidth || flowDataOfSwitch[row.switch_id].sumofbandwidth == 0) ) ? flowDataOfSwitch[row.switch_id].sumofbandwidth : 'loading..'}}" >
-              {{(flowDataOfSwitch && flowDataOfSwitch.hasOwnProperty(row.switch_id) && (flowDataOfSwitch[row.switch_id].sumofbandwidth || flowDataOfSwitch[row.switch_id].sumofbandwidth == 0) ) ? flowDataOfSwitch[row.switch_id].sumofbandwidth : 'loading..'}}
+            <td class="divTableCell" title="{{row.sumofbandwidth || 'loading..'}}" >
+              {{row.sumofbandwidth || 'loading..'}}
             </td>
-            <td class="divTableCell" title="{{(flowDataOfSwitch && flowDataOfSwitch.hasOwnProperty(row.switch_id) && (flowDataOfSwitch[row.switch_id].noofflows || flowDataOfSwitch[row.switch_id].noofflows == 0) ) ? flowDataOfSwitch[row.switch_id].noofflows : 'loading..'}}" >
-              {{(flowDataOfSwitch && flowDataOfSwitch.hasOwnProperty(row.switch_id) && (flowDataOfSwitch[row.switch_id].noofflows || flowDataOfSwitch[row.switch_id].noofflows == 0) ) ? flowDataOfSwitch[row.switch_id].noofflows : 'loading..'}}
+            <td class="divTableCell" title="{{row.noofflows || 'loading..'}}" >
+              {{row.noofflows || 'loading..'}}
             </td>
             <td class="divTableCell" title="{{checkValue(row.description)}}" >
               {{checkValue(row.description)}}
@@ -98,7 +109,16 @@
             <td class="divTableCell" title="{{checkValue(row.state)}}" >
               {{checkValue(row.state)}}
             </td>
-            <td >{{ descrepancyString(row) }}</td>
+            <!-- <td>{{ descrepancyString(row) }}</td> -->
+            <td>{{row.evacuate}}</td>
+            <td>{{row.hardware}}</td>
+            <td>{{row.location | json}}</td>
+            <td>{{row.manufacturer}}</td>
+            <td>{{row.of_version}}</td>
+            <td>{{row.port}}</td>
+            <td>{{row.serial_number}}</td>
+            <td>{{row.software}}</td>
+            <td>{{row.under_maintenance}}</td>
            
            
         </tr>

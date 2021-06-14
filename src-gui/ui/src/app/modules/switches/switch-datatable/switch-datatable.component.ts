@@ -10,6 +10,7 @@ import { SwitchService } from 'src/app/common/services/switch.service';
 import { CommonService } from 'src/app/common/services/common.service';
 import { ToastrService } from 'ngx-toastr';
 import { MessageObj } from 'src/app/common/constants/constants';
+declare var jQuery: any;
 
 @Component({
   selector: 'app-switch-datatable',
@@ -64,7 +65,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       dom: 'tpli',
       colResize:false,
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
-      "responsive": true,
+      "responsive": true, 
         drawCallback:function(){
           if(jQuery('#switchDataTable tbody tr').length < 10){
             jQuery('#switchDataTable_next').addClass('disabled');
@@ -81,6 +82,15 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
         { sWidth: '10%' },        
         { sWidth: '15%' },
         { sWidth: '25%' },
+        { sWidth: '10%' },
+        { sWidth: '10%' },
+        { sWidth: '10%' },
+        { sWidth: '10%' },
+        { sWidth: '10%' },
+        { sWidth: '10%' },
+        { sWidth: '10%' },
+        { sWidth: '10%' },
+        { sWidth: '10%' },
         { sWidth: '10%' }],
       language: {
         searchPlaceholder: "Search"
@@ -94,40 +104,62 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       columnDefs:[
         { targets: [4], visible: false},
         { targets: [9], visible: false},
+        { targets: [10], visible: false},
+        { targets: [11], visible: false},
+        { targets: [12], visible: false},
+        { targets: [13], visible: false},
+        { targets: [14], visible: false},
+        { targets: [15], visible: false},
+        { targets: [16], visible: false},
+        { targets: [17], visible: false},
       ]
     };
 
-    this.fetchSwitchFlowData(this.data);
+    this.fetchSwitchFlowDataObj();
   
   }
 
-  fetchSwitchFlowData(switchlist){
-    if(switchlist && switchlist.length){
-      var i = 0;
-      for(let switchData of switchlist){
-          this.flowSubscription[i] = this.switchService.getSwitchFlows(switchData.switch_id,switchData['inventory-switch'],null).subscribe(data=>{
+  fetchSwitchFlowDataObj(){
+    if(this.data && this.data.length){
+      this.data.forEach((d)=>{
+        this.flowSubscription[i] = this.switchService.getSwitchFlows(d.switch_id,d['inventory-switch'],null).subscribe(data=>{
           let flowsData:any = data;
-          this.flowDataOfSwitch[switchData.switch_id] = {};
-          this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = 0;
-          this.flowDataOfSwitch[switchData.switch_id].noofflows = 0;
+          d['sumofbandwidth'] = 0;
+          d['noofflows'] = 0;
             if(flowsData && flowsData.length){
               for(let flow of flowsData){
-                this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth + (flow.maximum_bandwidth / 1000);
+                d['sumofbandwidth'] = d['sumofbandwidth']  + (flow.maximum_bandwidth / 1000);
               }
-              if(this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth){
-                this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth.toFixed(3); 
-              }
-              
-             this.flowDataOfSwitch[switchData.switch_id].noofflows = flowsData.length;
+              if(d['sumofbandwidth'] ){
+                d['sumofbandwidth'] = d['sumofbandwidth'].toFixed(3); 
+              }              
+              d['noofflows'] = flowsData.length;
             }
           },error=>{
-            this.flowDataOfSwitch[switchData.switch_id] = {};
-           this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = 0;
-           this.flowDataOfSwitch[switchData.switch_id].noofflows = 0;
+            d['sumofbandwidth'] = 0;
+            d['noofflows'] = 0;
           }) 
-         i++;          
-      }
+         i++; 
+      })
+      
     }
+  }
+
+  enableButtons(){
+    setTimeout(()=>{
+      this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
+        var buttons = new jQuery.fn.dataTable.Buttons(dtInstance, {
+          buttons: [
+            { extend: 'csv', text: 'Export', 
+              className: 'btn btn-dark',
+              exportOptions: {
+              columns: [0,1,2,3,4,7,8,9,10,11,12,13,14,15,16,17]
+            }}
+          ]
+        }).container().appendTo($('#buttons'));
+      });
+    });
+    
   }
 
    
@@ -144,8 +176,9 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       });
     });
     this.checkSwitchSettings();
+    this.enableButtons();
   }
-
+ 
   ngOnDestroy(): void {
     this.dtTrigger.unsubscribe();
     if(this.flowSubscription && this.flowSubscription.length){
