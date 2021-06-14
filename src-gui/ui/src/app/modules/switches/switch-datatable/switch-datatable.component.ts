@@ -121,6 +121,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
 
   fetchSwitchFlowDataObj(){
     if(this.data && this.data.length){
+      var i=0;
       this.data.forEach((d)=>{
         this.flowSubscription[i] = this.switchService.getSwitchFlows(d.switch_id,d['inventory-switch'],null).subscribe(data=>{
           let flowsData:any = data;
