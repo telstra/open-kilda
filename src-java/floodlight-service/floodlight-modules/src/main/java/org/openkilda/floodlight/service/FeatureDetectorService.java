@@ -24,6 +24,8 @@ import org.openkilda.floodlight.feature.GroupsFeature;
 import org.openkilda.floodlight.feature.HalfSizeMetadataFeature;
 import org.openkilda.floodlight.feature.InaccurateMeterFeature;
 import org.openkilda.floodlight.feature.InaccurateSetVlanVidAction;
+import org.openkilda.floodlight.feature.KildaOvsCopyFieldFeature;
+import org.openkilda.floodlight.feature.KildaOvsSwapFieldFeature;
 import org.openkilda.floodlight.feature.LimitedBurstSizeFeature;
 import org.openkilda.floodlight.feature.MatchUdpPortFeature;
 import org.openkilda.floodlight.feature.MaxBurstCoefficientLimitationFeature;
@@ -87,6 +89,8 @@ public class FeatureDetectorService implements IService {
                 new NoviFlowPushPopVxlanFeature(),
                 new HalfSizeMetadataFeature(),
                 new NoviFlowSwapEthSrcEthDstFeature(),
-                new GroupsFeature());
+                new GroupsFeature(),
+                new KildaOvsCopyFieldFeature(),
+                new KildaOvsSwapFieldFeature());
     }
 }

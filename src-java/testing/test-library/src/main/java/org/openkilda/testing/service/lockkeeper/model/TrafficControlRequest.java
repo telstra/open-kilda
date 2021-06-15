@@ -15,11 +15,13 @@
 
 package org.openkilda.testing.service.lockkeeper.model;
 
-import lombok.Value;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
 import java.util.List;
 
-@Value
+@Data
+@AllArgsConstructor
 public class TrafficControlRequest {
     TrafficControlData tcData;
     List<FloodlightResourceAddress> affectedAddresses;

@@ -23,6 +23,7 @@ import org.openkilda.testing.service.floodlight.FloodlightsHelper;
 import org.openkilda.testing.service.floodlight.model.Floodlight;
 import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
+import org.openkilda.testing.service.lockkeeper.model.ChangeSwIpRequest;
 import org.openkilda.testing.service.lockkeeper.model.ContainerName;
 import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress;
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData;
@@ -225,6 +226,27 @@ public class LockKeeperServiceImpl implements LockKeeperService {
         log.debug("Revive Floodlight service");
         unblockFloodlightAccess(new FloodlightResourceAddress(region, flHelper.getFlByRegion(region).getContainer(),
                 getPort(kafkaBootstrapServer)));
+    }
+
+    @Override
+    public void updateBurstSizeAndRate(Switch sw, Long meterId, Long burstSize, Long rate) {
+        throw new UnsupportedOperationException(
+                "updateBurstSizeAndRate method is not available on hardware env");
+    }
+
+    @Override
+    public void changeSwIp(String region, String oldIp, String newIp) {
+        log.debug("Change sw ip from {} to {} for region {}", oldIp, newIp, region);
+        lockKeepersByRegion.get(region).exchange("/floodlight/nat/input", HttpMethod.POST,
+                new HttpEntity<>(new ChangeSwIpRequest(region, flHelper.getFlByRegion(region).getContainer(),
+                        oldIp, newIp)), String.class);
+    }
+
+    @Override
+    public void cleanupIpChanges(String region) {
+        log.debug("Flush NAT INPUT chain for region {}", region);
+        lockKeepersByRegion.get(region).exchange("/floodlight/nat/input/flush", HttpMethod.POST,
+                new HttpEntity<>(new ContainerName(flHelper.getFlByRegion(region).getContainer())), String.class);
     }
 
     HttpHeaders buildJsonHeaders() {

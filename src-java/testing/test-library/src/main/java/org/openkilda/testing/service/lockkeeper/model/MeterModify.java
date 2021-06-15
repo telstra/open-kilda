@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,16 +15,19 @@
 
 package org.openkilda.testing.service.lockkeeper.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NonNull;
 
-@Data
-@AllArgsConstructor
-public class SwitchModify {
+import lombok.NonNull;
+import lombok.Value;
+
+@Value
+public class MeterModify {
 
     @NonNull
-    String name;
+    String switchName;
 
-    String controller;
+    Long meterId;
+
+    Long burstSize;
+
+    Long rate;
 }

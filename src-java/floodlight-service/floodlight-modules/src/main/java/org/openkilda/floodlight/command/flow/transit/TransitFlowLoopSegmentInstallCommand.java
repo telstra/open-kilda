@@ -21,6 +21,7 @@ import org.openkilda.floodlight.utils.OfFlowModAddMultiTableMessageBuilderFactor
 import org.openkilda.floodlight.utils.OfFlowModAddSingleTableMessageBuilderFactory;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
 import org.openkilda.messaging.MessageContext;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.SwitchId;
 
@@ -30,12 +31,14 @@ import com.google.common.collect.ImmutableList;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
+import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class TransitFlowLoopSegmentInstallCommand extends TransitFlowSegmentCommand {
+public class TransitFlowLoopSegmentInstallCommand extends TransitFlowLoopSegmentCommand {
 
     private static OfFlowModBuilderFactory makeFlowModBuilderFactory(boolean isMultiTable) {
         if (isMultiTable) {
@@ -49,28 +52,32 @@ public class TransitFlowLoopSegmentInstallCommand extends TransitFlowSegmentComm
     public TransitFlowLoopSegmentInstallCommand(
             @JsonProperty("message_context") MessageContext context,
             @JsonProperty("switch_id") SwitchId switchId,
+            @JsonProperty("egress_switch_id") SwitchId egressSwitchId,
             @JsonProperty("command_id") UUID commandId,
             @JsonProperty("metadata") FlowSegmentMetadata metadata,
             @JsonProperty("ingress_isl_port") int ingressIslPort,
             @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
             @JsonProperty("egress_isl_port") int egressIslPort) {
         super(
-                context, switchId, commandId, metadata, ingressIslPort, encapsulation, egressIslPort,
-                makeFlowModBuilderFactory(metadata.isMultiTable()), null);
+                context, switchId, egressSwitchId, commandId, metadata, ingressIslPort, encapsulation, egressIslPort,
+                makeFlowModBuilderFactory(metadata.isMultiTable()));
     }
 
     @Override
     protected List<OFInstruction> makeTransitModMessageInstructions(OFFactory of) {
-        List<OFAction> applyActions = ImmutableList.of(
-                of.actions().buildOutput()
+        List<OFAction> applyActions = new ArrayList<>();
+
+        if (FlowEncapsulationType.VXLAN.equals(encapsulation.getType())) {
+            // After turning of VXLAN packet we must update eth_dst header because egress rule on the last switch
+            // will match the packet by this field.
+            applyActions.add(of.actions().setField(of.oxms().ethSrc(MacAddress.of(switchId.toMacAddress()))));
+            applyActions.add(of.actions().setField(of.oxms().ethDst(MacAddress.of(egressSwitchId.toMacAddress()))));
+        }
+
+        applyActions.add(of.actions().buildOutput()
                         .setPort(OFPort.IN_PORT)
                         .build());
-        return ImmutableList.of(of.instructions().applyActions(applyActions));
-    }
-
-    @Override
-    protected int getTableId() {
-        return SwitchManager.EGRESS_TABLE_ID;
+        return ImmutableList.of(of.instructions().applyActions(ImmutableList.copyOf(applyActions)));
     }
 
     @Override

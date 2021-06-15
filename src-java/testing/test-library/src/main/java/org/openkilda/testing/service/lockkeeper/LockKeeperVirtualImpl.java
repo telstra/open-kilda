@@ -24,8 +24,10 @@ import org.openkilda.testing.service.floodlight.model.Floodlight;
 import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode;
 import org.openkilda.testing.service.labservice.LabService;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
+import org.openkilda.testing.service.lockkeeper.model.ChangeSwIpRequest;
 import org.openkilda.testing.service.lockkeeper.model.ContainerName;
 import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress;
+import org.openkilda.testing.service.lockkeeper.model.MeterModify;
 import org.openkilda.testing.service.lockkeeper.model.SwitchModify;
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData;
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlRequest;
@@ -229,8 +231,17 @@ public class LockKeeperVirtualImpl implements LockKeeperService {
     }
 
     @Override
+    public void updateBurstSizeAndRate(Switch sw, Long meterId, Long burstSize, Long rate) {
+        log.debug("Update meterId: '{}', burstSize: '{}' and rate: '{}' on sw: '{}'", meterId, burstSize, rate,
+                sw.getName());
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/meter/update", HttpMethod.POST,
+                new HttpEntity<>(new MeterModify(sw.getName(), meterId, burstSize, rate), buildJsonHeaders()),
+                String.class);
+    }
+
+    @Override
     public void knockoutFloodlight(String region) {
-        log.debug(String.format("Knock out Floodlight service region %s", region));
+        log.debug(format("Knock out Floodlight service region %s", region));
         blockFloodlightAccess(new FloodlightResourceAddress(region, flHelper.getFlByRegion(region).getContainer(),
                 getPort(kafkaBootstrapServer)));
     }
@@ -240,6 +251,21 @@ public class LockKeeperVirtualImpl implements LockKeeperService {
         log.debug("Revive Floodlight service");
         unblockFloodlightAccess(new FloodlightResourceAddress(region, flHelper.getFlByRegion(region).getContainer(),
                 getPort(kafkaBootstrapServer)));
+    }
+
+    @Override
+    public void changeSwIp(String region, String oldIp, String newIp) {
+        log.debug("Change sw ip from {} to {} for region {}", oldIp, newIp, region);
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/floodlight/nat/input", HttpMethod.POST,
+                new HttpEntity<>(new ChangeSwIpRequest(region, flHelper.getFlByRegion(region).getContainer(),
+                        oldIp, newIp)), String.class);
+    }
+
+    @Override
+    public void cleanupIpChanges(String region) {
+        log.debug("Flush NAT INPUT chain for region {}", region);
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/floodlight/nat/input/flush", HttpMethod.POST,
+                new HttpEntity<>(new ContainerName(flHelper.getFlByRegion(region).getContainer())), String.class);
     }
 
     HttpHeaders buildJsonHeaders() {

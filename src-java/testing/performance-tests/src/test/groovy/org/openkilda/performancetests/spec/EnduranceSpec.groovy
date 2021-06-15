@@ -137,7 +137,7 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
         debugText = preset.debug ? " (debug mode)" : ""
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2585")
+    @Ignore("https://github.com/telstra/open-kilda/issues/4224")
     def "Create 4094 flows"() {
         // system allows to create 4094 simple flows or 2047 protected flows
         def switchesAmount = 7
@@ -168,7 +168,7 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
         topoHelper.purgeTopology(topo)
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2585")
+    @Ignore("https://github.com/telstra/open-kilda/issues/4224")
     def "Create 2047 protected flows"() {
         def switchesAmount = 7
         int islsAmount = switchesAmount * 2.5

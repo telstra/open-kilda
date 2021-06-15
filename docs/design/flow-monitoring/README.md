@@ -10,7 +10,7 @@ Flow cache structure:
 Flow id | Server42 latency | Flow path
 --- | --- | ---
 
-All flows should pass SLA checks periodically. If the flow has not expired Server42 latency measurement then we can do a simple check. In another case, we should calculate actual flow latency based on used ISLs latencies with priority to RTT latency. 
+All flows should pass SLA checks periodically. If the flow has not expired Server42 latency measurement then we can do a simple check. In another case, we should calculate actual flow latency based on used ISLs latencies with priority to RTT latency. When we need to calculate ISL latencies FlowCacheBolt creates a request with new correlation-id and send requests with the id to IslCacheBolt for each required ISL. FlowCacheBolt sum up latencies from responses and wait until receive required number (number of ISLs in flow path) of responses with the id. FlowCacheBolt send calculated latency to ActionBolt when receive last required response.
 
 ISL cache structure:
 

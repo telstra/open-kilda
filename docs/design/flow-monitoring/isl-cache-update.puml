@@ -8,17 +8,20 @@ control kilda.topo.isl.latency.storm
 box flow-monitoring topology
 participant IslSpout
 participant IslLatencySpout
+participant SplitterBolt
 participant IslCacheBolt
 end box
 
 ==Handle ISL changed event==
 Network -> kilda.topo.network.flow.monitoring : IslChangedInfoData
-kilda.topo.network.flow.monitoring -> IslCacheBolt : IslChangedInfoData
+kilda.topo.network.flow.monitoring -> IslSpout : IslChangedInfoData
+IslSpout -> SplitterBolt : IslChangedInfoData
+SplitterBolt -> IslCacheBolt : UniIslChangedInfoData
 IslCacheBolt -> IslCacheBolt : update ISL cache
 ==Handle latency measurement==
 Floodlight -> kilda.topo.isl.latency.storm : IslRoundTripLatency/IslOneWayLatency
-kilda.topo.isl.latency.storm -> IslSpout : IslRoundTripLatency/IslOneWayLatency
-IslSpout -> IslCacheBolt : IslRoundTripLatency/IslOneWayLatency
+kilda.topo.isl.latency.storm -> IslLatencySpout : IslRoundTripLatency/IslOneWayLatency
+IslLatencySpout -> IslCacheBolt : IslRoundTripLatency/IslOneWayLatency
 IslCacheBolt -> IslCacheBolt : update ISL cache
 
 @enduml

@@ -18,7 +18,6 @@ package org.openkilda.floodlight.command.flow.transit;
 import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
-import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.SwitchId;
@@ -35,22 +34,18 @@ public class TransitFlowLoopSegmentVerifyCommand extends TransitFlowLoopSegmentI
     public TransitFlowLoopSegmentVerifyCommand(
             @JsonProperty("message_context") MessageContext context,
             @JsonProperty("switch_id") SwitchId switchId,
+            @JsonProperty("egress_switch_id") SwitchId egressSwitchId,
             @JsonProperty("command_id") UUID commandId,
             @JsonProperty("metadata") FlowSegmentMetadata metadata,
             @JsonProperty("ingress_isl_port") int ingressIslPort,
             @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
             @JsonProperty("egress_isl_port") int egressIslPort) {
-        super(context, switchId, commandId, metadata, ingressIslPort, encapsulation, egressIslPort);
+        super(context, switchId, egressSwitchId, commandId, metadata, ingressIslPort, encapsulation, egressIslPort);
     }
 
     @Override
     protected CompletableFuture<FlowSegmentReport> makeExecutePlan(SpeakerCommandProcessor commandProcessor) {
         return makeVerifyPlan(ImmutableList.of(makeTransitModMessage()));
-    }
-
-    @Override
-    protected int getTableId() {
-        return SwitchManager.EGRESS_TABLE_ID;
     }
 
     @Override

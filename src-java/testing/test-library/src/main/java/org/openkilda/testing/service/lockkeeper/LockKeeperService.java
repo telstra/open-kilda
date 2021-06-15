@@ -71,6 +71,12 @@ public interface LockKeeperService {
 
     void reviveFloodlight(String region);
 
+    void updateBurstSizeAndRate(Switch sw, Long meterId, Long burstSize, Long rate);
+
+    void changeSwIp(String region, String oldIp, String newIp);
+
+    void cleanupIpChanges(String region);
+
     /**
      * Extract switch address and port from the 'inetAddress' string of Floodlight 'get switches' response.
      */

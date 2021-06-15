@@ -1,15 +1,19 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.SwitchChangeType.ACTIVATED
 import static org.openkilda.messaging.info.event.SwitchChangeType.DEACTIVATED
+import static org.openkilda.testing.Constants.DUMMY_SW_IP_1
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.Tag
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.LoopTask
 import org.openkilda.messaging.error.MessageError
@@ -17,12 +21,18 @@ import org.openkilda.testing.tools.SoftAssertions
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Narrative
 import spock.lang.Shared
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
+@Narrative("""
+Every switch can be connected to multiple floodlights. Floodlight can be either 'read-only'(stats floodlights)
+or 'read-write'(management floodlights). System chooses one 'master' fl between all RW fls.
+All switch floodlights can be checked via 'GET /api/v2/switches/{switchId}/connections'
+""")
 class MultiFloodlightsSpec extends HealthCheckSpecification {
     @Shared ExecutorService executor = Executors.newFixedThreadPool(2)
 
@@ -106,5 +116,34 @@ class MultiFloodlightsSpec extends HealthCheckSpecification {
         islObserver && islObserver.stop()
         cleanupActions.each { it() }
         wait(WAIT_OFFSET) { northbound.getAllSwitches().each { assert it.state == ACTIVATED } }
+    }
+
+    @Tidy
+    @Tags([LOCKKEEPER])
+    def "System supports case when switch uses different networks to connect to FLs, i.e. has diff ips"() {
+        given: "A switch with at least 2 regions available"
+        def sw = topology.activeSwitches.find { it.regions.size() >= 2 }
+        assumeTrue(sw.asBoolean(), "Couldn't find a switch with at least 2 regions available")
+
+        and: "The switch's ip in first region is different from other"
+        def originalSwIp = sw.nbFormat().getAddress()
+        def region = sw.getRegions().first()
+        lockKeeper.changeSwIp(region, originalSwIp, DUMMY_SW_IP_1)
+
+        and: "The switch is currently disconnected"
+        def blockData = switchHelper.knockoutSwitch(sw, RW)
+
+        when: "Test switch gets connected to both regions"
+        switchHelper.reviveSwitch(sw, blockData)
+
+        then: "Get switch connections API returns different ips for regions"
+        def connections = northboundV2.getSwitchConnections(sw.dpId)
+        connections.connections.each {
+            assert it.switchAddress.startsWith(DUMMY_SW_IP_1) == (it.regionName == region)
+        }
+
+        cleanup:
+        region && lockKeeper.cleanupIpChanges(region)
+        sw && switchHelper.reviveSwitch(sw, switchHelper.knockoutSwitch(sw, RW))
     }
 }

@@ -33,21 +33,23 @@ import java.util.UUID;
 @Getter
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-public class TransitFlowLoopSegmentVerifyRequest extends TransitFlowSegmentRequest {
+public class TransitFlowLoopSegmentVerifyRequest extends TransitFlowLoopSegmentRequest {
     @JsonCreator
     @Builder(toBuilder = true)
     public TransitFlowLoopSegmentVerifyRequest(
             @JsonProperty("message_context") MessageContext messageContext,
             @JsonProperty("switch_id") SwitchId switchId,
+            @JsonProperty("egress_switch_id") SwitchId egressSwitchId,
             @JsonProperty("command_id") UUID commandId,
             @JsonProperty("metadata") FlowSegmentMetadata metadata,
             @JsonProperty("ingress_isl_port") int ingressIslPort,
             @JsonProperty("egress_isl_port") int egressIslPort,
             @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation) {
-        super(messageContext, switchId, commandId, metadata, ingressIslPort, egressIslPort, encapsulation);
+        super(messageContext, switchId, egressSwitchId, commandId, metadata, ingressIslPort, egressIslPort,
+                encapsulation);
     }
 
-    public TransitFlowLoopSegmentVerifyRequest(TransitFlowSegmentRequest other, UUID commandId) {
+    public TransitFlowLoopSegmentVerifyRequest(TransitFlowLoopSegmentRequest other, UUID commandId) {
         super(other, commandId);
     }
 

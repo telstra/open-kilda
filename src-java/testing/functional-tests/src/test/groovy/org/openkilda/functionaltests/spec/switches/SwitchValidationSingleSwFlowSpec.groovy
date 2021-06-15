@@ -189,13 +189,14 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             assert direction.switchMetersTotal == amountOfMeters + amountOfFlowMeters
         }
 
-        when: "Restore correct bandwidth via DB"
-        database.updateFlowBandwidth(flow.flowId, flow.maximumBandwidth)
+        when: "Reset meters for the flow"
+        northbound.resetMeters(flow.flowId)
 
-        then: "Misconfigured meters are moved into the 'proper' section"
-        def switchValidateInfoRestored = northbound.validateSwitch(sw.dpId)
-        switchValidateInfoRestored.meters.proper*.meterId.containsAll(meterIds)
-        switchValidateInfoRestored.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "misconfigured", "excess"])
+        then: "Misconfigured meters are reinstalled according to the new bandwidth and moved into the 'proper' section"
+        with(northbound.validateSwitch(sw.dpId)) {
+            it.meters.proper.findAll { it.meterId in meterIds }.each { assert it.rate == newBandwidth }
+            it.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "misconfigured", "excess"])
+        }
 
         and: "Flow validation shows no discrepancies"
         northbound.validateFlow(flow.flowId).each { direction ->

@@ -445,12 +445,12 @@ public class ValidationServiceImpl implements ValidationService {
         ValidateMetersResult result = comparePresentedAndExpectedMeters(isESwitch, presentMeters, expectedMeters);
 
         if (!result.getMissingMeters().isEmpty() && log.isErrorEnabled()) {
-            log.error("On switch {} the following rules are missed: {}", switchId,
+            log.error("On switch {} the following meters are missed: {}", switchId,
                     metersIntoLogRepresentation(result.getMissingMeters()));
         }
 
         if (!result.getExcessMeters().isEmpty() && log.isWarnEnabled()) {
-            log.warn("On switch {} the following rules are excessive: {}", switchId,
+            log.warn("On switch {} the following meters are excessive: {}", switchId,
                     metersIntoLogRepresentation(result.getExcessMeters()));
         }
 
