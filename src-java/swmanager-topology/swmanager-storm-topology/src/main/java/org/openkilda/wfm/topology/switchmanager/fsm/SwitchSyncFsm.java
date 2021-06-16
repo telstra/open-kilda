@@ -69,6 +69,7 @@ import org.openkilda.model.cookie.Cookie;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState;
+import org.openkilda.wfm.topology.switchmanager.model.GroupInstallContext;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
@@ -106,8 +107,8 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     private List<ReinstallDefaultFlowForSwitchManagerRequest> misconfiguredRules = emptyList();
     private List<RemoveFlow> excessRules = emptyList();
     private List<Long> excessMeters = emptyList();
-    private List<MirrorConfig> missingGroups = emptyList();
-    private List<MirrorConfig> misconfiguredGroups = emptyList();
+    private List<GroupInstallContext> missingGroups = emptyList();
+    private List<GroupInstallContext> misconfiguredGroups = emptyList();
     private List<Integer> excessGroups = emptyList();
 
     private int missingRulesPendingResponsesCount = 0;
@@ -387,7 +388,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         if (!missingGroupIds.isEmpty()) {
             log.info("Compute mirror configs for install groups (switch={}, key={})", switchId, key);
             try {
-                missingGroups = commandBuilder.buildMirrorConfigs(switchId, missingGroupIds);
+                missingGroups = commandBuilder.buildGroupInstallContexts(switchId, missingGroupIds);
             } catch (Exception e) {
                 sendException(e);
             }
@@ -400,7 +401,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         if (!misconfiguredGroupIds.isEmpty()) {
             log.info("Compute mirror configs for modify groups (switch={}, key={})", switchId, key);
             try {
-                misconfiguredGroups = commandBuilder.buildMirrorConfigs(switchId, misconfiguredGroupIds);
+                misconfiguredGroups = commandBuilder.buildGroupInstallContexts(switchId, misconfiguredGroupIds);
             } catch (Exception e) {
                 sendException(e);
             }
@@ -422,8 +423,9 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
             log.info("Request to install switch groups has been sent (switch={}, key={})", switchId, key);
             missingGroupsPendingResponsesCount = missingGroups.size();
 
-            for (MirrorConfig mirrorConfig : missingGroups) {
-                carrier.sendCommandToSpeaker(key, new InstallGroupRequest(switchId, mirrorConfig));
+            for (GroupInstallContext groupContext : missingGroups) {
+                carrier.sendCommandToSpeaker(key, new InstallGroupRequest(switchId, groupContext.getMirrorConfig(),
+                        groupContext.getEncapsulation(), groupContext.getEgressSwitchId()));
             }
         }
 
@@ -431,8 +433,9 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
             log.info("Request to modify switch groups has been sent (switch={}, key={})", switchId, key);
             misconfiguredGroupsPendingResponsesCount = misconfiguredGroups.size();
 
-            for (MirrorConfig mirrorConfig : misconfiguredGroups) {
-                carrier.sendCommandToSpeaker(key, new ModifyGroupRequest(switchId, mirrorConfig));
+            for (GroupInstallContext groupContext : misconfiguredGroups) {
+                carrier.sendCommandToSpeaker(key, new ModifyGroupRequest(switchId, groupContext.getMirrorConfig(),
+                        groupContext.getEncapsulation(), groupContext.getEgressSwitchId()));
             }
         }
 
@@ -526,10 +529,10 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                     request.isRemoveExcess() ? validateMetersResult.getExcessMeters() : emptyList());
         }
 
-        List<Integer> installedGroupsIds = missingGroups.stream().map(MirrorConfig::getGroupId)
-                .map(GroupId::intValue).collect(Collectors.toList());
-        List<Integer> modifiedGroupsIds = misconfiguredGroups.stream().map(MirrorConfig::getGroupId)
-                .map(GroupId::intValue).collect(Collectors.toList());
+        List<Integer> installedGroupsIds = missingGroups.stream().map(GroupInstallContext::getMirrorConfig)
+                .map(MirrorConfig::getGroupId).map(GroupId::intValue).collect(Collectors.toList());
+        List<Integer> modifiedGroupsIds = misconfiguredGroups.stream().map(GroupInstallContext::getMirrorConfig)
+                .map(MirrorConfig::getGroupId).map(GroupId::intValue).collect(Collectors.toList());
 
         GroupSyncEntry groupEntry = GroupSyncEntry.builder()
                 .proper(validateGroupsResult.getProperGroups())

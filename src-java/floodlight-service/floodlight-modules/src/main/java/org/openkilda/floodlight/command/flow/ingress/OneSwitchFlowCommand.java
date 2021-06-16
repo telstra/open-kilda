@@ -40,7 +40,7 @@ public abstract class OneSwitchFlowCommand extends IngressFlowSegmentBase {
             RulesContext rulesContext, MirrorConfig mirrorConfig) {
         super(
                 messageContext, endpoint.getSwitchId(), commandId, metadata, endpoint, meterConfig,
-                egressEndpoint.getSwitchId(), rulesContext, mirrorConfig);
+                egressEndpoint.getSwitchId(), null, rulesContext, mirrorConfig);
         this.egressEndpoint = egressEndpoint;
     }
 

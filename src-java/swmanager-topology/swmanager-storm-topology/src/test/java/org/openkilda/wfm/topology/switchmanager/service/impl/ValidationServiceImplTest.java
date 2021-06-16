@@ -48,6 +48,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
@@ -84,17 +85,20 @@ public class ValidationServiceImplTest {
     private static DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices(
             true, true, true, true, false, false, false, false);
     private static SwitchManagerTopologyConfig topologyConfig;
+    private static FlowResourcesConfig flowResourcesConfig;
 
     @BeforeClass
     public static void setupOnce() {
         PropertiesBasedConfigurationProvider configurationProvider =
                 new PropertiesBasedConfigurationProvider(new Properties());
         topologyConfig = configurationProvider.getConfiguration(SwitchManagerTopologyConfig.class);
+        flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
     }
 
     @Test
     public void validateRulesEmpty() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
+                flowResourcesConfig);
         ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, emptyList(), emptyList());
         assertTrue(response.getMissingRules().isEmpty());
         assertTrue(response.getProperRules().isEmpty());
@@ -104,7 +108,8 @@ public class ValidationServiceImplTest {
     @Test
     public void validateRulesSimpleSegmentCookies() throws SwitchNotFoundException {
         ValidationService validationService =
-                new ValidationServiceImpl(persistenceManager().withSegmentsCookies(2L, 3L).build(), topologyConfig);
+                new ValidationServiceImpl(persistenceManager().withSegmentsCookies(2L, 3L).build(), topologyConfig,
+                        flowResourcesConfig);
         List<FlowEntry> flowEntries =
                 Lists.newArrayList(FlowEntry.builder().cookie(1L).build(), FlowEntry.builder().cookie(2L).build());
         ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
@@ -117,7 +122,7 @@ public class ValidationServiceImplTest {
     public void validateRulesSegmentAndIngressCookies() throws SwitchNotFoundException {
         ValidationService validationService =
                 new ValidationServiceImpl(persistenceManager().withSegmentsCookies(2L).withIngressCookies(1L).build(),
-                        topologyConfig);
+                        topologyConfig, flowResourcesConfig);
         List<FlowEntry> flowEntries =
                 Lists.newArrayList(FlowEntry.builder().cookie(1L).build(), FlowEntry.builder().cookie(2L).build());
         ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
@@ -136,7 +141,8 @@ public class ValidationServiceImplTest {
                         .withIngressCookies(1L)
                         .withSwitchProperties(switchProperties)
                         .build(),
-                        topologyConfig);
+                        topologyConfig,
+                        flowResourcesConfig);
         List<FlowEntry> flowEntries =
                 Lists.newArrayList(FlowEntry.builder().cookie(0xC0000000000001L).build(),
                         FlowEntry.builder().cookie(1L).build());
@@ -154,7 +160,8 @@ public class ValidationServiceImplTest {
                         .withIngressCookies(1L)
                         .withLoop()
                         .build(),
-                        topologyConfig);
+                        topologyConfig,
+                        flowResourcesConfig);
         List<FlowEntry> flowEntries = Lists.newArrayList(FlowEntry.builder().cookie(1L).build(),
                 FlowEntry.builder().cookie(0x8000000000001L).build());
         ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
@@ -166,7 +173,8 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateDefaultRules() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
+                flowResourcesConfig);
         List<FlowEntry> flowEntries =
                 Lists.newArrayList(FlowEntry.builder().cookie(0x8000000000000001L).priority(1).byteCount(123).build(),
                         FlowEntry.builder().cookie(0x8000000000000001L).priority(2).build(),
@@ -188,7 +196,8 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersEmpty() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
+                flowResourcesConfig);
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_A, emptyList(), emptyList());
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
@@ -198,7 +207,8 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersProperMeters() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
+                flowResourcesConfig);
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
                 Lists.newArrayList(new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
                 emptyList());
@@ -212,7 +222,8 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersMisconfiguredMeters() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
+                flowResourcesConfig);
         String[] actualFlags = new String[]{"PKTPS", "BURST", "STATS"};
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
                 Lists.newArrayList(new MeterEntry(32, 10002, 10498, "OF_13", actualFlags)),
@@ -232,7 +243,8 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersMissingAndExcessMeters() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
+                flowResourcesConfig);
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
                 Lists.newArrayList(new MeterEntry(33, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
                 emptyList());
@@ -246,7 +258,8 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateExcessMeters() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
+                flowResourcesConfig);
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_A,
                 Lists.newArrayList(new MeterEntry(100, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
                 emptyList());
@@ -259,7 +272,8 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateDefaultMeters() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
+                flowResourcesConfig);
         MeterEntry missingMeter = new MeterEntry(2, 10, 20, "OF_13", new String[]{"KBPS", "BURST", "STATS"});
         MeterEntry excessMeter = new MeterEntry(4, 10, 20, "OF_13", new String[]{"KBPS", "BURST", "STATS"});
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
@@ -279,7 +293,8 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersProperMetersESwitch() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
+                flowResourcesConfig);
         long rateESwitch = FLOW_E_BANDWIDTH + (long) (FLOW_E_BANDWIDTH * 0.01) - 1;
         long burstSize = (long) (FLOW_E_BANDWIDTH * 1.05);
         long burstSizeESwitch = burstSize + (long) (burstSize * 0.01) - 1;
@@ -298,7 +313,8 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersMisconfiguredMetersESwitch() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
+                flowResourcesConfig);
         long rateESwitch = FLOW_E_BANDWIDTH + (long) (FLOW_E_BANDWIDTH * 0.01) + 1;
         long burstSize = (long) (FLOW_E_BANDWIDTH * 1.05);
         long burstSizeESwitch = burstSize + (long) (burstSize * 0.01) + 1;

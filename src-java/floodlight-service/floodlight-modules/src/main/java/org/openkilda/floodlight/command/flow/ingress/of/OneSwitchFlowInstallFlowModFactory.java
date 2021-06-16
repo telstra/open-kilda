@@ -43,7 +43,7 @@ abstract class OneSwitchFlowInstallFlowModFactory extends IngressInstallFlowModF
     }
 
     @Override
-    protected List<OFAction> makeTransformActions(List<Integer> vlanStack) {
+    protected List<OFAction> makeTransformActions(List<Integer> vlanStack, boolean groupIsPresent) {
         return OfAdapter.INSTANCE.makeVlanReplaceActions(of, vlanStack, command.getEgressEndpoint().getVlanStack());
     }
 

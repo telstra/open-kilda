@@ -26,7 +26,7 @@ import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.GroupBucket;
 import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.info.switches.GroupInfoEntry;
-import org.openkilda.messaging.info.switches.GroupInfoEntry.PortVlanEntry;
+import org.openkilda.messaging.info.switches.GroupInfoEntry.BucketEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
 import org.openkilda.model.FeatureToggles;
@@ -56,6 +56,9 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
@@ -92,10 +95,12 @@ public class ValidationServiceImpl implements ValidationService {
     private final FeatureTogglesRepository featureTogglesRepository;
     private final MirrorGroupRepository mirrorGroupRepository;
     private final FlowMirrorPointsRepository flowMirrorPointsRepository;
+    private final FlowResourcesManager flowResourcesManager;
     private final long flowMeterMinBurstSizeInKbits;
     private final double flowMeterBurstCoefficient;
 
-    public ValidationServiceImpl(PersistenceManager persistenceManager, SwitchManagerTopologyConfig topologyConfig) {
+    public ValidationServiceImpl(PersistenceManager persistenceManager, SwitchManagerTopologyConfig topologyConfig,
+                                 FlowResourcesConfig flowResourcesConfig) {
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
@@ -104,6 +109,7 @@ public class ValidationServiceImpl implements ValidationService {
         this.flowMeterMinBurstSizeInKbits = topologyConfig.getFlowMeterMinBurstSizeInKbits();
         this.flowMeterBurstCoefficient = topologyConfig.getFlowMeterBurstCoefficient();
         this.flowMirrorPointsRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPointsRepository();
+        this.flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
     }
 
     @Override
@@ -206,10 +212,10 @@ public class ValidationServiceImpl implements ValidationService {
                 continue;
             }
 
-            List<PortVlanEntry> missingData = new ArrayList<>(expectedEntry.getGroupBuckets());
+            List<BucketEntry> missingData = new ArrayList<>(expectedEntry.getGroupBuckets());
             missingData.removeAll(actualEntry.getGroupBuckets());
 
-            List<PortVlanEntry> excessData = new ArrayList<>(actualEntry.getGroupBuckets());
+            List<BucketEntry> excessData = new ArrayList<>(actualEntry.getGroupBuckets());
             excessData.removeAll(expectedEntry.getGroupBuckets());
 
             misconfiguredGroups.add(actualEntry.toBuilder()
@@ -226,16 +232,17 @@ public class ValidationServiceImpl implements ValidationService {
         FlowMirrorPoints flowMirrorPoints = flowMirrorPointsRepository.findByGroupId(groupId).orElse(null);
 
         if (flowMirrorPoints != null) {
-            List<PortVlanEntry> portVlanEntries = new ArrayList<>();
-            portVlanEntries.add(new PortVlanEntry(getMainMirrorPort(switchId, flowMirrorPoints.getFlowPath()), null));
-            portVlanEntries.addAll(flowMirrorPoints.getMirrorPaths().stream()
-                    .map(mirrorPath -> new PortVlanEntry(mirrorPath.getEgressPort(), mirrorPath.getEgressOuterVlan()))
+            List<BucketEntry> bucketEntries = new ArrayList<>();
+            bucketEntries.add(buildMainBucket(switchId, flowMirrorPoints.getFlowPath()));
+            bucketEntries.addAll(flowMirrorPoints.getMirrorPaths().stream()
+                    .map(mirrorPath -> new BucketEntry(
+                            mirrorPath.getEgressPort(), mirrorPath.getEgressOuterVlan(), null))
                     .collect(Collectors.toList()));
 
-            portVlanEntries.sort(this::comparePortVlanEntry);
+            bucketEntries.sort(this::comparePortVlanEntry);
             groupInfoEntry = GroupInfoEntry.builder()
                     .groupId(flowMirrorPoints.getMirrorGroupId().intValue())
-                    .groupBuckets(portVlanEntries)
+                    .groupBuckets(bucketEntries)
                     .build();
         } else {
             log.error("Excess database mirror group resource with group id: {}", groupId);
@@ -244,40 +251,64 @@ public class ValidationServiceImpl implements ValidationService {
         return groupInfoEntry;
     }
 
-    private int getMainMirrorPort(SwitchId switchId, FlowPath flowPath) {
+    private BucketEntry buildMainBucket(SwitchId switchId, FlowPath flowPath) {
         Flow flow = flowPath.getFlow();
+        int port;
+        Integer vlan = null;
+        Integer vni = null;
         if (flow.isOneSwitchFlow()) {
             if (flowPath.isForward()) {
-                return flow.getDestPort();
+                port = flow.getDestPort();
+            } else {
+                port = flow.getSrcPort();
             }
-            return flow.getSrcPort();
+            return new BucketEntry(port, vlan, vni);
+        }
+        EncapsulationResources encapsulationResources = getEncapsulationResources(
+                flowPath, flow);
+        if (switchId.equals(flowPath.getSrcSwitchId())) {
+            port = flowPath.getSegments().get(0).getSrcPort();
+            switch (encapsulationResources.getEncapsulationType()) {
+                case TRANSIT_VLAN:
+                    vlan = encapsulationResources.getTransitEncapsulationId();
+                    break;
+                case VXLAN:
+                    vni = encapsulationResources.getTransitEncapsulationId();
+                    break;
+                default:
+                    throw new IllegalStateException(
+                            format("Unexpected encapsulation type for flow %s", flow.getFlowId()));
+            }
+        } else  if (flowPath.isForward()) {
+            port = flow.getDestPort();
+        } else {
+            port = flow.getSrcPort();
         }
 
-        if (flowPath.isForward()) {
-            if (switchId.equals(flowPath.getSrcSwitchId())) {
-                return flowPath.getSegments().get(0).getSrcPort();
-            } else {
-                return flow.getDestPort();
-            }
-        } else {
-            if (switchId.equals(flowPath.getSrcSwitchId())) {
-                return flowPath.getSegments().get(0).getSrcPort();
-            } else {
-                return flow.getSrcPort();
-            }
-        }
+        return new BucketEntry(port, vlan, vni);
+    }
+
+    private EncapsulationResources getEncapsulationResources(FlowPath flowPath, Flow flow) {
+        return flowResourcesManager.getEncapsulationResources(flowPath.getPathId(),
+                flow.getOppositePathId(flowPath.getPathId())
+                        .orElseThrow(() -> new IllegalStateException(
+                                format("Flow %s does not have reverse path for %s",
+                                        flow.getFlowId(), flowPath.getPathId()))),
+                flow.getEncapsulationType())
+                .orElseThrow(() -> new IllegalStateException(
+                        format("Encapsulation resources are not found for path %s", flowPath)));
     }
 
     private GroupInfoEntry buildGroupInfoEntryFromSpeaker(GroupEntry group) {
-        List<PortVlanEntry> portVlanEntries = new ArrayList<>();
+        List<BucketEntry> portVlanEntries = new ArrayList<>();
         for (GroupBucket bucket : group.getBuckets()) {
             FlowApplyActions actions = bucket.getApplyActions();
             if (actions == null || !NumberUtils.isParsable(actions.getFlowOutput())) {
                 continue;
             }
             int bucketPort = NumberUtils.toInt(actions.getFlowOutput());
-            Integer bucketVlan = null;
 
+            Integer bucketVlan = null;
             if (actions.getSetFieldActions() != null
                     && actions.getSetFieldActions().size() == 1) {
                 FlowSetFieldAction setFieldAction = actions.getSetFieldActions().get(0);
@@ -285,7 +316,12 @@ public class ValidationServiceImpl implements ValidationService {
                     bucketVlan = NumberUtils.toInt(setFieldAction.getFieldValue());
                 }
             }
-            portVlanEntries.add(new PortVlanEntry(bucketPort, bucketVlan));
+
+            Integer bucketVni = null;
+            if (actions.getPushVxlan() != null) {
+                bucketVni = NumberUtils.toInt(actions.getPushVxlan());
+            }
+            portVlanEntries.add(new BucketEntry(bucketPort, bucketVlan, bucketVni));
         }
         portVlanEntries.sort(this::comparePortVlanEntry);
 
@@ -295,7 +331,7 @@ public class ValidationServiceImpl implements ValidationService {
                 .build();
     }
 
-    private int comparePortVlanEntry(PortVlanEntry portVlanEntryA, PortVlanEntry portVlanEntryB) {
+    private int comparePortVlanEntry(BucketEntry portVlanEntryA, BucketEntry portVlanEntryB) {
         if (Objects.equals(portVlanEntryA.getPort(), portVlanEntryB.getPort())) {
             return compareInteger(portVlanEntryA.getVlan(), portVlanEntryB.getVlan());
         }

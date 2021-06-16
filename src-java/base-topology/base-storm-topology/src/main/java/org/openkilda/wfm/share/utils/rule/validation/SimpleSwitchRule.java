@@ -75,5 +75,6 @@ public class SimpleSwitchRule {
     public static class SimpleGroupBucket {
         private int outPort;
         private int outVlan;
+        private int vni;
     }
 }

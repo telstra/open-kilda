@@ -54,10 +54,12 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
             OfAdapter.INSTANCE.makeMeterCall(of, effectiveMeterId, applyActions, instructions);
         }
 
-        applyActions.addAll(makeTransformActions(vlanStack));
-
         GroupId effectiveGroupId = effectiveIds.getGroupId();
-        if (effectiveGroupId != null) {
+        boolean groupIsPresent = effectiveGroupId != null;
+
+        applyActions.addAll(makeTransformActions(vlanStack, groupIsPresent));
+
+        if (groupIsPresent) {
             applyActions.add(makeGroupAction(effectiveGroupId));
         } else {
             applyActions.add(makeOutputAction());
@@ -129,7 +131,7 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
                 of.instructions().gotoTable(TableId.of(SwitchManager.INGRESS_TABLE_ID)));
     }
 
-    protected abstract List<OFAction> makeTransformActions(List<Integer> vlanStack);
+    protected abstract List<OFAction> makeTransformActions(List<Integer> vlanStack, boolean groupIsPresent);
 
     protected abstract List<OFInstruction> makeMetadataInstructions();
 

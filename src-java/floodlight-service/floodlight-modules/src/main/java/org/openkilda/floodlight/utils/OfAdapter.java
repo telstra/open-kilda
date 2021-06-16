@@ -24,12 +24,15 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowPushVxlanTunnel;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBand;
 import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.U64;
 
@@ -144,6 +147,23 @@ public final class OfAdapter {
             return meterMod.getMeters();
         }
         return meterMod.getBands();
+    }
+
+    /**
+     * Create push VxLAN action.
+     */
+    public OFActionNoviflowPushVxlanTunnel makePushVxlanAction(OFFactory of, int vni,
+                                                               MacAddress ethSrc, MacAddress ethDst, int udpSrcPort) {
+        return of.actions().buildNoviflowPushVxlanTunnel()
+                .setVni(vni)
+                .setEthSrc(ethSrc)
+                .setEthDst(ethDst)
+                .setUdpSrc(udpSrcPort)
+                .setIpv4Src(IPv4Address.of("127.0.0.1"))
+                .setIpv4Dst(IPv4Address.of("127.0.0.2"))
+                // Set to 0x01 indicating tunnel data is present (i.e. we are passing l2 and l3 headers in this action)
+                .setFlags((short) 0x01)
+                .build();
     }
 
     private OfAdapter() { }
