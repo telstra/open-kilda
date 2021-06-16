@@ -24,11 +24,13 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
+import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
@@ -60,6 +62,7 @@ public class FlowValidator {
     private final SwitchRepository switchRepository;
     private final IslRepository islRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
+    private final FlowMirrorPointsRepository flowMirrorPointsRepository;
     private final FlowMirrorPathRepository flowMirrorPathRepository;
 
     public FlowValidator(PersistenceManager persistenceManager) {
@@ -67,6 +70,7 @@ public class FlowValidator {
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
+        this.flowMirrorPointsRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPointsRepository();
         this.flowMirrorPathRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPathRepository();
     }
 
@@ -138,6 +142,7 @@ public class FlowValidator {
             checkFlowForIslConflicts(descriptor);
             checkFlowForFlowConflicts(flow.getFlowId(), descriptor, bulkUpdateFlowIds);
             checkFlowForSinkEndpointConflicts(descriptor);
+            checkFlowForMirrorEndpointConflicts(flow.getFlowId(), descriptor);
         }
     }
 
@@ -202,6 +207,26 @@ public class FlowValidator {
                             + "with existing flow mirror point '%s'.",
                     descriptor.getEndpoint(), flowMirrorPath.getPathId());
             throw new InvalidFlowException(errorMessage, ErrorType.ALREADY_EXISTS);
+        }
+    }
+
+    private void checkFlowForMirrorEndpointConflicts(String flowId, EndpointDescriptor descriptor)
+            throws InvalidFlowException {
+        FlowEndpoint endpoint = descriptor.getEndpoint();
+        Optional<Flow> foundFlow = flowRepository.findById(flowId);
+        if (foundFlow.isPresent()) {
+            Flow flow = foundFlow.get();
+            Optional<FlowMirrorPoints> flowMirrorPointsForward =
+                    flowMirrorPointsRepository.findByPathIdAndSwitchId(flow.getForwardPathId(), endpoint.getSwitchId());
+            Optional<FlowMirrorPoints> flowMirrorPointsReverse =
+                    flowMirrorPointsRepository.findByPathIdAndSwitchId(flow.getReversePathId(), endpoint.getSwitchId());
+
+            if ((flowMirrorPointsForward.isPresent() || flowMirrorPointsReverse.isPresent())
+                    && (endpoint.isTrackLldpConnectedDevices() || endpoint.isTrackArpConnectedDevices())) {
+                String errorMessage = format("Flow mirror point is created for the flow %s, "
+                        + "lldp or arp can not be set to true.", flowId);
+                throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
+            }
         }
     }
 
@@ -463,14 +488,14 @@ public class FlowValidator {
                         format("Couldn't get switch properties for %s switch %s.", descriptor.name, switchId),
                         ErrorType.DATA_INVALID));
 
-        checkForConnectedDevisesConflict(mirrorPoint.getMirrorPointSwitchId());
+        checkForConnectedDevisesConflict(mirrorPoint.getFlowId(), mirrorPoint.getMirrorPointSwitchId());
         checkForMultiTableRequirement(descriptor, properties);
         checkFlowForIslConflicts(descriptor);
         checkFlowForFlowConflicts(mirrorPoint.getMirrorPointId(), descriptor);
         checkFlowForSinkEndpointConflicts(descriptor);
     }
 
-    private void checkForConnectedDevisesConflict(SwitchId switchId)
+    private void checkForConnectedDevisesConflict(String flowId, SwitchId switchId)
             throws InvalidFlowException {
         SwitchProperties properties = switchPropertiesRepository.findBySwitchId(switchId)
                 .orElseThrow(() -> new InvalidFlowException(
@@ -481,6 +506,30 @@ public class FlowValidator {
             String errorMessage = format("Connected devices feature is active on the switch %s, "
                     + "flow mirror point cannot be created on this switch.", switchId);
             throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
+        }
+
+        Optional<Flow> foundFlow = flowRepository.findById(flowId);
+
+        if (foundFlow.isPresent()) {
+            Flow flow = foundFlow.get();
+            FlowEndpoint source = new FlowSourceAdapter(flow).getEndpoint();
+            FlowEndpoint destination = new FlowDestAdapter(flow).getEndpoint();
+
+            if (switchId.equals(source.getSwitchId())) {
+                if (source.isTrackLldpConnectedDevices() || source.isTrackArpConnectedDevices()) {
+                    String errorMessage = format("Connected devices feature is active on the flow %s for endpoint %s, "
+                                    + "flow mirror point cannot be created this flow",
+                            flow.getFlowId(), source);
+                    throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
+                }
+            } else {
+                if (destination.isTrackLldpConnectedDevices() || destination.isTrackArpConnectedDevices()) {
+                    String errorMessage = format("Connected devices feature is active on the flow %s for endpoint %s, "
+                                    + "flow mirror point cannot be created this flow",
+                            flow.getFlowId(), destination);
+                    throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
+                }
+            }
         }
     }
 }
