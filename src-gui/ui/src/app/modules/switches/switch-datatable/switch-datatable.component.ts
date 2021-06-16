@@ -139,7 +139,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
   }
 
   exportCsv(){
-    var headings = ["Switch ID", "Name", "Address","Hostname","Sum(Bandwidth) of Flows(Mbps)","No Of Flows","Description","State", "Evacuate", "Hardware","Location","Manufacturer","Version","Port", "Serial Number","Software", "Under Maintenance"];
+    var headings = ["Switch ID", "Name", "Address","Hostname","Pop Location","Sum(Bandwidth) of Flows(Mbps)","No Of Flows","Description","State", "Evacuate", "Hardware","Location","Manufacturer","Version","Port", "Serial Number","Software", "Under Maintenance"];
     var lineArray = [];
     lineArray.push(headings);
     this.data.forEach(function(d){
@@ -149,7 +149,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       line.push("\"" + ((d.name)? d.name : '-') + "\"");
       line.push("\"" + ((d.address)? d.address : '-') + "\"");
       line.push("\"" + ((d.hostname)? d.hostname : '-') + "\"");
-     // line.push("\"" + (d['pop-location'] || '-') + "\"");
+      line.push("\"" + (d['pop-location'] || '-') + "\"");
       line.push("\"" + ((d.sumofbandwidth)? d.sumofbandwidth : '-') + "\"");
       line.push("\"" + ((d.noofflows)? d.noofflows : '-') + "\"");
       line.push("\"" + ((d.description)? d.description : '-') + "\"");
