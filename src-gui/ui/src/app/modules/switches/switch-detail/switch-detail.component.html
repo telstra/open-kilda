@@ -139,9 +139,9 @@
        <label class="col-sm-2 col-form-label">Country:</label>
       <p  class="col-sm-4  col-form-label break-word" >{{ (switchDetail['location'] && (switchDetail['location'].country) !='undefined' && switchDetail['location'].country != '') ? switchDetail['location'].country || "-" : "-"  }}</p>
     </div>
-     <div class="row" *ngIf="hasStoreSetting">
-      <label *ngIf="hasStoreSetting" class="col-sm-2 col-form-label">Serial:</label>
-      <p *ngIf="hasStoreSetting" class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['serial-number'] || '-' }}</p>
+     <div class="row">
+      <label  class="col-sm-2 col-form-label">Serial:</label>
+      <p  class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['serial_number'] || switchDetail['serial-number'] || '-' }}</p>
       
       <label class="col-sm-2 col-form-label">Ref URL:</label>
       <p class="col-sm-4 switchdetails_div_address col-form-label">

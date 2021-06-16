@@ -38,6 +38,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
   sumofflows:boolean = false;
   noofflows:boolean=false;
   state : boolean = false;
+  enableExportBtn:boolean = false;
   clipBoardItems = [];
   flowDataOfSwitch:any={};
   constructor(private loaderService : LoaderService,
@@ -119,9 +120,11 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
   
   }
 
-  fetchSwitchFlowDataObj(){
+  async fetchSwitchFlowDataObj(){
+   
     if(this.data && this.data.length){
       var i=0;
+      var processComplete = 1;
       this.data.forEach((d)=>{
         this.flowSubscription[i] = this.switchService.getSwitchFlows(d.switch_id,d['inventory-switch'],null).subscribe(data=>{
           let flowsData:any = data;
@@ -139,28 +142,64 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
           },error=>{
             d['sumofbandwidth'] = 0;
             d['noofflows'] = 0;
+          },()=>{
+            processComplete = processComplete + 1;
+            if(this.data.length == processComplete){
+              this.enableExportBtn = true;
+            }
           }) 
          i++; 
-      })
+      });
       
     }
   }
 
-  enableButtons(){
-    setTimeout(()=>{
-      this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
-        var buttons = new jQuery.fn.dataTable.Buttons(dtInstance, {
-          buttons: [
-            { extend: 'csv', text: 'Export', 
-              className: 'btn btn-dark',
-              exportOptions: {
-              columns: [0,1,2,3,4,7,8,9,10,11,12,13,14,15,16,17]
-            }}
-          ]
-        }).container().appendTo($('#buttons'));
-      });
+  exportCsv(){
+    var headings = ["Switch ID", "Name", "Address","Hostname","Sum(Bandwidth) of Flows(Mbps)","No Of Flows","Description","State", "Evacuate", "Hardware","Location","Manufacturer","Version","Port", "Serial Number","Software", "Under Maintenance"];
+    var lineArray = [];
+    lineArray.push(headings);
+    this.data.forEach(function(d){
+      var line = [];
+      var locationString = 'longitude:'+((d.location.longitude) ? d.location.longitude : '-')+', latitude:'+((d.location.latitude)? d.location.latitude : '-')+', city:'+((d.location.city) ? d.location.city : '-')+', street:'+((d.location.street)? d.location.street : '-')+', Country:'+((d.location.country)? d.location.country : '-');
+      line.push("\"" + ((d.switch_id)? d.switch_id : '-') + "\"");
+      line.push("\"" + ((d.name)? d.name : '-') + "\"");
+      line.push("\"" + ((d.address)? d.address : '-') + "\"");
+      line.push("\"" + ((d.hostname)? d.hostname : '-') + "\"");
+     // line.push("\"" + (d['pop-location'] || '-') + "\"");
+      line.push("\"" + ((d.sumofbandwidth)? d.sumofbandwidth : '-') + "\"");
+      line.push("\"" + ((d.noofflows)? d.noofflows : '-') + "\"");
+      line.push("\"" + ((d.description)? d.description : '-') + "\"");
+      line.push("\"" + ((d.state)? d.state : '-') + "\"");
+      line.push("\"" + ((d.evacuate)? d.evacuate : 'false') + "\"");
+      line.push("\"" + ((d.hardware)? d.hardware : '-') + "\"");
+      line.push("\"" + locationString + "\"");
+      line.push("\"" + ((d.manufacturer)? d.manufacturer : '-') + "\"");
+      line.push("\"" + ((d.of_version)? d.of_version : '-') + "\"");
+      line.push("\"" + ((d.port)? d.port : '-') + "\"");
+      line.push("\"" + ((d.serial_number)? d.serial_number : '-') + "\"");
+      line.push("\"" + ((d.software)? d.software : '-') + "\"");
+      line.push("\"" + ((d.under_maintenance)? d.under_maintenance : 'false') + "\"");
+      var csvLine = line.join(",");
+      lineArray.push(csvLine);
+    })
+    var fileName = "OPEN KILDA - Switches";
+    var csvContent = lineArray.join("\n");
+    let blob = new Blob(['\ufeff' + csvContent], {
+        type: 'text/csv;charset=utf-8;'
     });
-    
+    let dwldLink = document.createElement("a");
+    let url = URL.createObjectURL(blob);
+    let isSafariBrowser = navigator.userAgent.indexOf('Safari') != -1;
+    navigator.userAgent.indexOf('Chrome') == -1;
+    if (isSafariBrowser) {
+        dwldLink.setAttribute("target", "_blank");
+    }
+    dwldLink.setAttribute("href", url);
+    dwldLink.setAttribute("download", fileName + ".csv");
+    dwldLink.style.visibility = "hidden";
+    document.body.appendChild(dwldLink);
+    dwldLink.click();
+    document.body.removeChild(dwldLink);
   }
 
    
@@ -177,7 +216,6 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       });
     });
     this.checkSwitchSettings();
-    this.enableButtons();
   }
  
   ngOnDestroy(): void {

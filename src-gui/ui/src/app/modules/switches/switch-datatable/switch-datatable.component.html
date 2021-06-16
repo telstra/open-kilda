@@ -1,6 +1,8 @@
 
 <div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
-<div class=" text-right text-filters mr-3" id="buttons"></div>
+<div class=" text-right text-filters mr-3" id="buttons">
+  <button [disabled]="!enableExportBtn" class="btn btn-dark" (click)="exportCsv()">Export</button>
+</div>
   <table id="switchDataTable" datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
     <thead>
       <tr>
@@ -57,15 +59,15 @@
              </span>              
         </th> -->
         <!-- hidden clumn-->
-        <th>evacuate</th>
-        <th>hardware</th>
-        <th>location</th>
-        <th>manufacturer</th>
-        <th>of_version</th>
-        <th>port</th>
-        <th>serial_number</th>
-        <th>software</th>
-        <th>under_maintenance</th>
+        <th>Evacuate</th>
+        <th>Hardware</th>
+        <th>Location</th>
+        <th>Manufacturer</th>
+        <th>Version</th>
+        <th>Port</th>
+        <th>Serial Number</th>
+        <th>Software</th>
+        <th>Under Maintenance</th>
       </tr>
     </thead>
 
