@@ -53,21 +53,11 @@
             <i class="fa fa-search" (click)="toggleSearch($event,'state')"></i>
             <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="state" [hidden]="!state" />
         </th>
-        <!-- <th>
+        <th>
           <span title="type">
               type
              </span>              
-        </th> -->
-        <!-- hidden clumn-->
-        <th>Evacuate</th>
-        <th>Hardware</th>
-        <th>Location</th>
-        <th>Manufacturer</th>
-        <th>Version</th>
-        <th>Port</th>
-        <th>Serial Number</th>
-        <th>Software</th>
-        <th>Under Maintenance</th>
+        </th>
       </tr>
     </thead>
 
@@ -111,17 +101,7 @@
             <td class="divTableCell" title="{{checkValue(row.state)}}" >
               {{checkValue(row.state)}}
             </td>
-            <!-- <td>{{ descrepancyString(row) }}</td> -->
-            <td>{{row.evacuate}}</td>
-            <td>{{row.hardware}}</td>
-            <td>{{row.location | json}}</td>
-            <td>{{row.manufacturer}}</td>
-            <td>{{row.of_version}}</td>
-            <td>{{row.port}}</td>
-            <td>{{row.serial_number}}</td>
-            <td>{{row.software}}</td>
-            <td>{{row.under_maintenance}}</td>
-           
+            <td>{{ descrepancyString(row) }}</td>
            
         </tr>
     </tbody>

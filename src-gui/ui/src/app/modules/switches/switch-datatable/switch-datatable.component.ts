@@ -83,16 +83,8 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
         { sWidth: '10%' },        
         { sWidth: '15%' },
         { sWidth: '25%' },
-        { sWidth: '10%' },
-        { sWidth: '10%' },
-        { sWidth: '10%' },
-        { sWidth: '10%' },
-        { sWidth: '10%' },
-        { sWidth: '10%' },
-        { sWidth: '10%' },
-        { sWidth: '10%' },
-        { sWidth: '10%' },
-        { sWidth: '10%' }],
+        { sWidth: '10%' }
+      ],
       language: {
         searchPlaceholder: "Search"
       },
@@ -104,15 +96,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       },
       columnDefs:[
         { targets: [4], visible: false},
-        { targets: [9], visible: false},
-        { targets: [10], visible: false},
-        { targets: [11], visible: false},
-        { targets: [12], visible: false},
-        { targets: [13], visible: false},
-        { targets: [14], visible: false},
-        { targets: [15], visible: false},
-        { targets: [16], visible: false},
-        { targets: [17], visible: false},
+        { targets: [9], visible: false}
       ]
     };
 
