@@ -56,6 +56,7 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxm;
+import org.projectfloodlight.openflow.types.Masked;
 
 import java.util.List;
 import java.util.Objects;
@@ -146,6 +147,12 @@ public abstract class OfFlowStatsMapper {
                 .udpSrc(Optional.ofNullable(match.get(MatchField.UDP_SRC))
                         .map(Objects::toString).orElse(null))
                 .tunnelId(Optional.ofNullable(match.get(MatchField.TUNNEL_ID))
+                        .map(Objects::toString).orElse(null))
+                .metadataValue(Optional.ofNullable(match.getMasked(MatchField.METADATA))
+                        .map(Masked::getValue)
+                        .map(Objects::toString).orElse(null))
+                .metadataMask(Optional.ofNullable(match.getMasked(MatchField.METADATA))
+                        .map(Masked::getMask)
                         .map(Objects::toString).orElse(null))
                 .build();
     }

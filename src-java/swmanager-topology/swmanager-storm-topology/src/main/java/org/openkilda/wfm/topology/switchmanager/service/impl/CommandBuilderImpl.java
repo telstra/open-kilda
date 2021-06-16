@@ -442,8 +442,6 @@ public class CommandBuilderImpl implements CommandBuilder {
     @VisibleForTesting
     RemoveFlow buildRemoveFlowWithoutMeterFromFlowEntry(SwitchId switchId, FlowEntry entry) {
         Optional<FlowMatchField> entryMatch = Optional.ofNullable(entry.getMatch());
-        Optional<FlowInstructions> instructions = Optional.ofNullable(entry.getInstructions());
-        Optional<FlowApplyActions> applyActions = instructions.map(FlowInstructions::getApplyActions);
 
         Integer inPort = entryMatch.map(FlowMatchField::getInPort).map(Integer::valueOf).orElse(null);
 
@@ -453,10 +451,7 @@ public class CommandBuilderImpl implements CommandBuilder {
         if (vlan != null) {
             encapsulationId = vlan;
         } else {
-            Integer tunnelId = entryMatch.map(FlowMatchField::getTunnelId).map(Integer::valueOf).orElse(null);
-            if (tunnelId == null) {
-                tunnelId = applyActions.map(FlowApplyActions::getPushVxlan).map(Integer::valueOf).orElse(null);
-            }
+            Integer tunnelId = entryMatch.map(FlowMatchField::getTunnelId).map(Integer::decode).orElse(null);
 
             if (tunnelId != null) {
                 encapsulationId = tunnelId;
@@ -474,9 +469,11 @@ public class CommandBuilderImpl implements CommandBuilder {
                 .orElse(null);
 
         SwitchId ingressSwitchId = entryMatch.map(FlowMatchField::getEthSrc).map(SwitchId::new).orElse(null);
+        Long metadataValue = entryMatch.map(FlowMatchField::getMetadataValue).map(Long::decode).orElse(null);
+        Long metadataMask = entryMatch.map(FlowMatchField::getMetadataMask).map(Long::decode).orElse(null);
 
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(entry.getCookie(), inPort, encapsulationId,
-                0, outPort, encapsulationType, ingressSwitchId);
+                0, outPort, encapsulationType, ingressSwitchId, metadataValue, metadataMask);
 
         return RemoveFlow.builder()
                 .transactionId(transactionIdGenerator.generate())
