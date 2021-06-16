@@ -93,6 +93,18 @@ public class FermaFlowMirrorPathRepository
     }
 
     @Override
+    public Collection<FlowMirrorPath> findByEgressSwitchIdAndPort(SwitchId switchId, int port) {
+        return framedGraph().traverse(g -> g.V()
+                .hasLabel(FlowMirrorPathFrame.FRAME_LABEL)
+                .has(FlowMirrorPathFrame.EGRESS_SWITCH_ID_PROPERTY,
+                        SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
+                .has(FlowMirrorPathFrame.EGRESS_PORT_PROPERTY, port))
+                .toListExplicit(FlowMirrorPathFrame.class).stream()
+                .map(FlowMirrorPath::new)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public void updateStatus(PathId pathId, FlowPathStatus pathStatus) {
         transactionManager.doInTransaction(() ->
                 framedGraph().traverse(g -> g.V()

@@ -24,6 +24,7 @@ import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchConnectionsResponse;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
@@ -36,6 +37,7 @@ import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -76,6 +78,7 @@ public class SwitchOperationsService {
     private PortPropertiesRepository portPropertiesRepository;
     private SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
     private FlowMirrorPointsRepository flowMirrorPointsRepository;
+    private FlowMirrorPathRepository flowMirrorPathRepository;
     private TransactionManager transactionManager;
     private LinkOperationsService linkOperationsService;
     private IslRepository islRepository;
@@ -97,6 +100,7 @@ public class SwitchOperationsService {
         this.switchConnectRepository = repositoryFactory.createSwitchConnectRepository();
         this.switchConnectedDeviceRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
         this.flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
+        this.flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
         this.carrier = carrier;
     }
 
@@ -414,6 +418,24 @@ public class SwitchOperationsService {
                 && (updatedSwitchProperties.isSwitchLldp() || updatedSwitchProperties.isSwitchArp())) {
             throw new IllegalSwitchPropertiesException(format("Flow mirror point is created on the switch %s, "
                     + "switchLldp or switchArp can not be set to true.", switchId));
+        }
+
+        if (updatedSwitchProperties.getServer42Port() != null) {
+            String errorMessage = "SwitchId '%s' and port '%d' belong to the %s endpoint. "
+                    + "Cannot specify port '%d' as port for server 42.";
+            int server42port = updatedSwitchProperties.getServer42Port();
+            Collection<Flow> flows = flowRepository.findByEndpoint(switchId, server42port);
+            if (!flows.isEmpty()) {
+                throw new IllegalSwitchPropertiesException(
+                        format(errorMessage, switchId, server42port, "flow", server42port));
+            }
+
+            Collection<FlowMirrorPath> flowMirrorPaths = flowMirrorPathRepository.findByEgressSwitchIdAndPort(switchId,
+                    server42port);
+            if (!flowMirrorPaths.isEmpty()) {
+                throw new IllegalSwitchPropertiesException(
+                        format(errorMessage, switchId, server42port, "flow mirror path", server42port));
+            }
         }
     }
 
