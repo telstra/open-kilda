@@ -22,7 +22,6 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.LATENCY_PACKET_UDP_PORT;
-import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildInstructionApplyActions;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.isOvs;
 import static org.openkilda.messaging.command.flow.RuleType.POST_INGRESS;
@@ -146,7 +145,6 @@ import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
-import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteMetadata;
 import org.projectfloodlight.openflow.protocol.match.Match;
@@ -444,36 +442,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         rules.add(installRoundTripLatencyFlow(dpid));
         rules.add(installUnicastVerificationRuleVxlan(dpid));
         return rules;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public long installTransitFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
-                                   int transitTunnelId, FlowEncapsulationType encapsulationType, boolean multiTable)
-            throws SwitchOperationException {
-        List<OFAction> actionList = new ArrayList<>();
-        IOFSwitch sw = lookupSwitch(dpid);
-        OFFactory ofFactory = sw.getOFFactory();
-
-        // build match by input port and transit vlan id
-        Match match = matchFlow(ofFactory, inputPort, transitTunnelId, encapsulationType);
-
-        // transmit packet from outgoing port
-        actionList.add(actionSetOutputPort(ofFactory, OFPort.of(outputPort)));
-
-        // build instruction with action list
-        OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
-
-        // build FLOW_MOD command, no meter
-        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, FLOW_PRIORITY,
-                multiTable ? TRANSIT_TABLE_ID : INPUT_TABLE_ID)
-                .setInstructions(ImmutableList.of(actions))
-                .setMatch(match)
-                .build();
-
-        return pushFlow(sw, flowId, flowMod);
     }
 
     @Override
@@ -1831,6 +1799,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (OF_12.compareTo(ofFactory.getVersion()) >= 0) {
             throw new UnsupportedOperationException("Switch doesn't support tunnel_id match");
         } else {
+            matchBuilder.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+            matchBuilder.setExact(MatchField.IP_PROTO, IpProtocol.UDP);
+            matchBuilder.setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST));
             matchBuilder.setExact(MatchField.TUNNEL_ID, U64.of(tunnelId));
         }
     }

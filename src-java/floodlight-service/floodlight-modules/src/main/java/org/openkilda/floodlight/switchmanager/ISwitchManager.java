@@ -21,7 +21,6 @@ import org.openkilda.messaging.command.flow.RuleType;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.info.meter.MeterEntry;
-import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSharedSegmentCookie;
@@ -468,23 +467,6 @@ public interface ISwitchManager extends IFloodlightService {
      * @throws SwitchOperationException Switch not found
      */
     List<Long> removeMultitableEndpointIslRules(final DatapathId dpid, final int port) throws SwitchOperationException;
-
-    /**
-     * Installs flow on a transit switch.
-     *
-     * @param dpid datapathId of the switch
-     * @param flowId flow id
-     * @param inputPort port to expect packet on
-     * @param outputPort port to forward packet out
-     * @param transitTunnelId vlan or vni to match on inputPort
-     * @param encapsulationType flow encapsulation type
-     * @param multiTable multitable pipeline flag
-     * @return transaction id
-     * @throws SwitchOperationException Switch not found
-     */
-    long installTransitFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
-                            int transitTunnelId, FlowEncapsulationType encapsulationType, boolean multiTable)
-            throws SwitchOperationException;
 
     void installOuterVlanMatchSharedFlow(SwitchId switchId, String flowId, FlowSharedSegmentCookie cookie)
             throws SwitchOperationException;
