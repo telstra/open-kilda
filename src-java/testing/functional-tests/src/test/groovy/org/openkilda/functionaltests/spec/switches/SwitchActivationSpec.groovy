@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -33,6 +34,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 
 class SwitchActivationSpec extends HealthCheckSpecification {
     @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
@@ -95,7 +97,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    def "Excess rules/meters are synced from a new switch before connecting to the controller"() {
+    def "Excess transitVlanRules/meters are synced from a new switch before connecting to the controller"() {
         given: "A switch with excess rules/meters and not connected to the controller"
         def sw = topology.getActiveSwitches().first()
 
@@ -115,6 +117,58 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 1, 0, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
+                        OutputVlanType.REPLACE, 300, excessMeterId,
+                        sw.dpId, false, false, false, null)).toJson()))
+        producer.flush()
+
+        Wrappers.wait(WAIT_OFFSET) {
+            verifyAll(northbound.validateSwitch(sw.dpId)) {
+                it.rules.excess.size() == 3
+                it.rules.excessHex.size() == 3
+                it.verifyRuleSectionsAreEmpty(sw.dpId, ["proper", "missing"])
+                it.verifyHexRuleSectionsAreEmpty(sw.dpId, ["properHex", "missingHex"])
+                it.meters.excess.size() == 1
+                it.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "proper", "misconfigured"])
+            }
+        }
+
+        def blockData = switchHelper.knockoutSwitch(sw, RW)
+
+        when: "Connect the switch to the controller"
+        switchHelper.reviveSwitch(sw, blockData)
+
+        then: "Excess meters/rules were synced during switch activation"
+        verifyAll(northbound.validateSwitch(sw.dpId)) {
+            it.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "proper"])
+            it.verifyHexRuleSectionsAreEmpty(sw.dpId, ["missingHex", "excessHex", "properHex"])
+        }
+    }
+
+    @Tags([HARDWARE])
+    @Ignore("https://github.com/telstra/open-kilda/issues/4316, /4315, /4314")
+    def "Excess vxlanRules/meters are synced from a new switch before connecting to the controller"() {
+        given: "A switch with excess rules/meters and not connected to the controller"
+        def sw = topology.getActiveSwitches().find {
+            northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation.contains(
+                    FlowEncapsulationType.VXLAN.toString().toLowerCase())
+        }
+
+        def producer = new KafkaProducer(producerProps)
+        //pick a meter id which is not yet used on src switch
+        def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
+                .meterEntries*.meterId).first()
+        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
+                new InstallEgressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 1L, sw.dpId, 1, 2, 1,
+                        FlowEncapsulationType.VXLAN, 1, 0,
+                        OutputVlanType.REPLACE, false, new FlowEndpoint(sw.dpId, 17), null)).toJson()))
+
+        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
+                new InstallTransitFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 2L, sw.dpId, 3, 4, 1,
+                        FlowEncapsulationType.VXLAN, false)).toJson()))
+
+        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
+                new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 1, 0, 1,
+                        FlowEncapsulationType.VXLAN,
                         OutputVlanType.REPLACE, 300, excessMeterId,
                         sw.dpId, false, false, false, null)).toJson()))
         producer.flush()
