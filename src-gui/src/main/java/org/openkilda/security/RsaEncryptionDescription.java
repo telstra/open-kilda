@@ -101,9 +101,7 @@ public final class RsaEncryptionDescription {
          * StringBuilder sb = new StringBuilder(); for (byte b : data) {
          * sb.append((char)b); } return sb.toString();
          */
-        // return new sun.misc.BASE64Encoder().encode(data);
-        return new sun.misc.BASE64Encoder().encode(data);
-
+        return java.util.Base64.getEncoder().encodeToString(data);
     }
 
     /**
@@ -120,7 +118,7 @@ public final class RsaEncryptionDescription {
         Key priKey = readKeyFromFile("private.key");
         Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.DECRYPT_MODE, priKey);
-        byte[] data = cipher.doFinal(new sun.misc.BASE64Decoder().decodeBuffer(text));
+        byte[] data = cipher.doFinal(java.util.Base64.getDecoder().decode(text));
         // return new String(data);
         return new String(data, "UTF8");
     }
