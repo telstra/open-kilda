@@ -18,21 +18,38 @@ package org.openkilda.wfm.topology.flowmonitoring.model;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.Duration;
+import java.time.Instant;
+
 @Data
-@Builder
 public class LinkState {
 
-    private long rttLatency;
-    private long rttTimestamp;
-    private long oneWayLatency;
+    private Duration rttLatency;
+    private Instant rttTimestamp;
+    private Duration oneWayLatency;
+
+    @Builder
+    public LinkState(long rttLatency, Instant rttTimestamp, long oneWayLatency) {
+        this.rttLatency = Duration.ofNanos(rttLatency);
+        this.rttTimestamp = rttTimestamp;
+        this.oneWayLatency = Duration.ofNanos(oneWayLatency);
+    }
 
     /**
      * Get most recent latency for the link.
      */
-    public long getLatency(long currentTimestamp, long rttLatencyExpiration) {
-        if (currentTimestamp > rttTimestamp + rttLatencyExpiration) {
+    public Duration getLatency(Instant now, Duration rttLatencyExpiration) {
+        if (rttTimestamp == null || now.isAfter(rttTimestamp.plus(rttLatencyExpiration))) {
             return oneWayLatency;
         }
         return rttLatency;
+    }
+
+    public void setRttLatency(long rttLatency) {
+        this.rttLatency = Duration.ofNanos(rttLatency);
+    }
+
+    public void setOneWayLatency(long oneWayLatency) {
+        this.oneWayLatency = Duration.ofNanos(oneWayLatency);
     }
 }

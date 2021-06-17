@@ -37,13 +37,13 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.time.Clock;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @RunWith(MockitoJUnitRunner.class)
 public class IslCacheServiceTest extends InMemoryGraphBasedTest {
-    private static final long ISL_RTT_LATENCY_EXPIRATION = 2;
+    private static final Duration ISL_RTT_LATENCY_EXPIRATION = Duration.ofSeconds(2);
 
     private static final SwitchId FIRST_SWITCH = new SwitchId(1);
     private static final SwitchId SECOND_SWITCH = new SwitchId(2);
@@ -52,6 +52,13 @@ public class IslCacheServiceTest extends InMemoryGraphBasedTest {
     private static final int ISL_DST_PORT = 20;
     private static final int ISL_SRC_PORT_2 = 11;
     private static final int ISL_DST_PORT_2 = 21;
+
+    private static final Link LINK = Link.builder()
+            .srcSwitchId(FIRST_SWITCH)
+            .srcPort(ISL_SRC_PORT)
+            .destSwitchId(SECOND_SWITCH)
+            .destPort(ISL_DST_PORT)
+            .build();
 
     @Mock
     private Clock clock;
@@ -77,61 +84,49 @@ public class IslCacheServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldCalculateLatencyForPathByOneWayLatency() {
+    public void shouldGetLatencyForLinkByOneWayLatency() {
         long latency = 100L;
         IslOneWayLatency islOneWayLatency = new IslOneWayLatency(FIRST_SWITCH, ISL_SRC_PORT,
                 SECOND_SWITCH, ISL_DST_PORT, latency, 1L);
 
-        when(clock.millis()).thenReturn(1000L);
+        when(clock.instant()).thenReturn(Instant.now());
 
         service.handleOneWayLatency(islOneWayLatency);
 
-        long actual = service.calculateLatencyForPath(getPath());
+        long actual = service.getLatencyForLink(LINK).getNano();
 
         assertEquals(latency, actual);
     }
 
     @Test
-    public void shouldCalculateLatencyForPathByRttLatency() {
+    public void shouldGetLatencyForLinkByRttLatency() {
         long latency = 100L;
         IslRoundTripLatency islRoundTripLatency = new IslRoundTripLatency(FIRST_SWITCH, ISL_SRC_PORT, latency, 1L);
-        when(clock.millis()).thenReturn(1000L);
+        when(clock.instant()).thenReturn(Instant.now());
 
         service.handleRoundTripLatency(islRoundTripLatency);
 
-        IslRoundTripLatency isl2RoundTripLatency = new IslRoundTripLatency(SECOND_SWITCH, ISL_SRC_PORT_2, latency, 1L);
-        service.handleRoundTripLatency(isl2RoundTripLatency);
+        long actual = service.getLatencyForLink(LINK).getNano();
 
-        long actual = service.calculateLatencyForPath(Arrays.asList(Link.builder()
-                        .srcSwitchId(FIRST_SWITCH)
-                        .srcPort(ISL_SRC_PORT)
-                        .destSwitchId(SECOND_SWITCH)
-                        .destPort(ISL_DST_PORT)
-                        .build(),
-                Link.builder()
-                        .srcSwitchId(SECOND_SWITCH)
-                        .srcPort(ISL_SRC_PORT_2)
-                        .destSwitchId(THIRD_SWITCH)
-                        .destPort(ISL_DST_PORT_2)
-                        .build()));
-
-        assertEquals(latency * 2, actual);
+        assertEquals(latency, actual);
     }
 
     @Test
-    public void shouldCalculateLatencyForPathWithExpiredRttValue() {
+    public void shouldGetLatencyForLinkWithExpiredRttValue() {
         long oneWayLatency = 100L;
         long rttLatency = 1000L;
         IslOneWayLatency islOneWayLatency = new IslOneWayLatency(FIRST_SWITCH, ISL_SRC_PORT,
                 SECOND_SWITCH, ISL_DST_PORT, oneWayLatency, 1L);
+        IslRoundTripLatency islRoundTripLatency = new IslRoundTripLatency(FIRST_SWITCH, ISL_SRC_PORT, rttLatency, 1L);
 
-        when(clock.millis()).thenReturn(1000L).thenReturn(2000L).thenReturn(3000L + ISL_RTT_LATENCY_EXPIRATION * 1200);
+        Instant start = Instant.now();
+        when(clock.instant()).thenReturn(start)
+                .thenReturn(start.plus(2, ChronoUnit.SECONDS).plus(ISL_RTT_LATENCY_EXPIRATION));
 
         service.handleOneWayLatency(islOneWayLatency);
-        IslRoundTripLatency islRoundTripLatency = new IslRoundTripLatency(FIRST_SWITCH, ISL_SRC_PORT, rttLatency, 1L);
         service.handleRoundTripLatency(islRoundTripLatency);
 
-        long actual = service.calculateLatencyForPath(getPath());
+        long actual = service.getLatencyForLink(LINK).getNano();
 
         assertEquals(oneWayLatency, actual);
     }
@@ -149,9 +144,7 @@ public class IslCacheServiceTest extends InMemoryGraphBasedTest {
                 .build();
         service.handleIslChangedData(islChangedInfoData);
 
-        when(clock.millis()).thenReturn(1000L);
-
-        long actual = service.calculateLatencyForPath(getPath());
+        long actual = service.getLatencyForLink(LINK).getNano();
 
         assertEquals(0, actual);
     }
@@ -170,16 +163,16 @@ public class IslCacheServiceTest extends InMemoryGraphBasedTest {
 
         long rttLatency = 1000L;
         IslRoundTripLatency isl2RoundTripLatency = new IslRoundTripLatency(FIRST_SWITCH, ISL_SRC_PORT, rttLatency, 1L);
-        when(clock.millis()).thenReturn(1000L);
+        when(clock.instant()).thenReturn(Instant.now());
 
         service.handleRoundTripLatency(isl2RoundTripLatency);
 
-        long actual = service.calculateLatencyForPath(Collections.singletonList(Link.builder()
+        long actual = service.getLatencyForLink(Link.builder()
                 .srcSwitchId(FIRST_SWITCH)
                 .srcPort(ISL_SRC_PORT)
                 .destSwitchId(THIRD_SWITCH)
                 .destPort(newPort)
-                .build()));
+                .build()).getNano();
 
         assertEquals(rttLatency, actual);
     }
@@ -194,14 +187,5 @@ public class IslCacheServiceTest extends InMemoryGraphBasedTest {
                 .latency(100)
                 .build();
         islRepository.add(isl);
-    }
-
-    private List<Link> getPath() {
-        return Collections.singletonList(Link.builder()
-                .srcSwitchId(FIRST_SWITCH)
-                .srcPort(ISL_SRC_PORT)
-                .destSwitchId(SECOND_SWITCH)
-                .destPort(ISL_DST_PORT)
-                .build());
     }
 }
