@@ -150,8 +150,8 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       line.push("\"" + ((d.address)? d.address : '-') + "\"");
       line.push("\"" + ((d.hostname)? d.hostname : '-') + "\"");
       line.push("\"" + (d['pop-location'] || '-') + "\"");
-      line.push("\"" + ((d.sumofbandwidth)? d.sumofbandwidth : '-') + "\"");
-      line.push("\"" + ((d.noofflows)? d.noofflows : '-') + "\"");
+      line.push("\"" + ((d.sumofbandwidth || d.sumofbandwidth ==0) ? d.sumofbandwidth : '-') + "\"");
+      line.push("\"" + ((d.noofflows || d.noofflows == 0 ) ? d.noofflows : '-') + "\"");
       line.push("\"" + ((d.description)? d.description : '-') + "\"");
       line.push("\"" + ((d.state)? d.state : '-') + "\"");
       line.push("\"" + ((d.evacuate)? d.evacuate : 'false') + "\"");
