@@ -156,12 +156,12 @@ public class FlowLatencyMonitoringFsm extends AbstractBaseFsm<FlowLatencyMonitor
     }
 
     public void sendFlowSyncRequest(State from, State to, Event event, Context context) {
-        log.info("Flow {} {} latency moved to healthy. Sending sync request.", flowId, direction);
+        log.info("Flow {} {} latency moved to healthy.", flowId, direction);
         context.getCarrier().sendFlowSyncRequest(flowId);
     }
 
     public void sendFlowRerouteRequest(State from, State to, Event event, Context context) {
-        log.info("Flow {} {} latency moved to unhealthy. Sending reroute request if required.", flowId, direction);
+        log.info("Flow {} {} latency moved to unhealthy.", flowId, direction);
         context.getCarrier().sendFlowRerouteRequest(flowId);
     }
 
