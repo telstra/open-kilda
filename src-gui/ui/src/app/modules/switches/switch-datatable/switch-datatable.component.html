@@ -1,7 +1,17 @@
 
 <div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
 <div class=" text-right text-filters mr-3" id="buttons">
-  <button [disabled]="!enableExportBtn" class="btn btn-dark" (click)="exportCsv()">Export</button>
+    <div  class="import-export-setting d-inline-block align-middle" ngbDropdown placement="bottom-right" >
+        <button [disabled]="!enableExportBtn" class="btn btn-dark" id="dropdownBasic1" ngbDropdownToggle>Export</button>
+        <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
+          <button  [disabled]="!enableExportBtn" class="dropdown-item export-setting" (click)="exportCsv(1)">
+              <i class="icon-export-setting" aria-hidden="true"></i>  &nbsp; Export Table Data
+          </button>
+          <button [disabled]="!enableExportBtn" class="dropdown-item export-setting" (click)="exportCsv(0)">
+            <i class="icon-export-setting" aria-hidden="true"></i>  &nbsp; Export All Data
+          </button>
+         </div>
+      </div>
 </div>
   <table id="switchDataTable" datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
     <thead>

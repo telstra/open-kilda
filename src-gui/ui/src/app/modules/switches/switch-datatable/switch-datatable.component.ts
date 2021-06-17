@@ -138,13 +138,16 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
     }
   }
 
-  exportCsv(){
+  exportCsv(val){
     var headings = ["Switch ID", "Name", "Address","Hostname","Pop Location","Sum(Bandwidth) of Flows(Mbps)","No Of Flows","Description","State", "Evacuate", "Hardware","Location","Manufacturer","Version","Port", "Serial Number","Software", "Under Maintenance"];
+   
+    if(val){
+       headings = ["Switch ID", "Name", "Address","Hostname","Pop Location","Sum(Bandwidth) of Flows(Mbps)","No Of Flows","Description","State"];
+     }
     var lineArray = [];
     lineArray.push(headings);
     this.data.forEach(function(d){
       var line = [];
-      var locationString = 'longitude:'+((d.location.longitude) ? d.location.longitude : '-')+', latitude:'+((d.location.latitude)? d.location.latitude : '-')+', city:'+((d.location.city) ? d.location.city : '-')+', street:'+((d.location.street)? d.location.street : '-')+', Country:'+((d.location.country)? d.location.country : '-');
       line.push("\"" + ((d.switch_id)? d.switch_id : '-') + "\"");
       line.push("\"" + ((d.name)? d.name : '-') + "\"");
       line.push("\"" + ((d.address)? d.address : '-') + "\"");
@@ -154,15 +157,19 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       line.push("\"" + ((d.noofflows || d.noofflows == 0 ) ? d.noofflows : '-') + "\"");
       line.push("\"" + ((d.description)? d.description : '-') + "\"");
       line.push("\"" + ((d.state)? d.state : '-') + "\"");
-      line.push("\"" + ((d.evacuate)? d.evacuate : 'false') + "\"");
-      line.push("\"" + ((d.hardware)? d.hardware : '-') + "\"");
-      line.push("\"" + locationString + "\"");
-      line.push("\"" + ((d.manufacturer)? d.manufacturer : '-') + "\"");
-      line.push("\"" + ((d.of_version)? d.of_version : '-') + "\"");
-      line.push("\"" + ((d.port)? d.port : '-') + "\"");
-      line.push("\"" + ((d.serial_number)? d.serial_number : '-') + "\"");
-      line.push("\"" + ((d.software)? d.software : '-') + "\"");
-      line.push("\"" + ((d.under_maintenance)? d.under_maintenance : 'false') + "\"");
+      if(!val){
+        var locationString = 'longitude:'+((d.location.longitude) ? d.location.longitude : '-')+', latitude:'+((d.location.latitude)? d.location.latitude : '-')+', city:'+((d.location.city) ? d.location.city : '-')+', street:'+((d.location.street)? d.location.street : '-')+', Country:'+((d.location.country)? d.location.country : '-');
+        line.push("\"" + ((d.evacuate)? d.evacuate : 'false') + "\"");
+        line.push("\"" + ((d.hardware)? d.hardware : '-') + "\"");
+        line.push("\"" + locationString + "\"");
+        line.push("\"" + ((d.manufacturer)? d.manufacturer : '-') + "\"");
+        line.push("\"" + ((d.of_version)? d.of_version : '-') + "\"");
+        line.push("\"" + ((d.port)? d.port : '-') + "\"");
+        line.push("\"" + ((d.serial_number)? d.serial_number : '-') + "\"");
+        line.push("\"" + ((d.software)? d.software : '-') + "\"");
+        line.push("\"" + ((d.under_maintenance)? d.under_maintenance : 'false') + "\"");
+      }
+      
       var csvLine = line.join(",");
       lineArray.push(csvLine);
     })
