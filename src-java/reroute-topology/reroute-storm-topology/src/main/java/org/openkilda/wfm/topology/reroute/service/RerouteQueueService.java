@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -72,6 +72,15 @@ public class RerouteQueueService {
      * @param throttlingData reroute request params
      */
     public void processAutomaticRequest(String flowId, FlowThrottlingData throttlingData) {
+        Optional<Flow> flow = flowRepository.findById(flowId);
+        if (!flow.isPresent()) {
+            log.warn(format("Flow %s not found. Skip the reroute operation of this flow.", flowId));
+            return;
+        } else if (flow.get().isPinned()) {
+            log.info(format("Flow %s is pinned. Skip the reroute operation of this flow.", flowId));
+            return;
+        }
+
         log.info("Puts reroute request for flow {} with correlationId {}.", flowId, throttlingData.getCorrelationId());
         RerouteQueue rerouteQueue = getRerouteQueue(flowId);
         rerouteQueue.putToThrottling(throttlingData);
