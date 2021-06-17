@@ -89,11 +89,11 @@
             <td class="divTableCell" title="{{ row['pop-location'] && row['pop-location']['pop-code'] ? checkValue(row['pop-location']['pop-code']) : ''}}" >
               {{ row['pop-location'] && row['pop-location']['pop-code'] ? checkValue(row['pop-location']['pop-code']) : '-'}}
             </td>
-            <td class="divTableCell" title="{{row.sumofbandwidth || 'loading..'}}" >
-              {{row.sumofbandwidth || 'loading..'}}
+            <td class="divTableCell" title="{{(row.sumofbandwidth || row.sumofbandwidth == 0) ? row.sumofbandwidth : 'loading..'}}" >
+              {{(row.sumofbandwidth || row.sumofbandwidth == 0) ? row.sumofbandwidth : 'loading..'}}
             </td>
-            <td class="divTableCell" title="{{row.noofflows || 'loading..'}}" >
-              {{row.noofflows || 'loading..'}}
+            <td class="divTableCell" title="{{(row.noofflows || row.noofflows == 0) ? row.noofflows : 'loading..'}}" >
+              {{(row.noofflows || row.noofflows == 0) ? row.noofflows : 'loading..'}}
             </td>
             <td class="divTableCell" title="{{checkValue(row.description)}}" >
               {{checkValue(row.description)}}
