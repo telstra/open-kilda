@@ -17,12 +17,13 @@ package org.usermanagement.dao.entity;
 
 import org.openkilda.entity.BaseEntity;
 
+import org.hibernate.annotations.GenericGenerator;
+
 import java.io.Serializable;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Lob;
 import javax.persistence.Table;
@@ -39,7 +40,8 @@ public class UserSettingEntity extends BaseEntity implements Serializable {
 
     @Id
     @Column(name = "USER_SETTING_ID", nullable = false)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(generator = "increment")
+    @GenericGenerator(name = "increment", strategy = "increment")
     private Long userSettingId;
 
     @Column(name = "USER_ID", nullable = false)
@@ -49,7 +51,7 @@ public class UserSettingEntity extends BaseEntity implements Serializable {
     @Lob
     private String settings;
 
-    @Column(name = "DATA", nullable = true, columnDefinition = "clob")
+    @Column(name = "DATA", nullable = true, columnDefinition = "blob")
     @Lob
     private String data;
     
@@ -103,3 +105,4 @@ public class UserSettingEntity extends BaseEntity implements Serializable {
         return "UserEntity [userSettingId=" + userSettingId + ", settings=" + settings + ", userId" + userId + "]";
     }
 }
+

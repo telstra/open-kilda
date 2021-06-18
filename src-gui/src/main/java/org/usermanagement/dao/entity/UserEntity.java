@@ -17,6 +17,8 @@ package org.usermanagement.dao.entity;
 
 import org.openkilda.entity.BaseEntity;
 
+import org.hibernate.annotations.GenericGenerator;
+
 import java.io.Serializable;
 import java.util.Date;
 import java.util.HashSet;
@@ -26,7 +28,6 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
@@ -46,7 +47,8 @@ public class UserEntity extends BaseEntity implements Serializable {
 
     @Id
     @Column(name = "USER_ID", nullable = false)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(generator = "increment")
+    @GenericGenerator(name = "increment", strategy = "increment")
     private Long userId;
 
     @Column(name = "USERNAME", nullable = false)
@@ -61,10 +63,10 @@ public class UserEntity extends BaseEntity implements Serializable {
     @Column(name = "EMAIL")
     private String email;
 
-    @Column(name = "LOGIN_TIME")
+    @Column(name = "LOGIN_TIME", nullable = true)
     private Date loginTime;
 
-    @Column(name = "LOGOUT_TIME")
+    @Column(name = "LOGOUT_TIME", nullable = true)
     private Date logoutTime;
 
     @Column(name = "ACTIVE_FLAG")
@@ -87,7 +89,7 @@ public class UserEntity extends BaseEntity implements Serializable {
     private StatusEntity statusEntity;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "user_role", joinColumns = {@JoinColumn(name = "user_id")},
+    @JoinTable(name = "USER_ROLE", joinColumns = {@JoinColumn(name = "user_id")},
             inverseJoinColumns = {@JoinColumn(name = "role_id")})
     private Set<RoleEntity> roles = new HashSet<RoleEntity>();
     
@@ -116,7 +118,7 @@ public class UserEntity extends BaseEntity implements Serializable {
     public void setRoles(final Set<RoleEntity> roles) {
         this.roles = roles;
     }
-
+    
     /**
      * Gets the user id.
      *
