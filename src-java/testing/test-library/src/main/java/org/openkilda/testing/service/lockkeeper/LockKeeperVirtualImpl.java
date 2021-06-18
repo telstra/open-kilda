@@ -27,6 +27,7 @@ import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 import org.openkilda.testing.service.lockkeeper.model.ChangeSwIpRequest;
 import org.openkilda.testing.service.lockkeeper.model.ContainerName;
 import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress;
+import org.openkilda.testing.service.lockkeeper.model.LinkDelayModify;
 import org.openkilda.testing.service.lockkeeper.model.MeterModify;
 import org.openkilda.testing.service.lockkeeper.model.SwitchModify;
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData;
@@ -266,6 +267,20 @@ public class LockKeeperVirtualImpl implements LockKeeperService {
         log.debug("Flush NAT INPUT chain for region {}", region);
         restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/floodlight/nat/input/flush", HttpMethod.POST,
                 new HttpEntity<>(new ContainerName(flHelper.getFlByRegion(region).getContainer())), String.class);
+    }
+
+    @Override
+    public void setLinkDelay(String bridgeName, Integer delayMs) {
+        log.debug("Set link delay: interface: '{}', delayMs: '{}'.", bridgeName, delayMs);
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/link/delay", HttpMethod.POST,
+                new HttpEntity<>(new LinkDelayModify(bridgeName, delayMs), buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void cleanupLinkDelay(String bridgeName) {
+        log.debug("Cleanup link delay: interface: '{}'.", bridgeName);
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/link/delay/cleanup", HttpMethod.POST,
+                new HttpEntity<>(new LinkDelayModify(bridgeName, null), buildJsonHeaders()), String.class);
     }
 
     HttpHeaders buildJsonHeaders() {
