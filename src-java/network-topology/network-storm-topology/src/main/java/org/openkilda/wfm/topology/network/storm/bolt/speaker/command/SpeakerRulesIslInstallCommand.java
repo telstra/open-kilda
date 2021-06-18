@@ -21,16 +21,24 @@ import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRulesWorker;
 public class SpeakerRulesIslInstallCommand extends SpeakerRulesWorkerCommand {
     Endpoint source;
     Endpoint destination;
-    
-    public SpeakerRulesIslInstallCommand(String key, Endpoint source, Endpoint destination) {
+    boolean multitableMode;
+    boolean server42IslRtt;
+    Integer server42Port;
+
+    public SpeakerRulesIslInstallCommand(String key, Endpoint source, Endpoint destination, boolean multitableMode,
+                                         boolean server42IslRtt, Integer server42Port) {
         super(key);
         this.source = source;
         this.destination = destination;
+        this.multitableMode = multitableMode;
+        this.server42IslRtt = server42IslRtt;
+        this.server42Port = server42Port;
     }
 
     @Override
     public void apply(SpeakerRulesWorker handler) {
-        handler.processSetupIslDefaultRulesRequest(getKey(), source, destination);
+        handler.processSetupIslRulesRequest(getKey(), source, destination, multitableMode, server42IslRtt,
+                server42Port);
     }
 
     public void timeout(SpeakerRulesWorker handler) {

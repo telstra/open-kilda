@@ -73,12 +73,17 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
             ServiceCookie.ServiceCookieTag.ARP_POST_INGRESS_VXLAN_COOKIE).getValue();
     public static final long ARP_POST_INGRESS_ONE_SWITCH_COOKIE = new ServiceCookie(
             ServiceCookie.ServiceCookieTag.ARP_POST_INGRESS_ONE_SWITCH_COOKIE).getValue();
-    public static final long SERVER_42_OUTPUT_VLAN_COOKIE = new ServiceCookie(
-            ServiceCookie.ServiceCookieTag.SERVER_42_OUTPUT_VLAN_COOKIE).getValue();
-    public static final long SERVER_42_OUTPUT_VXLAN_COOKIE = new ServiceCookie(
-            ServiceCookie.ServiceCookieTag.SERVER_42_OUTPUT_VXLAN_COOKIE).getValue();
-    public static final long SERVER_42_TURNING_COOKIE = new ServiceCookie(
-            ServiceCookie.ServiceCookieTag.SERVER_42_TURNING_COOKIE).getValue();
+    public static final long SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE = new ServiceCookie(
+            ServiceCookie.ServiceCookieTag.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE).getValue();
+    public static final long SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE = new ServiceCookie(
+            ServiceCookie.ServiceCookieTag.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE).getValue();
+    public static final long SERVER_42_FLOW_RTT_TURNING_COOKIE = new ServiceCookie(
+            ServiceCookie.ServiceCookieTag.SERVER_42_FLOW_RTT_TURNING_COOKIE).getValue();
+    public static final long SERVER_42_ISL_RTT_OUTPUT_COOKIE = new ServiceCookie(
+            ServiceCookie.ServiceCookieTag.SERVER_42_ISL_RTT_OUTPUT_COOKIE).getValue();
+    public static final long SERVER_42_ISL_RTT_TURNING_COOKIE = new ServiceCookie(
+            ServiceCookie.ServiceCookieTag.SERVER_42_ISL_RTT_TURNING_COOKIE).getValue();
+
 
     @JsonCreator
     public Cookie(long value) {
@@ -158,8 +163,12 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
         return new PortColourCookie(CookieType.ARP_INPUT_CUSTOMER_TYPE, port).getValue();
     }
 
-    public static long encodeServer42InputInput(int port) {
-        return new PortColourCookie(CookieType.SERVER_42_INPUT, port).getValue();
+    public static long encodeServer42FlowRttInput(int port) {
+        return new PortColourCookie(CookieType.SERVER_42_FLOW_RTT_INPUT, port).getValue();
+    }
+
+    public static long encodeServer42IslRttInput(int port) {
+        return new PortColourCookie(CookieType.SERVER_42_ISL_RTT_INPUT, port).getValue();
     }
 
     /**

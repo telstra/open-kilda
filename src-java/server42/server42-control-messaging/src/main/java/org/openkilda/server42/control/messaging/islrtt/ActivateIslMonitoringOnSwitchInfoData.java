@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,19 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker.services;
+package org.openkilda.server42.control.messaging.islrtt;
 
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.model.SwitchId;
 
-public interface SwitchOperationsServiceCarrier {
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
 
-    void requestSwitchSync(SwitchId switchId);
-
-    void enableServer42FlowRttOnSwitch(SwitchId switchId);
-
-    void disableServer42FlowRttOnSwitch(SwitchId switchId);
-
-    void enableServer42IslRttOnSwitch(SwitchId switchId);
-
-    void disableServer42IslRttOnSwitch(SwitchId switchId);
+@Value
+@Builder
+@JsonNaming(value = SnakeCaseStrategy.class)
+@EqualsAndHashCode(callSuper = false)
+public class ActivateIslMonitoringOnSwitchInfoData extends InfoData {
+    SwitchId switchId;
 }

@@ -85,7 +85,7 @@ public class IngressFlowSegmentRemoveCommand extends IngressFlowSegmentCommand {
         List<OFFlowMod> ofMessages = super.makeSharedFlowModRemoveMessages();
         if (getSwitchFeatures().contains(SwitchFeature.MULTI_TABLE) && rulesContext != null) {
             if (rulesContext.isRemoveServer42InputRule()) {
-                getFlowModFactory().makeServer42InputFlowMessage(getKildaCoreConfig().getServer42UdpPortOffset())
+                getFlowModFactory().makeServer42InputFlowMessage(getKildaCoreConfig().getServer42FlowRttUdpPortOffset())
                         .ifPresent(ofMessages::add);
             }
         }

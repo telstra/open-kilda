@@ -49,4 +49,14 @@ public class SwitchPropertiesDto implements Serializable {
 
     @JsonProperty("server42_vlan")
     private Integer server42Vlan;
+
+    @JsonProperty("server42_isl_rtt")
+    private RttState server42IslRtt;
+
+    /**
+     * DTO representation of {@link org.openkilda.model.SwitchProperties.RttState}.
+     */
+    public enum RttState {
+        ENABLED, DISABLED, AUTO
+    }
 }

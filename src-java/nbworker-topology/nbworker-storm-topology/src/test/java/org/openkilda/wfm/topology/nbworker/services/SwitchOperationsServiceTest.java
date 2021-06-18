@@ -23,6 +23,7 @@ import static junit.framework.TestCase.assertTrue;
 import org.openkilda.messaging.model.SwitchLocation;
 import org.openkilda.messaging.model.SwitchPatch;
 import org.openkilda.messaging.model.SwitchPropertiesDto;
+import org.openkilda.messaging.model.SwitchPropertiesDto.RttState;
 import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -103,6 +104,14 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
             @Override
             public void disableServer42FlowRttOnSwitch(SwitchId switchId) {
+            }
+
+            @Override
+            public void enableServer42IslRttOnSwitch(SwitchId switchId) {
+            }
+
+            @Override
+            public void disableServer42IslRttOnSwitch(SwitchId switchId) {
             }
         };
         ILinkOperationsServiceCarrier linkCarrier = new ILinkOperationsServiceCarrier() {
@@ -240,7 +249,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldUpdateServer42SwitchProperties() {
+    public void shouldUpdateServer42FlowRttSwitchProperties() {
         Switch sw = Switch.builder()
                 .switchId(TEST_SWITCH_ID)
                 .status(SwitchStatus.ACTIVE)
@@ -269,7 +278,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test(expected = IllegalSwitchPropertiesException.class)
-    public void shouldValidateServer42VlanSwitchProperties() {
+    public void shouldValidateServer42VlanWhenEnableFlowRttInSwitchProperties() {
         // user can't enable server42FlowRtt and do not specify server42Vlan
         SwitchPropertiesDto properties = new SwitchPropertiesDto();
         properties.setServer42FlowRtt(true);
@@ -280,7 +289,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test(expected = IllegalSwitchPropertiesException.class)
-    public void shouldValidateServer42PortSwitchProperties() {
+    public void shouldValidateServer42PortWhenEnableFlowRttInSwitchProperties() {
         // user can't enable server42FlowRtt and do not specify server42Port
         SwitchPropertiesDto properties = new SwitchPropertiesDto();
         properties.setServer42FlowRtt(true);
@@ -291,7 +300,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test(expected = IllegalSwitchPropertiesException.class)
-    public void shouldValidateServer42MacAddressSwitchProperties() {
+    public void shouldValidateServer42MacAddressWhenEnableFlowRttInSwitchProperties() {
         // user can't enable server42FlowRtt and do not specify server42MacAddress
         SwitchPropertiesDto properties = new SwitchPropertiesDto();
         properties.setServer42FlowRtt(true);
@@ -419,6 +428,111 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         update.setServer42Port(TEST_FLOW_SRC_PORT);
 
         switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+    }
+
+    @Test
+    public void shouldUpdateServer42IslRttSwitchProperties() {
+        Switch sw = Switch.builder()
+                .switchId(TEST_SWITCH_ID)
+                .status(SwitchStatus.ACTIVE)
+                .features(Collections.singleton(SwitchFeature.MULTI_TABLE))
+                .build();
+        switchRepository.add(sw);
+        SwitchProperties switchProperties = SwitchProperties.builder()
+                .switchObj(sw)
+                .supportedTransitEncapsulation(Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN))
+                .multiTable(false)
+                .server42IslRtt(SwitchProperties.RttState.DISABLED)
+                .server42Port(SERVER_42_PORT_1).server42Vlan(SERVER_42_VLAN_1)
+                .server42MacAddress(SERVER_42_MAC_ADDRESS_1)
+                .build();
+        switchPropertiesRepository.add(switchProperties);
+
+        SwitchPropertiesDto update = new SwitchPropertiesDto();
+        update.setSupportedTransitEncapsulation(
+                Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
+        update.setServer42IslRtt(RttState.ENABLED);
+        update.setServer42Port(SERVER_42_PORT_2);
+        update.setServer42Vlan(SERVER_42_VLAN_2);
+        update.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
+
+        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+        Optional<SwitchProperties> updated = switchPropertiesRepository.findBySwitchId(TEST_SWITCH_ID);
+
+        assertTrue(updated.isPresent());
+        assertEquals(SwitchProperties.RttState.ENABLED, updated.get().getServer42IslRtt());
+        assertEquals(SERVER_42_PORT_2, updated.get().getServer42Port());
+        assertEquals(SERVER_42_VLAN_2, updated.get().getServer42Vlan());
+        assertEquals(SERVER_42_MAC_ADDRESS_2, updated.get().getServer42MacAddress());
+    }
+
+    @Test
+    public void shouldUpdateServer42IslRttSwitchPropertiesToAuto() {
+        Switch sw = Switch.builder()
+                .switchId(TEST_SWITCH_ID)
+                .status(SwitchStatus.ACTIVE)
+                .features(Collections.singleton(SwitchFeature.MULTI_TABLE))
+                .build();
+        switchRepository.add(sw);
+        SwitchProperties switchProperties = SwitchProperties.builder()
+                .switchObj(sw)
+                .supportedTransitEncapsulation(Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN))
+                .multiTable(false)
+                .server42IslRtt(SwitchProperties.RttState.DISABLED)
+                .server42Port(SERVER_42_PORT_1).server42Vlan(SERVER_42_VLAN_1)
+                .server42MacAddress(SERVER_42_MAC_ADDRESS_1)
+                .build();
+        switchPropertiesRepository.add(switchProperties);
+
+        SwitchPropertiesDto update = new SwitchPropertiesDto();
+        update.setSupportedTransitEncapsulation(
+                Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
+        update.setServer42IslRtt(RttState.AUTO);
+        update.setServer42Port(SERVER_42_PORT_2);
+        update.setServer42Vlan(SERVER_42_VLAN_2);
+        update.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
+
+        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+        Optional<SwitchProperties> updated = switchPropertiesRepository.findBySwitchId(TEST_SWITCH_ID);
+
+        assertTrue(updated.isPresent());
+        assertEquals(SwitchProperties.RttState.AUTO, updated.get().getServer42IslRtt());
+        assertEquals(SERVER_42_PORT_2, updated.get().getServer42Port());
+        assertEquals(SERVER_42_VLAN_2, updated.get().getServer42Vlan());
+        assertEquals(SERVER_42_MAC_ADDRESS_2, updated.get().getServer42MacAddress());
+    }
+
+    @Test(expected = IllegalSwitchPropertiesException.class)
+    public void shouldValidateServer42VlanWhenEnableIslRttInSwitchProperties() {
+        // user can't enable server42FlowRtt and do not specify server42Vlan
+        SwitchPropertiesDto properties = new SwitchPropertiesDto();
+        properties.setServer42IslRtt(SwitchPropertiesDto.RttState.ENABLED);
+        properties.setServer42Port(SERVER_42_PORT_2);
+        properties.setServer42Vlan(null);
+        properties.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
+        runInvalidServer42PropsTest(properties);
+    }
+
+    @Test(expected = IllegalSwitchPropertiesException.class)
+    public void shouldValidateServer42PortWhenEnableIslRttInSwitchProperties() {
+        // user can't enable server42FlowRtt and do not specify server42Port
+        SwitchPropertiesDto properties = new SwitchPropertiesDto();
+        properties.setServer42IslRtt(SwitchPropertiesDto.RttState.ENABLED);
+        properties.setServer42Port(null);
+        properties.setServer42Vlan(SERVER_42_VLAN_2);
+        properties.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
+        runInvalidServer42PropsTest(properties);
+    }
+
+    @Test(expected = IllegalSwitchPropertiesException.class)
+    public void shouldValidateServer42MacAddressWhenEnableIslRttInSwitchProperties() {
+        // user can't enable server42FlowRtt and do not specify server42MacAddress
+        SwitchPropertiesDto properties = new SwitchPropertiesDto();
+        properties.setServer42IslRtt(SwitchPropertiesDto.RttState.ENABLED);
+        properties.setServer42Port(SERVER_42_PORT_2);
+        properties.setServer42Vlan(SERVER_42_VLAN_2);
+        properties.setServer42MacAddress(null);
+        runInvalidServer42PropsTest(properties);
     }
 
     @Test

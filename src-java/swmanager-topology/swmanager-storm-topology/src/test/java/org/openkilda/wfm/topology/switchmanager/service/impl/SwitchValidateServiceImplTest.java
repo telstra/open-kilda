@@ -113,7 +113,7 @@ public class SwitchValidateServiceImplTest {
         when(islRepository.findBySrcSwitch(any(SwitchId.class))).thenAnswer((invocation) ->
                 Collections.emptyList());
         FeatureTogglesRepository featureTogglesRepository = mock(FeatureTogglesRepository.class);
-        when(featureTogglesRepository.find()).thenReturn(Optional.of(FeatureToggles.DEFAULTS));
+        when(featureTogglesRepository.getOrDefault()).thenReturn(FeatureToggles.DEFAULTS);
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);

@@ -15,9 +15,9 @@
 
 package org.openkilda.floodlight.command.flow.ingress.of;
 
-import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FORWARD_UDP_PORT;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_FORWARD_UDP_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_UDP_SRC;
-import static org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42InputFlowGenerator.buildServer42CopyFirstTimestamp;
+import static org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42FlowRttInputFlowGenerator.buildServer42CopyFirstTimestamp;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentCommand;
@@ -83,8 +83,10 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
                 actions.add(of.actions().setField(of.oxms().ethDst(ethDst)));
 
                 if (!getCommand().getMetadata().isMultiTable()) {
-                    actions.add(of.actions().setField(of.oxms().udpSrc(TransportPort.of(SERVER_42_FORWARD_UDP_PORT))));
-                    actions.add(of.actions().setField(of.oxms().udpDst(TransportPort.of(SERVER_42_FORWARD_UDP_PORT))));
+                    actions.add(of.actions()
+                            .setField(of.oxms().udpSrc(TransportPort.of(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT))));
+                    actions.add(of.actions()
+                            .setField(of.oxms().udpDst(TransportPort.of(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT))));
                     if (switchFeatures.contains(NOVIFLOW_COPY_FIELD)) {
                         actions.add(buildServer42CopyFirstTimestamp(of));
                     }
@@ -102,7 +104,7 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
                 if (!getCommand().getMetadata().isMultiTable() && switchFeatures.contains(NOVIFLOW_COPY_FIELD)) {
                     actions.add(buildServer42CopyFirstTimestamp(of));
                 }
-                actions.add(pushVxlanAction(SERVER_42_FORWARD_UDP_PORT));
+                actions.add(pushVxlanAction(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT));
                 break;
             default:
                 throw new NotImplementedEncapsulationException(

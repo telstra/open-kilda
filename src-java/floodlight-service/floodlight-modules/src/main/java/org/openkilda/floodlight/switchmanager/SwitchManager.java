@@ -48,9 +48,11 @@ import static org.openkilda.model.cookie.Cookie.MULTITABLE_POST_INGRESS_DROP_COO
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE;
-import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VLAN_COOKIE;
-import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE;
-import static org.openkilda.model.cookie.Cookie.SERVER_42_TURNING_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_TURNING_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
@@ -214,10 +216,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 1;
     public static final int MINIMAL_POSITIVE_PRIORITY = FlowModUtils.PRIORITY_MIN + 1;
 
-    public static final int SERVER_42_INPUT_PRIORITY = INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE;
-    public static final int SERVER_42_TURNING_PRIORITY = VERIFICATION_RULE_PRIORITY;
-    public static final int SERVER_42_OUTPUT_VLAN_PRIORITY = VERIFICATION_RULE_PRIORITY;
-    public static final int SERVER_42_OUTPUT_VXLAN_PRIORITY = VERIFICATION_RULE_PRIORITY;
+    public static final int SERVER_42_FLOW_RTT_INPUT_PRIORITY = INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE;
+    public static final int SERVER_42_FLOW_RTT_TURNING_PRIORITY = VERIFICATION_RULE_PRIORITY;
+    public static final int SERVER_42_FLOW_RTT_OUTPUT_VLAN_PRIORITY = VERIFICATION_RULE_PRIORITY;
+    public static final int SERVER_42_FLOW_RTT_OUTPUT_VXLAN_PRIORITY = VERIFICATION_RULE_PRIORITY;
+
+    public static final int SERVER_42_ISL_RTT_INPUT_PRIORITY = VERIFICATION_RULE_PRIORITY;
+    public static final int SERVER_42_ISL_RTT_TURNING_PRIORITY = VERIFICATION_RULE_PRIORITY;
+    public static final int SERVER_42_ISL_RTT_OUTPUT_PRIORITY = VERIFICATION_RULE_PRIORITY;
 
     public static final int LLDP_INPUT_PRE_DROP_PRIORITY = MINIMAL_POSITIVE_PRIORITY + 1;
     public static final int LLDP_TRANSIT_ISL_PRIORITY = FLOW_PRIORITY - 1;
@@ -245,8 +251,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final IPv4Address STUB_VXLAN_IPV4_DST = IPv4Address.of("127.0.0.2");
     public static final int STUB_VXLAN_UDP_SRC = 4500;
     public static final int ARP_VXLAN_UDP_SRC = 4501;
-    public static final int SERVER_42_FORWARD_UDP_PORT = 4700;
-    public static final int SERVER_42_REVERSE_UDP_PORT = 4701;
+    public static final int SERVER_42_FLOW_RTT_FORWARD_UDP_PORT = 4700;
+    public static final int SERVER_42_FLOW_RTT_REVERSE_UDP_PORT = 4701;
+    public static final int SERVER_42_ISL_RTT_FORWARD_UDP_PORT = 4710;
+    public static final int SERVER_42_ISL_RTT_REVERSE_UDP_PORT = 4711;
     public static final int VXLAN_UDP_DST = 4789;
     public static final int ETH_SRC_OFFSET = 48;
     public static final int INTERNAL_ETH_SRC_OFFSET = 448;
@@ -875,7 +883,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                                          List<Integer> flowPorts, Set<Integer> flowLldpPorts,
                                          Set<Integer> flowArpPorts, Set<Integer> server42FlowRttPorts,
                                          boolean multiTable, boolean switchLldp, boolean switchArp,
-                                         boolean server42FlowRtt) throws SwitchOperationException {
+                                         boolean server42FlowRtt, boolean server42IslRtt)
+            throws SwitchOperationException {
 
         List<Long> deletedRules = deleteRulesWithCookie(dpid, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                 VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
@@ -886,8 +895,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 LLDP_INGRESS_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_VXLAN_COOKIE,
                 LLDP_POST_INGRESS_ONE_SWITCH_COOKIE, ARP_INPUT_PRE_DROP_COOKIE, ARP_TRANSIT_COOKIE,
                 ARP_INGRESS_COOKIE, ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE,
-                ARP_POST_INGRESS_ONE_SWITCH_COOKIE, SERVER_42_OUTPUT_VLAN_COOKIE, SERVER_42_OUTPUT_VXLAN_COOKIE,
-                SERVER_42_TURNING_COOKIE);
+                ARP_POST_INGRESS_ONE_SWITCH_COOKIE, SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE,
+                SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE, SERVER_42_FLOW_RTT_TURNING_COOKIE,
+                SERVER_42_ISL_RTT_OUTPUT_COOKIE, SERVER_42_ISL_RTT_TURNING_COOKIE);
         if (multiTable) {
             for (int islPort : islPorts) {
                 deletedRules.addAll(removeMultitableEndpointIslRules(dpid, islPort));
@@ -905,11 +915,16 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             }
             if (server42FlowRtt) {
                 for (Integer port : server42FlowRttPorts) {
-                    deletedRules.add(removeServer42InputFlow(dpid, port));
+                    deletedRules.add(removeServer42FlowRttInputFlow(dpid, port));
                 }
             }
         }
 
+        if (server42IslRtt) {
+            for (int islPort : islPorts) {
+                deletedRules.add(removeServer42IslRttInputFlow(dpid, islPort));
+            }
+        }
 
         try {
             deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue());
@@ -1253,33 +1268,54 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
-    public Long installServer42InputFlow(DatapathId dpid, int server42Port, int customerPort,
-                                         org.openkilda.model.MacAddress server42macAddress)
+    public Long installServer42FlowRttInputFlow(DatapathId dpid, int server42Port, int customerPort,
+                                                org.openkilda.model.MacAddress server42macAddress)
             throws SwitchOperationException {
-        return installDefaultFlow(dpid, switchFlowFactory.getServer42InputFlowGenerator(
-                server42Port, customerPort, server42macAddress), "--server 42 input rule--");
+        return installDefaultFlow(dpid, switchFlowFactory.getServer42FlowRttInputFlowGenerator(
+                server42Port, customerPort, server42macAddress), "--server 42 flow RTT input rule--");
     }
 
     @Override
-    public Long installServer42TurningFlow(DatapathId dpid) throws SwitchOperationException {
-        return installDefaultFlow(dpid, switchFlowFactory.getServer42TurningFlowGenerator(),
-                "--server 42 turning rule--");
+    public Long installServer42FlowRttTurningFlow(DatapathId dpid) throws SwitchOperationException {
+        return installDefaultFlow(dpid, switchFlowFactory.getServer42FlowRttTurningFlowGenerator(),
+                "--server 42 flow RTT turning rule--");
     }
 
     @Override
-    public Long installServer42OutputVlanFlow(
+    public Long installServer42FlowRttOutputVlanFlow(
             DatapathId dpid, int port, int vlan, org.openkilda.model.MacAddress macAddress)
             throws SwitchOperationException {
-        return installDefaultFlow(dpid, switchFlowFactory.getServer42OutputVlanFlowGenerator(
-                port, vlan, macAddress), "--server 42 output vlan rule--");
+        return installDefaultFlow(dpid, switchFlowFactory.getServer42FlowRttOutputVlanFlowGenerator(
+                port, vlan, macAddress), "--server 42 flow RTT output vlan rule--");
     }
 
     @Override
-    public Long installServer42OutputVxlanFlow(
+    public Long installServer42FlowRttOutputVxlanFlow(
             DatapathId dpid, int port, int vlan, org.openkilda.model.MacAddress macAddress)
             throws SwitchOperationException {
-        return installDefaultFlow(dpid, switchFlowFactory.getServer42OutputVxlanFlowGenerator(
+        return installDefaultFlow(dpid, switchFlowFactory.getServer42FlowRttOutputVxlanFlowGenerator(
                 port, vlan, macAddress), "--server 42 output VXLAN rule--");
+    }
+
+    @Override
+    public Long installServer42IslRttInputFlow(DatapathId dpid, int server42Port, int islPort)
+            throws SwitchOperationException {
+        return installDefaultFlow(dpid, switchFlowFactory.getServer42IslRttInputFlowGenerator(
+                server42Port, islPort), "--server 42 isl RTT input rule--");
+    }
+
+    @Override
+    public Long installServer42IslRttTurningFlow(DatapathId dpid) throws SwitchOperationException {
+        return installDefaultFlow(dpid, switchFlowFactory.getServer42IslRttTurningFlowGenerator(),
+                "--server 42 isl RTT turning rule--");
+    }
+
+    @Override
+    public Long installServer42IslRttOutputFlow(
+            DatapathId dpid, int server42Port, int server42Vlan, org.openkilda.model.MacAddress server42MacAddress)
+            throws SwitchOperationException {
+        return installDefaultFlow(dpid, switchFlowFactory.getServer42IslRttOutputFlowGenerator(
+                server42Port, server42Vlan, server42MacAddress), "--server 42 isl RTT output rule--");
     }
 
     @Override
@@ -1364,8 +1400,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
-    public Long removeServer42InputFlow(DatapathId dpid, int port) throws SwitchOperationException {
-        long cookie = Cookie.encodeServer42InputInput(port);
+    public Long removeServer42FlowRttInputFlow(DatapathId dpid, int port) throws SwitchOperationException {
+        long cookie = Cookie.encodeServer42FlowRttInput(port);
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
         OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(PRE_INGRESS_TABLE_ID));
@@ -1375,7 +1411,23 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         builder.setCookieMask(U64.NO_MASK);
 
         builder.setInstructions(ImmutableList.of(goToTable));
-        builder.setPriority(SERVER_42_INPUT_PRIORITY);
+        builder.setPriority(SERVER_42_FLOW_RTT_INPUT_PRIORITY);
+
+        removeFlowByOfFlowDelete(dpid, INPUT_TABLE_ID, builder.build());
+        return cookie;
+    }
+
+    @Override
+    public Long removeServer42IslRttInputFlow(DatapathId dpid, int islPort) throws SwitchOperationException {
+        long cookie = Cookie.encodeServer42IslRttInput(islPort);
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+
+        OFFlowDelete.Builder builder = ofFactory.buildFlowDelete();
+        builder.setCookie(U64.of(cookie));
+        builder.setCookieMask(U64.NO_MASK);
+
+        builder.setPriority(SERVER_42_ISL_RTT_INPUT_PRIORITY);
 
         removeFlowByOfFlowDelete(dpid, INPUT_TABLE_ID, builder.build());
         return cookie;
@@ -1483,24 +1535,48 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
-    public List<OFFlowMod> buildExpectedServer42Flows(
+    public List<OFFlowMod> buildExpectedServer42FlowRttFlows(
             DatapathId dpid, boolean server42FlowRttFeatureToggle, boolean server42FlowRttSwitchProperty,
             Integer server42Port, Integer server42Vlan, org.openkilda.model.MacAddress server42MacAddress,
             Set<Integer> customerPorts) throws SwitchNotFoundException {
 
         List<SwitchFlowGenerator> generators = new ArrayList<>();
         if (server42FlowRttFeatureToggle) {
-            generators.add(switchFlowFactory.getServer42TurningFlowGenerator());
+            generators.add(switchFlowFactory.getServer42FlowRttTurningFlowGenerator());
 
             if (server42FlowRttSwitchProperty) {
                 for (Integer port : customerPorts) {
-                    generators.add(switchFlowFactory.getServer42InputFlowGenerator(
+                    generators.add(switchFlowFactory.getServer42FlowRttInputFlowGenerator(
                             server42Port, port, server42MacAddress));
                 }
-                generators.add(switchFlowFactory.getServer42OutputVlanFlowGenerator(
+                generators.add(switchFlowFactory.getServer42FlowRttOutputVlanFlowGenerator(
                         server42Port, server42Vlan, server42MacAddress));
-                generators.add(switchFlowFactory.getServer42OutputVxlanFlowGenerator(
+                generators.add(switchFlowFactory.getServer42FlowRttOutputVxlanFlowGenerator(
                         server42Port, server42Vlan, server42MacAddress));
+            }
+        }
+
+        IOFSwitch sw = lookupSwitch(dpid);
+        return generators.stream()
+                .map(g -> g.generateFlow(sw))
+                .map(SwitchFlowTuple::getFlow)
+                .filter(Objects::nonNull)
+                .collect(toList());
+    }
+
+    @Override
+    public List<OFFlowMod> buildExpectedServer42IslRttFlows(
+            DatapathId dpid, boolean server42IslRtt,
+            Integer server42Port, Integer server42Vlan, org.openkilda.model.MacAddress server42MacAddress,
+            Collection<Integer> islPorts) throws SwitchNotFoundException {
+
+        List<SwitchFlowGenerator> generators = new ArrayList<>();
+        if (server42IslRtt) {
+            generators.add(switchFlowFactory.getServer42IslRttTurningFlowGenerator());
+            generators.add(switchFlowFactory.getServer42IslRttOutputFlowGenerator(
+                    server42Port, server42Vlan, server42MacAddress));
+            for (Integer islPort : islPorts) {
+                generators.add(switchFlowFactory.getServer42IslRttInputFlowGenerator(server42Port, islPort));
             }
         }
 

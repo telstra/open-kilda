@@ -287,7 +287,7 @@ public class CacheBolt extends AbstractBolt {
             String flowId, SwitchId ingressSwitchId, FlowSegmentCookie cookie) {
         Map<CookieCacheKey, CacheFlowEntry> results = new HashMap<>();
 
-        long server42Cookie = cookie.toBuilder().type(CookieType.SERVER_42_INGRESS).build().getValue();
+        long server42Cookie = cookie.toBuilder().type(CookieType.SERVER_42_FLOW_RTT_INGRESS).build().getValue();
         results.put(
                 new CookieCacheKey(ingressSwitchId, server42Cookie),
                 new CacheFlowEntry(flowId, server42Cookie, INGRESS_ATTENDANT));
@@ -299,7 +299,7 @@ public class CacheBolt extends AbstractBolt {
         Set<Long> results = new HashSet<>();
 
         FlowSegmentCookie cookie = new FlowSegmentCookie(rawCookie);
-        results.add(cookie.toBuilder().type(CookieType.SERVER_42_INGRESS).build().getValue());
+        results.add(cookie.toBuilder().type(CookieType.SERVER_42_FLOW_RTT_INGRESS).build().getValue());
 
         return results;
     }

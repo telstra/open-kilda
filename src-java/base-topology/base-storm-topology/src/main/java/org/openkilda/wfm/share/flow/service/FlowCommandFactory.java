@@ -241,7 +241,7 @@ public class FlowCommandFactory {
         int inputOuterVlan = isForward ? flow.getSrcVlan() : flow.getDestVlan();
         int inputInnerVlan = isForward ? flow.getSrcInnerVlan() : flow.getDestInnerVlan();
         long cookie = new FlowSegmentCookie(flowPath.getCookie().getValue()).toBuilder()
-                .type(CookieType.SERVER_42_INGRESS)
+                .type(CookieType.SERVER_42_FLOW_RTT_INGRESS)
                 .build()
                 .getValue();
 

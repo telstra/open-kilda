@@ -20,24 +20,21 @@ import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionRepla
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSetDstMac;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSetOutputPort;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSetSrcMac;
-import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSetUdpSrcAction;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildInstructionApplyActions;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.prepareFlowModBuilder;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.INPUT_TABLE_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.NOVIFLOW_TIMESTAMP_SIZE_IN_BITS;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_OUTPUT_VXLAN_PRIORITY;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_REVERSE_UDP_PORT;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.VXLAN_UDP_DST;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_FORWARD_UDP_PORT;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_OUTPUT_VLAN_PRIORITY;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_REVERSE_UDP_PORT;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
-import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
-import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE;
 
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.factory.SwitchFlowTuple;
 import org.openkilda.floodlight.switchmanager.factory.generator.SwitchFlowGenerator;
 import org.openkilda.model.MacAddress;
-import org.openkilda.model.SwitchFeature;
 
 import com.google.common.collect.ImmutableList;
 import lombok.Builder;
@@ -56,9 +53,8 @@ import org.projectfloodlight.openflow.types.TransportPort;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
-public class Server42OutputVxlanFlowGenerator implements SwitchFlowGenerator {
+public class Server42FlowRttOutputVlanFlowGenerator implements SwitchFlowGenerator {
 
     private FeatureDetectorService featureDetectorService;
     private int server42Port;
@@ -66,7 +62,7 @@ public class Server42OutputVxlanFlowGenerator implements SwitchFlowGenerator {
     private MacAddress server42MacAddress;
 
     @Builder
-    public Server42OutputVxlanFlowGenerator(
+    public Server42FlowRttOutputVlanFlowGenerator(
             FeatureDetectorService featureDetectorService, int server42Port, int server42Vlan,
             MacAddress server42MacAddress) {
         this.featureDetectorService = featureDetectorService;
@@ -77,33 +73,25 @@ public class Server42OutputVxlanFlowGenerator implements SwitchFlowGenerator {
 
     @Override
     public SwitchFlowTuple generateFlow(IOFSwitch sw) {
-        Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
-        if (!features.contains(NOVIFLOW_PUSH_POP_VXLAN)) {
-            return SwitchFlowTuple.getEmpty();
-        }
-
         OFFactory ofFactory = sw.getOFFactory();
 
         List<OFAction> actions = new ArrayList<>();
-        actions.add(buildPopVxlanAction(ofFactory));
         if (server42Vlan > 0) {
             actions.add(actionPushVlan(ofFactory, EthType.VLAN_FRAME.getValue()));
             actions.add(actionReplaceVlan(ofFactory, server42Vlan));
         }
         actions.add(actionSetSrcMac(ofFactory, convertDpIdToMac(sw.getId())));
         actions.add(actionSetDstMac(ofFactory, org.projectfloodlight.openflow.types.MacAddress.of(
-                        server42MacAddress.getAddress())));
-        actions.add(actionSetUdpSrcAction(ofFactory, TransportPort.of(SERVER_42_REVERSE_UDP_PORT)));
-
-        if (features.contains(NOVIFLOW_COPY_FIELD)) {
-            // NOTE: We must call copy field action after all set field actions. All set actions called after copy field
-            // actions will be ignored. It's Noviflow bug.
+                server42MacAddress.getAddress())));
+        if (featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_COPY_FIELD)) {
             actions.add(buildCopyTimestamp(ofFactory));
         }
+
         actions.add(actionSetOutputPort(ofFactory, OFPort.of(server42Port)));
 
         OFFlowMod flowMod = prepareFlowModBuilder(
-                ofFactory, SERVER_42_OUTPUT_VXLAN_COOKIE, SERVER_42_OUTPUT_VXLAN_PRIORITY, INPUT_TABLE_ID)
+                ofFactory, SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE, SERVER_42_FLOW_RTT_OUTPUT_VLAN_PRIORITY,
+                INPUT_TABLE_ID)
                 .setMatch(buildMatch(sw.getId(), ofFactory))
                 .setInstructions(ImmutableList.of(buildInstructionApplyActions(ofFactory, actions)))
                 .build();
@@ -118,8 +106,8 @@ public class Server42OutputVxlanFlowGenerator implements SwitchFlowGenerator {
                 .setExact(MatchField.ETH_DST, convertDpIdToMac(dpid))
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-                .setExact(MatchField.UDP_SRC, TransportPort.of(SERVER_42_REVERSE_UDP_PORT))
-                .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST))
+                .setExact(MatchField.UDP_SRC, TransportPort.of(SERVER_42_FLOW_RTT_REVERSE_UDP_PORT))
+                .setExact(MatchField.UDP_DST, TransportPort.of(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT))
                 .build();
     }
 
@@ -132,9 +120,5 @@ public class Server42OutputVxlanFlowGenerator implements SwitchFlowGenerator {
                 .setOxmSrcHeader(oxms.buildNoviflowTxtimestamp().getTypeLen())
                 .setOxmDstHeader(oxms.buildNoviflowUpdPayload().getTypeLen())
                 .build();
-    }
-
-    private static OFAction buildPopVxlanAction(OFFactory factory) {
-        return factory.actions().noviflowPopVxlanTunnel();
     }
 }

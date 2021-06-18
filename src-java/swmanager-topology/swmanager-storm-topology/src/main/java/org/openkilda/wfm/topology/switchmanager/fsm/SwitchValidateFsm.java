@@ -334,9 +334,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         final SwitchId switchId = getSwitchId();
         log.info("Sending requests to get expected switch service rules (switch={}, key={})", switchId, key);
 
-        boolean isServer42FlowRttFeatureToggle = featureTogglesRepository.find()
-                .map(FeatureToggles::getServer42FlowRtt)
-                .orElse(FeatureToggles.DEFAULTS.getServer42FlowRtt());
+        FeatureToggles featureToggles = featureTogglesRepository.getOrDefault();
 
         GetExpectedDefaultRulesRequest.GetExpectedDefaultRulesRequestBuilder payload = GetExpectedDefaultRulesRequest
                 .builder()
@@ -344,11 +342,13 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                 .multiTable(isMultiTable)
                 .switchLldp(isSwitchLldp)
                 .switchArp(isSwitchArp)
-                .server42FlowRttFeatureToggle(isServer42FlowRttFeatureToggle)
+                .server42FlowRttFeatureToggle(featureToggles.getServer42FlowRtt())
                 .server42FlowRttSwitchProperty(switchProperties.isServer42FlowRtt())
                 .server42Port(switchProperties.getServer42Port())
                 .server42Vlan(switchProperties.getServer42Vlan())
-                .server42MacAddress(switchProperties.getServer42MacAddress());
+                .server42MacAddress(switchProperties.getServer42MacAddress())
+                .server42IslRttEnabled(featureToggles.getServer42IslRtt()
+                        && switchProperties.hasServer42IslRttEnabled());
 
         for (FlowPath flowPath : flowPathRepository.findBySrcSwitch(switchId)) {
             Flow flow = flowPath.getFlow();
@@ -365,7 +365,8 @@ public class SwitchValidateFsm extends AbstractStateMachine<
 
             if (flowPath.isSrcWithMultiTable()) {
                 payload.flowPort(endpoint.getPortNumber());
-                if (isServer42FlowRttFeatureToggle && switchProperties.isServer42FlowRtt() && !flow.isOneSwitchFlow()) {
+                if (featureToggles.getServer42FlowRtt() && switchProperties.isServer42FlowRtt()
+                        && !flow.isOneSwitchFlow()) {
                     payload.server42FlowRttPort(endpoint.getPortNumber());
                 }
             }

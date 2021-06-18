@@ -127,7 +127,7 @@ public class ValidationServiceImpl implements ValidationService {
                 .filter(path -> !path.isOneSwitchFlow())
                 .map(FlowPath::getCookie)
                 .map(FlowSegmentCookie::toBuilder)
-                .map(builder -> builder.type(CookieType.SERVER_42_INGRESS))
+                .map(builder -> builder.type(CookieType.SERVER_42_FLOW_RTT_INGRESS))
                 .map(FlowSegmentCookieBuilder::build)
                 .map(CookieBase::getValue)
                 .collect(Collectors.toSet());

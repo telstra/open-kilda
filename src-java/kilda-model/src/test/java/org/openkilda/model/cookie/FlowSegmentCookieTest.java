@@ -48,8 +48,8 @@ public class FlowSegmentCookieTest extends GenericCookieTest {
         Assert.assertEquals(CookieType.SERVICE_OR_FLOW_SEGMENT, flowCookie.getType());
 
         FlowSegmentCookie server42Cookie = flowCookie.toBuilder()
-                .type(CookieType.SERVER_42_INGRESS)
+                .type(CookieType.SERVER_42_FLOW_RTT_INGRESS)
                 .build();
-        Assert.assertEquals(CookieType.SERVER_42_INGRESS, server42Cookie.getType());
+        Assert.assertEquals(CookieType.SERVER_42_FLOW_RTT_INGRESS, server42Cookie.getType());
     }
 }

@@ -30,7 +30,8 @@ public interface IIslCarrier {
 
     void islStatusUpdateNotification(IslStatusUpdateNotification trigger);
 
-    void islDefaultRulesInstall(Endpoint source, Endpoint destination);
+    void islDefaultRulesInstall(Endpoint source, Endpoint destination, boolean multitableMode,
+                                boolean server42IslRtt, Integer server42Port);
 
     void islDefaultRulesDelete(Endpoint source, Endpoint destination);
 

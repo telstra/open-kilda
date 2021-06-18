@@ -40,7 +40,9 @@ kilda_floodlight_consumer_executors: 20
 kilda_floodlight_consumer_disco_executors: 20
 kilda_floodlight_broadcast_mac_address: "00:26:E1:FF:FF:FF"
 kilda_floodlight_flow_ping_magic_src_mac_address: "00:26:E1:FF:FF:FE"
-kilda_floodlight_server42_upd_port_offset: 5000
+kilda_floodlight_server42_flow_rtt_udp_port_offset: 5000
+kilda_floodlight_server42_isl_rtt_udp_port_offset: 10000
+kilda_floodlight_server42_isl_rtt_magic_mac_address: "00:26:E1:FF:FF:FD"
 
 kilda_floodlight_ovs_meters_enabled: true
 
@@ -171,7 +173,7 @@ kilda_server42_control_http_port: 9002
 kilda_server42_control_switch_to_vlan_1000: "1000=00:00:d7:61:46:7b:46:69,00:00:1b:45:18:d6:71:5a,00:00:e3:7d:94:02:9b:f0"
 kilda_server42_control_switch_to_vlan_2000: "2000=00:00:55:dd:06:49:d9:61,00:00:84:1e:39:d5:dd:40"
 kilda_server42_control_switch_to_vlan_1002: "1002=00:00:00:00:00:00:00:02"
-kilda_server42_control_switch_to_vlan_1003: "1003=00:00:00:00:00:00:00:03"
+kilda_server42_control_switch_to_vlan_1003: "1003=00:00:00:00:00:00:00:03,00:00:00:00:00:00:00:08"
 
 kilda_server42_control_kafka_group_id: "server42-control"
 kilda_server42_control_zeromq_connection_host: "tcp://server42-server.pendev:5555"
