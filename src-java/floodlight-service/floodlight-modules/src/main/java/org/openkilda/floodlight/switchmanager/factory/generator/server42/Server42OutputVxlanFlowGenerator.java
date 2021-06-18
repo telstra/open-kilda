@@ -93,10 +93,13 @@ public class Server42OutputVxlanFlowGenerator implements SwitchFlowGenerator {
         actions.add(actionSetSrcMac(ofFactory, convertDpIdToMac(sw.getId())));
         actions.add(actionSetDstMac(ofFactory, org.projectfloodlight.openflow.types.MacAddress.of(
                         server42MacAddress.getAddress())));
+        actions.add(actionSetUdpSrcAction(ofFactory, TransportPort.of(SERVER_42_REVERSE_UDP_PORT)));
+
         if (features.contains(NOVIFLOW_COPY_FIELD)) {
+            // NOTE: We must call copy field action after all set field actions. All set actions called after copy field
+            // actions will be ignored. It's Noviflow bug.
             actions.add(buildCopyTimestamp(ofFactory));
         }
-        actionSetUdpSrcAction(ofFactory, TransportPort.of(SERVER_42_REVERSE_UDP_PORT));
         actions.add(actionSetOutputPort(ofFactory, OFPort.of(server42Port)));
 
         OFFlowMod flowMod = prepareFlowModBuilder(
