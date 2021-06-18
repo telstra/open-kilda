@@ -1,5 +1,18 @@
 
 <div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
+<div class=" text-right text-filters mr-3" id="buttons">
+    <div  class="import-export-setting d-inline-block align-middle" ngbDropdown placement="bottom-right" >
+        <button [disabled]="!enableExportBtn" class="btn btn-dark" id="dropdownBasic1" ngbDropdownToggle>Export</button>
+        <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
+          <button  [disabled]="!enableExportBtn" class="dropdown-item export-setting" (click)="exportCsv(1)">
+              <i class="icon-export-setting" aria-hidden="true"></i>  &nbsp;Table Data
+          </button>
+          <button [disabled]="!enableExportBtn" class="dropdown-item export-setting" (click)="exportCsv(0)">
+            <i class="icon-export-setting" aria-hidden="true"></i>  &nbsp; All Data
+          </button>
+         </div>
+      </div>
+</div>
   <table id="switchDataTable" datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
     <thead>
       <tr>
@@ -86,11 +99,11 @@
             <td class="divTableCell" title="{{ row['pop-location'] && row['pop-location']['pop-code'] ? checkValue(row['pop-location']['pop-code']) : ''}}" >
               {{ row['pop-location'] && row['pop-location']['pop-code'] ? checkValue(row['pop-location']['pop-code']) : '-'}}
             </td>
-            <td class="divTableCell" title="{{(flowDataOfSwitch && flowDataOfSwitch.hasOwnProperty(row.switch_id) && (flowDataOfSwitch[row.switch_id].sumofbandwidth || flowDataOfSwitch[row.switch_id].sumofbandwidth == 0) ) ? flowDataOfSwitch[row.switch_id].sumofbandwidth : 'loading..'}}" >
-              {{(flowDataOfSwitch && flowDataOfSwitch.hasOwnProperty(row.switch_id) && (flowDataOfSwitch[row.switch_id].sumofbandwidth || flowDataOfSwitch[row.switch_id].sumofbandwidth == 0) ) ? flowDataOfSwitch[row.switch_id].sumofbandwidth : 'loading..'}}
+            <td class="divTableCell" title="{{(row.sumofbandwidth || row.sumofbandwidth == 0) ? row.sumofbandwidth : 'loading..'}}" >
+              {{(row.sumofbandwidth || row.sumofbandwidth == 0) ? row.sumofbandwidth : 'loading..'}}
             </td>
-            <td class="divTableCell" title="{{(flowDataOfSwitch && flowDataOfSwitch.hasOwnProperty(row.switch_id) && (flowDataOfSwitch[row.switch_id].noofflows || flowDataOfSwitch[row.switch_id].noofflows == 0) ) ? flowDataOfSwitch[row.switch_id].noofflows : 'loading..'}}" >
-              {{(flowDataOfSwitch && flowDataOfSwitch.hasOwnProperty(row.switch_id) && (flowDataOfSwitch[row.switch_id].noofflows || flowDataOfSwitch[row.switch_id].noofflows == 0) ) ? flowDataOfSwitch[row.switch_id].noofflows : 'loading..'}}
+            <td class="divTableCell" title="{{(row.noofflows || row.noofflows == 0) ? row.noofflows : 'loading..'}}" >
+              {{(row.noofflows || row.noofflows == 0) ? row.noofflows : 'loading..'}}
             </td>
             <td class="divTableCell" title="{{checkValue(row.description)}}" >
               {{checkValue(row.description)}}
@@ -98,8 +111,7 @@
             <td class="divTableCell" title="{{checkValue(row.state)}}" >
               {{checkValue(row.state)}}
             </td>
-            <td >{{ descrepancyString(row) }}</td>
-           
+            <td>{{ descrepancyString(row) }}</td>
            
         </tr>
     </tbody>
