@@ -24,7 +24,7 @@ public class WatcherSpeakerRoundTripDiscovery extends WatcherCommand {
 
     public WatcherSpeakerRoundTripDiscovery(IslRoundTripLatency latencyData) {
         super(Endpoint.of(latencyData.getSrcSwitchId(), latencyData.getSrcPortNo()));
-        packetId = latencyData.getPacketId();
+        packetId = latencyData.getPacketId() != null ? latencyData.getPacketId() : 0L;
     }
 
     @Override

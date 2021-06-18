@@ -17,20 +17,28 @@ package org.openkilda.server42.control.kafka;
 
 import org.openkilda.model.SwitchId;
 import org.openkilda.server42.control.config.SwitchToVlanMapping;
+import org.openkilda.server42.control.messaging.Control;
+import org.openkilda.server42.control.messaging.Control.CommandPacket;
+import org.openkilda.server42.control.messaging.Control.CommandPacket.Builder;
+import org.openkilda.server42.control.messaging.Control.CommandPacket.Type;
+import org.openkilda.server42.control.messaging.Control.CommandPacketResponse;
 import org.openkilda.server42.control.messaging.flowrtt.AddFlow;
 import org.openkilda.server42.control.messaging.flowrtt.ClearFlows;
-import org.openkilda.server42.control.messaging.flowrtt.Control;
-import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacket;
-import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacket.Builder;
-import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacket.Type;
-import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacketResponse;
-import org.openkilda.server42.control.messaging.flowrtt.Control.Flow;
-import org.openkilda.server42.control.messaging.flowrtt.Control.Flow.EncapsulationType;
+import org.openkilda.server42.control.messaging.flowrtt.FlowRttControl;
+import org.openkilda.server42.control.messaging.flowrtt.FlowRttControl.Flow;
 import org.openkilda.server42.control.messaging.flowrtt.ListFlowsOnSwitch;
 import org.openkilda.server42.control.messaging.flowrtt.ListFlowsRequest;
 import org.openkilda.server42.control.messaging.flowrtt.ListFlowsResponse;
 import org.openkilda.server42.control.messaging.flowrtt.PushSettings;
 import org.openkilda.server42.control.messaging.flowrtt.RemoveFlow;
+import org.openkilda.server42.control.messaging.islrtt.AddIsl;
+import org.openkilda.server42.control.messaging.islrtt.ClearIsls;
+import org.openkilda.server42.control.messaging.islrtt.IslRttControl;
+import org.openkilda.server42.control.messaging.islrtt.IslRttControl.IslEndpoint;
+import org.openkilda.server42.control.messaging.islrtt.ListIslPortsOnSwitch;
+import org.openkilda.server42.control.messaging.islrtt.ListIslsRequest;
+import org.openkilda.server42.control.messaging.islrtt.ListIslsResponse;
+import org.openkilda.server42.control.messaging.islrtt.RemoveIsl;
 import org.openkilda.server42.control.zeromq.ZeroMqClient;
 import org.openkilda.server42.messaging.FlowDirection;
 
@@ -72,14 +80,16 @@ public class Gate {
     private String toStorm;
 
     @Value("${openkilda.server42.control.flow_rtt.udp_src_port_offset}")
-    private Integer udpSrcPortOffset;
+    private Integer flowRttUdpSrcPortOffset;
+
+    @Value("${openkilda.server42.control.isl_rtt.udp_src_port_offset}")
+    private Integer islRttUdpSrcPortOffset;
 
     private Map<String, Long> switchToVlanMap;
 
     public Gate(@Autowired KafkaTemplate<String, Object> template,
                 @Autowired ZeroMqClient zeroMqClient,
-                @Autowired SwitchToVlanMapping switchToVlanMapping
-    ) {
+                @Autowired SwitchToVlanMapping switchToVlanMapping) {
         this.template = template;
         this.zeroMqClient = zeroMqClient;
         this.switchToVlanMap = switchToVlanMapping.getVlan().entrySet().stream().flatMap(
@@ -90,25 +100,25 @@ public class Gate {
 
     @KafkaHandler
     void listen(@Payload AddFlow data,
-                        @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String switchIdKey) {
+                @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String switchIdKey) {
 
         SwitchId switchId = new SwitchId(switchIdKey);
 
         Builder builder = CommandPacket.newBuilder();
         Flow flow = Flow.newBuilder()
                 .setFlowId(data.getFlowId())
-                .setEncapsulationType(EncapsulationType.VLAN)
+                .setEncapsulationType(Flow.EncapsulationType.VLAN)
                 .setTunnelId(data.getTunnelId())
-                .setTransitEncapsulationType(EncapsulationType.VLAN)
+                .setTransitEncapsulationType(Flow.EncapsulationType.VLAN)
                 .setInnerTunnelId(data.getInnerTunnelId())
                 .setTransitTunnelId(switchToVlanMap.get(switchIdKey))
                 .setDirection(FlowDirection.toBoolean(data.getDirection()))
-                .setUdpSrcPort(udpSrcPortOffset + data.getPort())
+                .setUdpSrcPort(flowRttUdpSrcPortOffset + data.getPort())
                 .setDstMac(switchId.toMacAddress())
                 .setHashCode(data.hashCode())
                 .build();
 
-        Control.AddFlow addFlow = Control.AddFlow.newBuilder().setFlow(flow).build();
+        FlowRttControl.AddFlow addFlow = FlowRttControl.AddFlow.newBuilder().setFlow(flow).build();
         builder.setType(Type.ADD_FLOW);
         builder.addCommand(Any.pack(addFlow));
         CommandPacket packet = builder.build();
@@ -125,7 +135,7 @@ public class Gate {
         Builder builder = CommandPacket.newBuilder();
         builder.setType(Type.CLEAR_FLOWS);
         SwitchId switchId = new SwitchId(switchIdKey);
-        Control.ClearFlowsFilter clearFlowsFilter = Control.ClearFlowsFilter.newBuilder()
+        FlowRttControl.ClearFlowsFilter clearFlowsFilter = FlowRttControl.ClearFlowsFilter.newBuilder()
                 .setDstMac(switchId.toMacAddress()).build();
         builder.addCommand(Any.pack(clearFlowsFilter));
         try {
@@ -212,13 +222,112 @@ public class Gate {
         }
     }
 
+    @KafkaHandler
+    void listen(@Payload AddIsl data) {
+        Builder builder = CommandPacket.newBuilder();
+        builder.setType(Type.ADD_ISL);
+        SwitchId switchId = data.getSwitchId();
+        String switchIdKey = switchId.toString();
+        IslEndpoint endpoint = IslEndpoint.newBuilder()
+                .setSwitchId(switchIdKey).setPort(data.getPort()).build();
+
+        IslRttControl.AddIsl addIsl = IslRttControl.AddIsl.newBuilder()
+                .setIsl(endpoint).setSwitchMac(switchId.toMacAddress())
+                .setUdpSrcPort(islRttUdpSrcPortOffset + data.getPort())
+                .setTransitEncapsulationType(IslRttControl.AddIsl.EncapsulationType.VLAN)
+                .setTransitTunnelId(switchToVlanMap.get(switchIdKey))
+                .setHashCode(data.hashCode())
+                .build();
+        builder.addCommand(Any.pack(addIsl));
+        try {
+            zeroMqClient.send(builder.build());
+        } catch (InvalidProtocolBufferException e) {
+            log.error("Marshalling error on {}", data, e);
+        }
+    }
+
+    @KafkaHandler
+    void listen(@Payload ClearIsls data) {
+        Builder builder = CommandPacket.newBuilder();
+        builder.setType(Type.CLEAR_ISLS);
+        IslRttControl.ClearIslsFilter clearIslsFilter = IslRttControl.ClearIslsFilter.newBuilder()
+                .setSwitchId(data.getSwitchId().toString())
+                .build();
+        builder.addCommand(Any.pack(clearIslsFilter));
+        try {
+            zeroMqClient.send(builder.build());
+        } catch (InvalidProtocolBufferException e) {
+            log.error("Marshalling error on {}", data, e);
+        }
+    }
+
+    @KafkaHandler
+    void listen(@Payload ListIslsRequest data) {
+        Builder builder = CommandPacket.newBuilder();
+        builder.setType(Type.LIST_ISLS);
+        IslRttControl.ListIslsFilter listIslsFilter = IslRttControl.ListIslsFilter.newBuilder()
+                .setSwitchId(data.getSwitchId().toString()).build();
+        builder.addCommand(Any.pack(listIslsFilter));
+        try {
+            CommandPacketResponse serverResponse = zeroMqClient.send(builder.build());
+            if (serverResponse == null) {
+                log.error("No response from server on {}", data.getHeaders().getCorrelationId());
+                return;
+            }
+
+            HashSet<Integer> portList = new HashSet<>();
+            for (Any any : serverResponse.getResponseList()) {
+                portList.add(any.unpack(IslEndpoint.class).getPort());
+            }
+
+            ListIslsResponse response = ListIslsResponse.builder()
+                    .headers(data.getHeaders())
+                    .switchId(data.getSwitchId())
+                    .ports(portList).build();
+
+            template.send(toStorm, response);
+        } catch (InvalidProtocolBufferException e) {
+            log.error("Marshalling error on {}", data, e);
+        }
+    }
+
+    @KafkaHandler
+    void listen(@Payload ListIslPortsOnSwitch data) {
+        Builder builder = CommandPacket.newBuilder();
+        builder.setType(Type.LIST_ISLS);
+        IslRttControl.ListIslsFilter listIslsFilter = IslRttControl.ListIslsFilter.newBuilder()
+                .setSwitchId(data.getSwitchId().toString()).build();
+        builder.addCommand(Any.pack(listIslsFilter));
+        try {
+            CommandPacketResponse serverResponse = zeroMqClient.send(builder.build());
+            if (serverResponse == null) {
+                log.error("No response from server on {}", data.getHeaders().getCorrelationId());
+                return;
+            }
+
+            for (Any any : serverResponse.getResponseList()) {
+                IslRttControl.IslEndpoint endpoint = any.unpack(IslRttControl.IslEndpoint.class);
+                if (!data.getIslPorts().contains(endpoint.getPort())) {
+                    removeIsl(data.getSwitchId(), endpoint.getPort());
+                }
+            }
+        } catch (InvalidProtocolBufferException e) {
+            log.error("Marshalling error on {}", data, e);
+        }
+    }
+
+    @KafkaHandler
+    void listen(@Payload RemoveIsl data) {
+        removeIsl(data.getSwitchId(), data.getPort());
+    }
+
     private void removeFlow(String flowId, FlowDirection direction) throws InvalidProtocolBufferException {
         Builder builder = CommandPacket.newBuilder();
         Flow flow = Flow.newBuilder()
                 .setFlowId(flowId)
                 .setDirection(FlowDirection.toBoolean(direction))
                 .build();
-        Control.RemoveFlow removeFlow = Control.RemoveFlow.newBuilder().setFlow(flow).build();
+        FlowRttControl.RemoveFlow removeFlow = FlowRttControl.RemoveFlow.newBuilder().setFlow(flow).build();
         builder.setType(Type.REMOVE_FLOW);
         builder.addCommand(Any.pack(removeFlow));
         CommandPacket packet = builder.build();
@@ -230,9 +339,24 @@ public class Gate {
         Builder builder = CommandPacket.newBuilder();
         builder.setType(Type.LIST_FLOWS);
 
-        Control.ListFlowsFilter listFlowsFilter = Control.ListFlowsFilter.newBuilder()
+        FlowRttControl.ListFlowsFilter listFlowsFilter = FlowRttControl.ListFlowsFilter.newBuilder()
                 .setDstMac(switchId.toMacAddress()).build();
         builder.addCommand(Any.pack(listFlowsFilter));
         return builder.build();
+    }
+
+    private void removeIsl(SwitchId switchId, int port) {
+        Builder builder = CommandPacket.newBuilder();
+        IslEndpoint endpoint = IslEndpoint.newBuilder()
+                .setSwitchId(switchId.toString()).setPort(port).build();
+        IslRttControl.RemoveIsl removeIsl = IslRttControl.RemoveIsl.newBuilder()
+                .setIsl(endpoint).build();
+        builder.setType(Type.REMOVE_ISL);
+        builder.addCommand(Any.pack(removeIsl));
+        try {
+            zeroMqClient.send(builder.build());
+        } catch (InvalidProtocolBufferException e) {
+            log.error("Marshalling error on {} / {}", switchId, port, e);
+        }
     }
 }

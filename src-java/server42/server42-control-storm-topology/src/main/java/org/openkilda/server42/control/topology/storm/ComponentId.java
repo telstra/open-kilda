@@ -23,6 +23,7 @@ public enum ComponentId {
     OUTPUT_SERVER42_CONTROL("output.server42.control"),
 
     FLOW_HANDLER("flow.handler"),
+    ISL_HANDLER("isl.handler"),
 
     ROUTER("router"),
 

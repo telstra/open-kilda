@@ -24,4 +24,10 @@ public interface IRouterCarrier {
     void deactivateFlowMonitoringOnSwitch(SwitchId switchId);
 
     void syncFlowsOnSwitch(SwitchId switchId);
+
+    void activateIslMonitoringOnSwitch(SwitchId switchId);
+
+    void deactivateIslMonitoringOnSwitch(SwitchId switchId);
+
+    void syncIslsOnSwitch(SwitchId switchId);
 }

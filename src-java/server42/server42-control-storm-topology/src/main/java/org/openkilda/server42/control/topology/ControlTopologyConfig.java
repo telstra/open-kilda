@@ -24,7 +24,7 @@ import com.sabre.oss.conf4j.annotation.Key;
 @Configuration
 public interface ControlTopologyConfig extends AbstractTopologyConfig {
 
-    @Key("server42.control.flowrtt.sync.interval.seconds")
+    @Key("server42.control.rtt.sync.interval.seconds")
     @Default("60")
-    int getFlowRttSyncIntervalSeconds();
+    int getRttSyncIntervalSeconds();
 }

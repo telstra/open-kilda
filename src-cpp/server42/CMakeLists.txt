@@ -54,6 +54,8 @@ function(GENERATE_PROTO_BUF PROTOFILE)
 endfunction()
 
 generate_proto_buf(control)
+generate_proto_buf(flow-rtt-control)
+generate_proto_buf(isl-rtt-control)
 generate_proto_buf(statistics)
 
 add_compile_options(-DBOOST_STACKTRACE_USE_BACKTRACE)
@@ -74,6 +76,8 @@ endif ()
 add_executable(server42
         src/server42.cpp
         src/control.pb.cc
+        src/flow-rtt-control.pb.cc
+        src/isl-rtt-control.pb.cc
         src/statistics.pb.cc
         src/Config.cpp
         src/Control.cpp
@@ -113,6 +117,7 @@ set_target_properties(server42 PROPERTIES COMPILE_FLAGS ${CMAKE_CXX_FLAGS})
 add_executable(server42_test
         src/FlowPoolTest.cpp
         src/control.pb.cc
+        src/flow-rtt-control.pb.cc
         src/statistics.pb.cc)
 
 target_link_libraries(server42_test

@@ -172,7 +172,7 @@ namespace org::openkilda {
             uint16_t zmq_port,
             const pcpp::MacAddress &src_mac) {
 
-        using Bucket = server42::stats::messaging::flowrtt::FlowLatencyPacketBucket;
+        using Bucket = server42::stats::messaging::LatencyPacketBucket;
 
         zmq::context_t context(1);
         context.setctxopt(ZMQ_THREAD_AFFINITY_CPU_ADD, core_id);
@@ -226,7 +226,7 @@ namespace org::openkilda {
                         if (udp->getLayerPayloadSize() == sizeof(Payload)) {
                             packet_id++;
                             auto payload = reinterpret_cast<const org::openkilda::Payload *>(udp->getLayerPayload());
-                            auto packet = bucket.add_packet();
+                            auto packet = bucket.add_flowlatencypacket();
 
                             BOOST_LOG_TRIVIAL(debug) << "flow_id: " << payload->flow_id << " "
                                                      << "t0 raw: " << payload->t0 << " "
@@ -266,7 +266,7 @@ namespace org::openkilda {
                     rte_pktmbuf_free(mbuf_table[i]);
                 }
 
-                if (bucket.packet_size()) {
+                if (bucket.flowlatencypacket_size()) {
 
                     zmq::message_t message(bucket.ByteSizeLong());
                     BOOST_LOG_TRIVIAL(debug) << "flow_bucket <" << bucket.DebugString() << ">";

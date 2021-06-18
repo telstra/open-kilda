@@ -13,10 +13,8 @@
  *   limitations under the License.
  */
 
-
 package org.openkilda.server42.control.topology.service;
 
-import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
@@ -47,7 +45,7 @@ public class RouterService {
      * Determinate feature toggler call. Generate messages with SwitchId as key for shuffling.
      * @param featureEnabled flag
      */
-    public void handleFlowRttFeatureToggle(Boolean featureEnabled) {
+    public void handleFlowRttFeatureToggle(boolean featureEnabled) {
         if (featureEnabled) {
             switchPropertiesRepository.findAll()
                     .stream()
@@ -60,27 +58,61 @@ public class RouterService {
     }
 
     /**
-     * Part of LCM. Sends flow sync messages to FlowHandler or deactivate in case of feature disabled.
+     * Handle an ISL RTT feature toggler call. Generate messages with SwitchId as key for shuffling.
+     * @param featureEnabled flag
+     */
+    public void handleIslRttFeatureToggle(boolean featureEnabled) {
+        if (featureEnabled) {
+            switchPropertiesRepository.findAll()
+                    .stream()
+                    .filter(SwitchProperties::hasServer42IslRttEnabled)
+                    .forEach(s -> carrier.activateIslMonitoringOnSwitch(s.getSwitchId()));
+        } else {
+            switchRepository.findAll()
+                    .forEach(s -> carrier.deactivateIslMonitoringOnSwitch(s.getSwitchId()));
+        }
+    }
+
+    /**
+     * Part of LCM. Sends sync messages to FlowHandler / IslHandler or deactivate in case of feature disabled.
      */
     public void processSync() {
         if (isFlowRttFeatureToggle()) {
             Collection<SwitchProperties> all = switchPropertiesRepository.findAll();
             all.stream()
                     .filter(SwitchProperties::isServer42FlowRtt)
-                    .forEach(s -> carrier.syncFlowsOnSwitch(s.getSwitchObj().getSwitchId()));
+                    .forEach(s -> carrier.syncFlowsOnSwitch(s.getSwitchId()));
 
             all.stream()
                     .filter(switchProperties -> !switchProperties.isServer42FlowRtt())
-                    .forEach(s -> carrier.deactivateFlowMonitoringOnSwitch(s.getSwitchObj().getSwitchId()));
+                    .forEach(s -> carrier.deactivateFlowMonitoringOnSwitch(s.getSwitchId()));
 
         } else {
             switchRepository.findAll()
                     .forEach(s -> carrier.deactivateFlowMonitoringOnSwitch(s.getSwitchId()));
         }
+
+        if (isIslRttFeatureToggle()) {
+            Collection<SwitchProperties> all = switchPropertiesRepository.findAll();
+            all.stream()
+                    .filter(SwitchProperties::hasServer42IslRttEnabled)
+                    .forEach(s -> carrier.syncIslsOnSwitch(s.getSwitchId()));
+
+            all.stream()
+                    .filter(switchProperties -> !switchProperties.hasServer42IslRttEnabled())
+                    .forEach(s -> carrier.deactivateIslMonitoringOnSwitch(s.getSwitchId()));
+
+        } else {
+            switchRepository.findAll()
+                    .forEach(s -> carrier.deactivateIslMonitoringOnSwitch(s.getSwitchId()));
+        }
     }
 
     private boolean isFlowRttFeatureToggle() {
-        return featureTogglesRepository.find().map(FeatureToggles::getServer42FlowRtt)
-                .orElse(FeatureToggles.DEFAULTS.getServer42FlowRtt());
+        return featureTogglesRepository.getOrDefault().getServer42FlowRtt();
+    }
+
+    private boolean isIslRttFeatureToggle() {
+        return featureTogglesRepository.getOrDefault().getServer42IslRtt();
     }
 }

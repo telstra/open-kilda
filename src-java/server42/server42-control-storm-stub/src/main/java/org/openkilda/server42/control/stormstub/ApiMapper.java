@@ -18,8 +18,12 @@ package org.openkilda.server42.control.stormstub;
 import org.openkilda.server42.control.messaging.flowrtt.AddFlow;
 import org.openkilda.server42.control.messaging.flowrtt.ListFlowsResponse;
 import org.openkilda.server42.control.messaging.flowrtt.PushSettings;
+import org.openkilda.server42.control.messaging.islrtt.AddIsl;
+import org.openkilda.server42.control.messaging.islrtt.ListIslsResponse;
 import org.openkilda.server42.control.stormstub.api.AddFlowPayload;
+import org.openkilda.server42.control.stormstub.api.AddIslPayload;
 import org.openkilda.server42.control.stormstub.api.ListFlowsPayload;
+import org.openkilda.server42.control.stormstub.api.ListIslsPayload;
 import org.openkilda.server42.control.stormstub.api.PushSettingsPayload;
 
 import org.mapstruct.Mapper;
@@ -34,4 +38,9 @@ public interface ApiMapper {
     PushSettings map(PushSettingsPayload settingsPayload);
 
     ListFlowsPayload map(ListFlowsResponse listFlowsResponse);
+
+    @Mapping(target = "headers", ignore = true)
+    AddIsl map(AddIslPayload payload);
+
+    ListIslsPayload map(ListIslsResponse listIslsResponse);
 }

@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package org.openkilda.server42.control.messaging.islrtt;
+
+import "google/protobuf/any.proto";
+
+message IslEndpoint {
+    string switch_id = 1;
+    uint32 port = 2;
+}
+
+message AddIsl {
+    IslEndpoint isl = 1;
+    string switch_mac = 2;
+    uint32 udp_src_port = 3;
+    enum EncapsulationType {
+        VLAN = 0;
+    }
+    EncapsulationType transit_encapsulation_type = 4;
+    int64 transit_tunnel_id = 5;
+    int32 hash_code = 6;
+}
+
+message RemoveIsl {
+    IslEndpoint isl = 1;
+}
+
+message ClearIslsFilter {
+    string switch_id = 1;
+}
+
+message ListIsls {
+    repeated IslEndpoint isl = 1;
+}
+
+message ListIslsFilter {
+    string switch_id = 1;
+}

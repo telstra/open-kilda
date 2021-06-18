@@ -3,20 +3,26 @@
 #include <boost/log/trivial.hpp>
 
 #include "control.pb.h"
+#include "flow-rtt-control.pb.h"
+#include "isl-rtt-control.pb.h"
 
 #include "PacketGenerator.h"
 
 namespace org::openkilda {
 
-    using CommandPacket = server42::control::messaging::flowrtt::CommandPacket;
-    using CommandPacketResponse = server42::control::messaging::flowrtt::CommandPacketResponse;
-    using Command = server42::control::messaging::flowrtt::CommandPacket_Type;
+    using CommandPacket = server42::control::messaging::CommandPacket;
+    using CommandPacketResponse = server42::control::messaging::CommandPacketResponse;
+    using Command = server42::control::messaging::CommandPacket_Type;
     using AddFlow = server42::control::messaging::flowrtt::AddFlow;
     using RemoveFlow = server42::control::messaging::flowrtt::RemoveFlow;
-    using Error = server42::control::messaging::flowrtt::Error;
+    using Error = server42::control::messaging::Error;
     using Flow = server42::control::messaging::flowrtt::Flow;
     using ListFlowsFilter = server42::control::messaging::flowrtt::ListFlowsFilter;
     using ClearFlowsFilter = server42::control::messaging::flowrtt::ClearFlowsFilter;
+    using AddIsl = server42::control::messaging::islrtt::AddIsl;
+    using RemoveIsl = server42::control::messaging::islrtt::RemoveIsl;
+    using ListIslsFilter = server42::control::messaging::islrtt::ListIslsFilter;
+    using ClearIslsFilter = server42::control::messaging::islrtt::ClearIslsFilter;
 
     buffer_t trivial_response_from(const CommandPacket &command_packet) {
         CommandPacketResponse response;
@@ -143,6 +149,17 @@ namespace org::openkilda {
                     return get_list_flows(command_packet, ctx.flow_pool);
                 case Command::CommandPacket_Type_PUSH_SETTINGS:
                     // TODO: implement PUSH_SETTINGS
+                    return trivial_response_from(command_packet);
+                case Command::CommandPacket_Type_ADD_ISL:
+                case Command::CommandPacket_Type_REMOVE_ISL: {
+                    // TODO: implement
+                    return trivial_response_from(command_packet);
+                }
+                case Command::CommandPacket_Type_CLEAR_ISLS:
+                    // TODO: implement
+                    return trivial_response_from(command_packet);
+                case Command::CommandPacket_Type_LIST_ISLS:
+                    // TODO: implement
                     return trivial_response_from(command_packet);
             }
         }

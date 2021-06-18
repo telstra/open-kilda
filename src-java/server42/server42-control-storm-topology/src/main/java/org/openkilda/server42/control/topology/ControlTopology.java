@@ -20,6 +20,7 @@ import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.server42.control.topology.storm.ComponentId;
 import org.openkilda.server42.control.topology.storm.bolt.TickBolt;
 import org.openkilda.server42.control.topology.storm.bolt.flow.FlowHandler;
+import org.openkilda.server42.control.topology.storm.bolt.isl.IslHandler;
 import org.openkilda.server42.control.topology.storm.bolt.router.Router;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.share.zk.ZkStreams;
@@ -73,6 +74,7 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
         router(topology);
 
         flowHandler(topology);
+        islHandler(topology);
 
         outputSpeaker(topology);
 
@@ -129,14 +131,23 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
 
     }
 
+    private void islHandler(TopologyBuilder topology) {
+        IslHandler bolt = new IslHandler(persistenceManager);
+        Fields grouping = new Fields(Router.FIELD_ID_SWITCH_ID);
+        declareBolt(topology, bolt, IslHandler.BOLT_ID)
+                .fieldsGrouping(Router.BOLT_ID, Router.STREAM_ISL_ID, grouping);
+
+    }
+
     private void outputSpeaker(TopologyBuilder topology) {
         KafkaBolt output = buildKafkaBoltWithRawObject(topologyConfig.getKafkaTopics().getServer42StormCommandsTopic());
         declareBolt(topology, output, ComponentId.OUTPUT_SERVER42_CONTROL.toString())
-                .shuffleGrouping(FlowHandler.BOLT_ID, FlowHandler.STREAM_CONTROL_COMMANDS_ID);
+                .shuffleGrouping(FlowHandler.BOLT_ID, FlowHandler.STREAM_CONTROL_COMMANDS_ID)
+                .shuffleGrouping(IslHandler.BOLT_ID, IslHandler.STREAM_CONTROL_COMMANDS_ID);
     }
 
     private void lcm(TopologyBuilder topology, ControlTopologyConfig topologyConfig) {
-        TickBolt tickBolt = new TickBolt(topologyConfig.getFlowRttSyncIntervalSeconds());
+        TickBolt tickBolt = new TickBolt(topologyConfig.getRttSyncIntervalSeconds());
         declareBolt(topology, tickBolt, TickBolt.BOLT_ID);
     }
 

@@ -21,20 +21,29 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.model.SwitchId;
 import org.openkilda.server42.control.config.SwitchToVlanMapping;
+import org.openkilda.server42.control.messaging.Control;
+import org.openkilda.server42.control.messaging.Control.CommandPacket;
+import org.openkilda.server42.control.messaging.Control.CommandPacket.Type;
+import org.openkilda.server42.control.messaging.Control.CommandPacketResponse;
+import org.openkilda.server42.control.messaging.Control.CommandPacketResponse.Builder;
 import org.openkilda.server42.control.messaging.flowrtt.AddFlow;
 import org.openkilda.server42.control.messaging.flowrtt.ClearFlows;
-import org.openkilda.server42.control.messaging.flowrtt.Control;
-import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacket;
-import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacket.Type;
-import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacketResponse;
-import org.openkilda.server42.control.messaging.flowrtt.Control.CommandPacketResponse.Builder;
-import org.openkilda.server42.control.messaging.flowrtt.Control.Flow;
+import org.openkilda.server42.control.messaging.flowrtt.FlowRttControl;
+import org.openkilda.server42.control.messaging.flowrtt.FlowRttControl.Flow;
 import org.openkilda.server42.control.messaging.flowrtt.Headers;
 import org.openkilda.server42.control.messaging.flowrtt.ListFlowsRequest;
 import org.openkilda.server42.control.messaging.flowrtt.ListFlowsResponse;
 import org.openkilda.server42.control.messaging.flowrtt.PushSettings;
 import org.openkilda.server42.control.messaging.flowrtt.RemoveFlow;
+import org.openkilda.server42.control.messaging.islrtt.AddIsl;
+import org.openkilda.server42.control.messaging.islrtt.ClearIsls;
+import org.openkilda.server42.control.messaging.islrtt.IslRttControl;
+import org.openkilda.server42.control.messaging.islrtt.IslRttControl.IslEndpoint;
+import org.openkilda.server42.control.messaging.islrtt.ListIslsRequest;
+import org.openkilda.server42.control.messaging.islrtt.ListIslsResponse;
+import org.openkilda.server42.control.messaging.islrtt.RemoveIsl;
 import org.openkilda.server42.control.zeromq.ZeroMqClient;
 import org.openkilda.server42.messaging.FlowDirection;
 
@@ -75,8 +84,10 @@ public class GateTest {
     private Gate gate;
 
     @Value("${openkilda.server42.control.flow_rtt.udp_src_port_offset}")
-    private Integer udpSrcPortOffset;
+    private Integer flowRttUdpSrcPortOffset;
 
+    @Value("${openkilda.server42.control.isl_rtt.udp_src_port_offset}")
+    private Integer islRttUdpSrcPortOffset;
 
     @Value("${openkilda.server42.control.kafka.topic.to_storm}")
     private String toStorm;
@@ -105,9 +116,9 @@ public class GateTest {
 
         assertThat(commandPacket.getCommandCount()).isEqualTo(1);
         Any command = commandPacket.getCommand(0);
-        assertThat(command.is(Control.AddFlow.class)).isTrue();
+        assertThat(command.is(FlowRttControl.AddFlow.class)).isTrue();
 
-        Control.AddFlow unpack = command.unpack(Control.AddFlow.class);
+        FlowRttControl.AddFlow unpack = command.unpack(FlowRttControl.AddFlow.class);
 
         Flow flow = unpack.getFlow();
 
@@ -115,7 +126,7 @@ public class GateTest {
         assertThat(flow.getTunnelId()).isEqualTo(addFlow.getTunnelId());
         assertThat(flow.getInnerTunnelId()).isEqualTo(addFlow.getInnerTunnelId());
         assertThat(flow.getDirection()).isEqualTo(FlowDirection.toBoolean(addFlow.getDirection()));
-        assertThat(flow.getUdpSrcPort()).isEqualTo(udpSrcPortOffset + addFlow.getPort());
+        assertThat(flow.getUdpSrcPort()).isEqualTo(flowRttUdpSrcPortOffset + addFlow.getPort());
 
         Map<Long, List<String>> vlanToSwitch = switchToVlanMapping.getVlan();
 
@@ -142,9 +153,9 @@ public class GateTest {
 
         assertThat(commandPacket.getCommandList()).hasSize(1);
         Any command = commandPacket.getCommand(0);
-        assertThat(command.is(Control.RemoveFlow.class)).isTrue();
+        assertThat(command.is(FlowRttControl.RemoveFlow.class)).isTrue();
 
-        Control.RemoveFlow unpack = command.unpack(Control.RemoveFlow.class);
+        FlowRttControl.RemoveFlow unpack = command.unpack(FlowRttControl.RemoveFlow.class);
         assertThat(unpack.getFlow().getFlowId()).isEqualTo(removeFlow.getFlowId());
     }
 
@@ -162,13 +173,12 @@ public class GateTest {
 
         assertThat(commandPacket.getCommandList()).hasSize(1);
         Any command = commandPacket.getCommand(0);
-        assertThat(command.is(Control.ClearFlowsFilter.class)).isTrue();
+        assertThat(command.is(FlowRttControl.ClearFlowsFilter.class)).isTrue();
 
-        Control.ClearFlowsFilter unpack = command.unpack(Control.ClearFlowsFilter.class);
+        FlowRttControl.ClearFlowsFilter unpack = command.unpack(FlowRttControl.ClearFlowsFilter.class);
         String dstMac = "1b:45:18:d6:71:5a";
         assertThat(unpack.getDstMac()).isEqualTo(dstMac);
     }
-
 
 
     @Test
@@ -202,7 +212,6 @@ public class GateTest {
         assertThat(response.getFlowIds()).contains(flow1.getFlowId(), flow2.getFlowId());
     }
 
-
     @Test
     public void pushSettingsTest() throws Exception {
         PushSettings data = PushSettings.builder()
@@ -220,6 +229,104 @@ public class GateTest {
 
         Control.PushSettings unpack = command.unpack(Control.PushSettings.class);
         assertThat(unpack.getPacketGenerationIntervalInMs()).isEqualTo(500);
+    }
+
+    @Test
+    public void testAddIsl() throws Exception {
+        AddIsl addIsl = AddIsl.builder()
+                .switchId(new SwitchId("00:00:1b:45:18:d6:71:5a"))
+                .port(42)
+                .build();
+        gate.listen(addIsl);
+
+        CommandPacket commandPacket = getCommandPacket();
+        assertThat(commandPacket.getType()).isEqualTo(Type.ADD_ISL);
+
+        assertThat(commandPacket.getCommandCount()).isEqualTo(1);
+        Any command = commandPacket.getCommand(0);
+        assertThat(command.is(IslRttControl.AddIsl.class)).isTrue();
+
+        IslRttControl.AddIsl unpack = command.unpack(IslRttControl.AddIsl.class);
+        IslRttControl.IslEndpoint endpoint = unpack.getIsl();
+
+        String switchId = addIsl.getSwitchId().toString();
+        assertThat(endpoint.getSwitchId()).isEqualTo(switchId);
+        assertThat(endpoint.getPort()).isEqualTo(addIsl.getPort());
+        assertThat(unpack.getUdpSrcPort()).isEqualTo(islRttUdpSrcPortOffset + addIsl.getPort());
+        assertThat(unpack.getSwitchMac()).isSubstringOf(switchId).isNotEqualTo(switchId);
+
+    }
+
+    @Test
+    public void testRemoveIsl() throws Exception {
+        RemoveIsl removeIsl = RemoveIsl.builder()
+                .switchId(new SwitchId("00:00:1b:45:18:d6:71:5a"))
+                .port(42)
+                .build();
+        gate.listen(removeIsl);
+
+        CommandPacket commandPacket = getCommandPacket();
+        assertThat(commandPacket.getType()).isEqualTo(Type.REMOVE_ISL);
+
+        assertThat(commandPacket.getCommandList()).hasSize(1);
+        Any command = commandPacket.getCommand(0);
+        assertThat(command.is(IslRttControl.RemoveIsl.class)).isTrue();
+
+        IslRttControl.RemoveIsl unpack = command.unpack(IslRttControl.RemoveIsl.class);
+        IslRttControl.IslEndpoint endpoint = unpack.getIsl();
+        String switchId = removeIsl.getSwitchId().toString();
+        assertThat(endpoint.getSwitchId()).isEqualTo(switchId);
+        assertThat(endpoint.getPort()).isEqualTo(removeIsl.getPort());
+    }
+
+    @Test
+    public void testClearIsls() throws Exception {
+        ClearIsls clearIsls = ClearIsls.builder()
+                .switchId(new SwitchId("00:00:1b:45:18:d6:71:5a"))
+                .build();
+        gate.listen(clearIsls);
+
+        CommandPacket commandPacket = getCommandPacket();
+        assertThat(commandPacket.getType()).isEqualTo(Type.CLEAR_ISLS);
+
+        assertThat(commandPacket.getCommandList()).hasSize(1);
+        Any command = commandPacket.getCommand(0);
+        assertThat(command.is(IslRttControl.ClearIslsFilter.class)).isTrue();
+
+        IslRttControl.ClearIslsFilter unpack = command.unpack(IslRttControl.ClearIslsFilter.class);
+        String switchId = clearIsls.getSwitchId().toString();
+        assertThat(unpack.getSwitchId()).isEqualTo(switchId);
+    }
+
+    @Test
+    public void listIslsTest() throws Exception {
+        Builder commandPacketResponseBuilded = CommandPacketResponse.newBuilder();
+
+        String switchId = "00:00:1b:45:18:d6:71:5a";
+        IslEndpoint port1 = IslEndpoint.newBuilder().setSwitchId(switchId).setPort(1).build();
+        IslEndpoint port2 = IslEndpoint.newBuilder().setSwitchId(switchId).setPort(2).build();
+        IslEndpoint port3 = IslEndpoint.newBuilder().setSwitchId(switchId).setPort(3).build();
+        IslEndpoint port4 = IslEndpoint.newBuilder().setSwitchId(switchId).setPort(4).build();
+
+        commandPacketResponseBuilded.addResponse(Any.pack(port1));
+        commandPacketResponseBuilded.addResponse(Any.pack(port2));
+        commandPacketResponseBuilded.addResponse(Any.pack(port3));
+        commandPacketResponseBuilded.addResponse(Any.pack(port4));
+
+        CommandPacketResponse commandPacketResponse = commandPacketResponseBuilded.build();
+
+        when(zeroMqClient.send(argThat(
+                commandPacket -> commandPacket.getType() == Type.LIST_ISLS)))
+                .thenReturn(commandPacketResponse);
+
+        gate.listen(ListIslsRequest.builder().switchId(new SwitchId(switchId)).build());
+
+        ArgumentCaptor<ListIslsResponse> argument = ArgumentCaptor.forClass(ListIslsResponse.class);
+        verify(template).send(eq(toStorm), argument.capture());
+
+        ListIslsResponse response = argument.getValue();
+
+        assertThat(response.getPorts()).contains(port1.getPort(), port2.getPort(), port3.getPort(), port4.getPort());
     }
 
     private CommandPacket getCommandPacket() throws InvalidProtocolBufferException {

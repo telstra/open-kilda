@@ -629,7 +629,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                 switchId, port, packetData.getSwitchT0(), packetData.getSwitchT1());
 
         IslRoundTripLatency latency = new IslRoundTripLatency(switchId, port, roundTripLatency,
-                                                              packetData.getPacketId());
+                                                              packetData.getPacketId(), "floodlight");
         logger.debug("Round trip latency packet processed for endpoint {}_{}. "
                         + "t0 timestamp {}, t1 timestamp {}, latency {}.", switchId, port,
                 packetData.getSwitchT0(), packetData.getSwitchT1(), roundTripLatency);

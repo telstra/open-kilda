@@ -29,11 +29,23 @@ import lombok.EqualsAndHashCode;
 public class IslRoundTripLatency extends IslBaseLatency {
     private static final long serialVersionUID = 4184676909685019373L;
 
-    @JsonCreator
+    @JsonProperty("origin")
+    private String origin;
+
     public IslRoundTripLatency(@JsonProperty("src_switch_id") SwitchId srcSwitchId,
                                @JsonProperty("src_port_no") int srcPortNo,
                                @JsonProperty("latency_ns") long latency,
                                @JsonProperty("packet_id") Long packetId) {
+        this(srcSwitchId, srcPortNo, latency, packetId, null);
+    }
+
+    @JsonCreator
+    public IslRoundTripLatency(@JsonProperty("src_switch_id") SwitchId srcSwitchId,
+                               @JsonProperty("src_port_no") int srcPortNo,
+                               @JsonProperty("latency_ns") long latency,
+                               @JsonProperty("packet_id") Long packetId,
+                               @JsonProperty("origin") String origin) {
         super(srcSwitchId, srcPortNo, latency, packetId);
+        this.origin = origin;
     }
 }
