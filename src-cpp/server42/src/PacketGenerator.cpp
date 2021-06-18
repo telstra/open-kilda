@@ -57,10 +57,10 @@ namespace org::openkilda {
         newIPLayer.getIPv4Header()->timeToLive = 128;
         newPacket.addLayer(&newIPLayer);
 
-        pcpp::UdpLayer newUdpLayer(arg.udp_src_port, Config::generated_packet_udp_dst_port);
+        pcpp::UdpLayer newUdpLayer(arg.udp_src_port, Config::flow_rtt_generated_packet_udp_dst_port);
         newPacket.addLayer(&newUdpLayer);
 
-        Payload payload{};
+        FlowPayload payload{};
 
         size_t length = arg.flow_id.copy(payload.flow_id, sizeof(payload.flow_id) - 1);
         payload.flow_id[length] = '\0';
@@ -78,16 +78,80 @@ namespace org::openkilda {
                 << "update flow " << arg.flow_id
                 << " and direction " << arg.direction_str() << " with hash " << flow_meta->get_hash()
                 << " to new flow with hash " << arg.hash;
-            arg.flow_pool.remove_flow(flow_id_key);
+            arg.flow_pool.remove_packet(flow_id_key);
         }
 
         auto meta = std::shared_ptr<FlowMetadata>(
                 new FlowMetadata(arg.flow_id, arg.direction, arg.dst_mac, arg.hash));
 
-        bool success = arg.flow_pool.add_flow(flow_id_key, packet, meta);
+        bool success = arg.flow_pool.add_packet(flow_id_key, packet, meta);
 
         if (!success) {
             flow_pool_t::allocator_t::dealocate(packet);
+        }
+    }
+
+    void generate_and_add_packet_for_isl(const IslCreateArgument &arg) {
+
+        isl_endpoint_t isl_id_key = get_isl_id(arg);
+        auto db = arg.isl_pool.get_metadata_db();
+        auto isl_meta = db->get(isl_id_key);
+        if (isl_meta && isl_meta->get_hash() == arg.hash) {
+            BOOST_LOG_TRIVIAL(debug)
+                    << "skip add_isl command for " << arg.switch_id
+                    << " and port " << arg.port << " with hash " << arg.hash << " already exists";
+            return;
+        }
+
+        pcpp::Packet newPacket(64);
+
+        pcpp::MacAddress dst(arg.dst_mac);
+        pcpp::MacAddress src(arg.device->getMacAddress());
+        pcpp::EthLayer newEthernetLayer(src, dst);
+        newPacket.addLayer(&newEthernetLayer);
+
+        pcpp::VlanLayer newVlanLayer(arg.transit_tunnel_id, false, 1, PCPP_ETHERTYPE_IP);
+        if (arg.transit_tunnel_id) {
+            newPacket.addLayer(&newVlanLayer);
+        }
+
+        pcpp::IPv4Layer newIPLayer(pcpp::IPv4Address(std::string("192.168.0.1")),
+                                   pcpp::IPv4Address(std::string("192.168.1.1")));
+
+        newIPLayer.getIPv4Header()->timeToLive = 128;
+        newPacket.addLayer(&newIPLayer);
+
+        pcpp::UdpLayer newUdpLayer(arg.udp_src_port, Config::isl_rtt_generated_packet_udp_dst_port);
+        newPacket.addLayer(&newUdpLayer);
+
+        IslPayload payload{};
+
+        size_t length = arg.switch_id.copy(payload.switch_id, sizeof(payload.switch_id) - 1);
+        payload.switch_id[length] = '\0';
+
+        payload.port = arg.port;
+
+        pcpp::PayloadLayer payloadLayer(reinterpret_cast<uint8_t *>(&payload), sizeof(payload), false);
+        newPacket.addLayer(&payloadLayer);
+        newPacket.computeCalculateFields();
+
+        auto packet = isl_pool_t::allocator_t::allocate(newPacket.getRawPacket(), arg.device);
+
+        if (isl_meta) {
+            BOOST_LOG_TRIVIAL(debug)
+                    << "update isl " << arg.switch_id
+                    << " and port " << arg.port << " with hash " << isl_meta->get_hash()
+                    << " to new isl with hash " << arg.hash;
+            arg.isl_pool.remove_packet(isl_id_key);
+        }
+
+        auto meta = std::shared_ptr<IslMetadata>(
+                new IslMetadata(arg.switch_id, arg.port, arg.dst_mac, arg.hash));
+
+        bool success = arg.isl_pool.add_packet(isl_id_key, packet, meta);
+
+        if (!success) {
+            isl_pool_t::allocator_t::dealocate(packet);
         }
     }
 }
