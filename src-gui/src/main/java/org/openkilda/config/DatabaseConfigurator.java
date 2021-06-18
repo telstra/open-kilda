@@ -15,12 +15,12 @@
 
 package org.openkilda.config;
 
+import org.openkilda.dao.entity.VersionEntity;
 import org.openkilda.dao.repository.VersionRepository;
 
 import com.ibatis.common.jdbc.ScriptRunner;
 
 import org.apache.log4j.Logger;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -32,18 +32,27 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+
+import java.math.BigInteger;
+
 import java.sql.Connection;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import javax.sql.DataSource;
 
 @Repository("databaseConfigurator")
 public class DatabaseConfigurator {
 
+    @PersistenceContext
+    private EntityManager entityManager;
+    
     private static final Logger LOGGER = Logger.getLogger(DatabaseConfigurator.class);
     
     private static final String SCRIPT_FILE_PREFIX = "import-script_";
@@ -52,15 +61,16 @@ public class DatabaseConfigurator {
     
     private ResourceLoader resourceLoader;
 
-    private VersionRepository versionRepository;
+    private VersionRepository versionEntityRepository;
 
     private DataSource dataSource;
-
+    
     public DatabaseConfigurator(@Autowired final VersionRepository versionRepository, final DataSource dataSource,
-            final ResourceLoader resourceLoader) {
-        this.versionRepository = versionRepository;
+            final ResourceLoader resourceLoader, EntityManager em) {
+        this.versionEntityRepository = versionRepository;
         this.dataSource = dataSource;
         this.resourceLoader = resourceLoader;
+        this.entityManager = em;
         init();
     }
 
@@ -70,7 +80,32 @@ public class DatabaseConfigurator {
     }
 
     private void loadInitialData() {
-        List<Long> versionNumberList = versionRepository.findAllVersionNumber();
+        List<Long> versionNumberList = versionEntityRepository.findAllVersionNumber();
+        
+        if (versionNumberList.size() == 0) {
+            try {
+
+                List<VersionEntity> list = new ArrayList<VersionEntity>();
+                List<Long> newVersionList = new ArrayList<Long>();
+                List<Object[]> results = entityManager.createNativeQuery("SELECT v.version_id ,"
+                        + "v.version_deployment_date, v.version_number FROM version v").getResultList();
+               
+                for (Object[] perTestEntity :results) {
+                    VersionEntity versionEntity = new VersionEntity();
+                    versionEntity.setVersionId(BigInteger.valueOf(Long.valueOf(
+                            (perTestEntity[0].toString()))).longValue());
+                    versionEntity.setDeploymentDate(Timestamp.valueOf(perTestEntity[1].toString()));
+                    versionEntity.setVersionNumber(BigInteger.valueOf(Long.valueOf(
+                            perTestEntity[2].toString())).longValue());
+                    list.add(versionEntity);
+                    newVersionList.add(versionEntity.getVersionNumber());
+                }
+                versionEntityRepository.save(list);
+                versionNumberList = newVersionList;
+            } catch (Exception e) {
+                LOGGER.warn("Failed to load version list", e);
+            }
+        }
         InputStream inputStream = null;
         try {
             ClassLoader  loader = getClass().getClassLoader();
@@ -109,8 +144,8 @@ public class DatabaseConfigurator {
                 }
             }
         } catch (IOException ex) {
-            LOGGER.error("Failed to load db scripts" + ex);
-        } 
+            LOGGER.error("Failed to load db scripts", ex);
+        }
     }
 
     private void runScript(final InputStream inputStream) {

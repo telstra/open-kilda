@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ import org.openkilda.entity.BaseEntity;
 
 import lombok.Data;
 
+import org.hibernate.annotations.GenericGenerator;
+
 import org.usermanagement.dao.entity.RoleEntity;
 
 import java.io.Serializable;
@@ -32,7 +34,6 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
@@ -53,7 +54,8 @@ public class SamlConfigEntity extends BaseEntity implements Serializable {
 
     @Id
     @Column(name = "id", nullable = false)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(generator = "increment")
+    @GenericGenerator(name = "increment", strategy = "increment")
     private Long id;
 
     @Column(name = "uuid")
@@ -85,7 +87,7 @@ public class SamlConfigEntity extends BaseEntity implements Serializable {
     private boolean status;
     
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "saml_user_roles", joinColumns = {@JoinColumn(name = "id")},
+    @JoinTable(name = "SAML_USER_ROLES", joinColumns = {@JoinColumn(name = "id")},
             inverseJoinColumns = {@JoinColumn(name = "role_id")})
     private Set<RoleEntity> roles = new HashSet<RoleEntity>();
 

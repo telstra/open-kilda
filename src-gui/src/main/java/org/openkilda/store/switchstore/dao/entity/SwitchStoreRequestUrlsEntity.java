@@ -22,26 +22,28 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.GenericGenerator;
+
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "kilda_switch_store_urls")
+@Table(name = "KILDA_SWITCH_STORE_URLS")
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = false)
 public class SwitchStoreRequestUrlsEntity extends BaseEntity {
     @Id
     @Column(name = "switch_store_url_id", nullable = false)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(generator = "increment")
+    @GenericGenerator(name = "increment", strategy = "increment")
     private Integer switchStoreUrlId;
 
     @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
