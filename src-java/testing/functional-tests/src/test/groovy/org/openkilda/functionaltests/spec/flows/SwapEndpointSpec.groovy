@@ -1212,7 +1212,10 @@ switches"() {
             def flow1SwitchPair = getTopologyHelper().getNotNeighboringSwitchPair()
             def flow2SwitchPair = getDifferentNotNeighboringSwitchPair(flow1SwitchPair)
             def flow1 = getFlowHelper().randomFlow(flow1SwitchPair)
-            def flow2 = getFlowHelper().randomFlow(flow2SwitchPair, false, [flow1])
+            def flow2 = getFlowHelper().randomFlow(flow2SwitchPair, false, [flow1]).tap {
+                it.source.portNumber = getFreePort(flow2SwitchPair.src, [flow1SwitchPair.src, flow1SwitchPair.dst])
+                it.destination.portNumber = getFreePort(flow2SwitchPair.dst, [flow1SwitchPair.src, flow1SwitchPair.dst])
+            }
             [flow1SwitchPair: flow1SwitchPair, flow2SwitchPair: flow2SwitchPair, flow1: flow1, flow2: flow2].tap(iterationData)
         }
         flow1 = data.flow1 as FlowCreatePayload
@@ -1674,7 +1677,11 @@ switches"() {
      */
     Integer getFreePort(Switch target, List<Switch> switches, List<Integer> excludePorts = []) {
         pickRandom(topology.getAllowedPortsForSwitch(target) -
-                switches.collectMany { topology.getBusyPortsForSwitch(it) } - excludePorts)
+                switches.collectMany {
+                    def islPorts = topology.getBusyPortsForSwitch(it)
+                    def s42Port = it.prop?.server42Port
+                    s42Port ? islPorts + s42Port : islPorts
+                } - excludePorts)
     }
 
     /**
@@ -1702,10 +1709,16 @@ switches"() {
         def firstFlow = flowHelper.randomFlow(firstFlowSwitchPair)
         firstFlow.source.portNumber = (topology.getAllowedPortsForSwitch(firstFlowSwitchPair.src) -
                 topology.getBusyPortsForSwitch(secondFlowSwitchPair.src) -
-                topology.getBusyPortsForSwitch(secondFlowSwitchPair.dst))[0]
+                topology.getBusyPortsForSwitch(secondFlowSwitchPair.dst) -
+                firstFlowSwitchPair.dst.prop?.server42Port -
+                secondFlowSwitchPair.src.prop?.server42Port -
+                secondFlowSwitchPair.dst.prop?.server42Port)[0]
         firstFlow.destination.portNumber = (topology.getAllowedPortsForSwitch(firstFlowSwitchPair.dst) -
                 topology.getBusyPortsForSwitch(secondFlowSwitchPair.src) -
-                topology.getBusyPortsForSwitch(secondFlowSwitchPair.dst) - [firstFlow.source.portNumber])[0]
+                topology.getBusyPortsForSwitch(secondFlowSwitchPair.dst) - [firstFlow.source.portNumber] -
+                firstFlowSwitchPair.src.prop?.server42Port -
+                secondFlowSwitchPair.src.prop?.server42Port -
+                secondFlowSwitchPair.dst.prop?.server42Port)[0]
 
         if (noVlans) {
             firstFlow.source.vlanId = null
@@ -1737,11 +1750,17 @@ switches"() {
         secondFlow.source.portNumber = (topology.getAllowedPortsForSwitch(secondFlowSwitchPair.src) -
                 topology.getBusyPortsForSwitch(firstFlowSwitchPair.src) -
                 topology.getBusyPortsForSwitch(firstFlowSwitchPair.dst) -
-                [firstFlow.source.portNumber, firstFlow.destination.portNumber])[0]
+                [firstFlow.source.portNumber, firstFlow.destination.portNumber] -
+                secondFlowSwitchPair.dst.prop?.server42Port -
+                firstFlowSwitchPair.src.prop?.server42Port -
+                firstFlowSwitchPair.dst.prop?.server42Port)[0]
         secondFlow.destination.portNumber = (topology.getAllowedPortsForSwitch(secondFlowSwitchPair.dst) -
                 topology.getBusyPortsForSwitch(firstFlowSwitchPair.src) -
                 topology.getBusyPortsForSwitch(firstFlowSwitchPair.dst) -
-                [secondFlow.source.portNumber, firstFlow.source.portNumber, firstFlow.destination.portNumber])[0]
+                [secondFlow.source.portNumber, firstFlow.source.portNumber, firstFlow.destination.portNumber] -
+                secondFlowSwitchPair.src.prop?.server42Port -
+                firstFlowSwitchPair.src.prop?.server42Port -
+                firstFlowSwitchPair.dst.prop?.server42Port)[0]
 
         if (noVlans) {
             secondFlow.source.vlanId = null
