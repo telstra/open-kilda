@@ -63,6 +63,9 @@ public class FlowDto implements Serializable {
     @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth;
 
+    @JsonProperty("strict_bandwidth")
+    private boolean strictBandwidth;
+
     @JsonProperty("periodic-pings")
     private Boolean periodicPings;
 
@@ -205,6 +208,7 @@ public class FlowDto implements Serializable {
      * @param flowId                    flow id
      * @param bandwidth                 bandwidth
      * @param ignoreBandwidth           ignore bandwidth flag
+     * @param strictBandwidth           strict bandwidth flag
      * @param periodicPings             enable periodic pings
      * @param allocateProtectedPath     allocate protected flow path.
      * @param cookie                    cookie
@@ -240,6 +244,7 @@ public class FlowDto implements Serializable {
     public FlowDto(@JsonProperty(Utils.FLOW_ID) final String flowId,
                    @JsonProperty("bandwidth") final long bandwidth,
                    @JsonProperty("ignore_bandwidth") boolean ignoreBandwidth,
+                   @JsonProperty("strict_bandwidth") boolean strictBandwidth,
                    @JsonProperty("periodic-pings") Boolean periodicPings,
                    @JsonProperty("allocate_protected_path") boolean allocateProtectedPath,
                    @JsonProperty("cookie") final long cookie,
@@ -276,6 +281,7 @@ public class FlowDto implements Serializable {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
+        this.strictBandwidth = strictBandwidth;
         this.periodicPings = periodicPings;
         this.allocateProtectedPath = allocateProtectedPath;
         this.cookie = cookie;
@@ -338,6 +344,7 @@ public class FlowDto implements Serializable {
                 ignoreBandwidth,
                 false,
                 false,
+                false,
                 0,
                 description,
                 null, null,
@@ -355,6 +362,7 @@ public class FlowDto implements Serializable {
         this(input.getId(),
                 input.getMaximumBandwidth(),
                 input.isIgnoreBandwidth(),
+                false,
                 input.isPeriodicPings(),
                 input.isAllocateProtectedPath(),
                 0,

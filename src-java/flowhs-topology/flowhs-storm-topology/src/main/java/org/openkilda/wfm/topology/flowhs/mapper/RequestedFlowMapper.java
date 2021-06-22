@@ -80,6 +80,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "description", ignore = true)
     @Mapping(target = "bandwidth", ignore = true)
     @Mapping(target = "ignoreBandwidth", ignore = true)
+    @Mapping(target = "strictBandwidth", ignore = true)
     @Mapping(target = "periodicPings", ignore = true)
     @Mapping(target = "maxLatency", ignore = true)
     @Mapping(target = "maxLatencyTier2", ignore = true)

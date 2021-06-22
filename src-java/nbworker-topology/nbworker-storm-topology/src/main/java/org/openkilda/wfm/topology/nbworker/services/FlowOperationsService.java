@@ -383,6 +383,8 @@ public class FlowOperationsService {
 
         updateRequired |= flowPatch.getIgnoreBandwidth() != null
                 && flow.isIgnoreBandwidth() != flowPatch.getIgnoreBandwidth();
+        updateRequired |= flowPatch.getStrictBandwidth() != null
+                && flow.isStrictBandwidth() != flowPatch.getStrictBandwidth();
 
         updateRequired |= flowPatch.getEncapsulationType() != null
                 && !flow.getEncapsulationType().equals(flowPatch.getEncapsulationType());
@@ -500,6 +502,7 @@ public class FlowOperationsService {
 
         Optional.ofNullable(flowPatch.getBandwidth()).ifPresent(flowRequest::setBandwidth);
         Optional.ofNullable(flowPatch.getIgnoreBandwidth()).ifPresent(flowRequest::setIgnoreBandwidth);
+        Optional.ofNullable(flowPatch.getStrictBandwidth()).ifPresent(flowRequest::setStrictBandwidth);
         Optional.ofNullable(flowPatch.getAllocateProtectedPath()).ifPresent(flowRequest::setAllocateProtectedPath);
         Optional.ofNullable(flowPatch.getEncapsulationType()).map(FlowMapper.INSTANCE::map)
                 .ifPresent(flowRequest::setEncapsulationType);

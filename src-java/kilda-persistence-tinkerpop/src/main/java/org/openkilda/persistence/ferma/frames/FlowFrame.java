@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -219,6 +219,14 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     @Override
     @Property("ignore_bandwidth")
     public abstract void setIgnoreBandwidth(boolean ignoreBandwidth);
+
+    @Override
+    @Property("strict_bandwidth")
+    public abstract boolean isStrictBandwidth();
+
+    @Override
+    @Property("strict_bandwidth")
+    public abstract void setStrictBandwidth(boolean strictBandwidth);
 
     @Override
     @Property("description")

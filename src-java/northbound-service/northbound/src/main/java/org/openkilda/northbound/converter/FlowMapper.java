@@ -137,6 +137,7 @@ public abstract class FlowMapper {
     @Mapping(target = "pathComputationStrategy", ignore = true)
     @Mapping(target = "pinned", ignore = true)
     @Mapping(target = "ignoreBandwidth", ignore = true)
+    @Mapping(target = "strictBandwidth", ignore = true)
     @Mapping(target = "description", ignore = true)
     @Mapping(target = "encapsulationType", ignore = true)
     @Mapping(target = "maxLatencyTier2", ignore = true)
@@ -192,6 +193,7 @@ public abstract class FlowMapper {
             expression = "java(payload.getMaxLatency() != null ? payload.getMaxLatency() * 1000000L : null)")
     @Mapping(target = "maxLatencyTier2", ignore = true)
     @Mapping(target = "loopSwitchId", ignore = true)
+    @Mapping(target = "strictBandwidth", ignore = true)
     public abstract FlowRequest toFlowRequest(FlowPayload payload);
 
     @Mapping(target = "outerVlanId", source = "vlanId")
