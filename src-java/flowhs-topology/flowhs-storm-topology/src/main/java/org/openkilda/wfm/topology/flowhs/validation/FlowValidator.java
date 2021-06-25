@@ -163,6 +163,11 @@ public class FlowValidator {
             throw new InvalidFlowException("Couldn't turn on periodic pings for one-switch flow",
                     ErrorType.PARAMETERS_INVALID);
         }
+
+        if (flow.isIgnoreBandwidth() && flow.isStrictBandwidth()) {
+            throw new InvalidFlowException("Can not turn on ignore bandwidth flag and strict bandwidth flag "
+                    + "at the same time", ErrorType.PARAMETERS_INVALID);
+        }
     }
 
     /**

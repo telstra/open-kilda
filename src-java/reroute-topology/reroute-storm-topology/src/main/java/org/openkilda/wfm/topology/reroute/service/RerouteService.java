@@ -436,7 +436,8 @@ public class RerouteService {
                         .priority(flow.getPriority())
                         .timeCreate(flow.getTimeCreate())
                         .pathComputationStrategy(flow.getPathComputationStrategy())
-                        .bandwidth(flow.getBandwidth());
+                        .bandwidth(flow.getBandwidth())
+                        .strictBandwidth(flow.isStrictBandwidth());
     }
 
     @Value

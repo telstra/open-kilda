@@ -18,8 +18,10 @@ package org.openkilda.wfm.topology.reroute.service;
 import static java.lang.String.format;
 import static java.time.temporal.ChronoUnit.MINUTES;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -434,6 +436,45 @@ public class RerouteQueueServiceTest {
         assertNull(rerouteQueue.getInProgress());
         assertNull(rerouteQueue.getPending());
         assertNull(rerouteQueue.getThrottling());
+    }
+
+    @Test
+    public void shouldComputeIgnoreBandwidthFlag() {
+        FlowThrottlingData data = FlowThrottlingData.builder()
+                .affectedIsl(Collections.emptySet())
+                .ignoreBandwidth(true)
+                .strictBandwidth(false)
+                .build();
+
+        assertTrue(rerouteQueueService.computeIgnoreBandwidth(data, true));
+        assertTrue(rerouteQueueService.computeIgnoreBandwidth(data, false));
+
+        data = FlowThrottlingData.builder()
+                .affectedIsl(Collections.emptySet())
+                .ignoreBandwidth(false)
+                .strictBandwidth(false)
+                .build();
+
+        assertTrue(rerouteQueueService.computeIgnoreBandwidth(data, true));
+        assertFalse(rerouteQueueService.computeIgnoreBandwidth(data, false));
+
+        data = FlowThrottlingData.builder()
+                .affectedIsl(Collections.emptySet())
+                .ignoreBandwidth(true)
+                .strictBandwidth(true)
+                .build();
+
+        assertFalse(rerouteQueueService.computeIgnoreBandwidth(data, true));
+        assertFalse(rerouteQueueService.computeIgnoreBandwidth(data, false));
+
+        data = FlowThrottlingData.builder()
+                .affectedIsl(Collections.emptySet())
+                .ignoreBandwidth(false)
+                .strictBandwidth(true)
+                .build();
+
+        assertFalse(rerouteQueueService.computeIgnoreBandwidth(data, true));
+        assertFalse(rerouteQueueService.computeIgnoreBandwidth(data, false));
     }
 
     private FlowThrottlingDataBuilder getFlowThrottlingData(Flow flow, String correlationId) {

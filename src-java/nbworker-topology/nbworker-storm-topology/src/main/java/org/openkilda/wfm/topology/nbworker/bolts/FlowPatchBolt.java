@@ -103,6 +103,8 @@ public class FlowPatchBolt extends AbstractBolt implements FlowOperationsCarrier
             flowOperationsService.updateFlow(this, flowPatch);
         } catch (FlowNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Flow was not found.");
+        } catch (IllegalArgumentException e) {
+            throw new MessageException(ErrorType.PARAMETERS_INVALID, "Could not update flow", e.getMessage());
         }
     }
 

@@ -332,6 +332,8 @@ public class FlowOperationsService {
             }
             Flow currentFlow = foundFlow.get();
 
+            validateFlow(flowPatch, currentFlow);
+
             final UpdateFlowResult.UpdateFlowResultBuilder result = prepareFlowUpdateResult(flowPatch, currentFlow);
 
             Optional.ofNullable(flowPatch.getMaxLatency()).ifPresent(currentFlow::setMaxLatency);
@@ -341,6 +343,7 @@ public class FlowOperationsService {
             Optional.ofNullable(flowPatch.getDescription()).ifPresent(currentFlow::setDescription);
             Optional.ofNullable(flowPatch.getTargetPathComputationStrategy())
                     .ifPresent(currentFlow::setTargetPathComputationStrategy);
+            Optional.ofNullable(flowPatch.getStrictBandwidth()).ifPresent(currentFlow::setStrictBandwidth);
 
             Optional.ofNullable(flowPatch.getPeriodicPings()).ifPresent(periodicPings -> {
                 boolean oldPeriodicPings = currentFlow.isPeriodicPings();
@@ -383,8 +386,6 @@ public class FlowOperationsService {
 
         updateRequired |= flowPatch.getIgnoreBandwidth() != null
                 && flow.isIgnoreBandwidth() != flowPatch.getIgnoreBandwidth();
-        updateRequired |= flowPatch.getStrictBandwidth() != null
-                && flow.isStrictBandwidth() != flowPatch.getStrictBandwidth();
 
         updateRequired |= flowPatch.getEncapsulationType() != null
                 && !flow.getEncapsulationType().equals(flowPatch.getEncapsulationType());
@@ -502,7 +503,6 @@ public class FlowOperationsService {
 
         Optional.ofNullable(flowPatch.getBandwidth()).ifPresent(flowRequest::setBandwidth);
         Optional.ofNullable(flowPatch.getIgnoreBandwidth()).ifPresent(flowRequest::setIgnoreBandwidth);
-        Optional.ofNullable(flowPatch.getStrictBandwidth()).ifPresent(flowRequest::setStrictBandwidth);
         Optional.ofNullable(flowPatch.getAllocateProtectedPath()).ifPresent(flowRequest::setAllocateProtectedPath);
         Optional.ofNullable(flowPatch.getEncapsulationType()).map(FlowMapper.INSTANCE::map)
                 .ifPresent(flowRequest::setEncapsulationType);
@@ -511,6 +511,16 @@ public class FlowOperationsService {
         Optional.ofNullable(flowPatch.getDiverseFlowId()).ifPresent(flowRequest::setDiverseFlowId);
 
         return flowRequest;
+    }
+
+    private void validateFlow(FlowPatch flowPatch, Flow flow) {
+        boolean strictBandwidthPatch = Optional.ofNullable(flowPatch.getStrictBandwidth()).orElse(false);
+        boolean ignoreBandwidthPatch = Optional.ofNullable(flowPatch.getIgnoreBandwidth()).orElse(false);
+
+        if (strictBandwidthPatch && (ignoreBandwidthPatch || flow.isIgnoreBandwidth())) {
+            throw new IllegalArgumentException("Can not turn on ignore bandwidth flag and strict bandwidth flag "
+                    + "at the same time");
+        }
     }
 
     /**
