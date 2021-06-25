@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
+
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.model.SwitchId
@@ -16,12 +18,15 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
 @Component
 @Slf4j
+@Scope(SCOPE_PROTOTYPE)
 class TopologyHelper {
-    @Autowired
+    @Autowired @Qualifier("islandNb")
     NorthboundService northbound
     @Autowired
     TopologyDefinition topology

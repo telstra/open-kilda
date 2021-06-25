@@ -252,8 +252,8 @@ class BandwidthSpec extends HealthCheckSpecification {
     }
 
     def cleanup() {
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
     }
 
     private def checkBandwidth(List<PathNode> flowPath, List<IslInfoData> linksBefore, List<IslInfoData> linksAfter,

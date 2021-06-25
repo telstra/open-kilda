@@ -81,8 +81,8 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         and: "Validation of non-affected switches (if any) should succeed"
         if (damagedFlowSwitches.size() > 1) {
             def nonAffectedSwitches = damagedFlowSwitches.findAll { it != damagedFlowSwitches[item] }
-            assert nonAffectedSwitches.every { sw -> northbound.validateSwitchRules(sw).missingRules.size() == 0 }
-            assert nonAffectedSwitches.every { sw -> northbound.validateSwitchRules(sw).excessRules.size() == 0 }
+            nonAffectedSwitches.each { sw -> assert northbound.validateSwitchRules(sw).missingRules.size() == 0 }
+            nonAffectedSwitches.each { sw -> assert northbound.validateSwitchRules(sw).excessRules.size() == 0 }
         }
 
         cleanup: "Delete the flows"

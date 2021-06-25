@@ -514,7 +514,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         cleanup: "Delete the flow and reset costs"
         flow && flowHelper.deleteFlow(flow.id)
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -553,7 +553,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state == DISCOVERED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
 
         where:
         data << [
@@ -736,7 +736,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         !exc && flow && flowHelper.deleteFlow(flow.id)
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -775,7 +775,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
             northbound.deleteLink(islUtils.toLinkParameters(newIsl))
             Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -966,7 +966,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
         islsToModify.each {
             database.resetIslBandwidth(it)
             database.resetIslBandwidth(it.reversed)

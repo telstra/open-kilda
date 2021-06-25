@@ -425,7 +425,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         addedFlow = flowHelperV2.addFlow(flow)
 
         and: "Try updated its encap type to VXLAN"
-        flowHelperV2.updateFlow(flow.flowId, flow.tap { it.encapsulationType = FlowEncapsulationType.VXLAN.toString() })
+        northboundV2.updateFlow(flow.flowId, flow.tap { it.encapsulationType = FlowEncapsulationType.VXLAN.toString() })
 
         then: "Human readable error is returned"
         def updateError = thrown(HttpClientErrorException)

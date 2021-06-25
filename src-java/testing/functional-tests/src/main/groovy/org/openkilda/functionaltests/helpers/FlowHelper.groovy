@@ -7,6 +7,7 @@ import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.SINGLE_TABLE_ID
 import static org.openkilda.testing.Constants.TRANSIT_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
@@ -25,6 +26,8 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import com.github.javafaker.Faker
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 import org.springframework.web.client.HttpClientErrorException
 
@@ -35,10 +38,11 @@ import java.text.SimpleDateFormat
  */
 @Component
 @Slf4j
+@Scope(SCOPE_PROTOTYPE)
 class FlowHelper {
     @Autowired
     TopologyDefinition topology
-    @Autowired
+    @Autowired @Qualifier("islandNb")
     NorthboundService northbound
     @Autowired
     Database db

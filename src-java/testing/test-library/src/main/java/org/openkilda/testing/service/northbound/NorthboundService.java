@@ -177,6 +177,8 @@ public interface NorthboundService {
 
     List<LinkPropsDto> getAllLinkProps();
 
+    List<LinkPropsDto> getLinkProps(List<Isl> isls);
+
     List<LinkPropsDto> getLinkProps(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
 
     BatchResults updateLinkProps(List<LinkPropsDto> keys);

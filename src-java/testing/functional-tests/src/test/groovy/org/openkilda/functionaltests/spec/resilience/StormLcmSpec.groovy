@@ -17,6 +17,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.testing.Constants
 
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Isolated
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -32,6 +33,7 @@ verify their consistency after restart.
  * Aborting it in the middle of execution may lead to Kilda malfunction.
  */
 @Tags(VIRTUAL)
+@Isolated
 class StormLcmSpec extends HealthCheckSpecification {
     @Shared
     WfmManipulator wfmManipulator
@@ -76,7 +78,7 @@ class StormLcmSpec extends HealthCheckSpecification {
         def newSwitches = database.dumpAllSwitches()
         expect newSwitches, sameBeanAs(switchesDump).ignoring("data.timeModify")
                 .ignoring("data.socketAddress.port")
-        expect newRelation, sameBeanAs(relationsDump).ignoring("properties.time_modify")
+        expect newRelation.sort(), sameBeanAs(relationsDump.sort()).ignoring("properties.time_modify")
                 .ignoring("properties.latency")
                 .ignoring("properties.time_create")
                 .ignoring("properties.switch_address_port")

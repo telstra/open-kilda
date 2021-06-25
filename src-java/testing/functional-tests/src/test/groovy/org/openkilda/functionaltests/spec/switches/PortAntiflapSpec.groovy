@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
+import spock.lang.Isolated
 import spock.lang.Issue
 import spock.lang.Narrative
 
@@ -40,6 +41,7 @@ Initially, port is considered 'flapping' if it changes status quicker than once 
 change status from UP to DOWN only after 'antiflap.min' in case of a single-time change of status)
 """)
 @Issue("https://github.com/telstra/open-kilda/issues/1729")
+@Isolated //global 'fl sync' toggle is changed
 class PortAntiflapSpec extends HealthCheckSpecification {
 
     @Value('${antiflap.min}')
@@ -265,6 +267,6 @@ timeout"() {
     }
 
     def cleanup() {
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 }

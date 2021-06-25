@@ -81,7 +81,7 @@ class SimulateStatsSpec extends HealthCheckSpecification {
                 "flow.raw.bytes": NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE * 2,
                 "flow.raw.bits": NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE * 2 * 8
         ]
-        Wrappers.retry(5, 3) {
+        Wrappers.retry(8, 3) {
             def soft = new SoftAssertions()
             expectedMetricValueMap.each { metric, expectedValue ->
                 soft.checkSucceeds {

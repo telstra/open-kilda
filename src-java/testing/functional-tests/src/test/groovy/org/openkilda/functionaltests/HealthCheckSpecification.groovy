@@ -131,5 +131,4 @@ class HealthCheckSpecification extends HealthCheckBaseSpecification {
     Throwable getHealthCheckError() { healthCheckError }
     void setHealthCheckRan(boolean hcRan) { healthCheckRan = hcRan }
     void setHealthCheckError(Throwable t) { healthCheckError = t }
-
 }

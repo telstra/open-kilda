@@ -108,7 +108,7 @@ class IslReplugSpec extends HealthCheckSpecification {
                 assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -173,7 +173,7 @@ class IslReplugSpec extends HealthCheckSpecification {
                 assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -208,7 +208,7 @@ class IslReplugSpec extends HealthCheckSpecification {
             islUtils.replug(loopedIsl, true, isl, false, false)
             islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tags(SMOKE)
@@ -259,7 +259,7 @@ class IslReplugSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/3780")

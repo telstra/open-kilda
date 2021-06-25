@@ -3,7 +3,6 @@ package org.openkilda.functionaltests.spec.flows
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
@@ -20,6 +19,7 @@ import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
@@ -33,10 +33,11 @@ import java.util.concurrent.TimeUnit
 class AutoRerouteSpec extends HealthCheckSpecification {
 
     @Tidy
-    @Tags(SMOKE)
     def "Flow is rerouted when one of the flow ISLs fails"() {
         given: "A flow with one alternative path at least"
-        def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
+        def data = noIntermediateSwitchFlow(1, true)
+        FlowCreatePayload flow = data[0]
+        def allFlowPaths = data[1]
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -62,10 +63,11 @@ class AutoRerouteSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(SMOKE)
     def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no ability to reroute"() {
         given: "A flow without alternative paths"
-        def (flow, allFlowPaths) = noIntermediateSwitchFlow(0, true)
+        def data = noIntermediateSwitchFlow(0, true)
+        FlowCreatePayload flow = data[0]
+        def allFlowPaths = data[1]
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -147,62 +149,11 @@ class AutoRerouteSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(SMOKE)
-    def "Flow in 'Down' status is rerouted when discovering a new ISL"() {
-        given: "An intermediate-switch flow with one alternative path at least"
-        def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
-        flowHelper.addFlow(flow)
-        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
-
-        when: "Bring all ports down on the source switch that are involved in the current and alternative paths"
-        List<PathNode> broughtDownPorts = []
-        allFlowPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-
-        then: "The flow goes to 'Down' status"
-        wait(rerouteDelay + WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
-        wait(WAIT_OFFSET) {
-            def prevHistorySize = northbound.getFlowHistory(flow.id).size()
-            Wrappers.timedLoop(4) {
-                //history size should no longer change for the flow, all retries should give up
-                def newHistorySize = northbound.getFlowHistory(flow.id).size()
-                assert newHistorySize == prevHistorySize
-                assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN
-            sleep(500)
-            }
-        }
-        when: "Bring all ports up on the source switch that are involved in the alternative paths"
-        broughtDownPorts.findAll {
-            it.portNo != flowPath.first().portNo
-        }.each {
-            antiflap.portUp(it.switchId, it.portNo)
-        }
-
-        then: "The flow goes to 'Up' status"
-        wait(rerouteDelay + discoveryInterval + WAIT_OFFSET * 2) {
-            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-        }
-
-        and: "The flow was rerouted"
-        PathHelper.convert(northbound.getFlowPath(flow.id)) != flowPath
-        wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
-
-        cleanup: "Bring port involved in the original path up and delete the flow"
-        flow && flowHelper.deleteFlow(flow.id)
-        flowPath && antiflap.portUp(flowPath.first().switchId, flowPath.first().portNo)
-        wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
-    }
-
-    @Tidy
-    @Tags(SMOKE)
     def "Flow in 'Up' status is not rerouted when discovering a new ISL and more preferable path is available"() {
         given: "A flow with one alternative path at least"
-        def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
+        def data = noIntermediateSwitchFlow(1, true)
+        FlowCreatePayload flow = data[0]
+        def allFlowPaths = data[1]
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -244,10 +195,12 @@ class AutoRerouteSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([VIRTUAL, SMOKE])
+    @Tags([VIRTUAL])
     def "Flow in 'Up' status is not rerouted when connecting a new switch and more preferable path is available"() {
         given: "A flow with one alternative path at least"
-        def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
+        def data = noIntermediateSwitchFlow(1, true)
+        FlowCreatePayload flow = data[0]
+        def allFlowPaths = data[1]
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -280,10 +233,12 @@ class AutoRerouteSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([HARDWARE, SMOKE])
+    @Tags([HARDWARE])
     def "Flow is not rerouted when one of the flow ports goes down"() {
         given: "An intermediate-switch flow with one alternative path at least"
-        def (flow, allFlowPaths) = intermediateSwitchFlow(1, true)
+        def data = intermediateSwitchFlow(1, true)
+        FlowCreatePayload flow = data[0]
+        def allFlowPaths = data[1]
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -402,7 +357,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
     }
 
     def cleanup() {
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
     }
 }

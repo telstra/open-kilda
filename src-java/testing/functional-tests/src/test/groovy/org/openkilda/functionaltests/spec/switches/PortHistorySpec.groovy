@@ -25,7 +25,9 @@ import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.SoftAssertions
 
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import spock.lang.Ignore
+import spock.lang.Isolated
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
@@ -34,9 +36,6 @@ import spock.lang.Shared
         "https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/AF-FSM.png"])
 @Narrative("Verify that port history is created for the port up/down actions.")
 class PortHistorySpec extends HealthCheckSpecification {
-    @Autowired
-    NorthboundServiceV2 northboundV2
-
     @Shared
     //confd/templates/wfm/topology.properties.tmpl => port.antiflap.stats.dumping.interval.seconds = 60
     //it means how often the 'ANTI_FLAP_PERIODIC_STATS' is logged in port history
@@ -205,70 +204,6 @@ class PortHistorySpec extends HealthCheckSpecification {
         switchToDisconnect && switchHelper.reviveSwitch(switchToDisconnect, blockData)
     }
 
-    @Tidy
-    def "Port history is able to show ANTI_FLAP statistic"() {
-        given: "floodlightRoutePeriodicSync is disabled"
-        def updateToogles = northbound.toggleFeature(FeatureTogglesDto.builder()
-                .floodlightRoutePeriodicSync(false)
-                .build())
-
-        and: "A port in a stable state"
-        def isl = getTopology().islsForActiveSwitches.first()
-        antiflap.waitPortIsStable(isl.srcSwitch.dpId, isl.srcPort)
-
-        when: "Execute port DOWN on the port"
-        def timestampBefore = System.currentTimeMillis()
-        northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        Wrappers.wait(WAIT_OFFSET / 2) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
-        }
-
-        then: "Port history is created for that port"
-        Wrappers.wait(WAIT_OFFSET) {
-            Long timestampAfterDown = System.currentTimeMillis()
-            with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterDown)) {
-                it.size() == 2 // PORT_DOWN, ANTI_FLAP_ACTIVATED
-            }
-        }
-
-        when: "Blink port to generate antiflap statistic"
-        Wrappers.timedLoop(antiflapDumpingInterval - antiflapCooldown + 1) {
-            northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
-            northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        }
-
-        then: "Antiflap statistic is available in port history"
-        Wrappers.wait(WAIT_OFFSET + antiflapCooldown) {
-            new SoftAssertions().with {
-                def history = northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort,
-                        timestampBefore, System.currentTimeMillis())
-                checkSucceeds { assert history*.event
-                        .containsAll([PORT_DOWN, ANTI_FLAP_ACTIVATED, ANTI_FLAP_PERIODIC_STATS]*.toString()) }
-                def antiflapStat = history.find { it.event == ANTI_FLAP_PERIODIC_STATS.toString() }
-                checkSucceeds {
-                    checkPortHistory(antiflapStat, isl.srcSwitch.dpId, isl.srcPort,
-                            ANTI_FLAP_PERIODIC_STATS)
-                }
-                //unstable place below. Doing weak check that at least something is counted =(
-                checkSucceeds { assert antiflapStat.upCount > 0 }
-                checkSucceeds { assert antiflapStat.downCount > 0 }
-                verify()
-            }
-        }
-
-        cleanup:
-        if (isl) {
-            northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
-            Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
-                assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
-            }
-            antiflap.waitPortIsStable(isl.srcSwitch.dpId, isl.srcPort)
-        }
-        updateToogles && northbound.toggleFeature(FeatureTogglesDto.builder()
-                .floodlightRoutePeriodicSync(true)
-                .build())
-    }
-
     @Ignore("https://github.com/telstra/open-kilda/issues/3007")
     def "System shows antiflap statistic in the ANTI_FLAP_DEACTIVATED event when antiflap is deactivated\
  before collecting ANTI_FLAP_PERIODIC_STATS"() {
@@ -317,7 +252,7 @@ class PortHistorySpec extends HealthCheckSpecification {
     }
 
     def cleanup() {
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     void checkPortHistory(PortHistoryResponse portHistory, SwitchId switchId, Integer port, PortHistoryEvent event) {
@@ -328,5 +263,84 @@ class PortHistorySpec extends HealthCheckSpecification {
             it.event == event.toString()
             date != null
         }
+    }
+}
+
+@See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/port-FSM.png",
+        "https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/AF-FSM.png"])
+@Narrative("Verify that port history is created for the port up/down actions.")
+@Isolated
+class PortHistoryIsolatedSpec extends HealthCheckSpecification {
+    @Shared
+    def antiflapDumpingInterval = 60
+
+    @Tidy
+    //isolation: global fl sync toggle is changed
+    def "Port history is able to show ANTI_FLAP statistic"() {
+        given: "floodlightRoutePeriodicSync is disabled"
+        def updateToogles = northbound.toggleFeature(FeatureTogglesDto.builder()
+                .floodlightRoutePeriodicSync(false)
+                .build())
+
+        and: "A port in a stable state"
+        def isl = getTopology().islsForActiveSwitches.first()
+        antiflap.waitPortIsStable(isl.srcSwitch.dpId, isl.srcPort)
+
+        when: "Execute port DOWN on the port"
+        def timestampBefore = System.currentTimeMillis()
+        northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+        }
+
+        then: "Port history is created for that port"
+        Wrappers.wait(WAIT_OFFSET) {
+            Long timestampAfterDown = System.currentTimeMillis()
+            with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterDown)) {
+                it.size() == 2 // PORT_DOWN, ANTI_FLAP_ACTIVATED
+            }
+        }
+
+        when: "Blink port to generate antiflap statistic"
+        Wrappers.timedLoop(antiflapDumpingInterval - antiflapCooldown + 1) {
+            northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+            northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        }
+
+        then: "Antiflap statistic is available in port history"
+        Wrappers.wait(WAIT_OFFSET + antiflapCooldown) {
+            new SoftAssertions().with {
+                def history = northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort,
+                        timestampBefore, System.currentTimeMillis())
+                checkSucceeds { assert history*.event
+                        .containsAll([PORT_DOWN, ANTI_FLAP_ACTIVATED, ANTI_FLAP_PERIODIC_STATS]*.toString()) }
+                def antiflapStat = history.find { it.event == ANTI_FLAP_PERIODIC_STATS.toString() }
+                checkSucceeds {
+                    verifyAll(antiflapStat) {
+                        id != null
+                        switchId == isl.srcSwitch.dpId
+                        portNumber == isl.srcPort
+                        it.event == ANTI_FLAP_PERIODIC_STATS.toString()
+                        date != null
+                    }
+                }
+                //unstable place below. Doing weak check that at least something is counted =(
+                checkSucceeds { assert antiflapStat.upCount > 0 }
+                checkSucceeds { assert antiflapStat.downCount > 0 }
+                verify()
+            }
+        }
+
+        cleanup:
+        if (isl) {
+            northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+            Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
+                assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+            }
+            antiflap.waitPortIsStable(isl.srcSwitch.dpId, isl.srcPort)
+        }
+        updateToogles && northbound.toggleFeature(FeatureTogglesDto.builder()
+                .floodlightRoutePeriodicSync(true)
+                .build())
     }
 }

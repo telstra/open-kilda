@@ -30,7 +30,7 @@ class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
 
     @Tidy
     @IterationTag(tags = [SMOKE], iterationNameRegex = /reverse/)
-    def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration"() {
+    def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration [#flowType]"() {
         given: "Two flows with #flowConfig configuration"
         def flowToBreak = flowHelperV2.randomFlow(switchPair, false)
         def intactFlow = flowHelperV2.randomFlow(switchPair, false, [flowToBreak])
@@ -78,8 +78,8 @@ class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
         and: "Validation of non-affected switches (if any) should succeed"
         if (damagedFlowSwitches.size() > 1) {
             def nonAffectedSwitches = damagedFlowSwitches.findAll { it != damagedFlowSwitches[item] }
-            assert nonAffectedSwitches.every { sw -> northbound.validateSwitchRules(sw).missingRules.size() == 0 }
-            assert nonAffectedSwitches.every { sw -> northbound.validateSwitchRules(sw).excessRules.size() == 0 }
+            nonAffectedSwitches.each { sw -> assert northbound.validateSwitchRules(sw).missingRules.size() == 0 }
+            nonAffectedSwitches.each { sw -> assert northbound.validateSwitchRules(sw).excessRules.size() == 0 }
         }
 
         cleanup: "Delete the flows"

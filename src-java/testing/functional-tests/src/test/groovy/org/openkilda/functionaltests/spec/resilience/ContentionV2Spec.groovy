@@ -128,7 +128,7 @@ class ContentionV2Spec extends BaseSpecification {
 
         cleanup: "remove flow and reset costs"
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         !switchesOk && relatedSwitches.each { northbound.synchronizeSwitch(it.dpId, true) }
 
         where: removeExcess << [

@@ -198,7 +198,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -248,7 +248,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         cleanup: "Delete flows and link props"
         [flow1, flow2, flow3].each { it && flowHelper.deleteFlow(it.id) }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tidy

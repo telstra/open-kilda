@@ -1,13 +1,9 @@
 package org.openkilda.functionaltests.spec.resilience
 
-import static groovyx.gpars.GParsPool.withPool
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
-import org.openkilda.messaging.payload.flow.FlowState
 
 import groovyx.gpars.group.DefaultPGroup
 import org.springframework.http.HttpStatus

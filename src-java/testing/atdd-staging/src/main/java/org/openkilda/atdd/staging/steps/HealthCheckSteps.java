@@ -24,11 +24,12 @@ import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 @Slf4j
 public class HealthCheckSteps {
 
-    @Autowired
+    @Autowired @Qualifier("northboundServiceImpl")
     private NorthboundService northboundService;
 
     private HealthCheck healthCheckResponse;

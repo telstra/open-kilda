@@ -94,6 +94,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
 
         when: "Make alt path more preferable than current path"
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         switchPair.paths.findAll { it != altPath }.each { pathHelper.makePathMorePreferable(altPath, it) }
 
         and: "Init reroute by bringing current path's ISL down one by one"
@@ -117,9 +118,8 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         then: "Flow is not rerouted and marked as DOWN when the first ISL is broken"
         Wrappers.wait(WAIT_OFFSET) {
             Wrappers.timedLoop(2) {
-                def flowInfo = northboundV2.getFlow(flow.flowId)
-                assert flowInfo.status == FlowState.DOWN.toString()
-                assert flowInfo.statusInfo =~ /ISL (.*) become INACTIVE due to physical link DOWN event on (.*)/
+                assert northboundV2.getFlow(flow.flowId).status == FlowState.DOWN.toString()
+                //do not check history here. In parallel environment it may be overriden by 'up' event on another island
                 assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
             }
         }
@@ -145,17 +145,17 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         when: "The broken ISLs are restored one by one"
         islsToBreak[0..-2].each { islToBreak ->
             antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-                assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
-                TimeUnit.SECONDS.sleep(rerouteDelay - 1)
-                assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-                assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
-            }
         }
-        antiflap.portUp(islsToBreak[-1].srcSwitch.dpId, islsToBreak[-1].srcPort)
+        TimeUnit.SECONDS.sleep(rerouteDelay)
+        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+            islsToBreak[0..-2].each { assert islUtils.getIslInfo(it).get().state == IslChangeType.DISCOVERED }
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
+        }
 
         then: "Flow is marked as UP when the last ISL is restored"
-        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+        antiflap.portUp(islsToBreak[-1].srcSwitch.dpId, islsToBreak[-1].srcPort)
+        Wrappers.wait(WAIT_OFFSET * 2) {
             assert islUtils.getIslInfo(islsToBreak[-1]).get().state == IslChangeType.DISCOVERED
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
@@ -170,8 +170,8 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
                 assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
             }
         }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -200,8 +200,8 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
 
         cleanup: "Revert system to original state"
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -230,7 +230,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
 
         cleanup: "Revert system to original state"
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tidy

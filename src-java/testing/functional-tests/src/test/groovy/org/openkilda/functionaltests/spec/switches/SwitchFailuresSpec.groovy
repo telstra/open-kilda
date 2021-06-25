@@ -130,7 +130,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         lockKeeper.cleanupTrafficShaperRules(swPair.dst.regions)
         flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy

@@ -15,7 +15,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
-import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -269,8 +268,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
             }
         }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
 
         where:
         flowDescription | bandwidth
@@ -312,7 +311,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Flow is rerouted"
         rerouteResponse.rerouted
         Wrappers.wait(WAIT_OFFSET) {
-            northbound.getFlowStatus(flow.id).status == FlowState.UP
+            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
         }
 
         and: "Path is not changed to protected path"
@@ -328,7 +327,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         cleanup:
         flow && flowHelper.deleteFlow(flow.id)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
         where:
         flowDescription | bandwidth
@@ -402,8 +401,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
             }
         }
-        database.resetCosts()
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        database.resetCosts(topology.isls)
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
         where:
         flowDescription | bandwidth
@@ -630,11 +629,10 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(islToBreakProtectedPath).get().state == IslChangeType.DISCOVERED
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
-    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "Unable to create #flowDescription flow with protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches without alt paths"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -674,7 +672,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
 
         where:
         flowDescription | bandwidth
@@ -683,7 +681,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "Able to update #flowDescription flow to enable protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -730,7 +727,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
 
         where:
         flowDescription | bandwidth
@@ -1053,7 +1050,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -1124,12 +1121,11 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
-    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "#flowDescription flow is DEGRADED when protected and alternative paths are not available"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -1178,7 +1174,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
 
         where:
         flowDescription | bandwidth
@@ -1261,7 +1257,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         cleanup:
         flow && flowHelper.deleteFlow(flow.id)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     List<Integer> getCreatedMeterIds(SwitchId switchId) {

@@ -29,13 +29,13 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 
 import groovy.util.logging.Slf4j
+import spock.lang.Isolated
 import spock.lang.Shared
 
 import java.util.concurrent.TimeUnit
 
 @Slf4j
 class RetriesSpec extends HealthCheckSpecification {
-    @Shared int globalTimeout = 30 //global timeout for h&s operation
 
     @Tidy
     def "System retries the reroute (global retry) if it fails to install rules on one of the current target path's switches"() {
@@ -76,7 +76,7 @@ and at least 1 path must remain safe"
 
         and: "Switch on the preferred failover path will suddenly be unavailable for rules installation when the reroute starts"
         //select a required failover path beforehand
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         switchPair.paths.findAll { it != failoverPath }.each { pathHelper.makePathMorePreferable(failoverPath, it) }
         //disconnect the switch, but make it look like 'active'
         def blockData = switchHelper.knockoutSwitch(switchToBreak, RW)
@@ -127,8 +127,8 @@ and at least 1 path must remain safe"
         wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -247,7 +247,7 @@ and at least 1 path must remain safe"
         wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
 
         where:
         data << [
@@ -401,56 +401,12 @@ and at least 1 path must remain safe"
         wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
-    def "System does not retry after global timeout for reroute operation"() {
-        given: "A flow with ability to reroute"
-        def swPair = topologyHelper.switchPairs.find { it.paths.size() > 1 }
-        def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow)
-
-        when: "Break current path to trigger a reroute"
-        def islToBreak = pathHelper.getInvolvedIsls(flow.flowId).first()
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-
-        and: "Connection to src switch is slow in order to simulate a global timeout on reroute operation"
-        lockKeeper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(7000))
-
-        then: "After global timeout expect flow reroute to fail and flow to become DOWN"
-        TimeUnit.SECONDS.sleep(globalTimeout)
-        int eventsAmount
-        wait(globalTimeout + WAIT_OFFSET, 1) { //long wait, may be doing some revert actions after global t/o
-            def history = northbound.getFlowHistory(flow.flowId)
-            def lastEvent = history.last().payload
-            assert lastEvent.find { it.action == sprintf('Global timeout reached for reroute operation on flow "%s"', flow.flowId) }
-            assert lastEvent.last().action == REROUTE_FAIL
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            eventsAmount = history.size()
-        }
-
-        and: "Flow remains down and no new history events appear for the next 3 seconds (no retry happens)"
-        timedLoop(3) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.flowId).size() == eventsAmount
-        }
-
-        and: "Src/dst switches are valid"
-        wait(WAIT_OFFSET * 2) { //due to instability in multiTable mode
-            [flow.source.switchId, flow.destination.switchId].each { verifySwitchRules(it) }
-        }
-
-        cleanup:
-        lockKeeper.cleanupTrafficShaperRules(swPair.src.regions)
-        flowHelperV2.deleteFlow(flow.flowId)
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        wait(WAIT_OFFSET) { northbound.activeLinks.size() == topology.islsForActiveSwitches.size() * 2 }
-        database.resetCosts()
-    }
-
-    @Tidy
+    @Tags(LOW_PRIORITY)
     def "System remains in consistent state when flow is reverted back after table mode change: failed reroute"() {
         given: "A flow, with src switch supporting multi-table (currently in single-table)"
         def swPair = topologyHelper.switchPairs.find {
@@ -507,7 +463,8 @@ and at least 1 path must remain safe"
         def portUp = antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
 
         then: "Flow goes UP"
-        wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+        //sometimes flow is rerouted with ignore_bandwidth, then flow is DEGRADED
+        wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status in [FlowState.UP, FlowState.DEGRADED] }
 
         and: "Flow and switches are valid"
         northbound.validateFlow(flow.flowId).every { it.asExpected }
@@ -531,7 +488,7 @@ and at least 1 path must remain safe"
         isl && portDown && !portUp && antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         wait(WAIT_OFFSET * 2) {
             northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED } }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -617,8 +574,61 @@ and at least 1 path must remain safe"
         isl && antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         wait(WAIT_OFFSET * 2) {
             northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED } }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
         !done && currentSwitches && (currentSwitches + otherSwitches).unique { it.dpId }.each {
             northbound.synchronizeSwitch(it.dpId, true) }
+    }
+}
+
+
+@Slf4j
+@Isolated
+class RetriesIsolatedSpec extends HealthCheckSpecification {
+    @Shared int globalTimeout = 30 //global timeout for h&s operation
+
+    @Tidy
+    //isolation: requires no 'up' events in the system while flow is Down
+    def "System does not retry after global timeout for reroute operation"() {
+        given: "A flow with ability to reroute"
+        def swPair = topologyHelper.switchPairs.find { it.paths.size() > 1 }
+        def flow = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(flow)
+
+        when: "Break current path to trigger a reroute"
+        def islToBreak = pathHelper.getInvolvedIsls(flow.flowId).first()
+        northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+
+        and: "Connection to src switch is slow in order to simulate a global timeout on reroute operation"
+        lockKeeper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(5000))
+
+        then: "After global timeout expect flow reroute to fail and flow to become DOWN"
+        TimeUnit.SECONDS.sleep(globalTimeout)
+        int eventsAmount
+        wait(globalTimeout + WAIT_OFFSET, 1) { //long wait, may be doing some revert actions after global t/o
+            def history = northbound.getFlowHistory(flow.flowId)
+            def lastEvent = history.last().payload
+            assert lastEvent.find { it.action == sprintf('Global timeout reached for reroute operation on flow "%s"', flow.flowId) }
+            assert lastEvent.last().action == REROUTE_FAIL
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            eventsAmount = history.size()
+        }
+
+        and: "Flow remains down and no new history events appear for the next 3 seconds (no retry happens)"
+        timedLoop(3) {
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert northbound.getFlowHistory(flow.flowId).size() == eventsAmount
+        }
+
+        and: "Src/dst switches are valid"
+        wait(WAIT_OFFSET * 2) { //due to instability in multiTable mode
+            [flow.source.switchId, flow.destination.switchId].each { verifySwitchRules(it) }
+        }
+
+        cleanup:
+        lockKeeper.cleanupTrafficShaperRules(swPair.src.regions)
+        flowHelperV2.deleteFlow(flow.flowId)
+        northbound.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        wait(WAIT_OFFSET) { northbound.activeLinks.size() == topology.islsForActiveSwitches.size() * 2 }
+        database.resetCosts(topology.isls)
     }
 }

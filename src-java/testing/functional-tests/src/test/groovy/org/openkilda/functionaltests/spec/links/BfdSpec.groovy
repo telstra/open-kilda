@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.ResourceLockConstants.BFD_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -18,6 +19,7 @@ import org.openkilda.northbound.dto.v2.links.BfdProperties
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
+import spock.lang.ResourceLock
 import spock.lang.See
 import spock.lang.Shared
 
@@ -148,6 +150,7 @@ class BfdSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @ResourceLock(BFD_TOGGLE)
     def "Reacting on BFD events can be turned on/off by a feature toggle"() {
         given: "An a-switch ISL between two Noviflow switches with BFD enabled"
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow &&

@@ -41,6 +41,7 @@ import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Isolated
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
@@ -54,7 +55,9 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
     @IterationTag(tags = [HARDWARE], iterationNameRegex = /vxlan/)
     def "Flow is rerouted when one of the #description flow ISLs fails"() {
         given: "A flow with one alternative path at least"
-        def (FlowRequestV2 flow, allFlowPaths) = flowData(topologyHelper.getAllNeighboringSwitchPairs(), 1)
+        def data = flowData(topologyHelper.getAllNeighboringSwitchPairs(), 1)
+        FlowRequestV2 flow = data[0]
+        def allFlowPaths = data[1]
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
 
@@ -94,7 +97,9 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
     def "Strict bandwidth false: Flow is rerouted even if there is no available bandwidth on alternative path, sets status to Degraded"() {
         given: "A flow with one alternative path at least"
         List<FlowRequestV2> helperFlows = []
-        def (FlowRequestV2 flow, List<List<PathNode>> allFlowPaths) = noIntermediateSwitchFlow(1, true)
+        def data = noIntermediateSwitchFlow(1, true)
+        FlowRequestV2 flow = data[0]
+        List<List<PathNode>> allFlowPaths = data[1]
         flow.strictBandwidth = false
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
@@ -185,7 +190,9 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
     def "Strict bandwidth true: Flow status is set to DOWN after reroute if no alternative path with enough bandwidth"() {
         given: "A flow with one alternative path at least"
         List<FlowRequestV2> helperFlows = []
-        def (FlowRequestV2 flow, List<List<PathNode>> allFlowPaths) = noIntermediateSwitchFlow(1, true)
+        def data = noIntermediateSwitchFlow(1, true)
+        FlowRequestV2 flow = data[0]
+        List<List<PathNode>> allFlowPaths = data[1]
         flow.strictBandwidth = true
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
@@ -242,7 +249,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         errorDetails.errorDescription.contains("Not enough bandwidth or no path found")
 
         and: "Flow history shows more reroute attempts after manual command"
-        wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET * 2) {
             history = northbound.getFlowHistory(flow.flowId, manualRerouteTime, null)
             verifyAll {
                 history.count { it.action == REROUTE_ACTION } == 4 //manual original + 3 reties
@@ -344,7 +351,9 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no alt path to reroute"() {
         given: "A flow without alternative paths"
-        def (FlowRequestV2 flow, allFlowPaths) = noIntermediateSwitchFlow(0, true)
+        def data = noIntermediateSwitchFlow(0, true)
+        FlowRequestV2 flow = data[0]
+        def allFlowPaths = data[1]
         flow.strictBandwidth = strictBw
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
@@ -405,8 +414,11 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "Flow in 'Down' status is rerouted when discovering a new ISL"() {
         given: "An intermediate-switch flow with one alternative path at least"
-        def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
-        flowHelperV2.addFlow(flow)
+        def data = noIntermediateSwitchFlow(1, true)
+        FlowRequestV2 flow = data[0]
+        def allFlowPaths = data[1]
+
+        flowHelperV2.addFlow(flow.tap { strictBandwidth = true })
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
 
         when: "Bring all ports down on the source switch that are involved in the current and alternative paths"
@@ -426,10 +438,11 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
             def prevHistorySize = northbound.getFlowHistory(flow.flowId).size()
             Wrappers.timedLoop(4) {
                 //history size should no longer change for the flow, all retries should give up
-                def newHistorySize = northbound.getFlowHistory(flow.flowId).size()
+                def newHistorySize = northbound.getFlowHistory(flow.flowId)
+                        .findAll { !(it.details =~ /Reason: ISL .* status become ACTIVE/) }.size()
                 assert newHistorySize == prevHistorySize
                 assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            sleep(500)
+                sleep(500)
             }
         }
         when: "Bring all ports up on the source switch that are involved in the alternative paths"
@@ -460,7 +473,9 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "Flow in 'Up' status is not rerouted when discovering a new ISL and more preferable path is available"() {
         given: "A flow with one alternative path at least"
-        def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
+        def data = noIntermediateSwitchFlow(1, true)
+        FlowRequestV2 flow = data[0]
+        def allFlowPaths = data[1]
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
 
@@ -505,7 +520,9 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
     @Tags([SMOKE])
     def "Flow in 'Up' status is not rerouted when connecting a new switch and more preferable path is available"() {
         given: "A flow with one alternative path at least"
-        def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
+        def data = noIntermediateSwitchFlow(1, true)
+        FlowRequestV2 flow = data[0]
+        def allFlowPaths = data[1]
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
 
@@ -544,7 +561,9 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
     @Tags([HARDWARE, SMOKE])
     def "Flow is not rerouted when one of the flow ports goes down"() {
         given: "An intermediate-switch flow with one alternative path at least"
-        def (FlowRequestV2 flow, List<List<PathNode>> allFlowPaths) = intermediateSwitchFlow(1, true)
+        def data = intermediateSwitchFlow(1, true)
+        FlowRequestV2 flow = data[0]
+        def allFlowPaths = data[1]
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
 
@@ -573,6 +592,273 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(HARDWARE)
+    def "Flow in 'UP' status is not rerouted after switchUp event"() {
+        given: "Two active neighboring switches which support round trip latency"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
+            swP.paths.findAll { path ->
+                path.size() == 2 && pathHelper.getInvolvedSwitches(path).every {
+                    it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
+                }
+            }
+        } ?: assumeTrue(false, "No suiting switches found.")
+
+        and: "A flow on the given switch pair"
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flowHelperV2.addFlow(flow)
+
+        when: "Deactivate the src switch"
+        def swToDeactivate = switchPair.src
+        def blockData = lockKeeper.knockoutSwitch(swToDeactivate, RW)
+        def isSwDeactivated = true
+        // it takes more time to DEACTIVATE a switch via the 'knockoutSwitch' method on the stage env
+        wait(WAIT_OFFSET * 4) {
+            assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.DEACTIVATED
+        }
+
+        then: "Flow is UP"
+        northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+
+        when: "Activate the src switch"
+        lockKeeper.reviveSwitch(swToDeactivate, blockData)
+        wait(WAIT_OFFSET) {
+            assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
+            assert northbound.getAllLinks().findAll {
+                it.state == IslChangeType.DISCOVERED
+            }.size() == topology.islsForActiveSwitches.size() * 2
+        }
+        isSwDeactivated = false
+
+        then: "System doesn't try to reroute the flow on the switchUp event because flow is already in UP state"
+        Wrappers.timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
+            assert northbound.getFlowHistory(flow.flowId).findAll {
+                !(it.details =~ /Reason: ISL .* status become ACTIVE/) && //exclude ISL up reasons from parallel streams
+                        it.action == REROUTE_ACTION }.empty
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        if (isSwDeactivated) {
+            lockKeeper.reviveSwitch(swToDeactivate, blockData)
+            wait(WAIT_OFFSET) {
+                assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
+                assert northbound.getAllLinks().findAll {
+                    it.state == IslChangeType.DISCOVERED
+                }.size() == topology.islsForActiveSwitches.size() * 2
+            }
+        }
+    }
+
+    @Tidy
+    def "Flow is not rerouted when switchUp event appear for a switch which is not related to the flow"() {
+        given: "Given a flow in DOWN status on neighboring switches"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            it.paths.findAll { it.size() == 2 }.size() == 1
+        } ?: assumeTrue(false, "No suiting switches found")
+
+        def flowPath = switchPair.paths.min { it.size() }
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flowHelperV2.addFlow(flow)
+        assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
+
+        //All alternative paths for both flows are unavailable
+        def untouchableIsls = pathHelper.getInvolvedIsls(flowPath).collectMany { [it, it.reversed] }
+        def altPaths = switchPair.paths.findAll { [it, it.reverse()].every { it != flowPath }}
+        def islsToBreak = altPaths.collectMany { pathHelper.getInvolvedIsls(it) }
+                .collectMany { [it, it.reversed] }.unique()
+                .findAll { !untouchableIsls.contains(it) }.unique { [it, it.reversed].sort() }
+        withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort) } }
+        wait(WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll { it.state == FAILED }.size() == islsToBreak.size() * 2
+        }
+        //move the flow to DOWN status
+        def islToBreak = pathHelper.getInvolvedIsls(flowPath).first()
+        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN }
+
+        when: "Generate switchUp event on switch which is not related to the flow"
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flowPath)*.dpId
+        def switchToManipulate = topology.activeSwitches.find { !(it.dpId in involvedSwitches) }
+        def blockData = switchHelper.knockoutSwitch(switchToManipulate, RW)
+        def isSwitchActivated = false
+        wait(WAIT_OFFSET) {
+            def prevHistorySize = northbound.getFlowHistory(flow.flowId).size()
+            Wrappers.timedLoop(4) {
+                //history size should no longer change for the flow, all retries should give up
+                def newHistorySize = northbound.getFlowHistory(flow.flowId).size()
+                assert newHistorySize == prevHistorySize
+                assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            sleep(500)
+            }
+        }
+        def expectedZeroReroutesTimestamp = System.currentTimeSeconds()
+        switchHelper.reviveSwitch(switchToManipulate, blockData)
+        isSwitchActivated = true
+
+        then: "Flow is not triggered for reroute due to switchUp event because switch is not related to the flow"
+        TimeUnit.SECONDS.sleep(rerouteDelay * 2) // it helps to be sure that the auto-reroute operation is completed
+        northbound.getFlowHistory(flow.flowId, expectedZeroReroutesTimestamp, System.currentTimeSeconds()).findAll {
+            !(it.details =~ /Reason: ISL .* status become ACTIVE/) && //exclude ISL up reasons from parallel streams
+                    it.action == REROUTE_ACTION
+        }.size() == 0
+
+        cleanup: "Restore topology, delete the flow and reset costs"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        islToBreak && antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        !isSwitchActivated && blockData && switchHelper.reviveSwitch(switchToManipulate, blockData)
+        islsToBreak && withPool { islsToBreak.eachParallel { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) } }
+        wait(discoveryInterval + WAIT_OFFSET) {
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+        }
+    }
+
+    @Tidy
+    def "System properly handles multiple flow reroutes if ISL on new path breaks while first reroute is in progress"() {
+        given: "Switch pair that have at least 3 paths and 2 paths that have at least 1 common isl"
+        List<PathNode> mainPath, backupPath, thirdPath
+        List<Isl> mainIsls, backupIsls
+        Isl mainPathUniqueIsl, commonIsl
+        def swPair = topologyHelper.switchPairs.find { pair ->
+            //we are looking for 2 paths that have a common isl. This ISL should not be used in third path
+            mainPath = pair.paths.find { path ->
+                mainIsls = pathHelper.getInvolvedIsls(path)
+                //look for a backup path with a common isl
+                backupPath = pair.paths.findAll { it != path }.find { currentBackupPath ->
+                    backupIsls = pathHelper.getInvolvedIsls(currentBackupPath)
+                    def mainPathUniqueIsls = mainIsls.findAll {
+                        !backupIsls.contains(it)
+                    }
+                    def commonIsls = backupIsls.findAll {
+                        it in mainIsls
+                    }
+                    //given possible mainPath isls to break and available common isls
+                    List<Isl> result = [mainPathUniqueIsls, commonIsls].combinations().find { unique, common ->
+                        //there should be a safe third path that does not involve any of them
+                        thirdPath = pair.paths.findAll { it != path && it != currentBackupPath }.find {
+                            def isls = pathHelper.getInvolvedIsls(it)
+                            !isls.contains(common) && !isls.contains(unique)
+                        }
+                    }
+                    if(result) {
+                        mainPathUniqueIsl = result[0]
+                        commonIsl = result[1]
+                    }
+                    thirdPath
+                }
+            }
+        }
+        assert swPair, "Not able to find a switch pair with suitable paths"
+        log.debug("main isls: $mainIsls")
+        log.debug("backup isls: $backupIsls")
+
+        and: "A flow over these switches that uses one of the desired paths that have common ISL"
+        swPair.paths.findAll { it != mainPath }.each { pathHelper.makePathMorePreferable(mainPath, it) }
+        def flow = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(flow)
+
+        and: "A potential 'backup' path that shares common isl has the preferred cost (will be preferred during reroute)"
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        swPair.paths.findAll { it != backupPath }.each { pathHelper.makePathMorePreferable(backupPath, it) }
+
+        when: "An ISL which is unique for current path breaks, leading to a flow reroute"
+        antiflap.portDown(mainPathUniqueIsl.srcSwitch.dpId, mainPathUniqueIsl.srcPort)
+        wait(3, 0) {
+            assert northbound.getLink(mainPathUniqueIsl).state == FAILED
+        }
+
+        and: "Right when reroute starts: an ISL which is common for current path and potential backup path breaks too, \
+triggering one more reroute of the current path"
+        //add latency to make reroute process longer to allow us break the target path while rules are being installed
+        lockKeeper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(1000))
+        //break the second ISL when the first reroute has started and is in progress
+        wait(WAIT_OFFSET) {
+            assert northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }.size() == 1
+        }
+        antiflap.portDown(commonIsl.srcSwitch.dpId, commonIsl.srcPort)
+        TimeUnit.SECONDS.sleep(rerouteDelay)
+        //first reroute should not be finished at this point, otherwise increase the latency to switches
+        assert ![REROUTE_SUCCESS, REROUTE_FAIL].contains(
+            northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }.payload.last().action)
+
+        then: "System reroutes the flow twice and flow ends up in UP state"
+        wait(PATH_INSTALLATION_TIME * 2) {
+            def history = northbound.getFlowHistory(flow.flowId)
+            def reroutes = history.findAll { it.action == REROUTE_ACTION }
+            assert reroutes.size() == 2 //reroute queue, second reroute starts right after first is finished
+            reroutes.each { assert it.payload.last().action == REROUTE_SUCCESS }
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+        }
+
+        and: "New flow path avoids both main and backup paths as well as broken ISLs"
+        def actualIsls = pathHelper.getInvolvedIsls(northbound.getFlowPath(flow.flowId))
+        [commonIsl, commonIsl.reversed, mainPathUniqueIsl, mainPathUniqueIsl.reversed].each {
+            assert !actualIsls.contains(it)
+        }
+
+        and: "Flow is pingable"
+        Wrappers.retry(3, 0) { //Was unstable on Jenkins builds. Fresh env problem?
+            with(northbound.pingFlow(flow.flowId, new PingInput())) {
+                it.forward.pingSuccess
+                it.reverse.pingSuccess
+            }
+            true
+        }
+
+        cleanup:
+        swPair && lockKeeper.cleanupTrafficShaperRules(swPair.dst.regions)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        withPool {
+            [mainPathUniqueIsl, commonIsl].eachParallel { Isl isl ->
+                antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+                wait(WAIT_OFFSET + discoveryInterval) {
+                    assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
+                }
+            }
+        }
+    }
+
+    def singleSwitchFlow() {
+        flowHelperV2.singleSwitchFlow(topology.getActiveSwitches().first())
+    }
+
+    def noIntermediateSwitchFlow(int minAltPathsCount = 0, boolean getAllPaths = false) {
+        def flowWithPaths = getFlowWithPaths(topologyHelper.getAllNeighboringSwitchPairs(), minAltPathsCount)
+        return getAllPaths ? flowWithPaths : flowWithPaths[0]
+    }
+
+    def intermediateSwitchFlow(int minAltPathsCount = 0, boolean getAllPaths = false) {
+        def flowWithPaths = getFlowWithPaths(topologyHelper.getAllNotNeighboringSwitchPairs(), minAltPathsCount)
+        return getAllPaths ? flowWithPaths : flowWithPaths[0]
+    }
+
+    def getFlowWithPaths(List<SwitchPair> switchPairs, int minAltPathsCount) {
+        def switchPair = switchPairs.find { it.paths.size() > minAltPathsCount } ?:
+                assumeTrue(false, "No suiting switches found")
+        return [flowHelperV2.randomFlow(switchPair), switchPair.paths]
+    }
+
+    def getVxlanFlowWithPaths(List<SwitchPair> switchPairs, int minAltPathsCount) {
+        def switchPair = switchPairs.find {swP ->
+            swP.paths.findAll { path ->
+                pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }
+            }.size() > minAltPathsCount
+        } ?: assumeTrue(false, "No suiting switches found")
+        return [flowHelperV2.randomFlow(switchPair), switchPair.paths]
+    }
+
+    def cleanup() {
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
+    }
+}
+
+
+@Slf4j
+@Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
+@Isolated
+class AutoRerouteV2IsolatedSpec extends HealthCheckSpecification {
+    @Tidy
+    //isolation: global toggle flowsRerouteOnIslDiscoveryEnabled is changed
     def "Flow in 'Down' status is rerouted after switchUp event"() {
         given: "First switch pair with two parallel links and two available paths"
         assumeTrue(rerouteDelay * 2 < discoveryTimeout, "Reroute should be completed before link is FAILED")
@@ -668,7 +954,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         //to ensure a final 'down' wait for all non-rtl isls to fail and trigger reroutes
         def nonRtIsls = topology.getRelatedIsls(switchPair1.src).findAll {
             !it.srcSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) ||
-                !it.dstSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
+                    !it.dstSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
         }
         wait(discoveryTimeout) {
             def allLinks = northbound.getAllLinks()
@@ -724,265 +1010,7 @@ have links with enough bandwidth"
         wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
-    }
-
-    @Tidy
-    @Tags(HARDWARE)
-    def "Flow in 'UP' status is not rerouted after switchUp event"() {
-        given: "Two active neighboring switches which support round trip latency"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            swP.paths.findAll { path ->
-                path.size() == 2 && pathHelper.getInvolvedSwitches(path).every {
-                    it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
-                }
-            }
-        } ?: assumeTrue(false, "No suiting switches found.")
-
-        and: "A flow on the given switch pair"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
-
-        when: "Deactivate the src switch"
-        def swToDeactivate = switchPair.src
-        def blockData = lockKeeper.knockoutSwitch(swToDeactivate, RW)
-        def isSwDeactivated = true
-        // it takes more time to DEACTIVATE a switch via the 'knockoutSwitch' method on the stage env
-        wait(WAIT_OFFSET * 4) {
-            assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.DEACTIVATED
-        }
-
-        then: "Flow is UP"
-        northbound.getFlowStatus(flow.flowId).status == FlowState.UP
-
-        when: "Activate the src switch"
-        lockKeeper.reviveSwitch(swToDeactivate, blockData)
-        wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.DISCOVERED
-            }.size() == topology.islsForActiveSwitches.size() * 2
-        }
-        isSwDeactivated = false
-
-        then: "System doesn't try to reroute the flow on the switchUp event because flow is already in UP state"
-        Wrappers.timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
-            assert northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }.empty
-        }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        if (isSwDeactivated) {
-            lockKeeper.reviveSwitch(swToDeactivate, blockData)
-            wait(WAIT_OFFSET) {
-                assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
-                assert northbound.getAllLinks().findAll {
-                    it.state == IslChangeType.DISCOVERED
-                }.size() == topology.islsForActiveSwitches.size() * 2
-            }
-        }
-    }
-
-    @Tidy
-    def "Flow is not rerouted when switchUp event appear for a switch which is not related to the flow"() {
-        given: "Given a flow in DOWN status on neighboring switches"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.findAll { it.size() == 2 }.size() == 1
-        } ?: assumeTrue(false, "No suiting switches found")
-
-        def flowPath = switchPair.paths.min { it.size() }
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
-        assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
-
-        //All alternative paths for both flows are unavailable
-        def untouchableIsls = pathHelper.getInvolvedIsls(flowPath).collectMany { [it, it.reversed] }
-        def altPaths = switchPair.paths.findAll { [it, it.reverse()].every { it != flowPath }}
-        def islsToBreak = altPaths.collectMany { pathHelper.getInvolvedIsls(it) }
-                .collectMany { [it, it.reversed] }.unique()
-                .findAll { !untouchableIsls.contains(it) }.unique { [it, it.reversed].sort() }
-        withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort) } }
-        wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll { it.state == FAILED }.size() == islsToBreak.size() * 2
-        }
-        //move the flow to DOWN status
-        def islToBreak = pathHelper.getInvolvedIsls(flowPath).first()
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN }
-
-        when: "Generate switchUp event on switch which is not related to the flow"
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flowPath)*.dpId
-        def switchToManipulate = topology.activeSwitches.find { !(it.dpId in involvedSwitches) }
-        def blockData = switchHelper.knockoutSwitch(switchToManipulate, RW)
-        def isSwitchActivated = false
-        wait(WAIT_OFFSET) {
-            def prevHistorySize = northbound.getFlowHistory(flow.flowId).size()
-            Wrappers.timedLoop(4) {
-                //history size should no longer change for the flow, all retries should give up
-                def newHistorySize = northbound.getFlowHistory(flow.flowId).size()
-                assert newHistorySize == prevHistorySize
-                assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            sleep(500)
-            }
-        }
-        def expectedZeroReroutesTimestamp = System.currentTimeSeconds()
-        switchHelper.reviveSwitch(switchToManipulate, blockData)
-        isSwitchActivated = true
-
-        then: "Flow is not triggered for reroute due to switchUp event because switch is not related to the flow"
-        TimeUnit.SECONDS.sleep(rerouteDelay * 2) // it helps to be sure that the auto-reroute operation is completed
-        northbound.getFlowHistory(flow.flowId, expectedZeroReroutesTimestamp, System.currentTimeSeconds()).findAll {
-            it.action == REROUTE_ACTION }.size() == 0
-
-        cleanup: "Restore topology, delete the flow and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        islToBreak && antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        !isSwitchActivated && blockData && switchHelper.reviveSwitch(switchToManipulate, blockData)
-        islsToBreak && withPool { islsToBreak.eachParallel { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) } }
-        wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
-    }
-
-    @Tidy
-    def "System properly handles multiple flow reroutes if ISL on new path breaks while first reroute is in progress"() {
-        given: "Switch pair that have at least 3 paths and 2 paths that have at least 1 common isl"
-        List<PathNode> mainPath, backupPath, thirdPath
-        List<Isl> mainIsls, backupIsls
-        Isl mainPathUniqueIsl, commonIsl
-        def swPair = topologyHelper.switchPairs.find { pair ->
-            //we are looking for 2 paths that have a common isl. This ISL should not be used in third path
-            mainPath = pair.paths.find { path ->
-                mainIsls = pathHelper.getInvolvedIsls(path)
-                //look for a backup path with a common isl
-                backupPath = pair.paths.findAll { it != path }.find { currentBackupPath ->
-                    backupIsls = pathHelper.getInvolvedIsls(currentBackupPath)
-                    def mainPathUniqueIsls = mainIsls.findAll {
-                        !backupIsls.contains(it)
-                    }
-                    def commonIsls = backupIsls.findAll {
-                        it in mainIsls
-                    }
-                    //given possible mainPath isls to break and available common isls
-                    List<Isl> result = [mainPathUniqueIsls, commonIsls].combinations().find { unique, common ->
-                        //there should be a safe third path that does not involve any of them
-                        thirdPath = pair.paths.findAll { it != path && it != currentBackupPath }.find {
-                            def isls = pathHelper.getInvolvedIsls(it)
-                            !isls.contains(common) && !isls.contains(unique)
-                        }
-                    }
-                    if(result) {
-                        mainPathUniqueIsl = result[0]
-                        commonIsl = result[1]
-                    }
-                    thirdPath
-                }
-            }
-        }
-        assert swPair, "Not able to find a switch pair with suitable paths"
-        log.debug("main isls: $mainIsls")
-        log.debug("backup isls: $backupIsls")
-
-        and: "A flow over these switches that uses one of the desired paths that have common ISL"
-        swPair.paths.findAll { it != mainPath }.each { pathHelper.makePathMorePreferable(mainPath, it) }
-        def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow)
-
-        and: "A potential 'backup' path that shares common isl has the preferred cost (will be preferred during reroute)"
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        swPair.paths.findAll { it != backupPath }.each { pathHelper.makePathMorePreferable(backupPath, it) }
-
-        when: "An ISL which is unique for current path breaks, leading to a flow reroute"
-        antiflap.portDown(mainPathUniqueIsl.srcSwitch.dpId, mainPathUniqueIsl.srcPort)
-        wait(3, 0) {
-            assert northbound.getLink(mainPathUniqueIsl).state == FAILED
-        }
-
-        and: "Right when reroute starts: an ISL which is common for current path and potential backup path breaks too, \
-triggering one more reroute of the current path"
-        //add latency to make reroute process longer to allow us break the target path while rules are being installed
-        lockKeeper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(1000))
-        //break the second ISL when the first reroute has started and is in progress
-        wait(WAIT_OFFSET) {
-            assert northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }.size() == 1
-        }
-        antiflap.portDown(commonIsl.srcSwitch.dpId, commonIsl.srcPort)
-        TimeUnit.SECONDS.sleep(rerouteDelay)
-        //first reroute should not be finished at this point, otherwise increase the latency to switches
-        assert ![REROUTE_SUCCESS, REROUTE_FAIL].contains(
-            northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }.payload.last().action)
-
-        then: "System reroutes the flow twice and flow ends up in UP state"
-        wait(PATH_INSTALLATION_TIME * 2) {
-            def history = northbound.getFlowHistory(flow.flowId)
-            def reroutes = history.findAll { it.action == REROUTE_ACTION }
-            assert reroutes.size() == 2 //reroute queue, second reroute starts right after first is finished
-            reroutes.each { assert it.payload.last().action == REROUTE_SUCCESS }
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-        }
-
-        and: "New flow path avoids both main and backup paths as well as broken ISLs"
-        def actualIsls = pathHelper.getInvolvedIsls(northbound.getFlowPath(flow.flowId))
-        [commonIsl, commonIsl.reversed, mainPathUniqueIsl, mainPathUniqueIsl.reversed].each {
-            assert !actualIsls.contains(it)
-        }
-
-        and: "Flow is pingable"
-        Wrappers.retry(3, 0) { //Was unstable on Jenkins builds. Fresh env problem?
-            with(northbound.pingFlow(flow.flowId, new PingInput())) {
-                it.forward.pingSuccess
-                it.reverse.pingSuccess
-            }
-            true
-        }
-
-        cleanup:
-        swPair && lockKeeper.cleanupTrafficShaperRules(swPair.dst.regions)
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        withPool {
-            [mainPathUniqueIsl, commonIsl].eachParallel { Isl isl ->
-                antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-                wait(WAIT_OFFSET + discoveryInterval) {
-                    assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
-                }
-            }
-        }
-    }
-
-    def singleSwitchFlow() {
-        flowHelperV2.singleSwitchFlow(topology.getActiveSwitches().first())
-    }
-
-    def noIntermediateSwitchFlow(int minAltPathsCount = 0, boolean getAllPaths = false) {
-        def flowWithPaths = getFlowWithPaths(topologyHelper.getAllNeighboringSwitchPairs(), minAltPathsCount)
-        return getAllPaths ? flowWithPaths : flowWithPaths[0]
-    }
-
-    def intermediateSwitchFlow(int minAltPathsCount = 0, boolean getAllPaths = false) {
-        def flowWithPaths = getFlowWithPaths(topologyHelper.getAllNotNeighboringSwitchPairs(), minAltPathsCount)
-        return getAllPaths ? flowWithPaths : flowWithPaths[0]
-    }
-
-    def getFlowWithPaths(List<SwitchPair> switchPairs, int minAltPathsCount) {
-        def switchPair = switchPairs.find { it.paths.size() > minAltPathsCount } ?:
-                assumeTrue(false, "No suiting switches found")
-        return [flowHelperV2.randomFlow(switchPair), switchPair.paths]
-    }
-
-    def findSw(SwitchId swId) {
-        topology.switches.find { it.dpId == swId }
-    }
-
-    def getVxlanFlowWithPaths(List<SwitchPair> switchPairs, int minAltPathsCount) {
-        def switchPair = switchPairs.find {swP ->
-            swP.paths.findAll { path ->
-                pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }
-            }.size() > minAltPathsCount
-        } ?: assumeTrue(false, "No suiting switches found")
-        return [flowHelperV2.randomFlow(switchPair), switchPair.paths]
-    }
-
-    def cleanup() {
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
     }
 }

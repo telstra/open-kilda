@@ -15,9 +15,11 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchFeature
 
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Isolated
 
 import java.util.concurrent.TimeUnit
 
+@Isolated
 class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
     static final int PERIODIC_SYNC_TIME = 60
 
@@ -156,7 +158,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(isls, isl).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(isls, isl.reversed).get().state == IslChangeType.DISCOVERED
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -198,6 +200,6 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
             northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 }

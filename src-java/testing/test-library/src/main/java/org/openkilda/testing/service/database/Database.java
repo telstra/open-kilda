@@ -50,11 +50,13 @@ public interface Database {
 
     boolean resetCosts();
 
+    boolean resetCosts(List<Isl> isls);
+
     boolean updateIslTimeUnstable(Isl isl, Instant newTimeUnstable);
 
     Instant getIslTimeUnstable(Isl isl);
 
-    List<org.openkilda.model.Isl> getAllIsls();
+    List<org.openkilda.model.Isl> getIsls(List<Isl> isls);
 
     // Switches
 

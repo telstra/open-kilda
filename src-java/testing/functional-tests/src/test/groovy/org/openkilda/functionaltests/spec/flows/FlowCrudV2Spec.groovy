@@ -474,7 +474,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         cleanup: "Delete the flow and reset costs"
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -513,7 +513,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state == DISCOVERED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
 
         where:
         data << [
@@ -695,7 +695,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         !exc && flow && flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -734,7 +734,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
             northbound.deleteLink(islUtils.toLinkParameters(newIsl))
             Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -950,7 +950,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         northboundV2.getAllFlows().empty
 
         cleanup: 
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         flow && !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
@@ -1140,7 +1140,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         cleanup: "Revert system to original state"
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         !involvedSwitchesPassSwValidation && involvedSwitchIds.each { SwitchId swId ->
             northbound.synchronizeSwitch(swId, true)
         }
@@ -1251,7 +1251,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         cleanup: "Revert system to original state"
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         !involvedSwitchesPassSwValidation && currentPath*.switchId.each { SwitchId swId ->
             northbound.synchronizeSwitch(swId, true)
         }

@@ -23,6 +23,7 @@ import cucumber.api.java.After;
 import cucumber.api.java.Before;
 import org.junit.Assume;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 
 public class CommonSteps {
 
@@ -34,14 +35,18 @@ public class CommonSteps {
     private LabService labService;
     @Autowired
     private TopologyDefinition topology;
+    @Value("${spring.profiles.active}")
+    private String profile;
 
     @Before
     public void beforeScenario() {
         if (skipScenario) {
             Assume.assumeTrue("The scenario is skipped due to a failure of one of the previous scenarios!", false);
         }
-        if (labService.getLab() == null) {
+        if (profile.equals("hadware")) {
             labService.createHwLab(topology);
+        } else {
+            labService.createLab(topology);
         }
     }
 

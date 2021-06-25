@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.extension.env
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.testing.Constants.SWITCHES_ACTIVATION_TIME
 import static org.openkilda.testing.Constants.TOPOLOGY_DISCOVERING_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -17,10 +18,12 @@ import org.openkilda.testing.service.floodlight.model.Floodlight
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.tools.TopologyPool
 
 import groovy.util.logging.Slf4j
 import org.spockframework.runtime.extension.AbstractGlobalExtension
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationContext
 
@@ -33,9 +36,12 @@ import java.util.concurrent.TimeUnit
 class EnvExtension extends AbstractGlobalExtension implements SpringContextListener {
 
     @Autowired
-    TopologyDefinition topology
+    TopologyPool topologyPool
 
     @Autowired
+    TopologyDefinition topology
+
+    @Autowired @Qualifier("northboundServiceImpl")
     NorthboundService northbound
 
     @Autowired
@@ -116,8 +122,11 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
         Wrappers.wait(WAIT_OFFSET / 2) {
             assert northbound.getAllSwitches().empty
         }
-
-        labService.createLab(topology)
+        List<TopologyDefinition> topologies = [topologyPool.topologies, topology].flatten()
+        topologies.each { //can't do eachParallel, hangs on Jenkins. why?
+            def lab = labService.createLab(it)
+            it.setLabId(lab.labId)
+        }
         TimeUnit.SECONDS.sleep(5) //container with topology needs some time to fully start, this is async
         lockKeeper.removeFloodlightAccessRestrictions(floodlights*.region)
 
@@ -125,24 +134,26 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
         Wrappers.wait(TOPOLOGY_DISCOVERING_TIME) {
             assert northbound.getAllLinks().findAll {
                 it.state == IslChangeType.DISCOVERED
-            }.size() == topology.islsForActiveSwitches.size() * 2
+            }.size() == topologies.sum { it.islsForActiveSwitches.size() * 2 }
         }
         //wait until switches are activated
         Wrappers.wait(SWITCHES_ACTIVATION_TIME) {
             assert northbound.getAllSwitches().findAll {
                 it.state == SwitchChangeType.ACTIVATED
-            }.size() == topology.activeSwitches.size()
+            }.size() == topologies.sum { it.activeSwitches.size() }
         }
 
         //setup server42 configs according to topology description
-        topology.getActiveServer42Switches().each { sw ->
-            northbound.updateSwitchProperties(sw.dpId, northbound.getSwitchProperties(sw.dpId).tap {
-                server42FlowRtt = sw.prop.server42FlowRtt
-                server42MacAddress = sw.prop.server42MacAddress
-                server42Port = sw.prop.server42Port
-                server42Vlan = sw.prop.server42Vlan
-                server42IslRtt = (sw.prop.server42IslRtt == null ? "AUTO" : (sw.prop.server42IslRtt ? "ENABLED" : "DISABLED"))
-            })
+        topologies.each { TopologyDefinition topology ->
+            topology.getActiveServer42Switches().each { sw ->
+                northbound.updateSwitchProperties(sw.dpId, northbound.getSwitchProperties(sw.dpId).tap {
+                    server42FlowRtt = sw.prop.server42FlowRtt
+                    server42MacAddress = sw.prop.server42MacAddress
+                    server42Port = sw.prop.server42Port
+                    server42Vlan = sw.prop.server42Vlan
+                    server42IslRtt = (sw.prop.server42IslRtt == null ? "AUTO" : (sw.prop.server42IslRtt ? "ENABLED" : "DISABLED"))
+                })
+            }
         }
     }
 }

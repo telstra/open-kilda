@@ -398,6 +398,17 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public List<LinkPropsDto> getLinkProps(List<Isl> isls) {
+        List<LinkPropsDto> allProps = getLinkProps(null, null, null, null);
+        return allProps.stream().filter(prop -> isls.stream().flatMap(isl ->
+                Stream.of(isl, isl.getReversed())).anyMatch(isl ->
+                isl.getSrcSwitch().getDpId().toString().equals(prop.getSrcSwitch())
+                        && isl.getSrcPort() == prop.getSrcPort()
+                        && isl.getDstSwitch().getDpId().toString().equals(prop.getDstSwitch())))
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public List<LinkPropsDto> getLinkProps(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/link/props");
         if (srcSwitch != null) {
@@ -730,7 +741,7 @@ public class NorthboundServiceImpl implements NorthboundService {
                 .latency(dto.getLatency())
                 .bfdSessionStatus(dto.getBfdSessionStatus())
                 .enableBfd(dto.isEnableBfd())
-                .roundTripStatus(dto.getRoundTripStatus() != null 
+                .roundTripStatus(dto.getRoundTripStatus() != null
                         ? IslChangeType.from(dto.getRoundTripStatus().toString()) : null)
                 .build();
     }

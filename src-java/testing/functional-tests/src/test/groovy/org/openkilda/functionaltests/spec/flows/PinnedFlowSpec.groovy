@@ -44,6 +44,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
 
         when: "Make alt path more preferable than current path"
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         switchPair.paths.findAll { it != altPath }.each { pathHelper.makePathMorePreferable(altPath, it) }
 
         and: "Init reroute by bringing current path's ISL down one by one"
@@ -109,8 +110,8 @@ class PinnedFlowSpec extends HealthCheckSpecification {
 
         cleanup:
         flow && flowHelper.deleteFlow(flow.id)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
     }
 
     @Tidy

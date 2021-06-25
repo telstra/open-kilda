@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,22 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.labservice;
+package org.openkilda.testing.tools;
 
 import org.openkilda.testing.model.topology.TopologyDefinition;
-import org.openkilda.testing.service.labservice.model.LabInstance;
+
+import lombok.experimental.Delegate;
 
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
-public interface LabService {
+public class TopologyPool {
+    @Delegate
+    private final BlockingQueue<TopologyDefinition> topologies;
 
-    LabInstance createLab(TopologyDefinition topology);
-
-    LabInstance createHwLab(TopologyDefinition topology);
-
-    List<LabInstance> getLabs();
-
-    List<Long> flushLabs();
-
-    void deleteLab(LabInstance lab);
+    public TopologyPool(List<TopologyDefinition> topologies) {
+        this.topologies = new ArrayBlockingQueue<>(topologies.size(), true, topologies);
+    }
 }

@@ -60,6 +60,7 @@ import java.util.stream.Collectors;
 public class LockKeeperServiceImpl implements LockKeeperService {
 
     @Autowired
+    @Qualifier("islandNb")
     private NorthboundService northbound;
 
     @Autowired

@@ -313,7 +313,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
     }
 
     def cleanup() {
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
     }
 }

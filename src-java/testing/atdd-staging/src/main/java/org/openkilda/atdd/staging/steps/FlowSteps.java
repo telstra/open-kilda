@@ -80,7 +80,7 @@ import java.util.UUID;
 @Slf4j
 public class FlowSteps implements En {
 
-    @Autowired
+    @Autowired @Qualifier("northboundServiceImpl")
     private NorthboundService northboundService;
 
     @Autowired

@@ -139,8 +139,8 @@ class FlowSyncSpec extends HealthCheckSpecification {
 
         cleanup: "Delete the flow and link props, reset link costs"
         flow && flowHelper.deleteFlow(flow.id)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
     }
 
     List<FlowEntry> getFlowRules(Switch sw) {

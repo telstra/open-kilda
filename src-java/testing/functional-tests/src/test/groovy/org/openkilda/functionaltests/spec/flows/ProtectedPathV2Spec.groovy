@@ -408,8 +408,8 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
             }
         }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
 
         where:
         flowDescription | bandwidth
@@ -474,7 +474,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         mainIslDown && !mainIslUp && antiflap.portUp(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
         otherIsls && otherIsls.collectMany{[it, it.reversed]}.each { database.resetIslBandwidth(it) }
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(mainIsl).state == IslChangeType.DISCOVERED }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -539,7 +539,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         otherIsls && otherIsls.each { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED } }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -592,7 +592,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         cleanup: "Revert system to original state"
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
         where:
         flowDescription | bandwidth
@@ -665,8 +665,8 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
             }
         }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
 
         where:
         flowDescription | bandwidth
@@ -861,7 +861,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(islToBreakProtectedPath).get().state == IslChangeType.DISCOVERED
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -901,7 +901,6 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         verifyAll(northbound.getFlow(flow.flowId)) {
             flowStatusDetails.mainFlowPathStatus == "Up"
             flowStatusDetails.protectedFlowPathStatus == "Down"
-            statusInfo == "Couldn't find non overlapping protected path"
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
@@ -910,7 +909,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
 
         where:
         flowDescription | bandwidth
@@ -976,7 +975,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
 
         where:
         flowDescription | bandwidth
@@ -1035,7 +1034,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
                 assert northbound.getLink(mainPathIsl).state == IslChangeType.DISCOVERED
                 assert northbound.getLink(protectedPathIsl).state == IslChangeType.DISCOVERED
             }
-            database.resetCosts()
+            database.resetCosts(topology.isls)
         }
     }
 
@@ -1091,7 +1090,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         cleanup: "Revert system to original state"
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tidy
@@ -1211,7 +1210,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         pathHelper.getInvolvedSwitches(pathHelper.convert(flowPaths.protectedPath))*.dpId == involvedSwProtected
 
         cleanup:
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         flow && flowHelperV2.deleteFlow(flow.flowId)
         broughtDownPorts && broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -1222,7 +1221,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
                 northboundV2.partialSwitchUpdate(swId, new SwitchPatchDto().tap { it.pop = "" })
             }
         }
-        broughtDownPorts && database.resetCosts()
+        broughtDownPorts && database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -1404,7 +1403,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -1494,7 +1493,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
 
         where:
         flowDescription | bandwidth
@@ -1570,8 +1569,8 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
