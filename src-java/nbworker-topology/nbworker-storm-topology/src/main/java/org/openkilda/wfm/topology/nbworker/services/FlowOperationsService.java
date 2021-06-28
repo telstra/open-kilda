@@ -350,8 +350,6 @@ public class FlowOperationsService {
                 }
             });
 
-            flowDashboardLogger.onFlowPatchUpdate(currentFlow);
-
             return Optional.of(result.updatedFlow(currentFlow).build());
 
         }).orElseThrow(() -> new FlowNotFoundException(flowPatch.getFlowId()));
@@ -359,8 +357,11 @@ public class FlowOperationsService {
         Flow updatedFlow = updateFlowResult.getUpdatedFlow();
         if (updateFlowResult.isNeedUpdateFlow()) {
             FlowRequest flowRequest = RequestedFlowMapper.INSTANCE.toFlowRequest(updatedFlow);
+            addChangedFields(flowRequest, flowPatch);
+            flowDashboardLogger.onFlowPatchUpdate(RequestedFlowMapper.INSTANCE.toFlow(flowRequest));
             carrier.sendUpdateRequest(addChangedFields(flowRequest, flowPatch));
         } else {
+            flowDashboardLogger.onFlowPatchUpdate(updatedFlow);
             carrier.sendNorthboundResponse(new FlowResponse(FlowMapper.INSTANCE.map(updatedFlow,
                     getDiverseFlowsId(updatedFlow), getFlowMirrorPaths(updatedFlow))));
         }

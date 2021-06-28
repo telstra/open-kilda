@@ -18,13 +18,17 @@ package org.openkilda.wfm.share.mappers;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.PathComputationStrategy;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
-@Mapper(imports = {FlowEndpoint.class})
+import java.util.Optional;
+
+@Mapper(imports = {FlowEndpoint.class, Switch.class, Optional.class, PathComputationStrategy.class})
 public abstract class RequestedFlowMapper {
 
     public static final RequestedFlowMapper INSTANCE = Mappers.getMapper(RequestedFlowMapper.class);
@@ -57,6 +61,35 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "bulkUpdateFlowIds", ignore = true)
     @Mapping(target = "doNotRevert", ignore = true)
     public abstract FlowRequest toFlowRequest(Flow flow);
+
+    /**
+     * Convert {@link FlowRequest} to {@link Flow}.
+     */
+    @Mapping(target = "srcSwitch", expression = "java(java.util.Optional.ofNullable(request.getSource())"
+            + ".map(FlowEndpoint::getSwitchId).map(id -> Switch.builder().switchId(id).build()).orElse(null))")
+    @Mapping(target = "srcPort", expression = "java(java.util.Optional.ofNullable(request.getSource())"
+            + ".map(FlowEndpoint::getPortNumber).orElse(null))")
+    @Mapping(target = "srcVlan", expression = "java(java.util.Optional.ofNullable(request.getSource())"
+            + ".map(FlowEndpoint::getOuterVlanId).orElse(null))")
+    @Mapping(target = "srcInnerVlan", expression = "java(java.util.Optional.ofNullable(request.getSource())"
+            + ".map(FlowEndpoint::getInnerVlanId).orElse(null))")
+    @Mapping(target = "destSwitch", expression = "java(java.util.Optional.ofNullable(request.getDestination())"
+            + ".map(FlowEndpoint::getSwitchId).map(id -> Switch.builder().switchId(id).build()).orElse(null))")
+    @Mapping(target = "destPort", expression = "java(java.util.Optional.ofNullable(request.getDestination())"
+            + ".map(FlowEndpoint::getPortNumber).orElse(null))")
+    @Mapping(target = "destVlan", expression = "java(java.util.Optional.ofNullable(request.getDestination())"
+            + ".map(FlowEndpoint::getOuterVlanId).orElse(null))")
+    @Mapping(target = "destInnerVlan", expression = "java(java.util.Optional.ofNullable(request.getDestination())"
+            + ".map(FlowEndpoint::getInnerVlanId).orElse(null))")
+    @Mapping(target = "pathComputationStrategy",
+            expression = "java(Optional.ofNullable(request.getPathComputationStrategy())"
+                    + ".map(String::toUpperCase).map(PathComputationStrategy::valueOf).orElse(null))")
+    @Mapping(target = "detectConnectedDevices", source = "detectConnectedDevices")
+    @Mapping(target = "groupId", ignore = true)
+    @Mapping(target = "statusInfo", ignore = true)
+    @Mapping(target = "targetPathComputationStrategy", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    public abstract Flow toFlow(FlowRequest request);
 
     public SwitchId map(String value) {
         return value == null ? null : new SwitchId(value);
