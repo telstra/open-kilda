@@ -30,6 +30,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
@@ -38,9 +39,9 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
+import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -822,12 +823,11 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([HARDWARE, LOW_PRIORITY, SMOKE_SWITCHES])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
-    @Ignore("https://github.com/telstra/open-kilda/issues/3021")
     def "Able to synchronize rules for a flow with VXLAN encapsulation"() {
         given: "Two active not neighboring Noviflow switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
-            swP.src.noviflow && !swP.src.wb5164 && swP.dst.noviflow && !swP.dst.wb5164 && swP.paths.find { path ->
-                pathHelper.getInvolvedSwitches(path).every { it.noviflow && !it.wb5164 }
+            swP.paths.find { path ->
+                pathHelper.getInvolvedSwitches(path).every { isVxlanEnabled(it.dpId) }
             }
         } ?: assumeTrue(false, "Unable to find required switches in topology")
 
@@ -844,11 +844,25 @@ class FlowRulesSpec extends HealthCheckSpecification {
             [switchId, northbound.getSwitchRules(switchId).flowEntries]
         }
 
+        def rulesCountMap = involvedSwitches.collectEntries { switchId ->
+            def swProps = northbound.getSwitchProperties(switchId)
+            def switchIdInSrcOrDst = (switchId in [switchPair.src.dpId, switchPair.dst.dpId])
+            def defaultAmountOfFlowRules = 2 // ingress + egress
+            def amountOfServer42Rules = (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
+            if (swProps.multiTable && swProps.server42FlowRtt) {
+                if ((flow.destination.getSwitchId() == switchId && flow.destination.vlanId) || (
+                        flow.source.getSwitchId() == switchId && flow.source.vlanId))
+                    amountOfServer42Rules += 1
+            }
+            def rulesCount = defaultAmountOfFlowRules + amountOfServer42Rules +
+                    (switchIdInSrcOrDst && swProps.multiTable ? 1 : 0)
+            [switchId, rulesCount]
+        }
+
         involvedSwitches.each { switchId ->
             northbound.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
-            def amountOfRules = northbound.getSwitchProperties(switchId).multiTable ? 3 : 2
             Wrappers.wait(RULES_DELETION_TIME) {
-                assert northbound.validateSwitchRules(switchId).missingRules.size() == amountOfRules
+                assert northbound.validateSwitchRules(switchId).missingRules.size() == rulesCountMap[switchId]
             }
         }
 
@@ -859,7 +873,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         then: "The corresponding rules are installed on switches"
         involvedSwitches.each { switchId ->
-            assert synchronizedRulesMap[switchId].installedRules.size() == flowRulesCount
+            assert synchronizedRulesMap[switchId].installedRules.size() == rulesCountMap[switchId]
             Wrappers.wait(RULES_INSTALLATION_TIME) {
                 compareRules(northbound.getSwitchRules(switchId).flowEntries, defaultPlusFlowRulesMap[switchId])
             }
@@ -900,7 +914,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         and: "No missing rules were found after rules validation"
         involvedSwitches.each { switchId ->
             verifyAll(northbound.validateSwitchRules(switchId)) {
-                properRules.size().findAll { !new Cookie(it).serviceFlag }.size() == flowRulesCount
+                properRules.findAll { !new Cookie(it).serviceFlag }.size() == rulesCountMap[switchId]
                 missingRules.empty
                 excessRules.empty
             }
@@ -954,5 +968,11 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
     List<FlowEntry> getFlowRules(Switch sw) {
         northbound.getSwitchRules(sw.dpId).flowEntries.findAll { !(it.cookie in sw.defaultCookies) }.sort()
+    }
+
+    @Memoized
+    def isVxlanEnabled(SwitchId switchId) {
+        return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
+                .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 }
