@@ -2,8 +2,6 @@ package org.openkilda.performancetests
 
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.extension.fixture.SetupOnce
-import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.FlowHelperV2
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -31,30 +29,46 @@ import spock.lang.Specification
 @ContextConfiguration(locations = ["classpath:/spring-context.xml"])
 @EnableSharedInjection
 class BaseSpecification extends Specification {
-    @Autowired @Shared
+
+    private static Throwable healthCheckError
+    private static boolean healthCheckRan = false
+
+    @Autowired
+    @Shared
     NorthboundService northbound
-    @Autowired @Shared
+    @Autowired
+    @Shared
     NorthboundServiceV2 northboundV2
-    @Autowired @Shared
+    @Autowired
+    @Shared
     FloodlightsHelper flHelper
-    @Autowired @Shared
+    @Autowired
+    @Shared
     FlowHelperV2 flowHelperV2
-    @Autowired @Shared
+    @Autowired
+    @Shared
     LabService labService
-    @Autowired @Shared
+    @Autowired
+    @Shared
     LockKeeperService lockKeeper
-    @Autowired @Shared
+    @Autowired
+    @Shared
     FlowHelper flowHelper
-    @Autowired @Shared
+    @Autowired
+    @Shared
     @Qualifier("performance")
     TopologyHelper topoHelper
-    @Autowired @Shared
+    @Autowired
+    @Shared
     Database database
-    @Autowired @Shared
+    @Autowired
+    @Shared
     IslUtils islUtils
-    @Autowired @Shared
+    @Autowired
+    @Shared
     PortAntiflapHelper antiflap
-    @Autowired @Shared
+    @Autowired
+    @Shared
     PathHelper pathHelper
 
     @Value('${discovery.generic.interval}')
@@ -73,26 +87,37 @@ class BaseSpecification extends Specification {
     boolean debug
 
     def setupSpec() {
+        healthCheck()
         northbound.getAllFlows().each { northbound.deleteFlow(it.id) }
         Wrappers.wait(WAIT_OFFSET * 5) {
             assert northbound.getAllFlows().empty
         }
-
         topoHelper.purgeTopology()
     }
 
-    @HealthCheck
-    def "Configure feature toggles"() {
-        expect: "Feature toggles are configured"
-        def features = FeatureTogglesDto.builder()
-                                        .createFlowEnabled(true)
-                                        .updateFlowEnabled(true)
-                                        .deleteFlowEnabled(true)
-                                        .flowsRerouteOnIslDiscoveryEnabled(true)
-                                        .useBfdForIslIntegrityCheck(true)
-                                        .build()
-        northbound.toggleFeature(features)
-        northbound.updateKildaConfiguration(KildaConfigurationDto.builder().useMultiTable(useMultitable).build())
+    def healthCheck() {
+        if (healthCheckRan && !healthCheckError) {
+            return
+        }
+        if (healthCheckRan && healthCheckError) {
+            throw healthCheckError
+        }
+        try {
+            def features = FeatureTogglesDto.builder()
+                    .createFlowEnabled(true)
+                    .updateFlowEnabled(true)
+                    .deleteFlowEnabled(true)
+                    .flowsRerouteOnIslDiscoveryEnabled(true)
+                    .useBfdForIslIntegrityCheck(true)
+                    .build()
+            northbound.toggleFeature(features)
+            northbound.updateKildaConfiguration(KildaConfigurationDto.builder().useMultiTable(useMultitable).build())
+        } catch (Throwable t) {
+            healthCheckError = t
+            throw t
+        } finally {
+            healthCheckRan = true
+        }
     }
 
     def setup() {

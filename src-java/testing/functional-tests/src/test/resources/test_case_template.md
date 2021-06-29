@@ -9,10 +9,6 @@
         out << data.info.narrative << '\n'
     }
     features.eachFeature { name, result, blocks, iterations, params ->
-        if(description.getAnnotation( org.openkilda.functionaltests.extension.healthcheck.HealthCheck ) ||
-        description.getAnnotation( org.openkilda.functionaltests.extension.spring.PrepareSpringContextDummy )) {
-            return
-        }
  %>
 * $name
   <%
