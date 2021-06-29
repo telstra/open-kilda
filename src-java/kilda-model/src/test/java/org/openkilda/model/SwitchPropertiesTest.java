@@ -15,12 +15,18 @@
 
 package org.openkilda.model;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.openkilda.model.SwitchProperties.RttState;
+
+import com.google.common.collect.Sets;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SwitchPropertiesTest {
 
@@ -71,5 +77,134 @@ public class SwitchPropertiesTest {
         Set<FlowEncapsulationType> flowEncapsulationTypes = new HashSet<>();
         flowEncapsulationTypes.add(FlowEncapsulationType.VXLAN);
         sp.setSupportedTransitEncapsulation(flowEncapsulationTypes);
+    }
+
+    @Test
+    public void shouldAutoEnableIslRttForNonCopyFieldSwitches() {
+        Set<SwitchFeature> features = Arrays.stream(SwitchFeature.values())
+                .filter(sf -> !sf.equals(SwitchFeature.NOVIFLOW_COPY_FIELD))
+                .collect(Collectors.toSet());
+        Switch sw = Switch.builder()
+                .switchId(new SwitchId(1))
+                .features(features)
+                .build();
+        SwitchProperties sp = SwitchProperties.builder()
+                .switchObj(sw)
+                .server42IslRtt(RttState.AUTO)
+                .server42Port(1)
+                .server42Vlan(2)
+                .server42MacAddress(new MacAddress("00:00:00:00:00:01"))
+                .build();
+        assertTrue(sp.hasServer42IslRttEnabled());
+    }
+
+    @Test
+    public void shouldnotAutoEnableIslRttForNoviCopyFieldSwitches() {
+        Set<SwitchFeature> features = Sets.newHashSet(SwitchFeature.values());
+        Switch sw = Switch.builder()
+                .switchId(new SwitchId(1))
+                .features(features)
+                .build();
+        SwitchProperties sp = SwitchProperties.builder()
+                .switchObj(sw)
+                .server42IslRtt(RttState.AUTO)
+                .server42Port(1)
+                .server42Vlan(2)
+                .server42MacAddress(new MacAddress("00:00:00:00:00:01"))
+                .build();
+        assertFalse(sp.hasServer42IslRttEnabled());
+    }
+
+    @Test
+    public void shouldEnableIslRttOverrideNoviCopyFieldSwitches() {
+        Set<SwitchFeature> features = Sets.newHashSet(SwitchFeature.values());
+        Switch sw = Switch.builder()
+                .switchId(new SwitchId(1))
+                .features(features)
+                .build();
+        SwitchProperties sp = SwitchProperties.builder()
+                .switchObj(sw)
+                .server42IslRtt(RttState.ENABLED)
+                .server42Port(1)
+                .server42Vlan(2)
+                .server42MacAddress(new MacAddress("00:00:00:00:00:01"))
+                .build();
+        assertTrue(sp.hasServer42IslRttEnabled());
+    }
+
+    @Test
+    public void shouldNotEnableIslRttIfServer42IsNotConfigured() {
+        Set<SwitchFeature> features = Arrays.stream(SwitchFeature.values())
+                .filter(sf -> !sf.equals(SwitchFeature.NOVIFLOW_COPY_FIELD))
+                .collect(Collectors.toSet());
+        Switch sw = Switch.builder()
+                .switchId(new SwitchId(1))
+                .features(features)
+                .build();
+        SwitchProperties sp1 = SwitchProperties.builder()
+                .switchObj(sw)
+                .server42IslRtt(RttState.AUTO)
+                .build();
+        assertFalse(sp1.hasServer42IslRttEnabled());
+
+        SwitchProperties sp2 = SwitchProperties.builder()
+                .switchObj(sw)
+                .server42IslRtt(RttState.AUTO)
+                .server42Port(1)
+                .build();
+        assertFalse(sp2.hasServer42IslRttEnabled());
+
+        SwitchProperties sp3 = SwitchProperties.builder()
+                .switchObj(sw)
+                .server42IslRtt(RttState.AUTO)
+                .server42Port(1)
+                .server42MacAddress(new MacAddress("00:00:00:00:00:01"))
+                .build();
+        assertFalse(sp3.hasServer42IslRttEnabled());
+
+        SwitchProperties sp4 = SwitchProperties.builder()
+                .switchObj(sw)
+                .server42IslRtt(RttState.AUTO)
+                .server42Port(1)
+                .server42Vlan(2)
+                .build();
+        assertFalse(sp4.hasServer42IslRttEnabled());
+    }
+
+    @Test
+    public void shouldDisableIslRttIfServer42IsNotConfigured() {
+        Set<SwitchFeature> features = Sets.newHashSet(SwitchFeature.values());
+        Switch sw = Switch.builder()
+                .switchId(new SwitchId(1))
+                .features(features)
+                .build();
+        SwitchProperties sp1 = SwitchProperties.builder()
+                .switchObj(sw)
+                .server42IslRtt(RttState.ENABLED)
+                .build();
+        assertFalse(sp1.hasServer42IslRttEnabled());
+
+        SwitchProperties sp2 = SwitchProperties.builder()
+                .switchObj(sw)
+                .server42IslRtt(RttState.ENABLED)
+                .server42Port(1)
+                .build();
+        assertFalse(sp2.hasServer42IslRttEnabled());
+
+        SwitchProperties sp3 = SwitchProperties.builder()
+                .switchObj(sw)
+                .server42IslRtt(RttState.ENABLED)
+                .server42Port(1)
+                .server42MacAddress(new MacAddress("00:00:00:00:00:01"))
+                .build();
+        assertFalse(sp3.hasServer42IslRttEnabled());
+
+        SwitchProperties sp4 = SwitchProperties.builder()
+                .switchObj(sw)
+                .server42IslRtt(RttState.ENABLED)
+                .server42Port(1)
+                .server42Vlan(2)
+                .build();
+        assertFalse(sp4.hasServer42IslRttEnabled());
     }
 }

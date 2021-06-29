@@ -23,7 +23,7 @@ import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FORWARD_UDP_PORT;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_FORWARD_UDP_PORT;
 import static org.projectfloodlight.openflow.protocol.OFInstructionType.APPLY_ACTIONS;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
@@ -98,7 +98,7 @@ public class IngressServer42FlowInstallCommandTest {
             new FlowTransitEncapsulation(11, FlowEncapsulationType.VXLAN);
     public static final FlowSegmentCookie COOKIE = new FlowSegmentCookie(
             FlowPathDirection.FORWARD, 10).toBuilder()
-            .type(CookieType.SERVER_42_INGRESS)
+            .type(CookieType.SERVER_42_FLOW_RTT_INGRESS)
             .build();
     public static final HashSet<SwitchFeature> FEATURES = Sets.newHashSet(SwitchFeature.HALF_SIZE_METADATA);
 
@@ -221,8 +221,8 @@ public class IngressServer42FlowInstallCommandTest {
         assertEquals(6, applyActions.size());
         assertSetField(applyActions.get(0), OFOxmEthSrc.class, MacAddress.of(INGRESS_SWITCH_ID.toMacAddress()));
         assertSetField(applyActions.get(1), OFOxmEthDst.class, MacAddress.of(EGRESS_SWITCH_ID.toMacAddress()));
-        assertSetField(applyActions.get(2), OFOxmUdpSrc.class, TransportPort.of(SERVER_42_FORWARD_UDP_PORT));
-        assertSetField(applyActions.get(3), OFOxmUdpDst.class, TransportPort.of(SERVER_42_FORWARD_UDP_PORT));
+        assertSetField(applyActions.get(2), OFOxmUdpSrc.class, TransportPort.of(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT));
+        assertSetField(applyActions.get(3), OFOxmUdpDst.class, TransportPort.of(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT));
         assertSetField(applyActions.get(4), OFOxmVlanVid.class, OFVlanVidMatch.ofVlan(VLAN_ENCAPSULATION.getId()));
         assertOutputAction(applyActions.get(5));
     }
@@ -240,8 +240,8 @@ public class IngressServer42FlowInstallCommandTest {
         assertEquals(7, applyActions.size());
         assertSetField(applyActions.get(0), OFOxmEthSrc.class, MacAddress.of(INGRESS_SWITCH_ID.toMacAddress()));
         assertSetField(applyActions.get(1), OFOxmEthDst.class, MacAddress.of(EGRESS_SWITCH_ID.toMacAddress()));
-        assertSetField(applyActions.get(2), OFOxmUdpSrc.class, TransportPort.of(SERVER_42_FORWARD_UDP_PORT));
-        assertSetField(applyActions.get(3), OFOxmUdpDst.class, TransportPort.of(SERVER_42_FORWARD_UDP_PORT));
+        assertSetField(applyActions.get(2), OFOxmUdpSrc.class, TransportPort.of(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT));
+        assertSetField(applyActions.get(3), OFOxmUdpDst.class, TransportPort.of(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT));
         assertPushVlanAction(applyActions.get(4));
         assertSetField(applyActions.get(5), OFOxmVlanVid.class, OFVlanVidMatch.ofVlan(VLAN_ENCAPSULATION.getId()));
         assertOutputAction(applyActions.get(6));
@@ -321,7 +321,7 @@ public class IngressServer42FlowInstallCommandTest {
         OFActionNoviflowPushVxlanTunnel pushVxlan = (OFActionNoviflowPushVxlanTunnel) action;
         assertEquals(MacAddress.of(INGRESS_SWITCH_ID.toMacAddress()), pushVxlan.getEthSrc());
         assertEquals(MacAddress.of(EGRESS_SWITCH_ID.toMacAddress()), pushVxlan.getEthDst());
-        assertEquals(SERVER_42_FORWARD_UDP_PORT, pushVxlan.getUdpSrc());
+        assertEquals(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT, pushVxlan.getUdpSrc());
         assertEquals(VXLAN_ENCAPSULATION.getId().intValue(), pushVxlan.getVni());
     }
 

@@ -21,7 +21,6 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
@@ -46,7 +45,6 @@ public class IslLatencyService {
     public static final String ROUND_TRIP_LATENCY = "round trip";
     private TransactionManager transactionManager;
     private IslRepository islRepository;
-    private SwitchRepository switchRepository;
     private final long latencyUpdateInterval; // emit data in DB interval
     private final long latencyUpdateTimeRange; // average latency will be calculated in this time range
 
@@ -62,7 +60,6 @@ public class IslLatencyService {
         this.latencyUpdateInterval = latencyUpdateInterval;
         this.latencyUpdateTimeRange = latencyUpdateTimeRange;
         islRepository = repositoryFactory.createIslRepository();
-        switchRepository = repositoryFactory.createSwitchRepository();
         oneWayLatencyStorage = new HashMap<>();
         roundTripLatencyStorage = new HashMap<>();
         roundTripLatencyIsSet = new HashSet<>();
@@ -78,15 +75,15 @@ public class IslLatencyService {
      */
     public void handleRoundTripIslLatency(IslRoundTripLatency data, Endpoint destination, long timestamp) {
         if (data.getLatency() < 0) {
-            log.warn("Received invalid round trip latency {} for ISL {}_{} ===> {}_{}. Packet Id: {}",
+            log.warn("Received invalid round trip latency {} for ISL {}_{} ===> {}_{}. Packet Id: {}. Origin: {}",
                     data.getLatency(), data.getSrcSwitchId(), data.getSrcPortNo(),
-                    destination.getDatapath(), destination.getPortNumber(), data.getPacketId());
+                    destination.getDatapath(), destination.getPortNumber(), data.getPacketId(), data.getOrigin());
             return;
         }
 
-        log.debug("Received round trip latency {} for ISL {}_{} ===> {}_{}. Packet Id: {}",
+        log.debug("Received round trip latency {} for ISL {}_{} ===> {}_{}. Packet Id: {}. Origin: {}",
                 data.getLatency(), data.getSrcSwitchId(), data.getSrcPortNo(),
-                destination.getDatapath(), destination.getPortNumber(), data.getPacketId());
+                destination.getDatapath(), destination.getPortNumber(), data.getPacketId(), data.getOrigin());
 
         IslKey islKey = new IslKey(data, destination);
 
@@ -127,9 +124,9 @@ public class IslLatencyService {
 
         if (roundTripRecords.isEmpty()) {
             log.warn("Couldn't update round trip latency {} for ISL {}_{} === {}_{}. "
-                    + "There is no valid latency records. Packet Id: {}",
+                    + "There is no valid latency records. Packet Id: {}. Origin: {}",
                     data.getLatency(), data.getSrcSwitchId(), data.getSrcPortNo(),
-                    destination.getDatapath(), destination.getPortNumber(), data.getPacketId());
+                    destination.getDatapath(), destination.getPortNumber(), data.getPacketId(), data.getOrigin());
         }
 
         long averageLatency = calculateAverageLatency(roundTripRecords);
@@ -184,30 +181,31 @@ public class IslLatencyService {
 
     private boolean updateLatencyInDataBase(IslOneWayLatency data, long latency) {
         return updateLatencyInDataBase(data.getSrcSwitchId(), data.getSrcPortNo(),
-                data.getDstSwitchId(), data.getDstPortNo(), latency, data.getPacketId(), ONE_WAY_LATENCY);
+                data.getDstSwitchId(), data.getDstPortNo(), latency, data.getPacketId(), ONE_WAY_LATENCY,
+                ONE_WAY_LATENCY);
     }
 
     private boolean updateLatencyInDataBase(IslRoundTripLatency data, Endpoint destination, long latency) {
         return updateLatencyInDataBase(data.getSrcSwitchId(), data.getSrcPortNo(),
                 destination.getDatapath(), destination.getPortNumber(), latency, data.getPacketId(),
-                ROUND_TRIP_LATENCY);
+                ROUND_TRIP_LATENCY, data.getOrigin());
     }
 
     private boolean updateLatencyInDataBase(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort,
-                                         long latency, long packetId, String latencyType) {
+                                         long latency, Long packetId, String latencyType, String origin) {
         if (latency < 0) {
-            log.warn("Couldn't update {} latency for ISL {}_{} ===> {}_{}. Packet id:{}. Latency must be positive.",
-                    latencyType, srcSwitch, srcPort, dstSwitch, dstPort, packetId);
+            log.warn("Couldn't update {} latency for ISL {}_{} ===> {}_{}. Packet id:{}. Latency must be positive. "
+                    + "Origin: {}", latencyType, srcSwitch, srcPort, dstSwitch, dstPort, packetId, origin);
             return false;
         }
 
         try {
             updateIslLatency(srcSwitch, srcPort, dstSwitch, dstPort, latency);
-            log.debug("Updated {} latency for ISL {}_{} ===( {} ns )===> {}_{}. Packet id:{}",
-                    latencyType, srcSwitch, srcPort, latency, dstSwitch, dstPort, packetId);
+            log.debug("Updated {} latency for ISL {}_{} ===( {} ns )===> {}_{}. Packet id:{}. Origin: {}",
+                    latencyType, srcSwitch, srcPort, latency, dstSwitch, dstPort, packetId, origin);
         } catch (SwitchNotFoundException | IslNotFoundException e) {
-            log.warn("Couldn't update {} latency for ISL {}_{} ===> {}_{}. Packet id:{}. {}",
-                    latencyType, srcSwitch, srcPort, dstSwitch, dstPort, packetId, e.getMessage());
+            log.warn("Couldn't update {} latency for ISL {}_{} ===> {}_{}. Packet id:{}. Origin: {}. {}",
+                    latencyType, srcSwitch, srcPort, dstSwitch, dstPort, packetId, origin, e.getMessage());
             return false;
         }
         return true;

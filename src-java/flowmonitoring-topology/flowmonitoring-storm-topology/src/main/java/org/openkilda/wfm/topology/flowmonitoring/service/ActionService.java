@@ -23,6 +23,7 @@ import org.openkilda.messaging.info.flow.UpdateFlowInfo;
 import org.openkilda.model.Flow;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.server42.messaging.FlowDirection;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -51,6 +52,7 @@ public class ActionService implements FlowSlaMonitoringCarrier {
 
     private FlowOperationsCarrier carrier;
     private FlowRepository flowRepository;
+    private FeatureTogglesRepository featureTogglesRepository;
     private FlowLatencyMonitoringFsmFactory fsmFactory;
     private FsmExecutor<FlowLatencyMonitoringFsm, State, Event, Context> fsmExecutor;
 
@@ -63,6 +65,7 @@ public class ActionService implements FlowSlaMonitoringCarrier {
                          Clock clock, Duration timeout, float threshold) {
         this.carrier = carrier;
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
         fsmFactory = FlowLatencyMonitoringFsm.factory(clock, timeout, threshold);
         fsmExecutor = fsmFactory.produceExecutor();
         this.threshold = threshold;
@@ -142,7 +145,8 @@ public class ActionService implements FlowSlaMonitoringCarrier {
     public void sendFlowSyncRequest(String flowId) {
         Flow flow = flowRepository.findById(flowId)
                 .orElseThrow(() -> new IllegalStateException(format("Flow %s not found.", flowId)));
-        if (LATENCY_BASED_STRATEGIES.contains(flow.getPathComputationStrategy())) {
+        if (LATENCY_BASED_STRATEGIES.contains(flow.getPathComputationStrategy()) && isReactionsEnabled()) {
+            log.info("Sending flow {} sync request.", flowId);
             carrier.sendFlowSyncRequest(flowId);
         }
     }
@@ -151,8 +155,13 @@ public class ActionService implements FlowSlaMonitoringCarrier {
     public void sendFlowRerouteRequest(String flowId) {
         Flow flow = flowRepository.findById(flowId)
                 .orElseThrow(() -> new IllegalStateException(format("Flow %s not found.", flowId)));
-        if (LATENCY_BASED_STRATEGIES.contains(flow.getPathComputationStrategy())) {
+        if (LATENCY_BASED_STRATEGIES.contains(flow.getPathComputationStrategy()) && isReactionsEnabled()) {
+            log.info("Sending flow {} reroute request", flowId);
             carrier.sendFlowRerouteRequest(flowId);
         }
+    }
+
+    private boolean isReactionsEnabled() {
+        return featureTogglesRepository.getOrDefault().getFlowLatencyMonitoringReactions();
     }
 }

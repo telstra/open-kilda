@@ -24,4 +24,8 @@ public interface SwitchOperationsServiceCarrier {
     void enableServer42FlowRttOnSwitch(SwitchId switchId);
 
     void disableServer42FlowRttOnSwitch(SwitchId switchId);
+
+    void enableServer42IslRttOnSwitch(SwitchId switchId);
+
+    void disableServer42IslRttOnSwitch(SwitchId switchId);
 }

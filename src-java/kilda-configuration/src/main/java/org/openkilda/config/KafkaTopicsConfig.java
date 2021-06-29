@@ -194,6 +194,10 @@ public interface KafkaTopicsConfig {
     @Default("kilda.server42-stats.flowrtt.priv")
     String getServer42StatsFlowRttTopic();
 
+    @Key("server42-stats.islrtt")
+    @Default("kilda.server42-stats.islrtt.priv")
+    String getServer42StatsIslRttTopic();
+
     @Key("server42-storm.commands")
     @Default("kilda.server42-storm.commands.priv")
     String getServer42StormCommandsTopic();

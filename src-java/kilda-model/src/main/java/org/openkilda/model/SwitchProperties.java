@@ -74,13 +74,15 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
     @Builder
     public SwitchProperties(Switch switchObj, Set<FlowEncapsulationType> supportedTransitEncapsulation,
                             boolean multiTable, boolean switchLldp, boolean switchArp, boolean server42FlowRtt,
+                            RttState server42IslRtt,
                             Integer server42Port, MacAddress server42MacAddress, Integer server42Vlan,
                             Integer inboundTelescopePort, Integer outboundTelescopePort,
                             Integer telescopeIngressVlan, Integer telescopeEgressVlan) {
         this.data = SwitchPropertiesDataImpl.builder().switchObj(switchObj)
                 .supportedTransitEncapsulation(supportedTransitEncapsulation)
                 .multiTable(multiTable).switchLldp(switchLldp).switchArp(switchArp)
-                .server42FlowRtt(server42FlowRtt).server42Port(server42Port).server42MacAddress(server42MacAddress)
+                .server42FlowRtt(server42FlowRtt).server42IslRtt(server42IslRtt)
+                .server42Port(server42Port).server42MacAddress(server42MacAddress)
                 .server42Vlan(server42Vlan).inboundTelescopePort(inboundTelescopePort)
                 .outboundTelescopePort(outboundTelescopePort).telescopeIngressVlan(telescopeIngressVlan)
                 .telescopeEgressVlan(telescopeEgressVlan).build();
@@ -116,17 +118,30 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
         data.setSupportedTransitEncapsulation(supportedTransitEncapsulation);
     }
 
+    public boolean hasServer42Configured() {
+        return getServer42MacAddress() != null && getServer42Port() != null && getServer42Vlan() != null;
+    }
+
+    public boolean hasServer42IslRttEnabled() {
+        return hasServer42Configured() && (getServer42IslRtt() == RttState.ENABLED
+                || getServer42IslRtt() == RttState.AUTO && !supportsFeature(SwitchFeature.NOVIFLOW_COPY_FIELD));
+    }
+
     /**
      * Checks whether the feature is set for the switch.
      */
     @VisibleForTesting
     public boolean validateProp(SwitchFeature feature) {
-        if (getSwitchObj() != null && !getSwitchObj().getFeatures().contains(feature)) {
+        if (!supportsFeature(feature)) {
             String message = String.format("Switch %s doesn't support requested feature %s",
                     getSwitchId(), feature);
             throw new IllegalArgumentException(message);
         }
         return true;
+    }
+
+    private boolean supportsFeature(SwitchFeature feature) {
+        return getSwitchObj() != null && getSwitchObj().getFeatures().contains(feature);
     }
 
     @Override
@@ -145,6 +160,7 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
                 .append(getSwitchId(), that.getSwitchId())
                 .append(getSupportedTransitEncapsulation(), that.getSupportedTransitEncapsulation())
                 .append(isServer42FlowRtt(), that.isServer42FlowRtt())
+                .append(getServer42IslRtt(), that.getServer42IslRtt())
                 .append(getServer42Port(), that.getServer42Port())
                 .append(getServer42MacAddress(), that.getServer42MacAddress())
                 .append(getServer42Vlan(), that.getServer42Vlan())
@@ -158,7 +174,8 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
     @Override
     public int hashCode() {
         return Objects.hash(getSwitchId(), getSupportedTransitEncapsulation(), isMultiTable(),
-                isSwitchLldp(), isSwitchArp(), isServer42FlowRtt(), getServer42Port(), getServer42MacAddress(),
+                isSwitchLldp(), isSwitchArp(), isServer42FlowRtt(), getServer42IslRtt(),
+                getServer42Port(), getServer42MacAddress(),
                 getServer42Vlan(), getInboundTelescopePort(), getOutboundTelescopePort(),
                 getTelescopeIngressVlan(), getTelescopeEgressVlan());
     }
@@ -188,6 +205,10 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
         boolean isServer42FlowRtt();
 
         void setServer42FlowRtt(boolean server42FlowRtt);
+
+        RttState getServer42IslRtt();
+
+        void setServer42IslRtt(RttState server42IslRtt);
 
         Integer getServer42Port();
 
@@ -244,6 +265,7 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
         boolean switchLldp;
         boolean switchArp;
         boolean server42FlowRtt;
+        RttState server42IslRtt;
         Integer server42Port;
         MacAddress server42MacAddress;
         Integer server42Vlan;
@@ -279,5 +301,12 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
             copyWithoutSwitch(source, result);
             return result;
         }
+    }
+
+    /**
+     * Controls the RTT feature state: enabled, disabled or automatically detected.
+     */
+    public enum RttState {
+        ENABLED, DISABLED, AUTO
     }
 }

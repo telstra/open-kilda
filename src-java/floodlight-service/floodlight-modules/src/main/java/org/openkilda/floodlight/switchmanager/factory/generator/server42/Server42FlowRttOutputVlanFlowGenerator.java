@@ -25,11 +25,11 @@ import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpId
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.prepareFlowModBuilder;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.INPUT_TABLE_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.NOVIFLOW_TIMESTAMP_SIZE_IN_BITS;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FORWARD_UDP_PORT;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_OUTPUT_VLAN_PRIORITY;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_REVERSE_UDP_PORT;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_FORWARD_UDP_PORT;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_OUTPUT_VLAN_PRIORITY;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_REVERSE_UDP_PORT;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
-import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE;
 
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.factory.SwitchFlowTuple;
@@ -54,7 +54,7 @@ import org.projectfloodlight.openflow.types.TransportPort;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Server42OutputVlanFlowGenerator implements SwitchFlowGenerator {
+public class Server42FlowRttOutputVlanFlowGenerator implements SwitchFlowGenerator {
 
     private FeatureDetectorService featureDetectorService;
     private int server42Port;
@@ -62,7 +62,7 @@ public class Server42OutputVlanFlowGenerator implements SwitchFlowGenerator {
     private MacAddress server42MacAddress;
 
     @Builder
-    public Server42OutputVlanFlowGenerator(
+    public Server42FlowRttOutputVlanFlowGenerator(
             FeatureDetectorService featureDetectorService, int server42Port, int server42Vlan,
             MacAddress server42MacAddress) {
         this.featureDetectorService = featureDetectorService;
@@ -90,7 +90,8 @@ public class Server42OutputVlanFlowGenerator implements SwitchFlowGenerator {
         actions.add(actionSetOutputPort(ofFactory, OFPort.of(server42Port)));
 
         OFFlowMod flowMod = prepareFlowModBuilder(
-                ofFactory, SERVER_42_OUTPUT_VLAN_COOKIE, SERVER_42_OUTPUT_VLAN_PRIORITY, INPUT_TABLE_ID)
+                ofFactory, SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE, SERVER_42_FLOW_RTT_OUTPUT_VLAN_PRIORITY,
+                INPUT_TABLE_ID)
                 .setMatch(buildMatch(sw.getId(), ofFactory))
                 .setInstructions(ImmutableList.of(buildInstructionApplyActions(ofFactory, actions)))
                 .build();
@@ -105,8 +106,8 @@ public class Server42OutputVlanFlowGenerator implements SwitchFlowGenerator {
                 .setExact(MatchField.ETH_DST, convertDpIdToMac(dpid))
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-                .setExact(MatchField.UDP_SRC, TransportPort.of(SERVER_42_REVERSE_UDP_PORT))
-                .setExact(MatchField.UDP_DST, TransportPort.of(SERVER_42_FORWARD_UDP_PORT))
+                .setExact(MatchField.UDP_SRC, TransportPort.of(SERVER_42_FLOW_RTT_REVERSE_UDP_PORT))
+                .setExact(MatchField.UDP_DST, TransportPort.of(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT))
                 .build();
     }
 

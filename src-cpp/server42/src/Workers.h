@@ -16,8 +16,9 @@ namespace org::openkilda {
 
     bool write_thread(boost::atomic<bool> &alive,
                       pcpp::DpdkDevice *device,
-                      flow_pool_t &pool,
-                      std::mutex &pool_guard);
+                      flow_pool_t &flow_pool,
+                      std::mutex &pool_guard,
+                      isl_pool_t &isl_pool);
 
     bool read_thread(
             boost::atomic<bool> &alive,

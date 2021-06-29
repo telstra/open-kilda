@@ -20,9 +20,11 @@ import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.mock;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
-import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VLAN_COOKIE;
-import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE;
-import static org.openkilda.model.cookie.CookieBase.CookieType.SERVER_42_INPUT;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE;
+import static org.openkilda.model.cookie.CookieBase.CookieType.SERVER_42_FLOW_RTT_INPUT;
+import static org.openkilda.model.cookie.CookieBase.CookieType.SERVER_42_ISL_RTT_INPUT;
 
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
@@ -72,9 +74,9 @@ public class RecordHandlerTest {
     }
 
     @Test
-    public void reinstallServer42OutputVlanTest() throws SwitchOperationException {
-        long cookie = SERVER_42_OUTPUT_VLAN_COOKIE;
-        expect(switchManager.installServer42OutputVlanFlow(
+    public void reinstallServer42FlowRttOutputVlanTest() throws SwitchOperationException {
+        long cookie = SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE;
+        expect(switchManager.installServer42FlowRttOutputVlanFlow(
                 DATAPATH_ID, SERVER42_PORT, SERVER42_VLAN, SERVER42_MAC_ADDRESS)).andReturn(cookie).once();
         expect(switchManager.deleteRulesByCriteria(DATAPATH_ID, false, null, DeleteRulesCriteria.builder()
                 .cookie(cookie).build()))
@@ -89,9 +91,9 @@ public class RecordHandlerTest {
     }
 
     @Test
-    public void reinstallServer42OutputVxlanTest() throws SwitchOperationException {
-        long cookie = SERVER_42_OUTPUT_VXLAN_COOKIE;
-        expect(switchManager.installServer42OutputVxlanFlow(
+    public void reinstallServer42FlowRttOutputVxlanTest() throws SwitchOperationException {
+        long cookie = SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE;
+        expect(switchManager.installServer42FlowRttOutputVxlanFlow(
                 DATAPATH_ID, SERVER42_PORT, SERVER42_VLAN, SERVER42_MAC_ADDRESS)).andReturn(cookie).once();
         expect(switchManager.deleteRulesByCriteria(DATAPATH_ID, false, null, DeleteRulesCriteria.builder()
                 .cookie(cookie).build()))
@@ -107,13 +109,13 @@ public class RecordHandlerTest {
 
 
     @Test
-    public void reinstallServer42InputTest() throws SwitchOperationException {
+    public void reinstallServer42FlowRttInputTest() throws SwitchOperationException {
         PortColourCookie cookie = PortColourCookie.builder()
                 .portNumber(CUSTOMER_PORT)
-                .type(SERVER_42_INPUT)
+                .type(SERVER_42_FLOW_RTT_INPUT)
                 .build();
 
-        expect(switchManager.installServer42InputFlow(
+        expect(switchManager.installServer42FlowRttInputFlow(
                 DATAPATH_ID, SERVER42_PORT, CUSTOMER_PORT, SERVER42_MAC_ADDRESS)).andReturn(cookie.getValue()).once();
         expect(switchManager.deleteRulesByCriteria(DATAPATH_ID, false, null, DeleteRulesCriteria.builder()
                 .cookie(cookie.getValue()).build()))
@@ -129,8 +131,8 @@ public class RecordHandlerTest {
 
     @Test
     public void installServer42OutputVlanTest() throws SwitchOperationException {
-        long cookie = SERVER_42_OUTPUT_VLAN_COOKIE;
-        expect(switchManager.installServer42OutputVlanFlow(
+        long cookie = SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE;
+        expect(switchManager.installServer42FlowRttOutputVlanFlow(
                 DATAPATH_ID, SERVER42_PORT, SERVER42_VLAN, SERVER42_MAC_ADDRESS)).andReturn(cookie).once();
         replay(switchManager);
 
@@ -151,8 +153,8 @@ public class RecordHandlerTest {
 
     @Test
     public void installServer42OutputVxlanTest() throws SwitchOperationException {
-        long cookie = SERVER_42_OUTPUT_VXLAN_COOKIE;
-        expect(switchManager.installServer42OutputVxlanFlow(
+        long cookie = SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE;
+        expect(switchManager.installServer42FlowRttOutputVxlanFlow(
                 DATAPATH_ID, SERVER42_PORT, SERVER42_VLAN, SERVER42_MAC_ADDRESS)).andReturn(cookie).once();
         replay(switchManager);
 
@@ -175,10 +177,10 @@ public class RecordHandlerTest {
     public void installServer42InputTest() throws SwitchOperationException {
         PortColourCookie cookie = PortColourCookie.builder()
                 .portNumber(CUSTOMER_PORT)
-                .type(SERVER_42_INPUT)
+                .type(SERVER_42_FLOW_RTT_INPUT)
                 .build();
 
-        expect(switchManager.installServer42InputFlow(
+        expect(switchManager.installServer42FlowRttInputFlow(
                 DATAPATH_ID, SERVER42_PORT, CUSTOMER_PORT, SERVER42_MAC_ADDRESS)).andReturn(cookie.getValue()).once();
         replay(switchManager);
 
@@ -215,6 +217,94 @@ public class RecordHandlerTest {
                 .cookie(cookie.getValue())
                 .inputPort(SERVER42_PORT)
                 .outputPort(0)
+                .build();
+
+        recordHandler.handleCommand(
+                new CommandMessage(new InstallFlowForSwitchManagerRequest(request), 0, CORRELATION_ID));
+        verify(switchManager);
+    }
+
+    @Test
+    public void shouldReinstallServer42IslRttOutputRule() throws SwitchOperationException {
+        long cookie = SERVER_42_ISL_RTT_OUTPUT_COOKIE;
+        expect(switchManager.installServer42IslRttOutputFlow(
+                DATAPATH_ID, SERVER42_PORT, SERVER42_VLAN, SERVER42_MAC_ADDRESS)).andReturn(cookie).once();
+        expect(switchManager.deleteRulesByCriteria(DATAPATH_ID, false, null, DeleteRulesCriteria.builder()
+                .cookie(cookie).build()))
+                .andReturn(Lists.newArrayList(cookie)).once();
+        replay(switchManager);
+
+        ReinstallServer42FlowForSwitchManagerRequest request = new ReinstallServer42FlowForSwitchManagerRequest(
+                SWITCH_ID, cookie, SERVER42_MAC_ADDRESS, SERVER42_VLAN, SERVER42_PORT);
+
+        recordHandler.handleCommand(new CommandMessage(request, 0, null));
+        verify(switchManager);
+    }
+
+    @Test
+    public void shouldReinstallServer42IslRttInputRule() throws SwitchOperationException {
+        int islPort = 123;
+        PortColourCookie cookie = PortColourCookie.builder()
+                .portNumber(islPort)
+                .type(SERVER_42_ISL_RTT_INPUT)
+                .build();
+
+        expect(switchManager.installServer42IslRttInputFlow(
+                DATAPATH_ID, SERVER42_PORT, islPort)).andReturn(cookie.getValue()).once();
+        expect(switchManager.deleteRulesByCriteria(DATAPATH_ID, false, null, DeleteRulesCriteria.builder()
+                .cookie(cookie.getValue()).build()))
+                .andReturn(Lists.newArrayList(cookie.getValue())).once();
+        replay(switchManager);
+
+        ReinstallServer42FlowForSwitchManagerRequest request = new ReinstallServer42FlowForSwitchManagerRequest(
+                SWITCH_ID, cookie.getValue(), SERVER42_MAC_ADDRESS, SERVER42_VLAN, SERVER42_PORT);
+
+        recordHandler.handleCommand(new CommandMessage(request, 0, null));
+        verify(switchManager);
+    }
+
+    @Test
+    public void shouldInstallServer42IslRttOutputRule() throws SwitchOperationException {
+        long cookie = SERVER_42_ISL_RTT_OUTPUT_COOKIE;
+        expect(switchManager.installServer42IslRttOutputFlow(
+                DATAPATH_ID, SERVER42_PORT, SERVER42_VLAN, SERVER42_MAC_ADDRESS)).andReturn(cookie).once();
+        replay(switchManager);
+
+        InstallServer42Flow request = InstallServer42Flow.builder()
+                .id("test")
+                .switchId(SWITCH_ID)
+                .cookie(cookie)
+                .inputPort(0)
+                .outputPort(SERVER42_PORT)
+                .server42MacAddress(SERVER42_MAC_ADDRESS)
+                .server42Vlan(SERVER42_VLAN)
+                .build();
+
+        recordHandler.handleCommand(
+                new CommandMessage(new InstallFlowForSwitchManagerRequest(request), 0, CORRELATION_ID));
+        verify(switchManager);
+    }
+
+    @Test
+    public void shouldInstallServer42IslRttInputRule() throws SwitchOperationException {
+        int islPort = 123;
+        PortColourCookie cookie = PortColourCookie.builder()
+                .portNumber(islPort)
+                .type(SERVER_42_ISL_RTT_INPUT)
+                .build();
+
+        expect(switchManager.installServer42IslRttInputFlow(
+                DATAPATH_ID, SERVER42_PORT, islPort)).andReturn(cookie.getValue()).once();
+        replay(switchManager);
+
+        InstallServer42Flow request = InstallServer42Flow.builder()
+                .id("test")
+                .switchId(SWITCH_ID)
+                .cookie(cookie.getValue())
+                .inputPort(SERVER42_PORT)
+                .outputPort(0)
+                .server42MacAddress(SERVER42_MAC_ADDRESS)
+                .server42Vlan(SERVER42_VLAN)
                 .build();
 
         recordHandler.handleCommand(

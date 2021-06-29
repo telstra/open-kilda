@@ -91,14 +91,32 @@ public enum InstallRulesAction {
     // Install Transit table ARP rule
     INSTALL_ARP_TRANSIT,
 
-    // Install Turning Server 42 rule
+    // Install Turning Server 42 Flow RTT rule
+    @Deprecated
     INSTALL_SERVER_42_TURNING,
 
-    // Install Output vlan Server 42 rule
+    // Install Output VLAN Server 42 Flow RTT rule
+    @Deprecated
     INSTALL_SERVER_42_OUTPUT_VLAN,
 
-    // Install Output VXLAN Server 42 rule
+    // Install Output VXLAN Server 42 Flow RTT rule
+    @Deprecated
     INSTALL_SERVER_42_OUTPUT_VXLAN,
+
+    // Install Turning Server 42 Flow RTT rule
+    INSTALL_SERVER_42_FLOW_RTT_TURNING,
+
+    // Install Output VLAN Server 42 Flow RTT rule
+    INSTALL_SERVER_42_FLOW_RTT_OUTPUT_VLAN,
+
+    // Install Output VXLAN Server 42 Flow RTT rule
+    INSTALL_SERVER_42_FLOW_RTT_OUTPUT_VXLAN,
+
+    // Install Turning Server 42 ISL RTT rule
+    INSTALL_SERVER_42_ISL_RTT_TURNING,
+
+    // Install Output Server 42 ISL RTT rule
+    INSTALL_SERVER_42_ISL_RTT_OUTPUT,
 
     // Install all default rules (ie a combination of the above)
     INSTALL_DEFAULTS;

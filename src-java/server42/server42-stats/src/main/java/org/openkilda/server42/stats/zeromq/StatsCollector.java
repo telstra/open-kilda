@@ -13,14 +13,17 @@
  *   limitations under the License.
  */
 
-
 package org.openkilda.server42.stats.zeromq;
+
+import static java.lang.String.format;
 
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowRttStatsData;
+import org.openkilda.messaging.info.stats.IslRttStatsData;
 import org.openkilda.server42.messaging.FlowDirection;
-import org.openkilda.server42.stats.messaging.flowrtt.Statistics.FlowLatencyPacket;
-import org.openkilda.server42.stats.messaging.flowrtt.Statistics.FlowLatencyPacketBucket;
+import org.openkilda.server42.stats.messaging.Statistics.FlowLatencyPacket;
+import org.openkilda.server42.stats.messaging.Statistics.IslLatencyPacket;
+import org.openkilda.server42.stats.messaging.Statistics.LatencyPacketBucket;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +39,6 @@ import zmq.ZError;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
-
 @Service
 @Slf4j
 public class StatsCollector extends Thread {
@@ -46,7 +48,11 @@ public class StatsCollector extends Thread {
     private String connectEndpoint;
 
     @Value("${openkilda.server42.stats.kafka.topic.flowrtt.to_storm}")
-    private String toStorm;
+    private String flowStatToStormTopic;
+
+    @Value("${openkilda.server42.stats.kafka.topic.islrtt.to_storm}")
+    private String islStatToStormTopic;
+
     private String sessionId;
     private ZContext context;
 
@@ -107,20 +113,22 @@ public class StatsCollector extends Thread {
 
     private void handleInput(byte[] recv) {
         try {
-            FlowLatencyPacketBucket flowLatencyPacketBucket = FlowLatencyPacketBucket.parseFrom(recv);
-            log.debug("getPacketList size {}", flowLatencyPacketBucket.getPacketList().size());
+            LatencyPacketBucket latencyPacketBucket = LatencyPacketBucket.parseFrom(recv);
+            log.debug("getFlowLatencyPacketList size: {}, getIslLatencyPacketList size: {}",
+                    latencyPacketBucket.getFlowLatencyPacketList().size(),
+                    latencyPacketBucket.getIslLatencyPacketList().size());
 
-            sendStats(flowLatencyPacketBucket);
+            sendStats(latencyPacketBucket);
 
         } catch (InvalidProtocolBufferException e) {
             log.error(e.toString());
         }
     }
 
-    void sendStats(FlowLatencyPacketBucket flowLatencyPacketBucket) throws InvalidProtocolBufferException {
+    void sendStats(LatencyPacketBucket latencyPacketBucket) throws InvalidProtocolBufferException {
 
         long currentTimeMillis = System.currentTimeMillis();
-        for (FlowLatencyPacket packet : flowLatencyPacketBucket.getPacketList()) {
+        for (FlowLatencyPacket packet : latencyPacketBucket.getFlowLatencyPacketList()) {
             FlowRttStatsData data = new FlowRttStatsData(
                     packet.getFlowId(),
                     FlowDirection.fromBoolean(packet.getDirection()).name().toLowerCase(),
@@ -129,9 +137,25 @@ public class StatsCollector extends Thread {
             );
 
             InfoMessage message = new InfoMessage(data, currentTimeMillis,
-                    String.format("stats42-%s-%d", sessionId, packet.getPacketId()));
+                    format("stats42-%s-%d", sessionId, packet.getPacketId()));
             log.debug("InfoMessage {}", message);
-            template.send(toStorm, packet.getFlowId(), message);
+            template.send(flowStatToStormTopic, packet.getFlowId(), message);
+        }
+
+        for (IslLatencyPacket packet : latencyPacketBucket.getIslLatencyPacketList()) {
+            IslRttStatsData data = new IslRttStatsData(
+                    packet.getSwitchId(),
+                    packet.getPort(),
+                    packet.getT0(),
+                    packet.getT1(),
+                    "server42"
+            );
+
+            String key = format("%s-%d", packet.getSwitchId(), packet.getPort());
+            InfoMessage message = new InfoMessage(data, currentTimeMillis,
+                    format("stats42-%s-isl-%s", sessionId, key));
+            log.debug("InfoMessage {}", message);
+            template.send(islStatToStormTopic, key, message);
         }
     }
 }

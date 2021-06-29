@@ -94,6 +94,7 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
                     assert swProps.server42Port == s42Config.server42Port
                     assert swProps.server42MacAddress == s42Config.server42MacAddress
                     assert swProps.server42Vlan == s42Config.server42Vlan
+                    assert swProps.server42IslRtt == (s42Config.server42IslRtt == null ? "AUTO" : (s42Config.server42IslRtt ? "ENABLED" : "DISABLED"))
                 }
             }
         }

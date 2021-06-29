@@ -29,6 +29,10 @@ public interface IslLatencyTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getTopoIslLatencyTopic();
     }
 
+    default String getServer42StatsIslRttTopic() {
+        return getKafkaTopics().getServer42StatsIslRttTopic();
+    }
+
     default String getKafkaNetworkIslStatusTopic() {
         return getKafkaTopics().getNetworkIslStatusTopic();
     }

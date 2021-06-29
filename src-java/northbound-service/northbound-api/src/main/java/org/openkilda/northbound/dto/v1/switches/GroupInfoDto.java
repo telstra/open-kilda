@@ -32,17 +32,18 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class GroupInfoDto {
     private Integer groupId;
-    private List<PortVlanDto> groupBuckets;
+    private List<BucketDto> groupBuckets;
 
-    private List<PortVlanDto> missingGroupBuckets;
-    private List<PortVlanDto> excessGroupBuckets;
+    private List<BucketDto> missingGroupBuckets;
+    private List<BucketDto> excessGroupBuckets;
 
     @Data
     @AllArgsConstructor
     @JsonNaming(value = SnakeCaseStrategy.class)
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public static class PortVlanDto implements Serializable {
+    public static class BucketDto implements Serializable {
         private Integer port;
         private Integer vlan;
+        private Integer vni;
     }
 }

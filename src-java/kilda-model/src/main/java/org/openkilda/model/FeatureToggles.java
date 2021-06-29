@@ -49,6 +49,8 @@ public class FeatureToggles implements CompositeDataEntity<FeatureToggles.Featur
             .flowsRerouteUsingDefaultEncapType(false)
             .collectGrpcStats(false)
             .server42FlowRtt(false)
+            .flowLatencyMonitoringReactions(false)
+            .server42IslRtt(false)
             .build();
 
     @Getter
@@ -79,7 +81,8 @@ public class FeatureToggles implements CompositeDataEntity<FeatureToggles.Featur
                           Boolean useBfdForIslIntegrityCheck,
                           Boolean floodlightRoutePeriodicSync,
                           Boolean flowsRerouteUsingDefaultEncapType, Boolean collectGrpcStats,
-                          Boolean server42FlowRtt) {
+                          Boolean server42FlowRtt, Boolean flowLatencyMonitoringReactions,
+                          Boolean server42IslRtt) {
         data = FeatureTogglesDataImpl.builder()
                 .flowsRerouteOnIslDiscoveryEnabled(flowsRerouteOnIslDiscoveryEnabled)
                 .createFlowEnabled(createFlowEnabled).updateFlowEnabled(updateFlowEnabled)
@@ -87,7 +90,9 @@ public class FeatureToggles implements CompositeDataEntity<FeatureToggles.Featur
                 .floodlightRoutePeriodicSync(floodlightRoutePeriodicSync)
                 .flowsRerouteUsingDefaultEncapType(flowsRerouteUsingDefaultEncapType)
                 .server42FlowRtt(server42FlowRtt)
+                .server42IslRtt(server42IslRtt)
                 .collectGrpcStats(collectGrpcStats)
+                .flowLatencyMonitoringReactions(flowLatencyMonitoringReactions)
                 .build();
     }
 
@@ -114,6 +119,8 @@ public class FeatureToggles implements CompositeDataEntity<FeatureToggles.Featur
                 .append(getFlowsRerouteUsingDefaultEncapType(), that.getFlowsRerouteUsingDefaultEncapType())
                 .append(getCollectGrpcStats(), that.getCollectGrpcStats())
                 .append(getServer42FlowRtt(), that.getServer42FlowRtt())
+                .append(getFlowLatencyMonitoringReactions(), that.getFlowLatencyMonitoringReactions())
+                .append(getServer42IslRtt(), that.getServer42IslRtt())
                 .isEquals();
     }
 
@@ -122,7 +129,8 @@ public class FeatureToggles implements CompositeDataEntity<FeatureToggles.Featur
         return Objects.hash(getFlowsRerouteOnIslDiscoveryEnabled(), getCreateFlowEnabled(),
                 getUpdateFlowEnabled(), getDeleteFlowEnabled(),
                 getUseBfdForIslIntegrityCheck(), getFloodlightRoutePeriodicSync(),
-                getFlowsRerouteUsingDefaultEncapType(), getCollectGrpcStats(), getServer42FlowRtt());
+                getFlowsRerouteUsingDefaultEncapType(), getCollectGrpcStats(), getServer42FlowRtt(),
+                getFlowLatencyMonitoringReactions(), getServer42IslRtt());
     }
 
     /**
@@ -164,6 +172,14 @@ public class FeatureToggles implements CompositeDataEntity<FeatureToggles.Featur
         Boolean getServer42FlowRtt();
 
         void setServer42FlowRtt(Boolean server42FlowRtt);
+
+        Boolean getFlowLatencyMonitoringReactions();
+
+        void setFlowLatencyMonitoringReactions(Boolean flowLatencyMonitoringReactions);
+
+        Boolean getServer42IslRtt();
+
+        void setServer42IslRtt(Boolean server42IslRtt);
     }
 
     /**
@@ -184,6 +200,8 @@ public class FeatureToggles implements CompositeDataEntity<FeatureToggles.Featur
         Boolean flowsRerouteUsingDefaultEncapType;
         Boolean collectGrpcStats;
         Boolean server42FlowRtt;
+        Boolean flowLatencyMonitoringReactions;
+        Boolean server42IslRtt;
     }
 
     /**
@@ -238,6 +256,12 @@ public class FeatureToggles implements CompositeDataEntity<FeatureToggles.Featur
             }
             if (target.getServer42FlowRtt() == null) {
                 target.setServer42FlowRtt(source.getServer42FlowRtt());
+            }
+            if (target.getFlowLatencyMonitoringReactions() == null) {
+                target.setFlowLatencyMonitoringReactions(source.getFlowLatencyMonitoringReactions());
+            }
+            if (target.getServer42IslRtt() == null) {
+                target.setServer42IslRtt(source.getServer42IslRtt());
             }
         }
     }

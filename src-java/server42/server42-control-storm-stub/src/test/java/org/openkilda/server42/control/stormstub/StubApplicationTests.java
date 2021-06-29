@@ -24,8 +24,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.openkilda.model.SwitchId;
 import org.openkilda.server42.control.stormstub.api.AddFlowPayload;
+import org.openkilda.server42.control.stormstub.api.AddIslPayload;
 import org.openkilda.server42.control.stormstub.api.ListFlowsPayload;
+import org.openkilda.server42.control.stormstub.api.ListIslsPayload;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -67,6 +70,17 @@ class StubApplicationTests {
         MvcResult result = mockMvc.perform(
                 get("/kafka/flow/").param("switchId", switchId)).andReturn();
         ListFlowsPayload emptyPayload = new ListFlowsPayload();
+        mockMvc.perform(asyncDispatch(result))
+                .andExpect(status().isOk())
+                .andExpect(content().json(objectWriter.writeValueAsString(emptyPayload)));
+    }
+
+    @BeforeEach
+    public void clearIsls() throws Exception {
+        mockMvc.perform(delete("/kafka/isl/{switchId}", switchId)).andExpect(status().isOk());
+        MvcResult result = mockMvc.perform(
+                get("/kafka/isl/{switchId}", switchId)).andReturn();
+        ListIslsPayload emptyPayload = new ListIslsPayload();
         mockMvc.perform(asyncDispatch(result))
                 .andExpect(status().isOk())
                 .andExpect(content().json(objectWriter.writeValueAsString(emptyPayload)));
@@ -114,5 +128,46 @@ class StubApplicationTests {
         mockMvc.perform(asyncDispatch(result))
                 .andExpect(status().isOk())
                 .andExpect(content().json(objectWriter.writeValueAsString(listFlowsPayload)));
+    }
+
+
+    @Test
+    public void addIsls() throws Exception {
+        AddIslPayload testIsl = AddIslPayload.builder()
+                .switchId(new SwitchId(switchId)).port(456).build();
+        pushIsl(testIsl);
+
+        ListIslsPayload listIslsPayload = new ListIslsPayload();
+        listIslsPayload.getPorts().add(testIsl.getPort());
+
+        MvcResult result = mockMvc.perform(get("/kafka/isl/{switchId}", switchId)).andReturn();
+        mockMvc.perform(asyncDispatch(result))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(content().json(objectWriter.writeValueAsString(listIslsPayload)));
+    }
+
+    private void pushIsl(AddIslPayload islPayload) throws Exception {
+        String payload = objectWriter.writeValueAsString(islPayload);
+        mockMvc.perform(
+                post("/kafka/isl/{switchId}", switchId)
+                        .contentType(APPLICATION_JSON_VALUE)
+                        .content(payload)).andExpect(status().isOk());
+    }
+
+    @Test
+    public void deleteIsl() throws Exception {
+        AddIslPayload testIsl = AddIslPayload.builder()
+                .switchId(new SwitchId(switchId)).port(456).build();
+        pushIsl(testIsl);
+
+        mockMvc.perform(delete("/kafka/isl/{switchId}/{port}", switchId, testIsl.getPort()))
+                .andExpect(status().isOk());
+        MvcResult result = mockMvc.perform(get("/kafka/isl/{switchId}", switchId)).andReturn();
+        ListIslsPayload listIslsPayload = new ListIslsPayload();
+        listIslsPayload.getPorts().add(testIsl.getPort());
+        mockMvc.perform(asyncDispatch(result))
+                .andExpect(status().isOk())
+                .andExpect(content().json(objectWriter.writeValueAsString(listIslsPayload)));
     }
 }

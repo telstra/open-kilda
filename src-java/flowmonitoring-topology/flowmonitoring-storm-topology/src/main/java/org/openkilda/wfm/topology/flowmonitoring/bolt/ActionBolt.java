@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowmonitoring.bolt;
 
+import static org.openkilda.wfm.share.bolt.KafkaEncoder.FIELD_ID_PAYLOAD;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ACTION_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
 
@@ -86,7 +87,7 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields(FLOW_ID_FIELD, FIELD_ID_CONTEXT));
+        declarer.declare(new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
     }
 
     @Override

@@ -25,6 +25,7 @@ import lombok.Value;
 import java.io.Serializable;
 
 // remove that base class after moving to kafka headers
+// TODO: move to org.openkilda.server42.control.messaging package as it's shared with islrtt.
 @Value
 @Builder
 @AllArgsConstructor

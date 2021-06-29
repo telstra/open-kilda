@@ -41,10 +41,13 @@ import org.openkilda.floodlight.switchmanager.factory.generator.lldp.LldpPostIng
 import org.openkilda.floodlight.switchmanager.factory.generator.lldp.LldpPostIngressOneSwitchFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.lldp.LldpPostIngressVxlanFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.lldp.LldpTransitFlowGenerator;
-import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42InputFlowGenerator;
-import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42OutputVlanFlowGenerator;
-import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42OutputVxlanFlowGenerator;
-import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42TurningFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42FlowRttInputFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42FlowRttOutputVlanFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42FlowRttOutputVxlanFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42FlowRttTurningFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42IslRttInputFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42IslRttOutputFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42IslRttTurningFlowGenerator;
 import org.openkilda.model.MacAddress;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -260,11 +263,11 @@ public class SwitchFlowFactory implements IService {
     }
 
     /**
-     * Get Server 42 input flow generator.
+     * Get Server 42 Flow RTT input flow generator.
      */
-    public SwitchFlowGenerator getServer42InputFlowGenerator(int server42Port, int customerPort,
+    public SwitchFlowGenerator getServer42FlowRttInputFlowGenerator(int server42Port, int customerPort,
                                                              MacAddress server42MacAddress) {
-        return Server42InputFlowGenerator.builder()
+        return Server42FlowRttInputFlowGenerator.builder()
                 .featureDetectorService(featureDetectorService)
                 .kildaCore(kildaCore)
                 .server42Port(server42Port)
@@ -274,20 +277,20 @@ public class SwitchFlowFactory implements IService {
     }
 
     /**
-     * Get Server 42 turning flow generator.
+     * Get Server 42 Flow RTT turning flow generator.
      */
-    public SwitchFlowGenerator getServer42TurningFlowGenerator() {
-        return Server42TurningFlowGenerator.builder()
+    public SwitchFlowGenerator getServer42FlowRttTurningFlowGenerator() {
+        return Server42FlowRttTurningFlowGenerator.builder()
                 .featureDetectorService(featureDetectorService)
                 .build();
     }
 
     /**
-     * Get Server 42 output vlan flow generator.
+     * Get Server 42 Flow RTT output vlan flow generator.
      */
-    public SwitchFlowGenerator getServer42OutputVlanFlowGenerator(
+    public SwitchFlowGenerator getServer42FlowRttOutputVlanFlowGenerator(
             int server42Port, int server42Vlan, MacAddress server42MacAddress) {
-        return Server42OutputVlanFlowGenerator.builder()
+        return Server42FlowRttOutputVlanFlowGenerator.builder()
                 .featureDetectorService(featureDetectorService)
                 .server42Port(server42Port)
                 .server42Vlan(server42Vlan)
@@ -296,12 +299,45 @@ public class SwitchFlowFactory implements IService {
     }
 
     /**
-     * Get Server 42 output VXLAN flow generator.
+     * Get Server 42 Flow RTT output VXLAN flow generator.
      */
-    public SwitchFlowGenerator getServer42OutputVxlanFlowGenerator(
+    public SwitchFlowGenerator getServer42FlowRttOutputVxlanFlowGenerator(
             int server42Port, int server42Vlan, MacAddress server42MacAddress) {
-        return Server42OutputVxlanFlowGenerator.builder()
+        return Server42FlowRttOutputVxlanFlowGenerator.builder()
                 .featureDetectorService(featureDetectorService)
+                .server42Port(server42Port)
+                .server42Vlan(server42Vlan)
+                .server42MacAddress(server42MacAddress)
+                .build();
+    }
+
+    /**
+     * Get Server 42 ISL RTT input flow generator.
+     */
+    public SwitchFlowGenerator getServer42IslRttInputFlowGenerator(int server42Port, int islPort) {
+        return Server42IslRttInputFlowGenerator.builder()
+                .kildaCore(kildaCore)
+                .server42Port(server42Port)
+                .islPort(islPort)
+                .build();
+    }
+
+    /**
+     * Get Server 42 ISL RTT turning flow generator.
+     */
+    public SwitchFlowGenerator getServer42IslRttTurningFlowGenerator() {
+        return Server42IslRttTurningFlowGenerator.builder()
+                .kildaCore(kildaCore)
+                .build();
+    }
+
+    /**
+     * Get Server 42 ISL RTT output flow generator.
+     */
+    public SwitchFlowGenerator getServer42IslRttOutputFlowGenerator(int server42Port, int server42Vlan,
+                                                                    MacAddress server42MacAddress) {
+        return Server42IslRttOutputFlowGenerator.builder()
+                .kildaCore(kildaCore)
                 .server42Port(server42Port)
                 .server42Vlan(server42Vlan)
                 .server42MacAddress(server42MacAddress)

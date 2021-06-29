@@ -108,8 +108,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         super.prepare(stormConf, context, collector);
 
-        validateService = new SwitchValidateServiceImpl(
-                this, persistenceManager, new ValidationServiceImpl(persistenceManager, topologyConfig));
+        validateService = new SwitchValidateServiceImpl(this, persistenceManager,
+                new ValidationServiceImpl(persistenceManager, topologyConfig, flowResourcesConfig));
         syncService = new SwitchSyncServiceImpl(this, persistenceManager, flowResourcesConfig);
         switchRuleService = new SwitchRuleServiceImpl(this, persistenceManager.getRepositoryFactory());
     }

@@ -73,12 +73,13 @@ public class IslStatsBolt extends AbstractBolt implements IslStatsCarrier {
 
     @VisibleForTesting
     List<Object> buildTsdbTuple(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort,
-                                long latency, long timestamp) throws JsonProcessingException {
+                                long latency, long timestamp, String origin) throws JsonProcessingException {
         Map<String, String> tags = new HashMap<>();
         tags.put("src_switch", srcSwitchId.toOtsdFormat());
         tags.put("src_port", String.valueOf(srcPort));
         tags.put("dst_switch", dstSwitchId.toOtsdFormat());
         tags.put("dst_port", String.valueOf(dstPort));
+        tags.put("origin", origin);
 
         return tsdbTuple(metricFormatter.format(LATENCY_METRIC_NAME), timestamp, latency, tags);
     }
@@ -117,10 +118,10 @@ public class IslStatsBolt extends AbstractBolt implements IslStatsCarrier {
 
     @Override
     public void emitLatency(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort,
-                            long latency, long timestamp) {
+                            long latency, long timestamp, String origin) {
         List<Object> tsdbTuple;
         try {
-            tsdbTuple = buildTsdbTuple(srcSwitch, srcPort, dstSwitch, dstPort, latency, timestamp);
+            tsdbTuple = buildTsdbTuple(srcSwitch, srcPort, dstSwitch, dstPort, latency, timestamp, origin);
         } catch (JsonProcessingException e) {
             log.error(String.format("Couldn't create OpenTSDB tuple: %s", e.getMessage()), e);
             return;

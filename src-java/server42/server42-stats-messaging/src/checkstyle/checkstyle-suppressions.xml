@@ -4,7 +4,7 @@
         "http://checkstyle.sourceforge.net/dtds/suppressions_1_2.dtd">
 
 <suppressions>
-    <suppress files="src/main/java/org/openkilda/server42/stats/messaging/flowrtt/Statistics.java"
+    <suppress files="src/main/java/org/openkilda/server42/stats/messaging/Statistics.java"
               checks=".*"/>
 
 </suppressions>

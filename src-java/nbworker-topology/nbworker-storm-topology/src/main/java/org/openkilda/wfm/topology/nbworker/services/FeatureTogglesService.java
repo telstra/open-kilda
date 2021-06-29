@@ -77,7 +77,8 @@ public class FeatureTogglesService {
             log.info("Emit feature-toggles update notification - toggles:{}", after);
             carrier.featureTogglesUpdateNotification(after);
 
-            if (before.getServer42FlowRtt() != after.getServer42FlowRtt()) {
+            if (before.getServer42FlowRtt() != after.getServer42FlowRtt()
+                    || before.getServer42IslRtt() != after.getServer42IslRtt()) {
                 Collection<Switch> switches = switchRepository.findActive();
 
                 for (Switch sw : switches) {

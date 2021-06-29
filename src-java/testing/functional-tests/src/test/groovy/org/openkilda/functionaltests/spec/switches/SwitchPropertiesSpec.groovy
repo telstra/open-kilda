@@ -119,6 +119,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         switchProperties.server42Port = data.server42Port
         switchProperties.server42Vlan = data.server42Vlan
         switchProperties.server42MacAddress = data.server42MacAddress
+        switchProperties.server42IslRtt = data.server42IslRtt
         northbound.updateSwitchProperties(sw.dpId, switchProperties)
 
         then: "Human readable error is returned"
@@ -160,6 +161,16 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
                         multiTable: false, server42FlowRtt: false, server42Port: null, server42MacAddress: null,
                         server42Vlan: -1,
                         error: "Property 'server42_vlan' for switch %s has invalid value '-1'. Vlan must be in range [0, 4095]"),
+
+                new PropertiesData(desc: "enable server42_isl_rtt property without server42_port property",
+                        multiTable: true, server42IslRtt: "ENABLED", server42Port: null, server42MacAddress: "42:42:42:42:42:42",
+                        error: "Illegal switch properties combination for switch %s. To enable property " +
+                                "'server42_isl_rtt' you need to specify valid property 'server42_port'"),
+
+                new PropertiesData(desc: "enable server42_isl_rtt property without server42_mac_address property",
+                        multiTable: true, server42IslRtt: "ENABLED", server42Port: 42, server42MacAddress: null,
+                        error: "Illegal switch properties combination for switch %s. To enable property " +
+                                "'server42_isl_rtt' you need to specify valid property 'server42_mac_address'"),
         ]
     }
 
@@ -168,6 +179,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         boolean multiTable, server42FlowRtt
         Integer server42Port, server42Vlan
         String server42MacAddress, desc, error
+        String server42IslRtt
     }
 
     @Tidy

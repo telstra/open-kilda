@@ -31,6 +31,7 @@ import org.openkilda.floodlight.command.group.GroupVerifyReport;
 import org.openkilda.floodlight.error.SwitchMissingFlowsException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.floodlight.model.FlowTransitData;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.utils.OfFlowDumpProducer;
 import org.openkilda.floodlight.utils.OfFlowPresenceVerifier;
@@ -115,14 +116,32 @@ public abstract class FlowSegmentCommand extends SpeakerCommand<FlowSegmentRepor
     }
 
     protected CompletableFuture<GroupId> planGroupInstall(SpeakerCommandProcessor commandProcessor) {
-        GroupInstallCommand groupCommand = new GroupInstallCommand(messageContext, switchId, mirrorConfig);
+        GroupInstallCommand groupCommand = new GroupInstallCommand(messageContext, switchId, mirrorConfig, null);
+
+        return commandProcessor.chain(groupCommand)
+                .thenApply(this::handleGroupReport);
+    }
+
+    protected CompletableFuture<GroupId> planGroupInstall(SpeakerCommandProcessor commandProcessor,
+                                                          FlowTransitData flowTransitData) {
+        GroupInstallCommand groupCommand =
+                new GroupInstallCommand(messageContext, switchId, mirrorConfig, flowTransitData);
 
         return commandProcessor.chain(groupCommand)
                 .thenApply(this::handleGroupReport);
     }
 
     protected CompletableFuture<GroupId> planGroupModify(SpeakerCommandProcessor commandProcessor) {
-        GroupInstallCommand groupCommand = new GroupModifyCommand(messageContext, switchId, mirrorConfig);
+        GroupInstallCommand groupCommand = new GroupModifyCommand(messageContext, switchId, mirrorConfig, null);
+
+        return commandProcessor.chain(groupCommand)
+                .thenApply(this::handleGroupReport);
+    }
+
+    protected CompletableFuture<GroupId> planGroupModify(SpeakerCommandProcessor commandProcessor,
+                                                         FlowTransitData flowTransitData) {
+        GroupInstallCommand groupCommand =
+                new GroupModifyCommand(messageContext, switchId, mirrorConfig, flowTransitData);
 
         return commandProcessor.chain(groupCommand)
                 .thenApply(this::handleGroupReport);
@@ -151,7 +170,14 @@ public abstract class FlowSegmentCommand extends SpeakerCommand<FlowSegmentRepor
     }
 
     protected CompletableFuture<GroupVerifyReport> planGroupVerify(SpeakerCommandProcessor commandProcessor) {
-        GroupVerifyCommand groupVerify = new GroupVerifyCommand(messageContext, switchId, mirrorConfig);
+        GroupVerifyCommand groupVerify = new GroupVerifyCommand(messageContext, switchId, mirrorConfig, null);
+        return commandProcessor.chain(groupVerify);
+    }
+
+    protected CompletableFuture<GroupVerifyReport> planGroupVerify(SpeakerCommandProcessor commandProcessor,
+                                                                   FlowTransitData flowTransitData) {
+        GroupVerifyCommand groupVerify =
+                new GroupVerifyCommand(messageContext, switchId, mirrorConfig, flowTransitData);
         return commandProcessor.chain(groupVerify);
     }
 

@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.switches;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchId;
 
@@ -32,11 +33,17 @@ import lombok.Value;
 public class InstallGroupRequest extends CommandData {
     SwitchId switchId;
     MirrorConfig mirrorConfig;
+    FlowTransitEncapsulation encapsulation;
+    SwitchId egressSwitchId;
 
     @JsonCreator
     public InstallGroupRequest(@JsonProperty("switch_id") SwitchId switchId,
-                               @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
+                               @JsonProperty("mirror_config") MirrorConfig mirrorConfig,
+                               @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
+                               @JsonProperty("egress_switch_id") SwitchId egressSwitchId) {
         this.switchId = switchId;
         this.mirrorConfig = mirrorConfig;
+        this.encapsulation = encapsulation;
+        this.egressSwitchId = egressSwitchId;
     }
 }

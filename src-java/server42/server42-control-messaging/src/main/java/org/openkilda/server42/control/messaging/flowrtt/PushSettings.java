@@ -22,7 +22,7 @@ import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
-
+// TODO: move to org.openkilda.server42.control.messaging package as it's shared with islrtt.
 @Value
 @Builder
 @AllArgsConstructor

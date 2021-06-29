@@ -49,8 +49,10 @@ void org::openkilda::save_stats_to_file(const org::openkilda::Config::ptr &confi
     file << std::setw(first_column_width) << "ring.free_count: " << ring_free_count << std::endl;
     file << std::setw(first_column_width) << "ring.capacity: " << ring_capacity << std::endl;
 
-    unsigned long flow_poll_size = ctx.flow_pool.table.size();
-    file << std::setw(first_column_width) << "flow-pool.size: " << flow_poll_size << std::endl;
+    unsigned long flow_pool_size = ctx.flow_pool.table.size();
+    file << std::setw(first_column_width) << "flow-pool.size: " << flow_pool_size << std::endl;
+    unsigned long isl_pool_size = ctx.isl_pool.table.size();
+    file << std::setw(first_column_width) << "isl-pool.size: " << isl_pool_size << std::endl;
 
     file.close();
 
@@ -75,7 +77,8 @@ void org::openkilda::save_stats_to_file(const org::openkilda::Config::ptr &confi
     write_metric(file_prometheus, "ring_free_count" , "Free places in ring", ring_free_count);
     write_metric(file_prometheus, "ring_capacity" , "Ring capacity", ring_capacity);
 
-    write_metric(file_prometheus, "flow_pool_size" , "Pool size of flow endpoints", flow_poll_size);
-    
+    write_metric(file_prometheus, "flow_pool_size" , "Pool size of flow endpoints", flow_pool_size);
+    write_metric(file_prometheus, "isl_pool_size" , "Pool size of isl endpoints", isl_pool_size);
+
     file_prometheus.close();
 }

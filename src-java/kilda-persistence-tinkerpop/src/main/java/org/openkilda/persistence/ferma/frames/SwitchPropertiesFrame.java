@@ -21,6 +21,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties.RttState;
 import org.openkilda.model.SwitchProperties.SwitchPropertiesData;
 import org.openkilda.persistence.ferma.frames.converters.Convert;
 import org.openkilda.persistence.ferma.frames.converters.FlowEncapsulationTypeConverter;
@@ -142,6 +143,21 @@ public abstract class SwitchPropertiesFrame extends KildaBaseVertexFrame impleme
     @Override
     @Property("server42_flow_rtt")
     public abstract void setServer42FlowRtt(boolean server42FlowRtt);
+
+    @Override
+    public RttState getServer42IslRtt() {
+        String value = getProperty("server42_isl_rtt");
+        if (value == null) {
+            // Treat empty state as AUTO to support old storage schema.
+            return RttState.AUTO;
+        }
+        return RttState.valueOf(value.toUpperCase());
+    }
+
+    @Override
+    public void setServer42IslRtt(RttState server42IslRtt) {
+        setProperty("server42_isl_rtt", server42IslRtt != null ? server42IslRtt.name().toLowerCase() : null);
+    }
 
     @Override
     @Property("server42_port")

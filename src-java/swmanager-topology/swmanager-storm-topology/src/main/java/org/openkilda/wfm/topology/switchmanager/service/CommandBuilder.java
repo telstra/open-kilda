@@ -19,8 +19,8 @@ import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.topology.switchmanager.model.GroupInstallContext;
 
 import java.util.List;
 
@@ -35,5 +35,5 @@ public interface CommandBuilder {
     List<ReinstallDefaultFlowForSwitchManagerRequest> buildCommandsToReinstallRules(
             SwitchId switchId, List<Long> reinstallRulesCookies);
 
-    List<MirrorConfig> buildMirrorConfigs(SwitchId switchId, List<Integer> groupIds);
+    List<GroupInstallContext> buildGroupInstallContexts(SwitchId switchId, List<Integer> groupIds);
 }

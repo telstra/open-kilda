@@ -44,17 +44,29 @@ public interface KildaCoreConfig {
     String getFlowPingMagicSrcMacAddress();
 
     /**
-     * This offset is used for encoding flow in_port number into udp_src port of Server 42 RTT packets.
+     * This offset is used for encoding flow in_port number into udp_src port of Server 42 Flow RTT packets.
      * Example: Flow with in_port 10. Server 42 Input rule will match RTT packets by
      * udp_src port number 5010 (offset + flow in_port).
      * We need an offset to do not intersect with some popular ports (like 22 port for ssh)
      */
-    @Key("server42-upd-port-offset")
+    @Key("server42-flow-rtt-udp-port-offset")
     @Default("5000")
-    int getServer42UdpPortOffset();
+    int getServer42FlowRttUdpPortOffset();
 
     @Key("role")
     @Default("management")
     @Converter(EnumLowerCaseConverter.class)
     FloodlightRole getRole();
+
+    /**
+     * This offset is used for encoding ISL in_port number into udp_src port of Server 42 ISL RTT packets.
+     */
+    @Key("server42-isl-rtt-udp-port-offset")
+    @Default("10000")
+    int getServer42IslRttUdpPortOffset();
+
+    @Key("server42-isl-rtt-magic-mac-address")
+    @Default("00:26:E1:FF:FF:FD")
+    String getServer42IslRttMagicMacAddress();
+
 }

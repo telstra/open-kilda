@@ -580,7 +580,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     @Test
     public void flowAttendantRulesStatsTest() throws IOException {
         FlowSegmentCookie server42IngressCookie = MAIN_FORWARD_COOKIE
-                .toBuilder().type(CookieType.SERVER_42_INGRESS).build();
+                .toBuilder().type(CookieType.SERVER_42_FLOW_RTT_INGRESS).build();
 
         FlowEndpoint ingress = new FlowEndpoint(SWITCH_ID_1, PORT_1);
         FlowStatsEntry measure0 = new FlowStatsEntry(
@@ -608,7 +608,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         Assert.assertEquals(3, rawPacketsMetric.size());
         for (Datapoint entry : rawPacketsMetric) {
             Map<String, String> tags = entry.getTags();
-            Assert.assertEquals(CookieType.SERVER_42_INGRESS.name().toLowerCase(), tags.get("type"));
+            Assert.assertEquals(CookieType.SERVER_42_FLOW_RTT_INGRESS.name().toLowerCase(), tags.get("type"));
 
             if (Objects.equals(0, entry.getValue())) {
                 Assert.assertEquals("unknown", tags.get("flowid"));

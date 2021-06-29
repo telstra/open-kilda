@@ -55,6 +55,8 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.server42.control.messaging.flowrtt.ActivateFlowMonitoringOnSwitchInfoData;
 import org.openkilda.server42.control.messaging.flowrtt.DeactivateFlowMonitoringOnSwitchInfoData;
+import org.openkilda.server42.control.messaging.islrtt.ActivateIslMonitoringOnSwitchInfoData;
+import org.openkilda.server42.control.messaging.islrtt.DeactivateIslMonitoringOnSwitchInfoData;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.IllegalSwitchPropertiesException;
 import org.openkilda.wfm.error.IllegalSwitchStateException;
@@ -333,6 +335,24 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
     @Override
     public void disableServer42FlowRttOnSwitch(SwitchId switchId) {
         DeactivateFlowMonitoringOnSwitchInfoData data = DeactivateFlowMonitoringOnSwitchInfoData.builder()
+                .switchId(switchId)
+                .build();
+        getOutput().emit(StreamType.TO_SERVER42.toString(), getCurrentTuple(),
+                new Values(data, getCorrelationId()));
+    }
+
+    @Override
+    public void enableServer42IslRttOnSwitch(SwitchId switchId) {
+        ActivateIslMonitoringOnSwitchInfoData data = ActivateIslMonitoringOnSwitchInfoData.builder()
+                .switchId(switchId)
+                .build();
+        getOutput().emit(StreamType.TO_SERVER42.toString(), getCurrentTuple(),
+                new Values(data, getCorrelationId()));
+    }
+
+    @Override
+    public void disableServer42IslRttOnSwitch(SwitchId switchId) {
+        DeactivateIslMonitoringOnSwitchInfoData data = DeactivateIslMonitoringOnSwitchInfoData.builder()
                 .switchId(switchId)
                 .build();
         getOutput().emit(StreamType.TO_SERVER42.toString(), getCurrentTuple(),

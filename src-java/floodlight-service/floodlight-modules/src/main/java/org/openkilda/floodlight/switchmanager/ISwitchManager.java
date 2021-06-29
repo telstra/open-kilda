@@ -21,7 +21,6 @@ import org.openkilda.messaging.command.flow.RuleType;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.info.meter.MeterEntry;
-import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSharedSegmentCookie;
@@ -36,6 +35,7 @@ import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 
 import java.net.InetAddress;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -216,8 +216,8 @@ public interface ISwitchManager extends IFloodlightService {
      * @param server42MacAddress server 42 mac adress
      * @throws SwitchOperationException Switch not found
      */
-    Long installServer42InputFlow(DatapathId dpid, int server42Port, int customerPort, MacAddress server42MacAddress)
-            throws SwitchOperationException;
+    Long installServer42FlowRttInputFlow(DatapathId dpid, int server42Port, int customerPort,
+                                         MacAddress server42MacAddress) throws SwitchOperationException;
 
     /**
      * Install Server 42 turning rule which will send Ping packet from last switch back to first.
@@ -225,7 +225,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dpid datapathId of the switch
      * @throws SwitchOperationException Switch not found
      */
-    Long installServer42TurningFlow(DatapathId dpid) throws SwitchOperationException;
+    Long installServer42FlowRttTurningFlow(DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Install Server 42 output vlan rule which will send Ping packet back to Server 42.
@@ -236,7 +236,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param macAddress server 42 mac address
      * @throws SwitchOperationException Switch not found
      */
-    Long installServer42OutputVlanFlow(DatapathId dpid, int port, int vlan, MacAddress macAddress)
+    Long installServer42FlowRttOutputVlanFlow(DatapathId dpid, int port, int vlan, MacAddress macAddress)
             throws SwitchOperationException;
 
     /**
@@ -248,7 +248,39 @@ public interface ISwitchManager extends IFloodlightService {
      * @param macAddress server 42 mac address
      * @throws SwitchOperationException Switch not found
      */
-    Long installServer42OutputVxlanFlow(DatapathId dpid, int port, int vlan, MacAddress macAddress)
+    Long installServer42FlowRttOutputVxlanFlow(DatapathId dpid, int port, int vlan, MacAddress macAddress)
+            throws SwitchOperationException;
+
+
+    /**
+     * Install the Server 42 ISL RTT input rule which forwards a Ping packet into the ISL port.
+     *
+     * @param dpid datapathId of the switch
+     * @param server42Port server 42 port
+     * @param islPort rule forwards Ping packet to the port
+     * @throws SwitchOperationException Switch not found
+     */
+    Long installServer42IslRttInputFlow(DatapathId dpid, int server42Port, int islPort) throws SwitchOperationException;
+
+    /**
+     * Install the Server 42 ISL RTT turning rule which sends a Ping packet from the opposite switch back to the origin.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    Long installServer42IslRttTurningFlow(DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Install the Server 42 ISL RTT output rule which sends a Ping packet back to Server 42.
+     *
+     * @param dpid datapathId of the switch
+     * @param server42Port server 42 port
+     * @param server42Vlan server 42 vlan. If vlan > 0 rule must push this vlan
+     * @param server42MacAddress server 42 mac address
+     * @throws SwitchOperationException Switch not found
+     */
+    Long installServer42IslRttOutputFlow(DatapathId dpid, int server42Port, int server42Vlan,
+                                         MacAddress server42MacAddress)
             throws SwitchOperationException;
 
     /**
@@ -386,7 +418,16 @@ public interface ISwitchManager extends IFloodlightService {
      * @param port customer port
      * @throws SwitchOperationException Switch not found
      */
-    Long removeServer42InputFlow(DatapathId dpid, int port) throws SwitchOperationException;
+    Long removeServer42FlowRttInputFlow(DatapathId dpid, int port) throws SwitchOperationException;
+
+    /**
+     * Remove the Server 42 ISL RTT input rule which forwards a Ping packet into the ISL port.
+     *
+     * @param dpid datapathId of the switch
+     * @param islPort ISL port
+     * @throws SwitchOperationException Switch not found
+     */
+    Long removeServer42IslRttInputFlow(DatapathId dpid, int islPort) throws SwitchOperationException;
 
     /**
      * Build intermidiate flowmod for ingress rule.
@@ -416,7 +457,7 @@ public interface ISwitchManager extends IFloodlightService {
     OFFlowMod buildArpInputCustomerFlow(DatapathId dpid, int port) throws SwitchNotFoundException;
 
     /**
-     * Build all expected Server 42 rules.
+     * Build all expected Server 42 Flow RTT rules.
      *
      * @param dpid switch id
      * @param server42FlowRttFeatureToggle server 42 feature toggle
@@ -428,10 +469,27 @@ public interface ISwitchManager extends IFloodlightService {
      * @param customerPorts switch ports with enabled server 42 ping
      * @return modification command
      */
-    List<OFFlowMod> buildExpectedServer42Flows(
+    List<OFFlowMod> buildExpectedServer42FlowRttFlows(
             DatapathId dpid, boolean server42FlowRttFeatureToggle, boolean server42FlowRttSwitchProperty,
             Integer server42Port, Integer server42Vlan, MacAddress server42MacAddress, Set<Integer> customerPorts)
             throws SwitchNotFoundException;
+
+    /**
+     * Build all expected Server 42 ISL RTT rules.
+     *
+     * @param dpid datapathId of the switch
+     * @param server42IslRtt server 42 ISL RTT toggle
+     * @param server42Port server 42 port. Could be null if server42IslRttSwitchProperty is false
+     * @param server42Vlan vlan of a packet received from server 42.
+     *                     Could be null if server42FlowRttSwitchProperty is false
+     * @param server42MacAddress mac address of server 42. Could be null if server42IslRttSwitchProperty is false
+     * @param islPorts switch ports with enabled server 42 ping
+     * @return modification command
+     */
+    List<OFFlowMod> buildExpectedServer42IslRttFlows(
+            DatapathId dpid, boolean server42IslRtt,
+            Integer server42Port, Integer server42Vlan, org.openkilda.model.MacAddress server42MacAddress,
+            Collection<Integer> islPorts) throws SwitchNotFoundException;
 
     /**
      * Install default pass through rule for pre ingress table.
@@ -468,23 +526,6 @@ public interface ISwitchManager extends IFloodlightService {
      * @throws SwitchOperationException Switch not found
      */
     List<Long> removeMultitableEndpointIslRules(final DatapathId dpid, final int port) throws SwitchOperationException;
-
-    /**
-     * Installs flow on a transit switch.
-     *
-     * @param dpid datapathId of the switch
-     * @param flowId flow id
-     * @param inputPort port to expect packet on
-     * @param outputPort port to forward packet out
-     * @param transitTunnelId vlan or vni to match on inputPort
-     * @param encapsulationType flow encapsulation type
-     * @param multiTable multitable pipeline flag
-     * @return transaction id
-     * @throws SwitchOperationException Switch not found
-     */
-    long installTransitFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
-                            int transitTunnelId, FlowEncapsulationType encapsulationType, boolean multiTable)
-            throws SwitchOperationException;
 
     void installOuterVlanMatchSharedFlow(SwitchId switchId, String flowId, FlowSharedSegmentCookie cookie)
             throws SwitchOperationException;
@@ -624,13 +665,14 @@ public interface ISwitchManager extends IFloodlightService {
      * @param switchLldp switch Lldp enabled. True means that switch has rules for catching LLDP packets.
      * @param switchArp switch Arp enabled. True means that switch has rules for catching ARP packets.
      * @param server42FlowRtt server 42 flow RTT. True means that switch has rules for pinging Flows from server 42.
+     * @param server42IslRtt server 42 ISL RTT. True means that switch has rules for pinging ISLs from server 42.
      * @return the list of cookies for removed rules
      * @throws SwitchOperationException Switch not found
      */
     List<Long> deleteDefaultRules(DatapathId dpid, List<Integer> islPorts,
                                   List<Integer> flowPorts, Set<Integer> flowLldpPorts, Set<Integer> flowArpPorts,
                                   Set<Integer> server42FlowRttPorts, boolean multiTable, boolean switchLldp,
-                                  boolean switchArp, boolean server42FlowRtt)
+                                  boolean switchArp, boolean server42FlowRtt, boolean server42IslRtt)
             throws SwitchOperationException;
 
     /**

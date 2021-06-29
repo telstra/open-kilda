@@ -8,7 +8,8 @@ logging.level.org.openkilda.server42.stats=info
 logging.file.name=logs/monitoring.log
 logging.config=classpath:log4j2.xml
 # Kilda related
-openkilda.server42.stats.kafka.topic.flowrtt.to_storm={{ getv "/kilda_kafka_topic_server42_stats" }}
+openkilda.server42.stats.kafka.topic.flowrtt.to_storm={{ getv "/kilda_kafka_topic_server42_stats_flowrtt" }}
+openkilda.server42.stats.kafka.topic.islrtt.to_storm={{ getv "/kilda_kafka_topic_server42_stats_islrtt" }}
 
 openkilda.server42.stats.zeromq.server.endpoint={{ getv "/kilda_server42_stats_zeromq_connection_host" }}
 

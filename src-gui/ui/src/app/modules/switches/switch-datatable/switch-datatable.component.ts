@@ -10,6 +10,7 @@ import { SwitchService } from 'src/app/common/services/switch.service';
 import { CommonService } from 'src/app/common/services/common.service';
 import { ToastrService } from 'ngx-toastr';
 import { MessageObj } from 'src/app/common/constants/constants';
+declare var jQuery: any;
 
 @Component({
   selector: 'app-switch-datatable',
@@ -37,6 +38,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
   sumofflows:boolean = false;
   noofflows:boolean=false;
   state : boolean = false;
+  enableExportBtn:boolean = false;
   clipBoardItems = [];
   flowDataOfSwitch:any={};
   constructor(private loaderService : LoaderService,
@@ -64,7 +66,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       dom: 'tpli',
       colResize:false,
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
-      "responsive": true,
+      "responsive": true, 
         drawCallback:function(){
           if(jQuery('#switchDataTable tbody tr').length < 10){
             jQuery('#switchDataTable_next').addClass('disabled');
@@ -81,7 +83,8 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
         { sWidth: '10%' },        
         { sWidth: '15%' },
         { sWidth: '25%' },
-        { sWidth: '10%' }],
+        { sWidth: '10%' }
+      ],
       language: {
         searchPlaceholder: "Search"
       },
@@ -93,41 +96,101 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       },
       columnDefs:[
         { targets: [4], visible: false},
-        { targets: [9], visible: false},
+        { targets: [9], visible: false}
       ]
     };
 
-    this.fetchSwitchFlowData(this.data);
+    this.fetchSwitchFlowDataObj();
   
   }
 
-  fetchSwitchFlowData(switchlist){
-    if(switchlist && switchlist.length){
-      var i = 0;
-      for(let switchData of switchlist){
-          this.flowSubscription[i] = this.switchService.getSwitchFlows(switchData.switch_id,switchData['inventory-switch'],null).subscribe(data=>{
+  async fetchSwitchFlowDataObj(){
+   
+    if(this.data && this.data.length){
+      var i=0;
+      var processComplete = 1;
+      this.data.forEach((d)=>{
+        this.flowSubscription[i] = this.switchService.getSwitchFlows(d.switch_id,d['inventory-switch'],null).subscribe(data=>{
           let flowsData:any = data;
-          this.flowDataOfSwitch[switchData.switch_id] = {};
-          this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = 0;
-          this.flowDataOfSwitch[switchData.switch_id].noofflows = 0;
+          d['sumofbandwidth'] = 0;
+          d['noofflows'] = 0;
             if(flowsData && flowsData.length){
               for(let flow of flowsData){
-                this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth + (flow.maximum_bandwidth / 1000);
+                d['sumofbandwidth'] = d['sumofbandwidth']  + (flow.maximum_bandwidth / 1000);
               }
-              if(this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth){
-                this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth.toFixed(3); 
-              }
-              
-             this.flowDataOfSwitch[switchData.switch_id].noofflows = flowsData.length;
+              if(d['sumofbandwidth'] ){
+                d['sumofbandwidth'] = d['sumofbandwidth'].toFixed(3); 
+              }              
+              d['noofflows'] = flowsData.length;
             }
           },error=>{
-            this.flowDataOfSwitch[switchData.switch_id] = {};
-           this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = 0;
-           this.flowDataOfSwitch[switchData.switch_id].noofflows = 0;
+            d['sumofbandwidth'] = 0;
+            d['noofflows'] = 0;
+          },()=>{
+            processComplete = processComplete + 1;
+            if(this.data.length == processComplete){
+              this.enableExportBtn = true;
+            }
           }) 
-         i++;          
-      }
+         i++; 
+      });
+      
     }
+  }
+
+  exportCsv(val){
+    var headings = ["Switch ID", "Name", "Address","Hostname","Pop Location","Sum(Bandwidth) of Flows(Mbps)","No Of Flows","Description","State", "Evacuate", "Hardware","Location","Manufacturer","Version","Port", "Serial Number","Software", "Under Maintenance"];
+   
+    if(val){
+       headings = ["Switch ID", "Name", "Address","Hostname","Pop Location","Sum(Bandwidth) of Flows(Mbps)","No Of Flows","Description","State"];
+     }
+    var lineArray = [];
+    lineArray.push(headings);
+    this.data.forEach(function(d){
+      var line = [];
+      line.push("\"" + ((d.switch_id)? d.switch_id : '-') + "\"");
+      line.push("\"" + ((d.name)? d.name : '-') + "\"");
+      line.push("\"" + ((d.address)? d.address : '-') + "\"");
+      line.push("\"" + ((d.hostname)? d.hostname : '-') + "\"");
+      line.push("\"" + (d['pop-location'] || '-') + "\"");
+      line.push("\"" + ((d.sumofbandwidth || d.sumofbandwidth ==0) ? d.sumofbandwidth : '-') + "\"");
+      line.push("\"" + ((d.noofflows || d.noofflows == 0 ) ? d.noofflows : '-') + "\"");
+      line.push("\"" + ((d.description)? d.description : '-') + "\"");
+      line.push("\"" + ((d.state)? d.state : '-') + "\"");
+      if(!val){
+        var locationString = 'longitude:'+((d.location.longitude) ? d.location.longitude : '-')+', latitude:'+((d.location.latitude)? d.location.latitude : '-')+', city:'+((d.location.city) ? d.location.city : '-')+', street:'+((d.location.street)? d.location.street : '-')+', Country:'+((d.location.country)? d.location.country : '-');
+        line.push("\"" + ((d.evacuate)? d.evacuate : 'false') + "\"");
+        line.push("\"" + ((d.hardware)? d.hardware : '-') + "\"");
+        line.push("\"" + locationString + "\"");
+        line.push("\"" + ((d.manufacturer)? d.manufacturer : '-') + "\"");
+        line.push("\"" + ((d.of_version)? d.of_version : '-') + "\"");
+        line.push("\"" + ((d.port)? d.port : '-') + "\"");
+        line.push("\"" + ((d.serial_number)? d.serial_number : '-') + "\"");
+        line.push("\"" + ((d.software)? d.software : '-') + "\"");
+        line.push("\"" + ((d.under_maintenance)? d.under_maintenance : 'false') + "\"");
+      }
+      
+      var csvLine = line.join(",");
+      lineArray.push(csvLine);
+    })
+    var fileName = "OPEN KILDA - Switches";
+    var csvContent = lineArray.join("\n");
+    let blob = new Blob(['\ufeff' + csvContent], {
+        type: 'text/csv;charset=utf-8;'
+    });
+    let dwldLink = document.createElement("a");
+    let url = URL.createObjectURL(blob);
+    let isSafariBrowser = navigator.userAgent.indexOf('Safari') != -1;
+    navigator.userAgent.indexOf('Chrome') == -1;
+    if (isSafariBrowser) {
+        dwldLink.setAttribute("target", "_blank");
+    }
+    dwldLink.setAttribute("href", url);
+    dwldLink.setAttribute("download", fileName + ".csv");
+    dwldLink.style.visibility = "hidden";
+    document.body.appendChild(dwldLink);
+    dwldLink.click();
+    document.body.removeChild(dwldLink);
   }
 
    
@@ -145,7 +208,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
     });
     this.checkSwitchSettings();
   }
-
+ 
   ngOnDestroy(): void {
     this.dtTrigger.unsubscribe();
     if(this.flowSubscription && this.flowSubscription.length){

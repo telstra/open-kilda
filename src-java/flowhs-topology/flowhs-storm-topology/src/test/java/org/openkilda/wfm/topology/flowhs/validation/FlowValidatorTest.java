@@ -30,6 +30,7 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.validation.FlowValidator.EndpointDescriptor;
 
@@ -71,12 +72,14 @@ public class FlowValidatorTest {
                 .destSwitch(SWITCH_ID_2)
                 .destPort(10)
                 .destVlan(11)
+                .detectConnectedDevices(new DetectConnectedDevices())
                 .build();
 
         RequestedFlow secondFlow = RequestedFlow.builder()
                 .flowId("secondFlow")
                 .srcSwitch(SWITCH_ID_2)
                 .destSwitch(SWITCH_ID_2)
+                .detectConnectedDevices(new DetectConnectedDevices())
                 .build();
 
         flowValidator.checkForEqualsEndpoints(firstFlow, secondFlow);
@@ -91,6 +94,7 @@ public class FlowValidatorTest {
                 .srcVlan(11)
                 .destSwitch(SWITCH_ID_2)
                 .destPort(12)
+                .detectConnectedDevices(new DetectConnectedDevices())
                 .build();
 
         RequestedFlow secondFlow = RequestedFlow.builder()
@@ -101,6 +105,7 @@ public class FlowValidatorTest {
                 .destSwitch(SWITCH_ID_1)
                 .destPort(10)
                 .destVlan(11)
+                .detectConnectedDevices(new DetectConnectedDevices())
                 .build();
 
         flowValidator.checkForEqualsEndpoints(firstFlow, secondFlow);
@@ -116,6 +121,7 @@ public class FlowValidatorTest {
                 .destSwitch(SWITCH_ID_2)
                 .destPort(12)
                 .destVlan(13)
+                .detectConnectedDevices(new DetectConnectedDevices())
                 .build();
 
         RequestedFlow secondFlow = RequestedFlow.builder()
@@ -126,6 +132,7 @@ public class FlowValidatorTest {
                 .destSwitch(SWITCH_ID_2)
                 .destPort(12)
                 .destVlan(13)
+                .detectConnectedDevices(new DetectConnectedDevices())
                 .build();
 
         flowValidator.checkForEqualsEndpoints(firstFlow, secondFlow);
@@ -141,6 +148,7 @@ public class FlowValidatorTest {
                 .destSwitch(SWITCH_ID_2)
                 .destPort(12)
                 .destVlan(13)
+                .detectConnectedDevices(new DetectConnectedDevices())
                 .build();
 
         RequestedFlow secondFlow = RequestedFlow.builder()
@@ -151,6 +159,7 @@ public class FlowValidatorTest {
                 .destSwitch(SWITCH_ID_2)
                 .destPort(16)
                 .destVlan(17)
+                .detectConnectedDevices(new DetectConnectedDevices())
                 .build();
 
         flowValidator.checkForEqualsEndpoints(firstFlow, secondFlow);

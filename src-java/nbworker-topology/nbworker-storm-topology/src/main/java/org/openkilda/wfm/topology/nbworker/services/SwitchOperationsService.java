@@ -24,6 +24,7 @@ import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchConnectionsResponse;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
@@ -35,7 +36,9 @@ import org.openkilda.model.SwitchConnect;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.SwitchProperties.RttState;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -76,6 +79,7 @@ public class SwitchOperationsService {
     private PortPropertiesRepository portPropertiesRepository;
     private SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
     private FlowMirrorPointsRepository flowMirrorPointsRepository;
+    private FlowMirrorPathRepository flowMirrorPathRepository;
     private TransactionManager transactionManager;
     private LinkOperationsService linkOperationsService;
     private IslRepository islRepository;
@@ -97,6 +101,7 @@ public class SwitchOperationsService {
         this.switchConnectRepository = repositoryFactory.createSwitchConnectRepository();
         this.switchConnectedDeviceRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
         this.flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
+        this.flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
         this.carrier = carrier;
     }
 
@@ -318,6 +323,7 @@ public class SwitchOperationsService {
             switchProperties.setSwitchArp(update.isSwitchArp());
             switchProperties.setSupportedTransitEncapsulation(update.getSupportedTransitEncapsulation());
             switchProperties.setServer42FlowRtt(update.isServer42FlowRtt());
+            switchProperties.setServer42IslRtt(update.getServer42IslRtt());
             switchProperties.setServer42Port(update.getServer42Port());
             switchProperties.setServer42Vlan(update.getServer42Vlan());
             switchProperties.setServer42MacAddress(update.getServer42MacAddress());
@@ -338,20 +344,28 @@ public class SwitchOperationsService {
             carrier.disableServer42FlowRttOnSwitch(switchId);
         }
 
+        if (switchPropertiesDto.getServer42IslRtt() != SwitchPropertiesDto.RttState.DISABLED) {
+            carrier.enableServer42IslRttOnSwitch(switchId);
+        } else {
+            carrier.disableServer42IslRttOnSwitch(switchId);
+        }
+
         return result.switchPropertiesDto;
     }
 
     private boolean isSwitchSyncNeeded(SwitchProperties current, SwitchProperties updated) {
+        boolean server42RttChanged = current.isServer42FlowRtt() != updated.isServer42FlowRtt()
+                || current.getServer42IslRtt() != updated.getServer42IslRtt();
+        boolean server42PropsChanged = (updated.isServer42FlowRtt() || updated.getServer42IslRtt() != RttState.DISABLED)
+                && (!Objects.equals(current.getServer42Port(), updated.getServer42Port())
+                || !Objects.equals(current.getServer42MacAddress(), updated.getServer42MacAddress())
+                || !Objects.equals(current.getServer42Vlan(), updated.getServer42Vlan()));
+
         return current.isMultiTable() != updated.isMultiTable()
                 || current.isSwitchLldp() != updated.isSwitchLldp()
                 || current.isSwitchArp() != updated.isSwitchArp()
-                || current.isServer42FlowRtt() != updated.isServer42FlowRtt()
-                || (updated.isServer42FlowRtt() && !Objects.equals(
-                current.getServer42Port(), updated.getServer42Port()))
-                || (updated.isServer42FlowRtt() && !Objects.equals(
-                current.getServer42MacAddress(), updated.getServer42MacAddress()))
-                || (updated.isServer42FlowRtt() && !Objects.equals(
-                current.getServer42Vlan(), updated.getServer42Vlan()));
+                || server42RttChanged
+                || server42PropsChanged;
     }
 
     private void validateSwitchProperties(SwitchId switchId, SwitchProperties updatedSwitchProperties) {
@@ -409,11 +423,43 @@ public class SwitchOperationsService {
             }
         }
 
+        if (updatedSwitchProperties.getServer42IslRtt() == RttState.ENABLED) {
+            String errorMessage = "Illegal switch properties combination for switch %s. To enable property "
+                    + "'server42_isl_rtt' you need to specify valid property '%s'";
+            if (updatedSwitchProperties.getServer42Port() == null) {
+                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_port"));
+            }
+            if (updatedSwitchProperties.getServer42MacAddress() == null) {
+                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_mac_address"));
+            }
+            if (updatedSwitchProperties.getServer42Vlan() == null) {
+                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_vlan"));
+            }
+        }
+
         Collection<FlowMirrorPoints> flowMirrorPoints = flowMirrorPointsRepository.findBySwitchId(switchId);
         if (!flowMirrorPoints.isEmpty()
                 && (updatedSwitchProperties.isSwitchLldp() || updatedSwitchProperties.isSwitchArp())) {
             throw new IllegalSwitchPropertiesException(format("Flow mirror point is created on the switch %s, "
                     + "switchLldp or switchArp can not be set to true.", switchId));
+        }
+
+        if (updatedSwitchProperties.getServer42Port() != null) {
+            String errorMessage = "SwitchId '%s' and port '%d' belong to the %s endpoint. "
+                    + "Cannot specify port '%d' as port for server 42.";
+            int server42port = updatedSwitchProperties.getServer42Port();
+            Collection<Flow> flows = flowRepository.findByEndpoint(switchId, server42port);
+            if (!flows.isEmpty()) {
+                throw new IllegalSwitchPropertiesException(
+                        format(errorMessage, switchId, server42port, "flow", server42port));
+            }
+
+            Collection<FlowMirrorPath> flowMirrorPaths = flowMirrorPathRepository.findByEgressSwitchIdAndPort(switchId,
+                    server42port);
+            if (!flowMirrorPaths.isEmpty()) {
+                throw new IllegalSwitchPropertiesException(
+                        format(errorMessage, switchId, server42port, "flow mirror path", server42port));
+            }
         }
     }
 

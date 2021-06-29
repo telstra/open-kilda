@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.97.0 (22/06/2021)
+
+### Features:
+-  [#4256](https://github.com/telstra/open-kilda/pull/4256) Implement rules handling for Server42 ISL RTT [**floodlight**][**storm-topologies**]
+-  [#4257](https://github.com/telstra/open-kilda/pull/4257) Implement messaging for Server42 ISL RTT (Issue: [#4256](https://github.com/telstra/open-kilda/issues/4256)) [**storm-topologies**]
+-  [#4264](https://github.com/telstra/open-kilda/pull/4264) Implement ISL RTT support in Server42 (Issue: [#4257](https://github.com/telstra/open-kilda/issues/4257))
+-  [#4309](https://github.com/telstra/open-kilda/pull/4309) - adding feature to export switch list to csv format (Issue: [#4308](https://github.com/telstra/open-kilda/issues/4308)) [**gui**]
+
+### Bug Fixes:
+-  [#4295](https://github.com/telstra/open-kilda/pull/4295) Add validation for conflict between connected devices and flow mirror point
+-  [#4302](https://github.com/telstra/open-kilda/pull/4302) Put correct field name for message payload
+-  [#4304](https://github.com/telstra/open-kilda/pull/4304) Add validation for conflict between server 42 and flow mirror point (Issue: [#4282](https://github.com/telstra/open-kilda/issues/4282)) [**storm-topologies**]
+-  [#4312](https://github.com/telstra/open-kilda/pull/4312) Add set_udp_src_port into action list for server42 output action [**floodlight**]
+-  [#4281](https://github.com/telstra/open-kilda/pull/4281) Sync transit rules via SpeackerCommand [**floodlight**]
+
+### Improvements:
+-  [#4321](https://github.com/telstra/open-kilda/pull/4321) Replace sun.misc.BASE64* with java.util.Base64 [**gui**]
+-  [#4293](https://github.com/telstra/open-kilda/pull/4293) Move flow transit encapsulation actions to group bucket [**floodlight**]
+-  [#4296](https://github.com/telstra/open-kilda/pull/4296) Add feature toggle for flow SLA monitoring reactions
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.96.0...v1.97.0).
+
+### Affected Components:
+isllatency, swmanager, gui, fl, flow-monitor, nbworker, network, server42, flow-hs
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
 ## v1.96.0 (11/06/2021)
 
 ### Features:

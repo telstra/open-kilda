@@ -22,7 +22,7 @@ import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentBase;
 import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42InputFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42FlowRttInputFlowGenerator;
 import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
 import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
@@ -336,7 +336,7 @@ public abstract class IngressFlowModFactory {
     public Optional<OFFlowMod> makeServer42InputFlowMessage(int server42UpdPortOffset) {
         RulesContext context = command.getRulesContext();
 
-        Optional<OFFlowMod> flowMod = Server42InputFlowGenerator.generateFlowMod(of, switchFeatures,
+        Optional<OFFlowMod> flowMod = Server42FlowRttInputFlowGenerator.generateFlowMod(of, switchFeatures,
                 server42UpdPortOffset, command.getEndpoint().getPortNumber(), context.getServer42Port(),
                 context.getServer42MacAddress());
 
@@ -436,7 +436,7 @@ public abstract class IngressFlowModFactory {
 
     private FlowSegmentCookie buildServer42IngressCookie() {
         return new FlowSegmentCookie(command.getCookie().getValue()).toBuilder()
-                .type(CookieType.SERVER_42_INGRESS)
+                .type(CookieType.SERVER_42_FLOW_RTT_INGRESS)
                 .build();
     }
 

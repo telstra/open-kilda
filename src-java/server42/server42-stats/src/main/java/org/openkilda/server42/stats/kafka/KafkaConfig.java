@@ -24,7 +24,12 @@ import org.springframework.kafka.config.TopicBuilder;
 @Configuration
 public class KafkaConfig {
     @Bean
-    public NewTopic toStorm(@Value("${openkilda.server42.stats.kafka.topic.flowrtt.to_storm}") String name) {
+    public NewTopic flowRttToStorm(@Value("${openkilda.server42.stats.kafka.topic.flowrtt.to_storm}") String name) {
+        return TopicBuilder.name(name).build();
+    }
+
+    @Bean
+    public NewTopic islRttToStorm(@Value("${openkilda.server42.stats.kafka.topic.islrtt.to_storm}") String name) {
         return TopicBuilder.name(name).build();
     }
 }

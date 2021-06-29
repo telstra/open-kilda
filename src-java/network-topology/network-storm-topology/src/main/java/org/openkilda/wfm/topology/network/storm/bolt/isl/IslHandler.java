@@ -186,9 +186,11 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     }
 
     @Override
-    public void islDefaultRulesInstall(Endpoint source, Endpoint destination) {
+    public void islDefaultRulesInstall(Endpoint source, Endpoint destination, boolean multitableMode,
+                                       boolean server42IslRtt, Integer server42Port) {
         emit(STREAM_SPEAKER_RULES_ID, getCurrentTuple(), makeSpeakerRulesTuple(
-                new SpeakerRulesIslInstallCommand(keyFactory.next(), source, destination)));
+                new SpeakerRulesIslInstallCommand(keyFactory.next(), source, destination, multitableMode,
+                        server42IslRtt, server42Port)));
     }
 
     @Override

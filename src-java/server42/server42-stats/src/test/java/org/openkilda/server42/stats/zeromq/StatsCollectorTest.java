@@ -21,9 +21,9 @@ import static org.mockito.Mockito.verify;
 
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowRttStatsData;
-import org.openkilda.server42.stats.messaging.flowrtt.Statistics.FlowLatencyPacket;
-import org.openkilda.server42.stats.messaging.flowrtt.Statistics.FlowLatencyPacketBucket;
-import org.openkilda.server42.stats.messaging.flowrtt.Statistics.FlowLatencyPacketBucket.Builder;
+import org.openkilda.server42.stats.messaging.Statistics.FlowLatencyPacket;
+import org.openkilda.server42.stats.messaging.Statistics.LatencyPacketBucket;
+import org.openkilda.server42.stats.messaging.Statistics.LatencyPacketBucket.Builder;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -53,7 +53,7 @@ public class StatsCollectorTest {
 
     @Test
     public void sendStatsTest() throws Exception {
-        Builder bucketBuilder = FlowLatencyPacketBucket.newBuilder();
+        Builder bucketBuilder = LatencyPacketBucket.newBuilder();
         FlowLatencyPacket packet1 = FlowLatencyPacket.newBuilder()
                 .setFlowId("some-flow-id-1")
                 .setDirection(false)
@@ -65,8 +65,8 @@ public class StatsCollectorTest {
                 .setT0(200)
                 .setT1(250)
                 .setPacketId(2).build();
-        bucketBuilder.addPacket(packet1);
-        bucketBuilder.addPacket(packet2);
+        bucketBuilder.addFlowLatencyPacket(packet1);
+        bucketBuilder.addFlowLatencyPacket(packet2);
 
         statsCollector.sendStats(bucketBuilder.build());
 

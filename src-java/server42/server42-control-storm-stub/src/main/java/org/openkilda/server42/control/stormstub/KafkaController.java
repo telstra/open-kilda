@@ -16,12 +16,18 @@
 
 package org.openkilda.server42.control.stormstub;
 
+import org.openkilda.model.SwitchId;
 import org.openkilda.server42.control.messaging.flowrtt.ClearFlows;
 import org.openkilda.server42.control.messaging.flowrtt.Headers;
 import org.openkilda.server42.control.messaging.flowrtt.ListFlowsRequest;
 import org.openkilda.server42.control.messaging.flowrtt.ListFlowsResponse;
 import org.openkilda.server42.control.messaging.flowrtt.RemoveFlow;
+import org.openkilda.server42.control.messaging.islrtt.ClearIsls;
+import org.openkilda.server42.control.messaging.islrtt.ListIslsRequest;
+import org.openkilda.server42.control.messaging.islrtt.ListIslsResponse;
+import org.openkilda.server42.control.messaging.islrtt.RemoveIsl;
 import org.openkilda.server42.control.stormstub.api.AddFlowPayload;
+import org.openkilda.server42.control.stormstub.api.AddIslPayload;
 import org.openkilda.server42.control.stormstub.api.PushSettingsPayload;
 import org.openkilda.server42.messaging.FlowDirection;
 
@@ -36,6 +42,7 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -141,6 +148,74 @@ public class KafkaController {
         } catch (NullPointerException ex) {
             log.error("ListFlowsRequest dropped correlation_id {}", listFlowsResponse.getHeaders().getCorrelationId());
         }
+    }
+
+    @KafkaListener(id = "server42-control-storm-stub-isls",
+            topics = "${openkilda.server42.control.kafka.topic.to_storm}")
+    private void listen(ListIslsResponse listIslsResponse) {
+        try {
+            DeferredResult<ResponseEntity<?>> responseEntityDeferredResult =
+                    deferredResultConcurrentHashMap.get(listIslsResponse.getHeaders().getCorrelationId());
+            log.info("ListIslsResponse: {}, {}", listIslsResponse.getPorts(), mapper.map(listIslsResponse));
+            responseEntityDeferredResult.setResult(ResponseEntity.ok(mapper.map(listIslsResponse)));
+        } catch (NullPointerException ex) {
+            log.error("ListIslsResponse dropped correlation_id {}", listIslsResponse.getHeaders().getCorrelationId());
+        }
+    }
+
+    @PostMapping(value = "/isl")
+    private void createIsl(@RequestBody AddIslPayload isl)
+            throws InterruptedException, ExecutionException, TimeoutException {
+        send(isl.getSwitchId().toString(), mapper.map(isl));
+    }
+
+    @GetMapping(value = "/isl")
+    @ResponseBody
+    private DeferredResult<ResponseEntity<?>> getIslList(@RequestParam String switchId)
+            throws InterruptedException, ExecutionException, TimeoutException {
+
+        Headers headers = buildHeader();
+        String correlationId = headers.getCorrelationId();
+        send(switchId, ListIslsRequest.builder().headers(headers)
+                .switchId(new SwitchId(switchId)).build());
+
+        DeferredResult<ResponseEntity<?>> deferredResult = new DeferredResult<>(500L);
+
+        deferredResult.onTimeout(() -> {
+            deferredResult.setErrorResult(
+                    ResponseEntity.status(HttpStatus.REQUEST_TIMEOUT)
+                            .body("Request timeout occurred."));
+            deferredResultConcurrentHashMap.remove(correlationId);
+        });
+
+        deferredResult.onCompletion(() ->
+                deferredResultConcurrentHashMap.remove(correlationId)
+        );
+
+        deferredResult.onError((Throwable throwable) -> {
+            deferredResult.setErrorResult(
+                    ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(throwable));
+            deferredResultConcurrentHashMap.remove(correlationId);
+        });
+
+        deferredResultConcurrentHashMap.put(correlationId, deferredResult);
+
+        return deferredResult;
+    }
+
+    @DeleteMapping(value = "/isl/{switchId}/{port}")
+    private void deleteIsl(@PathVariable String switchId, @PathVariable Integer port)
+            throws InterruptedException, ExecutionException, TimeoutException {
+        send(switchId, RemoveIsl.builder().headers(buildHeader())
+                .switchId(new SwitchId(switchId)).port(port).build());
+    }
+
+    @DeleteMapping(value = "/isl")
+    private void clearIsls(@RequestParam String switchId)
+            throws InterruptedException, ExecutionException, TimeoutException {
+        send(switchId, ClearIsls.builder().headers(buildHeader())
+                .switchId(new SwitchId(switchId)).build());
     }
 
     private void send(String switchId, Object payload)

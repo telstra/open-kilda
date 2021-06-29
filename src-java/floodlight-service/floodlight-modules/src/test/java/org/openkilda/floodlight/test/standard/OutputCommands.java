@@ -26,7 +26,11 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_M
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.MINIMAL_POSITIVE_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_RULE_PRIORITY;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_ISL_RTT_FORWARD_UDP_PORT;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_ISL_RTT_REVERSE_UDP_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.VERIFICATION_RULE_VXLAN_PRIORITY;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE;
 
 import org.openkilda.floodlight.OFFactoryMock;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
@@ -445,6 +449,103 @@ public interface OutputCommands {
                                                         .setValue(MacAddress.of(dpid))
                                                         .build()).build()))
                 ))
+                .build();
+    }
+
+    default OFFlowAdd installServer42IslRttInputFlowMod(DatapathId dpid, int server42Port, int islPort,
+                                                        String fakedMacAddress) {
+        Match match = ofFactory.buildMatch()
+                .setExact(MatchField.IN_PORT, OFPort.of(server42Port))
+                .setMasked(MatchField.ETH_DST, MacAddress.of(dpid), MacAddress.NO_MASK)
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                .setExact(MatchField.UDP_SRC, TransportPort.of(10000 + islPort))
+                .build();
+        return ofFactory.buildFlowAdd()
+                .setCookie(U64.of(Cookie.encodeServer42IslRttInput(islPort)))
+                .setPriority(SwitchManager.SERVER_42_ISL_RTT_INPUT_PRIORITY)
+                .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setMatch(match)
+                .setInstructions(Arrays.asList(
+                        ofFactory.instructions().applyActions(Arrays.asList(
+                                ofFactory.actions().buildSetField()
+                                        .setField(
+                                                ofFactory.oxms().buildUdpSrc()
+                                                        .setValue(TransportPort.of(SERVER_42_ISL_RTT_FORWARD_UDP_PORT))
+                                                        .build()).build(),
+                                ofFactory.actions().buildSetField()
+                                        .setField(
+                                                ofFactory.oxms().buildEthDst()
+                                                        .setValue(MacAddress.of(fakedMacAddress))
+                                                        .build()).build(),
+                                ofFactory.actions().buildOutput()
+                                        .setMaxLen(0xFFFFFFFF)
+                                        .setPort(OFPort.of(islPort))
+                                        .build()))))
+                .build();
+    }
+
+    default OFFlowAdd installServer42IslRttTurningFlowMod(String fakedMacAddress) {
+        Match match = ofFactory.buildMatch()
+                .setMasked(MatchField.ETH_DST, MacAddress.of(fakedMacAddress), MacAddress.NO_MASK)
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                .setExact(MatchField.UDP_SRC, TransportPort.of(SERVER_42_ISL_RTT_FORWARD_UDP_PORT))
+                .build();
+        return ofFactory.buildFlowAdd()
+                .setCookie(U64.of(SERVER_42_ISL_RTT_TURNING_COOKIE))
+                .setPriority(SwitchManager.SERVER_42_ISL_RTT_TURNING_PRIORITY)
+                .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setMatch(match)
+                .setInstructions(Arrays.asList(
+                        ofFactory.instructions().applyActions(Arrays.asList(
+                                ofFactory.actions().buildSetField()
+                                        .setField(
+                                                ofFactory.oxms().buildUdpSrc()
+                                                        .setValue(TransportPort.of(SERVER_42_ISL_RTT_REVERSE_UDP_PORT))
+                                                        .build()).build(),
+                                ofFactory.actions().buildOutput()
+                                        .setMaxLen(0xFFFFFFFF)
+                                        .setPort(OFPort.IN_PORT)
+                                        .build()))))
+                .build();
+    }
+
+    default OFFlowAdd installServer42IslRttOutputFlowMod(DatapathId dpid, int server42Port,
+                                                         String server42MacAddress, String fakedMacAddress) {
+        Match match = ofFactory.buildMatch()
+                .setMasked(MatchField.ETH_DST, MacAddress.of(fakedMacAddress), MacAddress.NO_MASK)
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                .setExact(MatchField.UDP_SRC, TransportPort.of(SERVER_42_ISL_RTT_REVERSE_UDP_PORT))
+                .build();
+        return ofFactory.buildFlowAdd()
+                .setCookie(U64.of(SERVER_42_ISL_RTT_OUTPUT_COOKIE))
+                .setPriority(SwitchManager.SERVER_42_ISL_RTT_OUTPUT_PRIORITY)
+                .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setMatch(match)
+                .setInstructions(Arrays.asList(
+                        ofFactory.instructions().applyActions(Arrays.asList(
+                                ofFactory.actions().buildSetField()
+                                        .setField(
+                                                ofFactory.oxms().buildEthSrc()
+                                                        .setValue(MacAddress.of(dpid))
+                                                        .build()).build(),
+                                ofFactory.actions().buildSetField()
+                                        .setField(
+                                                ofFactory.oxms().buildEthDst()
+                                                        .setValue(MacAddress.of(server42MacAddress))
+                                                        .build()).build(),
+                                ofFactory.actions().buildOutput()
+                                        .setMaxLen(0xFFFFFFFF)
+                                        .setPort(OFPort.of(server42Port))
+                                        .build()))))
                 .build();
     }
 }

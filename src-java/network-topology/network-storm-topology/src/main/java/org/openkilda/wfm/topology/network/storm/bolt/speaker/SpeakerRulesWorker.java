@@ -85,10 +85,12 @@ public class SpeakerRulesWorker extends WorkerBolt {
      * @param source endpoint
      * @param destination endpoint
      */
-    public void processSetupIslDefaultRulesRequest(String key, Endpoint source, Endpoint destination) {
+    public void processSetupIslRulesRequest(String key, Endpoint source, Endpoint destination,
+                                            boolean multitableMode, boolean server42IslRtt, Integer server42Port) {
         emitSpeakerRequest(key, InstallIslDefaultRulesCommand.builder().srcSwitch(source.getDatapath())
                 .srcPort(source.getPortNumber()).dstSwitch(destination.getDatapath())
-                .dstPort(destination.getPortNumber()).build());
+                .dstPort(destination.getPortNumber())
+                .multitableMode(multitableMode).server42IslRtt(server42IslRtt).server42Port(server42Port).build());
     }
 
     /**
@@ -98,7 +100,7 @@ public class SpeakerRulesWorker extends WorkerBolt {
      * @param source endpoint
      * @param destination endpoint
      */
-    public void processRemoveIslDefaultRulesRequest(String key, Endpoint source, Endpoint destination) {
+    public void processRemoveIslRulesRequest(String key, Endpoint source, Endpoint destination) {
         emitSpeakerRequest(key, RemoveIslDefaultRulesCommand.builder().srcSwitch(source.getDatapath())
                 .srcPort(source.getPortNumber()).dstSwitch(destination.getDatapath())
                 .dstPort(destination.getPortNumber()).build());

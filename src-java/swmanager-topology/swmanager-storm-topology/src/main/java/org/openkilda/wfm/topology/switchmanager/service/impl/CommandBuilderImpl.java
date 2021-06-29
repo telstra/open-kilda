@@ -16,8 +16,9 @@
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import static java.lang.String.format;
-import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VLAN_COOKIE;
-import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE;
 
 import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
@@ -36,6 +37,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.MirrorConfig.MirrorConfigData;
@@ -59,6 +61,7 @@ import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.service.FlowCommandFactory;
+import org.openkilda.wfm.topology.switchmanager.model.GroupInstallContext;
 import org.openkilda.wfm.topology.switchmanager.service.CommandBuilder;
 
 import com.fasterxml.uuid.Generators;
@@ -166,7 +169,7 @@ public class CommandBuilderImpl implements CommandBuilder {
                     }
 
                     long server42Cookie = flowPath.getCookie().toBuilder()
-                            .type(CookieType.SERVER_42_INGRESS)
+                            .type(CookieType.SERVER_42_FLOW_RTT_INGRESS)
                             .build()
                             .getValue();
                     if (switchRules.contains(server42Cookie) && !flowPath.isOneSwitchFlow()
@@ -231,9 +234,11 @@ public class CommandBuilderImpl implements CommandBuilder {
      * Some default rules require additional properties to be installed. This method filters such rules.
      */
     private static boolean isDefaultRuleWithSpecialRequirements(long cookie) {
-        return cookie == SERVER_42_OUTPUT_VLAN_COOKIE
-                || cookie == SERVER_42_OUTPUT_VXLAN_COOKIE
-                || new PortColourCookie(cookie).getType() == CookieType.SERVER_42_INPUT;
+        return cookie == SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE
+                || cookie == SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
+                || new PortColourCookie(cookie).getType() == CookieType.SERVER_42_FLOW_RTT_INPUT
+                || cookie == SERVER_42_ISL_RTT_OUTPUT_COOKIE
+                || new PortColourCookie(cookie).getType() == CookieType.SERVER_42_ISL_RTT_INPUT;
     }
 
     /**
@@ -254,19 +259,29 @@ public class CommandBuilderImpl implements CommandBuilder {
                     .server42Vlan(properties.getServer42Vlan())
                     .server42MacAddress(properties.getServer42MacAddress());
 
-            if (cookie == SERVER_42_OUTPUT_VLAN_COOKIE) {
+            if (cookie == SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE) {
                 commands.add(command
-                        .id("SWMANAGER_SERVER_42_OUTPUT_VLAN_RULE_INSTALL")
+                        .id("SWMANAGER_SERVER_42_FLOW_RTT_OUTPUT_VLAN_RULE_INSTALL")
                         .outputPort(properties.getServer42Port())
                         .build());
-            } else if (cookie == SERVER_42_OUTPUT_VXLAN_COOKIE) {
+            } else if (cookie == SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE) {
                 commands.add(command
-                        .id("SWMANAGER_SERVER_42_OUTPUT_VXLAN_RULE_INSTALL")
+                        .id("SWMANAGER_SERVER_42_FLOW_RTT_OUTPUT_VXLAN_RULE_INSTALL")
                         .outputPort(properties.getServer42Port())
                         .build());
-            } else if (new PortColourCookie(cookie).getType() == CookieType.SERVER_42_INPUT) {
+            } else if (new PortColourCookie(cookie).getType() == CookieType.SERVER_42_FLOW_RTT_INPUT) {
                 commands.add(command
-                        .id("SWMANAGER_SERVER_42_INPUT_RULE_INSTALL")
+                        .id("SWMANAGER_SERVER_42_FLOW_RTT_INPUT_RULE_INSTALL")
+                        .inputPort(properties.getServer42Port())
+                        .build());
+            } else if (cookie == SERVER_42_ISL_RTT_OUTPUT_COOKIE) {
+                commands.add(command
+                        .id("SWMANAGER_SERVER_42_ISL_RTT_OUTPUT_RULE_INSTALL")
+                        .outputPort(properties.getServer42Port())
+                        .build());
+            } else if (new PortColourCookie(cookie).getType() == CookieType.SERVER_42_ISL_RTT_INPUT) {
+                commands.add(command
+                        .id("SWMANAGER_SERVER_42_ISL_RTT_INPUT_RULE_INSTALL")
                         .inputPort(properties.getServer42Port())
                         .build());
             } else {
@@ -357,8 +372,8 @@ public class CommandBuilderImpl implements CommandBuilder {
     }
 
     @Override
-    public List<MirrorConfig> buildMirrorConfigs(SwitchId switchId, List<Integer> groupIds) {
-        List<MirrorConfig> mirrorConfigs = new ArrayList<>();
+    public List<GroupInstallContext> buildGroupInstallContexts(SwitchId switchId, List<Integer> groupIds) {
+        List<GroupInstallContext> groupInstallContexts = new ArrayList<>();
 
         Map<PathId, MirrorGroup> mirrorGroups = new HashMap<>();
         groupIds.stream()
@@ -380,7 +395,7 @@ public class CommandBuilderImpl implements CommandBuilder {
                         if (segment.getDestSwitchId().equals(flowPath.getDestSwitchId())) {
                             MirrorConfig mirrorConfig
                                     = makeMirrorConfig(flowPath, flow.getDestSwitchId(), flow.getDestPort());
-                            mirrorConfigs.add(mirrorConfig);
+                            groupInstallContexts.add(GroupInstallContext.builder().mirrorConfig(mirrorConfig).build());
 
                             log.info("Group {} is to be (re)installed on switch {}",
                                     mirrorConfig.getGroupId(), switchId);
@@ -396,7 +411,7 @@ public class CommandBuilderImpl implements CommandBuilder {
                             SwitchId swId = flowPath.isForward() ? flow.getDestSwitchId() : flow.getSrcSwitchId();
                             int port = flowPath.isForward() ? flow.getDestPort() : flow.getSrcPort();
                             MirrorConfig mirrorConfig = makeMirrorConfig(flowPath, swId, port);
-                            mirrorConfigs.add(mirrorConfig);
+                            groupInstallContexts.add(GroupInstallContext.builder().mirrorConfig(mirrorConfig).build());
                             log.info("Group {} is to be (re)installed on switch {}",
                                     mirrorConfig.getGroupId(), switchId);
                         } else if (flowPath.getSrcSwitchId().equals(switchId)) {
@@ -406,14 +421,22 @@ public class CommandBuilderImpl implements CommandBuilder {
                                 PathSegment foundIngressSegment = flowPath.getSegments().get(0);
                                 MirrorConfig mirrorConfig = makeMirrorConfig(flowPath,
                                         foundIngressSegment.getSrcSwitchId(), foundIngressSegment.getSrcPort());
-                                mirrorConfigs.add(mirrorConfig);
+                                EncapsulationResources encapsulation = getEncapsulationResources(flowPath, flow);
+                                groupInstallContexts.add(GroupInstallContext.builder()
+                                        .mirrorConfig(mirrorConfig)
+                                        .encapsulation(
+                                                new FlowTransitEncapsulation(encapsulation.getTransitEncapsulationId(),
+                                                        encapsulation.getEncapsulationType()))
+                                        .egressSwitchId(flowPath.getDestSwitchId())
+                                        .build());
                                 log.info("Group {} is to be (re)installed on switch {}",
                                         mirrorConfig.getGroupId(), switchId);
                             }
                         }
                     }
                 });
-        return mirrorConfigs;
+
+        return groupInstallContexts;
     }
 
     @VisibleForTesting

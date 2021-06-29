@@ -23,10 +23,10 @@ import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.prepareFlow
 import static org.openkilda.floodlight.switchmanager.SwitchManager.INPUT_TABLE_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.NOVIFLOW_TIMESTAMP_SIZE_IN_BITS;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.PRE_INGRESS_TABLE_ID;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FORWARD_UDP_PORT;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_INPUT_PRIORITY;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_FORWARD_UDP_PORT;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_INPUT_PRIORITY;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
-import static org.openkilda.model.cookie.Cookie.encodeServer42InputInput;
+import static org.openkilda.model.cookie.Cookie.encodeServer42FlowRttInput;
 
 import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.service.FeatureDetectorService;
@@ -57,7 +57,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public class Server42InputFlowGenerator implements SwitchFlowGenerator {
+public class Server42FlowRttInputFlowGenerator implements SwitchFlowGenerator {
     private final FeatureDetectorService featureDetectorService;
     private final KildaCore kildaCore;
     private final int server42Port;
@@ -65,7 +65,7 @@ public class Server42InputFlowGenerator implements SwitchFlowGenerator {
     private final MacAddress server42macAddress;
 
     @Builder
-    public Server42InputFlowGenerator(
+    public Server42FlowRttInputFlowGenerator(
             FeatureDetectorService featureDetectorService, KildaCore kildaCore, int server42Port, int customerPort,
             MacAddress server42macAddress) {
         this.featureDetectorService = featureDetectorService;
@@ -76,7 +76,7 @@ public class Server42InputFlowGenerator implements SwitchFlowGenerator {
     }
 
     /**
-     * Generated OFFlowMod for Server 42 input rule.
+     * Generated OFFlowMod for Server 42 Flow RTT input rule.
      */
     public static Optional<OFFlowMod> generateFlowMod(
             OFFactory ofFactory, Set<SwitchFeature> features, int udpOffset, int customerPort, int server42Port,
@@ -85,8 +85,8 @@ public class Server42InputFlowGenerator implements SwitchFlowGenerator {
 
 
         List<OFAction> actions = Lists.newArrayList(
-                actionSetUdpSrcAction(ofFactory, TransportPort.of(SERVER_42_FORWARD_UDP_PORT)),
-                actionSetUdpDstAction(ofFactory, TransportPort.of(SERVER_42_FORWARD_UDP_PORT)));
+                actionSetUdpSrcAction(ofFactory, TransportPort.of(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT)),
+                actionSetUdpDstAction(ofFactory, TransportPort.of(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT)));
         if (features.contains(NOVIFLOW_COPY_FIELD)) {
             actions.add(buildServer42CopyFirstTimestamp(ofFactory));
         }
@@ -97,7 +97,7 @@ public class Server42InputFlowGenerator implements SwitchFlowGenerator {
                 instructionGoToTable(ofFactory, TableId.of(PRE_INGRESS_TABLE_ID)));
 
         return Optional.of(prepareFlowModBuilder(
-                ofFactory, encodeServer42InputInput(customerPort), SERVER_42_INPUT_PRIORITY, INPUT_TABLE_ID)
+                ofFactory, encodeServer42FlowRttInput(customerPort), SERVER_42_FLOW_RTT_INPUT_PRIORITY, INPUT_TABLE_ID)
                 .setMatch(match)
                 .setInstructions(instructions)
                 .build());
@@ -107,7 +107,7 @@ public class Server42InputFlowGenerator implements SwitchFlowGenerator {
     public SwitchFlowTuple generateFlow(IOFSwitch sw) {
         Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
         Optional<OFFlowMod> flowMod = generateFlowMod(
-                sw.getOFFactory(), features, kildaCore.getConfig().getServer42UdpPortOffset(), customerPort,
+                sw.getOFFactory(), features, kildaCore.getConfig().getServer42FlowRttUdpPortOffset(), customerPort,
                 server42Port, server42macAddress);
 
         if (!flowMod.isPresent()) {

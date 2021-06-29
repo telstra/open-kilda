@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.isllatency.bolts;
 
+import static org.openkilda.wfm.share.utils.TimestampHelper.noviflowTimestamp;
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ISL_GROUPING_FIELD;
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.LATENCY_DATA_FIELD;
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.SWITCH_KEY_FIELD;
@@ -25,6 +26,8 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslOneWayLatency;
 import org.openkilda.messaging.info.event.IslRoundTripLatency;
+import org.openkilda.messaging.info.stats.IslRttStatsData;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.model.Endpoint;
@@ -57,6 +60,8 @@ public class RouterBolt extends AbstractBolt {
                     handleOneWayLatency(input, (IslOneWayLatency) data);
                 } else if (data instanceof IslRoundTripLatency) {
                     handleRoundTripLatency(input, (IslRoundTripLatency) data);
+                } else if (data instanceof IslRttStatsData) {
+                    handleRoundTripLatency(input, (IslRttStatsData) data);
                 } else {
                     unhandledInput(input);
                 }
@@ -77,6 +82,17 @@ public class RouterBolt extends AbstractBolt {
     private void handleRoundTripLatency(Tuple input, IslRoundTripLatency data) {
         getOutput().emit(StreamType.CACHE.toString(), input,
                 new Values(data.getSrcSwitchId().toString(), data, getCommandContext()));
+    }
+
+    private void handleRoundTripLatency(Tuple input, IslRttStatsData data) {
+        // IslRttStatsData comes from Server42 and holds timestamps in the noviflow format.
+        long t0 = noviflowTimestamp(data.getT0());
+        long t1 = noviflowTimestamp(data.getT1());
+
+        IslRoundTripLatency roundTripLatency = new IslRoundTripLatency(new SwitchId(data.getSwitchId()),
+                data.getPort(), t1 - t0, null, data.getOrigin());
+        getOutput().emit(StreamType.CACHE.toString(), input,
+                new Values(data.getSwitchId(), roundTripLatency, getCommandContext()));
     }
 
     @Override

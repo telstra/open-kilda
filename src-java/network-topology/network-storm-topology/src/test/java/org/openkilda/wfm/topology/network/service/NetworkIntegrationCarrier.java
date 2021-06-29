@@ -337,7 +337,8 @@ public class NetworkIntegrationCarrier
     }
 
     @Override
-    public void islDefaultRulesInstall(Endpoint source, Endpoint destination) {
+    public void islDefaultRulesInstall(Endpoint source, Endpoint destination, boolean multitableMode,
+                                       boolean server42IslRtt, Integer server42Port) {
         // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
     }
 

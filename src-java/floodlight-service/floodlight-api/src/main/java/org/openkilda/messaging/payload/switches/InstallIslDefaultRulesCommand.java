@@ -47,18 +47,31 @@ public class InstallIslDefaultRulesCommand extends CommandData {
     @JsonProperty("dst_port")
     private int dstPort;
 
+    @JsonProperty("multitable_mode")
+    private boolean multitableMode;
+
+    @JsonProperty("server42_isl_rtt")
+    private boolean server42IslRtt;
+
+    @JsonProperty("server42_port")
+    private Integer server42Port;
+
     @JsonCreator
     @Builder(toBuilder = true)
     public InstallIslDefaultRulesCommand(@JsonProperty("src_switch") final SwitchId srcSwitch,
                                          @JsonProperty("src_port") final int srcPort,
                                          @JsonProperty("dst_switch") final SwitchId dstSwitch,
-                                         @JsonProperty("dst_port") final int dstPort
-    ) {
+                                         @JsonProperty("dst_port") final int dstPort,
+                                         @JsonProperty("multitable_mode") boolean multitableMode,
+                                         @JsonProperty("server42_isl_rtt") boolean server42IslRtt,
+                                         @JsonProperty("server42_port") Integer server42Port) {
         this.srcSwitch = srcSwitch;
         this.srcPort = srcPort;
         this.dstSwitch = dstSwitch;
         this.dstPort = dstPort;
-
+        this.multitableMode = multitableMode;
+        this.server42IslRtt = server42IslRtt;
+        this.server42Port = server42Port;
     }
 }
 

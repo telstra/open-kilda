@@ -15,7 +15,11 @@
 
 package org.openkilda.floodlight.command.group;
 
+import static java.lang.String.format;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_UDP_SRC;
+
 import org.openkilda.floodlight.command.SpeakerCommandReport;
+import org.openkilda.floodlight.model.FlowTransitData;
 import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.MirrorConfig;
@@ -29,7 +33,7 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFGroupMod;
 import org.projectfloodlight.openflow.protocol.OFGroupType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
-import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
+import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 
@@ -41,10 +45,13 @@ import java.util.List;
 abstract class AbstractGroupInstall<T extends SpeakerCommandReport> extends GroupCommand<T> {
     // payload
     protected final MirrorConfig mirrorConfig;
+    protected final FlowTransitData flowTransitData;
 
-    AbstractGroupInstall(MessageContext messageContext, SwitchId switchId, MirrorConfig mirrorConfig) {
+    AbstractGroupInstall(MessageContext messageContext, SwitchId switchId, MirrorConfig mirrorConfig,
+                         FlowTransitData flowTransitData) {
         super(messageContext, switchId);
         this.mirrorConfig = mirrorConfig;
+        this.flowTransitData = flowTransitData;
     }
 
     protected OFGroupMod makeGroupAddOfMessage() {
@@ -65,11 +72,12 @@ abstract class AbstractGroupInstall<T extends SpeakerCommandReport> extends Grou
                 .setBuckets(buckets).build();
     }
 
-    private List<OFBucket> buildGroupOfBuckets(OFFactory ofFactory) {
-        OFActionOutput flowOutput = ofFactory.actions().buildOutput()
-                .setPort(OFPort.of(mirrorConfig.getFlowPort())).build();
+    protected List<OFBucket> buildGroupOfBuckets(OFFactory ofFactory) {
+        List<OFAction> flowActions = buildFlowActions(ofFactory);
+        flowActions.add(ofFactory.actions().buildOutput()
+                .setPort(OFPort.of(mirrorConfig.getFlowPort())).build());
         OFBucket flowBucket = ofFactory.buildBucket()
-                .setActions(Collections.singletonList(flowOutput))
+                .setActions(flowActions)
                 .setWatchGroup(OFGroup.ANY)
                 .build();
 
@@ -91,5 +99,26 @@ abstract class AbstractGroupInstall<T extends SpeakerCommandReport> extends Grou
         }
 
         return buckets;
+    }
+
+    private List<OFAction> buildFlowActions(OFFactory ofFactory) {
+        if (flowTransitData != null) {
+            switch (flowTransitData.getEncapsulation().getType()) {
+                case TRANSIT_VLAN:
+                    return OfAdapter.INSTANCE.makeVlanReplaceActions(ofFactory, Collections.emptyList(),
+                            Lists.newArrayList(flowTransitData.getEncapsulation().getId()));
+                case VXLAN:
+                    return Lists.newArrayList(OfAdapter.INSTANCE.makePushVxlanAction(
+                            ofFactory, flowTransitData.getEncapsulation().getId(),
+                            MacAddress.of(flowTransitData.getIngressSwitchId().toLong()),
+                            MacAddress.of(flowTransitData.getEgressSwitchId().toLong()),
+                            STUB_VXLAN_UDP_SRC));
+                default:
+                    log.warn(format("Unexpected transit encapsulation type \"%s\"",
+                            flowTransitData.getEncapsulation().getType()));
+            }
+        }
+
+        return new ArrayList<>();
     }
 }

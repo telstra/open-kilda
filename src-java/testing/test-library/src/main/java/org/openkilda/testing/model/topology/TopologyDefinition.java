@@ -331,15 +331,19 @@ public class TopologyDefinition {
         @JsonProperty("server42_vlan")
         private Integer server42Vlan;
 
+        @JsonProperty("server42_isl_rtt")
+        private Boolean server42IslRtt;
 
         public SwitchProperties(@JsonProperty("server42_flow_rtt") Boolean server42FlowRtt,
                                 @JsonProperty("server42_port") Integer server42Port,
                                 @JsonProperty("server42_mac_address") String server42MacAddress,
-                                @JsonProperty("server42_vlan") Integer server42Vlan) {
+                                @JsonProperty("server42_vlan") Integer server42Vlan,
+                                @JsonProperty("server42_isl_rtt") Boolean server42IslRtt) {
             this.server42FlowRtt = server42FlowRtt;
             this.server42Port = server42Port;
             this.server42MacAddress = server42MacAddress;
             this.server42Vlan = server42Vlan;
+            this.server42IslRtt = server42IslRtt;
         }
     }
 
