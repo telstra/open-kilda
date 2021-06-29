@@ -41,6 +41,7 @@ public class FlowPatch {
     private String diverseFlowId;
     private Boolean pinned;
     private Boolean ignoreBandwidth;
+    private Boolean strictBandwidth;
     private String description;
     private FlowEncapsulationType encapsulationType;
 }

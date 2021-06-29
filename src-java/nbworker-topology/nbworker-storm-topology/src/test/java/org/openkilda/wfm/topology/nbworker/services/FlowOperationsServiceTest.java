@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -354,6 +354,11 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
 
         // new ignore bandwidth flag
         flowPatch = FlowPatch.builder().ignoreBandwidth(true).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new strict bandwidth flag
+        flowPatch = FlowPatch.builder().strictBandwidth(true).build();
         result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
         assertTrue(result.isNeedUpdateFlow());
 

@@ -150,6 +150,7 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         }
         flow.setBandwidth(targetFlow.getBandwidth());
         flow.setIgnoreBandwidth(targetFlow.isIgnoreBandwidth());
+        flow.setStrictBandwidth(targetFlow.isStrictBandwidth());
         if (targetFlow.getMaxLatency() != null) {
             flow.setMaxLatency(targetFlow.getMaxLatency());
         }
@@ -193,6 +194,7 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         updateEndpointOnly &= originalFlow.isAllocateProtectedPath() == targetFlow.isAllocateProtectedPath();
         updateEndpointOnly &= originalFlow.getBandwidth() == targetFlow.getBandwidth();
         updateEndpointOnly &= originalFlow.isIgnoreBandwidth() == targetFlow.isIgnoreBandwidth();
+        updateEndpointOnly &= originalFlow.isStrictBandwidth() == targetFlow.isStrictBandwidth();
 
         updateEndpointOnly &= Objects.equal(originalFlow.getMaxLatency(), targetFlow.getMaxLatency());
         updateEndpointOnly &= Objects.equal(originalFlow.getFlowEncapsulationType(),

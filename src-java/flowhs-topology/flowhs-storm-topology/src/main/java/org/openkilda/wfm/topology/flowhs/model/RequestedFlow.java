@@ -47,6 +47,7 @@ public class RequestedFlow {
     private String description;
     private long bandwidth;
     private boolean ignoreBandwidth;
+    private boolean strictBandwidth;
     private boolean periodicPings;
     private Long maxLatency;
     private Long maxLatencyTier2;

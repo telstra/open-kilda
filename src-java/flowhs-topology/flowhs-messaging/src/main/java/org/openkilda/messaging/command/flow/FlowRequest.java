@@ -49,6 +49,7 @@ public class FlowRequest extends CommandData {
 
     long bandwidth;
     boolean ignoreBandwidth;
+    boolean strictBandwidth;
     boolean periodicPings;
     boolean allocateProtectedPath;
     String description;
