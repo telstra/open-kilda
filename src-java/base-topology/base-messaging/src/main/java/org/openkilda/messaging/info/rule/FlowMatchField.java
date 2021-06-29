@@ -29,23 +29,27 @@ import java.io.Serializable;
 public class FlowMatchField implements Serializable {
 
     @JsonProperty("eth_src")
-    private String ethSrc;
+    String ethSrc;
     @JsonProperty("eth_dst")
-    private String ethDst;
+    String ethDst;
     @JsonProperty("eth_type")
-    private String ethType;
+    String ethType;
     @JsonProperty("ip_proto")
-    private String ipProto;
+    String ipProto;
     @JsonProperty("udp_src")
-    private String udpSrc;
+    String udpSrc;
     @JsonProperty("udp_dst")
-    private String udpDst;
+    String udpDst;
     @JsonProperty("in_port")
-    private String inPort;
+    String inPort;
     @JsonProperty("vlan_vid")
-    private String vlanVid;
+    String vlanVid;
     @JsonProperty("tunnel_id")
-    private String tunnelId;
+    String tunnelId;
+    @JsonProperty("metadata_value")
+    String metadataValue;
+    @JsonProperty("metadata_mask")
+    String metadataMask;
 
     @JsonCreator
     public FlowMatchField(
@@ -53,7 +57,8 @@ public class FlowMatchField implements Serializable {
             @JsonProperty("eth_type") String ethType, @JsonProperty("ip_proto") String ipProto,
             @JsonProperty("udp_src") String udpSrc, @JsonProperty("udp_dst") String udpDst,
             @JsonProperty("in_port") String inPort, @JsonProperty("vlan_vid") String vlanVid,
-            @JsonProperty("tunnel_id") String tunnelId) {
+            @JsonProperty("tunnel_id") String tunnelId, @JsonProperty("metadata_value") String metadataValue,
+            @JsonProperty("metadata_mask") String metadataMask) {
         this.ethSrc = ethSrc;
         this.ethDst = ethDst;
         this.ethType = ethType;
@@ -63,5 +68,7 @@ public class FlowMatchField implements Serializable {
         this.inPort = inPort;
         this.vlanVid = vlanVid;
         this.tunnelId = tunnelId;
+        this.metadataValue = metadataValue;
+        this.metadataMask = metadataMask;
     }
 }

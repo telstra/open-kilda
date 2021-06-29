@@ -55,6 +55,13 @@ public class DeleteRulesCriteria implements Serializable {
     @JsonProperty("egress_switch_id")
     SwitchId egressSwitchId;
 
+    @JsonProperty("metadata_value")
+    Long metadataValue;
+
+    @JsonProperty("metadata_mask")
+    Long metadataMask;
+
+
     @JsonCreator
     public DeleteRulesCriteria(
             @JsonProperty("cookie") Long cookie,
@@ -63,14 +70,18 @@ public class DeleteRulesCriteria implements Serializable {
             @JsonProperty("priority") Integer priority,
             @JsonProperty("out_port") Integer outPort,
             @JsonProperty("encapsulation_type") FlowEncapsulationType encapsulationType,
-            @JsonProperty("egress_switch_id") SwitchId egressSwitchId) {
+            @JsonProperty("egress_switch_id") SwitchId egressSwitchId,
+            @JsonProperty("metadata_value") Long metadataValue,
+            @JsonProperty("metadata_mask") Long metadataMask) {
         if ((cookie == null || cookie == 0)
                 && (inPort == null || inPort == 0)
                 && (encapsulationId == null || encapsulationId == 0)
                 && (priority == null || priority == 0)
                 && (outPort == null || outPort == 0)
                 && (encapsulationType == null)
-                && (egressSwitchId == null)) {
+                && (egressSwitchId == null)
+                && (metadataValue == null || metadataValue == 0)
+                && (metadataMask == null || metadataMask == 0)) {
             throw new IllegalArgumentException("DeleteRulesCriteria can't be constructed empty.");
         }
 
@@ -81,6 +92,8 @@ public class DeleteRulesCriteria implements Serializable {
         this.outPort = outPort;
         this.encapsulationType = encapsulationType;
         this.egressSwitchId = egressSwitchId;
+        this.metadataValue = metadataValue;
+        this.metadataMask = metadataMask;
     }
 }
 

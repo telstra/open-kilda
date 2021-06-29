@@ -874,6 +874,54 @@ public class SwitchManagerTest {
     }
 
     @Test
+    public void shouldDeleteRuleByInPortVlanAndMetadata() throws Exception {
+        // given
+        final int testInPort = 11;
+        final short testInVlan = 101;
+        final long metadataValue = 17;
+        final long metadataMask = 255;
+
+        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
+
+        mockFlowStatsRequest(cookie, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
+                VERIFICATION_UNICAST_RULE_COOKIE);
+
+        Capture<OFFlowMod> capture = EasyMock.newCapture(CaptureType.ALL);
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(3);
+
+        mockBarrierRequest();
+        mockFlowStatsRequest(DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE, VERIFICATION_UNICAST_RULE_COOKIE);
+        expectLastCall();
+
+        replay(ofSwitchService, iofSwitch);
+
+        // when
+        DeleteRulesCriteria criteria = DeleteRulesCriteria.builder()
+                .inPort(testInPort)
+                .metadataValue(metadataValue)
+                .metadataMask(metadataMask)
+                .encapsulationId((int) testInVlan)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .egressSwitchId(SWITCH_ID)
+                .build();
+        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, false, null, criteria);
+
+        // then
+        final OFFlowMod actual = capture.getValue();
+        assertEquals(OFFlowModCommand.DELETE, actual.getCommand());
+        assertEquals(testInPort, actual.getMatch().get(MatchField.IN_PORT).getPortNumber());
+        assertEquals(testInVlan, actual.getMatch().get(MatchField.VLAN_VID).getVlan());
+        assertEquals(metadataValue, actual.getMatch().getMasked(MatchField.METADATA).getValue().getValue().getValue());
+        assertEquals(metadataMask, actual.getMatch().getMasked(MatchField.METADATA).getMask().getValue().getValue());
+        assertEquals("any", actual.getOutPort().toString());
+        assertEquals(0, actual.getInstructions().size());
+        assertEquals(0L, actual.getCookie().getValue());
+        assertEquals(0L, actual.getCookieMask().getValue());
+        assertThat(deletedRules, containsInAnyOrder(cookie));
+    }
+
+    @Test
     public void shouldDeleteRuleByInPortAndVxlanTunnel() throws Exception {
         // given
         final int testInPort = 11;

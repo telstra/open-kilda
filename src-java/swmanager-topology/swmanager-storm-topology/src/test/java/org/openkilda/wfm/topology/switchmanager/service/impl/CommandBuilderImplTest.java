@@ -227,7 +227,7 @@ public class CommandBuilderImplTest {
         String inPort = "1";
         String inVlan = "10";
         String outPort = "2";
-        FlowEntry flowEntry = buildFlowEntry(cookie, inPort, inVlan, outPort, null, false);
+        FlowEntry flowEntry = buildFlowEntry(cookie, inPort, inVlan, outPort, null, false, null, null);
 
         RemoveFlow removeFlow = commandBuilder.buildRemoveFlowWithoutMeterFromFlowEntry(SWITCH_ID_A, flowEntry);
         assertEquals(cookie, removeFlow.getCookie());
@@ -237,6 +237,8 @@ public class CommandBuilderImplTest {
         assertEquals(Integer.valueOf(inPort), criteria.getInPort());
         assertEquals(Integer.valueOf(inVlan), criteria.getEncapsulationId());
         assertEquals(Integer.valueOf(outPort), criteria.getOutPort());
+        assertNull(criteria.getMetadataValue());
+        assertNull(criteria.getMetadataMask());
     }
 
     @Test
@@ -245,7 +247,7 @@ public class CommandBuilderImplTest {
         String inPort = "1";
         String inVlan = "10";
         String outPort = "in_port";
-        FlowEntry flowEntry = buildFlowEntry(cookie, inPort, inVlan, outPort, null, false);
+        FlowEntry flowEntry = buildFlowEntry(cookie, inPort, inVlan, outPort, null, false, null, null);
 
         RemoveFlow removeFlow = commandBuilder.buildRemoveFlowWithoutMeterFromFlowEntry(SWITCH_ID_A, flowEntry);
         assertEquals(cookie, removeFlow.getCookie());
@@ -255,6 +257,8 @@ public class CommandBuilderImplTest {
         assertEquals(Integer.valueOf(inPort), criteria.getInPort());
         assertEquals(Integer.valueOf(inVlan), criteria.getEncapsulationId());
         assertNull(criteria.getOutPort());
+        assertNull(criteria.getMetadataValue());
+        assertNull(criteria.getMetadataMask());
     }
 
     @Test
@@ -263,7 +267,10 @@ public class CommandBuilderImplTest {
         String inPort = "1";
         String outPort = "2";
         String tunnelId = "10";
-        FlowEntry flowEntry = buildFlowEntry(cookie, inPort, null, outPort, tunnelId, true);
+        String metadataValue = "0x15";
+        String metadataMask = "0xFF";
+        FlowEntry flowEntry = buildFlowEntry(cookie, inPort, null, outPort, tunnelId, true, metadataValue,
+                metadataMask);
 
         RemoveFlow removeFlow = commandBuilder.buildRemoveFlowWithoutMeterFromFlowEntry(SWITCH_ID_A, flowEntry);
         assertEquals(cookie, removeFlow.getCookie());
@@ -271,8 +278,10 @@ public class CommandBuilderImplTest {
         DeleteRulesCriteria criteria = removeFlow.getCriteria();
         assertEquals(cookie, criteria.getCookie());
         assertEquals(Integer.valueOf(inPort), criteria.getInPort());
-        assertEquals(Integer.valueOf(tunnelId), criteria.getEncapsulationId());
+        assertNull(criteria.getEncapsulationId());
         assertEquals(Integer.valueOf(outPort), criteria.getOutPort());
+        assertEquals(Long.decode(metadataValue), criteria.getMetadataValue());
+        assertEquals(Long.decode(metadataMask), criteria.getMetadataMask());
     }
 
     @Test
@@ -281,7 +290,7 @@ public class CommandBuilderImplTest {
         String inPort = "1";
         String outPort = "2";
         String tunnelId = "10";
-        FlowEntry flowEntry = buildFlowEntry(cookie, inPort, null, outPort, tunnelId, false);
+        FlowEntry flowEntry = buildFlowEntry(cookie, inPort, null, outPort, tunnelId, false, null, null);
 
         RemoveFlow removeFlow = commandBuilder.buildRemoveFlowWithoutMeterFromFlowEntry(SWITCH_ID_A, flowEntry);
         assertEquals(cookie, removeFlow.getCookie());
@@ -291,6 +300,8 @@ public class CommandBuilderImplTest {
         assertEquals(Integer.valueOf(inPort), criteria.getInPort());
         assertEquals(Integer.valueOf(tunnelId), criteria.getEncapsulationId());
         assertEquals(Integer.valueOf(outPort), criteria.getOutPort());
+        assertNull(criteria.getMetadataValue());
+        assertNull(criteria.getMetadataMask());
     }
 
     @Test
@@ -319,12 +330,15 @@ public class CommandBuilderImplTest {
     }
 
     private FlowEntry buildFlowEntry(Long cookie, String inPort, String inVlan, String outPort,
-                                     String tunnelId, boolean tunnelIdIngressRule) {
+                                     String tunnelId, boolean tunnelIdIngressRule, String metadataValue,
+                                     String metadataMask) {
         return FlowEntry.builder()
                 .cookie(cookie)
                 .match(FlowMatchField.builder()
                         .inPort(inPort)
                         .vlanVid(inVlan)
+                        .metadataValue(metadataValue)
+                        .metadataMask(metadataMask)
                         .tunnelId(!tunnelIdIngressRule ? tunnelId : null)
                         .build())
                 .instructions(FlowInstructions.builder()
