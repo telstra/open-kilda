@@ -25,6 +25,7 @@ import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.server42.messaging.FlowDirection;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowOperationsCarrier;
@@ -42,6 +43,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 @Slf4j
@@ -53,6 +55,7 @@ public class ActionService implements FlowSlaMonitoringCarrier {
     private FlowOperationsCarrier carrier;
     private FlowRepository flowRepository;
     private FeatureTogglesRepository featureTogglesRepository;
+    private TransactionManager transactionManager;
     private FlowLatencyMonitoringFsmFactory fsmFactory;
     private FsmExecutor<FlowLatencyMonitoringFsm, State, Event, Context> fsmExecutor;
 
@@ -66,6 +69,7 @@ public class ActionService implements FlowSlaMonitoringCarrier {
         this.carrier = carrier;
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
+        transactionManager = persistenceManager.getTransactionManager();
         fsmFactory = FlowLatencyMonitoringFsm.factory(clock, timeout, threshold);
         fsmExecutor = fsmFactory.produceExecutor();
         this.threshold = threshold;
@@ -132,32 +136,43 @@ public class ActionService implements FlowSlaMonitoringCarrier {
 
     @Override
     public void saveFlowLatency(String flowId, String direction, long latency) {
-        Flow flow = flowRepository.findById(flowId)
-                .orElseThrow(() -> new IllegalStateException(format("Flow %s not found.", flowId)));
-        if (FORWARD.name().toLowerCase().equals(direction)) {
-            flow.setForwardLatency(latency);
-        } else {
-            flow.setReverseLatency(latency);
-        }
+        transactionManager.doInTransaction(() -> {
+            Optional<Flow> flow = flowRepository.findById(flowId);
+            if (flow.isPresent()) {
+                if (FORWARD.name().toLowerCase().equals(direction)) {
+                    flow.get().setForwardLatency(latency);
+                } else {
+                    flow.get().setReverseLatency(latency);
+                }
+            } else {
+                log.warn("Can't save latency for flow '{}'. Flow not found.", flowId);
+            }
+        });
     }
 
     @Override
     public void sendFlowSyncRequest(String flowId) {
-        Flow flow = flowRepository.findById(flowId)
-                .orElseThrow(() -> new IllegalStateException(format("Flow %s not found.", flowId)));
-        if (LATENCY_BASED_STRATEGIES.contains(flow.getPathComputationStrategy()) && isReactionsEnabled()) {
-            log.info("Sending flow {} sync request.", flowId);
-            carrier.sendFlowSyncRequest(flowId);
+        Optional<Flow> flow = flowRepository.findById(flowId);
+        if (flow.isPresent()) {
+            if (LATENCY_BASED_STRATEGIES.contains(flow.get().getPathComputationStrategy()) && isReactionsEnabled()) {
+                log.info("Sending flow '{}' sync request.", flowId);
+                carrier.sendFlowSyncRequest(flowId);
+            }
+        } else {
+            log.warn("Can't send flow '{}' sync request. Flow not found.", flowId);
         }
     }
 
     @Override
     public void sendFlowRerouteRequest(String flowId) {
-        Flow flow = flowRepository.findById(flowId)
-                .orElseThrow(() -> new IllegalStateException(format("Flow %s not found.", flowId)));
-        if (LATENCY_BASED_STRATEGIES.contains(flow.getPathComputationStrategy()) && isReactionsEnabled()) {
-            log.info("Sending flow {} reroute request", flowId);
-            carrier.sendFlowRerouteRequest(flowId);
+        Optional<Flow> flow = flowRepository.findById(flowId);
+        if (flow.isPresent()) {
+            if (LATENCY_BASED_STRATEGIES.contains(flow.get().getPathComputationStrategy()) && isReactionsEnabled()) {
+                log.info("Sending flow '{}' reroute request.", flowId);
+                carrier.sendFlowRerouteRequest(flowId);
+            }
+        } else {
+            log.warn("Can't send flow '{}' reroute request. Flow is not found.", flowId);
         }
     }
 
