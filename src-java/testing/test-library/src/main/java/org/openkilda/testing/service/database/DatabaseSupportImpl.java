@@ -22,6 +22,7 @@ import static org.openkilda.testing.Constants.DEFAULT_COST;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
@@ -34,6 +35,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.ferma.frames.IslFrame;
 import org.openkilda.persistence.ferma.frames.SwitchFrame;
 import org.openkilda.persistence.ferma.repositories.FermaRepositoryFactory;
+import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -69,6 +71,7 @@ public class DatabaseSupportImpl implements Database {
     private final SwitchRepository switchRepository;
     private final FlowRepository flowRepository;
     private final FlowPathRepository flowPathRepository;
+    private final FlowMirrorPointsRepository flowMirrorPointsRepository;
     private final TransitVlanRepository transitVlanRepository;
     private final SwitchConnectedDeviceRepository switchDevicesRepository;
     private final FlowEventRepository flowEventRepository;
@@ -83,6 +86,7 @@ public class DatabaseSupportImpl implements Database {
         transitVlanRepository = repositoryFactory.createTransitVlanRepository();
         switchDevicesRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
         flowEventRepository = repositoryFactory.createFlowEventRepository();
+        flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
     }
 
     /**
@@ -387,6 +391,11 @@ public class DatabaseSupportImpl implements Database {
                 p.setMeterId(newMeterId);
             });
         });
+    }
+
+    @Override
+    public List<FlowMirrorPoints> getMirrorPoints() {
+        return transactionManager.doInTransaction(() -> new ArrayList<>(flowMirrorPointsRepository.findAll()));
     }
 
     @Override

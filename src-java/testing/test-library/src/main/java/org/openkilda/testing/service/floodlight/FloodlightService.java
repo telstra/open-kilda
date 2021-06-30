@@ -23,6 +23,8 @@ import org.openkilda.testing.service.floodlight.model.ControllerRole;
 import org.openkilda.testing.service.floodlight.model.FlowEntriesMap;
 import org.openkilda.testing.service.floodlight.model.MetersEntriesMap;
 import org.openkilda.testing.service.floodlight.model.SwitchEntry;
+import org.openkilda.testing.service.floodlight.model.group.GroupsDescResponse;
+import org.openkilda.testing.service.floodlight.model.group.GroupsStatsResponse;
 
 import java.util.List;
 import java.util.Map;
@@ -42,6 +44,10 @@ public interface FloodlightService {
     FlowEntriesMap getFlows(SwitchId dpid);
 
     MetersEntriesMap getMeters(SwitchId dpid);
+
+    GroupsStatsResponse getGroupsStats(SwitchId dpid);
+
+    GroupsDescResponse getGroupsDesc(SwitchId dpid);
 
     Map setRole(SwitchId dpid, ControllerRole role);
 }

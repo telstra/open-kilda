@@ -211,10 +211,15 @@ traff_gens:
     switch: ofsw3
     switch_port: 10
     status: active
-
   - name: tg2
     iface: eth0
     control_endpoint: http://0.0.0.0:4042
+    switch: ofsw8
+    switch_port: 9
+    status: active
+  - name: tg3
+    iface: eth0
+    control_endpoint: http://0.0.0.0:4043
     switch: ofsw8
     switch_port: 10
     status: active

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,22 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.traffexam.model;
+package org.openkilda.testing.service.floodlight.model.group;
 
-import com.google.common.collect.ImmutableList;
-import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 @Data
-@AllArgsConstructor
-public class FlowBidirectionalExam {
-
-    private Exam forward;
-    private Exam reverse;
-
-    public List<Exam> getExamPair() {
-        return ImmutableList.of(forward, reverse);
-    }
+@NoArgsConstructor
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class GroupsStatsResponse {
+    private String version;
+    private List<Group> group;
 }

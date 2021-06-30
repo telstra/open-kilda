@@ -12,4 +12,10 @@ class FlowHistoryConstants {
     public static String REROUTE_COMPLETE = "Flow reroute completed"
     public static String DELETE_SUCCESS = "Flow was deleted successfully"
     public static String PATH_SWAP_ACTION = "Flow paths swap"
+
+    public static String CREATE_MIRROR_ACTION = "Flow mirror point creating"
+    public static String DELETE_MIRROR_ACTION = "Flow mirror point deleting"
+
+    public static String CREATE_MIRROR_SUCCESS = "Flow mirror point was created successfully"
+    public static String DELETE_MIRROR_SUCCESS = "Flow mirror point was deleted successfully"
 }

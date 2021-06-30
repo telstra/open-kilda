@@ -18,6 +18,7 @@ import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -57,8 +58,9 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 5)
-        exam.setResources(traffExam.startExam(exam, true))
+        Exam exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 5)
+                .tap{ udp = true }
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat in openTSDB is created"
@@ -76,7 +78,7 @@ class MflStatSpec extends HealthCheckSpecification {
         switchIsConnectedToFl(srcSwitch.dpId, true, false)
 
         and: "Generate traffic on the given flow"
-        exam.setResources(traffExam.startExam(exam, true))
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat on the src switch should be collected because management controller is set"
@@ -95,7 +97,7 @@ class MflStatSpec extends HealthCheckSpecification {
         switchIsConnectedToFl(srcSwitch.dpId, false, true)
 
         and: "Generate traffic on the given flow"
-        exam.setResources(traffExam.startExam(exam, true))
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat on the src switch should be collected because statistic controller is set"
@@ -112,7 +114,7 @@ class MflStatSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert !(srcSwitch.dpId in northbound.getActiveSwitches()*.switchId) }
 
         and: "Generate traffic on the given flow"
-        exam.setResources(traffExam.startExam(exam, true))
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat on the src switch should not be collected because it is disconnected from controllers"
@@ -162,9 +164,9 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildExam(flowHelperV2.toV1(flow), (int) flow.maximumBandwidth, 5)
-        exam.setResources(traffExam.startExam(exam, true))
+        Exam exam = new FlowTrafficExamBuilder(topology, traffExam)
+                .buildExam(flowHelperV2.toV1(flow), (int) flow.maximumBandwidth, 5).tap { udp = true }
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat in openTSDB is created"
@@ -182,7 +184,7 @@ class MflStatSpec extends HealthCheckSpecification {
         switchIsConnectedToFl(srcSwitch.dpId, true, false)
 
         and: "Generate traffic on the given flow"
-        exam.setResources(traffExam.startExam(exam, true))
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat on the src switch should be collected because management controller is still set"
@@ -201,7 +203,7 @@ class MflStatSpec extends HealthCheckSpecification {
         switchIsConnectedToFl(srcSwitch.dpId, false, true)
 
         and: "Generate traffic on the given flow"
-        exam.setResources(traffExam.startExam(exam, true))
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat on the src switch should be collected because statistic controller is set"
@@ -218,7 +220,7 @@ class MflStatSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert !(srcSwitch.dpId in northbound.getActiveSwitches()*.switchId) }
 
         and: "Generate traffic on the given flow"
-        exam.setResources(traffExam.startExam(exam, true))
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat on the src switch should not be collected because it is disconnected from controllers"
@@ -282,9 +284,11 @@ class MflStatSpec extends HealthCheckSpecification {
         and: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildExam(flowHelperV2.toV1(flow), (int) flow.maximumBandwidth, 5)
-        exam.setResources(traffExam.startExam(exam, true))
+        Exam exam = new FlowTrafficExamBuilder(topology, traffExam)
+                .buildExam(flowHelperV2.toV1(flow), (int) flow.maximumBandwidth, 5).tap {
+            udp = true
+        }
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat on the src switch should be collected (first RW switch available)"
@@ -311,7 +315,7 @@ class MflStatSpec extends HealthCheckSpecification {
         }
 
         and: "Generate traffic on the given flow"
-        exam.setResources(traffExam.startExam(exam, true))
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat on the src switch should be collected (second RW switch available)"
@@ -336,7 +340,7 @@ class MflStatSpec extends HealthCheckSpecification {
         }
 
         and: "Generate traffic on the given flow"
-        exam.setResources(traffExam.startExam(exam, true))
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat on the src switch should be collected (first RO switch available)"
@@ -359,7 +363,7 @@ class MflStatSpec extends HealthCheckSpecification {
         }
 
         and: "Generate traffic on the given flow"
-        exam.setResources(traffExam.startExam(exam, true))
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat on the src switch should be collected (second RO switch available)"
