@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_TURNING_COOKIE
 import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE
+import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
@@ -21,7 +23,10 @@ import org.openkilda.messaging.command.CommandData
 import org.openkilda.messaging.command.CommandMessage
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
+import org.openkilda.messaging.model.SwitchPropertiesDto
+import org.openkilda.messaging.model.SwitchPropertiesDto.RttState
 import org.openkilda.model.SwitchFeature
+import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -447,10 +452,19 @@ switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
         def featureToggleIsChanged = false
         if (!initFeatureToggle.server42IslRtt) {
             northbound.toggleFeature(initFeatureToggle.jacksonCopy().tap { server42IslRtt = true })
-            Wrappers.wait(RULES_INSTALLATION_TIME) {
-                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
-            }
             featureToggleIsChanged = true
+        }
+
+        and: "server42IslRtt is enabled on the switch"
+        def originSwProps = northbound.getSwitchProperties(sw.dpId)
+        northbound.updateSwitchProperties(sw.dpId, originSwProps.jacksonCopy().tap({
+            it.server42IslRtt = RttState.ENABLED.toString()
+        }))
+        wait(RULES_INSTALLATION_TIME) {
+            assert northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
+                (it.cookie in [SERVER_42_ISL_RTT_TURNING_COOKIE, SERVER_42_ISL_RTT_OUTPUT_COOKIE]) ||
+                        (new Cookie(it.cookie).getType() in [CookieType.SERVER_42_ISL_RTT_INPUT])
+            }.size() == northbound.getLinks(sw.dpId, null, null, null).size() + 2
         }
 
         when: "Delete the server42 ISL RTT turning rule from the switch"
@@ -461,7 +475,7 @@ switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
         deleteResponse[0] == SERVER_42_ISL_RTT_TURNING_COOKIE
 
         and: "The corresponding rule is really deleted"
-        Wrappers.wait(RULES_DELETION_TIME) {
+        wait(RULES_DELETION_TIME) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries.findAll { it.cookie == SERVER_42_ISL_RTT_TURNING_COOKIE }.empty
         }
 
@@ -486,12 +500,13 @@ switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
         installResponse[0] == SERVER_42_ISL_RTT_TURNING_COOKIE
 
         and: "The corresponding rule is really installed"
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             assert !northbound.getSwitchRules(sw.dpId).flowEntries.findAll { it.cookie == SERVER_42_ISL_RTT_TURNING_COOKIE }.empty
         }
 
         cleanup: "Revert the feature toggle to init state"
         featureToggleIsChanged && northbound.toggleFeature(initFeatureToggle)
+        originSwProps && northbound.updateSwitchProperties(sw.dpId, originSwProps)
     }
 
     void compareRules(actualRules, expectedRules) {
