@@ -450,7 +450,7 @@ and at least 1 path must remain safe"
     }
 
     @Tidy
-    def "System remains in consistent state when flow is reverted back after table mode change (failed reroute)"() {
+    def "System remains in consistent state when flow is reverted back after table mode change: failed reroute"() {
         given: "A flow, with src switch supporting multi-table (currently in single-table)"
         def swPair = topologyHelper.switchPairs.find {
             it.src.features.contains(SwitchFeature.MULTI_TABLE) && it.paths.size() > 1 &&
@@ -534,7 +534,7 @@ and at least 1 path must remain safe"
     }
 
     @Tidy
-    def "System remains in consistent state when flow is retries its reroute after table mode change"() {
+    def "System remains in consistent state when flow retries its reroute after table mode change"() {
         given: "A flow, with src switch supporting multi-table (currently in single-table)"
         def swPair = topologyHelper.switchPairs.find {
             it.src.features.contains(SwitchFeature.MULTI_TABLE) && it.paths.size() > 1 &&
