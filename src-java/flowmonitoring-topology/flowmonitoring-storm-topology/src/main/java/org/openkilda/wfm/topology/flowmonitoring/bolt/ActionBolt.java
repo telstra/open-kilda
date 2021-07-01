@@ -19,12 +19,15 @@ import static org.openkilda.wfm.share.bolt.KafkaEncoder.FIELD_ID_PAYLOAD;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ACTION_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
 
+import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.info.flow.UpdateFlowInfo;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.server42.messaging.FlowDirection;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.ComponentId;
 import org.openkilda.wfm.topology.flowmonitoring.service.ActionService;
 
@@ -50,7 +53,9 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
     private float threshold;
     private transient ActionService actionService;
 
-    public ActionBolt(PersistenceManager persistenceManager, Duration timeout, float threshold) {
+    public ActionBolt(PersistenceManager persistenceManager, Duration timeout, float threshold,
+                      String lifeCycleEventSourceComponent) {
+        super(lifeCycleEventSourceComponent);
         this.persistenceManager = persistenceManager;
         this.timeout = timeout;
         this.threshold = threshold;
@@ -63,6 +68,9 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
 
     @Override
     protected void handleInput(Tuple input) throws PipelineException {
+        if (!active) {
+            return;
+        }
         if (FLOW_UPDATE_STREAM_ID.name().equals(input.getSourceStreamId())) {
             UpdateFlowInfo flowInfo = pullValue(input, FLOW_INFO_FIELD, UpdateFlowInfo.class);
             actionService.updateFlowInfo(flowInfo);
@@ -86,8 +94,16 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
     }
 
     @Override
+    protected boolean deactivate(LifecycleEvent event) {
+        actionService.purge();
+        return true;
+    }
+
+    @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
+        declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+                ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 
     @Override
