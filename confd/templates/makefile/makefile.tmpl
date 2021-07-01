@@ -143,5 +143,5 @@ run-func-tests:
 #   make func-tests PARAMS='--tests LinkSpec."Unable to delete an active link"'  // run a certain test from 'LinkSpec' class
 # test-topology creates a virtual topology ready for testing, ensures that it is properly discovered
 test-topology: TASK=runTest
-test-topology: PARAMS=--tests HealthCheckSpecification
+test-topology: PARAMS=--tests GenerateTopologyConfig
 func-tests test-topology: copy-test-props run-func-tests
