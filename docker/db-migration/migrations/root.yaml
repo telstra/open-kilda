@@ -30,3 +30,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 006-add-flow-latency-monitoring-reactions-toggle.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 007-add-flow-strict-bandwidth-property.yaml
