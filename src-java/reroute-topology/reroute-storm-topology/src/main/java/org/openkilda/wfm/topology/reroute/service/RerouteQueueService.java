@@ -212,10 +212,10 @@ public class RerouteQueueService {
     private void injectRetry(String flowId, RerouteQueue rerouteQueue, boolean ignoreBandwidth) {
         log.info("Injecting retry for flow {} wuth ignore b/w flag {}", flowId, ignoreBandwidth);
         FlowThrottlingData retryRequest = rerouteQueue.getInProgress();
-        retryRequest.setIgnoreBandwidth(retryRequest.isIgnoreBandwidth() || ignoreBandwidth);
         if (retryRequest == null) {
             throw new IllegalStateException(format("Can not retry 'null' reroute request for flow %s.", flowId));
         }
+        retryRequest.setIgnoreBandwidth(computeIgnoreBandwidth(retryRequest, ignoreBandwidth));
         if (retryRequest.getRetryCounter() < maxRetry) {
             retryRequest.increaseRetryCounter();
             String retryCorrelationId = new CommandContext(retryRequest.getCorrelationId())
@@ -229,10 +229,15 @@ public class RerouteQueueService {
             log.error("No more retries available for reroute request {}.", retryRequest);
             FlowThrottlingData toSend = rerouteQueue.processPending();
             if (toSend != null) {
-                toSend.setIgnoreBandwidth(toSend.isIgnoreBandwidth() || ignoreBandwidth);
+                toSend.setIgnoreBandwidth(computeIgnoreBandwidth(toSend, ignoreBandwidth));
             }
             sendRerouteRequest(flowId, toSend);
         }
+    }
+
+    @VisibleForTesting
+    boolean computeIgnoreBandwidth(FlowThrottlingData data, boolean ignoreBandwidth) {
+        return !data.isStrictBandwidth() && (data.isIgnoreBandwidth() || ignoreBandwidth);
     }
 
     private void sendRerouteRequest(String flowId, FlowThrottlingData throttlingData) {
