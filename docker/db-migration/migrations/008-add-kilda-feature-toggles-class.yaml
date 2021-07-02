@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: dpoltavets
+      changes:
+        - tagDatabase:
+            tag: 008-add-kilda-feature-toggles-class
+
+  - changeSet:
+      id: add_kilda_feature_toggles_class
+      author: dpoltavets
+      changes:
+        - sql: "CREATE CLASS kilda_feature_toggles IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY kilda_feature_toggles.unique IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX kilda_feature_toggles.unique UNIQUE_HASH_INDEX"
+        - sql: "INSERT INTO kilda_feature_toggles FROM (SELECT FROM config)"
+        - sql: "UPDATE kilda_feature_toggles SET unique='kilda_feature_toggles'"
+        - sql: "CREATE PROPERTY kilda_configuration.unique_ex IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX kilda_configuration.unique_ex UNIQUE_HASH_INDEX"
+        - sql: "UPDATE kilda_configuration SET unique_ex='kilda_configuration'"
+      rollback:
+        - sql: "DELETE VERTEX kilda_feature_toggles"
+        - sql: "DROP CLASS kilda_feature_toggles"
+        - sql: "DROP INDEX kilda_configuration.unique_ex"
+        - sql: "UPDATE kilda_configuration REMOVE unique_ex"
+        - sql: "DROP PROPERTY kilda_configuration.unique_ex"

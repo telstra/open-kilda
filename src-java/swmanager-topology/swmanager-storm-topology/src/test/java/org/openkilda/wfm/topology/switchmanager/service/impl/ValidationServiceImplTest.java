@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -31,10 +31,10 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.model.DetectConnectedDevices;
-import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
+import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
@@ -42,8 +42,8 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -360,7 +360,7 @@ public class ValidationServiceImplTest {
         private FlowPathRepository flowPathRepository = mock(FlowPathRepository.class);
         private SwitchRepository switchRepository = mock(SwitchRepository.class);
         private SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
-        private FeatureTogglesRepository featureTogglesRepository = mock(FeatureTogglesRepository.class);
+        private KildaFeatureTogglesRepository featureTogglesRepository = mock(KildaFeatureTogglesRepository.class);
 
         private long[] segmentsCookies = new long[0];
         private long[] ingressCookies = new long[0];
@@ -495,8 +495,8 @@ public class ValidationServiceImplTest {
             when(switchPropertiesRepository.findBySwitchId(SWITCH_ID_E)).thenReturn(Optional.of(switchProperties));
             when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
 
-            FeatureToggles featureToggles = FeatureToggles.builder().server42FlowRtt(true).build();
-            when(featureTogglesRepository.find()).thenReturn(Optional.of(featureToggles));
+            KildaFeatureToggles featureToggles = KildaFeatureToggles.builder().server42FlowRtt(true).build();
+            when(featureTogglesRepository.getOrDefault()).thenReturn(featureToggles);
             when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
 
             PersistenceManager persistenceManager = mock(PersistenceManager.class);

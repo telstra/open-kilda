@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -21,13 +21,13 @@ import org.openkilda.persistence.ferma.repositories.FermaFlowPathRepository;
 import org.openkilda.persistence.ferma.repositories.FermaRepositoryFactory;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
 import org.openkilda.persistence.repositories.ExclusionIdRepository;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
@@ -97,8 +97,8 @@ public class InMemoryRepositoryFactory extends FermaRepositoryFactory {
     }
 
     @Override
-    public FeatureTogglesRepository createFeatureTogglesRepository() {
-        return new InMemoryFeatureTogglesRepository(graphFactory, transactionManager);
+    public KildaFeatureTogglesRepository createFeatureTogglesRepository() {
+        return new InMemoryKildaFeatureTogglesRepository(graphFactory, transactionManager);
     }
 
     @Override

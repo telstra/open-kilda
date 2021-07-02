@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.network.controller;
 
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -76,7 +76,7 @@ public class BfdGlobalToggleFsm
     }
 
     public static class BfdGlobalToggleFsmFactory {
-        private final FeatureTogglesRepository featureTogglesRepository;
+        private final KildaFeatureTogglesRepository featureTogglesRepository;
 
         private final StateMachineBuilder<BfdGlobalToggleFsm, BfdGlobalToggleFsmState, BfdGlobalToggleFsmEvent,
                 BfdGlobalToggleFsmContext> builder;

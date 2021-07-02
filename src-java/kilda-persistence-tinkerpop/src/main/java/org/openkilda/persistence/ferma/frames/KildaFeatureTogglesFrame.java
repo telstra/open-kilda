@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,12 +15,12 @@
 
 package org.openkilda.persistence.ferma.frames;
 
-import org.openkilda.model.FeatureToggles.FeatureTogglesData;
+import org.openkilda.model.KildaFeatureToggles.KildaFeatureTogglesData;
 
 import com.syncleus.ferma.annotations.Property;
 
-public abstract class FeatureTogglesFrame extends KildaBaseVertexFrame implements FeatureTogglesData {
-    public static final String FRAME_LABEL = "config";
+public abstract class KildaFeatureTogglesFrame extends KildaBaseVertexFrame implements KildaFeatureTogglesData {
+    public static final String FRAME_LABEL = "kilda_feature_toggles";
     public static final String UNIQUE_PROPERTY = "unique";
 
     @Override

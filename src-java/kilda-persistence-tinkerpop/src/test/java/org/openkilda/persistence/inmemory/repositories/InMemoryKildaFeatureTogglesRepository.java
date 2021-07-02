@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,27 +15,27 @@
 
 package org.openkilda.persistence.inmemory.repositories;
 
-import org.openkilda.model.FeatureToggles.FeatureTogglesData;
+import org.openkilda.model.KildaFeatureToggles.KildaFeatureTogglesData;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.persistence.ferma.FramedGraphFactory;
-import org.openkilda.persistence.ferma.frames.FeatureTogglesFrame;
-import org.openkilda.persistence.ferma.repositories.FermaFeatureTogglesRepository;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.persistence.ferma.frames.KildaFeatureTogglesFrame;
+import org.openkilda.persistence.ferma.repositories.FermaKildaFeatureTogglesRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 
 /**
- * In-memory implementation of {@link FeatureTogglesRepository}.
+ * In-memory implementation of {@link KildaFeatureTogglesRepository}.
  * Built on top of Tinkerpop / Ferma implementation.
  */
-public class InMemoryFeatureTogglesRepository extends FermaFeatureTogglesRepository {
-    InMemoryFeatureTogglesRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
+public class InMemoryKildaFeatureTogglesRepository extends FermaKildaFeatureTogglesRepository {
+    InMemoryKildaFeatureTogglesRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
         super(graphFactory, transactionManager);
     }
 
     @Override
-    protected FeatureTogglesFrame doAdd(FeatureTogglesData data) {
+    protected KildaFeatureTogglesFrame doAdd(KildaFeatureTogglesData data) {
         if (find().isPresent()) {
-            throw new ConstraintViolationException("Unable to create " + FeatureTogglesFrame.FRAME_LABEL
+            throw new ConstraintViolationException("Unable to create " + KildaFeatureTogglesFrame.FRAME_LABEL
                     + " vertex with duplicate keys.");
         }
 

@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowResponse;
-import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowMirrorPath;
@@ -35,9 +34,9 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -75,7 +74,7 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
     protected final FlowPathRepository flowPathRepository;
     protected final SwitchPropertiesRepository switchPropertiesRepository;
     protected final SwitchRepository switchRepository;
-    protected final FeatureTogglesRepository featureTogglesRepository;
+    protected final KildaFeatureTogglesRepository featureTogglesRepository;
 
     public FlowProcessingAction(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
@@ -228,7 +227,7 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
     }
 
     protected boolean isServer42FlowRttFeatureToggle() {
-        return featureTogglesRepository.find().map(FeatureToggles::getServer42FlowRtt).orElse(false);
+        return featureTogglesRepository.getOrDefault().getServer42FlowRtt();
     }
 
     protected Message buildResponseMessage(Flow flow, CommandContext commandContext) {

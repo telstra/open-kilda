@@ -22,7 +22,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
@@ -43,7 +43,7 @@ import java.util.Optional;
 
 @Slf4j
 public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
-    private final FeatureTogglesRepository featureTogglesRepository;
+    private final KildaFeatureTogglesRepository featureTogglesRepository;
     private final FlowValidator flowValidator;
     private final FlowOperationsDashboardLogger dashboardLogger;
 

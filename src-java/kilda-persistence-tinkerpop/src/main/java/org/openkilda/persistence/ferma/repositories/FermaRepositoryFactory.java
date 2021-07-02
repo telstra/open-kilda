@@ -21,7 +21,6 @@ import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.repositories.ApplicationRepository;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
 import org.openkilda.persistence.repositories.ExclusionIdRepository;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
@@ -30,6 +29,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
@@ -127,8 +127,8 @@ public class FermaRepositoryFactory implements RepositoryFactory {
     }
 
     @Override
-    public FeatureTogglesRepository createFeatureTogglesRepository() {
-        return new FermaFeatureTogglesRepository(graphFactory, transactionManager);
+    public KildaFeatureTogglesRepository createFeatureTogglesRepository() {
+        return new FermaKildaFeatureTogglesRepository(graphFactory, transactionManager);
     }
 
     @Override

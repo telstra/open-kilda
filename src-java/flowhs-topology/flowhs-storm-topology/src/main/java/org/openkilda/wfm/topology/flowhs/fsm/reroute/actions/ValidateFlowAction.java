@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -27,8 +27,8 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathSegment;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final KildaConfigurationRepository kildaConfigurationRepository;
-    private final FeatureTogglesRepository featureTogglesRepository;
+    private final KildaFeatureTogglesRepository featureTogglesRepository;
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public ValidateFlowAction(PersistenceManager persistenceManager, FlowOperationsDashboardLogger dashboardLogger) {
@@ -113,13 +113,10 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
             return foundFlow;
         });
 
-        featureTogglesRepository.find().ifPresent(featureToggles ->
-                Optional.ofNullable(featureToggles.getFlowsRerouteUsingDefaultEncapType()).ifPresent(toggle -> {
-                    if (toggle) {
-                        stateMachine.setNewEncapsulationType(
-                                kildaConfigurationRepository.getOrDefault().getFlowEncapsulationType());
-                    }
-                }));
+        if (featureTogglesRepository.getOrDefault().getFlowsRerouteUsingDefaultEncapType()) {
+            stateMachine.setNewEncapsulationType(
+                    kildaConfigurationRepository.getOrDefault().getFlowEncapsulationType());
+        }
 
         boolean reroutePrimary;
         boolean rerouteProtected;

@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,11 +19,10 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -42,7 +41,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ValidateFlowsAction
         extends FlowProcessingAction<FlowSwapEndpointsFsm, State, Event, FlowSwapEndpointsContext> {
-    private final FeatureTogglesRepository featureTogglesRepository;
+    private final KildaFeatureTogglesRepository featureTogglesRepository;
     private final FlowValidator flowValidator;
 
     public ValidateFlowsAction(PersistenceManager persistenceManager) {
@@ -58,9 +57,7 @@ public class ValidateFlowsAction
         RequestedFlow firstTargetFlow = stateMachine.getFirstTargetFlow();
         RequestedFlow secondTargetFlow = stateMachine.getSecondTargetFlow();
 
-        boolean isOperationAllowed = featureTogglesRepository.find()
-                .map(FeatureToggles::getUpdateFlowEnabled).orElse(Boolean.FALSE);
-        if (!isOperationAllowed) {
+        if (!featureTogglesRepository.getOrDefault().getUpdateFlowEnabled()) {
             throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Flow update feature is disabled");
         }
 

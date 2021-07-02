@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,14 +15,13 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
-import org.openkilda.model.FeatureToggles;
-import org.openkilda.model.FeatureToggles.FeatureTogglesCloner;
+import org.openkilda.model.KildaFeatureToggles;
+import org.openkilda.model.KildaFeatureToggles.FeatureTogglesCloner;
 import org.openkilda.model.Switch;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.tx.TransactionManager;
-import org.openkilda.wfm.error.FeatureTogglesNotFoundException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,7 +32,7 @@ import java.util.Optional;
 public class FeatureTogglesService {
     private final IFeatureTogglesCarrier carrier;
 
-    private FeatureTogglesRepository featureTogglesRepository;
+    private KildaFeatureTogglesRepository featureTogglesRepository;
     private SwitchRepository switchRepository;
     private TransactionManager transactionManager;
 
@@ -49,8 +48,8 @@ public class FeatureTogglesService {
      * Get feature toggles.
      * @return feature toggles.
      */
-    public FeatureToggles getFeatureToggles() throws FeatureTogglesNotFoundException {
-        return featureTogglesRepository.find().orElseThrow(FeatureTogglesNotFoundException::new);
+    public KildaFeatureToggles getFeatureToggles() {
+        return featureTogglesRepository.getOrDefault();
     }
 
     /**
@@ -58,19 +57,23 @@ public class FeatureTogglesService {
      * @param featureToggles feature toggles.
      * @return updated feature toggles.
      */
-    public FeatureToggles createOrUpdateFeatureToggles(FeatureToggles featureToggles) {
+    public KildaFeatureToggles createOrUpdateFeatureToggles(KildaFeatureToggles featureToggles) {
         log.info("Process feature-toggles update - toggles:{}", featureToggles);
-        FeatureToggles before = featureTogglesRepository.getOrDefault();
+        KildaFeatureToggles before = featureTogglesRepository.getOrDefault();
 
-        FeatureToggles after = transactionManager.doInTransaction(() -> {
-            Optional<FeatureToggles> current = featureTogglesRepository.find();
-            if (current.isPresent()) {
-                FeatureTogglesCloner.INSTANCE.copyNonNull(featureToggles, current.get());
-                return current.get();
+        KildaFeatureToggles after = transactionManager.doInTransaction(() -> {
+            Optional<KildaFeatureToggles> foundCurrent = featureTogglesRepository.find();
+            KildaFeatureToggles current;
+            if (foundCurrent.isPresent()) {
+                current = foundCurrent.get();
+                FeatureTogglesCloner.INSTANCE.copyNonNull(featureToggles, current);
             } else {
-                featureTogglesRepository.add(featureToggles);
-                return featureToggles;
+                current = featureToggles;
+                featureTogglesRepository.add(current);
             }
+            featureTogglesRepository.detach(current);
+            FeatureTogglesCloner.INSTANCE.replaceNullProperties(KildaFeatureToggles.DEFAULTS, current);
+            return current;
         });
 
         if (!before.equals(after)) {

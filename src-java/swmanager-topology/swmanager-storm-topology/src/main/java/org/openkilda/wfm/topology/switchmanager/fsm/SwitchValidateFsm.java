@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -40,17 +40,17 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
-import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
+import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -85,7 +85,7 @@ import java.util.Set;
 public class SwitchValidateFsm extends AbstractStateMachine<
         SwitchValidateFsm, SwitchValidateState, SwitchValidateEvent, SwitchValidateContext> {
 
-    private final FeatureTogglesRepository featureTogglesRepository;
+    private final KildaFeatureTogglesRepository featureTogglesRepository;
     private final SwitchRepository switchRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final IslRepository islRepository;
@@ -334,7 +334,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         final SwitchId switchId = getSwitchId();
         log.info("Sending requests to get expected switch service rules (switch={}, key={})", switchId, key);
 
-        FeatureToggles featureToggles = featureTogglesRepository.getOrDefault();
+        KildaFeatureToggles featureToggles = featureTogglesRepository.getOrDefault();
 
         GetExpectedDefaultRulesRequest.GetExpectedDefaultRulesRequestBuilder payload = GetExpectedDefaultRulesRequest
                 .builder()

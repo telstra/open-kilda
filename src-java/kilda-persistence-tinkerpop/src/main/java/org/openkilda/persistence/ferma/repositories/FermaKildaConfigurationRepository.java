@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package org.openkilda.persistence.ferma.repositories;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.KildaConfiguration.KildaConfigurationData;
 import org.openkilda.persistence.ferma.FramedGraphFactory;
-import org.openkilda.persistence.ferma.frames.FeatureTogglesFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.KildaConfigurationFrame;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
@@ -58,7 +57,7 @@ public class FermaKildaConfigurationRepository
     protected KildaConfigurationFrame doAdd(KildaConfigurationData data) {
         KildaConfigurationFrame frame = KildaBaseVertexFrame.addNewFramedVertex(framedGraph(),
                 KildaConfigurationFrame.FRAME_LABEL, KildaConfigurationFrame.class);
-        frame.setProperty(KildaConfigurationFrame.UNIQUE_PROPERTY, FeatureTogglesFrame.FRAME_LABEL);
+        frame.setProperty(KildaConfigurationFrame.UNIQUE_PROPERTY, KildaConfigurationFrame.FRAME_LABEL);
         KildaConfiguration.KildaConfigurationCloner.INSTANCE.copyNonNull(data, frame);
         return frame;
     }

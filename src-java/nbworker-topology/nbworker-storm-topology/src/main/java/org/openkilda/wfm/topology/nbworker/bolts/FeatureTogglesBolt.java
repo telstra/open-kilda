@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
-import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.FeatureTogglesUpdate;
 import org.openkilda.messaging.model.system.FeatureTogglesDto;
@@ -25,10 +23,9 @@ import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.CreateOrUpdateFeatureTogglesRequest;
 import org.openkilda.messaging.nbtopology.request.GetFeatureTogglesRequest;
 import org.openkilda.messaging.nbtopology.response.FeatureTogglesResponse;
-import org.openkilda.model.FeatureToggles;
+import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.error.FeatureTogglesNotFoundException;
 import org.openkilda.wfm.share.mappers.FeatureTogglesMapper;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.nbworker.StreamType;
@@ -77,11 +74,7 @@ public class FeatureTogglesBolt extends PersistenceOperationsBolt implements IFe
     }
 
     private FeatureTogglesDto getFeatureToggles() {
-        try {
-            return FeatureTogglesMapper.INSTANCE.map(featureTogglesService.getFeatureToggles());
-        } catch (FeatureTogglesNotFoundException e) {
-            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Feature toggles do not exist.");
-        }
+        return FeatureTogglesMapper.INSTANCE.map(featureTogglesService.getFeatureToggles());
     }
 
     private FeatureTogglesDto createOrUpdateFeatureToggles(FeatureTogglesDto featureTogglesDto) {
@@ -92,7 +85,7 @@ public class FeatureTogglesBolt extends PersistenceOperationsBolt implements IFe
     // -- carrier --
 
     @Override
-    public void featureTogglesUpdateNotification(FeatureToggles toggles) {
+    public void featureTogglesUpdateNotification(KildaFeatureToggles toggles) {
         FeatureTogglesUpdate payload = new FeatureTogglesUpdate(FeatureTogglesMapper.INSTANCE.map(toggles));
         emit(STREAM_NOTIFICATION_ID, getCurrentTuple(), makeNotificationTuple(payload));
     }

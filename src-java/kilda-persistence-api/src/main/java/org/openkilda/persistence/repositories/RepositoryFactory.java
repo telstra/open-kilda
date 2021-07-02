@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ public interface RepositoryFactory {
 
     VxlanRepository createVxlanRepository();
 
-    FeatureTogglesRepository createFeatureTogglesRepository();
+    KildaFeatureTogglesRepository createFeatureTogglesRepository();
 
     FlowEventRepository createFlowEventRepository();
 

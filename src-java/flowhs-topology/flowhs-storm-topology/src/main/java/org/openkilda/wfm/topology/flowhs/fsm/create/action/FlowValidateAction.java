@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
@@ -41,7 +41,7 @@ import java.util.Optional;
 
 @Slf4j
 public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, Event, FlowCreateContext> {
-    private final FeatureTogglesRepository featureTogglesRepository;
+    private final KildaFeatureTogglesRepository featureTogglesRepository;
     private final FlowValidator flowValidator;
     private final FlowOperationsDashboardLogger dashboardLogger;
 
