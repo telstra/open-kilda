@@ -134,6 +134,13 @@ public class ActionService implements FlowSlaMonitoringCarrier {
         return format("%s_%s", flowId, direction.name().toLowerCase());
     }
 
+    /**
+     * Remove all current fsms.
+     */
+    public void purge() {
+        fsms.clear();
+    }
+
     @Override
     public void saveFlowLatency(String flowId, String direction, long latency) {
         transactionManager.doInTransaction(() -> {

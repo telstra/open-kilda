@@ -124,11 +124,13 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
     private void actionBolt(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         declareBolt(topologyBuilder, new ActionBolt(persistenceManager,
                         Duration.ofSeconds(getConfig().getFlowLatencySlaTimeoutSeconds()),
-                        getConfig().getFlowLatencySlaThresholdPercent()), ComponentId.ACTION_BOLT.name())
+                        getConfig().getFlowLatencySlaThresholdPercent(), ZooKeeperSpout.SPOUT_ID),
+                ComponentId.ACTION_BOLT.name())
                 .fieldsGrouping(ComponentId.FLOW_CACHE_BOLT.name(), ACTION_STREAM_ID.name(), FLOW_ID_FIELDS)
                 .fieldsGrouping(ComponentId.FLOW_CACHE_BOLT.name(), FLOW_UPDATE_STREAM_ID.name(), FLOW_ID_FIELDS)
                 .fieldsGrouping(ComponentId.ISL_CACHE_BOLT.name(), ACTION_STREAM_ID.name(), FLOW_ID_FIELDS)
-                .allGrouping(ComponentId.TICK_BOLT.name());
+                .allGrouping(ComponentId.TICK_BOLT.name())
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
     private void outputReroute(TopologyBuilder topology) {
@@ -156,10 +158,12 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
     private void zooKeeperBolt(TopologyBuilder topology) {
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
                 getZookeeperConfig(),
-                getBoltInstancesCount(ComponentId.ISL_CACHE_BOLT.name(), ComponentId.FLOW_CACHE_BOLT.name()));
+                getBoltInstancesCount(ComponentId.ISL_CACHE_BOLT.name(), ComponentId.FLOW_CACHE_BOLT.name(),
+                        ComponentId.ACTION_BOLT.name()));
         declareBolt(topology, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(ComponentId.ISL_CACHE_BOLT.name(), ZkStreams.ZK.toString())
-                .allGrouping(ComponentId.FLOW_CACHE_BOLT.name(), ZkStreams.ZK.toString());
+                .allGrouping(ComponentId.FLOW_CACHE_BOLT.name(), ZkStreams.ZK.toString())
+                .allGrouping(ComponentId.ACTION_BOLT.name(), ZkStreams.ZK.toString());
     }
 
     @Override
