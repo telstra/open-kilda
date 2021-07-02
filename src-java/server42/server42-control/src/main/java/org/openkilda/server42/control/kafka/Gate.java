@@ -45,11 +45,13 @@ import org.openkilda.server42.messaging.FlowDirection;
 import com.google.protobuf.Any;
 import com.google.protobuf.InvalidProtocolBufferException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.common.TopicPartition;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -70,7 +72,7 @@ import java.util.stream.Collectors;
         topics = "${openkilda.server42.control.kafka.topic.from_storm}",
         idIsGroup = false
 )
-public class Gate {
+public class Gate implements ConsumerSeekAware {
 
     private final KafkaTemplate<String, Object> template;
 
@@ -96,6 +98,12 @@ public class Gate {
                 vlanToSwitches -> vlanToSwitches.getValue().stream().map(
                         switchId -> new SimpleEntry<>(switchId, vlanToSwitches.getKey()))
         ).collect(Collectors.toMap(SimpleEntry::getKey, SimpleEntry::getValue));
+    }
+
+    @Override
+    public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+        log.info("seek to end");
+        assignments.forEach((t, o) -> callback.seekToEnd(t.topic(), t.partition()));
     }
 
     @KafkaHandler
