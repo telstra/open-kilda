@@ -34,7 +34,6 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
 
 class SwitchActivationSpec extends HealthCheckSpecification {
     @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
@@ -145,7 +144,6 @@ class SwitchActivationSpec extends HealthCheckSpecification {
     }
 
     @Tags([HARDWARE])
-    @Ignore("https://github.com/telstra/open-kilda/issues/4316, /4315, /4314")
     def "Excess vxlanRules/meters are synced from a new switch before connecting to the controller"() {
         given: "A switch with excess rules/meters and not connected to the controller"
         def sw = topology.getActiveSwitches().find {
