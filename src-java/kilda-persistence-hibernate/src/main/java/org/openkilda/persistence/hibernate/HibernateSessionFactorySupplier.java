@@ -70,7 +70,7 @@ public class HibernateSessionFactorySupplier implements Supplier<SessionFactory>
                 .applySetting(AvailableSettings.C3P0_CONFIG_PREFIX + ".testConnectionOnCheckout", true)
                 .applySetting(AvailableSettings.C3P0_CONFIG_PREFIX + ".preferredTestQuery", "SELECT 1")
                 // TODO(surabujin): detect debugging mode and enable for it
-                .applySetting(AvailableSettings.SHOW_SQL, false)
+                .applySetting(AvailableSettings.SHOW_SQL, true)
                 .applySetting(AvailableSettings.FORMAT_SQL, true)
                 .applySetting(AvailableSettings.USE_SQL_COMMENTS, true)
                 .build();

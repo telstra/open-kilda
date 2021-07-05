@@ -10,8 +10,8 @@ kilda_orientdb_user: "kilda"
 kilda_orientdb_password: "kilda"
 kilda_orientdb_database: "kilda"
 
-kilda_persistence_implementation: "orientdb"
-#kilda_persistence_implementation: "orientdb-sql-mixture1"
+#kilda_persistence_implementation: "orientdb"
+kilda_persistence_implementation: "orientdb-sql-mixture1"
 
 kilda_kafka_hosts: "kafka.pendev:9092"
 kilda_zookeeper_hosts: "zookeeper.pendev"
