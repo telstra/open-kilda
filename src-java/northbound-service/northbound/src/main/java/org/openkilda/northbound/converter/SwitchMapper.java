@@ -33,6 +33,7 @@ import org.openkilda.messaging.model.SwitchAvailabilityEntry;
 import org.openkilda.messaging.model.SwitchLocation;
 import org.openkilda.messaging.model.SwitchPatch;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchStatus;
@@ -63,7 +64,6 @@ import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-import java.net.InetSocketAddress;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
@@ -79,7 +79,7 @@ public abstract class SwitchMapper {
     @Mapping(source = "ofDescriptionSoftware", target = "software")
     @Mapping(source = "ofDescriptionSerialNumber", target = "serialNumber")
     @Mapping(source = "status", target = "state")
-    @Mapping(source = "socketAddress.address.hostAddress", target = "address")
+    @Mapping(source = "socketAddress.address", target = "address")
     @Mapping(source = "socketAddress.port", target = "port")
     @Mapping(target = "location", expression = "java(new SwitchLocationDto("
             + "data.getLatitude(), data.getLongitude(), data.getStreet(), data.getCity(), data.getCountry()))")
@@ -187,7 +187,7 @@ public abstract class SwitchMapper {
     @Mapping(source = "ofDescriptionSoftware", target = "software")
     @Mapping(source = "ofDescriptionSerialNumber", target = "serialNumber")
     @Mapping(source = "status", target = "state")
-    @Mapping(source = "socketAddress.address.hostAddress", target = "address")
+    @Mapping(source = "socketAddress.address", target = "address")
     @Mapping(source = "socketAddress.port", target = "port")
     @Mapping(target = "location", expression = "java(new SwitchLocationDtoV2("
             + "data.getLatitude(), data.getLongitude(), data.getStreet(), data.getCity(), data.getCountry()))")
@@ -216,7 +216,13 @@ public abstract class SwitchMapper {
         return DateTimeFormatter.ISO_INSTANT.format(data);
     }
 
-    public String map(InetSocketAddress data) {
-        return String.format("%s:%d", data.getAddress().getHostAddress(), data.getPort());
+    /**
+     * Produce string representation of {@link IpSocketAddress}.
+     */
+    public String map(IpSocketAddress address) {
+        if (address == null) {
+            return null;
+        }
+        return String.format("%s:%d", address.getAddress(), address.getPort());
     }
 }

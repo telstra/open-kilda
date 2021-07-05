@@ -13,28 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.model;
+package org.openkilda.model;
 
-import org.openkilda.model.IpSocketAddress;
-import org.openkilda.model.SwitchConnectMode;
-
-import lombok.Builder;
+import lombok.NonNull;
 import lombok.Value;
 
-import java.io.Serializable;
-import java.time.Instant;
-
 @Value
-@Builder
-public class SwitchAvailabilityEntry implements Serializable {
-    String regionName;
-
-    SwitchConnectMode connectMode;
-
-    boolean master;
-
-    Instant connectedAt;
-
-    IpSocketAddress switchAddress;
-    IpSocketAddress speakerAddress;
+public class IpSocketAddress {
+    @NonNull
+    String address;
+    int port;
 }

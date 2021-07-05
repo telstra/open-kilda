@@ -50,7 +50,6 @@ public final class IofSwitchConverter {
                 String.format("%s:%d",
                         address.getHostString(),
                         address.getPort()),
-                address.getHostName(),
                 String.format("%s %s %s",
                         sw.getSwitchDescription().getManufacturerDescription(),
                         sw.getOFFactory().getVersion().toString(),

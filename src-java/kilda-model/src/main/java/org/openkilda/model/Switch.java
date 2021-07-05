@@ -35,7 +35,6 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
-import java.net.InetSocketAddress;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Objects;
@@ -75,7 +74,7 @@ public class Switch implements CompositeDataEntity<Switch.SwitchData> {
     }
 
     @Builder
-    public Switch(@NonNull SwitchId switchId, SwitchStatus status, InetSocketAddress socketAddress,
+    public Switch(@NonNull SwitchId switchId, SwitchStatus status, IpSocketAddress socketAddress,
                   String hostname, String controller, String description, String ofVersion,
                   String ofDescriptionManufacturer, String ofDescriptionHardware, String ofDescriptionSoftware,
                   String ofDescriptionSerialNumber, String ofDescriptionDatapath,
@@ -192,9 +191,9 @@ public class Switch implements CompositeDataEntity<Switch.SwitchData> {
 
         void setStatus(SwitchStatus status);
 
-        InetSocketAddress getSocketAddress();
+        IpSocketAddress getSocketAddress();
 
-        void setSocketAddress(InetSocketAddress socketAddress);
+        void setSocketAddress(IpSocketAddress socketAddress);
 
         String getHostname();
 
@@ -284,7 +283,7 @@ public class Switch implements CompositeDataEntity<Switch.SwitchData> {
         private static final long serialVersionUID = 1L;
         @NonNull SwitchId switchId;
         SwitchStatus status;
-        InetSocketAddress socketAddress;
+        IpSocketAddress socketAddress;
         String hostname;
         String controller;
         String description;

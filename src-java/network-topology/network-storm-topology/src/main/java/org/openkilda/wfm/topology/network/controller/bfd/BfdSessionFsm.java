@@ -53,6 +53,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
@@ -411,7 +413,16 @@ public final class BfdSessionFsm
     private SwitchReference makeSwitchReference(SwitchId datapath) throws SwitchReferenceLookupException {
         Switch sw = switchRepository.findById(datapath)
                 .orElseThrow(() -> new SwitchReferenceLookupException(datapath, "persistent record is missing"));
-        return new SwitchReference(datapath, sw.getSocketAddress().getAddress());
+
+        InetAddress address;
+        String addressString = sw.getSocketAddress().getAddress();
+        try {
+            address = InetAddress.getByName(addressString);
+        } catch (UnknownHostException e) {
+            throw new IllegalStateException(String.format(
+                    "Switch %s have invalid socket address %s", datapath, addressString));
+        }
+        return new SwitchReference(datapath, address);
     }
 
     private void emitBfdFail() {

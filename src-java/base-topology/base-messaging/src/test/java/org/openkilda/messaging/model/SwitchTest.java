@@ -17,6 +17,7 @@ package org.openkilda.messaging.model;
 
 import org.openkilda.messaging.StringSerializer;
 import org.openkilda.messaging.Utils;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
@@ -26,7 +27,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.Collections;
 
 public class SwitchTest {
@@ -52,7 +52,7 @@ public class SwitchTest {
                 .pop("test_pop")
                 .status(SwitchStatus.ACTIVE)
                 .underMaintenance(true)
-                .socketAddress(new InetSocketAddress(1))
+                .socketAddress(new IpSocketAddress("192.168.10.20", 1))
                 .features(Collections.singleton(SwitchFeature.GROUP_PACKET_OUT_CONTROLLER))
                 .build();
         serializer.serialize(origin);

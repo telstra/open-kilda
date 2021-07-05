@@ -15,8 +15,7 @@
 
 package org.openkilda.persistence.ferma.frames;
 
-import static java.lang.String.format;
-
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch.SwitchData;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
@@ -32,9 +31,6 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tinkerpop.gremlin.structure.VertexProperty;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -74,27 +70,22 @@ public abstract class SwitchFrame extends KildaBaseVertexFrame implements Switch
     public abstract void setStatus(SwitchStatus status);
 
     @Override
-    public InetSocketAddress getSocketAddress() {
+    public IpSocketAddress getSocketAddress() {
         int port = Optional.ofNullable(getProperty(PORT_PROPERTY)).map(l -> ((Number) l).intValue()).orElse(0);
         return Optional.ofNullable((String) getProperty(ADDRESS_PROPERTY))
-                .map(address -> convert(address, port))
+                .map(address -> new IpSocketAddress(address, port))
                 .orElse(null);
     }
 
-    private InetSocketAddress convert(String address, int port) {
-        try {
-            return new InetSocketAddress(InetAddress.getByName(address), port);
-        } catch (UnknownHostException e) {
-            throw new IllegalStateException(format("Switch address '%s' is invalid", address), e);
-        }
-    }
-
     @Override
-    public void setSocketAddress(InetSocketAddress socketAddress) {
-        setProperty(ADDRESS_PROPERTY, socketAddress != null && socketAddress.getAddress() != null
-                ? socketAddress.getAddress().getHostAddress() : null);
-        setProperty(PORT_PROPERTY, socketAddress != null
-                ? socketAddress.getPort() : null);
+    public void setSocketAddress(IpSocketAddress ipSocketAddress) {
+        if (ipSocketAddress != null) {
+            setProperty(ADDRESS_PROPERTY, ipSocketAddress.getAddress());
+            setProperty(PORT_PROPERTY, ipSocketAddress.getPort());
+        } else {
+            setProperty(ADDRESS_PROPERTY, null);
+            setProperty(PORT_PROPERTY, null);
+        }
     }
 
     @Override
