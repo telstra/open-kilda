@@ -16,6 +16,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -61,15 +62,15 @@ class FlowStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flowHelperV2.toV1(flow),
-                (int) flow.maximumBandwidth, 5)
+        Exam exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flowHelperV2.toV1(flow),
+                (int) flow.maximumBandwidth, 5).tap { udp = true }
         def waitInterval = 10
         def mainPathStat
         def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
         def metric = metricPrefix + "flow.raw.bytes"
         //generate two points of stat just to be sure that stat is not collected for protected path
         2.times { count ->
-            exam.setResources(traffExam.startExam(exam, true))
+            exam.setResources(traffExam.startExam(exam))
             assert traffExam.waitExam(exam).hasTraffic()
             Wrappers.wait(statsRouterInterval, waitInterval) {
                 mainPathStat = otsdb.query(startTime, metric, tags).dps
@@ -107,7 +108,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         def newProtectedReverseCookieStat
         //generate two points of stat to be sure that stat is not collected for a new protected path(after swapping)
         2.times { count ->
-            exam.setResources(traffExam.startExam(exam, true))
+            exam.setResources(traffExam.startExam(exam))
             assert traffExam.waitExam(exam).hasTraffic()
             Wrappers.wait(statsRouterInterval, waitInterval) {
                 assert otsdb.query(startTime, metric, tags).dps.size() > mainPathStat.size()
@@ -150,9 +151,9 @@ class FlowStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flowHelperV2.toV1(flow),
-                (int) flow.maximumBandwidth, 3)
-        exam.setResources(traffExam.startExam(exam, true))
+        Exam exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flowHelperV2.toV1(flow),
+                (int) flow.maximumBandwidth, 3).tap { udp = true }
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stats is not empty for main path cookies"
@@ -196,7 +197,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         newCurrentPath != currentProtectedPath
 
         and: "Generate traffic on the flow"
-        exam.setResources(traffExam.startExam(exam, true))
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stats is not empty for new main path cookies"
@@ -245,8 +246,9 @@ class FlowStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 3)
-        exam.setResources(traffExam.startExam(exam, true))
+        Exam exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 3)
+                .tap { udp = true}
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "System collects stats for main path cookies"
@@ -283,7 +285,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         }
 
         and: "Generate traffic on the flow"
-        exam.setResources(traffExam.startExam(exam, true))
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "System collects stats for previous egress cookie of protected path with non zero value"
@@ -359,9 +361,9 @@ class FlowStatSpec extends HealthCheckSpecification {
         and: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flowHelperV2.toV1(flow),
-                (int) flow.maximumBandwidth, 3)
-        exam.setResources(traffExam.startExam(exam, true))
+        Exam exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flowHelperV2.toV1(flow),
+                (int) flow.maximumBandwidth, 3).tap { udp = true }
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "System collects stats for a new main path cookies"
@@ -413,9 +415,9 @@ class FlowStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flowHelperV2.toV1(flow),
-                (int) flow.maximumBandwidth, 3)
-        exam.setResources(traffExam.startExam(exam, true))
+        Exam exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flowHelperV2.toV1(flow),
+                (int) flow.maximumBandwidth, 3).tap { udp = true }
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "System collects stats for egress/ingress cookies"

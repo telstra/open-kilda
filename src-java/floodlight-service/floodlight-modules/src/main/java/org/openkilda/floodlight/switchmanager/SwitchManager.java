@@ -161,6 +161,7 @@ import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
+import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
@@ -1737,19 +1738,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             builder.setCookie(U64.of(criteria.getCookie()));
             builder.setCookieMask(U64.NO_MASK);
         }
+        Match.Builder matchBuilder = ofFactory.buildMatch();
+        if (criteria.getMetadataValue() != null && criteria.getMetadataMask() != null) {
+            matchBuilder.setMasked(MatchField.METADATA, OFMetadata.of(U64.of(criteria.getMetadataValue())),
+                    OFMetadata.of(U64.of(criteria.getMetadataMask())));
+        }
 
         if (criteria.getInPort() != null) {
             // Match either In Port or both Port & Vlan criteria.
-            Match match = matchFlow(ofFactory, criteria.getInPort(),
+            addMatchFlowToBuilder(matchBuilder, ofFactory, criteria.getInPort(),
                     Optional.ofNullable(criteria.getEncapsulationId()).orElse(0), criteria.getEncapsulationType());
-            builder.setMatch(match);
-
         } else if (criteria.getEncapsulationId() != null) {
             // Match In Vlan criterion if In Port is not specified
-            Match.Builder matchBuilder = ofFactory.buildMatch();
-            MacAddress egressSwitchMac = criteria.getEgressSwitchId() != null
-                    ? convertDpIdToMac(DatapathId.of(criteria.getEgressSwitchId().toLong()))
-                    : null;
             switch (criteria.getEncapsulationType()) {
                 case TRANSIT_VLAN:
                     matchVlan(ofFactory, matchBuilder, criteria.getEncapsulationId());
@@ -1761,6 +1761,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     throw new UnsupportedOperationException(
                             String.format("Unknown encapsulation type: %s", criteria.getEncapsulationType()));
             }
+        }
+        Match match = matchBuilder.build();
+        if (!match.equals(ofFactory.buildMatch().build())) {
+            // we should not set empty match
             builder.setMatch(matchBuilder.build());
         }
 

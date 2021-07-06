@@ -50,6 +50,7 @@ import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.model.topology.TopologyDefinition.SwitchProperties
+import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.model.Floodlight
 import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode
@@ -81,6 +82,7 @@ import java.math.RoundingMode
 class SwitchHelper {
     static NorthboundService northbound
     static Database database
+    static TopologyDefinition topology
 
     //below values are manufacturer-specific and override default Kilda values on firmware level
     static NOVIFLOW_BURST_COEFFICIENT = 1.005 // Driven by the Noviflow specification
@@ -97,22 +99,25 @@ class SwitchHelper {
     int discoveryTimeout
 
     @Autowired
-    TopologyDefinition topology
-
-    @Autowired
     IslUtils islUtils
 
     @Autowired
     LockKeeperService lockKeeper
 
     @Autowired
-    SwitchHelper(NorthboundService northbound, Database database) {
+    SwitchHelper(NorthboundService northbound, Database database,
+                 TopologyDefinition topology) {
         this.northbound = northbound
         this.database = database
+        this.topology = topology
     }
 
     static String getDescription(Switch sw) {
         sw.nbFormat().description
+    }
+
+    static List<TraffGen> getTraffGens(Switch sw) {
+        topology.traffGens.findAll { it.switchConnected.dpId == sw.dpId }
     }
 
     @Memoized
@@ -345,7 +350,8 @@ class SwitchHelper {
                         assert switchValidateInfo.meters.proper.findAll { !it.defaultMeter }.empty, swId
                     }
                 } else {
-                    assertions.checkSucceeds { assert switchValidateInfo.meters."$section".empty, swId }
+                    def meters = switchValidateInfo.meters."$section"
+                    assertions.checkSucceeds { assert meters.empty, "$swId $section $meters" }
                 }
             }
         }
@@ -370,7 +376,8 @@ class SwitchHelper {
                     }.empty, swId
                 }
             } else {
-                assertions.checkSucceeds { assert switchValidateInfo.rules."$section".empty, swId }
+                def rules = switchValidateInfo.rules."$section"
+                assertions.checkSucceeds { assert rules.empty, "$swId $section $rules" }
             }
         }
         assertions.verify()
@@ -400,7 +407,8 @@ class SwitchHelper {
                     assert switchValidateInfo.rules.properHex.findAll { !(it in defaultHexCookies) }.empty, swId
                 }
             } else {
-                assertions.checkSucceeds { assert switchValidateInfo.rules."$section".empty, swId }
+                def rules = switchValidateInfo.rules."$section"
+                assertions.checkSucceeds { assert rules.empty, "$swId $section $rules" }
             }
         }
         assertions.verify()

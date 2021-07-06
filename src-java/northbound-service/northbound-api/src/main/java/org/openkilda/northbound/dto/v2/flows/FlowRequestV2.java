@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@ public class FlowRequestV2 {
 
     private long maximumBandwidth;
     private boolean ignoreBandwidth;
+    private boolean strictBandwidth;
     private boolean periodicPings;
     private String description;
     private Long maxLatency;

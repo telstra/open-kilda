@@ -63,6 +63,7 @@ public class FlowMapperTest {
     private static final int DST_INNER_VLAN = 6;
     private static final int BANDWIDTH = 1000;
     private static final boolean IGNORE_BANDWIDTH = true;
+    private static final boolean STRICT_BANDWIDTH = true;
     private static final boolean PERIODIC_PINGS = true;
     private static final boolean ALLOCATE_PROTECTED_PATH = true;
     private static final boolean PINNED = true;
@@ -236,9 +237,9 @@ public class FlowMapperTest {
         FlowPatchV2 flowPatchDto = new FlowPatchV2(
                 new FlowPatchEndpoint(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, SRC_INNER_VLAN, SRC_DETECT_CONNECTED_DEVICES),
                 new FlowPatchEndpoint(DST_SWITCH_ID, DST_PORT, DST_VLAN, DST_INNER_VLAN, DST_DETECT_CONNECTED_DEVICES),
-                (long) BANDWIDTH, IGNORE_BANDWIDTH, PERIODIC_PINGS, DESCRIPTION, LATENCY, LATENCY_TIER2, PRIORITY,
-                DIVERSE_FLOW_ID, PINNED, ALLOCATE_PROTECTED_PATH, ENCAPSULATION_TYPE, PATH_COMPUTATION_STRATEGY,
-                TARGET_PATH_COMPUTATION_STRATEGY);
+                (long) BANDWIDTH, IGNORE_BANDWIDTH, STRICT_BANDWIDTH, PERIODIC_PINGS, DESCRIPTION,
+                LATENCY, LATENCY_TIER2, PRIORITY, DIVERSE_FLOW_ID, PINNED, ALLOCATE_PROTECTED_PATH,
+                ENCAPSULATION_TYPE, PATH_COMPUTATION_STRATEGY, TARGET_PATH_COMPUTATION_STRATEGY);
         FlowPatch flowPatch = flowMapper.toFlowPatch(flowPatchDto);
 
         assertEquals(flowPatchDto.getSource().getSwitchId(), flowPatch.getSource().getSwitchId());
@@ -268,6 +269,7 @@ public class FlowMapperTest {
         assertEquals(flowPatchDto.getAllocateProtectedPath(), flowPatch.getAllocateProtectedPath());
         assertEquals(flowPatchDto.getPinned(), flowPatch.getPinned());
         assertEquals(flowPatchDto.getIgnoreBandwidth(), flowPatch.getIgnoreBandwidth());
+        assertEquals(flowPatchDto.getStrictBandwidth(), flowPatch.getStrictBandwidth());
         assertEquals(flowPatchDto.getDescription(), flowPatch.getDescription());
         assertEquals(flowPatchDto.getEncapsulationType(), flowPatch.getEncapsulationType().name().toLowerCase());
         assertEquals(flowPatchDto.getPathComputationStrategy(),

@@ -16,11 +16,13 @@
 package org.openkilda.testing.service.traffexam.model;
 
 import com.google.common.collect.ImmutableList;
-import lombok.Value;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
 import java.util.List;
 
-@Value
+@Data
+@AllArgsConstructor
 public class FlowBidirectionalExam {
 
     private Exam forward;

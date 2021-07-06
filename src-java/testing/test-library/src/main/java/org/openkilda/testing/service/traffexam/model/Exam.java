@@ -18,13 +18,13 @@ package org.openkilda.testing.service.traffexam.model;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 
 import lombok.Builder;
+import lombok.Data;
 import lombok.Setter;
-import lombok.Value;
 import lombok.experimental.NonFinal;
 
 import java.util.List;
 
-@Value
+@Data
 @Builder
 public class Exam {
 
@@ -36,6 +36,8 @@ public class Exam {
     private List<Vlan> destVlans;
     private Bandwidth bandwidthLimit;
     private int burstPkt;
+    private boolean udp;
+    private Integer bufferLength;
     private TimeLimit timeLimitSeconds;
 
     @Setter

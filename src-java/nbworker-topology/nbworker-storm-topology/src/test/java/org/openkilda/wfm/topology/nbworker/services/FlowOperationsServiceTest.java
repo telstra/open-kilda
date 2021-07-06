@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -137,6 +137,68 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
         assertEquals(pathComputationStrategy, updatedFlow.getTargetPathComputationStrategy());
         assertEquals(description, updatedFlow.getDescription());
         assertTrue(updatedFlow.isPinned());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testStrictBandwidthAndIgnoreBandwidthPatchConflict() throws FlowNotFoundException {
+        String testFlowId = "flow_id";
+
+        Flow flow = new TestFlowBuilder()
+                .flowId(testFlowId)
+                .srcSwitch(createSwitch(SWITCH_ID_1))
+                .destSwitch(createSwitch(SWITCH_ID_2))
+                .build();
+        flowRepository.add(flow);
+
+        FlowPatch receivedFlow = FlowPatch.builder()
+                .flowId(testFlowId)
+                .strictBandwidth(true)
+                .ignoreBandwidth(true)
+                .build();
+
+        flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testStrictBandwidthAndIgnoreBandwidthFlowConflict() throws FlowNotFoundException {
+        String testFlowId = "flow_id";
+
+        Flow flow = new TestFlowBuilder()
+                .flowId(testFlowId)
+                .srcSwitch(createSwitch(SWITCH_ID_1))
+                .destSwitch(createSwitch(SWITCH_ID_2))
+                .ignoreBandwidth(true)
+                .build();
+        flowRepository.add(flow);
+
+        FlowPatch receivedFlow = FlowPatch.builder()
+                .flowId(testFlowId)
+                .strictBandwidth(true)
+                .ignoreBandwidth(false)
+                .build();
+
+        flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+    }
+
+    @Test
+    public void testStrictBandwidthUpdate() throws FlowNotFoundException {
+        String testFlowId = "flow_id";
+
+        Flow flow = new TestFlowBuilder()
+                .flowId(testFlowId)
+                .srcSwitch(createSwitch(SWITCH_ID_1))
+                .destSwitch(createSwitch(SWITCH_ID_2))
+                .build();
+        flowRepository.add(flow);
+
+        FlowPatch receivedFlow = FlowPatch.builder()
+                .flowId(testFlowId)
+                .strictBandwidth(true)
+                .build();
+
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+
+        assertTrue(updatedFlow.isStrictBandwidth());
     }
 
     @Test

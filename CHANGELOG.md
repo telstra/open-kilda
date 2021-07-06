@@ -1,5 +1,41 @@
 # Changelog
 
+## v1.98.0 (02/07/2021)
+
+### Features:
+-  [#4328](https://github.com/telstra/open-kilda/pull/4328) refactor/extend tests for islRttSpec [**tests**]
+-  [#4331](https://github.com/telstra/open-kilda/pull/4331) Add a strict bandwidth flag to flow [**northbound**][**storm-topologies**]
+-  [#4334](https://github.com/telstra/open-kilda/pull/4334) Strict bandwidth flag for flow design [**docs**]
+-  [#4336](https://github.com/telstra/open-kilda/pull/4336) Add strict bandwidth flag logic to Reroute topology [**storm-topologies**]
+
+### Bug Fixes:
+-  [#4317](https://github.com/telstra/open-kilda/pull/4317) Fixed remove of VXLAN excess rules (Issues: [#4314](https://github.com/telstra/open-kilda/issues/4314) [#4315](https://github.com/telstra/open-kilda/issues/4315) [#4316](https://github.com/telstra/open-kilda/issues/4316)) [**floodlight**][**storm-topologies**]
+-  [#4323](https://github.com/telstra/open-kilda/pull/4323) Fix reroute flows on ISL (Issue: [#4290](https://github.com/telstra/open-kilda/issues/4290)) [**storm-topologies**]
+-  [#4338](https://github.com/telstra/open-kilda/pull/4338) Fixed flow Patch log [**storm-topologies**]
+-  [#4340](https://github.com/telstra/open-kilda/pull/4340) Fix delete flow race condition in flow monitoring
+-  [#4342](https://github.com/telstra/open-kilda/pull/4342) [Server42] Seek to latest on startup in control app
+
+### Improvements:
+-  [#4298](https://github.com/telstra/open-kilda/pull/4298) unignore vxlan+flowLoop test [**tests**]
+-  [#4325](https://github.com/telstra/open-kilda/pull/4325) add test for #4316 [**tests**]
+-  [#4262](https://github.com/telstra/open-kilda/pull/4262) add tests for #3841, #3858 (Issues: [#3841](https://github.com/telstra/open-kilda/issues/3841) [#3858](https://github.com/telstra/open-kilda/issues/3858)) [**tests**]
+-  [#4137](https://github.com/telstra/open-kilda/pull/4137) unignore vxlan spec according to obsolete issues (#2995,#2996,#3021) (Issue: [#4281](https://github.com/telstra/open-kilda/issues/4281)) [**tests**]
+-  [#4330](https://github.com/telstra/open-kilda/pull/4330) adjust swapEnpointSpec to a new validation(s42Port) [**tests**]
+-  [#4270](https://github.com/telstra/open-kilda/pull/4270) extend MaxLatencySpec [**tests**]
+-  [#4344](https://github.com/telstra/open-kilda/pull/4344) Fix flow monitoring deactivation
+
+### Other changes:
+-  [#4307](https://github.com/telstra/open-kilda/pull/4307) Refactor how healthchecks are performed in func tests [**tests**]
+-  [#4266](https://github.com/telstra/open-kilda/pull/4266) Add func tests for traffic mirror feature [**tests**]
+-  [#4333](https://github.com/telstra/open-kilda/pull/4333) Upgrade gradle to 6.9 and test-logger plugin to 3.0.0 [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.97.0...v1.98.0).
+
+### Affected Components:
+nb, swmanager, server42, fl, reroute, flow-hs, nbworker, flow-monitor
+
+---
+
 ## v1.97.0 (22/06/2021)
 
 ### Features:

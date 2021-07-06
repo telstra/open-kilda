@@ -27,12 +27,12 @@ import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import groovy.transform.Memoized
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
 import spock.lang.See
 
 @See(["https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/switch-sync",
@@ -242,12 +242,11 @@ class SwitchSyncSpec extends BaseSpecification {
 
     @Tidy
     @Tags(HARDWARE)
-    @Ignore("https://github.com/telstra/open-kilda/issues/3021")
     def "Able to synchronize switch with 'vxlan' rule(install missing rules and meters)"() {
         given: "Two active not neighboring Noviflow switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
-            swP.src.noviflow && !swP.src.wb5164 && swP.dst.noviflow && !swP.dst.wb5164 && swP.paths.find { path ->
-                pathHelper.getInvolvedSwitches(path).every { it.noviflow && !it.wb5164 }
+            swP.paths.find { path ->
+                pathHelper.getInvolvedSwitches(path).every { isVxlanEnabled(it.dpId) }
             }
         } ?: assumeTrue(false, "Unable to find required switches in topology")
 
@@ -262,7 +261,7 @@ class SwitchSyncSpec extends BaseSpecification {
         def transitSwitchIds = involvedSwitches[1..-2]*.dpId
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                !(it.cookie in sw.defaultCookies)
+                !(it.cookie in sw.defaultCookies) && !new Cookie(it.cookie).serviceFlag
             }*.cookie]
         }
         def metersMap = involvedSwitches.collectEntries { sw ->
@@ -275,7 +274,19 @@ class SwitchSyncSpec extends BaseSpecification {
         [switchPair.src, switchPair.dst].each { northbound.deleteMeter(it.dpId, metersMap[it.dpId][0]) }
         Wrappers.wait(RULES_DELETION_TIME) {
             def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
-            involvedSwitches.each { assert validationResultsMap[it.dpId].rules.missing.size() == 2 }
+            involvedSwitches.each {
+                def swProps = northbound.getSwitchProperties(it.dpId)
+                def switchIdInSrcOrDst = (it.dpId in [switchPair.src.dpId, switchPair.dst.dpId])
+                def defaultAmountOfFlowRules = 2 // ingress + egress
+                def amountOfServer42Rules = (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
+                if (swProps.multiTable && swProps.server42FlowRtt) {
+                    if ((flow.destination.getSwitchId() == it.dpId && flow.destination.vlanId) || (
+                            flow.source.getSwitchId() == it.dpId && flow.source.vlanId))
+                        amountOfServer42Rules += 1
+                }
+                def rulesCount = defaultAmountOfFlowRules + amountOfServer42Rules +
+                        (switchIdInSrcOrDst && swProps.multiTable ? 1 : 0)
+                assert validationResultsMap[it.dpId].rules.missing.size() == rulesCount }
             [switchPair.src, switchPair.dst].each { assert validationResultsMap[it.dpId].meters.missing.size() == 1 }
         }
 
@@ -291,7 +302,7 @@ class SwitchSyncSpec extends BaseSpecification {
             assert syncResultsMap[it.dpId].rules.installed.containsAll(cookiesMap[it.dpId])
         }
         [switchPair.src, switchPair.dst].each {
-            assert syncResultsMap[it.dpId].meters.proper.findAll { !new Cookie(it).serviceFlag }.size() == 0
+            assert syncResultsMap[it.dpId].meters.proper.findAll { !it.defaultMeter }.size() == 0
             assert syncResultsMap[it.dpId].meters.excess.size() == 0
             assert syncResultsMap[it.dpId].meters.missing*.meterId == metersMap[it.dpId]
             assert syncResultsMap[it.dpId].meters.removed.size() == 0
@@ -340,7 +351,13 @@ class SwitchSyncSpec extends BaseSpecification {
         }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Memoized
+    def isVxlanEnabled(SwitchId switchId) {
+        return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
+                .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 
     private static Message buildMessage(final BaseInstallFlow commandData) {

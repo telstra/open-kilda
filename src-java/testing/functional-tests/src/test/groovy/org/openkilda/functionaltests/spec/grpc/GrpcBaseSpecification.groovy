@@ -5,8 +5,8 @@ import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDEN
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.ConstantsGrpc.GRPC_STUB_CONTAINER_NAME
 
+import org.openkilda.functionaltests.HealthCheckBaseSpecification
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.DockerHelper
 import org.openkilda.messaging.info.event.SwitchChangeType
@@ -15,6 +15,7 @@ import org.openkilda.northbound.dto.v1.switches.SwitchLocationDto
 import org.openkilda.testing.service.grpc.GrpcService
 
 import groovy.transform.Memoized
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.See
@@ -22,7 +23,12 @@ import spock.lang.Shared
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/grpc-client")
 @Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
-class GrpcBaseSpecification extends HealthCheckSpecification {
+@Slf4j
+class GrpcBaseSpecification extends HealthCheckBaseSpecification {
+
+    static Throwable healthCheckError
+    static boolean healthCheckRan = false
+
     @Value('${spring.profiles.active}')
     String profile
     @Autowired @Shared
@@ -30,10 +36,9 @@ class GrpcBaseSpecification extends HealthCheckSpecification {
     @Value('${docker.host}')
     String dockerHost
 
-    @HealthCheck
-    def "GRPC is UP and operational"() {
-        expect: "GRPC's health check request is successful"
-        grpc.getHealthCheck().components["kafka"] == "operational"
+    @Override
+    def healthCheck() {
+        assert grpc.getHealthCheck().components["kafka"] == "operational"
     }
 
     @Memoized
@@ -76,4 +81,8 @@ class GrpcBaseSpecification extends HealthCheckSpecification {
         return 0
     }
 
+    boolean getHealthCheckRan() { healthCheckRan }
+    Throwable getHealthCheckError() { healthCheckError }
+    void setHealthCheckRan(boolean hcRan) { healthCheckRan = hcRan }
+    void setHealthCheckError(Throwable t) { healthCheckError = t }
 }

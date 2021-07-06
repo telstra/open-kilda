@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -89,17 +89,17 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
     public Flow(@NonNull String flowId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
                 int srcPort, int srcVlan, int srcInnerVlan, int destPort, int destVlan, int destInnerVlan,
                 boolean allocateProtectedPath, String groupId, long bandwidth, boolean ignoreBandwidth,
-                String description, boolean periodicPings, FlowEncapsulationType encapsulationType,
-                FlowStatus status, String statusInfo, Long maxLatency, Long maxLatencyTier2, Integer priority,
-                boolean pinned, DetectConnectedDevices detectConnectedDevices,
-                PathComputationStrategy pathComputationStrategy,
+                boolean strictBandwidth, String description, boolean periodicPings,
+                FlowEncapsulationType encapsulationType, FlowStatus status, String statusInfo,
+                Long maxLatency, Long maxLatencyTier2, Integer priority, boolean pinned,
+                DetectConnectedDevices detectConnectedDevices, PathComputationStrategy pathComputationStrategy,
                 PathComputationStrategy targetPathComputationStrategy, SwitchId loopSwitchId) {
         FlowDataImpl.FlowDataImplBuilder builder = FlowDataImpl.builder()
                 .flowId(flowId).srcSwitch(srcSwitch).destSwitch(destSwitch)
                 .srcPort(srcPort).srcVlan(srcVlan).srcInnerVlan(srcInnerVlan)
                 .destPort(destPort).destVlan(destVlan).destInnerVlan(destInnerVlan)
                 .allocateProtectedPath(allocateProtectedPath).groupId(groupId)
-                .bandwidth(bandwidth).ignoreBandwidth(ignoreBandwidth)
+                .bandwidth(bandwidth).ignoreBandwidth(ignoreBandwidth).strictBandwidth(strictBandwidth)
                 .description(description).periodicPings(periodicPings).encapsulationType(encapsulationType)
                 .status(status).statusInfo(statusInfo).maxLatency(maxLatency).maxLatencyTier2(maxLatencyTier2)
                 .priority(priority).pinned(pinned).pathComputationStrategy(pathComputationStrategy)
@@ -521,6 +521,10 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
 
         void setIgnoreBandwidth(boolean ignoreBandwidth);
 
+        boolean isStrictBandwidth();
+
+        void setStrictBandwidth(boolean strictBandwidth);
+
         String getDescription();
 
         void setDescription(String description);
@@ -616,6 +620,7 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
         String groupId;
         long bandwidth;
         boolean ignoreBandwidth;
+        boolean strictBandwidth;
         String description;
         boolean periodicPings;
         FlowEncapsulationType encapsulationType;

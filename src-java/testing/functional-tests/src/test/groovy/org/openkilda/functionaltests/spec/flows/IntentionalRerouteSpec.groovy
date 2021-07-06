@@ -164,7 +164,8 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         def bw = 100000 // 100 Mbps
         def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, bw)
         [exam.forward, exam.reverse].each { direction ->
-            def resources = traffExam.startExam(direction, true)
+            direction.udp = true
+            def resources = traffExam.startExam(direction)
             direction.setResources(resources)
         }
 
@@ -285,7 +286,8 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, bw, 30)
         withPool {
             [exam.forward, exam.reverse].eachParallel { direction ->
-                def resources = traffExam.startExam(direction, true)
+                direction.udp = true
+                def resources = traffExam.startExam(direction)
                 direction.setResources(resources)
             }
         }

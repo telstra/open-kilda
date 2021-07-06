@@ -287,6 +287,8 @@ class EndpointService(Abstract):
             '--interval=1']
         if subject.use_udp:
             cmd.append('--udp')
+        if subject.buffer_length:
+            cmd.append('--len={}'.format(subject.buffer_length))
         self.run_iperf(subject, cmd)
 
     def make_cmd_common_part(self, subject):

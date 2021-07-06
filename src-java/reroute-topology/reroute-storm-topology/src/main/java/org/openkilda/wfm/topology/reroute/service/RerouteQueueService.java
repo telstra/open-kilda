@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -72,6 +72,15 @@ public class RerouteQueueService {
      * @param throttlingData reroute request params
      */
     public void processAutomaticRequest(String flowId, FlowThrottlingData throttlingData) {
+        Optional<Flow> flow = flowRepository.findById(flowId);
+        if (!flow.isPresent()) {
+            log.warn(format("Flow %s not found. Skip the reroute operation of this flow.", flowId));
+            return;
+        } else if (flow.get().isPinned()) {
+            log.info(format("Flow %s is pinned. Skip the reroute operation of this flow.", flowId));
+            return;
+        }
+
         log.info("Puts reroute request for flow {} with correlationId {}.", flowId, throttlingData.getCorrelationId());
         RerouteQueue rerouteQueue = getRerouteQueue(flowId);
         rerouteQueue.putToThrottling(throttlingData);
@@ -203,10 +212,10 @@ public class RerouteQueueService {
     private void injectRetry(String flowId, RerouteQueue rerouteQueue, boolean ignoreBandwidth) {
         log.info("Injecting retry for flow {} wuth ignore b/w flag {}", flowId, ignoreBandwidth);
         FlowThrottlingData retryRequest = rerouteQueue.getInProgress();
-        retryRequest.setIgnoreBandwidth(retryRequest.isIgnoreBandwidth() || ignoreBandwidth);
         if (retryRequest == null) {
             throw new IllegalStateException(format("Can not retry 'null' reroute request for flow %s.", flowId));
         }
+        retryRequest.setIgnoreBandwidth(computeIgnoreBandwidth(retryRequest, ignoreBandwidth));
         if (retryRequest.getRetryCounter() < maxRetry) {
             retryRequest.increaseRetryCounter();
             String retryCorrelationId = new CommandContext(retryRequest.getCorrelationId())
@@ -220,10 +229,15 @@ public class RerouteQueueService {
             log.error("No more retries available for reroute request {}.", retryRequest);
             FlowThrottlingData toSend = rerouteQueue.processPending();
             if (toSend != null) {
-                toSend.setIgnoreBandwidth(toSend.isIgnoreBandwidth() || ignoreBandwidth);
+                toSend.setIgnoreBandwidth(computeIgnoreBandwidth(toSend, ignoreBandwidth));
             }
             sendRerouteRequest(flowId, toSend);
         }
+    }
+
+    @VisibleForTesting
+    boolean computeIgnoreBandwidth(FlowThrottlingData data, boolean ignoreBandwidth) {
+        return !data.isStrictBandwidth() && (data.isIgnoreBandwidth() || ignoreBandwidth);
     }
 
     private void sendRerouteRequest(String flowId, FlowThrottlingData throttlingData) {

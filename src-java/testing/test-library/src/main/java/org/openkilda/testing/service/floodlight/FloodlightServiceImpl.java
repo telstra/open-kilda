@@ -27,6 +27,8 @@ import org.openkilda.testing.service.floodlight.model.ControllerRole;
 import org.openkilda.testing.service.floodlight.model.FlowEntriesMap;
 import org.openkilda.testing.service.floodlight.model.MetersEntriesMap;
 import org.openkilda.testing.service.floodlight.model.SwitchEntry;
+import org.openkilda.testing.service.floodlight.model.group.GroupsDescResponse;
+import org.openkilda.testing.service.floodlight.model.group.GroupsStatsResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,15 +73,15 @@ public class FloodlightServiceImpl implements FloodlightService {
 
     @Override
     public List<CoreFlowEntry> getCoreFlows(SwitchId dpId) {
-        CoreFlowEntry[] coreFlows = restTemplate.getForObject("/wm/core/switch/{dp_id}/flow/json",
-                CoreFlowEntry[].class, dpId);
+        CoreFlowEntry[] coreFlows = restTemplate.getForObject(format("/wm/core/switch/%s/flow/json", dpId),
+                CoreFlowEntry[].class);
         return Arrays.asList(coreFlows);
     }
 
     @Override
     public DpIdEntriesList getStaticEntries(SwitchId dpId) {
-        return restTemplate.getForObject("/wm/staticentrypusher/list/{dp_id}/json",
-                DpIdEntriesList.class, dpId);
+        return restTemplate.getForObject(format("/wm/staticentrypusher/list/%s/json", dpId),
+                DpIdEntriesList.class);
     }
 
     @Override
@@ -90,13 +92,13 @@ public class FloodlightServiceImpl implements FloodlightService {
 
     @Override
     public FlowEntriesMap getFlows(SwitchId dpid) {
-        return restTemplate.getForObject("/wm/kilda/flows/switch_id/{switch_id}", FlowEntriesMap.class, dpid);
+        return restTemplate.getForObject("/wm/kilda/flows/switch_id/" + dpid, FlowEntriesMap.class);
     }
 
     @Override
     public MetersEntriesMap getMeters(SwitchId dpid) {
         try {
-            return restTemplate.getForObject("/wm/kilda/meters/switch_id/{switch_id}", MetersEntriesMap.class, dpid);
+            return restTemplate.getForObject("/wm/kilda/meters/switch_id/" + dpid, MetersEntriesMap.class);
         } catch (HttpServerErrorException ex) {
             if (ex.getStatusCode() == HttpStatus.NOT_IMPLEMENTED) {
                 throw
@@ -104,14 +106,23 @@ public class FloodlightServiceImpl implements FloodlightService {
                                 format("Switch %s doesn't support dumping of meters.", dpid),
                                 ex);
             }
-
             throw ex;
         }
     }
 
     @Override
+    public GroupsStatsResponse getGroupsStats(SwitchId dpid) {
+        return restTemplate.getForObject(format("/wm/core/switch/%s/group/json", dpid), GroupsStatsResponse.class);
+    }
+
+    @Override
+    public GroupsDescResponse getGroupsDesc(SwitchId dpid) {
+        return restTemplate.getForObject(format("/wm/core/switch/%s/group-desc/json", dpid), GroupsDescResponse.class);
+    }
+
+    @Override
     public Map setRole(SwitchId dpid, ControllerRole role) {
-        return restTemplate.exchange("/wm/core/switch/{switch_id}/role/json", HttpMethod.POST,
-                new HttpEntity<>(new ChangeRoleRequest(role)), Map.class, dpid).getBody();
+        return restTemplate.exchange(format("/wm/core/switch/%s/role/json", dpid), HttpMethod.POST,
+                new HttpEntity<>(new ChangeRoleRequest(role)), Map.class).getBody();
     }
 }

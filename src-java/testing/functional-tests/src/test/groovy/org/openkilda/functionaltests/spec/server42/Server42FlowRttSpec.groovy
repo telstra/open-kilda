@@ -25,12 +25,15 @@ import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
+import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.util.mop.Use
@@ -148,10 +151,10 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             [switchPair.src, switchPair.dst].each {
                 /** - one rule of each type for one flow;
-                 * - no SERVER_42_INPUT cookie in singleTable;
-                 * - SERVER_42_INPUT is installed for each different flow port (if there are 10 flows on port number 5,
-                 * then there will be installed one INPUT rule);
-                 * - SERVER_42_INGRESS is installed for each flow.
+                 * - no SERVER_42_FLOW_RTT_INGRESS cookie in singleTable;
+                 * - SERVER_42_FLOW_RTT_INGRESS is installed for each different flow port
+                 * (if there are 10 flows on port number 5, then there will be installed one INPUT rule);
+                 * - SERVER_42_FLOW_RTT_INGRESS is installed for each flow.
                  */
                 def amountOfRules = northbound.getSwitchProperties(it.dpId).multiTable ? 4 : 2
                 assert northbound.getSwitchRules(it.dpId).flowEntries.findAll {
@@ -442,7 +445,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         when: "Delete ingress server42 rule related to the flow on the src switch"
         def cookieToDelete = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.find {
-            new Cookie(it.cookie).getType() == CookieType.SERVER_42_INGRESS
+            new Cookie(it.cookie).getType() == CookieType.SERVER_42_FLOW_RTT_INGRESS
         }.cookie
         northbound.deleteSwitchRules(switchPair.src.dpId, cookieToDelete)
 
@@ -486,7 +489,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert northbound.validateSwitch(switchPair.src.dpId).rules.missing.empty
             assert northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-                new Cookie(it.cookie).getType() == CookieType.SERVER_42_INGRESS
+                new Cookie(it.cookie).getType() == CookieType.SERVER_42_FLOW_RTT_INGRESS
             }*.cookie.size() == 1
         }
 
@@ -689,6 +692,197 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         initialSrcSwS42Props && changeFlowRttSwitch(switchPair.src, initialSrcSwS42Props)
     }
 
+    @Tidy
+    @Tags(HARDWARE) //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
+    def "Flow rtt stats are still available after updating a #data.flowDescription flow"() {
+        given: "Two active switches, connected to the server42"
+        def server42switches = topology.getActiveServer42Switches()
+        assumeTrue((server42switches.size() > 1), "Unable to find active server42")
+        def server42switchesDpIds = server42switches*.dpId;
+        def switchPair = data.switchPair(server42switchesDpIds)
+        assumeTrue(switchPair != null, "Was not able to find a switchPair with a server42 connection")
+
+        and: "server42FlowRtt toggle is set to true"
+        def flowRttFeatureStartState = changeFlowRttToggle(true)
+
+        and: "server42FlowRtt is enabled on src and dst switches"
+        def server42Switch = switchPair.src
+        def initialSwitchRtt = [server42Switch, switchPair.dst].collectEntries { [it, changeFlowRttSwitch(it, true)] }
+
+        and: "A flow"
+        //take shorter flowid due to https://github.com/telstra/open-kilda/issues/3720
+        def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
+        flow.tap(data.flowTap)
+        flowHelperV2.addFlow(flow)
+
+        when: "Update the flow(vlan/innerVlan) via partialUpdate on the src/dst endpoint"
+        def newSrcInnerVlanId = (flow.source.innerVlanId == 0) ? 0 : flow.source.innerVlanId + 1
+        def newVlanId = flow.source.vlanId + 1
+        def newDstInnerVlanId = (flow.destination.innerVlanId == 0) ? 0 : flow.destination.innerVlanId + 1
+        def updateRequest = new FlowPatchV2().tap {
+            source = new FlowPatchEndpoint().tap {
+                vlanId = newVlanId
+                innerVlanId = newSrcInnerVlanId
+            }
+            destination = new FlowPatchEndpoint().tap {
+                innerVlanId = newDstInnerVlanId
+            }
+        }
+        flowHelperV2.partialUpdate(flow.flowId, updateRequest)
+        def flowUpdateTime = new Date()
+
+        then: "Check if stats for forward/reverse directions are available"
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+            assert !otsdb.query(flowUpdateTime, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "forward",
+                     origin   : "server42"]).dps.isEmpty()
+            assert !otsdb.query(flowUpdateTime, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "reverse",
+                     origin   : "server42"]).dps.isEmpty()
+        }
+
+        and: "Flow is valid"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
+        and: "The src switch is valid"
+        [switchPair.src, switchPair.dst].each {
+            with(northbound.validateSwitch(it.dpId)) {
+                it.verifyRuleSectionsAreEmpty(switchPair.src.dpId, ["missing", "misconfigured", "excess"])
+                it.verifyMeterSectionsAreEmpty(switchPair.src.dpId, ["missing", "misconfigured", "excess"])
+            }
+        }
+        def switchesAreValid = true
+
+        cleanup: "Revert system to original state"
+        revertToOrigin([flow], flowRttFeatureStartState, initialSwitchRtt)
+        !switchesAreValid && [switchPair.src, switchPair.dst].each { northbound.synchronizeSwitch(it.dpId, true) }
+
+        where:
+        data << [
+                 [
+                         flowDescription: "vxlan",
+                         switchPair     : { List<SwitchId> switchIds -> getSwPairConnectedToS42ForVxlanFlow(switchIds) },
+                         flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
+                 ],
+                 [
+                         flowDescription: "qinq",
+                         switchPair     : { List<SwitchId> switchIds -> getSwPairConnectedToS42ForQinQ(switchIds) },
+                         flowTap        : { FlowRequestV2 fl ->
+                             fl.source.vlanId = 10
+                             fl.source.innerVlanId = 100
+                             fl.destination.vlanId = 20
+                             fl.destination.innerVlanId = 200
+                         }
+                 ]
+        ]
+    }
+
+    @Tidy
+    @Ignore("https://github.com/telstra/open-kilda/issues/3814")
+    @Tags(HARDWARE) //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
+    def "Flow rtt stats are available after updating switch properties related to server42"(){
+        given: "Two active switches, src has server42 connected with incorrect config in swProps"
+        def server42switches = topology.getActiveServer42Switches()
+        assumeTrue((server42switches.size() > 0), "Unable to find active server42")
+        def server42switchesDpIds = server42switches*.dpId;
+        def switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
+            it.src.dpId in server42switchesDpIds && !server42switchesDpIds.contains(it.dst.dpId)
+        }
+        assumeTrue(switchPair != null, "Was not able to find a switch with a server42 connected")
+
+        def flowRttFeatureStartState = changeFlowRttToggle(true)
+        def initialFlowRttSw = changeFlowRttSwitch(switchPair.src, true)
+
+        when: "Update the server42 in switch properties on ths src switch(incorrect port)"
+        def newS42Port = topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
+            it.dpId == switchPair.src.dpId
+        }).last()
+        def originalSrcSwPros = northbound.getSwitchProperties(switchPair.src.dpId)
+        northbound.updateSwitchProperties(switchPair.src.dpId, originalSrcSwPros.jacksonCopy().tap {
+            server42Port = newS42Port
+        })
+        def swPropIsWrong = true
+
+        then: "server42 rules on the switch are updated"
+        def amountOfS42Rules = switchPair.src.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) ? 2 : 1
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            def s42Rules = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
+                it.cookie in  [Cookie.SERVER_42_OUTPUT_VLAN_COOKIE, Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE]
+            }
+            assert s42Rules.size() == amountOfS42Rules
+            assert s42Rules*.instructions.applyActions.flowOutput.unique() == [newS42Port.toString()]
+        }
+
+        and: "The src switch is valid"
+        with(northbound.validateSwitch(switchPair.src.dpId)) {
+            it.verifyRuleSectionsAreEmpty(switchPair.src.dpId)
+            it.verifyMeterSectionsAreEmpty(switchPair.src.dpId)
+        }
+
+        when: "Create a flow on the given switch pair"
+        def flowCreateTime = new Date()
+        //take shorter flowId due to https://github.com/telstra/open-kilda/issues/3720
+        def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
+        flowHelperV2.addFlow(flow)
+
+        then: "Flow rtt stats are not available due to incorrect s42 port on the src switch"
+        Wrappers.timedLoop(STATS_FROM_SERVER42_LOGGING_TIMEOUT / 2) {
+            assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "forward",
+                     origin   : "server42"]).dps.isEmpty()
+            assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "reverse",
+                     origin   : "server42"]).dps.isEmpty()
+        }
+
+        when: "Set correct config for the server42 on the src switch"
+        northbound.updateSwitchProperties(switchPair.src.dpId, originalSrcSwPros)
+        swPropIsWrong = false
+
+        then: "server42 related rules are updated according to the new config"
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            def swRules = northbound.getSwitchRules(switchPair.src.dpId).flowEntries
+            def flowS42Rules = swRules.findAll {
+                new Cookie(it.cookie).getType() in [CookieType.SERVER_42_INPUT, CookieType.SERVER_42_INGRESS]
+            }
+            def swS42Rules = swRules.findAll {
+                it.cookie in [Cookie.SERVER_42_OUTPUT_VLAN_COOKIE, Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE]
+            }
+            assert swS42Rules.size() == amountOfS42Rules
+            assert swS42Rules*.instructions.applyActions.flowOutput.unique() == [newS42Port.toString()]
+            assert flowS42Rules.size() == 2
+            assert flowS42Rules*.match.inPort.unique() == [originalSrcSwPros.server42Port.toString()]
+        }
+
+        and: "The src switch is valid"
+        with(northbound.validateSwitch(switchPair.src.dpId)) {
+            it.verifyRuleSectionsAreEmpty(switchPair.src.dpId, ["missing", "misconfigured", "excess"])
+            it.verifyMeterSectionsAreEmpty(switchPair.src.dpId, ["missing", "misconfigured", "excess"])
+        }
+        def swIsValid = true
+
+        and: "Flow rtt stats are available"
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+            assert !otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "forward"]).dps.isEmpty()
+            assert !otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "reverse"]).dps.isEmpty()
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        flowRttFeatureStartState && changeFlowRttToggle(flowRttFeatureStartState)
+        switchPair && changeFlowRttSwitch(switchPair.src, initialFlowRttSw)
+        swPropIsWrong && northbound.updateSwitchProperties(switchPair.src.dpId, originalSrcSwPros)
+        !swIsValid && northbound.synchronizeSwitch(switchPair.src.dpId, true)
+    }
+
     def changeFlowRttSwitch(Switch sw, boolean requiredState) {
         def originalProps = northbound.getSwitchProperties(sw.dpId)
         if (originalProps.server42FlowRtt != requiredState) {
@@ -703,8 +897,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             def amountOfS42Rules = sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) ? 2 : 1
             def s42Rules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                it.cookie in  [Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE,
-                               Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE]
+                it.cookie in  [SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE,
+                               SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE]
             }
             assert requiredState ? (s42Rules.size() == amountOfS42Rules) : s42Rules.empty
         }

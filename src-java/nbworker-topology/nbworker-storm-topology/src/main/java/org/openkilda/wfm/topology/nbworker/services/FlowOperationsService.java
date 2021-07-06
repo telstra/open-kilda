@@ -332,6 +332,8 @@ public class FlowOperationsService {
             }
             Flow currentFlow = foundFlow.get();
 
+            validateFlow(flowPatch, currentFlow);
+
             final UpdateFlowResult.UpdateFlowResultBuilder result = prepareFlowUpdateResult(flowPatch, currentFlow);
 
             Optional.ofNullable(flowPatch.getMaxLatency()).ifPresent(currentFlow::setMaxLatency);
@@ -341,6 +343,7 @@ public class FlowOperationsService {
             Optional.ofNullable(flowPatch.getDescription()).ifPresent(currentFlow::setDescription);
             Optional.ofNullable(flowPatch.getTargetPathComputationStrategy())
                     .ifPresent(currentFlow::setTargetPathComputationStrategy);
+            Optional.ofNullable(flowPatch.getStrictBandwidth()).ifPresent(currentFlow::setStrictBandwidth);
 
             Optional.ofNullable(flowPatch.getPeriodicPings()).ifPresent(periodicPings -> {
                 boolean oldPeriodicPings = currentFlow.isPeriodicPings();
@@ -350,8 +353,6 @@ public class FlowOperationsService {
                 }
             });
 
-            flowDashboardLogger.onFlowPatchUpdate(currentFlow);
-
             return Optional.of(result.updatedFlow(currentFlow).build());
 
         }).orElseThrow(() -> new FlowNotFoundException(flowPatch.getFlowId()));
@@ -359,8 +360,11 @@ public class FlowOperationsService {
         Flow updatedFlow = updateFlowResult.getUpdatedFlow();
         if (updateFlowResult.isNeedUpdateFlow()) {
             FlowRequest flowRequest = RequestedFlowMapper.INSTANCE.toFlowRequest(updatedFlow);
+            addChangedFields(flowRequest, flowPatch);
+            flowDashboardLogger.onFlowPatchUpdate(RequestedFlowMapper.INSTANCE.toFlow(flowRequest));
             carrier.sendUpdateRequest(addChangedFields(flowRequest, flowPatch));
         } else {
+            flowDashboardLogger.onFlowPatchUpdate(updatedFlow);
             carrier.sendNorthboundResponse(new FlowResponse(FlowMapper.INSTANCE.map(updatedFlow,
                     getDiverseFlowsId(updatedFlow), getFlowMirrorPaths(updatedFlow))));
         }
@@ -508,6 +512,16 @@ public class FlowOperationsService {
         Optional.ofNullable(flowPatch.getDiverseFlowId()).ifPresent(flowRequest::setDiverseFlowId);
 
         return flowRequest;
+    }
+
+    private void validateFlow(FlowPatch flowPatch, Flow flow) {
+        boolean strictBandwidthPatch = Optional.ofNullable(flowPatch.getStrictBandwidth()).orElse(false);
+        boolean ignoreBandwidthPatch = Optional.ofNullable(flowPatch.getIgnoreBandwidth()).orElse(false);
+
+        if (strictBandwidthPatch && (ignoreBandwidthPatch || flow.isIgnoreBandwidth())) {
+            throw new IllegalArgumentException("Can not turn on ignore bandwidth flag and strict bandwidth flag "
+                    + "at the same time");
+        }
     }
 
     /**

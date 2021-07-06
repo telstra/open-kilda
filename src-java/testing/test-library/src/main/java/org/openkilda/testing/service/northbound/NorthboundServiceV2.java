@@ -20,6 +20,9 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2;
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointsResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
@@ -75,6 +78,12 @@ public interface NorthboundServiceV2 {
     FlowHistoryStatusesResponse getFlowHistoryStatuses(String flowId, Integer maxCount);
 
     FlowHistoryStatusesResponse getFlowHistoryStatuses(String flowId, Long timeFrom, Long timeTo, Integer maxCount);
+
+    FlowMirrorPointResponseV2 createMirrorPoint(String flowId, FlowMirrorPointPayload mirrorPoint);
+
+    FlowMirrorPointsResponseV2 getMirrorPoints(String flowId);
+
+    FlowMirrorPointResponseV2 deleteMirrorPoint(String flowId, String mirrorPointId);
 
     //switches
 

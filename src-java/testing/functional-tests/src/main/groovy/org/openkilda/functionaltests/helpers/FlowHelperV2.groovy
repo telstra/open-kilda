@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
 import static FlowHistoryConstants.UPDATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_MIRROR_SUCCESS
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -10,8 +11,11 @@ import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.FlowPathStatus
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
@@ -191,6 +195,29 @@ class FlowHelperV2 {
         return response
     }
 
+    FlowMirrorPointResponseV2 createMirrorPoint(String flowId, FlowMirrorPointPayload mirrorPoint) {
+        def response = northboundV2.createMirrorPoint(flowId, mirrorPoint)
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northboundV2.getFlow(flowId).mirrorPointStatuses[0].status ==
+                    FlowPathStatus.ACTIVE.toString().toLowerCase()
+            assert northbound.getFlowHistory(flowId).last().payload.last().action == CREATE_MIRROR_SUCCESS
+        }
+        return response
+    }
+
+    String generateFlowId() {
+        return new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US).format(new Date()) + "_" +
+                faker.food().ingredient().toLowerCase().replaceAll(/\W/, "") + faker.number().digits(4)
+    }
+
+    int randomVlan() {
+        return randomVlan([])
+    }
+
+    int randomVlan(List<Integer> exclusions) {
+        return (allowedVlans - exclusions)[random.nextInt(allowedVlans.size())]
+    }
+
     /**
      * Check whether given potential flow is conflicting with any of flows in the given list.
      * Usually used to ensure that some new flow is by accident is not conflicting with any of existing flows.
@@ -305,21 +332,16 @@ class FlowHelperV2 {
      */
     private FlowEndpointV2 getFlowEndpoint(Switch sw, List<Integer> allowedPorts,
             boolean useTraffgenPorts = true) {
-        def port = allowedPorts[random.nextInt(allowedPorts.size())]
+        int port = allowedPorts[random.nextInt(allowedPorts.size())]
         if (useTraffgenPorts) {
-            def connectedTraffgens = topology.activeTraffGens.findAll { it.switchConnected == sw }
-            if (!connectedTraffgens.empty) {
-                port = connectedTraffgens.find { allowedPorts.contains(it.switchPort) }?.switchPort ?: port
+            List<Integer> tgPorts = sw.traffGens*.switchPort.findAll { allowedPorts.contains(it) }
+            if (tgPorts) {
+                port = tgPorts[0]
             }
         }
         return new FlowEndpointV2(
-                sw.dpId, port, allowedVlans[random.nextInt(allowedVlans.size())],
+                sw.dpId, port, randomVlan(),
                 new DetectConnectedDevicesV2(false, false))
-    }
-
-    private String generateFlowId() {
-        return new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US).format(new Date()) + "_" +
-                faker.food().ingredient().toLowerCase().replaceAll(/\W/, "") + faker.number().digits(4)
     }
 
     private String generateDescription() {

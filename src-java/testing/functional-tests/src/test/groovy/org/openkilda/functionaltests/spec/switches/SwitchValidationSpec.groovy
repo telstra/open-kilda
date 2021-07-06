@@ -36,12 +36,12 @@ import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import groovy.transform.Memoized
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 
@@ -764,18 +764,11 @@ misconfigured"
     }
 
     @Tags(HARDWARE)
-    @Ignore("https://github.com/telstra/open-kilda/issues/3021")
     def "Able to validate and sync a switch with missing 'vxlan' ingress/transit/egress rule + meter"() {
         given: "Two active not neighboring VXLAN supported switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
-            [swP.src, swP.dst].every {
-                northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation
-                        .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
-            } && swP.paths.find { path ->
-                pathHelper.getInvolvedSwitches(path).every {
-                    northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation
-                            .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
-                }
+            swP.paths.find { path ->
+                pathHelper.getInvolvedSwitches(path).every { isVxlanEnabled(it.dpId) }
             }
         } ?: assumeTrue(false, "Unable to find required switches in topology")
 
@@ -790,7 +783,7 @@ misconfigured"
         def transitSwitchIds = involvedSwitches[1..-2]*.dpId
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                !(it.cookie in sw.defaultCookies)
+                !(it.cookie in sw.defaultCookies) && !new Cookie(it.cookie).serviceFlag
             }*.cookie]
         }
         def metersMap = involvedSwitches.collectEntries { sw ->
@@ -799,26 +792,27 @@ misconfigured"
             }*.meterId]
         }
 
+        expect: "Switch validation shows missing rules and meters on every related switch"
         involvedSwitches.each { northbound.deleteSwitchRules(it.dpId, DeleteRulesAction.IGNORE_DEFAULTS) }
         [switchPair.src, switchPair.dst].each { northbound.deleteMeter(it.dpId, metersMap[it.dpId][0]) }
         Wrappers.wait(RULES_DELETION_TIME) {
             def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
             involvedSwitches.each {
-                assert validationResultsMap[it.dpId].rules.missing.size() == 2
-                assert validationResultsMap[it.dpId].rules.missingHex.size() == 2
+                def swProps = northbound.getSwitchProperties(it.dpId)
+                def switchIdInSrcOrDst = (it.dpId in [switchPair.src.dpId, switchPair.dst.dpId])
+                def defaultAmountOfFlowRules = 2 // ingress + egress
+                def amountOfServer42Rules = (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
+                if (swProps.multiTable && swProps.server42FlowRtt) {
+                    if ((flow.destination.getSwitchId() == it.dpId && flow.destination.vlanId) || (
+                            flow.source.getSwitchId() == it.dpId && flow.source.vlanId))
+                        amountOfServer42Rules += 1
+                }
+                def rulesCount = defaultAmountOfFlowRules + amountOfServer42Rules +
+                        (switchIdInSrcOrDst && swProps.multiTable ? 1 : 0)
+                assert validationResultsMap[it.dpId].rules.missing.size() == rulesCount
+                assert validationResultsMap[it.dpId].rules.missingHex.size() == rulesCount
             }
             [switchPair.src, switchPair.dst].each { assert validationResultsMap[it.dpId].meters.missing.size() == 1 }
-        }
-
-        expect: "Switch validation shows missing rules and meters on every related switch"
-        involvedSwitches.eachWithIndex { sw, i ->
-            verifyAll(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.rules.missing.size() == 2
-                validation.rules.missingHex.size() == 2
-                if (i == 0 || i == involvedSwitches.size() - 1) { //terminating switches
-                    assert validation.meters.missing.size() == 1
-                }
-            }
         }
 
         when: "Try to synchronize all switches"
@@ -833,7 +827,7 @@ misconfigured"
             assert syncResultsMap[it.dpId].rules.installed.containsAll(cookiesMap[it.dpId])
         }
         [switchPair.src, switchPair.dst].each {
-            assert syncResultsMap[it.dpId].meters.proper.findAll { !new Cookie(it).serviceFlag }.size() == 0
+            assert syncResultsMap[it.dpId].meters.proper.findAll { !it.defaultMeter }.size() == 0
             assert syncResultsMap[it.dpId].meters.excess.size() == 0
             assert syncResultsMap[it.dpId].meters.missing*.meterId == metersMap[it.dpId]
             assert syncResultsMap[it.dpId].meters.removed.size() == 0
@@ -1034,6 +1028,12 @@ misconfigured"
         return northbound.getSwitchRules(switchId).flowEntries.findAll {
             !new Cookie(it.cookie).serviceFlag && it.instructions.goToMeter
         }*.cookie.sort()
+    }
+
+    @Memoized
+    def isVxlanEnabled(SwitchId switchId) {
+        return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
+                .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 
     private static Message buildMessage(final BaseInstallFlow commandData) {

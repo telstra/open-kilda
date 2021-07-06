@@ -23,6 +23,7 @@ import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
+import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -566,6 +567,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         flow && flowHelper.deleteFlow(flow.id)
     }
 
+    @Memoized
     def isVxlanEnabled(SwitchId switchId) {
         return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
                 .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
