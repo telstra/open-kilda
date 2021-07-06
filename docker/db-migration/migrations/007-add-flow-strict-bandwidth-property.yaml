@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: dpoltavets
+      changes:
+        - tagDatabase:
+            tag: 007-add-flow-strict-bandwidth-property
+
+  - changeSet:
+      id: add_flow_strict_bandwidth_property
+      author: dpoltavets
+      changes:
+        - sql: "CREATE PROPERTY flow.strict_bandwidth IF NOT EXISTS BOOLEAN"
+        - sql: "UPDATE flow SET strict_bandwidth = false"
+      rollback:
+        - sql: "UPDATE flow REMOVE strict_bandwidth"
+        - sql: "DROP PROPERTY flow.strict_bandwidth IF EXISTS"
