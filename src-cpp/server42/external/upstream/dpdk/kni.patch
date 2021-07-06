@@ -1,0 +1,29 @@
+unchanged:
+--- kernel/linux/kni/kni_net.c	2019-11-29 00:13:49.000000000 +0200
++++ kernel/linux/kni/kni_net_new.c	2021-07-06 18:07:17.457994637 +0300
+@@ -623,8 +623,13 @@
+ /*
+  * Deal with a transmit timeout.
+  */
++#ifdef HAVE_TX_TIMEOUT_TXQUEUE
++static void
++kni_net_tx_timeout(struct net_device *dev, unsigned int txqueue)
++#else
+ static void
+ kni_net_tx_timeout(struct net_device *dev)
++#endif
+ {
+ 	pr_debug("Transmit timeout at %ld, latency %ld\n", jiffies,
+ 			jiffies - dev_trans_start(dev));
+only in patch2:
+unchanged:
+--- kernel/linux/kni/compat.h	2019-11-29 00:13:49.000000000 +0200
++++ kernel/linux/kni/compat_new.h	2021-07-06 18:04:44.252843148 +0300
+@@ -130,3 +130,7 @@
+ #if KERNEL_VERSION(4, 10, 0) <= LINUX_VERSION_CODE
+ #define HAVE_IOVA_TO_KVA_MAPPING_SUPPORT
+ #endif
++
++#if KERNEL_VERSION(5, 6, 0) <= LINUX_VERSION_CODE
++#define HAVE_TX_TIMEOUT_TXQUEUE
++#endif
