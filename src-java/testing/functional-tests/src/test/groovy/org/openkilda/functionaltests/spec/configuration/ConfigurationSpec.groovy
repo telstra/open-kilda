@@ -41,10 +41,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
     def "System takes into account default flow encapsulation type while creating a flow"() {
         when: "Create a flow without encapsulation type"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            [swP.src, swP.dst].every { sw ->
-                northbound.getSwitchProperties(sw.dpId).supportedTransitEncapsulation
-                    .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
-            }
+            [swP.src, swP.dst].every { sw -> switchHelper.isVxlanEnabled(sw.dpId) }
         }
         def flow1 = flowHelperV2.randomFlow(switchPair)
         flow1.encapsulationType = null

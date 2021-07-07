@@ -827,7 +827,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         given: "Two active not neighboring Noviflow switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
             swP.paths.find { path ->
-                pathHelper.getInvolvedSwitches(path).every { isVxlanEnabled(it.dpId) }
+                pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }
             }
         } ?: assumeTrue(false, "Unable to find required switches in topology")
 
@@ -968,11 +968,5 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
     List<FlowEntry> getFlowRules(Switch sw) {
         northbound.getSwitchRules(sw.dpId).flowEntries.findAll { !(it.cookie in sw.defaultCookies) }.sort()
-    }
-
-    @Memoized
-    def isVxlanEnabled(SwitchId switchId) {
-        return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
-                .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 }
