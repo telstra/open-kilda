@@ -8,11 +8,14 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.fixture.TestFixture
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.links.LinkPropsDto
 import org.openkilda.testing.Constants
 
+import org.springframework.http.HttpStatus
+import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Shared
 
 import java.util.concurrent.TimeUnit
@@ -77,12 +80,17 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
     @Tidy
     def "Unable to create link property with non-numeric value for #key"() {
         when: "Try creating link property with non-numeric values"
-        def linkProp = new LinkPropsDto("00:00:00:00:00:00:00:01", 1, "00:00:00:00:00:00:00:02", 1, [(key): "1000L"])
-        def response = northbound.updateLinkProps([linkProp])
+        def nonNumericValue = "1000L"
+        def linkProp = new LinkPropsDto("00:00:00:00:00:00:00:01", 1, "00:00:00:00:00:00:00:02", 1,
+                [(key): nonNumericValue])
+        northbound.updateLinkProps([linkProp])
 
-        then: "Response with error is received"
-        response.failures == 1
-        response.messages.first() == "For input string: \"${linkProp.props[key]}\""
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.statusCode == HttpStatus.BAD_REQUEST
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Can't create/update link props"
+        errorDetails.errorDescription == "Bad ${key.replace("_"," ")} value '$nonNumericValue'"
 
         where:
         key << ["cost", "max_bandwidth"]
