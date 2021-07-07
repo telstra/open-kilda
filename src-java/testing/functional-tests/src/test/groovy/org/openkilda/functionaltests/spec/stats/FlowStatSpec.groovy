@@ -536,17 +536,16 @@ class FlowStatSpec extends HealthCheckSpecification {
         given: "Two active neighboring switches connected to the traffgens"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
         def switchPair = topologyHelper.switchPairs.find {
-            [it.src, it.dst].every { it.dpId in traffGenSwitches }
+            [it.src, it.dst].every { it.dpId in traffGenSwitches } &&
+                    northbound.getSwitchProperties(it.src.dpId).multiTable
         } ?: assumeTrue(false, "No suiting switches found")
 
         and: "A flow with updated inner vlan on src endpoint via partial update"
-        def traffgenPortOnSrcSw = topology.activeTraffGens.find { it.switchConnected ==  switchPair.src}.switchPort
-
-        def flow = flowHelperV2.randomFlow(switchPair).tap { it.source.portNumber = traffgenPortOnSrcSw;  it.source.vlanId = 100}
+        def flow = flowHelperV2.randomFlow(switchPair, true)
         flowHelperV2.addFlow(flow)
 
         flowHelperV2.partialUpdate(flow.flowId, new FlowPatchV2().tap {
-            source = new FlowPatchEndpoint().tap { innerVlanId = innerVlanId ?: 100 + 1 }
+            source = new FlowPatchEndpoint().tap { innerVlanId = flow.source.vlanId - 1 }
         })
 
         when: "Generate traffic on the flow"
