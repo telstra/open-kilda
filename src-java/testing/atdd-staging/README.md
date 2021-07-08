@@ -1,4 +1,4 @@
-# Acceptance tests for Staging environmentttt
+# Acceptance tests for Staging environmenttttt
 This module holds the Acceptance tests designed to be run against the staging environment.
 
 # Deployment
