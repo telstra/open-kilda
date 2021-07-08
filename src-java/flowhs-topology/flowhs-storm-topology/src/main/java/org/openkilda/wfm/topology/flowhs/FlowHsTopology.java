@@ -584,15 +584,18 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
     private void history(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         HistoryBolt historyBolt = new HistoryBolt(persistenceManager);
+        Fields grouping = HistoryBolt.newInputGroupingFields();
         declareBolt(topologyBuilder, historyBolt, ComponentId.HISTORY_BOLT.name())
-                .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
-                .shuffleGrouping(ComponentId.FLOW_UPDATE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
-                .shuffleGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
-                .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
-                .shuffleGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
-                .shuffleGrouping(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
-                .shuffleGrouping(ComponentId.FLOW_CREATE_MIRROR_POINT_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
-                .shuffleGrouping(ComponentId.FLOW_DELETE_MIRROR_POINT_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name());
+                .fieldsGrouping(ComponentId.FLOW_CREATE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
+                .fieldsGrouping(ComponentId.FLOW_UPDATE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
+                .fieldsGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
+                .fieldsGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
+                .fieldsGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
+                .fieldsGrouping(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
+                .fieldsGrouping(
+                        ComponentId.FLOW_CREATE_MIRROR_POINT_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
+                .fieldsGrouping(
+                        ComponentId.FLOW_DELETE_MIRROR_POINT_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping);
     }
 
     @Override

@@ -31,6 +31,7 @@ import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.history.bolt.HistoryBolt;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
@@ -126,7 +127,8 @@ public class FlowSwapEndpointsHubBolt extends HubBolt implements FlowSwapEndpoin
 
     @Override
     public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
-        emitWithContext(Stream.HUB_TO_HISTORY_BOLT.name(), getCurrentTuple(), new Values(currentKey, historyHolder));
+        emit(Stream.HUB_TO_HISTORY_BOLT.name(), getCurrentTuple(), HistoryBolt.newInputTuple(
+                historyHolder, getCommandContext()));
     }
 
     @Override
@@ -145,7 +147,7 @@ public class FlowSwapEndpointsHubBolt extends HubBolt implements FlowSwapEndpoin
 
         declarer.declareStream(SWAP_ENDPOINTS_HUB_TO_ROUTER_BOLT.name(), STREAM_FIELDS);
         declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), STREAM_FIELDS);
-        declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), STREAM_FIELDS);
+        declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), HistoryBolt.INPUT_FIELDS);
         declarer.declareStream(ZkStreams.ZK.toString(),
                 new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
