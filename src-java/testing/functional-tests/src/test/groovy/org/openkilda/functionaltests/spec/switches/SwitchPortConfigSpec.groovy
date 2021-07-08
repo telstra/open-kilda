@@ -29,7 +29,7 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE])
-    def "Able to bring ISL-busy port down/up on an #isl.srcSwitch.ofVersion switch(#isl.srcSwitch.dpId)"() {
+    def "Able to bring ISL-busy port down/up on an #isl.srcSwitch.ofVersion switch #isl.srcSwitch.dpId"() {
         when: "Bring port down on the switch"
         def portDownTime = new Date()
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
