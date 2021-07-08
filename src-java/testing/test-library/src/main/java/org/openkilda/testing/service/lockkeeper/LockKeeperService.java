@@ -77,6 +77,10 @@ public interface LockKeeperService {
 
     void cleanupIpChanges(String region);
 
+    void setLinkDelay(String bridgeName, Integer delayMs);
+
+    void cleanupLinkDelay(String bridgeName);
+
     /**
      * Extract switch address and port from the 'inetAddress' string of Floodlight 'get switches' response.
      */

@@ -13,6 +13,7 @@ import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
+import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
@@ -60,6 +61,8 @@ class BaseSpecification extends Specification {
     FlowHelperV2 flowHelperV2
     @Autowired @Shared
     StatsHelper statsHelper
+    @Autowired @Shared
+    LabService labService
 
     @Value('${spring.profiles.active}') @Shared
     String profile
