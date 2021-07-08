@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -72,7 +73,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         }
 
         and: "Flow rules have not been reinstalled"
-        northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
+        assertThat(northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.toArray()).containsAll(originalCookies)
 
         cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -108,15 +109,18 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 //                        field   : "pathComputationStrategy",
 //                        newValue: PathComputationStrategy.LATENCY.toString().toLowerCase()
 //                ],
-                [
-                        field   : "description",
-                        newValue: "updated"
-                ],
-                //https://github.com/telstra/open-kilda/issues/3896
 //                [
 //                        field   : "ignoreBandwidth",
 //                        newValue: true
 //                ]
+                [
+                        field   : "description",
+                        newValue: "updated"
+                ],
+                [
+                        field   : "strictBandwidth",
+                        newValue: true
+                ],
         ]
     }
 
@@ -383,6 +387,169 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(HARDWARE)
+    def "Able to update flow encapsulationType using partial update"() {
+        given: "A flow with a 'transit_vlan' encapsulation"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
+            [swP.src, swP.dst].every { sw ->
+                northbound.getSwitchProperties(sw.dpId).supportedTransitEncapsulation
+                        .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+            }
+        }
+        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
+
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
+        flowHelperV2.addFlow(flow)
+
+        def originalCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
+            def cookie = new Cookie(it.cookie)
+            !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT
+        }
+
+        when: "Request a flow partial update for an encapsulationType field(vxlan)"
+        def newEncapsulationTypeValue = FlowEncapsulationType.VXLAN.toString().toLowerCase()
+        def updateRequest = new FlowPatchV2().tap { it.encapsulationType = newEncapsulationTypeValue }
+        def response = flowHelperV2.partialUpdate(flow.flowId, updateRequest)
+
+        then: "Update response reflects the changes"
+        response.encapsulationType == newEncapsulationTypeValue
+
+        and: "Changes actually took place"
+        northboundV2.getFlow(flow.flowId).encapsulationType == newEncapsulationTypeValue
+
+        and: "Flow rules have been reinstalled"
+        !northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll { def cookie = new Cookie(it.cookie)
+            !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT
+        }.any { it in originalCookies }
+
+        cleanup: "Remove the flow"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    @Tags(LOW_PRIORITY)
+    def "Able to update a flow port and vlan for a single-switch flow using partial update"() {
+        given: "An active single-switch flow (different ports)"
+        def sw = topology.activeSwitches.first()
+        def flow = flowHelperV2.singleSwitchFlow(sw)
+        flowHelperV2.addFlow(flow)
+
+        when: "Update the flow: port number and vlanId on the src endpoint"
+        def flowInfoFromDb = database.getFlow(flow.flowId)
+        def ingressCookie = flowInfoFromDb.forwardPath.cookie.value
+        def egressCookie = flowInfoFromDb.reversePath.cookie.value
+        def newPortNumber = (topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
+            it.dpId == flow.source.switchId
+        }) - flow.source.portNumber - flow.destination.portNumber).last()
+        def newVlanId = flow.source.vlanId - 1
+        flowHelperV2.partialUpdate(flow.flowId, new FlowPatchV2().tap {
+            source = new FlowPatchEndpoint().tap {
+                portNumber = newPortNumber
+                vlanId = newVlanId
+            }
+        })
+
+        then: "Flow is really updated"
+        with(northboundV2.getFlow(flow.flowId)) {
+            it.source.portNumber == newPortNumber
+            it.source.vlanId == newVlanId
+        }
+
+        and: "Flow is valid"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
+        and: "The ingress/egress rules are really updated"
+        Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
+            def swRules = northbound.getSwitchRules(flow.source.switchId).flowEntries
+            with(swRules.find { it.cookie == ingressCookie }) {
+                it.match.inPort == newPortNumber.toString()
+                it.instructions.applyActions.flowOutput == flow.destination.portNumber.toString()
+                it.instructions.applyActions.setFieldActions*.fieldValue.contains(flow.destination.vlanId.toString())
+            }
+            with(swRules.find { it.cookie == egressCookie }) {
+                it.match.inPort == flow.destination.portNumber.toString()
+                it.instructions.applyActions.flowOutput == newPortNumber.toString()
+                it.instructions.applyActions.setFieldActions*.fieldValue.contains(newVlanId.toString())
+            }
+        }
+
+        and: "The switch passes switch validation"
+        with(northbound.validateSwitch(flow.source.switchId)) { validation ->
+            validation.verifyRuleSectionsAreEmpty(flow.source.switchId, ["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(flow.source.switchId, ["missing", "excess", "misconfigured"])
+        }
+        def switchIsFine = true
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        !switchIsFine && northbound.synchronizeSwitch(flow.source.switchId, true)
+    }
+
+    @Tidy
+    @Tags(LOW_PRIORITY)
+    def "Able to update a flow port and vlan for a single-switch single-port flow using partial update"() {
+        given: "An active single-switch single-port flow"
+        def sw = topology.activeSwitches.first()
+        def flow = flowHelperV2.singleSwitchSinglePortFlow(sw)
+        flowHelperV2.addFlow(flow)
+
+        when: "Update the flow: new port number on src+dst and new vlanId on the src endpoint"
+        def flowInfoFromDb = database.getFlow(flow.flowId)
+        def ingressCookie = flowInfoFromDb.forwardPath.cookie.value
+        def egressCookie = flowInfoFromDb.reversePath.cookie.value
+        def newPortNumber = (topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
+            it.dpId == flow.source.switchId
+        }) - flow.source.portNumber).last()
+        def newVlanId = flow.source.vlanId - 1
+        flowHelperV2.partialUpdate(flow.flowId, new FlowPatchV2().tap {
+            source = new FlowPatchEndpoint().tap {
+                portNumber = newPortNumber
+                vlanId = newVlanId
+            }
+            destination = new FlowPatchEndpoint().tap {
+                portNumber = newPortNumber
+            }
+        })
+
+        then: "Flow is really updated"
+        with(northboundV2.getFlow(flow.flowId)) {
+            it.source.portNumber == newPortNumber
+            it.destination.portNumber == newPortNumber
+            it.source.vlanId == newVlanId
+        }
+
+        and: "Flow is valid"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
+        and: "The ingress/egress rules are really updated"
+        Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
+            def swRules = northbound.getSwitchRules(flow.source.switchId).flowEntries
+            with(swRules.find { it.cookie == ingressCookie }) {
+                it.match.inPort == newPortNumber.toString()
+                it.instructions.applyActions.flowOutput == "in_port"
+                it.instructions.applyActions.setFieldActions*.fieldValue.contains(flow.destination.vlanId.toString())
+            }
+            with(swRules.find { it.cookie == egressCookie }) {
+                it.match.inPort == newPortNumber.toString()
+                it.instructions.applyActions.flowOutput == "in_port"
+                it.instructions.applyActions.setFieldActions*.fieldValue.contains(newVlanId.toString())
+            }
+        }
+
+        and: "The switch passes switch validation"
+        with(northbound.validateSwitch(flow.source.switchId)) { validation ->
+            validation.verifyRuleSectionsAreEmpty(flow.source.switchId, ["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(flow.source.switchId, ["missing", "excess", "misconfigured"])
+        }
+        def switchIsFine = true
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        !switchIsFine && northbound.synchronizeSwitch(flow.source.switchId, true)
+    }
+
+    @Tidy
     @Tags([LOW_PRIORITY])
     def "Partial update with empty body does not actually update flow in any way(v1)"() {
         given: "A flow"
@@ -575,166 +742,35 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(HARDWARE)
-    def "Able to update flow encapsulationType using partial update"() {
-        given: "A flow with a 'transit_vlan' encapsulation"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            [swP.src, swP.dst].every { sw ->
-                northbound.getSwitchProperties(sw.dpId).supportedTransitEncapsulation
-                        .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
-            }
+    def "Unable to update a flow to have both strict_bandwidth and ignore_bandwidth flags at the same time"() {
+        given: "An existing flow without flag conflicts"
+        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0]).tap {
+            ignoreBandwidth = initialIgnore
+            strictBandwidth = initialStrict
         }
-        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
-
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
         flowHelperV2.addFlow(flow)
 
-        def originalCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-            def cookie = new Cookie(it.cookie)
-            !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT
-        }
-
-        when: "Request a flow partial update for an encapsulationType field(vxlan)"
-        def newEncapsulationTypeValue = FlowEncapsulationType.VXLAN.toString().toLowerCase()
-        def updateRequest = new FlowPatchV2().tap { it.encapsulationType = newEncapsulationTypeValue }
-        def response = flowHelperV2.partialUpdate(flow.flowId, updateRequest)
-
-        then: "Update response reflects the changes"
-        response.encapsulationType == newEncapsulationTypeValue
-
-        and: "Changes actually took place"
-        northboundV2.getFlow(flow.flowId).encapsulationType == newEncapsulationTypeValue
-
-        and: "Flow rules have been reinstalled"
-        !northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll { def cookie = new Cookie(it.cookie)
-            !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT
-        }.any { it in originalCookies }
-
-        cleanup: "Remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-    }
-
-    @Tidy
-    @Tags(LOW_PRIORITY)
-    def "Able to update a flow port and vlan for a single-switch flow using partial update"() {
-        given: "An active single-switch flow (different ports)"
-        def sw = topology.activeSwitches.first()
-        def flow = flowHelperV2.singleSwitchFlow(sw)
-        flowHelperV2.addFlow(flow)
-
-        when: "Update the flow: port number and vlanId on the src endpoint"
-        def flowInfoFromDb = database.getFlow(flow.flowId)
-        def ingressCookie = flowInfoFromDb.forwardPath.cookie.value
-        def egressCookie = flowInfoFromDb.reversePath.cookie.value
-        def newPortNumber = (topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
-            it.dpId == flow.source.switchId
-        }) - flow.source.portNumber - flow.destination.portNumber).last()
-        def newVlanId = flow.source.vlanId - 1
-        flowHelperV2.partialUpdate(flow.flowId, new FlowPatchV2().tap {
-            source = new FlowPatchEndpoint().tap {
-                portNumber = newPortNumber
-                vlanId = newVlanId
-            }
+        when: "Partial update the flow to have strict_bw-ignore_bw conflict"
+        northboundV2.partialUpdate(flow.flowId, new FlowPatchV2().tap {
+            ignoreBandwidth = updateIgnore
+            strictBandwidth = updateStrict
         })
 
-        then: "Flow is really updated"
-        with(northboundV2.getFlow(flow.flowId)) {
-            it.source.portNumber == newPortNumber
-            it.source.vlanId == newVlanId
-        }
-
-        and: "Flow is valid"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-
-        and: "The ingress/egress rules are really updated"
-        Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
-            def swRules = northbound.getSwitchRules(flow.source.switchId).flowEntries
-            with(swRules.find { it.cookie == ingressCookie }) {
-                it.match.inPort == newPortNumber.toString()
-                it.instructions.applyActions.flowOutput == flow.destination.portNumber.toString()
-                it.instructions.applyActions.setFieldActions*.fieldValue.contains(flow.destination.vlanId.toString())
-            }
-            with(swRules.find { it.cookie == egressCookie }) {
-                it.match.inPort == flow.destination.portNumber.toString()
-                it.instructions.applyActions.flowOutput == newPortNumber.toString()
-                it.instructions.applyActions.setFieldActions*.fieldValue.contains(newVlanId.toString())
-            }
-        }
-
-        and: "The switch passes switch validation"
-        with(northbound.validateSwitch(flow.source.switchId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(flow.source.switchId, ["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(flow.source.switchId, ["missing", "excess", "misconfigured"])
-        }
-        def switchIsFine = true
+        then: "Bad Request response is returned"
+        def error = thrown(HttpClientErrorException)
+        error.statusCode == HttpStatus.BAD_REQUEST
+        def errorDetails = error.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not update flow"
+        errorDetails.errorDescription == "Can not turn on ignore bandwidth flag and strict bandwidth flag at the same time"
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        !switchIsFine && northbound.synchronizeSwitch(flow.source.switchId, true)
-    }
+        flowHelperV2.deleteFlow(flow.flowId)
 
-    @Tidy
-    @Tags(LOW_PRIORITY)
-    def "Able to update a flow port and vlan for a single-switch single-port flow using partial update"() {
-        given: "An active single-switch single-port flow"
-        def sw = topology.activeSwitches.first()
-        def flow = flowHelperV2.singleSwitchSinglePortFlow(sw)
-        flowHelperV2.addFlow(flow)
-
-        when: "Update the flow: new port number on src+dst and new vlanId on the src endpoint"
-        def flowInfoFromDb = database.getFlow(flow.flowId)
-        def ingressCookie = flowInfoFromDb.forwardPath.cookie.value
-        def egressCookie = flowInfoFromDb.reversePath.cookie.value
-        def newPortNumber = (topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
-            it.dpId == flow.source.switchId
-        }) - flow.source.portNumber).last()
-        def newVlanId = flow.source.vlanId - 1
-        flowHelperV2.partialUpdate(flow.flowId, new FlowPatchV2().tap {
-            source = new FlowPatchEndpoint().tap {
-                portNumber = newPortNumber
-                vlanId = newVlanId
-            }
-            destination = new FlowPatchEndpoint().tap {
-                portNumber = newPortNumber
-            }
-        })
-
-        then: "Flow is really updated"
-        with(northboundV2.getFlow(flow.flowId)) {
-            it.source.portNumber == newPortNumber
-            it.destination.portNumber == newPortNumber
-            it.source.vlanId == newVlanId
-        }
-
-        and: "Flow is valid"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-
-        and: "The ingress/egress rules are really updated"
-        Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
-            def swRules = northbound.getSwitchRules(flow.source.switchId).flowEntries
-            with(swRules.find { it.cookie == ingressCookie }) {
-                it.match.inPort == newPortNumber.toString()
-                it.instructions.applyActions.flowOutput == "in_port"
-                it.instructions.applyActions.setFieldActions*.fieldValue.contains(flow.destination.vlanId.toString())
-            }
-            with(swRules.find { it.cookie == egressCookie }) {
-                it.match.inPort == newPortNumber.toString()
-                it.instructions.applyActions.flowOutput == "in_port"
-                it.instructions.applyActions.setFieldActions*.fieldValue.contains(newVlanId.toString())
-            }
-        }
-
-        and: "The switch passes switch validation"
-        with(northbound.validateSwitch(flow.source.switchId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(flow.source.switchId, ["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(flow.source.switchId, ["missing", "excess", "misconfigured"])
-        }
-        def switchIsFine = true
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        !switchIsFine && northbound.synchronizeSwitch(flow.source.switchId, true)
+        where:
+        initialIgnore   | initialStrict | updateIgnore  | updateStrict
+        false           | false         | true          | true
+        true            | false         | null          | true
+        false           | true          | true          | null
     }
 
     @Shared
