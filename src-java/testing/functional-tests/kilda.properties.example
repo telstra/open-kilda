@@ -77,3 +77,4 @@ flow.ping.interval=5
 docker.host=localhost
 
 latency.update.interval = 120
+flow.sla.check.interval.seconds = 10
