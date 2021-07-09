@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,9 +15,9 @@
 
 package org.openkilda.wfm.topology.network.service;
 
-import org.openkilda.model.FeatureToggles;
+import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.controller.BfdGlobalToggleFsm;
@@ -32,7 +32,7 @@ import java.util.Map;
 @Slf4j
 public class NetworkBfdGlobalToggleService {
     private final IBfdGlobalToggleCarrier carrier;
-    private final FeatureTogglesRepository featureTogglesRepository;
+    private final KildaFeatureTogglesRepository featureTogglesRepository;
 
     private final BfdGlobalToggleFsm.BfdGlobalToggleFsmFactory controllerFactory;
     private final Map<Endpoint, BfdGlobalToggleFsm> controllerByEndpoint = new HashMap<>();
@@ -87,7 +87,7 @@ public class NetworkBfdGlobalToggleService {
     /**
      * Consume feature toggles update notification.
      */
-    public void updateToggle(FeatureToggles toggles) {
+    public void updateToggle(KildaFeatureToggles toggles) {
         log.debug("BFD global toggle service receive toggles update notification: {}", toggles);
 
         Boolean value = toggles.getUseBfdForIslIntegrityCheck();

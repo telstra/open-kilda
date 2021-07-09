@@ -15,12 +15,12 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast;
 
-import org.openkilda.model.FeatureToggles;
+import org.openkilda.model.KildaFeatureToggles;
 
 public class FeatureTogglesNotificationBcast extends SpeakerBcast {
-    private final FeatureToggles toggles;
+    private final KildaFeatureToggles toggles;
 
-    public FeatureTogglesNotificationBcast(FeatureToggles toggles) {
+    public FeatureTogglesNotificationBcast(KildaFeatureToggles toggles) {
         this.toggles = toggles;
     }
 

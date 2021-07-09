@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,10 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.error;
+package org.openkilda.persistence.repositories;
 
-public class FeatureTogglesNotFoundException extends Exception {
-    public FeatureTogglesNotFoundException() {
-        super("Feature toggles not found.");
-    }
+import org.openkilda.model.KildaFeatureToggles;
+
+import java.util.Optional;
+
+public interface KildaFeatureTogglesRepository extends Repository<KildaFeatureToggles> {
+    Optional<KildaFeatureToggles> find();
+
+    /**
+     * Get the feature toggles which are actual in the system.
+     *
+     * @return the feature toggles if they're set or {@link KildaFeatureToggles.DEFAULTS} if not.
+     */
+    KildaFeatureToggles getOrDefault();
 }

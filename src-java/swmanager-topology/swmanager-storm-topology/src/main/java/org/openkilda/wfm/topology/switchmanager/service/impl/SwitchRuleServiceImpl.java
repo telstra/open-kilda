@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -24,13 +24,13 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
-import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -50,7 +50,7 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
     private SwitchManagerCarrier carrier;
     private FlowPathRepository flowPathRepository;
     private SwitchPropertiesRepository switchPropertiesRepository;
-    private FeatureTogglesRepository featureTogglesRepository;
+    private KildaFeatureTogglesRepository featureTogglesRepository;
     private IslRepository islRepository;
     private SwitchRepository switchRepository;
 
@@ -80,10 +80,10 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
             return;
         }
         Optional<SwitchProperties> switchProperties = switchPropertiesRepository.findBySwitchId(switchId);
-        Optional<FeatureToggles> featureToggles = featureTogglesRepository.find();
-        boolean server42FlowRttFeatureToggle = featureToggles.map(FeatureToggles::getServer42FlowRtt).orElse(false);
+        KildaFeatureToggles featureToggles = featureTogglesRepository.getOrDefault();
+        boolean server42FlowRttFeatureToggle = featureToggles.getServer42FlowRtt();
         data.setServer42FlowRttFeatureToggle(server42FlowRttFeatureToggle);
-        data.setServer42IslRttEnabled(featureToggles.map(FeatureToggles::getServer42IslRtt).orElse(false)
+        data.setServer42IslRttEnabled(featureToggles.getServer42IslRtt()
                 && switchProperties.map(SwitchProperties::hasServer42IslRttEnabled).orElse(false));
 
         if (switchProperties.isPresent()) {
@@ -128,10 +128,10 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
         }
         Optional<SwitchProperties> switchProperties = switchPropertiesRepository.findBySwitchId(switchId);
 
-        Optional<FeatureToggles> featureToggles = featureTogglesRepository.find();
-        boolean server42FlowRttFeatureToggle = featureToggles.map(FeatureToggles::getServer42FlowRtt).orElse(false);
+        KildaFeatureToggles featureToggles = featureTogglesRepository.getOrDefault();
+        boolean server42FlowRttFeatureToggle = featureToggles.getServer42FlowRtt();
         data.setServer42FlowRttFeatureToggle(server42FlowRttFeatureToggle);
-        data.setServer42IslRttEnabled(featureToggles.map(FeatureToggles::getServer42IslRtt).orElse(false)
+        data.setServer42IslRttEnabled(featureToggles.getServer42IslRtt()
                 && switchProperties.map(SwitchProperties::hasServer42IslRttEnabled).orElse(false));
 
         if (switchProperties.isPresent()) {

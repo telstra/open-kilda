@@ -18,15 +18,15 @@ package org.openkilda.persistence.ferma.repositories;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.model.FeatureToggles;
+import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 
 import org.junit.Before;
 import org.junit.Test;
 
-public class FermaFeatureTogglesRepositoryTest extends InMemoryGraphBasedTest {
-    FeatureTogglesRepository featureTogglesRepository;
+public class FermaKildaFeatureTogglesRepositoryTest extends InMemoryGraphBasedTest {
+    KildaFeatureTogglesRepository featureTogglesRepository;
 
     @Before
     public void setUp() {
@@ -35,7 +35,7 @@ public class FermaFeatureTogglesRepositoryTest extends InMemoryGraphBasedTest {
 
     @Test
     public void shouldCreateAndUpdateFeatureToggles() {
-        FeatureToggles featureTogglesA = FeatureToggles.builder()
+        KildaFeatureToggles featureTogglesA = KildaFeatureToggles.builder()
                 .flowsRerouteOnIslDiscoveryEnabled(false)
                 .createFlowEnabled(false)
                 .updateFlowEnabled(false)
@@ -46,12 +46,12 @@ public class FermaFeatureTogglesRepositoryTest extends InMemoryGraphBasedTest {
                 .build();
         featureTogglesRepository.add(featureTogglesA);
 
-        FeatureToggles foundFeatureToggles = featureTogglesRepository.find().get();
+        KildaFeatureToggles foundFeatureToggles = featureTogglesRepository.find().get();
         assertEquals(featureTogglesA, foundFeatureToggles);
 
         foundFeatureToggles.setUpdateFlowEnabled(true);
 
-        FeatureToggles updatedFeatureToggles = featureTogglesRepository.find().get();
+        KildaFeatureToggles updatedFeatureToggles = featureTogglesRepository.find().get();
         assertTrue(updatedFeatureToggles.getUpdateFlowEnabled());
     }
 }

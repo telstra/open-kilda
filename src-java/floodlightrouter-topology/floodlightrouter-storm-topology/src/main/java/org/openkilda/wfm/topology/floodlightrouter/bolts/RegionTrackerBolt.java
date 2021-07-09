@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.bolt.MonotonicClock;
@@ -70,7 +70,7 @@ public class RegionTrackerBolt extends AbstractBolt implements RegionMonitorCarr
     private final long floodlightAliveTimeout;
     private final long floodlightAliveInterval;
 
-    private transient FeatureTogglesRepository featureTogglesRepository;
+    private transient KildaFeatureTogglesRepository featureTogglesRepository;
     private transient FloodlightTracker floodlightTracker;
 
     public RegionTrackerBolt(

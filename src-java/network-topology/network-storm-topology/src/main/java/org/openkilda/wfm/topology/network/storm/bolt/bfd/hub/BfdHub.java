@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.model.BfdProperties;
-import org.openkilda.model.FeatureToggles;
+import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
@@ -315,7 +315,7 @@ public class BfdHub extends AbstractBolt
     }
 
     @Override
-    public void processFeatureTogglesUpdate(FeatureToggles toggles) {
+    public void processFeatureTogglesUpdate(KildaFeatureToggles toggles) {
         globalToggleService.updateToggle(toggles);
     }
 

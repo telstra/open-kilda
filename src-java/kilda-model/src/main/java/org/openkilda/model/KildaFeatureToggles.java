@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  */
 
 package org.openkilda.model;
+
+import org.openkilda.model.KildaFeatureToggles.KildaFeatureTogglesData;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.BeanSerializer;
@@ -38,8 +40,8 @@ import java.util.Objects;
 
 @DefaultSerializer(BeanSerializer.class)
 @ToString
-public class FeatureToggles implements CompositeDataEntity<FeatureToggles.FeatureTogglesData> {
-    public static final FeatureToggles DEFAULTS = FeatureToggles.builder()
+public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogglesData> {
+    public static final KildaFeatureToggles DEFAULTS = KildaFeatureToggles.builder()
             .flowsRerouteOnIslDiscoveryEnabled(false)
             .createFlowEnabled(false)
             .updateFlowEnabled(false)
@@ -57,13 +59,13 @@ public class FeatureToggles implements CompositeDataEntity<FeatureToggles.Featur
     @Setter
     @Delegate
     @JsonIgnore
-    private FeatureTogglesData data;
+    private KildaFeatureTogglesData data;
 
     /**
      * No args constructor for deserialization purpose.
      */
-    private FeatureToggles() {
-        data = new FeatureTogglesDataImpl();
+    private KildaFeatureToggles() {
+        data = new KildaFeatureTogglesDataImpl();
     }
 
     /**
@@ -71,19 +73,19 @@ public class FeatureToggles implements CompositeDataEntity<FeatureToggles.Featur
      *
      * @param entityToClone the entity to copy entity data from.
      */
-    public FeatureToggles(@NonNull FeatureToggles entityToClone) {
+    public KildaFeatureToggles(@NonNull KildaFeatureToggles entityToClone) {
         data = FeatureTogglesCloner.INSTANCE.deepCopy(entityToClone.getData());
     }
 
     @Builder
-    public FeatureToggles(Boolean flowsRerouteOnIslDiscoveryEnabled, Boolean createFlowEnabled,
-                          Boolean updateFlowEnabled, Boolean deleteFlowEnabled,
-                          Boolean useBfdForIslIntegrityCheck,
-                          Boolean floodlightRoutePeriodicSync,
-                          Boolean flowsRerouteUsingDefaultEncapType, Boolean collectGrpcStats,
-                          Boolean server42FlowRtt, Boolean flowLatencyMonitoringReactions,
-                          Boolean server42IslRtt) {
-        data = FeatureTogglesDataImpl.builder()
+    public KildaFeatureToggles(Boolean flowsRerouteOnIslDiscoveryEnabled, Boolean createFlowEnabled,
+                               Boolean updateFlowEnabled, Boolean deleteFlowEnabled,
+                               Boolean useBfdForIslIntegrityCheck,
+                               Boolean floodlightRoutePeriodicSync,
+                               Boolean flowsRerouteUsingDefaultEncapType, Boolean collectGrpcStats,
+                               Boolean server42FlowRtt, Boolean flowLatencyMonitoringReactions,
+                               Boolean server42IslRtt) {
+        data = KildaFeatureTogglesDataImpl.builder()
                 .flowsRerouteOnIslDiscoveryEnabled(flowsRerouteOnIslDiscoveryEnabled)
                 .createFlowEnabled(createFlowEnabled).updateFlowEnabled(updateFlowEnabled)
                 .deleteFlowEnabled(deleteFlowEnabled).useBfdForIslIntegrityCheck(useBfdForIslIntegrityCheck)
@@ -96,7 +98,7 @@ public class FeatureToggles implements CompositeDataEntity<FeatureToggles.Featur
                 .build();
     }
 
-    public FeatureToggles(@NonNull FeatureTogglesData data) {
+    public KildaFeatureToggles(@NonNull KildaFeatureTogglesData data) {
         this.data = data;
     }
 
@@ -108,7 +110,7 @@ public class FeatureToggles implements CompositeDataEntity<FeatureToggles.Featur
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        FeatureToggles that = (FeatureToggles) o;
+        KildaFeatureToggles that = (KildaFeatureToggles) o;
         return new EqualsBuilder()
                 .append(getFlowsRerouteOnIslDiscoveryEnabled(), that.getFlowsRerouteOnIslDiscoveryEnabled())
                 .append(getCreateFlowEnabled(), that.getCreateFlowEnabled())
@@ -134,9 +136,9 @@ public class FeatureToggles implements CompositeDataEntity<FeatureToggles.Featur
     }
 
     /**
-     * Defines persistable data of the FeatureToggles.
+     * Defines persistable data of the KildaFeatureToggles.
      */
-    public interface FeatureTogglesData {
+    public interface KildaFeatureTogglesData {
         Boolean getFlowsRerouteOnIslDiscoveryEnabled();
 
         void setFlowsRerouteOnIslDiscoveryEnabled(Boolean flowsRerouteOnIslDiscoveryEnabled);
@@ -189,7 +191,7 @@ public class FeatureToggles implements CompositeDataEntity<FeatureToggles.Featur
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    static final class FeatureTogglesDataImpl implements FeatureTogglesData, Serializable {
+    static final class KildaFeatureTogglesDataImpl implements KildaFeatureTogglesData, Serializable {
         private static final long serialVersionUID = 1L;
         Boolean flowsRerouteOnIslDiscoveryEnabled;
         Boolean createFlowEnabled;
@@ -211,17 +213,17 @@ public class FeatureToggles implements CompositeDataEntity<FeatureToggles.Featur
     public interface FeatureTogglesCloner {
         FeatureTogglesCloner INSTANCE = Mappers.getMapper(FeatureTogglesCloner.class);
 
-        void copyNonNull(FeatureTogglesData source, @MappingTarget FeatureTogglesData target);
+        void copyNonNull(KildaFeatureTogglesData source, @MappingTarget KildaFeatureTogglesData target);
 
-        default void copyNonNull(FeatureToggles source, FeatureToggles target) {
+        default void copyNonNull(KildaFeatureToggles source, KildaFeatureToggles target) {
             copyNonNull(source.getData(), target.getData());
         }
 
         /**
          * Performs deep copy of entity data.
          */
-        default FeatureTogglesData deepCopy(FeatureTogglesData source) {
-            FeatureTogglesData result = new FeatureTogglesDataImpl();
+        default KildaFeatureTogglesData deepCopy(KildaFeatureTogglesData source) {
+            KildaFeatureTogglesData result = new KildaFeatureTogglesDataImpl();
             copyNonNull(source, result);
             return result;
         }
@@ -229,7 +231,7 @@ public class FeatureToggles implements CompositeDataEntity<FeatureToggles.Featur
         /**
          * Replaces null properties of the target with the source data.
          */
-        default void replaceNullProperties(FeatureToggles source, FeatureToggles target) {
+        default void replaceNullProperties(KildaFeatureToggles source, KildaFeatureToggles target) {
             if (target.getCollectGrpcStats() == null) {
                 target.setCollectGrpcStats(source.getCollectGrpcStats());
             }

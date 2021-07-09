@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -43,15 +43,15 @@ import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
-import org.openkilda.model.FeatureToggles;
+import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -112,8 +112,8 @@ public class SwitchValidateServiceImplTest {
         IslRepository islRepository = Mockito.mock(IslRepository.class);
         when(islRepository.findBySrcSwitch(any(SwitchId.class))).thenAnswer((invocation) ->
                 Collections.emptyList());
-        FeatureTogglesRepository featureTogglesRepository = mock(FeatureTogglesRepository.class);
-        when(featureTogglesRepository.getOrDefault()).thenReturn(FeatureToggles.DEFAULTS);
+        KildaFeatureTogglesRepository featureTogglesRepository = mock(KildaFeatureTogglesRepository.class);
+        when(featureTogglesRepository.getOrDefault()).thenReturn(KildaFeatureToggles.DEFAULTS);
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);

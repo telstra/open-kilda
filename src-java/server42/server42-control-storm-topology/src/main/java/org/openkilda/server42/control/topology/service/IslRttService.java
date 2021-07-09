@@ -21,8 +21,8 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 
@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class IslRttService {
     private final IslCarrier carrier;
-    private final FeatureTogglesRepository featureTogglesRepository;
+    private final KildaFeatureTogglesRepository featureTogglesRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final IslRepository islRepository;
 

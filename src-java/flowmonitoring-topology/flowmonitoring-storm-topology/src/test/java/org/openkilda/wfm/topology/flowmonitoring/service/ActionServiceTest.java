@@ -28,16 +28,16 @@ import static org.openkilda.wfm.topology.flowmonitoring.fsm.FlowLatencyMonitorin
 import org.openkilda.messaging.info.flow.UpdateFlowInfo;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
-import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.dummy.FlowDefaults;
 import org.openkilda.persistence.dummy.PersistenceDummyEntityFactory;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.server42.messaging.FlowDirection;
 import org.openkilda.stubs.ManualClock;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowOperationsCarrier;
@@ -67,7 +67,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
 
     private PersistenceDummyEntityFactory dummyFactory;
     private FlowRepository flowRepository;
-    private FeatureTogglesRepository featureTogglesRepository;
+    private KildaFeatureTogglesRepository featureTogglesRepository;
     private ActionService service;
     private Flow flow;
 
@@ -83,7 +83,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
 
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
-        featureTogglesRepository.add(FeatureToggles.builder().flowLatencyMonitoringReactions(true).build());
+        featureTogglesRepository.add(KildaFeatureToggles.builder().flowLatencyMonitoringReactions(true).build());
 
         createTestSwitch(SRC_SWITCH);
         createTestSwitch(DST_SWITCH);
@@ -151,7 +151,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
     @Test
     public void shouldFailTier1AndDoNotSendRerouteRequestWhenToggleIsFalse() {
         transactionManager.doInTransaction(() -> {
-            FeatureToggles featureToggles = featureTogglesRepository.find()
+            KildaFeatureToggles featureToggles = featureTogglesRepository.find()
                     .orElseThrow(() -> new IllegalStateException("Feature toggle not found"));
             featureToggles.setFlowLatencyMonitoringReactions(false);
         });
