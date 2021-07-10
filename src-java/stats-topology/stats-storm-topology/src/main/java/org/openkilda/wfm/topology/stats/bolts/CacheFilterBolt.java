@@ -19,26 +19,34 @@ import static org.openkilda.wfm.AbstractBolt.FIELD_ID_CONTEXT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
 
 import org.openkilda.floodlight.api.request.EgressFlowSegmentInstallRequest;
+import org.openkilda.floodlight.api.request.EgressFlowSegmentRemoveRequest;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.request.IngressFlowSegmentInstallRequest;
+import org.openkilda.floodlight.api.request.IngressFlowSegmentRemoveRequest;
 import org.openkilda.floodlight.api.request.OneSwitchFlowInstallRequest;
+import org.openkilda.floodlight.api.request.OneSwitchFlowRemoveRequest;
 import org.openkilda.floodlight.api.request.TransitFlowSegmentInstallRequest;
+import org.openkilda.floodlight.api.request.TransitFlowSegmentRemoveRequest;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.BaseFlow;
+import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.stats.MeasurePoint;
+import org.openkilda.wfm.topology.stats.MeasurePointKey;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -61,7 +69,8 @@ public class CacheFilterBolt extends BaseRichBolt {
         FLOW,
         COOKIE,
         METER,
-        MEASURE_POINT
+        MEASURE_POINT_TYPE,
+        MEASURE_POINT_KEY
     }
 
     public enum Commands {
@@ -76,7 +85,8 @@ public class CacheFilterBolt extends BaseRichBolt {
                     FieldsNames.SWITCH.name(),
                     FieldsNames.COOKIE.name(),
                     FieldsNames.METER.name(),
-                    FieldsNames.MEASURE_POINT.name(),
+                    FieldsNames.MEASURE_POINT_TYPE.name(),
+                    FieldsNames.MEASURE_POINT_KEY.name(),
                     FIELD_ID_CONTEXT);
 
 
@@ -139,19 +149,30 @@ public class CacheFilterBolt extends BaseRichBolt {
             if (data instanceof InstallIngressFlow) {
                 InstallIngressFlow command = (InstallIngressFlow) data;
                 logMatchedRecord(command);
-                emitUpdateIngress(tuple, command, command.getMeterId());
+                MeasurePointKey measurePointKey = MeasurePointKey.buildForIngressSwitchRule(command.getSwitchId(),
+                        command.getInputPort(), command.getInputVlanId(), command.getInputInnerVlanId(),
+                        command.getOutputPort());
+                emitUpdate(tuple, command, command.getMeterId(), MeasurePoint.INGRESS, measurePointKey);
             } else if (data instanceof InstallEgressFlow) {
                 InstallEgressFlow command = (InstallEgressFlow) data;
                 logMatchedRecord(command);
-                emitUpdateEgress(tuple, command);
+                MeasurePointKey measurePointKey = MeasurePointKey.buildForEgressSwitchRule(command.getSwitchId(),
+                        command.getInputPort(),
+                        command.getOutputPort(), command.getOutputVlanId(), command.getOutputInnerVlanId());
+                emitUpdate(tuple, command, MeasurePoint.EGRESS, measurePointKey);
             } else if (data instanceof InstallOneSwitchFlow) {
                 InstallOneSwitchFlow command = (InstallOneSwitchFlow) data;
                 logMatchedRecord(command);
-                emitUpdateOneSwitch(tuple, command, command.getMeterId());
+                MeasurePointKey measurePointKey = MeasurePointKey.buildForOneSwitchRule(command.getSwitchId(),
+                        command.getInputPort(), command.getInputVlanId(), command.getInputInnerVlanId(),
+                        command.getOutputPort(), command.getOutputVlanId(), command.getOutputInnerVlanId());
+                emitUpdate(tuple, command, command.getMeterId(), MeasurePoint.ONE_SWITCH, measurePointKey);
             } else if (data instanceof InstallTransitFlow) {
                 InstallTransitFlow command = (InstallTransitFlow) data;
                 logMatchedRecord(command);
-                emitUpdateTransit(tuple, command);
+                MeasurePointKey measurePointKey = MeasurePointKey.buildForSwitchRule(command.getSwitchId(),
+                        command.getInputPort(), command.getOutputPort());
+                emitUpdate(tuple, command, MeasurePoint.TRANSIT, measurePointKey);
             } else if (data instanceof RemoveFlow) {
                 RemoveFlow command = (RemoveFlow) data;
                 logMatchedRecord(command);
@@ -172,72 +193,125 @@ public class CacheFilterBolt extends BaseRichBolt {
         if (rawRequest instanceof IngressFlowSegmentInstallRequest) {
             IngressFlowSegmentInstallRequest request = (IngressFlowSegmentInstallRequest) rawRequest;
             logMatchedRecord(request);
-
-            emit(input, Commands.UPDATE, MeasurePoint.INGRESS, request, request.getMeterConfig());
+            FlowEndpoint endpoint = request.getEndpoint();
+            emitUpdate(input, request, request.getMeterConfig(), MeasurePoint.INGRESS,
+                    MeasurePointKey.buildForIngressSwitchRule(request.getSwitchId(),
+                            endpoint.getPortNumber(), endpoint.getOuterVlanId(), endpoint.getInnerVlanId(),
+                            request.getIslPort()));
         } else if (rawRequest instanceof OneSwitchFlowInstallRequest) {
             OneSwitchFlowInstallRequest request = (OneSwitchFlowInstallRequest) rawRequest;
             logMatchedRecord(request);
-
-            emit(input, Commands.UPDATE, MeasurePoint.ONE_SWITCH, request, request.getMeterConfig());
+            FlowEndpoint endpoint = request.getEndpoint();
+            FlowEndpoint egEndpoint = request.getEgressEndpoint();
+            emitUpdate(input, request, request.getMeterConfig(), MeasurePoint.ONE_SWITCH,
+                    MeasurePointKey.buildForOneSwitchRule(request.getSwitchId(),
+                            endpoint.getPortNumber(), endpoint.getOuterVlanId(), endpoint.getInnerVlanId(),
+                            egEndpoint.getPortNumber(), egEndpoint.getOuterVlanId(), egEndpoint.getInnerVlanId()));
         } else if (rawRequest instanceof EgressFlowSegmentInstallRequest) {
-            logMatchedRecord(rawRequest);
-            emit(input, Commands.UPDATE, MeasurePoint.EGRESS, rawRequest);
+            EgressFlowSegmentInstallRequest request = (EgressFlowSegmentInstallRequest) rawRequest;
+            logMatchedRecord(request);
+            FlowEndpoint egEndpoint = request.getEndpoint();
+            emitUpdate(input, request, MeasurePoint.EGRESS,
+                    MeasurePointKey.buildForEgressSwitchRule(request.getSwitchId(), request.getIslPort(),
+                            egEndpoint.getPortNumber(), egEndpoint.getOuterVlanId(), egEndpoint.getInnerVlanId()));
         } else if (rawRequest instanceof TransitFlowSegmentInstallRequest) {
-            logMatchedRecord(rawRequest);
-            emit(input, Commands.UPDATE, MeasurePoint.TRANSIT, rawRequest);
-        } else if (rawRequest.isRemoveRequest()) {
-            logMatchedRecord(rawRequest);
-            emitRemove(input, rawRequest);
+            TransitFlowSegmentInstallRequest request = (TransitFlowSegmentInstallRequest) rawRequest;
+            logMatchedRecord(request);
+            emitUpdate(input, request, MeasurePoint.TRANSIT,
+                    MeasurePointKey.buildForSwitchRule(request.getSwitchId(), request.getIngressIslPort(),
+                            request.getEgressIslPort()));
+        } else if (rawRequest instanceof IngressFlowSegmentRemoveRequest) {
+            IngressFlowSegmentRemoveRequest request = (IngressFlowSegmentRemoveRequest) rawRequest;
+            logMatchedRecord(request);
+
+            FlowEndpoint endpoint = request.getEndpoint();
+            emitRemove(input, request, MeasurePoint.INGRESS,
+                    MeasurePointKey.buildForIngressSwitchRule(request.getSwitchId(),
+                            endpoint.getPortNumber(), endpoint.getOuterVlanId(), endpoint.getInnerVlanId(),
+                            request.getIslPort()));
+        } else if (rawRequest instanceof OneSwitchFlowRemoveRequest) {
+            OneSwitchFlowRemoveRequest request = (OneSwitchFlowRemoveRequest) rawRequest;
+            logMatchedRecord(request);
+            FlowEndpoint endpoint = request.getEndpoint();
+            FlowEndpoint egEndpoint = request.getEgressEndpoint();
+            emitRemove(input, request, MeasurePoint.ONE_SWITCH,
+                    MeasurePointKey.buildForOneSwitchRule(request.getSwitchId(),
+                            endpoint.getPortNumber(), endpoint.getOuterVlanId(), endpoint.getInnerVlanId(),
+                            egEndpoint.getPortNumber(), egEndpoint.getOuterVlanId(), egEndpoint.getInnerVlanId()));
+        } else if (rawRequest instanceof EgressFlowSegmentRemoveRequest) {
+            EgressFlowSegmentRemoveRequest request = (EgressFlowSegmentRemoveRequest) rawRequest;
+            logMatchedRecord(request);
+            FlowEndpoint egEndpoint = request.getEndpoint();
+            emitRemove(input, request, MeasurePoint.EGRESS,
+                    MeasurePointKey.buildForEgressSwitchRule(request.getSwitchId(), request.getIslPort(),
+                            egEndpoint.getPortNumber(), egEndpoint.getOuterVlanId(), egEndpoint.getInnerVlanId()));
+        } else if (rawRequest instanceof TransitFlowSegmentRemoveRequest) {
+            TransitFlowSegmentRemoveRequest request = (TransitFlowSegmentRemoveRequest) rawRequest;
+            logMatchedRecord(request);
+            emitRemove(input, request, MeasurePoint.TRANSIT,
+                    MeasurePointKey.buildForSwitchRule(request.getSwitchId(), request.getIngressIslPort(),
+                            request.getEgressIslPort()));
         }
     }
 
-    private void emitUpdateIngress(Tuple input, BaseFlow command, Long meterId) {
-        emit(input, Commands.UPDATE, command, meterId, MeasurePoint.INGRESS);
+    private void emitUpdate(Tuple input, BaseInstallFlow command, Long meterId, MeasurePoint measurePointType,
+                            MeasurePointKey measurePointKey) {
+        emit(input, Commands.UPDATE, command, meterId, measurePointType, measurePointKey);
     }
 
-    private void emitUpdateEgress(Tuple input, BaseFlow command) {
-        emit(input, Commands.UPDATE, command, null, MeasurePoint.EGRESS);
+    private void emitUpdate(Tuple input, BaseInstallFlow command, MeasurePoint measurePointType,
+                            MeasurePointKey measurePointKey) {
+        emitUpdate(input, command, null, measurePointType, measurePointKey);
     }
 
-    private void emitUpdateTransit(Tuple input, BaseFlow command) {
-        emit(input, Commands.UPDATE, command, null, MeasurePoint.TRANSIT);
+    private void emitUpdate(Tuple tuple, FlowSegmentRequest request, MeterConfig meter, MeasurePoint measurePointType,
+                            MeasurePointKey measurePointKey) {
+        emit(tuple, Commands.UPDATE, request, meter, measurePointType, measurePointKey);
     }
 
-    private void emitUpdateOneSwitch(Tuple input, BaseFlow command, Long meterId) {
-        emit(input, Commands.UPDATE, command, meterId, MeasurePoint.ONE_SWITCH);
+    private void emitUpdate(Tuple tuple, FlowSegmentRequest request, MeasurePoint measurePointType,
+                            MeasurePointKey measurePointKey) {
+        emitUpdate(tuple, request, null, measurePointType, measurePointKey);
     }
 
-    private void emitRemove(Tuple tuple, BaseFlow command) {
-        emit(tuple, Commands.REMOVE, command, null, null);
+    private void emitRemove(Tuple tuple, FlowSegmentRequest request, MeasurePoint measurePointType,
+                            MeasurePointKey measurePointKey) {
+        emit(tuple, Commands.REMOVE, request, null, measurePointType, measurePointKey);
     }
 
-    private void emitRemove(Tuple tuple, FlowSegmentRequest request) {
-        emit(tuple, Commands.REMOVE, null, request);
+    private void emitRemove(Tuple tuple, RemoveFlow command) {
+        MeasurePointKey measurePointKey = null;
+        DeleteRulesCriteria deleteCriteria = command.getCriteria();
+        if (deleteCriteria != null && deleteCriteria.getInPort() != null && deleteCriteria.getOutPort() != null) {
+            measurePointKey = MeasurePointKey.buildForSwitchRule(command.getSwitchId(), deleteCriteria.getInPort(),
+                    deleteCriteria.getOutPort());
+        }
+        emit(tuple, Commands.REMOVE, command, null, null, measurePointKey);
     }
 
-    private void emit(Tuple tuple, Commands cacheCommand, MeasurePoint point, FlowSegmentRequest request) {
-        emit(tuple, cacheCommand, point, request, null);
+    private void emit(Tuple tuple, Commands action, BaseFlow command, Long meterId, MeasurePoint measurePointType,
+                      MeasurePointKey measurePointKey) {
+        emit(tuple, action, command.getId(), command.getSwitchId(), command.getCookie(), meterId, measurePointType,
+                measurePointKey);
     }
 
-    private void emit(
-            Tuple tuple, Commands cacheCommand, MeasurePoint point, FlowSegmentRequest request, MeterConfig meter) {
+    private void emit(Tuple tuple, Commands action, FlowSegmentRequest request, MeterConfig meter,
+                      MeasurePoint measurePointType, MeasurePointKey measurePointKey) {
         Cookie cookie = request.getCookie();
         Long meterId = Optional.ofNullable(meter)
                 .map(MeterConfig::getId)
                 .map(MeterId::getValue)
                 .orElse(null);
         String flowId = request.getMetadata().getFlowId();
-        emit(tuple, cacheCommand, flowId, request.getSwitchId(), cookie.getValue(), meterId, point);
-    }
-
-    private void emit(Tuple tuple, Commands action, BaseFlow command, Long meterId, MeasurePoint point) {
-        emit(tuple, action, command.getId(), command.getSwitchId(), command.getCookie(), meterId, point);
+        emit(tuple, action, flowId, request.getSwitchId(), cookie.getValue(), meterId, measurePointType,
+                measurePointKey);
     }
 
     private void emit(Tuple tuple, Commands action, String flowId, SwitchId switchId, Long cookie, Long meterId,
-                      MeasurePoint point) {
+                      MeasurePoint measurePointType, MeasurePointKey measurePointKey) {
         CommandContext commandContext = (CommandContext) tuple.getValueByField(FIELD_ID_CONTEXT);
-        Values values = new Values(action, flowId, switchId, cookie, meterId, point, commandContext);
+        Values values = new Values(action, flowId, switchId, cookie, meterId, measurePointType, measurePointKey,
+                commandContext);
         outputCollector.emit(CACHE_UPDATE.name(), tuple, values);
     }
 
