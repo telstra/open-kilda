@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.99.0 (15/07/2021)
+
+### Features:
+-  [#4327](https://github.com/telstra/open-kilda/pull/4327) add test for flowSLA [**tests**]
+
+### Bug Fixes:
+-  [#4288](https://github.com/telstra/open-kilda/pull/4288) Fix link properties validation (Issue: [#4161](https://github.com/telstra/open-kilda/issues/4161)) [**storm-topologies**]
+-  [#4303](https://github.com/telstra/open-kilda/pull/4303) Fix the missing cache errors in Stats caused by partial flow updates (Issue: [#4246](https://github.com/telstra/open-kilda/issues/4246)) [**storm-topologies**]
+-  [#4368](https://github.com/telstra/open-kilda/pull/4368) Fix/build issues in UI [**gui**]
+-  [#4346](https://github.com/telstra/open-kilda/pull/4346) Fix feature toggles (Issues: [#2441](https://github.com/telstra/open-kilda/issues/2441) [#4345](https://github.com/telstra/open-kilda/issues/4345)) [**storm-topologies**]
+
+### Improvements:
+-  [#4357](https://github.com/telstra/open-kilda/pull/4357) fix assertPortIsStable in PortAntiflapHelper [**tests**]
+-  [#4358](https://github.com/telstra/open-kilda/pull/4358) unignore test according to  #4271 [**tests**]
+-  [#4359](https://github.com/telstra/open-kilda/pull/4359) Minor typos fixed in tests [**tests**]
+-  [#4360](https://github.com/telstra/open-kilda/pull/4360) Force ordering of flow's history events
+-  [#4364](https://github.com/telstra/open-kilda/pull/4364) reduce latencyUpdateInterval for local func-tests [**tests**]
+-  [#4341](https://github.com/telstra/open-kilda/pull/4341) Add func tests for strict_bandwidth feature [**tests**]
+-  [#4343](https://github.com/telstra/open-kilda/pull/4343) Fix 'make test-topology' command [**tests**]
+-  [#4349](https://github.com/telstra/open-kilda/pull/4349) unignore according to #4317 [**tests**]
+-  [#4351](https://github.com/telstra/open-kilda/pull/4351) Add validation of OrientDB connections in the graph factory [**storm-topologies**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.98.0...v1.99.0).
+
+### Affected Components:
+flow-hs, gui, stats, network, orientdb, connected, reroute, ping, isllatency, nbworker, swmanager, flow-monitor
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
 ## v1.98.0 (02/07/2021)
 
 ### Features:
