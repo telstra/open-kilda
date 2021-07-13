@@ -1,0 +1,23 @@
+@startuml
+
+title LAGs Domain Model
+
+class LagLogicalPort {
+    switch_id
+    logical_port_number
+    ==
+    physicalPorts() : PhysicalPort[]
+    __
+    unique constraint on switch_id+logical_port_number
+}
+
+class PhysicalPort {
+    switch_id
+    port_number
+    --
+    unique constraint on switch_id+port_number
+}
+
+LagLogicalPort o--> PhysicalPort
+
+@enduml
