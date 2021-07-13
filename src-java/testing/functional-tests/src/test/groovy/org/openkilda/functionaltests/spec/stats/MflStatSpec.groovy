@@ -307,11 +307,11 @@ class MflStatSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET / 2) {
             assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections.size() == 4
         }
-        //TODO (andriidovhan) rework, regionToStay should be array or string during whole test
-        regionToStay = findMgmtFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName - regionToStay
+        // '.first' in the line below, just for getting String instead of Array.
+        regionToStay = (findMgmtFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName - regionToStay).first()
         blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
         Wrappers.wait(WAIT_OFFSET / 2) {
-            assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == regionToStay
+            assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == [regionToStay]
         }
 
         and: "Generate traffic on the given flow"
@@ -356,10 +356,10 @@ class MflStatSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET / 2) {
             assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections.size() == 4
         }
-        regionToStay = findStatFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName - regionToStay
+        regionToStay = (findStatFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName - regionToStay).first()
         blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
         Wrappers.wait(WAIT_OFFSET / 2) {
-            assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == regionToStay
+            assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == [regionToStay]
         }
 
         and: "Generate traffic on the given flow"
