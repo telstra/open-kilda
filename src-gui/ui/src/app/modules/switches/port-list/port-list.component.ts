@@ -16,7 +16,7 @@ import { CommonService } from 'src/app/common/services/common.service';
   styleUrls: ['./port-list.component.css']
 })
 export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnChanges {
-  @ViewChild(DataTableDirective)
+  @ViewChild(DataTableDirective, { static: true })
   dtElement: DataTableDirective;
   @Input() switch = null;
   @Input() loadinterval = false

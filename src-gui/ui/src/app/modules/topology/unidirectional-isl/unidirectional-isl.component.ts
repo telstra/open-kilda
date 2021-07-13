@@ -10,7 +10,7 @@ import { TopologyService } from 'src/app/common/services/topology.service';
   styleUrls: ['./unidirectional-isl.component.css']
 })
 export class UnidirectionalIslComponent implements OnInit, AfterViewInit, OnDestroy {
-  @ViewChild(DataTableDirective)
+  @ViewChild(DataTableDirective, { static: true })
   datatableElement: DataTableDirective;
   dtOptions:any =  {};
   dtTrigger: Subject<any> = new Subject();

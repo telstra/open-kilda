@@ -17,7 +17,7 @@ import { MessageObj } from 'src/app/common/constants/constants';
   styleUrls: ['./role-list.component.css']
 })
 export class RoleListComponent implements OnDestroy, OnInit, AfterViewInit{
-  @ViewChild(DataTableDirective)
+  @ViewChild(DataTableDirective, { static: true })
 
   datatableElement: DataTableDirective;
   dtOptions : any = {};

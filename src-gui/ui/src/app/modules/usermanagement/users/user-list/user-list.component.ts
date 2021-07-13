@@ -20,7 +20,7 @@ import { MessageObj } from 'src/app/common/constants/constants';
 })
 
 export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
-  @ViewChild(DataTableDirective)
+  @ViewChild(DataTableDirective, { static: true })
   datatableElement: DataTableDirective;
 
   dtOptions : any = {};

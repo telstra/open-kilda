@@ -12,7 +12,7 @@ import { Subject } from 'rxjs';
 })
 export class SamlListTableComponent implements OnInit , OnChanges{
   
-  @ViewChild(DataTableDirective) datatableElement: DataTableDirective;
+  @ViewChild(DataTableDirective, { static: true }) datatableElement: DataTableDirective;
   @Input() data=[];
   @Output() editsaml = new EventEmitter();
   @Output() deletesaml = new EventEmitter();
