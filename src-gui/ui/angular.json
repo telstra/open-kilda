@@ -36,8 +36,7 @@
               "src/assets/css/jquery.datetimepicker.css",
               "node_modules/@ng-select/ng-select/themes/default.theme.css",
               "src/assets/css/roboto.css",
-              "node_modules/dt-colresize/css/dataTables.colResize.css",
-              "node_modules/ol/ol.css"
+              "node_modules/dt-colresize/css/dataTables.colResize.css"
             ],
             "scripts": [
               "node_modules/jquery/dist/jquery.js",
