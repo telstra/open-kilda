@@ -19,7 +19,7 @@ declare var jQuery: any;
 })
 export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,AfterViewInit {
 
-  @ViewChild(DataTableDirective)  datatableElement: DataTableDirective;
+  @ViewChild(DataTableDirective, { static: true })  datatableElement: DataTableDirective;
   @Input() data =[];
   @Input() switchFilterFlag:string;  
   @Input() textSearch:any;

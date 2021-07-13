@@ -19,7 +19,7 @@ export class OtpComponent implements OnInit {
   submitted = false;
   @Output()
   emitService = new EventEmitter();
-  @ViewChild("otpcontainer")
+  @ViewChild("otpcontainer", { static: true })
   otpContainerElement: ElementRef;
 
   constructor(

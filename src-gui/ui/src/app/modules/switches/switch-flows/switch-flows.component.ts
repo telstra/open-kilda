@@ -17,7 +17,7 @@ declare var jQuery: any;
 })
 export class SwitchFlowsComponent implements OnDestroy, OnInit,OnChanges, AfterViewInit {
 
-  @ViewChild(DataTableDirective)
+  @ViewChild(DataTableDirective, { static: true })
   datatableElement: DataTableDirective;
   @Input() data;
   @Output() refresh =  new EventEmitter();

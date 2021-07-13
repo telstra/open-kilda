@@ -9,7 +9,7 @@ import { LoaderService } from 'src/app/common/services/loader.service';
 })
 export class UseractivityListComponent implements OnInit,OnChanges {
 
-  @ViewChild(DataTableDirective) datatableElement: DataTableDirective;
+  @ViewChild(DataTableDirective, { static: true }) datatableElement: DataTableDirective;
   @Input() data=[];
   dtOptions = {};  
   wrapperHide=true;

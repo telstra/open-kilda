@@ -17,7 +17,7 @@ import { MessageObj } from 'src/app/common/constants/constants';
   styleUrls: ['./permission-list.component.css']
 })
 export class PermissionListComponent implements OnDestroy, OnInit, AfterViewInit {
-  @ViewChild(DataTableDirective)
+  @ViewChild(DataTableDirective, { static: true })
 
   datatableElement: DataTableDirective;
   dtOptions : any = {};

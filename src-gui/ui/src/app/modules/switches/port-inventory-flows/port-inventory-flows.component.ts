@@ -14,7 +14,7 @@ declare var jQuery: any;
   styleUrls: ['./port-inventory-flows.component.css']
 })
 export class PortInventoryFlowsComponent implements  OnDestroy, OnInit,OnChanges, AfterViewInit {
-  @ViewChild(DataTableDirective)
+  @ViewChild(DataTableDirective, { static: true })
   datatableElement: DataTableDirective;
   @Input() data;  
   @Input() textSearch:any;

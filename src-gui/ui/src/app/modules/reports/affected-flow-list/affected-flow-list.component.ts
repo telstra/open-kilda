@@ -19,7 +19,7 @@ import { MessageObj } from 'src/app/common/constants/constants';
   styleUrls: ['./affected-flow-list.component.css']
 })
 export class AffectedFlowListComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy {
-  @ViewChild(DataTableDirective) datatableElement: DataTableDirective;
+  @ViewChild(DataTableDirective, { static: true }) datatableElement: DataTableDirective;
   @Input() data = [];
   @Input() textSearch:any;
   @Output() refresh =  new EventEmitter();

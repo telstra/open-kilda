@@ -21,7 +21,6 @@ import { DataTableDirective } from "angular-datatables";
 import { ToastrService } from "ngx-toastr";
 import { NgxSpinnerService } from "ngx-spinner";
 import { LoaderService } from "../../../common/services/loader.service";
-import { Renderer3 } from "@angular/core/src/render3/interfaces/renderer";
 import { ClipboardService } from "ngx-clipboard";
 
 @Component({
@@ -30,7 +29,7 @@ import { ClipboardService } from "ngx-clipboard";
   styleUrls: ["./datatable.component.css"]
 })
 export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnChanges {
-  @ViewChild(DataTableDirective) datatableElement: DataTableDirective;
+  @ViewChild(DataTableDirective, { static: true }) datatableElement: DataTableDirective;
   dtOptions: any = {};
   dtTrigger: Subject<any> = new Subject();
 

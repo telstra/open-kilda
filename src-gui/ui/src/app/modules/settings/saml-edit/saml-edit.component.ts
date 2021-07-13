@@ -18,7 +18,7 @@ export class SamlEditComponent implements OnInit,OnChanges {
   @Input() data:any;
   @Output() cancel =  new EventEmitter();
   
-  @ViewChild("file")
+  @ViewChild("file", { static: true })
   fileElementRef: ElementRef;
   uuid:any=null;
   files:FileList;
