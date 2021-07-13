@@ -4,9 +4,9 @@
   <input type="hidden" id="m_s_dropdown">
   <input type="hidden" id="switch">
 
-  <!-- <span *ngIf="commonService.hasPermission('topology_world_map_view')" class="world-map-view" ngbPopover="{{worldMapText}}" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave" data-toggle="modal" id="viewWorldMap" (click)="showWorldMap()">
+  <span *ngIf="commonService.hasPermission('topology_world_map_view')" class="world-map-view" ngbPopover="{{worldMapText}}" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave" data-toggle="modal" id="viewWorldMap" (click)="showWorldMap()">
     <i class="fa fa-map-o" aria-hidden="true"></i>
-  </span> -->
+  </span>
   <span *ngIf="!this.defaultSetting.WORLDMAP" class="affected-isl" ngbPopover="Affected ISL" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave" data-toggle="modal" id="viewISL" (click)="showAffectedISL()">
     <i class="icon-affected-isl" aria-hidden="true"></i>
   </span>
