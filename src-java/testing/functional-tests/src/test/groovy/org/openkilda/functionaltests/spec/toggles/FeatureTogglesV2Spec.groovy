@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.toggles
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
@@ -32,7 +33,11 @@ creation of new flows via Northbound API. This spec verifies that Feature Toggle
 """)
 /*Note that the 'flowReroute' toggle is tested under AutoRerouteV2Spec#"Flow goes to 'Down' status when an intermediate
 switch is disconnected and there is no ability to reroute".
-BFD toggle is tested in BfdSpec*/
+BFD toggle is tested in BfdSpec
+server42_isl_rtt toggle is tested in Server42IslRttSpec
+server42_flow_rtt toggle is tested in Server42FlowRttSpec
+flow_latency_monitoring_reactions toggle is tested in FlowMonitoringSpec
+*/
 @Tags(SMOKE)
 class FeatureTogglesV2Spec extends HealthCheckSpecification {
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
@@ -124,10 +129,11 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
         [flow, newFlow].each { flowHelperV2.deleteFlow(it.flowId) }
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2955")
+    @Tidy
+    @Tags(HARDWARE)
     def "Flow encapsulation type is changed while auto rerouting according to 'flows_reroute_using_default_encap_type' \
-feature toogle"() {
-        given: "A switch pair which supports transit_vlan and vxlan encapsulation types"
+feature toggle"() {
+        given: "A switch pair which supports 'transit_vlan' and 'vxlan' encapsulation types"
         def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
             [it.src, it.dst].every {
                 northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation.contains(
@@ -157,12 +163,12 @@ feature toogle"() {
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
         def islToBreak = pathHelper.getInvolvedIsls(currentPath).first()
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(antiflapMin + 2) {
+        wait(WAIT_OFFSET) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.FAILED
         }
 
         then: "Flow is rerouted"
-        Wrappers.wait(WAIT_OFFSET + rerouteDelay) {
+        wait(WAIT_OFFSET + rerouteDelay) {
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) != currentPath
         }
 
@@ -178,7 +184,7 @@ feature toogle"() {
 
         and: "Restore previous path"
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(antiflapMin + 2) {
+        wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
 
@@ -186,36 +192,52 @@ feature toogle"() {
         def newCurrentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
         def newIslToBreak = pathHelper.getInvolvedIsls(newCurrentPath).first()
         antiflap.portDown(newIslToBreak.srcSwitch.dpId, newIslToBreak.srcPort)
-        Wrappers.wait(antiflapMin + 2) {
-            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.FAILED
+        wait(WAIT_OFFSET) {
+            assert islUtils.getIslInfo(newIslToBreak).get().state == IslChangeType.FAILED
         }
 
         then: "Flow is rerouted"
-        Wrappers.wait(WAIT_OFFSET + rerouteDelay) {
+        wait(WAIT_OFFSET + rerouteDelay) {
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) != newCurrentPath
         }
 
         and: "Encapsulation type is not changed according to kilda configuration"
         northboundV2.getFlow(flow.flowId).encapsulationType != initKildaConfig.flowEncapsulationType
 
-        and: "Cleanup: Revert system to origin state"
-        northbound.toggleFeature(FeatureTogglesDto.builder()
+        cleanup:
+        initFeatureToggle && northbound.toggleFeature(FeatureTogglesDto.builder()
                 .flowsRerouteUsingDefaultEncapType(initFeatureToggle.flowsRerouteUsingDefaultEncapType).build())
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        islToBreak && !newIslToBreak && antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        newIslToBreak && antiflap.portUp(newIslToBreak.srcSwitch.dpId, newIslToBreak.srcPort)
+        wait(discoveryInterval + WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, islToBreak).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, islToBreak.reversed).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, newIslToBreak).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, newIslToBreak.reversed).get().state == IslChangeType.DISCOVERED
+        }
     }
 
+    @Tidy
     @Ignore("https://github.com/telstra/open-kilda/issues/2955")
+    @Tags(HARDWARE)
     def "Flow encapsulation type is not changed while syncing/auto rerouting/updating according to \
-'flows_reroute_using_default_encap_type' if switch does't support new type of encapsulation"() {
-        given: "A switch which supports only transit_vlan encapsulation type"
+'flows_reroute_using_default_encap_type' if switch doesn't support new type of encapsulation"() {
+        given: "A switch pair which supports 'transit_vlan' and 'vxlan' encapsulation types"
+        and: "The 'vxlan' encapsulation type is disable in swProps on the src switch"
         def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
             [it.src, it.dst].every {
-                !northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation.contains(
+                northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation.contains(
                         FlowEncapsulationType.VXLAN.toString().toLowerCase()
                 )
             } && it.paths.size() >= 2
         }
         assumeTrue(swPair as boolean, "Unable to find required switches in topology")
+        def initSrcSwProps = northbound.getSwitchProperties(swPair.src.dpId)
+        northbound.updateSwitchProperties(swPair.src.dpId, initSrcSwProps.jacksonCopy().tap {
+            it.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
+        })
 
         and: "The 'flows_reroute_using_default_encap_type' feature is enabled"
         def initFeatureToggle = northbound.getFeatureToggles()
@@ -238,12 +260,12 @@ feature toogle"() {
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
         def islToBreak = pathHelper.getInvolvedIsls(currentPath).first()
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(antiflapMin + 2) {
+        wait(WAIT_OFFSET) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.FAILED
         }
 
         then: "Flow is rerouted"
-        Wrappers.wait(WAIT_OFFSET + rerouteDelay) {
+        wait(WAIT_OFFSET + rerouteDelay) {
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) != currentPath
         }
 
@@ -255,7 +277,7 @@ feature toogle"() {
 
         when: "Update the flow"
         northboundV2.updateFlow(flow.flowId, flow.tap { it.description = description + " updated" })
-        Wrappers.wait(WAIT_OFFSET / 2) {
+        wait(WAIT_OFFSET / 2) {
             assert northboundV2.getFlow(flow.flowId).description == flow.description
         }
 
@@ -274,15 +296,18 @@ feature toogle"() {
         and: "Flow is in UP state"
         northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
 
-        and: "Cleanup: Revert system to origin state"
-        flowHelperV2.deleteFlow(flow.flowId)
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        northbound.toggleFeature(FeatureTogglesDto.builder()
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        islToBreak && antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        initFeatureToggle && northbound.toggleFeature(FeatureTogglesDto.builder()
                 .flowsRerouteUsingDefaultEncapType(initFeatureToggle.flowsRerouteUsingDefaultEncapType).build())
-        (initGlobalConfig.flowEncapsulationType == vxlanEncapsulationType.toString().toLowerCase()) ?:
+        initGlobalConfig && initGlobalConfig.flowEncapsulationType != vxlanEncapsulationType.toString().toLowerCase() &&
                 northbound.updateKildaConfiguration(initGlobalConfig)
-        Wrappers.wait(antiflapMin + 2) {
-            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
+        initSrcSwProps && northbound.updateSwitchProperties(swPair.src.dpId, initSrcSwProps)
+        wait(discoveryInterval + WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, islToBreak).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, islToBreak.reversed).get().state == IslChangeType.DISCOVERED
         }
     }
 
@@ -321,7 +346,7 @@ feature toogle"() {
         def mainPortIsDown = true
 
         then: "The flow becomes 'Down'"
-        Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
+        wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
             assert northbound.getFlowHistory(flow.flowId).find {
                 it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
@@ -359,7 +384,7 @@ feature toogle"() {
         featureToogleIsUpdated && northbound.toggleFeature(FeatureTogglesDto.builder()
                 .flowsRerouteOnIslDiscoveryEnabled(true)
                 .build())
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
         database.resetCosts()
