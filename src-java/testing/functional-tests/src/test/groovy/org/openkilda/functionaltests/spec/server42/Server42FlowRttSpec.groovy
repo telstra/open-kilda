@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.server42
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -889,9 +890,9 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
             northbound.updateSwitchProperties(sw.dpId, originalProps.jacksonCopy().tap {
                 server42FlowRtt = requiredState
                 def props = sw.prop ?: SwitchHelper.dummyServer42Props
-                server42MacAddress = props.server42MacAddress
-                server42Port = props.server42Port
-                server42Vlan = props.server42Vlan
+                server42MacAddress = requiredState ? props.server42MacAddress : null
+                server42Port = requiredState ? props.server42Port : null
+                server42Vlan = requiredState ? props.server42Vlan : null
             })
         }
         Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -930,9 +931,10 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
         flowRttFeatureStartState != null && changeFlowRttToggle(flowRttFeatureStartState)
         initialSwitchRtt.each { sw, state -> changeFlowRttSwitch(sw, state)  }
-        initialSwitchRtt.keySet().each { sw ->
+        initialSwitchRtt.keySet().each { Switch sw ->
             Wrappers.wait(RULES_INSTALLATION_TIME) {
-                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+                assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray())
+                        .containsExactlyInAnyOrder(*sw.defaultCookies)
             }
         }
     }

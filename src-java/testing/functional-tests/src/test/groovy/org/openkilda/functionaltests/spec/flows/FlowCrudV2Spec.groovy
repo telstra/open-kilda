@@ -968,7 +968,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         when: "Update the flow: port number and vlan id on the src endpoint"
-        def flowInfoFromDb1 = database.getFlow(flow.flowId)
         def updatedFlow = flow.jacksonCopy().tap {
             it.source.portNumber = topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
                 it.dpId == flow.source.switchId

@@ -744,7 +744,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                     it.errorDescription = getEndpointConflictError(it.mirrorPoint, it.flow, "source")
                 }),
                 new MirrorErrorTestData("Unable to create a mirror endpoint on the src sw and sink back to dst sw", {
-                    it.flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
+                    def swPair = topologyHelper.switchPairs[0]
+                    it.flow = flowHelperV2.randomFlow(swPair)
                     def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
                     it.mirrorPoint = FlowMirrorPointPayload.builder()
                             .mirrorPointId(flowHelperV2.generateFlowId())
@@ -759,7 +760,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                             "implementation, the sink switch id cannot differ from the mirror point switch id."
                 }),
                 new MirrorErrorTestData("Unable to create a mirror point with isl conflict", {
-                    it.flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
+                    def swPair = topologyHelper.switchPairs[0]
+                    it.flow = flowHelperV2.randomFlow(swPair)
                     def islPort = topology.getBusyPortsForSwitch(swPair.dst)[0]
                     it.mirrorPoint = FlowMirrorPointPayload.builder()
                             .mirrorPointId(flowHelperV2.generateFlowId())

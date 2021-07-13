@@ -464,8 +464,8 @@ class FlowStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(northbound.getFlow(flow.flowId),
-                (int) flow.maximumBandwidth, 5)
+        Exam exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(northbound.getFlow(flow.flowId),
+                (int) flow.maximumBandwidth, 5).tap { udp = true }
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
@@ -508,8 +508,8 @@ class FlowStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(northbound.getFlow(flow.flowId),
-                (int) flow.maximumBandwidth, 5)
+        Exam exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(northbound.getFlow(flow.flowId),
+                (int) flow.maximumBandwidth, 5).tap { udp = true }
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
