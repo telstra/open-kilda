@@ -95,7 +95,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         where:
         data << [[
-                         flowDescription: "default",
+                         flowDescription: "default flow",
                          switchPair     : { List<SwitchId> switchIds -> getSwPairConnectedToS42ForSimpleFlow(switchIds) },
                          flowTap        : { FlowRequestV2 fl ->
                              fl.source.vlanId = 0
@@ -103,17 +103,18 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                          }
                  ],
                  [
-                         flowDescription: "protected",
+                         flowDescription: "protected flow",
                          switchPair     : { List<SwitchId> switchIds -> getSwPairConnectedToS42ForProtectedFlow(switchIds) },
                          flowTap        : { FlowRequestV2 fl -> fl.allocateProtectedPath = true }
                  ],
                  [
-                         flowDescription: "vxlan",
-                         switchPair     : { List<SwitchId> switchIds -> getSwPairConnectedToS42ForVxlanFlow(switchIds) },
+                         flowDescription: "vxlan flow on NS switch",
+                         switchPair     : { List<SwitchId> switchIds ->
+                             getSwPairConnectedToS42ForVxlanFlowOnNonWbSwitch(switchIds) },
                          flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
                  ],
                  [
-                         flowDescription: "qinq",
+                         flowDescription: "qinq flow",
                          switchPair     : { List<SwitchId> switchIds -> getSwPairConnectedToS42ForQinQ(switchIds) },
                          flowTap        : { FlowRequestV2 fl ->
                              fl.source.vlanId = 10
@@ -121,7 +122,13 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                              fl.destination.vlanId = 20
                              fl.destination.innerVlanId = 200
                          }
-                 ]
+                 ],
+                 [
+                         flowDescription: "vxlan flow on WB switch",
+                         switchPair     : { List<SwitchId> switchIds ->
+                             getSwPairConnectedToS42ForVxlanFlowOnWbSwitch(switchIds) },
+                         flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
+                 ],
         ]
     }
 
@@ -768,7 +775,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         data << [
                  [
                          flowDescription: "vxlan",
-                         switchPair     : { List<SwitchId> switchIds -> getSwPairConnectedToS42ForVxlanFlow(switchIds) },
+                         switchPair     : { List<SwitchId> switchIds ->
+                             getSwPairConnectedToS42ForVxlanFlowOnNonWbSwitch(switchIds) },
                          flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
                  ],
                  [
@@ -957,9 +965,9 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
     }
 
-    def "getSwPairConnectedToS42ForVxlanFlow"(List<SwitchId> switchIdsConnectedToS42) {
+    def "getSwPairConnectedToS42ForVxlanFlowOnNonWbSwitch"(List<SwitchId> switchIdsConnectedToS42) {
         getTopologyHelper().getSwitchPairs().find { swP ->
-            [swP.dst, swP.src].every { it.dpId in switchIdsConnectedToS42 } && swP.paths.findAll { path ->
+            [swP.dst, swP.src].every { it.dpId in switchIdsConnectedToS42 && !it.wb5164 } && swP.paths.findAll { path ->
                 pathHelper.getInvolvedSwitches(path).every {
                     getNorthbound().getSwitchProperties(it.dpId).supportedTransitEncapsulation
                             .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
@@ -972,6 +980,18 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         getTopologyHelper().getSwitchPairs().find { swP ->
             [swP.dst, swP.src].every { it.dpId in switchIdsConnectedToS42 } && swP.paths.findAll { path ->
                 pathHelper.getInvolvedSwitches(path).every { getNorthbound().getSwitchProperties(it.dpId).multiTable }
+            }
+        }
+    }
+
+    def "getSwPairConnectedToS42ForVxlanFlowOnWbSwitch"(List<SwitchId> switchIdsConnectedToS42) {
+        getTopologyHelper().getSwitchPairs(true).find { swP ->
+            swP.src.wb5164 && [swP.dst, swP.src].every { it.dpId in switchIdsConnectedToS42 } &&
+                    swP.paths.findAll { path ->
+                pathHelper.getInvolvedSwitches(path).every {
+                    getNorthbound().getSwitchProperties(it.dpId).supportedTransitEncapsulation
+                            .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+                }
             }
         }
     }
