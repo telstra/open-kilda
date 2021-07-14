@@ -91,19 +91,19 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
 
         when: "Bring port down on the switch"
         def port = topology.getAllowedPortsForSwitch(sw).find { "LINK_DOWN" in northbound.getPort(sw.dpId, it).state }
-        antiflap.portDown(sw.dpId, port)
+        northbound.portDown(sw.dpId, port)
 
         then: "Port is really DOWN"
         Wrappers.wait(WAIT_OFFSET) { assert "PORT_DOWN" in northbound.getPort(sw.dpId, port).config }
 
         when: "Bring port up on the switch"
-        def portUp = antiflap.portUp(sw.dpId, port)
+        def portUp = northbound.portUp(sw.dpId, port)
 
         then: "Port is really UP"
         Wrappers.wait(WAIT_OFFSET) { assert !("PORT_DOWN" in northbound.getPort(sw.dpId, port).config) }
 
         cleanup:
-        !portUp && antiflap.portUp(sw.dpId, port)
+        !portUp && northbound.portUp(sw.dpId, port)
         database.resetCosts()
 
         where:

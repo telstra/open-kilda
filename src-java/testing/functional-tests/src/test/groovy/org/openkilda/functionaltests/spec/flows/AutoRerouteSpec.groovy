@@ -291,14 +291,14 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         allFlowPaths.findAll { it != flowPath }.each { pathHelper.makePathMorePreferable(it, flowPath) }
 
         when: "Bring the flow port down on the source switch"
-        antiflap.portDown(flow.source.datapath, flow.source.portNumber)
+        northbound.portDown(flow.source.datapath, flow.source.portNumber)
 
         then: "The flow is not rerouted"
         TimeUnit.SECONDS.sleep(rerouteDelay)
         PathHelper.convert(northbound.getFlowPath(flow.id)) == flowPath
 
         when: "Bring the flow port down on the destination switch"
-        antiflap.portDown(flow.destination.datapath, flow.destination.portNumber)
+        northbound.portDown(flow.destination.datapath, flow.destination.portNumber)
 
         then: "The flow is not rerouted"
         TimeUnit.SECONDS.sleep(rerouteDelay)
@@ -307,7 +307,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         cleanup: "Bring flow ports up and delete the flow"
         if (flow) {
             flowHelper.deleteFlow(flow.id)
-            ["source", "destination"].each { antiflap.portUp(flow."$it".datapath, flow."$it".portNumber) }
+            ["source", "destination"].each { northbound.portUp(flow."$it".datapath, flow."$it".portNumber) }
         }
     }
 
