@@ -56,23 +56,21 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     Provider<TraffExamService> traffExamProvider
 
     @Tidy
-    @Tags([SMOKE, SMOKE_SWITCHES])
-    def "Able to CRUD a mirror endpoint on the src switch, mirror to the same switch diff port, #mirrorDirection"() {
+    @Tags([SMOKE, SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
+    def "Able to CRUD a mirror endpoint on the src switch, mirror to the same switch diff port [#swPair.src.hwSwString, #mirrorDirection]#trafficDisclaimer"() {
         given: "A flow"
-        SwitchPair swPair = topologyHelper.getSwitchPairs(true).find { SwitchPair pair ->
-            [pair.src, pair.dst].every { it.traffGens } && pair.src.traffGens.size() > 1
-        }
-        assumeTrue(swPair as boolean, "Unable to find a switch pair: both with traffgens, src with at least 2")
+        assumeTrue(swPair as boolean, "Unable to find a switch pair")
         def flow = flowHelperV2.randomFlow(swPair).tap { maximumBandwidth = 100000 }
         flowHelperV2.addFlow(flow)
 
         when: "Create a mirror point on src switch, pointing to a different port, random vlan"
-        def mirrorTg = swPair.src.traffGens[1]
+        def mirrorTg = swPair.src.traffGens ?[1]
+        def mirrorPort = mirrorTg?.switchPort ?: (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
         def mirrorEndpoint = FlowMirrorPointPayload.builder()
                 .mirrorPointId(flowHelperV2.generateFlowId())
                 .mirrorPointDirection(mirrorDirection.toString().toLowerCase())
                 .mirrorPointSwitchId(swPair.src.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(swPair.src.dpId).portNumber(mirrorTg.switchPort)
+                .sinkEndpoint(FlowEndpointV2.builder().switchId(swPair.src.dpId).portNumber(mirrorPort)
                         .vlanId(flowHelperV2.randomVlan())
                         .build())
                 .build()
@@ -128,8 +126,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         when: "Traffic briefly runs through the flow"
         def traffExam = traffExamProvider.get()
-        def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId])
-        def rxPacketsBefore = mirrorPortStats.get().rxPackets
+        def mirrorPortStats = mirrorTg ? new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId]) : null
+        def rxPacketsBefore = mirrorPortStats?.get()?.rxPackets
         verifyTraffic(traffExam, flow, mirrorDirection)
 
         then: "OF group reports same amount of packets sent both to mirror and to main paths"
@@ -144,8 +142,10 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         and: "Original flow rule counter is not increased"
         flowRule.packetCount == findFlowRule(getFlowRules(swPair.src.dpId), mirrorDirection).packetCount
 
-        and: "Traffic is also received at the mirror point, exact amount of packets"
-        mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
+        and: "Traffic is also received at the mirror point (check only if second tg available)"
+        if (mirrorTg) {
+            assert mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
+        }
 
         when: "Delete the mirror point"
         northboundV2.deleteMirrorPoint(flow.flowId, mirrorEndpoint.mirrorPointId)
@@ -188,10 +188,14 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         mirrorPortStats && mirrorPortStats.close()
 
         where:
-        mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
+        [swPair, mirrorDirection] << [getUniqueSwitchPairs({ it.src.traffGens && it.dst.traffGens }),
+                                      [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]].combinations()
+        //means there is no second traffgen for target switch and we are not checking the counter on receiving interface
+        trafficDisclaimer = swPair.src.traffGens.size() < 2 ? " !WARN: No mirrored traffic check!" : ""
     }
 
     @Tidy
+    @Tags([LOW_PRIORITY])
     def "Can create mirror point on protected flow and survive path swap, #mirrorDirection"() {
         given: "A flow with protected path"
         SwitchPair swPair = topologyHelper.getSwitchPairs(true).find { SwitchPair pair ->
@@ -249,25 +253,20 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
-    def "Can create mirror point on a VXLAN flow, #mirrorDirection"() {
+    def "Can create mirror point on a VXLAN flow [#swPair.src.hwSwString, #mirrorDirection]#trafficDisclaimer"() {
         given: "A VXLAN flow"
-        def swPair = topologyHelper.getSwitchPairs(true).find { swP ->
-            def vxlanPath = swP.paths.find { pathHelper.getInvolvedSwitches(it).every { isVxlanEnabled(it.dpId) } }
-            def traffExamEnabled = [swP.src, swP.dst].every { !it.traffGens.empty }
-            def mirrorExamEnabled = swP.src.traffGens.size() > 1
-            return vxlanPath && traffExamEnabled && mirrorExamEnabled
-        }
         assumeTrue(swPair as boolean, "Unable to find required vxlan-enabled switches with traffgens")
         def flow = flowHelperV2.randomFlow(swPair).tap { encapsulationType = FlowEncapsulationType.VXLAN }
         flowHelperV2.addFlow(flow)
 
         when: "Create a mirror point"
         def mirrorTg = swPair.src.traffGens[1]
+        def mirrorPort = mirrorTg?.switchPort ?: (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
         def mirrorEndpoint = FlowMirrorPointPayload.builder()
                 .mirrorPointId(flowHelperV2.generateFlowId())
                 .mirrorPointDirection(mirrorDirection.toString().toLowerCase())
                 .mirrorPointSwitchId(swPair.src.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(swPair.src.dpId).portNumber(mirrorTg.switchPort)
+                .sinkEndpoint(FlowEndpointV2.builder().switchId(swPair.src.dpId).portNumber(mirrorPort)
                         .vlanId(flowHelperV2.randomVlan())
                         .build())
                 .build()
@@ -281,19 +280,24 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         }
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
-        and: "Flow passes traffic on main path as well as to the mirror"
+        and: "Flow passes traffic on main path as well as to the mirror (if possible to check)"
         def traffExam = traffExamProvider.get()
-        def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId])
-        def rxPacketsBefore = mirrorPortStats.get().rxPackets
+        def mirrorPortStats = mirrorTg ? new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId]) : null
+        def rxPacketsBefore = mirrorPortStats?.get()?.rxPackets
         verifyTraffic(traffExam, flow, mirrorDirection)
-        mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
+        if (mirrorTg) {
+            assert mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
+        }
 
         cleanup:
         mirrorPortStats && mirrorPortStats.close()
         flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
-        mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
+        [swPair, mirrorDirection] << [getUniqueVxlanSwitchPairs(true),
+                                      [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]].combinations()
+        //means there is no second traffgen for target switch and we are not checking the counter on receiving interface
+        trafficDisclaimer = swPair.src.traffGens.size() < 2 ? " !WARN: No mirrored traffic check!" : ""
     }
 
     @Tidy
@@ -348,6 +352,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags([LOW_PRIORITY])
     def "Can create mirror point on unmetered pinned flow, #mirrorDirection"() {
         given: "An unmetered pinned flow"
         def swPair = topologyHelper.switchPairs[0]
@@ -384,12 +389,11 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([LOW_PRIORITY])
-    def "Can create a mirror point on the same port as flow, different vlan, #mirrorDirection"() {
+    @Tags([TOPOLOGY_DEPENDENT])
+    def "Can create a mirror point on the same port as flow, different vlan  [#swPair.dst.hwSwString, #encapType, #mirrorDirection]"() {
         given: "A flow"
-        def swPair = topologyHelper.switchPairs[0]
         def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow)
+        flowHelperV2.addFlow(flow).tap { encapsulationType = encapType }
 
         when: "Add a mirror point on the same port with flow, different vlan"
         def mirrorPoint = FlowMirrorPointPayload.builder()
@@ -420,7 +424,23 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         !testComplete && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
-        mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
+        [swPair, mirrorDirection, encapType] <<
+                //[swPair, reverse/forward, transit_vlan]
+                ([getUniqueSwitchPairs().collect {
+                    it.reversed //'reversed' since we test 'dst' here, but 'getUniqueSwitchPairs' method targets 'src'
+                }, [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]].combinations()
+                        .collect { it << FlowEncapsulationType.TRANSIT_VLAN; it } +
+
+                //[swPair, reverse/forward, vxlan]
+                [getUniqueVxlanSwitchPairs(false).collect { it.reversed },
+                 [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]].combinations()
+                        .collect { it << FlowEncapsulationType.VXLAN; it })
+
+                        //https://github.com/telstra/open-kilda/issues/4374
+                        .findAll { SwitchPair swPair, m, e ->
+                            !swPair.dst.isWb5164()
+                        }
+
     }
 
     @Tidy
@@ -1181,6 +1201,48 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     @Memoized
     def initialSwPropsCache(SwitchId switchId) {
         return northbound.getSwitchProperties(switchId)
+    }
+
+    /**
+     * Identify all unique tg switches that need to be tested. Return minimum amount of switch pairs, where switch pair
+     * satisfies 'additional conditions' and src switch is a switch under test. Sources with 2+ traffgens have a higher
+     * priority
+     */
+    @Memoized
+    List<SwitchPair> getUniqueSwitchPairs(Closure additionalConditions = { true }) {
+        def unpickedUniqueTgSwitches = topology.switches.findAll { it.traffGens }
+                .unique(false) { it.hwSwString }
+        def tgPairs = topologyHelper.getSwitchPairs(true).findAll {
+            additionalConditions(it)
+        }
+        assumeTrue(tgPairs.size() > 0, "Unable to find any switchPairs with requested conditions")
+        def result = []
+        while (!unpickedUniqueTgSwitches.empty) {
+            def pairs = tgPairs.findAll {
+                it.src in unpickedUniqueTgSwitches
+            }.sort(false) { swPair -> //switches that have 2+ traffgens go to the end of the list
+                swPair.src.traffGens.size() > 1
+            }
+            if (pairs) {
+                //pick a highest score pair, update list of unpicked switches, re-run
+                def pair = pairs.last()
+                result << pair
+                unpickedUniqueTgSwitches = unpickedUniqueTgSwitches - pair.src
+            } else {
+                //if there is an untested src left, but there is no dst that matches 'additional conditions'
+                log.warn("Switches left untested: ${unpickedUniqueTgSwitches*.hwSwString}")
+                break
+            }
+        }
+        return result
+    }
+
+    List<SwitchPair> getUniqueVxlanSwitchPairs(boolean needTraffgens) {
+        getUniqueSwitchPairs({ SwitchPair swP ->
+            def vxlanCheck = swP.paths.find { pathHelper.getInvolvedSwitches(it).every { isVxlanEnabled(it.dpId) } }
+            def tgCheck = needTraffgens ? swP.src.traffGens && swP.dst.traffGens : true
+            vxlanCheck && tgCheck
+        })
     }
 
     private static class MirrorErrorTestData {
