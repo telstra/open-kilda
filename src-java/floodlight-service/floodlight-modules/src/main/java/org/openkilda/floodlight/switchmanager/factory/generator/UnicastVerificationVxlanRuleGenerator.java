@@ -71,7 +71,7 @@ public class UnicastVerificationVxlanRuleGenerator extends MeteredFlowGenerator 
         long cookie = VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
         long meterId = createMeterIdForDefaultRule(cookie).getValue();
         long meterRate = config.getUnicastRateLimit();
-        OFMeterMod meter = generateMeterForDefaultRule(sw, meterId, meterRate,
+        OFMeterMod meter = generateAddMeterForDefaultRule(sw, meterId, meterRate,
                 config.getSystemMeterBurstSizeInPackets(), config.getDiscoPacketSize());
         OFInstructionMeter ofInstructionMeter = buildMeterInstruction(meterId, sw, actionList);
 
@@ -82,6 +82,13 @@ public class UnicastVerificationVxlanRuleGenerator extends MeteredFlowGenerator 
                 .flow(flowMod)
                 .meter(meter)
                 .build();
+    }
+
+    @Override
+    public OFMeterMod generateMeterModify(IOFSwitch sw) {
+        long meterId = createMeterIdForDefaultRule(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE).getValue();
+        return generateModifyMeterForDefaultRule(sw, meterId, config.getUnicastRateLimit(),
+                config.getSystemMeterBurstSizeInPackets(), config.getDiscoPacketSize());
     }
 
     private OFFlowMod buildUnicastVerificationRuleVxlan(IOFSwitch sw, long cookie, OFInstructionMeter meter,

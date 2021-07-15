@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
@@ -346,8 +347,8 @@ public class SwitchSyncServiceImplTest {
     private ValidationResult makeValidationResult() {
         return new ValidationResult(singletonList(flowEntry),
                 true,
-                new ValidateRulesResult(missingRules, singletonList(flowEntry.getCookie()), excessRules,
-                        misconfiguredRules),
+                new ValidateRulesResult(newHashSet(missingRules), newHashSet(flowEntry.getCookie()),
+                        newHashSet(excessRules), newHashSet(misconfiguredRules)),
                 new ValidateMetersResult(emptyList(), emptyList(), emptyList(), excessMeters),
                 new ValidateGroupsResult(emptyList(), emptyList(), emptyList(), emptyList()));
     }

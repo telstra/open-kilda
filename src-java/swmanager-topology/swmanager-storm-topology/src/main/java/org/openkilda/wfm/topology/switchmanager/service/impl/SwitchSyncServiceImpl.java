@@ -116,6 +116,18 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
     }
 
     @Override
+    public void handleModifyMetersResponse(String key) {
+        SwitchSyncFsm fsm = fsms.get(key);
+        if (fsm == null) {
+            logFsmNotFound(key);
+            return;
+        }
+
+        fsm.fire(SwitchSyncEvent.MISCONFIGURED_METERS_MODIFIED);
+        process(fsm);
+    }
+
+    @Override
     public void handleInstallGroupResponse(String key) {
         SwitchSyncFsm fsm = fsms.get(key);
         if (fsm == null) {

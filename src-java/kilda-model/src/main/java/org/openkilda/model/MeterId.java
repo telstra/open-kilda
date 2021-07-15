@@ -15,13 +15,32 @@
 
 package org.openkilda.model;
 
+import static org.openkilda.model.cookie.Cookie.ARP_INGRESS_COOKIE;
+import static org.openkilda.model.cookie.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
+import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_COOKIE;
+import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_ONE_SWITCH_COOKIE;
+import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.ARP_TRANSIT_COOKIE;
+import static org.openkilda.model.cookie.Cookie.LLDP_INGRESS_COOKIE;
+import static org.openkilda.model.cookie.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
+import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_COOKIE;
+import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE;
+import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.LLDP_TRANSIT_COOKIE;
+import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
+import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
+import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
+
 import org.openkilda.model.cookie.Cookie;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.google.common.collect.Sets;
 import lombok.Value;
 
 import java.io.Serializable;
+import java.util.Collections;
+import java.util.Set;
 
 @Value
 public final class MeterId implements Comparable<MeterId>, Serializable {
@@ -59,7 +78,44 @@ public final class MeterId implements Comparable<MeterId>, Serializable {
      */
     public static final int MAX_SYSTEM_RULE_METER_ID = 31;
 
-    private final long value;
+    public static final long VERIFICATION_BROADCAST_METER_ID =
+            defaultCookieToMeterId(VERIFICATION_BROADCAST_RULE_COOKIE);
+    public static final long VERIFICATION_UNICAST_METER_ID = defaultCookieToMeterId(VERIFICATION_UNICAST_RULE_COOKIE);
+    public static final long VERIFICATION_UNICAST_VXLAN_METER_ID =
+            defaultCookieToMeterId(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE);
+    public static final long LLDP_INGRESS_METER_ID = defaultCookieToMeterId(LLDP_INGRESS_COOKIE);
+    public static final long LLDP_INPUT_PRE_DROP_METER_ID = defaultCookieToMeterId(LLDP_INPUT_PRE_DROP_COOKIE);
+    public static final long LLDP_TRANSIT_METER_ID = defaultCookieToMeterId(LLDP_TRANSIT_COOKIE);
+    public static final long LLDP_POST_INGRESS_METER_ID = defaultCookieToMeterId(LLDP_POST_INGRESS_COOKIE);
+    public static final long LLDP_POST_INGRESS_VXLAN_METER_ID = defaultCookieToMeterId(LLDP_POST_INGRESS_VXLAN_COOKIE);
+    public static final long LLDP_POST_INGRESS_ONE_SWITCH_METER_ID =
+            defaultCookieToMeterId(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE);
+    public static final long ARP_INGRESS_METER_ID = defaultCookieToMeterId(ARP_INGRESS_COOKIE);
+    public static final long ARP_INPUT_PRE_DROP_METER_ID = defaultCookieToMeterId(ARP_INPUT_PRE_DROP_COOKIE);
+    public static final long ARP_TRANSIT_METER_ID = defaultCookieToMeterId(ARP_TRANSIT_COOKIE);
+    public static final long ARP_POST_INGRESS_METER_ID = defaultCookieToMeterId(ARP_POST_INGRESS_COOKIE);
+    public static final long ARP_POST_INGRESS_VXLAN_METER_ID = defaultCookieToMeterId(ARP_POST_INGRESS_VXLAN_COOKIE);
+    public static final long ARP_POST_INGRESS_ONE_SWITCH_METER_ID =
+            defaultCookieToMeterId(ARP_POST_INGRESS_ONE_SWITCH_COOKIE);
+
+    public static final Set<Long> DEFAULT_METERS = Collections.unmodifiableSet(Sets.newHashSet(
+            VERIFICATION_BROADCAST_METER_ID,
+            VERIFICATION_UNICAST_METER_ID,
+            VERIFICATION_UNICAST_VXLAN_METER_ID,
+            LLDP_INGRESS_METER_ID,
+            LLDP_INPUT_PRE_DROP_METER_ID,
+            LLDP_TRANSIT_METER_ID,
+            LLDP_POST_INGRESS_METER_ID,
+            LLDP_POST_INGRESS_VXLAN_METER_ID,
+            LLDP_POST_INGRESS_ONE_SWITCH_METER_ID,
+            ARP_INGRESS_METER_ID,
+            ARP_INPUT_PRE_DROP_METER_ID,
+            ARP_TRANSIT_METER_ID,
+            ARP_POST_INGRESS_METER_ID,
+            ARP_POST_INGRESS_VXLAN_METER_ID,
+            ARP_POST_INGRESS_ONE_SWITCH_METER_ID));
+
+    long value;
 
     @JsonCreator
     public MeterId(long value) {
@@ -70,6 +126,10 @@ public final class MeterId implements Comparable<MeterId>, Serializable {
         return MIN_SYSTEM_RULE_METER_ID <= meterId && meterId <= MAX_SYSTEM_RULE_METER_ID;
     }
 
+    public static boolean isMeterIdOfFlowRule(long meterId) {
+        return MIN_FLOW_METER_ID <= meterId && meterId <= MAX_FLOW_METER_ID;
+    }
+
     /**
      * Generates meter ID from cookie of default rule.
      */
@@ -78,7 +138,11 @@ public final class MeterId implements Comparable<MeterId>, Serializable {
             throw new IllegalArgumentException(String.format("Cookie '%s' is not a cookie of default rule", cookie));
         }
 
-        return new MeterId((int) (cookie & METER_ID_DEFAULT_RULE_MASK));
+        return new MeterId(defaultCookieToMeterId(cookie));
+    }
+
+    public static long defaultCookieToMeterId(long cookie) {
+        return cookie & METER_ID_DEFAULT_RULE_MASK;
     }
 
     @JsonValue

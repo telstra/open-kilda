@@ -71,10 +71,13 @@ import org.openkilda.floodlight.command.flow.transit.TransitFlowSegmentInstallCo
 import org.openkilda.floodlight.command.group.GroupInstallCommand;
 import org.openkilda.floodlight.command.group.GroupModifyCommand;
 import org.openkilda.floodlight.command.group.GroupRemoveCommand;
+import org.openkilda.floodlight.command.meter.MeterModifyCommand;
 import org.openkilda.floodlight.converter.OfFlowStatsMapper;
 import org.openkilda.floodlight.converter.OfMeterConverter;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
 import org.openkilda.floodlight.error.FlowCommandException;
+import org.openkilda.floodlight.error.InvalidMeterIdException;
+import org.openkilda.floodlight.error.OfInstallException;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
@@ -119,6 +122,8 @@ import org.openkilda.messaging.command.flow.InstallSharedFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.InstallTransitLoopFlow;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
+import org.openkilda.messaging.command.flow.ModifyDefaultMeterForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.ModifyFlowMeterForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.ReinstallServer42FlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
@@ -172,6 +177,7 @@ import org.openkilda.messaging.info.switches.DeleteGroupResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
 import org.openkilda.messaging.info.switches.InstallGroupResponse;
 import org.openkilda.messaging.info.switches.ModifyGroupResponse;
+import org.openkilda.messaging.info.switches.ModifyMeterResponse;
 import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
@@ -251,6 +257,10 @@ class RecordHandler implements Runnable {
             doDiscoverPathCommand(data);
         } else if (data instanceof RemoveFlowForSwitchManagerRequest) {
             doDeleteFlowForSwitchManager(message);
+        } else if (data instanceof ModifyFlowMeterForSwitchManagerRequest) {
+            doModifyFlowMeterForSwitchManager(message);
+        } else if (data instanceof ModifyDefaultMeterForSwitchManagerRequest) {
+            doModifyDefaultMeterForSwitchManager(message);
         } else if (data instanceof ReinstallDefaultFlowForSwitchManagerRequest) {
             doReinstallDefaultFlowForSwitchManager(message);
         } else if (data instanceof NetworkCommandData) {
@@ -413,6 +423,59 @@ class RecordHandler implements Runnable {
         } catch (SwitchOperationException e) {
             logger.error("Failed to process switch rule deletion for switch: '{}'", request.getSwitchId(), e);
             anError(ErrorType.DELETION_FAILURE)
+                    .withMessage(e.getMessage())
+                    .withDescription(request.getSwitchId().toString())
+                    .withCorrelationId(message.getCorrelationId())
+                    .withTopic(replyToTopic)
+                    .sendVia(producerService);
+        }
+    }
+
+    private void doModifyFlowMeterForSwitchManager(CommandMessage message) {
+        ModifyFlowMeterForSwitchManagerRequest request = (ModifyFlowMeterForSwitchManagerRequest) message.getData();
+        IKafkaProducerService producerService = getKafkaProducer();
+
+        long meterId = request.getMeterId();
+        SwitchId switchId = request.getSwitchId();
+        MeterConfig meterConfig = new MeterConfig(new MeterId(request.getMeterId()), request.getRate());
+
+        logger.info("Modifying flow meter {} on Switch {}", meterId, switchId);
+        handleSpeakerCommand(new MeterModifyCommand(new MessageContext(message), switchId, meterConfig));
+
+        InfoMessage response = new InfoMessage(new ModifyMeterResponse(switchId, request.getMeterId()),
+                System.currentTimeMillis(), message.getCorrelationId());
+        producerService.sendMessageAndTrack(context.getKafkaSwitchManagerTopic(), message.getCorrelationId(), response);
+    }
+
+    private void doModifyDefaultMeterForSwitchManager(CommandMessage message) {
+        ModifyDefaultMeterForSwitchManagerRequest request =
+                (ModifyDefaultMeterForSwitchManagerRequest) message.getData();
+        IKafkaProducerService producerService = getKafkaProducer();
+        String replyToTopic = context.getKafkaSwitchManagerTopic();
+
+        long meterId = request.getMeterId();
+        SwitchId switchId = request.getSwitchId();
+        DatapathId dpid = DatapathId.of(switchId.toLong());
+        try {
+            context.getSwitchManager().modifyDefaultMeter(dpid, request.getMeterId());
+            InfoMessage response = new InfoMessage(new ModifyMeterResponse(switchId, request.getMeterId()),
+                    System.currentTimeMillis(), message.getCorrelationId());
+            producerService.sendMessageAndTrack(replyToTopic, message.getCorrelationId(), response);
+        } catch (UnsupportedSwitchOperationException e) {
+            logger.warn(format("Skip meter %d modification on switch %s because switch doesn't support meters",
+                    meterId, switchId), e);
+        } catch (InvalidMeterIdException | OfInstallException | SwitchNotFoundException e) {
+            logger.error("Failed to modify meter {} for switch: '{}'", request.getSwitchId(), meterId, e);
+            ErrorType errorType;
+            if (e instanceof InvalidMeterIdException) {
+                errorType = ErrorType.DATA_INVALID;
+            } else if (e instanceof SwitchNotFoundException) {
+                errorType = ErrorType.NOT_FOUND;
+            } else {
+                errorType = ErrorType.INTERNAL_ERROR;
+            }
+
+            anError(errorType)
                     .withMessage(e.getMessage())
                     .withDescription(request.getSwitchId().toString())
                     .withCorrelationId(message.getCorrelationId())

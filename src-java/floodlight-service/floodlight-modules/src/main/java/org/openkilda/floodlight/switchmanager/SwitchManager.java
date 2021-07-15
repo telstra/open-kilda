@@ -25,6 +25,22 @@ import static org.openkilda.floodlight.pathverification.PathVerificationService.
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.isOvs;
 import static org.openkilda.messaging.command.flow.RuleType.POST_INGRESS;
+import static org.openkilda.model.MeterId.ARP_INGRESS_METER_ID;
+import static org.openkilda.model.MeterId.ARP_INPUT_PRE_DROP_METER_ID;
+import static org.openkilda.model.MeterId.ARP_POST_INGRESS_METER_ID;
+import static org.openkilda.model.MeterId.ARP_POST_INGRESS_ONE_SWITCH_METER_ID;
+import static org.openkilda.model.MeterId.ARP_POST_INGRESS_VXLAN_METER_ID;
+import static org.openkilda.model.MeterId.ARP_TRANSIT_METER_ID;
+import static org.openkilda.model.MeterId.DEFAULT_METERS;
+import static org.openkilda.model.MeterId.LLDP_INGRESS_METER_ID;
+import static org.openkilda.model.MeterId.LLDP_INPUT_PRE_DROP_METER_ID;
+import static org.openkilda.model.MeterId.LLDP_POST_INGRESS_METER_ID;
+import static org.openkilda.model.MeterId.LLDP_POST_INGRESS_ONE_SWITCH_METER_ID;
+import static org.openkilda.model.MeterId.LLDP_POST_INGRESS_VXLAN_METER_ID;
+import static org.openkilda.model.MeterId.LLDP_TRANSIT_METER_ID;
+import static org.openkilda.model.MeterId.VERIFICATION_BROADCAST_METER_ID;
+import static org.openkilda.model.MeterId.VERIFICATION_UNICAST_METER_ID;
+import static org.openkilda.model.MeterId.VERIFICATION_UNICAST_VXLAN_METER_ID;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.cookie.Cookie.ARP_INGRESS_COOKIE;
@@ -75,6 +91,7 @@ import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.factory.SwitchFlowFactory;
 import org.openkilda.floodlight.switchmanager.factory.SwitchFlowTuple;
+import org.openkilda.floodlight.switchmanager.factory.generator.MeteredFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.SwitchFlowGenerator;
 import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
 import org.openkilda.floodlight.utils.CorrelationContext;
@@ -91,6 +108,7 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.Meter;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
@@ -743,29 +761,45 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public void modifyMeterForFlow(DatapathId dpid, long meterId, long bandwidth)
-            throws SwitchOperationException {
-        if (meterId > 0L) {
-            IOFSwitch sw = lookupSwitch(dpid);
-            verifySwitchSupportsMeters(sw);
-
-            long burstSize = Meter.calculateBurstSize(bandwidth, config.getFlowMeterMinBurstSizeInKbits(),
-                    config.getFlowMeterBurstCoefficient(), sw.getSwitchDescription().getManufacturerDescription(),
-                    sw.getSwitchDescription().getSoftwareDescription());
-
-            Set<OFMeterFlags> flags = Arrays.stream(Meter.getMeterKbpsFlags())
-                    .map(OFMeterFlags::valueOf)
-                    .collect(Collectors.toSet());
-
-            modifyMeter(sw, bandwidth, burstSize, meterId, flags);
-        } else {
-            String message = meterId <= 0
-                    ? "Meter id must be positive." : "Meter IDs from 1 to 31 inclusively are for default rules.";
-
+    public void modifyMeterForFlow(DatapathId dpid, long meterId, long bandwidth) throws SwitchOperationException {
+        if (!MeterId.isMeterIdOfFlowRule(meterId)) {
             throw new InvalidMeterIdException(dpid,
-                    format("Could not install meter '%d' onto switch '%s'. %s", meterId, dpid, message));
+                    format("Could not modify meter '%d' on switch '%s'. Meter Id is invalid. Valid meter id range is "
+                            + "[%d, %d]", meterId, dpid, MeterId.MIN_FLOW_METER_ID, MeterId.MAX_FLOW_METER_ID));
+        }
+        IOFSwitch sw = lookupSwitch(dpid);
+        verifySwitchSupportsMeters(sw);
+
+        long burstSize = Meter.calculateBurstSize(bandwidth, config.getFlowMeterMinBurstSizeInKbits(),
+                config.getFlowMeterBurstCoefficient(), sw.getSwitchDescription().getManufacturerDescription(),
+                sw.getSwitchDescription().getSoftwareDescription());
+
+        Set<OFMeterFlags> flags = Arrays.stream(Meter.getMeterKbpsFlags())
+                .map(OFMeterFlags::valueOf)
+                .collect(Collectors.toSet());
+
+        modifyMeter(sw, bandwidth, burstSize, meterId, flags);
+    }
+
+
+    @Override
+    public void modifyDefaultMeter(DatapathId dpid, long meterId)
+            throws SwitchNotFoundException, InvalidMeterIdException, UnsupportedSwitchOperationException,
+            OfInstallException {
+        if (!DEFAULT_METERS.contains(meterId)) {
+            throw new InvalidMeterIdException(dpid,
+                    format("Could not modify meter '%d' onto switch '%s' because meter is invalid. "
+                            + "Valid default meter IDs are: %s", meterId, dpid, DEFAULT_METERS));
         }
 
+        IOFSwitch sw = lookupSwitch(dpid);
+        verifySwitchSupportsMeters(sw);
+        MeteredFlowGenerator generator = getGeneratorByMeterId(meterId)
+                .orElseThrow(() -> new InvalidMeterIdException(dpid,
+                        format("Couldn't modify meter %d on switch %s. Meter ID is unknown.", meterId, dpid)));
+
+        logger.info("Modifying meter {} on Switch {}", meterId, dpid);
+        pushFlow(sw, "--ModifyMeter--", generator.generateMeterModify(sw));
     }
 
     @Override
@@ -2404,5 +2438,42 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private RoutingMetadata buildMetadata(RoutingMetadata.RoutingMetadataBuilder builder, IOFSwitch sw) {
         Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
         return builder.build(features);
+    }
+
+    @VisibleForTesting
+    Optional<MeteredFlowGenerator> getGeneratorByMeterId(long meterId) {
+        if (meterId == VERIFICATION_BROADCAST_METER_ID) {
+            return Optional.ofNullable(switchFlowFactory.getVerificationFlow(true));
+        } else if (meterId == VERIFICATION_UNICAST_METER_ID) {
+            return Optional.ofNullable(switchFlowFactory.getVerificationFlow(false));
+        } else if (meterId == VERIFICATION_UNICAST_VXLAN_METER_ID) {
+            return Optional.ofNullable(switchFlowFactory.getUnicastVerificationVxlanFlowGenerator());
+        } else if (meterId == LLDP_INGRESS_METER_ID) {
+            return Optional.ofNullable(switchFlowFactory.getLldpIngressFlowGenerator());
+        } else if (meterId == LLDP_INPUT_PRE_DROP_METER_ID) {
+            return Optional.ofNullable(switchFlowFactory.getLldpInputPreDropFlowGenerator());
+        } else if (meterId == LLDP_TRANSIT_METER_ID) {
+            return Optional.ofNullable(switchFlowFactory.getLldpTransitFlowGenerator());
+        } else if (meterId == LLDP_POST_INGRESS_METER_ID) {
+            return Optional.ofNullable(switchFlowFactory.getLldpPostIngressFlowGenerator());
+        } else if (meterId == LLDP_POST_INGRESS_VXLAN_METER_ID) {
+            return Optional.ofNullable(switchFlowFactory.getLldpPostIngressVxlanFlowGenerator());
+        } else if (meterId == LLDP_POST_INGRESS_ONE_SWITCH_METER_ID) {
+            return Optional.ofNullable(switchFlowFactory.getLldpPostIngressOneSwitchFlowGenerator());
+        } else if (meterId == ARP_INGRESS_METER_ID) {
+            return Optional.ofNullable(switchFlowFactory.getArpIngressFlowGenerator());
+        } else if (meterId == ARP_INPUT_PRE_DROP_METER_ID) {
+            return Optional.ofNullable(switchFlowFactory.getArpInputPreDropFlowGenerator());
+        } else if (meterId == ARP_TRANSIT_METER_ID) {
+            return Optional.ofNullable(switchFlowFactory.getArpTransitFlowGenerator());
+        } else if (meterId == ARP_POST_INGRESS_METER_ID) {
+            return Optional.ofNullable(switchFlowFactory.getArpPostIngressFlowGenerator());
+        } else if (meterId == ARP_POST_INGRESS_VXLAN_METER_ID) {
+            return Optional.ofNullable(switchFlowFactory.getArpPostIngressVxlanFlowGenerator());
+        } else if (meterId == ARP_POST_INGRESS_ONE_SWITCH_METER_ID) {
+            return Optional.ofNullable(switchFlowFactory.getArpPostIngressOneSwitchFlowGenerator());
+        } else {
+            return Optional.empty();
+        }
     }
 }

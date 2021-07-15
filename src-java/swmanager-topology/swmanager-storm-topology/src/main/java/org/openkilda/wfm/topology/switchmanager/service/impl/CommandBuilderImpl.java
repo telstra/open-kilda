@@ -25,6 +25,8 @@ import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.InstallServer42Flow;
 import org.openkilda.messaging.command.flow.InstallServer42Flow.InstallServer42FlowBuilder;
 import org.openkilda.messaging.command.flow.InstallSharedFlow;
+import org.openkilda.messaging.command.flow.ModifyDefaultMeterForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.ModifyFlowMeterForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.ReinstallServer42FlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
@@ -33,6 +35,7 @@ import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowMatchField;
+import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowMirrorPoints;
@@ -368,6 +371,20 @@ public class CommandBuilderImpl implements CommandBuilder {
             }
         }
 
+        return commands;
+    }
+
+    @Override
+    public List<ModifyDefaultMeterForSwitchManagerRequest> buildCommandsToModifyMisconfiguredMeters(
+            SwitchId switchId, List<Long> misconfiguredDefaultMeters, List<MeterInfoEntry> misconfiguredFlowMeters) {
+        List<ModifyDefaultMeterForSwitchManagerRequest> commands = misconfiguredDefaultMeters.stream()
+                .map(meterId -> new ModifyDefaultMeterForSwitchManagerRequest(switchId, meterId))
+                .collect(Collectors.toList());
+
+        for (MeterInfoEntry meter : misconfiguredFlowMeters) {
+            long rate = Optional.ofNullable(meter.getExpected().getRate()).orElse(meter.getRate());
+            commands.add(new ModifyFlowMeterForSwitchManagerRequest(switchId, meter.getMeterId(), rate));
+        }
         return commands;
     }
 
