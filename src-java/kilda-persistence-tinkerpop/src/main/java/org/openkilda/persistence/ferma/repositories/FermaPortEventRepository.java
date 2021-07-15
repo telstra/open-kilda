@@ -16,14 +16,15 @@
 package org.openkilda.persistence.ferma.repositories;
 
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.history.PortHistory;
-import org.openkilda.model.history.PortHistory.PortHistoryData;
+import org.openkilda.model.history.PortEvent;
+import org.openkilda.model.history.PortEvent.PortEventCloner;
+import org.openkilda.model.history.PortEvent.PortEventData;
 import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
-import org.openkilda.persistence.ferma.frames.PortHistoryFrame;
+import org.openkilda.persistence.ferma.frames.PortEventFrame;
 import org.openkilda.persistence.ferma.frames.converters.InstantLongConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
-import org.openkilda.persistence.repositories.history.PortHistoryRepository;
+import org.openkilda.persistence.repositories.history.PortEventRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.process.traversal.Order;
@@ -36,52 +37,52 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Ferma (Tinkerpop) implementation of {@link PortHistoryRepository}.
+ * Ferma (Tinkerpop) implementation of {@link PortEventRepository}.
  */
-public class FermaPortHistoryRepository extends FermaGenericRepository<PortHistory, PortHistoryData, PortHistoryFrame>
-        implements PortHistoryRepository {
-    FermaPortHistoryRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
+public class FermaPortEventRepository extends FermaGenericRepository<PortEvent, PortEventData, PortEventFrame>
+        implements PortEventRepository {
+    FermaPortEventRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
         super(graphFactory, transactionManager);
     }
 
     @Override
-    public List<PortHistory> findBySwitchIdAndPortNumber(SwitchId switchId, int portNumber,
-                                                         Instant timeFrom, Instant timeTo) {
+    public List<PortEvent> findBySwitchIdAndPortNumber(SwitchId switchId, int portNumber,
+                                                       Instant timeFrom, Instant timeTo) {
         return framedGraph().traverse(g -> {
             GraphTraversal<Vertex, Vertex> traversal = g.V()
-                    .hasLabel(PortHistoryFrame.FRAME_LABEL)
-                    .has(PortHistoryFrame.SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
-                    .has(PortHistoryFrame.PORT_NUMBER_PROPERTY, portNumber);
+                    .hasLabel(PortEventFrame.FRAME_LABEL)
+                    .has(PortEventFrame.SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
+                    .has(PortEventFrame.PORT_NUMBER_PROPERTY, portNumber);
             if (timeFrom != null) {
-                traversal = traversal.has(PortHistoryFrame.TIME_PROPERTY,
+                traversal = traversal.has(PortEventFrame.TIME_PROPERTY,
                         P.gte(InstantLongConverter.INSTANCE.toGraphProperty(timeFrom)));
             }
             if (timeTo != null) {
-                traversal = traversal.has(PortHistoryFrame.TIME_PROPERTY,
+                traversal = traversal.has(PortEventFrame.TIME_PROPERTY,
                         P.lte(InstantLongConverter.INSTANCE.toGraphProperty(timeTo)));
             }
             return traversal
-                    .order().by(PortHistoryFrame.TIME_PROPERTY, Order.incr);
-        }).toListExplicit(PortHistoryFrame.class).stream()
-                .map(PortHistory::new)
+                    .order().by(PortEventFrame.TIME_PROPERTY, Order.incr);
+        }).toListExplicit(PortEventFrame.class).stream()
+                .map(PortEvent::new)
                 .collect(Collectors.toList());
     }
 
     @Override
-    protected PortHistoryFrame doAdd(PortHistoryData data) {
-        PortHistoryFrame frame = KildaBaseVertexFrame.addNewFramedVertex(framedGraph(),
-                PortHistoryFrame.FRAME_LABEL, PortHistoryFrame.class);
-        PortHistory.PortHistoryCloner.INSTANCE.copy(data, frame);
+    protected PortEventFrame doAdd(PortEventData data) {
+        PortEventFrame frame = KildaBaseVertexFrame.addNewFramedVertex(framedGraph(),
+                PortEventFrame.FRAME_LABEL, PortEventFrame.class);
+        PortEventCloner.INSTANCE.copy(data, frame);
         return frame;
     }
 
     @Override
-    protected void doRemove(PortHistoryFrame frame) {
+    protected void doRemove(PortEventFrame frame) {
         frame.remove();
     }
 
     @Override
-    protected PortHistoryData doDetach(PortHistory entity, PortHistoryFrame frame) {
-        return PortHistory.PortHistoryCloner.INSTANCE.deepCopy(frame);
+    protected PortEventData doDetach(PortEvent entity, PortEventFrame frame) {
+        return PortEventCloner.INSTANCE.deepCopy(frame);
     }
 }

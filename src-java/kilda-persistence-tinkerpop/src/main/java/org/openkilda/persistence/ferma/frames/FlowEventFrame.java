@@ -15,9 +15,9 @@
 
 package org.openkilda.persistence.ferma.frames;
 
-import org.openkilda.model.history.FlowDump;
 import org.openkilda.model.history.FlowEvent.FlowEventData;
-import org.openkilda.model.history.FlowHistory;
+import org.openkilda.model.history.FlowEventAction;
+import org.openkilda.model.history.FlowEventDump;
 import org.openkilda.persistence.ferma.frames.converters.Convert;
 import org.openkilda.persistence.ferma.frames.converters.InstantLongConverter;
 
@@ -85,23 +85,23 @@ public abstract class FlowEventFrame extends KildaBaseVertexFrame implements Flo
     public abstract void setDetails(String details);
 
     @Override
-    public List<FlowHistory> getHistoryRecords() {
+    public List<FlowEventAction> getEventActions() {
         return getGraph().traverse(g -> g.V()
-                .hasLabel(FlowHistoryFrame.FRAME_LABEL)
-                .has(FlowHistoryFrame.TASK_ID_PROPERTY, getTaskId()))
-                .toListExplicit(FlowHistoryFrame.class).stream()
-                .sorted(Comparator.comparing(FlowHistoryFrame::getTimestamp))
-                .map(FlowHistory::new)
+                .hasLabel(FlowEventActionFrame.FRAME_LABEL)
+                .has(FlowEventActionFrame.TASK_ID_PROPERTY, getTaskId()))
+                .toListExplicit(FlowEventActionFrame.class).stream()
+                .sorted(Comparator.comparing(FlowEventActionFrame::getTimestamp))
+                .map(FlowEventAction::new)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<FlowDump> getFlowDumps() {
+    public List<FlowEventDump> getEventDumps() {
         return getGraph().traverse(g -> g.V()
-                .hasLabel(FlowDumpFrame.FRAME_LABEL)
-                .has(FlowDumpFrame.TASK_ID_PROPERTY, getTaskId()))
-                .toListExplicit(FlowDumpFrame.class).stream()
-                .map(FlowDump::new)
+                .hasLabel(FlowEventDumpFrame.FRAME_LABEL)
+                .has(FlowEventDumpFrame.TASK_ID_PROPERTY, getTaskId()))
+                .toListExplicit(FlowEventDumpFrame.class).stream()
+                .map(FlowEventDump::new)
                 .collect(Collectors.toList());
     }
 }

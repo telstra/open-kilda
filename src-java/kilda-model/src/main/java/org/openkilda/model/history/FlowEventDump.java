@@ -46,18 +46,18 @@ import java.util.Objects;
  */
 @DefaultSerializer(BeanSerializer.class)
 @ToString
-public class FlowDump implements CompositeDataEntity<FlowDump.FlowDumpData> {
+public class FlowEventDump implements CompositeDataEntity<FlowEventDump.FlowEventDumpData> {
     @Getter
     @Setter
     @Delegate
     @JsonIgnore
-    private FlowDumpData data;
+    private FlowEventDumpData data;
 
     /**
      * No args constructor for deserialization purpose.
      */
-    public FlowDump() {
-        data = new FlowDumpDataImpl();
+    public FlowEventDump() {
+        data = new FlowEventDumpDataImpl();
     }
 
     /**
@@ -65,11 +65,11 @@ public class FlowDump implements CompositeDataEntity<FlowDump.FlowDumpData> {
      *
      * @param entityToClone the entity to copy entity data from.
      */
-    public FlowDump(@NonNull FlowDump entityToClone) {
-        data = FlowDumpCloner.INSTANCE.deepCopy(entityToClone.getData());
+    public FlowEventDump(@NonNull FlowEventDump entityToClone) {
+        data = FlowEventDumpCloner.INSTANCE.deepCopy(entityToClone.getData());
     }
 
-    public FlowDump(@NonNull FlowDumpData data) {
+    public FlowEventDump(@NonNull FlowEventDump.FlowEventDumpData data) {
         this.data = data;
     }
 
@@ -81,7 +81,7 @@ public class FlowDump implements CompositeDataEntity<FlowDump.FlowDumpData> {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        FlowDump that = (FlowDump) o;
+        FlowEventDump that = (FlowEventDump) o;
         return new EqualsBuilder()
                 .append(getTaskId(), that.getTaskId())
                 .append(getFlowId(), that.getFlowId())
@@ -129,7 +129,7 @@ public class FlowDump implements CompositeDataEntity<FlowDump.FlowDumpData> {
     /**
      * Defines persistable data of the FlowDump.
      */
-    public interface FlowDumpData {
+    public interface FlowEventDumpData {
         String getTaskId();
 
         void setTaskId(String taskId);
@@ -252,7 +252,7 @@ public class FlowDump implements CompositeDataEntity<FlowDump.FlowDumpData> {
      */
     @Data
     @NoArgsConstructor
-    static final class FlowDumpDataImpl implements FlowDumpData, Serializable {
+    static final class FlowEventDumpDataImpl implements FlowEventDumpData, Serializable {
         private static final long serialVersionUID = 1L;
         String taskId;
         String flowId;
@@ -301,16 +301,16 @@ public class FlowDump implements CompositeDataEntity<FlowDump.FlowDumpData> {
     }
 
     @Mapper
-    public interface FlowDumpCloner {
-        FlowDumpCloner INSTANCE = Mappers.getMapper(FlowDumpCloner.class);
+    public interface FlowEventDumpCloner {
+        FlowEventDumpCloner INSTANCE = Mappers.getMapper(FlowEventDumpCloner.class);
 
-        void copy(FlowDumpData source, @MappingTarget FlowDumpData target);
+        void copy(FlowEventDumpData source, @MappingTarget FlowEventDumpData target);
 
         /**
          * Performs deep copy of entity data.
          */
-        default FlowDumpData deepCopy(FlowDumpData source) {
-            FlowDumpData result = new FlowDumpDataImpl();
+        default FlowEventDumpData deepCopy(FlowEventDumpData source) {
+            FlowEventDumpData result = new FlowEventDumpDataImpl();
             copy(source, result);
             return result;
         }

@@ -19,9 +19,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.history.PortHistory;
+import org.openkilda.model.history.PortEvent;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
-import org.openkilda.persistence.repositories.history.PortHistoryRepository;
+import org.openkilda.persistence.repositories.history.PortEventRepository;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -31,42 +31,42 @@ import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Date;
 
-public class FermaPortHistoryRepositoryTest extends InMemoryGraphBasedTest {
+public class FermaPortEventRepositoryTest extends InMemoryGraphBasedTest {
     static final SwitchId SWITCH_ID = new SwitchId(1L);
     static final int PORT_NUMBER = 2;
 
-    PortHistoryRepository repository;
+    PortEventRepository repository;
 
     @Before
     public void setUp() {
-        repository = repositoryFactory.createPortHistoryRepository();
+        repository = repositoryFactory.createPortEventRepository();
     }
 
     @Test
     public void shouldFindHistoryRecordsBySwitchByIdAndPortNumber() {
         Instant start = new Date().toInstant();
         Instant end = new Date().toInstant().plus(1, ChronoUnit.DAYS);
-        PortHistory portUp = createPortHistory(SWITCH_ID, PORT_NUMBER, "PORT_UP", start.plus(1, ChronoUnit.HOURS));
-        PortHistory portDown = createPortHistory(SWITCH_ID, PORT_NUMBER, "PORT_DOWN", end);
+        PortEvent portUp = createPortHistory(SWITCH_ID, PORT_NUMBER, "PORT_UP", start.plus(1, ChronoUnit.HOURS));
+        PortEvent portDown = createPortHistory(SWITCH_ID, PORT_NUMBER, "PORT_DOWN", end);
         createPortHistory(new SwitchId(2L), PORT_NUMBER, "TEST1", end);
         createPortHistory(SWITCH_ID, 3, "TEST2", end);
         createPortHistory(SWITCH_ID, PORT_NUMBER, "TEST3", start.minus(1, ChronoUnit.SECONDS));
         createPortHistory(SWITCH_ID, PORT_NUMBER, "TEST4", end.plus(1, ChronoUnit.HOURS));
 
-        Collection<PortHistory> portHistory =
+        Collection<PortEvent> portEvent =
                 repository.findBySwitchIdAndPortNumber(SWITCH_ID, PORT_NUMBER, start, end);
-        assertEquals(2, portHistory.size());
-        assertTrue(portHistory.contains(portUp));
-        assertTrue(portHistory.contains(portDown));
+        assertEquals(2, portEvent.size());
+        assertTrue(portEvent.contains(portUp));
+        assertTrue(portEvent.contains(portDown));
     }
 
-    private PortHistory createPortHistory(SwitchId switchId, int portNumber, String event, Instant time) {
-        PortHistory portHistory = new PortHistory();
-        portHistory.setSwitchId(switchId);
-        portHistory.setPortNumber(portNumber);
-        portHistory.setEvent(event);
-        portHistory.setTime(time);
-        repository.add(portHistory);
-        return portHistory;
+    private PortEvent createPortHistory(SwitchId switchId, int portNumber, String event, Instant time) {
+        PortEvent portEvent = new PortEvent();
+        portEvent.setSwitchId(switchId);
+        portEvent.setPortNumber(portNumber);
+        portEvent.setEvent(event);
+        portEvent.setTime(time);
+        repository.add(portEvent);
+        return portEvent;
     }
 }

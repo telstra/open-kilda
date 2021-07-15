@@ -40,18 +40,18 @@ import java.util.UUID;
 
 @DefaultSerializer(BeanSerializer.class)
 @ToString
-public class PortHistory implements CompositeDataEntity<PortHistory.PortHistoryData> {
+public class PortEvent implements CompositeDataEntity<PortEvent.PortEventData> {
     @Getter
     @Setter
     @Delegate
     @JsonIgnore
-    private PortHistoryData data;
+    private PortEventData data;
 
     /**
      * No args constructor for deserialization purpose.
      */
-    public PortHistory() {
-        data = new PortHistoryDataImpl();
+    public PortEvent() {
+        data = new PortEventDataImpl();
     }
 
     /**
@@ -59,11 +59,11 @@ public class PortHistory implements CompositeDataEntity<PortHistory.PortHistoryD
      *
      * @param entityToClone the entity to copy entity data from.
      */
-    public PortHistory(@NonNull PortHistory entityToClone) {
-        data = PortHistoryCloner.INSTANCE.deepCopy(entityToClone.getData());
+    public PortEvent(@NonNull PortEvent entityToClone) {
+        data = PortEventCloner.INSTANCE.deepCopy(entityToClone.getData());
     }
 
-    public PortHistory(@NonNull PortHistoryData data) {
+    public PortEvent(@NonNull PortEvent.PortEventData data) {
         this.data = data;
     }
 
@@ -75,7 +75,7 @@ public class PortHistory implements CompositeDataEntity<PortHistory.PortHistoryD
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        PortHistory that = (PortHistory) o;
+        PortEvent that = (PortEvent) o;
         return new EqualsBuilder()
                 .append(getPortNumber(), that.getPortNumber())
                 .append(getUpEventsCount(), that.getUpEventsCount())
@@ -96,7 +96,7 @@ public class PortHistory implements CompositeDataEntity<PortHistory.PortHistoryD
     /**
      * Defines persistable data of the PortHistory.
      */
-    public interface PortHistoryData {
+    public interface PortEventData {
         UUID getRecordId();
 
         void setRecordId(UUID id);
@@ -131,7 +131,7 @@ public class PortHistory implements CompositeDataEntity<PortHistory.PortHistoryD
      */
     @Data
     @NoArgsConstructor
-    static final class PortHistoryDataImpl implements PortHistoryData, Serializable {
+    static final class PortEventDataImpl implements PortEventData, Serializable {
         private static final long serialVersionUID = 1L;
         @NonNull UUID recordId;
         @NonNull SwitchId switchId;
@@ -143,16 +143,16 @@ public class PortHistory implements CompositeDataEntity<PortHistory.PortHistoryD
     }
 
     @Mapper
-    public interface PortHistoryCloner {
-        PortHistoryCloner INSTANCE = Mappers.getMapper(PortHistoryCloner.class);
+    public interface PortEventCloner {
+        PortEventCloner INSTANCE = Mappers.getMapper(PortEventCloner.class);
 
-        void copy(PortHistoryData source, @MappingTarget PortHistoryData target);
+        void copy(PortEventData source, @MappingTarget PortEventData target);
 
         /**
          * Performs deep copy of entity data.
          */
-        default PortHistoryData deepCopy(PortHistoryData source) {
-            PortHistoryData result = new PortHistoryDataImpl();
+        default PortEventData deepCopy(PortEventData source) {
+            PortEventData result = new PortEventDataImpl();
             copy(source, result);
             return result;
         }

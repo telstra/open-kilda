@@ -15,30 +15,13 @@
 
 package org.openkilda.persistence.repositories.history;
 
-import org.openkilda.model.history.FlowEvent;
-import org.openkilda.model.history.FlowStatusView;
+import org.openkilda.model.SwitchId;
+import org.openkilda.model.history.PortEvent;
 import org.openkilda.persistence.repositories.Repository;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
-public interface FlowEventRepository extends Repository<FlowEvent> {
-    boolean existsByTaskId(String taskId);
-
-    Optional<FlowEvent> findByTaskId(String taskId);
-
-    List<FlowEvent> findByFlowIdAndTimeFrame(String flowId, Instant timeFrom, Instant timeTo, int maxCount);
-
-    List<FlowStatusView> findFlowStatusesByFlowIdAndTimeFrame(String flowId, Instant timeFrom,
-                                                              Instant timeTo, int maxCount);
-
-    /**
-     * Represents flow statuses as immutable plain data.
-     */
-    interface FlowStatusesImmutableView {
-        Instant getTimestamp();
-
-        String getStatusBecome();
-    }
+public interface PortEventRepository extends Repository<PortEvent> {
+    List<PortEvent> findBySwitchIdAndPortNumber(SwitchId switchId, int portNumber, Instant start, Instant end);
 }

@@ -16,7 +16,7 @@
 package org.openkilda.persistence.ferma.frames;
 
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.history.PortHistory.PortHistoryData;
+import org.openkilda.model.history.PortEvent.PortEventData;
 import org.openkilda.persistence.ferma.frames.converters.Convert;
 import org.openkilda.persistence.ferma.frames.converters.InstantLongConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
@@ -26,7 +26,7 @@ import com.syncleus.ferma.annotations.Property;
 import java.time.Instant;
 import java.util.UUID;
 
-public abstract class PortHistoryFrame extends KildaBaseVertexFrame implements PortHistoryData {
+public abstract class PortEventFrame extends KildaBaseVertexFrame implements PortEventData {
     public static final String FRAME_LABEL = "port_history";
     public static final String SWITCH_ID_PROPERTY = "switch_id";
     public static final String PORT_NUMBER_PROPERTY = "port_number";

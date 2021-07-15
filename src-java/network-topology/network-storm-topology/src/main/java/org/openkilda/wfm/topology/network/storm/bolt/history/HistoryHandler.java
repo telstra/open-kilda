@@ -19,7 +19,7 @@ import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PA
 
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.share.history.model.PortHistoryData;
+import org.openkilda.wfm.share.history.model.PortEventData;
 import org.openkilda.wfm.share.history.service.HistoryService;
 import org.openkilda.wfm.topology.network.storm.bolt.history.command.HistoryCommand;
 
@@ -47,7 +47,7 @@ public class HistoryHandler extends AbstractBolt {
         command.apply(this);
     }
 
-    public void savePortStatusChangedEvent(PortHistoryData data) {
+    public void savePortStatusChangedEvent(PortEventData data) {
         historyService.store(data);
     }
 

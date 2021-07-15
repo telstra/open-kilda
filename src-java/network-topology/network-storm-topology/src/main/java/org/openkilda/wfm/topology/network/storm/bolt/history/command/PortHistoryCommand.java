@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.history.command;
 
-import org.openkilda.wfm.share.history.model.PortHistoryData;
+import org.openkilda.wfm.share.history.model.PortEventData;
 import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.storm.bolt.history.HistoryHandler;
@@ -39,7 +39,7 @@ public class PortHistoryCommand extends HistoryCommand {
 
     @Override
     public void apply(HistoryHandler handler) {
-        PortHistoryData portData = PortHistoryData.builder()
+        PortEventData portData = PortEventData.builder()
                 .endpoint(Endpoint.of(getSwitchId(), getPortNumber()))
                 .event(event)
                 .time(time)

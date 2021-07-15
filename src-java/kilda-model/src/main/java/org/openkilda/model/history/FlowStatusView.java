@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,15 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories.history;
+package org.openkilda.model.history;
 
-import org.openkilda.model.SwitchId;
-import org.openkilda.model.history.PortHistory;
-import org.openkilda.persistence.repositories.Repository;
+import lombok.Value;
 
 import java.time.Instant;
-import java.util.List;
 
-public interface PortHistoryRepository extends Repository<PortHistory> {
-    List<PortHistory> findBySwitchIdAndPortNumber(SwitchId switchId, int portNumber, Instant start, Instant end);
+/**
+ * Represent {@link org.openkilda.model.Flow} status update event.
+ */
+@Value
+public class FlowStatusView {
+    Instant timestamp;
+
+    String statusBecome;
 }
