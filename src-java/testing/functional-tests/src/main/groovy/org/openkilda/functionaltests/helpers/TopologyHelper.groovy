@@ -100,7 +100,7 @@ class TopologyHelper {
             [(it.region): it.floodlightService.getSwitches()*.switchId] }
         def topoSwitches = switches.collect { sw ->
             i++
-            def applicableRegions = switchIdsPerRegion.findAll { it.value.contains(sw.switchId) }*.key
+            List<String> applicableRegions = switchIdsPerRegion.findAll { it.value.contains(sw.switchId) }*.key
             new Switch("ofsw$i", sw.switchId, sw.ofVersion, switchStateToStatus(sw.state), applicableRegions, [],
                     null, null, null)
         }

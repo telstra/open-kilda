@@ -10,7 +10,7 @@ import { TopologyService } from 'src/app/common/services/topology.service';
   styleUrls: ['./failed-isl.component.css']
 })
 export class FailedIslComponent implements OnInit, AfterViewInit, OnDestroy {
-  @ViewChild(DataTableDirective)
+  @ViewChild(DataTableDirective, { static: true })
   datatableElement: DataTableDirective;
   dtOptions: any = {};
   dtTrigger: Subject<any> = new Subject();

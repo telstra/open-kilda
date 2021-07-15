@@ -214,9 +214,7 @@ class PortHistorySpec extends HealthCheckSpecification {
 
         and: "A port in a stable state"
         def isl = getTopology().islsForActiveSwitches.first()
-        Wrappers.wait(antiflapCooldown + WAIT_OFFSET) {
-            antiflap.assertPortIsStable(isl.srcSwitch.dpId, isl.srcPort)
-        }
+        antiflap.waitPortIsStable(isl.srcSwitch.dpId, isl.srcPort)
 
         when: "Execute port DOWN on the port"
         def timestampBefore = System.currentTimeMillis()
@@ -264,9 +262,7 @@ class PortHistorySpec extends HealthCheckSpecification {
             Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
                 assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
             }
-            Wrappers.wait(antiflapCooldown + WAIT_OFFSET) {
-                antiflap.assertPortIsStable(isl.srcSwitch.dpId, isl.srcPort)
-            }
+            antiflap.waitPortIsStable(isl.srcSwitch.dpId, isl.srcPort)
         }
         updateToogles && northbound.toggleFeature(FeatureTogglesDto.builder()
                 .floodlightRoutePeriodicSync(true)

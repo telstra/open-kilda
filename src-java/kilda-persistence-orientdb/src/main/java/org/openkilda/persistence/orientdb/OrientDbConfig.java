@@ -36,4 +36,8 @@ public interface OrientDbConfig extends Serializable {
     @Key("pool.size")
     @Default("50")
     int getPoolSize();
+
+    @Key("pool.acquire.attempts")
+    @Default("50")
+    int getPoolAcquireAttempts();
 }

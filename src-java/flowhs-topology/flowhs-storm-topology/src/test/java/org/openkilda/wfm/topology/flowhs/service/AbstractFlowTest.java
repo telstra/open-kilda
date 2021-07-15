@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -33,13 +33,13 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowResponse;
-import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
+import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.pce.GetPathsResult;
@@ -49,10 +49,10 @@ import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.dummy.IslDirectionalReference;
 import org.openkilda.persistence.dummy.PersistenceDummyEntityFactory;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
@@ -271,12 +271,12 @@ public abstract class AbstractFlowTest extends InMemoryGraphBasedTest {
     }
 
     protected void alterFeatureToggles(Boolean isCreateAllowed, Boolean isUpdateAllowed, Boolean isDeleteAllowed) {
-        FeatureTogglesRepository repository = persistenceManager
+        KildaFeatureTogglesRepository repository = persistenceManager
                 .getRepositoryFactory().createFeatureTogglesRepository();
 
-        FeatureToggles toggles = repository.find()
+        KildaFeatureToggles toggles = repository.find()
                 .orElseGet(() -> {
-                    FeatureToggles newToggles = FeatureToggles.builder().build();
+                    KildaFeatureToggles newToggles = KildaFeatureToggles.builder().build();
                     repository.add(newToggles);
                     return newToggles;
                 });

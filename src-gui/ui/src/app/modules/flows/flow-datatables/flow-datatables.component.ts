@@ -19,7 +19,7 @@ import { MessageObj } from 'src/app/common/constants/constants';
   styleUrls: ['./flow-datatables.component.css']
 })
 export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy {
-  @ViewChild(DataTableDirective) datatableElement: DataTableDirective;
+  @ViewChild(DataTableDirective, { static: true }) datatableElement: DataTableDirective;
   @Input() data = [];
   @Input() srcSwitch : string;
   @Input() dstSwitch : string;

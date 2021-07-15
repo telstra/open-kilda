@@ -249,6 +249,16 @@ public class LockKeeperServiceImpl implements LockKeeperService {
                 new HttpEntity<>(new ContainerName(flHelper.getFlByRegion(region).getContainer())), String.class);
     }
 
+    @Override
+    public void setLinkDelay(String bridgeName, Integer delayMs) {
+        throw new UnsupportedOperationException("setLinkDelay method is not available on hardware env");
+    }
+
+    @Override
+    public void cleanupLinkDelay(String bridgeName) {
+        throw new UnsupportedOperationException("cleanupLinkDelay method is not available on hardware env");
+    }
+
     HttpHeaders buildJsonHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);

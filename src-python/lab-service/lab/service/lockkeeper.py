@@ -13,6 +13,7 @@
 #   limitations under the License.
 #
 
+import os
 from flask import Flask, request, jsonify, Response
 from service.topology import A_SW_NAME
 from docker import DockerClient
@@ -241,6 +242,24 @@ def nat_cleanup():
     execute_commands_in_container(
         ['iptables -t nat -F INPUT'], request.get_json().get('containerName'))
     return jsonify({'status': "iptables -t nat -F INPUT"})
+
+
+@app.route('/link/delay', methods=['POST'])
+def set_link_delay():
+    body = request.get_json()
+    cmd = 'tc qdisc add dev {} root netem delay {}ms'.format(body['bridgeName'], body['delayMs'])
+    container_name = 'lab_service-{}'.format(os.environ.get("LAB_ID", 1))
+    execute_commands_in_container([cmd], container_name)
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/link/delay/cleanup', methods=['POST'])
+def cleanup_link_delay():
+    body = request.get_json()
+    cmd = 'tc qdisc delete dev {} root'.format(body['bridgeName'])
+    container_name = 'lab_service-{}'.format(os.environ.get("LAB_ID", 1))
+    execute_commands_in_container([cmd], container_name)
+    return jsonify({'status': 'ok'})
 
 
 def get_iptables_commands(address, operation):

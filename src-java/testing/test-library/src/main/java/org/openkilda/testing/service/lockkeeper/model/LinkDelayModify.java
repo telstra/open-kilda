@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,10 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.error;
+package org.openkilda.testing.service.lockkeeper.model;
 
-public class FeatureTogglesNotFoundException extends Exception {
-    public FeatureTogglesNotFoundException() {
-        super("Feature toggles not found.");
-    }
+
+import lombok.NonNull;
+import lombok.Value;
+
+@Value
+public class LinkDelayModify {
+
+    @NonNull
+    String bridgeName;
+
+    Integer delayMs;
 }

@@ -464,9 +464,9 @@ class FlowStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(northbound.getFlow(flow.flowId),
-                (int) flow.maximumBandwidth, 5)
-        exam.setResources(traffExam.startExam(exam, true))
+        Exam exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(northbound.getFlow(flow.flowId),
+                (int) flow.maximumBandwidth, 5).tap { udp = true }
+        exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "System collects stats for ingress/egress cookies"
@@ -475,10 +475,96 @@ class FlowStatSpec extends HealthCheckSpecification {
         def metric = metricPrefix + "flow.raw.bytes"
         def waitInterval = 5
         Wrappers.wait(statsRouterInterval, waitInterval) {
-            // https://github.com/telstra/open-kilda/issues/4246
-//            def forwardStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.forwardPath.cookie.value]).dps
-//            assert forwardStats.size() > 0
-//            assert forwardStats.values().each { it != 0 }
+            def forwardStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.forwardPath.cookie.value]).dps
+            assert forwardStats.size() > 0
+            assert forwardStats.values().each { it != 0 }
+            def reverseStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.reversePath.cookie.value]).dps
+            assert reverseStats.size() > 0
+            assert reverseStats.values().each { it != 0 }
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    def "System is able to collect stats after partial updating(vlan) on a flow endpoint"() {
+        given: "Two active neighboring switches connected to the traffgens"
+        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
+        def switchPair = topologyHelper.switchPairs.find {
+            [it.src, it.dst].every { it.dpId in traffGenSwitches }
+        } ?: assumeTrue(false, "No suiting switches found")
+
+        and: "A flow with updated vlan on src endpoint via partial update"
+        def traffgenPortOnSrcSw = topology.activeTraffGens.find { it.switchConnected ==  switchPair.src}.switchPort
+
+        def flow = flowHelperV2.randomFlow(switchPair).tap { it.source.portNumber = traffgenPortOnSrcSw;  it.source.vlanId = 100}
+        flowHelperV2.addFlow(flow)
+
+        flowHelperV2.partialUpdate(flow.flowId, new FlowPatchV2().tap {
+            source = new FlowPatchEndpoint().tap { vlanId = vlanId ?: 100 + 1 }
+        })
+
+        when: "Generate traffic on the flow"
+        Date startTime = new Date()
+        def traffExam = traffExamProvider.get()
+        Exam exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(northbound.getFlow(flow.flowId),
+                (int) flow.maximumBandwidth, 5).tap { udp = true }
+        exam.setResources(traffExam.startExam(exam))
+        assert traffExam.waitExam(exam).hasTraffic()
+
+        then: "System collects stats for ingress/egress cookies"
+        def flowInfo = database.getFlow(flow.flowId)
+        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
+        def metric = metricPrefix + "flow.raw.bytes"
+        def waitInterval = 5
+        Wrappers.wait(statsRouterInterval, waitInterval) {
+            def forwardStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.forwardPath.cookie.value]).dps
+            assert forwardStats.size() > 0
+            assert forwardStats.values().each { it != 0 }
+            def reverseStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.reversePath.cookie.value]).dps
+            assert reverseStats.size() > 0
+            assert reverseStats.values().each { it != 0 }
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    def "System is able to collect stats after partial updating(inner vlan) on a flow endpoint"() {
+        given: "Two active neighboring switches connected to the traffgens"
+        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
+        def switchPair = topologyHelper.switchPairs.find {
+            [it.src, it.dst].every { it.dpId in traffGenSwitches } &&
+                    northbound.getSwitchProperties(it.src.dpId).multiTable
+        } ?: assumeTrue(false, "No suiting switches found")
+
+        and: "A flow with updated inner vlan on src endpoint via partial update"
+        def flow = flowHelperV2.randomFlow(switchPair, true)
+        flowHelperV2.addFlow(flow)
+
+        flowHelperV2.partialUpdate(flow.flowId, new FlowPatchV2().tap {
+            source = new FlowPatchEndpoint().tap { innerVlanId = flow.source.vlanId - 1 }
+        })
+
+        when: "Generate traffic on the flow"
+        Date startTime = new Date()
+        def traffExam = traffExamProvider.get()
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(northbound.getFlow(flow.flowId),
+                (int) flow.maximumBandwidth, 5)
+        exam.setResources(traffExam.startExam(exam))
+        assert traffExam.waitExam(exam).hasTraffic()
+
+        then: "System collects stats for ingress/egress cookies"
+        def flowInfo = database.getFlow(flow.flowId)
+        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
+        def metric = metricPrefix + "flow.raw.bytes"
+        def waitInterval = 5
+        Wrappers.wait(statsRouterInterval, waitInterval) {
+            def forwardStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.forwardPath.cookie.value]).dps
+            assert forwardStats.size() > 0
+            assert forwardStats.values().each { it != 0 }
             def reverseStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.reversePath.cookie.value]).dps
             assert reverseStats.size() > 0
             assert reverseStats.values().each { it != 0 }

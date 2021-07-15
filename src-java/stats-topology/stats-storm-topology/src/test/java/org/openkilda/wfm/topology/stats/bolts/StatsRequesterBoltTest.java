@@ -33,11 +33,11 @@ import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.bluegreen.Signal;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.grpc.GetPacketInOutStatsRequest;
-import org.openkilda.model.FeatureToggles;
+import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.zk.ZkStreams;
@@ -67,7 +67,7 @@ public class StatsRequesterBoltTest {
     @Mock
     private RepositoryFactory repositoryFactory;
     @Mock
-    private FeatureTogglesRepository featureTogglesRepository;
+    private KildaFeatureTogglesRepository featureTogglesRepository;
     @Mock
     private SwitchRepository switchRepository;
     @Mock
@@ -97,7 +97,7 @@ public class StatsRequesterBoltTest {
 
     @Test
     public void doNotRequestGrpcStatsIfToggleIsFalseTest() {
-        FeatureToggles featureToggles = new FeatureToggles(FeatureToggles.DEFAULTS);
+        KildaFeatureToggles featureToggles = new KildaFeatureToggles(KildaFeatureToggles.DEFAULTS);
         featureToggles.setCollectGrpcStats(false);
 
         when(featureTogglesRepository.getOrDefault()).thenReturn(featureToggles);
@@ -108,7 +108,7 @@ public class StatsRequesterBoltTest {
 
     @Test
     public void doNotRequestGrpcStatsIfNoActiveSwitchesTest() {
-        FeatureToggles featureToggles = new FeatureToggles(FeatureToggles.DEFAULTS);
+        KildaFeatureToggles featureToggles = new KildaFeatureToggles(KildaFeatureToggles.DEFAULTS);
         featureToggles.setCollectGrpcStats(true);
 
         when(switchRepository.findActive()).thenReturn(Collections.emptyList());
@@ -120,7 +120,7 @@ public class StatsRequesterBoltTest {
 
     @Test
     public void doNotRequestGrpcStatsIfNoNoviflowSwitchesTest() {
-        FeatureToggles featureToggles = new FeatureToggles(FeatureToggles.DEFAULTS);
+        KildaFeatureToggles featureToggles = new KildaFeatureToggles(KildaFeatureToggles.DEFAULTS);
         featureToggles.setCollectGrpcStats(true);
         Switch sw = Switch.builder()
                 .switchId(new SwitchId(1))
@@ -148,7 +148,7 @@ public class StatsRequesterBoltTest {
 
     @Test
     public void requestGrpcStatsForNoviflowSwitchesTest() {
-        FeatureToggles featureToggles = new FeatureToggles(FeatureToggles.DEFAULTS);
+        KildaFeatureToggles featureToggles = new KildaFeatureToggles(KildaFeatureToggles.DEFAULTS);
         featureToggles.setCollectGrpcStats(true);
         String address = "192.168.1.1";
         Switch sw = Switch.builder()

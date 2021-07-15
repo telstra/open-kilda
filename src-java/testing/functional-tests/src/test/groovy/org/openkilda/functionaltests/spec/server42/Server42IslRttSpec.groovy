@@ -40,6 +40,10 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix
 
+    @Shared
+    @Value('${latency.update.interval}')
+    Integer latencyUpdateInterval
+
     int islSyncWaitSeconds = 60 //server42.control.rtt.sync.interval.seconds
     int statsWaitSeconds = 4
 
@@ -158,7 +162,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         }
 
         and: "ISL latency value is updated in db in both direction from s42"
-        wait(300, 2) { //latency.update.interval=300 TODO(andriidovhan) rework, probably reduce to 3m
+        wait(latencyUpdateInterval + WAIT_OFFSET, 2) {
             verifyLatencyValueIsCorrect(isl)
             verifyLatencyValueIsCorrect(isl.reversed)
         }

@@ -19,7 +19,7 @@ import { CommonService } from 'src/app/common/services/common.service';
 export class AffectedFlowsReportComponent  implements OnDestroy, OnInit, OnChanges, AfterViewInit{
   @Input() srcSwitch : string;
   @Input() dstSwitch : string;
-  @ViewChild(AffectedFlowListComponent) childFlowComponent:AffectedFlowListComponent;
+  @ViewChild(AffectedFlowListComponent, { static: false }) childFlowComponent:AffectedFlowListComponent;
 
   dataSet: any;
 

@@ -91,10 +91,11 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(SMOKE)
-    def "Flow is rerouted even if there is no available bandwidth on alternative path, sets status to Degraded"() {
+    def "Strict bandwidth false: Flow is rerouted even if there is no available bandwidth on alternative path, sets status to Degraded"() {
         given: "A flow with one alternative path at least"
         List<FlowRequestV2> helperFlows = []
         def (FlowRequestV2 flow, List<List<PathNode>> allFlowPaths) = noIntermediateSwitchFlow(1, true)
+        flow.strictBandwidth = false
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
 
@@ -180,6 +181,102 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(SMOKE)
+    def "Strict bandwidth true: Flow status is set to DOWN after reroute if no alternative path with enough bandwidth"() {
+        given: "A flow with one alternative path at least"
+        List<FlowRequestV2> helperFlows = []
+        def (FlowRequestV2 flow, List<List<PathNode>> allFlowPaths) = noIntermediateSwitchFlow(1, true)
+        flow.strictBandwidth = true
+        flowHelperV2.addFlow(flow)
+        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
+
+        and: "Alt path ISLs have not enough bandwidth to host the flow"
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def altPaths = allFlowPaths.findAll { it != currentPath }
+        def involvedIsls = pathHelper.getInvolvedIsls(currentPath)
+        def altIsls = altPaths.collectMany { pathHelper.getInvolvedIsls(it).findAll { !(it in involvedIsls || it.reversed in involvedIsls) } }
+                .unique { a, b -> (a == b || a == b.reversed) ? 0 : 1 }
+        altIsls.each {isl ->
+            def linkProp = islUtils.toLinkProps(isl, [cost: "1"])
+            northbound.updateLinkProps([linkProp])
+            def helperFlow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch, false, [flow, *helperFlows]).tap {
+                maximumBandwidth = northbound.getLink(isl).availableBandwidth - flow.maximumBandwidth + 1
+            }
+            flowHelperV2.addFlow(helperFlow)
+            helperFlows << helperFlow
+            northbound.deleteLinkProps([linkProp])
+        }
+
+        when: "Fail a flow ISL (bring switch port down)"
+        Set<Isl> altFlowIsls = []
+        def flowIsls = pathHelper.getInvolvedIsls(flowPath)
+        allFlowPaths.findAll { it != flowPath }.each { altFlowIsls.addAll(pathHelper.getInvolvedIsls(it)) }
+        def islToFail = flowIsls.find { !(it in altFlowIsls) && !(it.reversed in altFlowIsls) }
+        def portDown = antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
+
+        then: "Flow history shows 3 retry attempts, eventually bringing flow to Down"
+        List<FlowHistoryEntry> history
+        wait(rerouteDelay + WAIT_OFFSET * 2) {
+            history = northbound.getFlowHistory(flow.flowId)
+            verifyAll {
+                history.count { it.action == REROUTE_ACTION } == 4 //original + 3 retries
+                history.last().payload.last().details.startsWith("Not enough bandwidth or no path found. " +
+                        "Failed to find path with requested bandwidth=$flow.maximumBandwidth:")
+                history.last().payload.last().action == REROUTE_FAIL
+            }
+        }
+        northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
+
+        and: "Flow path is unchanged"
+        PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
+
+        when: "Try to manually reroute the Down flow, while there is still not enough bandwidth"
+        def manualRerouteTime = System.currentTimeSeconds()
+        northboundV2.rerouteFlow(flow.flowId)
+
+        then: "Error is returned, stating a 'not enough bandwidth' reason"
+        def error = thrown(HttpClientErrorException)
+        error.statusCode == HttpStatus.NOT_FOUND
+        def errorDetails = error.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not reroute flow"
+        errorDetails.errorDescription.contains("Not enough bandwidth or no path found")
+
+        and: "Flow history shows more reroute attempts after manual command"
+        wait(WAIT_OFFSET) {
+            history = northbound.getFlowHistory(flow.flowId, manualRerouteTime, null)
+            verifyAll {
+                history.count { it.action == REROUTE_ACTION } == 4 //manual original + 3 reties
+                history.last().payload.last().details.startsWith("Not enough bandwidth or no path found. " +
+                        "Failed to find path with requested bandwidth=$flow.maximumBandwidth:")
+                history.last().payload.last().action == REROUTE_FAIL
+            }
+        }
+
+        and: "Flow remains Down and on the same path"
+        northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
+        PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
+
+        when: "Broken ISL on the original path is back online"
+        def portUp = antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
+
+        then: "Flow is rerouted to the original path to UP state"
+        wait(rerouteDelay + WAIT_OFFSET) {
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        helperFlows && helperFlows.each { it && flowHelperV2.deleteFlow(it.flowId) }
+        if (portDown && !portUp) {
+            antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
+            wait(discoveryInterval + WAIT_OFFSET) {
+                assert islUtils.getIslInfo(islToFail).get().state == IslChangeType.DISCOVERED
+            }
+        }
+    }
+
+    @Tidy
     def "Single switch flow changes status on switch up/down events"() {
         given: "Single switch flow"
         def sw = topology.getActiveSwitches()[0]
@@ -245,9 +342,10 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(SMOKE)
-    def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no ability to reroute"() {
+    def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no alt path to reroute"() {
         given: "A flow without alternative paths"
-        def (flow, allFlowPaths) = noIntermediateSwitchFlow(0, true)
+        def (FlowRequestV2 flow, allFlowPaths) = noIntermediateSwitchFlow(0, true)
+        flow.strictBandwidth = strictBw
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
         def altPaths = allFlowPaths.findAll { it != flowPath }
@@ -269,11 +367,11 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         def portDown = antiflap.portDown(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "The flow becomes 'Down'"
-        wait(rerouteDelay + WAIT_OFFSET) {
+        wait(rerouteDelay + WAIT_OFFSET * 2) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.flowId).find {
-                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
-            }?.payload?.last()?.action == REROUTE_FAIL
+            def reroutes = northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }
+            assert reroutes.size() == reroutesCount
+            assert reroutes.last().payload.last().action == REROUTE_FAIL
         }
 
         when: "ISL goes back up"
@@ -296,6 +394,11 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
+
+        where:
+        strictBw    | reroutesCount
+        true        | 4 //original + 3 retries
+        false       | 2 //original + 1 retry with ignore bw
     }
 
     @Tidy

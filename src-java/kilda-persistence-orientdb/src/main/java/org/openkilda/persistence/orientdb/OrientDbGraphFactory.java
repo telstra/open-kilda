@@ -16,14 +16,20 @@
 package org.openkilda.persistence.orientdb;
 
 import org.openkilda.persistence.exceptions.PersistenceException;
+import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.persistence.ferma.AnnotationFrameFactoryWithConverterSupport;
 import org.openkilda.persistence.ferma.FramedGraphFactory;
 
+import com.orientechnologies.common.exception.OException;
+import com.orientechnologies.orient.core.sql.executor.OResultSet;
 import com.syncleus.ferma.DelegatingFramedGraph;
 import com.syncleus.ferma.framefactories.FrameFactory;
 import com.syncleus.ferma.typeresolvers.TypeResolver;
 import com.syncleus.ferma.typeresolvers.UntypedTypeResolver;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import org.apache.tinkerpop.gremlin.orientdb.OrientGraph;
 import org.apache.tinkerpop.gremlin.orientdb.OrientGraphFactory;
 
@@ -35,13 +41,22 @@ public class OrientDbGraphFactory implements FramedGraphFactory {
     private final OrientGraphFactory factory;
     private final FrameFactory builder = new AnnotationFrameFactoryWithConverterSupport();
     private final TypeResolver typeResolver = new UntypedTypeResolver();
+    private final RetryPolicy<OrientGraph> poolAcquireRetryPolicy;
 
-    OrientDbGraphFactory(OrientDbConfig config) {
+    OrientDbGraphFactory(@NonNull OrientDbConfig config) {
         log.debug("Opening a graph for {}", config);
-
         factory = new OrientGraphFactory(config.getUrl(), config.getUser(), config.getPassword());
         factory.setupPool(config.getPoolSize());
         log.debug("OrientGraphFactory instance has been created: {}", factory);
+
+        poolAcquireRetryPolicy = new RetryPolicy<OrientGraph>()
+                .handle(OException.class)
+                .handle(RecoverablePersistenceException.class)
+                .withMaxRetries(config.getPoolAcquireAttempts())
+                .onRetry(e -> log.debug("Failure in acquiring a graph from the pool. Retrying #{}...",
+                        e.getAttemptCount(), e.getLastFailure()))
+                .onRetriesExceeded(e -> log.error("Failure in acquiring a graph from the pool. No more retries",
+                        e.getFailure()));
     }
 
     /**
@@ -57,12 +72,27 @@ public class OrientDbGraphFactory implements FramedGraphFactory {
         DelegatingFramedGraph<?> result = ThreadLocalPersistenceContextHolder.INSTANCE.getCurrentGraph();
         if (result == null) {
             log.debug("Opening a framed graph for {}", factory);
-            OrientGraph orientGraph = factory.getTx();
-            log.debug("OrientGraph instance has been created: {}", orientGraph);
-            result = new DelegatingFramedGraph<>(orientGraph, builder, typeResolver);
+            OrientGraph resultOrientGraph = Failsafe.with(poolAcquireRetryPolicy).get(() -> {
+                OrientGraph obtainedGraph = factory.getTx();
+                validateGraph(obtainedGraph);
+                return obtainedGraph;
+            });
+            log.debug("OrientGraph instance has been created: {}", resultOrientGraph);
+            result = new DelegatingFramedGraph<>(resultOrientGraph, builder, typeResolver);
             ThreadLocalPersistenceContextHolder.INSTANCE.setCurrentGraph(result);
         }
         return result;
+    }
+
+    private void validateGraph(@NonNull OrientGraph obtainedGraph) {
+        if (obtainedGraph.isClosed()) {
+            throw new RecoverablePersistenceException("The obtained graph is closed");
+        }
+        try (OResultSet resultSet = obtainedGraph.executeSql("SELECT 1").getRawResultSet()) {
+            if (!resultSet.hasNext()) {
+                throw new RecoverablePersistenceException("Failed to execute the test query");
+            }
+        }
     }
 
     public OrientGraph getOrientGraph() {

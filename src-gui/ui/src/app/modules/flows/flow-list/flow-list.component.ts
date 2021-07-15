@@ -20,7 +20,7 @@ import { CommonService } from 'src/app/common/services/common.service';
 export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterViewInit{
   @Input() srcSwitch : string;
   @Input() dstSwitch : string;
-  @ViewChild(FlowDatatablesComponent) childFlowComponent:FlowDatatablesComponent;
+  @ViewChild(FlowDatatablesComponent, { static: false }) childFlowComponent:FlowDatatablesComponent;
 
   dataSet: any;
 

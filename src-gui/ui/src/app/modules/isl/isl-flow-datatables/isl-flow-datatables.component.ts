@@ -14,7 +14,7 @@ import { MessageObj } from 'src/app/common/constants/constants';
   styleUrls: ['./isl-flow-datatables.component.css']
 })
 export class IslFlowDatatablesComponent implements OnInit , AfterViewInit , OnDestroy  {
-  @ViewChild(DataTableDirective) datatableElement: DataTableDirective;
+  @ViewChild(DataTableDirective, { static: true }) datatableElement: DataTableDirective;
   @Input() data = [];
   @Input() srcSwitch : string;
   @Input() dstSwitch : string;

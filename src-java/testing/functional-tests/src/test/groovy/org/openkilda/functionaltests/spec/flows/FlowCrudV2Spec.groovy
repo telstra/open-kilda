@@ -968,7 +968,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         when: "Update the flow: port number and vlan id on the src endpoint"
-        def flowInfoFromDb1 = database.getFlow(flow.flowId)
         def updatedFlow = flow.jacksonCopy().tap {
             it.source.portNumber = topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
                 it.dpId == flow.source.switchId
@@ -1300,6 +1299,26 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
         !isSwitchValid && [swPair.src, swPair.dst].each { northbound.synchronizeSwitch(it.dpId, true) }
+    }
+
+    @Tidy
+    def "Unable to create a flow with both strict_bandwidth and ignore_bandwidth flags"() {
+        when: "Try to create a flow with strict_bandwidth:true and ignore_bandwidth:true"
+        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0]).tap {
+            strictBandwidth = true
+            ignoreBandwidth = true
+        }
+        flowHelperV2.addFlow(flow)
+
+        then: "Bad Request response is returned"
+        def error = thrown(HttpClientErrorException)
+        error.statusCode == HttpStatus.BAD_REQUEST
+        def errorDetails = error.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not create flow"
+        errorDetails.errorDescription == "Can not turn on ignore bandwidth flag and strict bandwidth flag at the same time"
+
+        cleanup:
+        !error && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Shared

@@ -29,7 +29,6 @@ import org.openkilda.messaging.info.switches.GroupInfoEntry;
 import org.openkilda.messaging.info.switches.GroupInfoEntry.BucketEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
-import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowMirrorPath;
@@ -50,9 +49,9 @@ import org.openkilda.model.cookie.FlowSegmentCookie.FlowSegmentCookieBuilder;
 import org.openkilda.model.cookie.FlowSharedSegmentCookie;
 import org.openkilda.model.cookie.FlowSharedSegmentCookie.SharedSegmentType;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -92,7 +91,7 @@ public class ValidationServiceImpl implements ValidationService {
     private final FlowPathRepository flowPathRepository;
     private final SwitchRepository switchRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
-    private final FeatureTogglesRepository featureTogglesRepository;
+    private final KildaFeatureTogglesRepository featureTogglesRepository;
     private final MirrorGroupRepository mirrorGroupRepository;
     private final FlowMirrorPointsRepository flowMirrorPointsRepository;
     private final FlowResourcesManager flowResourcesManager;
@@ -513,7 +512,7 @@ public class ValidationServiceImpl implements ValidationService {
         SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
                 .orElseThrow(() -> new InconsistentDataException(switchId, "switch properties not found"));
         boolean server42FlowRtt = switchProperties.isServer42FlowRtt()
-                && featureTogglesRepository.find().map(FeatureToggles::getServer42FlowRtt).orElse(false);
+                && featureTogglesRepository.getOrDefault().getServer42FlowRtt();
 
         // collect termination segments
         Collection<FlowPath> affectedPaths = flowPathRepository.findByEndpointSwitch(switchId).stream()

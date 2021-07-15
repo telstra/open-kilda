@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -40,10 +40,10 @@ import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.BfdProperties;
 import org.openkilda.model.BfdSessionStatus;
-import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
 import org.openkilda.model.IslStatus;
+import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -52,9 +52,9 @@ import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
@@ -146,7 +146,7 @@ public class NetworkIslServiceTest {
     @Mock
     private FlowPathRepository flowPathRepository;
     @Mock
-    private FeatureTogglesRepository featureTogglesRepository;
+    private KildaFeatureTogglesRepository featureTogglesRepository;
 
     private NetworkIslService service;
 
@@ -162,7 +162,7 @@ public class NetworkIslServiceTest {
         when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
         when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
 
-        FeatureToggles featureToggles = new FeatureToggles(FeatureToggles.DEFAULTS);
+        KildaFeatureToggles featureToggles = new KildaFeatureToggles(KildaFeatureToggles.DEFAULTS);
         featureToggles.setFlowsRerouteOnIslDiscoveryEnabled(true);
         when(featureTogglesRepository.getOrDefault()).thenReturn(featureToggles);
 

@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import org.openkilda.messaging.command.grpc.GetPacketInOutStatsRequest;
 import org.openkilda.messaging.command.stats.StatsRequest;
 import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.share.zk.ZkStreams;
@@ -46,7 +46,7 @@ public class StatsRequesterBolt extends AbstractBolt {
 
     private final PersistenceManager persistenceManager;
     private transient SwitchRepository switchRepository;
-    private transient FeatureTogglesRepository featureTogglesRepository;
+    private transient KildaFeatureTogglesRepository featureTogglesRepository;
 
     public StatsRequesterBolt(PersistenceManager persistenceManager, String lifeCycleEventSourceComponent) {
         super(lifeCycleEventSourceComponent);

@@ -220,15 +220,9 @@ public class LinkServiceImpl extends BaseService implements LinkService {
         String correlationId = RequestCorrelationId.getId();
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
         return messagingChannel.sendAndGet(nbworkerTopic, message)
-                .thenApply(response -> {
-                    if (((LinkPropsResponse) response).getLinkProps() != null) {
-                        return linkPropsMapper.toLinkMaxBandwidth(((LinkPropsResponse) response).getLinkProps());
-                    } else {
-                        throw new MessageException(ErrorType.REQUEST_INVALID,
-                                "Requested maximum bandwidth is too small",
-                                ((LinkPropsResponse) response).getError());
-                    }
-                });
+                .thenApply(response ->
+                        linkPropsMapper.toLinkMaxBandwidth(((LinkPropsResponse) response).getLinkProps())
+                );
     }
 
     @Override

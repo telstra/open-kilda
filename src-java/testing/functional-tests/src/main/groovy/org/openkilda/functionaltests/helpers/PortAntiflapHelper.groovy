@@ -33,9 +33,7 @@ class PortAntiflapHelper {
         def swPort = new Tuple2(swId, portNo)
         def lastEvent = history.get(swPort)
         if (lastEvent) {
-            Wrappers.wait(antiflapCooldown + WAIT_OFFSET) {
-                assertPortIsStable(swId, portNo, lastEvent)
-            }
+            waitPortIsStable(swId, portNo, lastEvent)
             history.remove(swPort)
         }
         northbound.portUp(swId, portNo)
@@ -49,16 +47,24 @@ class PortAntiflapHelper {
     }
 
     /**
-     * Verify whether current port is in a stable state (deactivated antiflap) by analyzing its history.
+     * Wait till the current port is in a stable state (deactivated antiflap) by analyzing its history.
      */
-    void assertPortIsStable(SwitchId swId, int portNo, Long since = 0) {
-        def history = northboundV2.getPortHistory(swId, portNo, since, Long.MAX_VALUE)
-        if(!history.empty) {
-            def antiflapEvents = history.collect {PortHistoryEvent.valueOf(it.event) }.findAll {
-                it in [PortHistoryEvent.ANTI_FLAP_ACTIVATED, PortHistoryEvent.ANTI_FLAP_DEACTIVATED]
-            }
-            if(!antiflapEvents.empty) {
-                assert antiflapEvents.last() == PortHistoryEvent.ANTI_FLAP_DEACTIVATED
+    void waitPortIsStable(SwitchId swId, int portNo, Long since = 0) {
+        Wrappers.wait(antiflapCooldown + WAIT_OFFSET) {
+            def history = northboundV2.getPortHistory(swId, portNo, since, Long.MAX_VALUE)
+
+            if (!history.empty) {
+                def antiflapEvents = history.collect { PortHistoryEvent.valueOf(it.event) }.findAll {
+                    it in [PortHistoryEvent.ANTI_FLAP_ACTIVATED, PortHistoryEvent.ANTI_FLAP_DEACTIVATED]
+                }
+
+                if (!antiflapEvents.empty) {
+                    assert antiflapEvents.last() == PortHistoryEvent.ANTI_FLAP_DEACTIVATED
+                } else {
+                    false
+                }
+            } else {
+                false
             }
         }
     }

@@ -23,8 +23,8 @@ import org.openkilda.messaging.info.flow.UpdateFlowInfo;
 import org.openkilda.model.Flow;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.server42.messaging.FlowDirection;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -54,7 +54,7 @@ public class ActionService implements FlowSlaMonitoringCarrier {
 
     private FlowOperationsCarrier carrier;
     private FlowRepository flowRepository;
-    private FeatureTogglesRepository featureTogglesRepository;
+    private KildaFeatureTogglesRepository featureTogglesRepository;
     private TransactionManager transactionManager;
     private FlowLatencyMonitoringFsmFactory fsmFactory;
     private FsmExecutor<FlowLatencyMonitoringFsm, State, Event, Context> fsmExecutor;
