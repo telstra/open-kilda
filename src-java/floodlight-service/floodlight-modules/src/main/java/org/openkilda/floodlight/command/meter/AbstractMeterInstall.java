@@ -47,11 +47,19 @@ abstract class AbstractMeterInstall<T extends SpeakerCommandReport> extends Mete
     }
 
     protected OFMeterMod makeMeterAddMessage() {
+        return makeMeterMessage(OFMeterModCommand.ADD);
+    }
+
+    protected OFMeterMod makeMeterModifyMessage() {
+        return makeMeterMessage(OFMeterModCommand.MODIFY);
+    }
+
+    protected OFMeterMod makeMeterMessage(OFMeterModCommand commandType) {
         final OFFactory ofFactory = getSw().getOFFactory();
 
         OFMeterMod.Builder meterModBuilder = ofFactory.buildMeterMod()
                 .setMeterId(meterConfig.getId().getValue())
-                .setCommand(OFMeterModCommand.ADD)
+                .setCommand(commandType)
                 .setFlags(makeMeterFlags());
 
         // NB: some switches might replace 0 burst size value with some predefined value

@@ -15,8 +15,11 @@
 
 package org.openkilda.floodlight.switchmanager;
 
+import org.openkilda.floodlight.error.InvalidMeterIdException;
+import org.openkilda.floodlight.error.OfInstallException;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
+import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.messaging.command.flow.RuleType;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
@@ -609,6 +612,19 @@ public interface ISwitchManager extends IFloodlightService {
      * @throws SwitchOperationException Switch not found
      */
     void modifyMeterForFlow(DatapathId dpid, long meterId, long bandwidth) throws SwitchOperationException;
+
+    /**
+     * Modifies default meter.
+     *
+     * @param dpid datapath ID of the switch
+     * @param meterId the meter ID
+     * @throws SwitchNotFoundException Switch not found
+     * @throws InvalidMeterIdException Meter ID is invalid
+     * @throws UnsupportedSwitchOperationException Switch doesn't support meters
+     * @throws OfInstallException Error during meter modification
+     */
+    void modifyDefaultMeter(DatapathId dpid, long meterId) throws SwitchNotFoundException, InvalidMeterIdException,
+            UnsupportedSwitchOperationException, OfInstallException;
 
     /**
      * Deletes the meter from the switch OF_13.

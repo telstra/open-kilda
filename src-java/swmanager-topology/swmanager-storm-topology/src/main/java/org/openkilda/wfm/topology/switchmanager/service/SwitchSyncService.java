@@ -32,6 +32,8 @@ public interface SwitchSyncService {
 
     void handleRemoveMetersResponse(String key);
 
+    void handleModifyMetersResponse(String key);
+
     void handleInstallGroupResponse(String key);
 
     void handleModifyGroupResponse(String key);

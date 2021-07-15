@@ -200,10 +200,11 @@ public final class SwitchFlowUtils {
      * @param burstSize burst size
      * @param meterId meter id
      * @param flags flags
+     * @param commandType ADD, MODIFY or DELETE
      * @return OpenFlow command
      */
     public static OFMeterMod buildMeterMod(OFFactory ofFactory, long bandwidth, long burstSize,
-                                           long meterId, Set<OFMeterFlags> flags) {
+                                           long meterId, Set<OFMeterFlags> flags, OFMeterModCommand commandType) {
         OFMeterBandDrop.Builder bandBuilder = ofFactory.meterBands()
                 .buildDrop()
                 .setRate(bandwidth)
@@ -211,7 +212,7 @@ public final class SwitchFlowUtils {
 
         OFMeterMod.Builder meterModBuilder = ofFactory.buildMeterMod()
                 .setMeterId(meterId)
-                .setCommand(OFMeterModCommand.ADD)
+                .setCommand(commandType)
                 .setFlags(flags);
 
         if (ofFactory.getVersion().compareTo(OF_13) > 0) {

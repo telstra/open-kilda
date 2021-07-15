@@ -72,7 +72,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get default drop switch flow generator.
      */
-    public SwitchFlowGenerator getDropFlowGenerator(long cookie, int tableId) {
+    public DropFlowGenerator getDropFlowGenerator(long cookie, int tableId) {
         return DropFlowGenerator.builder()
                 .cookie(cookie)
                 .tableId(tableId)
@@ -82,7 +82,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get verification switch flow generator.
      */
-    public SwitchFlowGenerator getVerificationFlow(boolean broadcast) {
+    public VerificationFlowGenerator getVerificationFlow(boolean broadcast) {
         return VerificationFlowGenerator.builder()
                 .broadcast(broadcast)
                 .config(config)
@@ -104,7 +104,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get BFD catch switch flow generator.
      */
-    public SwitchFlowGenerator getBfdCatchFlowGenerator() {
+    public BfdCatchFlowGenerator getBfdCatchFlowGenerator() {
         return BfdCatchFlowGenerator.builder()
                 .featureDetectorService(featureDetectorService)
                 .build();
@@ -113,7 +113,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get round trip latency switch flow generator.
      */
-    public SwitchFlowGenerator getRoundTripLatencyFlowGenerator() {
+    public RoundTripLatencyFlowGenerator getRoundTripLatencyFlowGenerator() {
         return RoundTripLatencyFlowGenerator.builder()
                 .featureDetectorService(featureDetectorService)
                 .verificationBcastPacketDst(verificationBcastPacketDst)
@@ -123,7 +123,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get unicast verification VXLAN switch flow generator.
      */
-    public SwitchFlowGenerator getUnicastVerificationVxlanFlowGenerator() {
+    public UnicastVerificationVxlanRuleGenerator getUnicastVerificationVxlanFlowGenerator() {
         return UnicastVerificationVxlanRuleGenerator.builder()
                 .config(config)
                 .featureDetectorService(featureDetectorService)
@@ -134,7 +134,8 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get table pass through default switch flow generator.
      */
-    public SwitchFlowGenerator getTablePassThroughDefaultFlowGenerator(long cookie, int goToTableId, int tableId) {
+    public TablePassThroughDefaultFlowGenerator getTablePassThroughDefaultFlowGenerator(
+            long cookie, int goToTableId, int tableId) {
         return TablePassThroughDefaultFlowGenerator.builder()
                 .cookie(cookie)
                 .goToTableId(goToTableId)
@@ -145,7 +146,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get LLDP input pre drop switch flow generator.
      */
-    public SwitchFlowGenerator getLldpInputPreDropFlowGenerator() {
+    public LldpInputPreDropFlowGenerator getLldpInputPreDropFlowGenerator() {
         return LldpInputPreDropFlowGenerator.builder()
                 .config(config)
                 .featureDetectorService(featureDetectorService)
@@ -155,7 +156,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get LLDP ingress switch flow generator.
      */
-    public SwitchFlowGenerator getLldpIngressFlowGenerator() {
+    public LldpIngressFlowGenerator getLldpIngressFlowGenerator() {
         return LldpIngressFlowGenerator.builder()
                 .config(config)
                 .featureDetectorService(featureDetectorService)
@@ -165,7 +166,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get LLDP post ingress switch flow generator.
      */
-    public SwitchFlowGenerator getLldpPostIngressFlowGenerator() {
+    public LldpPostIngressFlowGenerator getLldpPostIngressFlowGenerator() {
         return LldpPostIngressFlowGenerator.builder()
                 .config(config)
                 .featureDetectorService(featureDetectorService)
@@ -175,7 +176,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get LLDP post ingress VXLAN switch flow generator.
      */
-    public SwitchFlowGenerator getLldpPostIngressVxlanFlowGenerator() {
+    public LldpPostIngressVxlanFlowGenerator getLldpPostIngressVxlanFlowGenerator() {
         return LldpPostIngressVxlanFlowGenerator.builder()
                 .config(config)
                 .featureDetectorService(featureDetectorService)
@@ -185,7 +186,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get LLDP one switch post ingress switch flow generator.
      */
-    public SwitchFlowGenerator getLldpPostIngressOneSwitchFlowGenerator() {
+    public LldpPostIngressOneSwitchFlowGenerator getLldpPostIngressOneSwitchFlowGenerator() {
         return LldpPostIngressOneSwitchFlowGenerator.builder()
                 .config(config)
                 .featureDetectorService(featureDetectorService)
@@ -195,7 +196,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get LLDP transit switch flow generator.
      */
-    public SwitchFlowGenerator getLldpTransitFlowGenerator() {
+    public LldpTransitFlowGenerator getLldpTransitFlowGenerator() {
         return LldpTransitFlowGenerator.builder()
                 .config(config)
                 .featureDetectorService(featureDetectorService)
@@ -205,7 +206,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get ARP input pre drop switch flow generator.
      */
-    public SwitchFlowGenerator getArpInputPreDropFlowGenerator() {
+    public ArpInputPreDropFlowGenerator getArpInputPreDropFlowGenerator() {
         return ArpInputPreDropFlowGenerator.builder()
                 .config(config)
                 .featureDetectorService(featureDetectorService)
@@ -215,7 +216,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get ARP ingress switch flow generator.
      */
-    public SwitchFlowGenerator getArpIngressFlowGenerator() {
+    public ArpIngressFlowGenerator getArpIngressFlowGenerator() {
         return ArpIngressFlowGenerator.builder()
                 .config(config)
                 .featureDetectorService(featureDetectorService)
@@ -225,7 +226,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get ARP post ingress switch flow generator.
      */
-    public SwitchFlowGenerator getArpPostIngressFlowGenerator() {
+    public ArpPostIngressFlowGenerator getArpPostIngressFlowGenerator() {
         return ArpPostIngressFlowGenerator.builder()
                 .config(config)
                 .featureDetectorService(featureDetectorService)
@@ -235,7 +236,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get ARP post ingress VXLAN switch flow generator.
      */
-    public SwitchFlowGenerator getArpPostIngressVxlanFlowGenerator() {
+    public ArpPostIngressVxlanFlowGenerator getArpPostIngressVxlanFlowGenerator() {
         return ArpPostIngressVxlanFlowGenerator.builder()
                 .config(config)
                 .featureDetectorService(featureDetectorService)
@@ -245,7 +246,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get ARP one switch post ingress switch flow generator.
      */
-    public SwitchFlowGenerator getArpPostIngressOneSwitchFlowGenerator() {
+    public ArpPostIngressOneSwitchFlowGenerator getArpPostIngressOneSwitchFlowGenerator() {
         return ArpPostIngressOneSwitchFlowGenerator.builder()
                 .config(config)
                 .featureDetectorService(featureDetectorService)
@@ -255,7 +256,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get ARP transit switch flow generator.
      */
-    public SwitchFlowGenerator getArpTransitFlowGenerator() {
+    public ArpTransitFlowGenerator getArpTransitFlowGenerator() {
         return ArpTransitFlowGenerator.builder()
                 .config(config)
                 .featureDetectorService(featureDetectorService)
@@ -265,8 +266,8 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get Server 42 Flow RTT input flow generator.
      */
-    public SwitchFlowGenerator getServer42FlowRttInputFlowGenerator(int server42Port, int customerPort,
-                                                             MacAddress server42MacAddress) {
+    public Server42FlowRttInputFlowGenerator getServer42FlowRttInputFlowGenerator(int server42Port, int customerPort,
+                                                                                  MacAddress server42MacAddress) {
         return Server42FlowRttInputFlowGenerator.builder()
                 .featureDetectorService(featureDetectorService)
                 .kildaCore(kildaCore)
@@ -288,7 +289,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get Server 42 Flow RTT output vlan flow generator.
      */
-    public SwitchFlowGenerator getServer42FlowRttOutputVlanFlowGenerator(
+    public Server42FlowRttOutputVlanFlowGenerator getServer42FlowRttOutputVlanFlowGenerator(
             int server42Port, int server42Vlan, MacAddress server42MacAddress) {
         return Server42FlowRttOutputVlanFlowGenerator.builder()
                 .featureDetectorService(featureDetectorService)
@@ -301,7 +302,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get Server 42 Flow RTT output VXLAN flow generator.
      */
-    public SwitchFlowGenerator getServer42FlowRttOutputVxlanFlowGenerator(
+    public Server42FlowRttOutputVxlanFlowGenerator getServer42FlowRttOutputVxlanFlowGenerator(
             int server42Port, int server42Vlan, MacAddress server42MacAddress) {
         return Server42FlowRttOutputVxlanFlowGenerator.builder()
                 .featureDetectorService(featureDetectorService)
@@ -314,7 +315,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get Server 42 ISL RTT input flow generator.
      */
-    public SwitchFlowGenerator getServer42IslRttInputFlowGenerator(int server42Port, int islPort) {
+    public Server42IslRttInputFlowGenerator getServer42IslRttInputFlowGenerator(int server42Port, int islPort) {
         return Server42IslRttInputFlowGenerator.builder()
                 .kildaCore(kildaCore)
                 .server42Port(server42Port)
@@ -325,7 +326,7 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get Server 42 ISL RTT turning flow generator.
      */
-    public SwitchFlowGenerator getServer42IslRttTurningFlowGenerator() {
+    public Server42IslRttTurningFlowGenerator getServer42IslRttTurningFlowGenerator() {
         return Server42IslRttTurningFlowGenerator.builder()
                 .kildaCore(kildaCore)
                 .build();
@@ -334,8 +335,8 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get Server 42 ISL RTT output flow generator.
      */
-    public SwitchFlowGenerator getServer42IslRttOutputFlowGenerator(int server42Port, int server42Vlan,
-                                                                    MacAddress server42MacAddress) {
+    public Server42IslRttOutputFlowGenerator getServer42IslRttOutputFlowGenerator(int server42Port, int server42Vlan,
+                                                                                  MacAddress server42MacAddress) {
         return Server42IslRttOutputFlowGenerator.builder()
                 .kildaCore(kildaCore)
                 .server42Port(server42Port)
