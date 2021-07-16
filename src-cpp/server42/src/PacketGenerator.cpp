@@ -61,13 +61,15 @@ namespace org::openkilda {
         newPacket.addLayer(&newUdpLayer);
 
         FlowPayload payload{};
-
-        size_t length = arg.flow_id.copy(payload.flow_id, sizeof(payload.flow_id) - 1);
-        payload.flow_id[length] = '\0';
-
         payload.direction = arg.direction;
+        payload.flow_id_length = arg.flow_id.size();
+        payload.flow_id_offset = sizeof payload;
 
-        pcpp::PayloadLayer payloadLayer(reinterpret_cast<uint8_t *>(&payload), sizeof(payload), false);
+        std::vector<uint8_t> buffer(sizeof payload + arg.flow_id.size());
+        std::memcpy(buffer.data(), &payload, sizeof payload);
+        std::memcpy(buffer.data() + payload.flow_id_offset, arg.flow_id.c_str(), arg.flow_id.length());
+
+        pcpp::PayloadLayer payloadLayer(buffer.data(), buffer.size(), false);
         newPacket.addLayer(&payloadLayer);
         newPacket.computeCalculateFields();
 
