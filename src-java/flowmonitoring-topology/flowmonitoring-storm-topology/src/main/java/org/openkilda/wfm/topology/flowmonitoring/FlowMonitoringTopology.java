@@ -17,8 +17,10 @@ package org.openkilda.wfm.topology.flowmonitoring;
 
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ACTION_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
+import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ISL_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.STATS_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_ID_FIELD;
+import static org.openkilda.wfm.topology.flowmonitoring.bolt.IslDataSplitterBolt.ISL_KEY_FIELD;
 
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
@@ -29,7 +31,9 @@ import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.ActionBolt;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt;
+import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowSplitterBolt;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.IslCacheBolt;
+import org.openkilda.wfm.topology.flowmonitoring.bolt.IslDataSplitterBolt;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.RerouteEncoder;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.TickBolt;
 
@@ -43,6 +47,7 @@ import java.time.Duration;
 public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopologyConfig> {
 
     private static final Fields FLOW_ID_FIELDS = new Fields(FLOW_ID_FIELD);
+    private static final Fields ISL_KEY_FIELDS = new Fields(ISL_KEY_FIELD);
 
     public FlowMonitoringTopology(LaunchEnvironment env) {
         super(env, "flowmonitoring-topology", FlowMonitoringTopologyConfig.class);
@@ -59,6 +64,8 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
 
         zooKeeperSpout(tb);
 
+        islSplitterBolt(tb);
+        flowSplitterBolt(tb);
         tickBolt(tb);
 
         PersistenceManager persistenceManager =
@@ -96,6 +103,18 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
         declareKafkaSpout(topologyBuilder, getConfig().getTopoIslLatencyTopic(), ComponentId.ISL_LATENCY_SPOUT.name());
     }
 
+    private void islSplitterBolt(TopologyBuilder topologyBuilder) {
+        declareBolt(topologyBuilder, new IslDataSplitterBolt(), ComponentId.ISL_SPLITTER_BOLT.name())
+                .shuffleGrouping(ComponentId.ISL_SPOUT.name())
+                .shuffleGrouping(ComponentId.ISL_LATENCY_SPOUT.name());
+    }
+
+    private void flowSplitterBolt(TopologyBuilder topologyBuilder) {
+        declareBolt(topologyBuilder, new FlowSplitterBolt(), ComponentId.FLOW_SPLITTER_BOLT.name())
+                .shuffleGrouping(ComponentId.FLOW_SPOUT.name())
+                .shuffleGrouping(ComponentId.FLOW_LATENCY_SPOUT.name());
+    }
+
     private void tickBolt(TopologyBuilder topologyBuilder) {
         declareBolt(topologyBuilder, new TickBolt(getConfig().getFlowSlaCheckIntervalSeconds()),
                 ComponentId.TICK_BOLT.name());
@@ -103,21 +122,23 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
 
     private void flowCacheBolt(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         FlowCacheBolt flowCacheBolt = new FlowCacheBolt(persistenceManager,
-                Duration.ofSeconds(getConfig().getFlowRttStatsExpirationSeconds()), ZooKeeperSpout.SPOUT_ID);
+                Duration.ofSeconds(getConfig().getFlowRttStatsExpirationSeconds()), getConfig().getMetricPrefix(),
+                ZooKeeperSpout.SPOUT_ID);
         declareBolt(topologyBuilder, flowCacheBolt, ComponentId.FLOW_CACHE_BOLT.name())
-                .allGrouping(ComponentId.FLOW_SPOUT.name())
-                .allGrouping(ComponentId.FLOW_LATENCY_SPOUT.name())
+                .fieldsGrouping(ComponentId.FLOW_SPLITTER_BOLT.name(), FLOW_UPDATE_STREAM_ID.name(), FLOW_ID_FIELDS)
+                .fieldsGrouping(ComponentId.FLOW_SPLITTER_BOLT.name(), FLOW_ID_FIELDS)
+                .fieldsGrouping(ComponentId.ISL_CACHE_BOLT.name(), FLOW_ID_FIELDS)
                 .allGrouping(ComponentId.TICK_BOLT.name())
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
     private void islCacheBolt(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
-        IslCacheBolt islCacheBolt = new IslCacheBolt(persistenceManager, getConfig().getMetricPrefix(),
-                getConfig().getIslRttLatencyExpirationSeconds(), ZooKeeperSpout.SPOUT_ID);
+        IslCacheBolt islCacheBolt = new IslCacheBolt(persistenceManager,
+                Duration.ofSeconds(getConfig().getIslRttLatencyExpirationSeconds()), ZooKeeperSpout.SPOUT_ID);
         declareBolt(topologyBuilder, islCacheBolt, ComponentId.ISL_CACHE_BOLT.name())
-                .allGrouping(ComponentId.ISL_LATENCY_SPOUT.name())
-                .allGrouping(ComponentId.ISL_SPOUT.name())
-                .allGrouping(ComponentId.FLOW_CACHE_BOLT.name())
+                .fieldsGrouping(ComponentId.ISL_SPLITTER_BOLT.name(), ISL_KEY_FIELDS)
+                .fieldsGrouping(ComponentId.ISL_SPLITTER_BOLT.name(), ISL_UPDATE_STREAM_ID.name(), ISL_KEY_FIELDS)
+                .fieldsGrouping(ComponentId.FLOW_CACHE_BOLT.name(), ISL_KEY_FIELDS)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
@@ -128,7 +149,6 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
                 ComponentId.ACTION_BOLT.name())
                 .fieldsGrouping(ComponentId.FLOW_CACHE_BOLT.name(), ACTION_STREAM_ID.name(), FLOW_ID_FIELDS)
                 .fieldsGrouping(ComponentId.FLOW_CACHE_BOLT.name(), FLOW_UPDATE_STREAM_ID.name(), FLOW_ID_FIELDS)
-                .fieldsGrouping(ComponentId.ISL_CACHE_BOLT.name(), ACTION_STREAM_ID.name(), FLOW_ID_FIELDS)
                 .allGrouping(ComponentId.TICK_BOLT.name())
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
@@ -146,7 +166,7 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
     private void statsBolt(TopologyBuilder topologyBuilder) {
         declareBolt(topologyBuilder, createKafkaBolt(getConfig().getKafkaOtsdbTopic()),
                 ComponentId.STATS_BOLT.name())
-                .shuffleGrouping(ComponentId.ISL_CACHE_BOLT.name(), STATS_STREAM_ID.name());
+                .shuffleGrouping(ComponentId.FLOW_CACHE_BOLT.name(), STATS_STREAM_ID.name());
     }
 
     private void zooKeeperSpout(TopologyBuilder topology) {
@@ -177,6 +197,9 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
         ISL_SPOUT("isl.spout"),
         ISL_LATENCY_SPOUT("isl.latency.spout"),
 
+        ISL_SPLITTER_BOLT("isl.splitter.bolt"),
+        FLOW_SPLITTER_BOLT("flow.splitter.bolt"),
+
         FLOW_CACHE_BOLT("flow.cache.bolt"),
         ISL_CACHE_BOLT("isl.cache.bolt"),
         ACTION_BOLT("action.bolt"),
@@ -204,7 +227,8 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
     public enum Stream {
         ACTION_STREAM_ID,
         STATS_STREAM_ID,
-        FLOW_UPDATE_STREAM_ID
+        FLOW_UPDATE_STREAM_ID,
+        ISL_UPDATE_STREAM_ID
     }
 
     /**

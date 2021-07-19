@@ -25,5 +25,9 @@ public interface FlowCacheBoltCarrier {
 
     void emitCalculateFlowLatencyRequest(String flowId, FlowDirection direction, List<Link> flowPath);
 
+    void emitGetLinkLatencyRequest(String flowId, String requestId, Link link);
+
     void emitCheckFlowLatencyRequest(String flowId, FlowDirection direction, Duration latency);
+
+    public void emitLatencyStats(String flowId, FlowDirection direction, Duration latency);
 }
