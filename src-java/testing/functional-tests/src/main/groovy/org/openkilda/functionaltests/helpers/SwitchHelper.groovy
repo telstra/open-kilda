@@ -116,8 +116,13 @@ class SwitchHelper {
         sw.nbFormat().description
     }
 
+    @Memoized
+    static String getHwSwString(Switch sw) {
+        "${sw.nbFormat().hardware} ${sw.nbFormat().software}"
+    }
+
     static List<TraffGen> getTraffGens(Switch sw) {
-        topology.traffGens.findAll { it.switchConnected.dpId == sw.dpId }
+        topology.activeTraffGens.findAll { it.switchConnected.dpId == sw.dpId }
     }
 
     @Memoized
