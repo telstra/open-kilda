@@ -65,7 +65,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /TRANSIT_VLAN -> VXLAN/)
     ])
     def "System allows to create/update encapsulation type for a flow\
-(#data.encapsulationCreate.toString() -> #data.encapsulationUpdate.toString(), #swPair)"(Map data, SwitchPair swPair) {
+[#data.encapsulationCreate.toString() -> #data.encapsulationUpdate.toString(), #swPair]"(Map data, SwitchPair swPair) {
         when: "Create a flow with #encapsulationCreate.toString() encapsulation type"
         def flow = flowHelperV2.randomFlow(swPair)
         flow.encapsulationType = data.encapsulationCreate

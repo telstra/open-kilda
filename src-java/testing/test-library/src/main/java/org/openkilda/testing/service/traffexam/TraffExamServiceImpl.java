@@ -248,14 +248,16 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
 
     @Override
     public ExamReport waitExam(Exam exam, boolean cleanup) {
-        ExamReport result = Failsafe.with(retryPolicy
-                .handleIf((t, u) -> u instanceof ExamNotFinishedException))
-                .get(() -> fetchReport(exam));
-
-        if (result != null && cleanup) {
-            stopExam(exam);
+        ExamReport result;
+        try {
+            result = Failsafe.with(retryPolicy
+                    .handleIf((t, u) -> u instanceof ExamNotFinishedException))
+                    .get(() -> fetchReport(exam));
+        } finally {
+            if (cleanup) {
+                stopExam(exam);
+            }
         }
-
         return result;
     }
 
