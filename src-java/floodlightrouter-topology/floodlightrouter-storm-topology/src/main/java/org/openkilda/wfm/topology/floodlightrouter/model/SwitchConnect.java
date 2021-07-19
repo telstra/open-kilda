@@ -15,9 +15,10 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.model;
 
+import org.openkilda.model.IpSocketAddress;
+
 import lombok.Value;
 
-import java.net.InetSocketAddress;
 import java.time.Instant;
 
 @Value
@@ -26,9 +27,9 @@ public class SwitchConnect {
 
     Instant connectedAt;
 
-    InetSocketAddress switchAddress;
+    IpSocketAddress switchAddress;
 
-    InetSocketAddress speakerAddress;
+    IpSocketAddress speakerAddress;
 
     /**
      * Manages setting of isActive flag.

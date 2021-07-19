@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.openkilda.messaging.model.SwitchPatch;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
@@ -31,8 +32,6 @@ import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import com.google.common.collect.Lists;
 import org.junit.Test;
 import org.mapstruct.factory.Mappers;
-
-import java.net.InetSocketAddress;
 
 public class SwitchMapperTest {
     private SwitchMapper switchMapper = Mappers.getMapper(SwitchMapper.class);
@@ -135,7 +134,7 @@ public class SwitchMapperTest {
     private Switch getSwitch() {
         return Switch.builder()
                 .switchId(new SwitchId(1))
-                .socketAddress(new InetSocketAddress("localhost", 5050))
+                .socketAddress(new IpSocketAddress("127.0.0.1", 5050))
                 .hostname("hostname")
                 .description("description")
                 .status(SwitchStatus.ACTIVE)

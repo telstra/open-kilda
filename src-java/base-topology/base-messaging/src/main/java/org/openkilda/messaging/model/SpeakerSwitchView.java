@@ -15,6 +15,7 @@
 
 package org.openkilda.messaging.model;
 
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
@@ -27,7 +28,6 @@ import lombok.Singular;
 import lombok.Value;
 
 import java.io.Serializable;
-import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -39,10 +39,13 @@ public class SpeakerSwitchView implements Serializable {
     private SwitchId datapath;
 
     @JsonProperty(value = "switch-socket", required = true)
-    private InetSocketAddress switchSocketAddress;
+    private IpSocketAddress switchSocketAddress;
 
     @JsonProperty(value = "speaker-socket", required = true)
-    private InetSocketAddress speakerSocketAddress;
+    private IpSocketAddress speakerSocketAddress;
+
+    @JsonProperty(value = "hostname")
+    String hostname;
 
     // TODO: move to enum
     @JsonProperty(value = "OF-version")
@@ -61,8 +64,9 @@ public class SpeakerSwitchView implements Serializable {
     @JsonCreator
     public SpeakerSwitchView(
             @JsonProperty("datapath") SwitchId datapath,
-            @JsonProperty("switch-socket") InetSocketAddress switchSocketAddress,
-            @JsonProperty("speaker-socket") InetSocketAddress speakerSocketAddress,
+            @JsonProperty("switch-socket") IpSocketAddress switchSocketAddress,
+            @JsonProperty("speaker-socket") IpSocketAddress speakerSocketAddress,
+            @JsonProperty("hostname") String hostname,
             @JsonProperty("OF-version") String ofVersion,
             @JsonProperty("description") SpeakerSwitchDescription description,
             @JsonProperty("features") Set<SwitchFeature> features,
@@ -70,6 +74,7 @@ public class SpeakerSwitchView implements Serializable {
         this.datapath = datapath;
         this.switchSocketAddress = switchSocketAddress;
         this.speakerSocketAddress = speakerSocketAddress;
+        this.hostname = hostname;
         this.ofVersion = ofVersion;
         this.description = description;
 

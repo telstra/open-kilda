@@ -33,6 +33,7 @@ import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.bluegreen.Signal;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.grpc.GetPacketInOutStatsRequest;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -56,7 +57,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.net.InetSocketAddress;
 import java.util.Collections;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -153,7 +153,7 @@ public class StatsRequesterBoltTest {
         String address = "192.168.1.1";
         Switch sw = Switch.builder()
                 .switchId(new SwitchId(1))
-                .socketAddress(new InetSocketAddress(address, 20))
+                .socketAddress(new IpSocketAddress(address, 20))
                 .build();
         sw.setOfDescriptionSoftware("NW500.1.1");
 

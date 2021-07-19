@@ -27,6 +27,7 @@ import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.messaging.model.grpc.LogicalPortType;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -53,7 +54,6 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.Optional;
 
@@ -231,8 +231,8 @@ public class BfdWorker extends WorkerBolt {
             return Optional.empty();
         }
 
-        InetSocketAddress address = sw.get().getSocketAddress();
-        return Optional.of(address.getAddress().getHostAddress());
+        IpSocketAddress address = sw.get().getSocketAddress();
+        return Optional.of(address.getAddress());
     }
 
     private ErrorData makeSwitchAddressNotFoundError(SwitchId switchId) {

@@ -22,6 +22,7 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.messaging.model.SwitchAvailabilityData;
 import org.openkilda.messaging.model.SwitchAvailabilityEntry;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.SwitchConnectMode;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.floodlightrouter.mapper.SwitchNotificationMapper;
@@ -34,7 +35,6 @@ import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMonitorCarrier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
-import java.net.InetSocketAddress;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -272,8 +272,8 @@ public class SwitchMonitor {
     }
 
     private SwitchConnect makeSwitchConnect(boolean isActive, SpeakerSwitchView speakerData) {
-        InetSocketAddress switchAddress = null;
-        InetSocketAddress speakerAddress = null;
+        IpSocketAddress switchAddress = null;
+        IpSocketAddress speakerAddress = null;
         if (speakerData != null) {
             switchAddress = speakerData.getSwitchSocketAddress();
             speakerAddress = speakerData.getSpeakerSocketAddress();

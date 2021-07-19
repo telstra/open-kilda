@@ -32,6 +32,7 @@ import org.openkilda.messaging.model.SpeakerSwitchPortView.State;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.messaging.model.SwitchAvailabilityData;
 import org.openkilda.messaging.model.SwitchAvailabilityEntry;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.SwitchConnectMode;
 import org.openkilda.model.SwitchId;
 import org.openkilda.stubs.ManualClock;
@@ -46,7 +47,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
@@ -509,8 +509,8 @@ public class SwitchMonitorServiceTest {
         String swAddress = String.format("127.0.%d.2", network);
         SpeakerSwitchView speakerView = SpeakerSwitchView.builder()
                 .datapath(switchId)
-                .switchSocketAddress(InetSocketAddress.createUnresolved(swAddress, 32769))
-                .speakerSocketAddress(InetSocketAddress.createUnresolved(String.format("127.0.%d.1", network), 6653))
+                .switchSocketAddress(new IpSocketAddress(swAddress, 32769))
+                .speakerSocketAddress(new IpSocketAddress(String.format("127.0.%d.1", network), 6653))
                 .ofVersion("OF_13")
                 .description(SpeakerSwitchDescription.builder()
                         .manufacturer("manufacturer")
@@ -525,7 +525,7 @@ public class SwitchMonitorServiceTest {
                 .build();
         return new SwitchInfoData(
                 SWITCH_ALPHA, SwitchChangeType.ACTIVATED,
-                swAddress, swAddress,
+                swAddress,
                 String.format("%s %s %s",
                         speakerView.getDescription().getManufacturer(),
                         speakerView.getOfVersion(),

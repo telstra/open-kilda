@@ -15,13 +15,13 @@
 
 package org.openkilda.persistence.dummy;
 
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchStatus;
 
 import lombok.Data;
 
-import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.Set;
 
@@ -29,7 +29,7 @@ import java.util.Set;
 public class SwitchDefaults {
     private SwitchStatus status = SwitchStatus.ACTIVE;
 
-    private InetSocketAddress socketAddress = new InetSocketAddress("127.0.0.1", 32768);
+    private IpSocketAddress socketAddress = new IpSocketAddress("127.0.0.1", 32768);
     private String hostname = "dummy.ofsw.local";
 
     Set<SwitchFeature> features = Collections.emptySet();

@@ -21,6 +21,7 @@ import static org.openkilda.wfm.topology.stats.StatsStreamType.STATS_REQUEST;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.grpc.GetPacketInOutStatsRequest;
 import org.openkilda.messaging.command.stats.StatsRequest;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
@@ -36,8 +37,6 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Optional;
 
@@ -96,8 +95,7 @@ public class StatsRequesterBolt extends AbstractBolt {
 
     private void emitGrpcStatsRequest(Tuple input, Switch sw) {
         Optional<String> address = Optional.ofNullable(sw.getSocketAddress())
-                .map(InetSocketAddress::getAddress)
-                .map(InetAddress::getHostAddress);
+                .map(IpSocketAddress::getAddress);
 
         if (!address.isPresent()) {
             return;

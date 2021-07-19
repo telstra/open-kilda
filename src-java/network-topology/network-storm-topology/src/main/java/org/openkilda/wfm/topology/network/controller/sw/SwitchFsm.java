@@ -23,6 +23,7 @@ import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.messaging.model.SwitchAvailabilityData;
 import org.openkilda.messaging.model.SwitchAvailabilityEntry;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Speaker;
 import org.openkilda.model.Switch;
@@ -63,7 +64,6 @@ import net.jodah.failsafe.RetryPolicy;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
-import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -169,7 +169,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         updateDumpGeneration(context);
 
         transactionManager.doInTransaction(
-                transactionRetryPolicy, () -> persistSwitchData(context.getAvailabilityData()));
+                transactionRetryPolicy,
+                () -> persistSwitchData(context.getSpeakerData(), context.getAvailabilityData()));
 
         performActionsDependingOnAttemptsCount(context);
     }
@@ -473,21 +474,21 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         port.updateOnlineStatus(context.getOutput(), onlineStatus);
     }
 
-    private void persistSwitchData(SwitchAvailabilityData availabilityData) {
+    private void persistSwitchData(SpeakerSwitchView speakerSwitchView, SwitchAvailabilityData availabilityData) {
         Switch sw = lookupSwitchCreateIfMissing();
 
-        InetSocketAddress socketAddress = speakerData.getSwitchSocketAddress();
+        IpSocketAddress socketAddress = speakerSwitchView.getSwitchSocketAddress();
 
         sw.setSocketAddress(socketAddress);
-        sw.setHostname(socketAddress.getHostName());
+        sw.setHostname(speakerSwitchView.getHostname());
 
-        SpeakerSwitchDescription description = speakerData.getDescription();
+        SpeakerSwitchDescription description = speakerSwitchView.getDescription();
         sw.setDescription(String.format("%s %s %s",
                 description.getManufacturer(),
-                speakerData.getOfVersion(),
+                speakerSwitchView.getOfVersion(),
                 description.getSoftware()));
 
-        sw.setOfVersion(speakerData.getOfVersion());
+        sw.setOfVersion(speakerSwitchView.getOfVersion());
         sw.setOfDescriptionManufacturer(description.getManufacturer());
         sw.setOfDescriptionHardware(description.getHardware());
         sw.setOfDescriptionSoftware(description.getSoftware());
@@ -496,7 +497,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
         sw.setStatus(SwitchStatus.INACTIVE);
 
-        sw.setFeatures(speakerData.getFeatures());
+        sw.setFeatures(speakerSwitchView.getFeatures());
 
         persistSwitchProperties(sw);
         persistSwitchConnections(sw, availabilityData);
@@ -558,7 +559,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     private void persistSingleSwitchConnect(Switch sw, SwitchAvailabilityEntry goal, SwitchConnect current) {
         SwitchConnect target = current;
-        if (current == null) {
+        if (target == null) {
             target = SwitchConnect.builder(lookupSpeakerCreateIfMissing(goal.getRegionName()), sw)
                     .mode(goal.getConnectMode())
                     .build();

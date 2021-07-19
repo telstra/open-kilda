@@ -34,7 +34,6 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
-import java.net.InetSocketAddress;
 import java.time.Instant;
 
 @DefaultSerializer(BeanSerializer.class)
@@ -56,7 +55,7 @@ public class SwitchConnect implements CompositeDataEntity<SwitchConnect.SwitchCo
     @Builder
     public SwitchConnect(
             @NonNull Speaker speaker, @NonNull Switch owner, SwitchConnectMode mode, boolean isMaster,
-            Instant connectedAt, InetSocketAddress switchAddress, InetSocketAddress speakerAddress) {
+            Instant connectedAt, IpSocketAddress switchAddress, IpSocketAddress speakerAddress) {
         this.data = SwitchConnectDataImpl.builder()
                 .speaker(speaker)
                 .owner(owner)
@@ -129,13 +128,13 @@ public class SwitchConnect implements CompositeDataEntity<SwitchConnect.SwitchCo
 
         void setConnectedAt(Instant connectedAt);
 
-        InetSocketAddress getSwitchAddress();
+        IpSocketAddress getSwitchAddress();
 
-        void setSwitchAddress(InetSocketAddress address);
+        void setSwitchAddress(IpSocketAddress address);
 
-        InetSocketAddress getSpeakerAddress();
+        IpSocketAddress getSpeakerAddress();
 
-        void setSpeakerAddress(InetSocketAddress address);
+        void setSpeakerAddress(IpSocketAddress address);
     }
 
     @Data
@@ -155,10 +154,10 @@ public class SwitchConnect implements CompositeDataEntity<SwitchConnect.SwitchCo
 
         boolean master;
 
-        Instant connectedAt;
+        private Instant connectedAt;
 
-        InetSocketAddress switchAddress;
-        InetSocketAddress speakerAddress;
+        private IpSocketAddress switchAddress;
+        private IpSocketAddress speakerAddress;
 
         public SwitchId getOwnerSwitchId() {
             return owner.getSwitchId();

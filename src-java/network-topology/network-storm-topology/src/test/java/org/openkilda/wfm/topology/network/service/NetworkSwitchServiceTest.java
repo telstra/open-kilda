@@ -42,6 +42,7 @@ import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.messaging.model.SpeakerSwitchPortView.State;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.FlowPathDirection;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Isl;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.Switch;
@@ -134,12 +135,10 @@ public class NetworkSwitchServiceTest {
             .datapath("OpenFlow switch AABBCC")
             .build();
 
-    private final InetSocketAddress speakerInetAddress = new InetSocketAddress(
-            Inet4Address.getByName("127.1.0.254"), 6653);
+    private final IpSocketAddress speakerInetAddress = new IpSocketAddress("127.1.0.254", 6653);
 
     private final SwitchId alphaDatapath = new SwitchId(1);
-    private final InetSocketAddress alphaInetAddress = new InetSocketAddress(
-            Inet4Address.getByName("127.1.0.1"), 32768);
+    private final IpSocketAddress alphaInetAddress = new IpSocketAddress("127.1.0.1", 32768);
 
     private final SwitchId betaDatapath = new SwitchId(2);
     private final InetSocketAddress betaInetAddress = new InetSocketAddress(
@@ -202,7 +201,7 @@ public class NetworkSwitchServiceTest {
 
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);
@@ -228,7 +227,7 @@ public class NetworkSwitchServiceTest {
 
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);
@@ -341,7 +340,7 @@ public class NetworkSwitchServiceTest {
 
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);
@@ -367,7 +366,7 @@ public class NetworkSwitchServiceTest {
 
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);
@@ -389,7 +388,7 @@ public class NetworkSwitchServiceTest {
 
         SwitchInfoData switchAddEvent2 = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView2);
@@ -436,7 +435,7 @@ public class NetworkSwitchServiceTest {
 
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);
@@ -523,7 +522,7 @@ public class NetworkSwitchServiceTest {
     public void portAddEventOnOnlineSwitch() {
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 getSpeakerSwitchView());
@@ -556,7 +555,7 @@ public class NetworkSwitchServiceTest {
 
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);
@@ -600,7 +599,7 @@ public class NetworkSwitchServiceTest {
 
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);
@@ -636,7 +635,7 @@ public class NetworkSwitchServiceTest {
 
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);
@@ -666,7 +665,7 @@ public class NetworkSwitchServiceTest {
 
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);
@@ -709,7 +708,7 @@ public class NetworkSwitchServiceTest {
 
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);
@@ -753,7 +752,7 @@ public class NetworkSwitchServiceTest {
 
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);
@@ -787,7 +786,7 @@ public class NetworkSwitchServiceTest {
 
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);
@@ -820,7 +819,7 @@ public class NetworkSwitchServiceTest {
 
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);
@@ -864,7 +863,7 @@ public class NetworkSwitchServiceTest {
 
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);
@@ -973,7 +972,7 @@ public class NetworkSwitchServiceTest {
 
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);

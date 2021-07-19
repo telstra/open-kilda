@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.NetworkConfig;
@@ -106,12 +107,15 @@ public class NetworkIntegrationTest {
                 new SpeakerSwitchPortView(2, SpeakerSwitchPortView.State.DOWN),
                 new SpeakerSwitchPortView(2 + bfdLocalPortOffset, SpeakerSwitchPortView.State.DOWN));
         SpeakerSwitchView speakerSwitchView = new SpeakerSwitchView(
-                alphaDatapath, alphaInetAddress, speakerInetAddress, "OF_13", switchDescription, features, ports);
+                alphaDatapath,
+                new IpSocketAddress(alphaInetAddress.getHostString(), alphaInetAddress.getPort()),
+                new IpSocketAddress(speakerInetAddress.getHostString(), speakerInetAddress.getPort()),
+                alphaInetAddress.getHostString(), "OF_13", switchDescription, features, ports);
 
         NetworkSwitchService switchService = integrationCarrier.getSwitchService();
         SwitchInfoData switchAddEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ADDED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);
@@ -119,7 +123,7 @@ public class NetworkIntegrationTest {
 
         SwitchInfoData switchActivateEvent = new SwitchInfoData(
                 alphaDatapath, SwitchChangeType.ACTIVATED,
-                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                alphaInetAddress.toString(), alphaDescription,
                 speakerInetAddress.toString(),
                 false,
                 speakerSwitchView);

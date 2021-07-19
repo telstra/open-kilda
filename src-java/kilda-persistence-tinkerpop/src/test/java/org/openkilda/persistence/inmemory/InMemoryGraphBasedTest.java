@@ -17,6 +17,7 @@ package org.openkilda.persistence.inmemory;
 
 import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
@@ -28,10 +29,6 @@ import org.openkilda.persistence.tx.TransactionManager;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.mockito.Mockito;
-
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 
 public abstract class InMemoryGraphBasedTest {
 
@@ -62,19 +59,15 @@ public abstract class InMemoryGraphBasedTest {
     }
 
     protected Switch createTestSwitch(SwitchId switchId) {
-        try {
-            Switch sw = Switch.builder()
-                    .switchId(switchId)
-                    .description("test_description")
-                    .socketAddress(new InetSocketAddress(InetAddress.getByName("10.0.0.1"), 30070))
-                    .controller("test_ctrl")
-                    .hostname("test_host_" + switchId)
-                    .status(SwitchStatus.ACTIVE)
-                    .build();
-            repositoryFactory.createSwitchRepository().add(sw);
-            return sw;
-        } catch (UnknownHostException e) {
-            throw new IllegalStateException(e);
-        }
+        Switch sw = Switch.builder()
+                .switchId(switchId)
+                .description("test_description")
+                .socketAddress(new IpSocketAddress("10.0.0.1", 30070))
+                .controller("test_ctrl")
+                .hostname("test_host_" + switchId)
+                .status(SwitchStatus.ACTIVE)
+                .build();
+        repositoryFactory.createSwitchRepository().add(sw);
+        return sw;
     }
 }

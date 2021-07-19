@@ -18,6 +18,7 @@ package org.openkilda.persistence.ferma.frames;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
@@ -30,7 +31,6 @@ import net.jodah.failsafe.function.CheckedSupplier;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -75,9 +75,8 @@ public class TimeModifyPropertyOnFramesTest extends InMemoryGraphBasedTest {
         Instant timeModifyBefore = transactionManager.doInTransaction(() -> createTestSwitch(1).getTimeModify());
         waitUntilNowIsAfter(timeModifyBefore);
 
-        transactionManager.doInTransaction(() -> {
-            switchRepository.findById(new SwitchId(1)).get().setSocketAddress(new InetSocketAddress(12345));
-        });
+        transactionManager.doInTransaction(() -> switchRepository.findById(
+                new SwitchId(1)).get().setSocketAddress(new IpSocketAddress("192.168.10.20", 12345)));
 
         Instant timeModifyAfter = switchRepository.findById(new SwitchId(1)).get().getTimeModify();
 
