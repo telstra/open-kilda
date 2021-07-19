@@ -276,13 +276,14 @@ namespace org::openkilda {
 
                     if (likely(eth->getDestMac() == src_mac && udp)) {
                         auto udpSrcPort = ntohs(udp->getUdpHeader()->portSrc);
-                        if (udpSrcPort == Config::flow_rtt_caught_packet_udp_src_port
-                                && udp->getLayerPayloadSize() == sizeof(FlowPayload)) {
+                        if (udpSrcPort == Config::flow_rtt_caught_packet_udp_src_port) {
                             packet_id++;
                             auto payload = reinterpret_cast<const org::openkilda::FlowPayload *>(udp->getLayerPayload());
                             auto packet = bucket.add_flowlatencypacket();
 
-                            BOOST_LOG_TRIVIAL(debug) << "flow_id: " << payload->flow_id << " "
+                            std::string flow_id(reinterpret_cast<const char*>(payload) + payload->flow_id_offset, payload->flow_id_length);
+
+                            BOOST_LOG_TRIVIAL(debug) << "flow_id: " << flow_id << " "
                                                      << "t0 raw: " << payload->t0 << " "
                                                      << "t1 raw: " << payload->t1 << " "
                                                      << "t0: " << be64toh(payload->t0) << " "
@@ -290,7 +291,7 @@ namespace org::openkilda {
                                                      << "packet_id: " << packet_id << " "
                                                      << "direction: " << payload->direction;
 
-                            packet->set_flow_id(payload->flow_id);
+                            packet->set_flow_id(flow_id);
                             packet->set_t0(be64toh(payload->t0));
 
                             if (payload->t1) {
@@ -411,13 +412,12 @@ namespace org::openkilda {
                 auto *udp_layer = parsed_packet.getLayerOfType<pcpp::UdpLayer>();
                 auto udpDstPort = ntohs(udp_layer->getUdpHeader()->portDst);
 
-                if (udpDstPort == Config::flow_rtt_generated_packet_udp_dst_port
-                    && udp_layer->getLayerPayloadSize() == sizeof(FlowPayload)) {
+                if (udpDstPort == Config::flow_rtt_generated_packet_udp_dst_port) {
                     udp_layer->getUdpHeader()->portSrc = htons(Config::flow_rtt_caught_packet_udp_src_port);
 
                     auto *payload = reinterpret_cast<org::openkilda::FlowPayload *>(udp_layer->getLayerPayload());
 
-                    std::string flow_id(payload->flow_id);
+                    std::string flow_id(reinterpret_cast<const char*>(payload) + payload->flow_id_offset, payload->flow_id_length);
 
                     if (!fake_duration.count(flow_id)) {
                         fake_duration[flow_id] = base_latency(rd) * cycles_in_1_ms;
