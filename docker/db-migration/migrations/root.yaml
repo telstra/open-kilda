@@ -36,3 +36,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 008-add-kilda-feature-toggles-class.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 009-cleanup-config-class.yaml

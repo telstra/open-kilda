@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: dpoltavets
+      changes:
+        - tagDatabase:
+            tag: 009-cleanup-config-class
+
+  - changeSet:
+      id: cleanup_config_class
+      author: dpoltavets
+      changes:
+        - sql: "DELETE VERTEX config"
+        - sql: "DROP CLASS config"
+        - sql: "DROP INDEX kilda_configuration.unique"
+        - sql: "UPDATE kilda_configuration REMOVE unique"
+        - sql: "DROP PROPERTY kilda_configuration.unique"
+      rollback:
+        - sql: "CREATE CLASS config IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY config.unique IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX config.unique UNIQUE_HASH_INDEX"
+        - sql: "INSERT INTO config FROM (SELECT FROM kilda_feature_toggles)"
+        - sql: "UPDATE config SET unique='config'"
+        - sql: "CREATE PROPERTY kilda_configuration.unique IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX kilda_configuration.unique UNIQUE_HASH_INDEX"
+        - sql: "UPDATE kilda_configuration SET unique='config'"
