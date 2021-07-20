@@ -1,0 +1,29 @@
+@startuml
+title Rule manager sequence diagram
+
+participant FlowHS
+participant SwitchManager
+database Database
+participant RuleManager
+
+== Flow operation ==
+
+FlowHS -> Database : get switches&flows
+Database -> FlowHS : required switches/flows info and properties
+FlowHS -> RuleManager : get rules for flow with path and network info
+activate RuleManager
+    RuleManager -> RuleManager : prepare OpenFlow style commands
+    RuleManager -> FlowHS : set of rules
+deactivate RuleManager
+
+== Switch validate/sync ==
+
+SwitchManager -> Database : get switches&flows
+Database -> SwitchManager : required switches/flows info and properties
+SwitchManager -> RuleManager : get rules for switch with flows and network info
+activate RuleManager
+    RuleManager -> RuleManager : prepare OpenFlow style commands
+    RuleManager -> SwitchManager : set of rules
+deactivate RuleManager
+
+@enduml
