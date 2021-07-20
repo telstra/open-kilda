@@ -75,6 +75,7 @@ class StormLcmSpec extends HealthCheckSpecification {
         def newRelation = database.dumpAllRelations()
         def newSwitches = database.dumpAllSwitches()
         expect newSwitches, sameBeanAs(switchesDump).ignoring("data.timeModify")
+                .ignoring("data.socketAddress.port")
         expect newRelation, sameBeanAs(relationsDump).ignoring("properties.time_modify")
                 .ignoring("properties.latency")
                 .ignoring("properties.time_create")
