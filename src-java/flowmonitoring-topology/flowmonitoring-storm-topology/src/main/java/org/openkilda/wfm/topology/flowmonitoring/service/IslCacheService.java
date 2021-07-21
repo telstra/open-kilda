@@ -30,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -46,9 +47,18 @@ public class IslCacheService {
         this.islRttLatencyExpiration = islRttLatencyExpiration;
 
         IslRepository islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
+        initCache(islRepository);
+    }
 
-        linkStates = islRepository.findAll().stream()
-                .collect(Collectors.toMap(LinkMapper.INSTANCE::toLink, (link) -> LinkState.builder().build()));
+    private void initCache(IslRepository islRepository) {
+        try {
+            linkStates = islRepository.findAll().stream()
+                    .collect(Collectors.toMap(LinkMapper.INSTANCE::toLink, (link) -> LinkState.builder().build()));
+            log.info("Isl cache initialized successfully.");
+        } catch (Exception e) {
+            log.error("Isl cache initialization exception. Empty cache is used.", e);
+            linkStates = new HashMap<>();
+        }
     }
 
     /**

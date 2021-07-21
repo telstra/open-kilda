@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -50,10 +51,19 @@ public class FlowCacheService {
         this.carrier = carrier;
 
         FlowRepository flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        initCache(flowRepository);
+    }
 
-        flowStates = flowRepository.findAll().stream()
-                .filter(flow -> !flow.isOneSwitchFlow())
-                .collect(Collectors.toMap(Flow::getFlowId, FlowMapper.INSTANCE::toFlowState));
+    private void initCache(FlowRepository flowRepository) {
+        try {
+            flowStates = flowRepository.findAll().stream()
+                    .filter(flow -> !flow.isOneSwitchFlow())
+                    .collect(Collectors.toMap(Flow::getFlowId, FlowMapper.INSTANCE::toFlowState));
+            log.info("Flow cache initialized successfully.");
+        } catch (Exception e) {
+            log.error("Flow cache initialization exception. Empty cache is used.", e);
+            flowStates = new HashMap<>();
+        }
     }
 
     /**
