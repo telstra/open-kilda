@@ -17,19 +17,18 @@ package org.openkilda.persistence.inmemory.repositories;
 
 import org.openkilda.model.LinkProps.LinkPropsData;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.LinkPropsFrame;
 import org.openkilda.persistence.ferma.repositories.FermaLinkPropsRepository;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceImplementation;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 /**
  * In-memory implementation of {@link LinkPropsRepository}.
  * Built on top of Tinkerpop / Ferma implementation.
  */
 public class InMemoryLinkPropsRepository extends FermaLinkPropsRepository {
-    InMemoryLinkPropsRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    InMemoryLinkPropsRepository(InMemoryGraphPersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override

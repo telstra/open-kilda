@@ -17,19 +17,18 @@ package org.openkilda.persistence.inmemory.repositories;
 
 import org.openkilda.model.FlowCookie.FlowCookieData;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.FlowCookieFrame;
 import org.openkilda.persistence.ferma.repositories.FermaFlowCookieRepository;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceImplementation;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 /**
  * In-memory implementation of {@link FlowCookieRepository}.
  * Built on top of Tinkerpop / Ferma implementation.
  */
 public class InMemoryFlowCookieRepository extends FermaFlowCookieRepository {
-    public InMemoryFlowCookieRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public InMemoryFlowCookieRepository(InMemoryGraphPersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override

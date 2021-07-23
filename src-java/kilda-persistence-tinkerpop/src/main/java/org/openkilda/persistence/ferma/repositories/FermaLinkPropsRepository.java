@@ -18,12 +18,11 @@ package org.openkilda.persistence.ferma.repositories;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.LinkProps.LinkPropsData;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.LinkPropsFrame;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
@@ -36,8 +35,8 @@ import java.util.stream.Collectors;
  */
 public class FermaLinkPropsRepository extends FermaGenericRepository<LinkProps, LinkPropsData, LinkPropsFrame>
         implements LinkPropsRepository {
-    public FermaLinkPropsRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaLinkPropsRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

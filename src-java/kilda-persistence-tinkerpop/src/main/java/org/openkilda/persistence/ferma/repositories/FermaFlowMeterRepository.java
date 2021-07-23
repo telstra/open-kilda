@@ -21,14 +21,13 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowMeterFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.converters.MeterIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
@@ -44,8 +43,8 @@ import java.util.stream.Collectors;
  */
 public class FermaFlowMeterRepository extends FermaGenericRepository<FlowMeter, FlowMeterData, FlowMeterFrame>
         implements FlowMeterRepository {
-    public FermaFlowMeterRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaFlowMeterRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

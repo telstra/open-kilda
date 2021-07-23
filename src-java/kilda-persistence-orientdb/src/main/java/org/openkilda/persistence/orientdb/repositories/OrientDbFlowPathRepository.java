@@ -23,9 +23,8 @@ import org.openkilda.persistence.ferma.frames.FlowPathFrame;
 import org.openkilda.persistence.ferma.frames.PathSegmentFrame;
 import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
 import org.openkilda.persistence.ferma.repositories.FermaFlowPathRepository;
-import org.openkilda.persistence.orientdb.OrientDbGraphFactory;
+import org.openkilda.persistence.orientdb.OrientDbPersistenceImplementation;
 import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import com.syncleus.ferma.FramedGraph;
 import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResult;
@@ -39,11 +38,11 @@ import java.util.stream.Collectors;
  * OrientDB implementation of {@link FlowPathRepository}.
  */
 public class OrientDbFlowPathRepository extends FermaFlowPathRepository {
-    private final OrientDbGraphFactory orientDbGraphFactory;
+    private final GraphSupplier graphSupplier;
 
-    OrientDbFlowPathRepository(OrientDbGraphFactory orientDbGraphFactory, TransactionManager transactionManager) {
-        super(orientDbGraphFactory, transactionManager);
-        this.orientDbGraphFactory = orientDbGraphFactory;
+    OrientDbFlowPathRepository(OrientDbPersistenceImplementation implementation, GraphSupplier graphSupplier) {
+        super(implementation);
+        this.graphSupplier = graphSupplier;
     }
 
     @Override
@@ -57,7 +56,7 @@ public class OrientDbFlowPathRepository extends FermaFlowPathRepository {
     }
 
     private Collection<PathId> findPathIdsByFlowGroupId(String groupIdProperty, String flowGroupId) {
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 format("SELECT %s FROM %s WHERE in('%s').%s = ?",
                         FlowPathFrame.PATH_ID_PROPERTY, FlowPathFrame.FRAME_LABEL,
                         FlowFrame.OWNS_PATHS_EDGE, groupIdProperty), flowGroupId)) {
@@ -71,7 +70,7 @@ public class OrientDbFlowPathRepository extends FermaFlowPathRepository {
     @Override
     protected long getUsedBandwidthBetweenEndpoints(FramedGraph framedGraph,
                                                     String srcSwitchId, int srcPort, String dstSwitchId, int dstPort) {
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 format("SELECT sum(%s) as bandwidth FROM %s WHERE %s = ? AND %s = ? AND %s = ? AND %s = ? AND %s = ?",
                         PathSegmentFrame.BANDWIDTH_PROPERTY,
                         PathSegmentFrame.FRAME_LABEL, PathSegmentFrame.SRC_SWITCH_ID_PROPERTY,

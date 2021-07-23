@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.nbworker;
 
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
@@ -136,7 +135,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .allGrouping(FlowMeterModifyHubBolt.ID, ZkStreams.ZK.toString())
                 .allGrouping(FlowValidationHubBolt.ID, ZkStreams.ZK.toString());
 
-        PersistenceManager persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
+        PersistenceManager persistenceManager = new PersistenceManager(configurationProvider);
 
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);

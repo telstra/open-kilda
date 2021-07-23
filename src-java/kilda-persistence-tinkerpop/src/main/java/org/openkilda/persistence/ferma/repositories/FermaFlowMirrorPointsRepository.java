@@ -22,7 +22,7 @@ import org.openkilda.model.GroupId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowMirrorPointsFrame;
 import org.openkilda.persistence.ferma.frames.FlowPathFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
@@ -31,7 +31,6 @@ import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
@@ -50,10 +49,9 @@ public class FermaFlowMirrorPointsRepository
         implements FlowMirrorPointsRepository {
     protected final FlowMirrorPathRepository flowMirrorPathRepository;
 
-    public FermaFlowMirrorPointsRepository(FramedGraphFactory<?> graphFactory,
-                                           FlowMirrorPathRepository flowMirrorPathRepository,
-                                           TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaFlowMirrorPointsRepository(
+            FermaPersistentImplementation implementation, FlowMirrorPathRepository flowMirrorPathRepository) {
+        super(implementation);
         this.flowMirrorPathRepository = flowMirrorPathRepository;
     }
 

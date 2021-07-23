@@ -15,18 +15,14 @@
 
 package org.openkilda.persistence.inmemory;
 
-import org.openkilda.persistence.tx.TransactionAdapter;
-import org.openkilda.persistence.tx.TransactionArea;
+import org.openkilda.persistence.tx.ImplementationTransactionAdapter;
 
-public class InMemoryTransactionAdapter extends TransactionAdapter {
+public class InMemoryTransactionAdapter
+        extends ImplementationTransactionAdapter<InMemoryGraphPersistenceImplementation> {
     private static final ThreadLocal<Boolean> fakedTransactions = ThreadLocal.withInitial(() -> false);
 
-    public InMemoryTransactionAdapter(TransactionArea area) {
-        super(area);
-    }
-
-    public static boolean isFakedTxOpen() {
-        return fakedTransactions.get();
+    public InMemoryTransactionAdapter(InMemoryGraphPersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override

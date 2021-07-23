@@ -19,9 +19,8 @@ import static java.lang.String.format;
 
 import org.openkilda.persistence.ferma.frames.FlowCookieFrame;
 import org.openkilda.persistence.ferma.repositories.FermaFlowCookieRepository;
-import org.openkilda.persistence.orientdb.OrientDbGraphFactory;
+import org.openkilda.persistence.orientdb.OrientDbPersistenceImplementation;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResult;
 import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResultSet;
@@ -33,16 +32,16 @@ import java.util.Optional;
  * OrientDB implementation of {@link FlowCookieRepository}.
  */
 public class OrientDbFlowCookieRepository extends FermaFlowCookieRepository {
-    private final OrientDbGraphFactory orientDbGraphFactory;
+    private final GraphSupplier graphSupplier;
 
-    OrientDbFlowCookieRepository(OrientDbGraphFactory orientDbGraphFactory, TransactionManager transactionManager) {
-        super(orientDbGraphFactory, transactionManager);
-        this.orientDbGraphFactory = orientDbGraphFactory;
+    OrientDbFlowCookieRepository(OrientDbPersistenceImplementation implementation, GraphSupplier graphSupplier) {
+        super(implementation);
+        this.graphSupplier = graphSupplier;
     }
 
     @Override
     public boolean exists(long unmaskedCookie) {
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 format("SELECT @rid FROM %s WHERE %s = ? LIMIT 1",
                         FlowCookieFrame.FRAME_LABEL, FlowCookieFrame.UNMASKED_COOKIE_PROPERTY), unmaskedCookie)) {
             return results.iterator().hasNext();
@@ -51,7 +50,7 @@ public class OrientDbFlowCookieRepository extends FermaFlowCookieRepository {
 
     @Override
     public Optional<Long> findFirstUnassignedCookie(long lowestCookieValue, long highestCookieValue) {
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 format("SELECT FROM (SELECT difference(unionAll($init_cookie, $next_to_cookies).cookie, "
                                 + "$cookies.cookie) as cookie "
                                 + "LET $init_cookie = (SELECT %sL as cookie), "

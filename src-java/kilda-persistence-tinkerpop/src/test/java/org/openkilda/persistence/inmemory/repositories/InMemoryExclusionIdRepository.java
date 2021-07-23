@@ -17,19 +17,18 @@ package org.openkilda.persistence.inmemory.repositories;
 
 import org.openkilda.model.ExclusionId.ExclusionIdData;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.ExclusionIdFrame;
 import org.openkilda.persistence.ferma.repositories.FermaExclusionIdRepository;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceImplementation;
 import org.openkilda.persistence.repositories.ExclusionIdRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 /**
  * In-memory implementation of {@link ExclusionIdRepository}.
  * Built on top of Tinkerpop / Ferma implementation.
  */
 public class InMemoryExclusionIdRepository extends FermaExclusionIdRepository {
-    InMemoryExclusionIdRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    InMemoryExclusionIdRepository(InMemoryGraphPersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override

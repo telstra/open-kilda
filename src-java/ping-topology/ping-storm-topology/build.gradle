@@ -16,7 +16,7 @@ dependencies {
     implementation project(':floodlight-api')
     implementation project(':blue-green')
     runtimeClasspath project(':kilda-persistence-orientdb')
-    runtimeClasspath project(':kilda-persistence-mixture')
+    runtimeClasspath project(':kilda-persistence-hibernate')
     aspect project(':kilda-persistence-api')
 
     compileOnly('org.apache.storm:storm-core')

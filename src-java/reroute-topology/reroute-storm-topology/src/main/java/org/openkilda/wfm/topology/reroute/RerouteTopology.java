@@ -26,7 +26,6 @@ import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PA
 
 import org.openkilda.messaging.Message;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
@@ -74,7 +73,7 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
 
         declareKafkaSpout(topologyBuilder, topologyConfig.getKafkaTopoRerouteTopic(), SPOUT_ID_REROUTE);
 
-        PersistenceManager persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
+        PersistenceManager persistenceManager = new PersistenceManager(configurationProvider);
 
         rerouteBolt(topologyBuilder, persistenceManager);
         rerouteQueueBolt(topologyBuilder, persistenceManager);

@@ -22,7 +22,7 @@ import org.openkilda.model.Switch.SwitchData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowPathFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.SwitchConnectFrame;
@@ -30,7 +30,6 @@ import org.openkilda.persistence.ferma.frames.SwitchFrame;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchStatusConverter;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.persistence.tx.TransactionRequired;
 
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
@@ -52,8 +51,8 @@ import java.util.stream.Stream;
  */
 public class FermaSwitchRepository extends FermaGenericRepository<Switch, SwitchData, SwitchFrame>
         implements SwitchRepository {
-    public FermaSwitchRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaSwitchRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

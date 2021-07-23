@@ -18,13 +18,9 @@ package org.openkilda.persistence.hibernate.repositories;
 import org.openkilda.model.history.FlowEventDump;
 import org.openkilda.model.history.FlowEventDump.FlowEventDumpCloner;
 import org.openkilda.model.history.FlowEventDump.FlowEventDumpData;
+import org.openkilda.persistence.hibernate.HibernatePersistenceImplementation;
 import org.openkilda.persistence.hibernate.entities.history.HibernateFlowEventDump;
 import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
-import org.openkilda.persistence.tx.TransactionManager;
-
-import org.hibernate.SessionFactory;
-
-import java.util.function.Supplier;
 
 public class HibernateHistoryFlowEventDumpRepository
         extends HibernateGenericRepository<FlowEventDump, FlowEventDumpData, HibernateFlowEventDump>
@@ -32,9 +28,9 @@ public class HibernateHistoryFlowEventDumpRepository
     private final HibernateHistoryFlowEventRepository flowEventRepository;
 
     public HibernateHistoryFlowEventDumpRepository(
-            TransactionManager transactionManager, Supplier<SessionFactory> factorySupplier,
+            HibernatePersistenceImplementation implementation,
             HibernateHistoryFlowEventRepository flowEventRepository) {
-        super(transactionManager, factorySupplier);
+        super(implementation);
         this.flowEventRepository = flowEventRepository;
     }
 

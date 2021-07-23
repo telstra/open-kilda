@@ -18,11 +18,10 @@ package org.openkilda.persistence.ferma.repositories;
 import org.openkilda.model.ExclusionId;
 import org.openkilda.model.ExclusionId.ExclusionIdData;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.ExclusionIdFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.repositories.ExclusionIdRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
@@ -39,8 +38,8 @@ import java.util.stream.Collectors;
 public class FermaExclusionIdRepository extends FermaGenericRepository<ExclusionId, ExclusionIdData, ExclusionIdFrame>
         implements ExclusionIdRepository {
 
-    public FermaExclusionIdRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaExclusionIdRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

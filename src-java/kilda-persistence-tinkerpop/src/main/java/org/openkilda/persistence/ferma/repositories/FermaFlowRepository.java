@@ -22,7 +22,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowFrame;
 import org.openkilda.persistence.ferma.frames.FlowPathFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
@@ -56,9 +56,9 @@ import java.util.stream.Collectors;
 public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, FlowFrame> implements FlowRepository {
     protected final FlowPathRepository flowPathRepository;
 
-    public FermaFlowRepository(FramedGraphFactory<?> graphFactory, FlowPathRepository flowPathRepository,
-                               TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaFlowRepository(
+            FermaPersistentImplementation implementation, FlowPathRepository flowPathRepository) {
+        super(implementation);
         this.flowPathRepository = flowPathRepository;
     }
 
@@ -407,7 +407,7 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
 
     @Override
     public Optional<String> getOrCreateDiverseFlowGroupId(String flowId) {
-        return transactionManager.doInTransaction(() -> findById(flowId)
+        return getTransactionManager().doInTransaction(() -> findById(flowId)
                 .map(diverseFlow -> {
                     if (diverseFlow.getDiverseGroupId() == null) {
                         String groupId = UUID.randomUUID().toString();
@@ -419,13 +419,13 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
 
     @Override
     public Optional<String> getDiverseFlowGroupId(String flowId) {
-        return transactionManager.doInTransaction(() -> findById(flowId)
+        return getTransactionManager().doInTransaction(() -> findById(flowId)
                 .map(Flow::getDiverseGroupId));
     }
 
     @Override
     public Optional<String> getOrCreateAffinityFlowGroupId(String flowId) {
-        return transactionManager.doInTransaction(() -> findById(flowId)
+        return getTransactionManager().doInTransaction(() -> findById(flowId)
                 .map(affinityFlow -> {
                     if (affinityFlow.getAffinityGroupId() == null) {
                         // The flow id is used as an affinity group id in order to understand
@@ -438,13 +438,13 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
 
     @Override
     public Optional<String> getAffinityFlowGroupId(String flowId) {
-        return transactionManager.doInTransaction(() -> findById(flowId)
+        return getTransactionManager().doInTransaction(() -> findById(flowId)
                 .map(Flow::getAffinityGroupId));
     }
 
     @Override
     public void updateDiverseFlowGroupId(@NonNull String flowId, String diverseGroupId) {
-        transactionManager.doInTransaction(() ->
+        getTransactionManager().doInTransaction(() ->
                 framedGraph().traverse(g -> g.V()
                                 .hasLabel(FlowFrame.FRAME_LABEL)
                                 .has(FlowFrame.FLOW_ID_PROPERTY, flowId))
@@ -456,7 +456,7 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
 
     @Override
     public void updateAffinityFlowGroupId(@NonNull String flowId, String affinityGroupId) {
-        transactionManager.doInTransaction(() ->
+        getTransactionManager().doInTransaction(() ->
                 framedGraph().traverse(g -> g.V()
                                 .hasLabel(FlowFrame.FRAME_LABEL)
                                 .has(FlowFrame.FLOW_ID_PROPERTY, flowId))
@@ -469,7 +469,7 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
 
     @Override
     public void updateStatus(@NonNull String flowId, @NonNull FlowStatus flowStatus) {
-        transactionManager.doInTransaction(() ->
+        getTransactionManager().doInTransaction(() ->
                 framedGraph().traverse(g -> g.V()
                         .hasLabel(FlowFrame.FRAME_LABEL)
                         .has(FlowFrame.FLOW_ID_PROPERTY, flowId))
@@ -481,7 +481,7 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
 
     @Override
     public void updateStatus(String flowId, FlowStatus flowStatus, String flowStatusInfo) {
-        transactionManager.doInTransaction(() ->
+        getTransactionManager().doInTransaction(() ->
                 framedGraph().traverse(g -> g.V()
                         .hasLabel(FlowFrame.FRAME_LABEL)
                         .has(FlowFrame.FLOW_ID_PROPERTY, flowId))
@@ -494,7 +494,7 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
 
     @Override
     public void updateStatusInfo(String flowId, String flowStatusInfo) {
-        transactionManager.doInTransaction(() ->
+        getTransactionManager().doInTransaction(() ->
                 framedGraph().traverse(g -> g.V()
                         .hasLabel(FlowFrame.FRAME_LABEL)
                         .has(FlowFrame.FLOW_ID_PROPERTY, flowId))
@@ -535,6 +535,7 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
 
     @Override
     public Optional<Flow> remove(String flowId) {
+        TransactionManager transactionManager = getTransactionManager();
         if (transactionManager.isTxOpen()) {
             // This implementation removes dependant entities (paths, segments) in a separate transactions,
             // so the flow entity may require to be reloaded in a case of failed transaction.

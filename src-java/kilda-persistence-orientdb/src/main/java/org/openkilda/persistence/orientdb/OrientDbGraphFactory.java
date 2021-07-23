@@ -15,7 +15,6 @@
 
 package org.openkilda.persistence.orientdb;
 
-import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.persistence.ferma.AnnotationFrameFactoryWithConverterSupport;
 import org.openkilda.persistence.ferma.FramedGraphFactory;
@@ -41,14 +40,11 @@ import java.io.Serializable;
  */
 @Slf4j
 public class OrientDbGraphFactory implements FramedGraphFactory<DelegatingFramedGraph<?>>, Serializable {
-    private final ThreadLocalPersistenceContextManagerSupplier contextManagerSupplier;
     private final OrientDbConfig config;
 
     private transient volatile Connect connect;
 
-    OrientDbGraphFactory(
-            ThreadLocalPersistenceContextManagerSupplier contextManagerSupplier, @NonNull OrientDbConfig config) {
-        this.contextManagerSupplier = contextManagerSupplier;
+    OrientDbGraphFactory(@NonNull OrientDbConfig config) {
         this.config = config;
     }
 
@@ -58,31 +54,20 @@ public class OrientDbGraphFactory implements FramedGraphFactory<DelegatingFramed
      */
     @Override
     public DelegatingFramedGraph<OrientGraph> getGraph() {
-        ThreadLocalPersistenceContextManager contextManager = contextManagerSupplier.get();
-        if (!contextManager.isContextInitialized()) {
-            throw new PersistenceException("Persistence context is not initialized");
-        }
+        Connect effectiveConnect = getConnectCreateIfMissing();
 
-        DelegatingFramedGraph<OrientGraph> result = contextManager.getCurrentGraph();
-        if (result == null) {
-            Connect effectiveConnect = getConnectCreateIfMissing();
+        OrientGraphFactory factory = effectiveConnect.getFactory();
+        log.debug("Opening a framed graph for {}", factory);
 
-            OrientGraphFactory factory = effectiveConnect.getFactory();
-            log.debug("Opening a framed graph for {}", factory);
+        OrientGraph orientGraph = Failsafe.with(newPoolAcquireRetryPolicy()).get(() -> {
+            OrientGraph obtainedGraph = factory.getTx();
+            validateGraph(obtainedGraph);
+            return obtainedGraph;
+        });
 
-            OrientGraph orientGraph = Failsafe.with(newPoolAcquireRetryPolicy()).get(() -> {
-                OrientGraph obtainedGraph = factory.getTx();
-                validateGraph(obtainedGraph);
-                return obtainedGraph;
-            });
-
-            log.debug("OrientGraph instance has been created: {}", orientGraph);
-            result = new DelegatingFramedGraph<>(
-                    orientGraph, effectiveConnect.getBuilder(), effectiveConnect.getTypeResolver());
-
-            contextManager.setCurrentGraph(result);
-        }
-        return result;
+        log.debug("OrientGraph instance has been created: {}", orientGraph);
+        return new DelegatingFramedGraph<>(
+                orientGraph, effectiveConnect.getBuilder(), effectiveConnect.getTypeResolver());
     }
 
     private RetryPolicy<OrientGraph> newPoolAcquireRetryPolicy() {
@@ -105,10 +90,6 @@ public class OrientDbGraphFactory implements FramedGraphFactory<DelegatingFramed
                 throw new RecoverablePersistenceException("Failed to execute the test query");
             }
         }
-    }
-
-    public OrientGraph getOrientGraph() {
-        return getGraph().getBaseGraph();
     }
 
     private Connect getConnectCreateIfMissing() {

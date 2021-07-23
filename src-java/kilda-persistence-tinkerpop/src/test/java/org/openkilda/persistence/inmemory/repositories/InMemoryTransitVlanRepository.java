@@ -17,19 +17,18 @@ package org.openkilda.persistence.inmemory.repositories;
 
 import org.openkilda.model.TransitVlan.TransitVlanData;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.TransitVlanFrame;
 import org.openkilda.persistence.ferma.repositories.FermaTransitVlanRepository;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceImplementation;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 /**
  * In-memory implementation of {@link TransitVlanRepository}.
  * Built on top of Tinkerpop / Ferma implementation.
  */
 public class InMemoryTransitVlanRepository extends FermaTransitVlanRepository {
-    public InMemoryTransitVlanRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public InMemoryTransitVlanRepository(InMemoryGraphPersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override

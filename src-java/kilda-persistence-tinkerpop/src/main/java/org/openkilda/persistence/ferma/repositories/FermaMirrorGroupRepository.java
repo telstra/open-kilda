@@ -21,7 +21,7 @@ import org.openkilda.model.MirrorGroup.MirrorGroupData;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowMeterFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.MirrorGroupFrame;
@@ -29,7 +29,6 @@ import org.openkilda.persistence.ferma.frames.converters.GroupIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
@@ -46,8 +45,8 @@ import java.util.stream.Collectors;
 public class FermaMirrorGroupRepository extends FermaGenericRepository<MirrorGroup, MirrorGroupData, MirrorGroupFrame>
         implements MirrorGroupRepository {
 
-    public FermaMirrorGroupRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaMirrorGroupRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

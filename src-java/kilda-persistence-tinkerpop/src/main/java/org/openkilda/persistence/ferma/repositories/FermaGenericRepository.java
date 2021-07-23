@@ -16,11 +16,16 @@
 package org.openkilda.persistence.ferma.repositories;
 
 import org.openkilda.model.CompositeDataEntity;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.context.PersistenceContext;
+import org.openkilda.persistence.context.PersistenceContextManager;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaContextExtension;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.repositories.Repository;
 import org.openkilda.persistence.tx.TransactionManager;
 
+import com.syncleus.ferma.DelegatingFramedGraph;
 import com.syncleus.ferma.ElementFrame;
 import com.syncleus.ferma.FramedGraph;
 import lombok.extern.slf4j.Slf4j;
@@ -32,17 +37,18 @@ import java.util.Optional;
  * Base repository implementation.
  */
 @Slf4j
-abstract class FermaGenericRepository<E extends CompositeDataEntity<D>, D, F extends D> implements Repository<E> {
-    private final FramedGraphFactory<?> graphFactory;
-    protected final TransactionManager transactionManager;
+public abstract class FermaGenericRepository<E extends CompositeDataEntity<D>, D, F extends D>
+        implements Repository<E> {
+    protected final FermaPersistentImplementation implementation;
 
-    FermaGenericRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        this.graphFactory = graphFactory;
-        this.transactionManager = transactionManager;
+    FermaGenericRepository(FermaPersistentImplementation implementation) {
+        this.implementation = implementation;
     }
 
     protected FramedGraph framedGraph() {
-        FramedGraph graph = graphFactory.getGraph();
+        PersistenceContext context = PersistenceContextManager.INSTANCE.getContextCreateIfMissing();
+        FermaContextExtension contextExtension = implementation.getContextExtension(context);
+        DelegatingFramedGraph<?> graph = contextExtension.getGraphCreateIfMissing();
         if (graph == null) {
             throw new PersistenceException("Failed to obtain a framed graph");
         }
@@ -55,7 +61,7 @@ abstract class FermaGenericRepository<E extends CompositeDataEntity<D>, D, F ext
         if (data instanceof ElementFrame) {
             throw new IllegalArgumentException("Can't add entity " + entity + " which is already framed graph element");
         }
-        transactionManager.doInTransaction(() -> entity.setData(doAdd(data)));
+        getTransactionManager().doInTransaction(() -> entity.setData(doAdd(data)));
     }
 
     protected abstract F doAdd(D data);
@@ -66,7 +72,7 @@ abstract class FermaGenericRepository<E extends CompositeDataEntity<D>, D, F ext
     public void remove(E entity) {
         //TODO: replace with @TransactionRequired. Requirement for an outside transaction comes from the case when
         //the entity must be reloaded with the actual version to have the transaction succeeded.
-        if (!transactionManager.isTxOpen()) {
+        if (!getTransactionManager().isTxOpen()) {
             throw new PersistenceException("A transactional method was invoked outside a transaction.");
         }
 
@@ -92,6 +98,11 @@ abstract class FermaGenericRepository<E extends CompositeDataEntity<D>, D, F ext
     }
 
     protected abstract D doDetach(E entity, F frame);
+
+    protected TransactionManager getTransactionManager() {
+        PersistenceManager manager = PersistenceContextManager.INSTANCE.getPersistenceManager();
+        return manager.getTransactionManager(implementation.getType());
+    }
 
     protected Optional<F> makeOneOrZeroResults(List<? extends F> results) {
         if (results.size() > 1) {

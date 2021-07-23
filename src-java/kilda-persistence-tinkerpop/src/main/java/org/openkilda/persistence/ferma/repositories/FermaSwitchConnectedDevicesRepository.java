@@ -22,13 +22,12 @@ import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchConnectedDevice.SwitchConnectedDeviceData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame;
 import org.openkilda.persistence.ferma.frames.converters.ConnectedDeviceTypeConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -40,8 +39,8 @@ import java.util.stream.Collectors;
 public class FermaSwitchConnectedDevicesRepository
         extends FermaGenericRepository<SwitchConnectedDevice, SwitchConnectedDeviceData, SwitchConnectedDeviceFrame>
         implements SwitchConnectedDeviceRepository {
-    FermaSwitchConnectedDevicesRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    FermaSwitchConnectedDevicesRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

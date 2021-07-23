@@ -23,9 +23,8 @@ import org.openkilda.persistence.ferma.frames.FlowMeterFrame;
 import org.openkilda.persistence.ferma.frames.converters.MeterIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.ferma.repositories.FermaFlowMeterRepository;
-import org.openkilda.persistence.orientdb.OrientDbGraphFactory;
+import org.openkilda.persistence.orientdb.OrientDbPersistenceImplementation;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResult;
 import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResultSet;
@@ -37,18 +36,18 @@ import java.util.Optional;
  * OrientDB implementation of {@link FlowMeterRepository}.
  */
 public class OrientDbFlowMeterRepository extends FermaFlowMeterRepository {
-    private final OrientDbGraphFactory orientDbGraphFactory;
+    private final GraphSupplier graphSupplier;
 
-    OrientDbFlowMeterRepository(OrientDbGraphFactory orientDbGraphFactory, TransactionManager transactionManager) {
-        super(orientDbGraphFactory, transactionManager);
-        this.orientDbGraphFactory = orientDbGraphFactory;
+    OrientDbFlowMeterRepository(OrientDbPersistenceImplementation implementation, GraphSupplier graphSupplier) {
+        super(implementation);
+        this.graphSupplier = graphSupplier;
     }
 
     @Override
     public boolean exists(SwitchId switchId, MeterId meterId) {
         String switchIdAsStr = SwitchIdConverter.INSTANCE.toGraphProperty(switchId);
         Long meterIdAsLong = MeterIdConverter.INSTANCE.toGraphProperty(meterId);
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 format("SELECT @rid FROM %s WHERE %s = ? AND %s = ? LIMIT 1",
                         FlowMeterFrame.FRAME_LABEL, FlowMeterFrame.SWITCH_PROPERTY,
                         FlowMeterFrame.METER_ID_PROPERTY), switchIdAsStr, meterIdAsLong)) {
@@ -63,7 +62,7 @@ public class OrientDbFlowMeterRepository extends FermaFlowMeterRepository {
         Long lowestMeterIdAsLong = MeterIdConverter.INSTANCE.toGraphProperty(lowestMeterId);
         Long highestMeterIdAsLong = MeterIdConverter.INSTANCE.toGraphProperty(highestMeterId);
 
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 format("SELECT FROM (SELECT difference(unionAll($init_meter, $next_to_meters).meter, "
                                 + "$meters.meter) as meter "
                                 + "LET $init_meter = (SELECT %sL as meter), "

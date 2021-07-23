@@ -18,11 +18,10 @@ package org.openkilda.persistence.ferma.repositories;
 import org.openkilda.model.FlowCookie;
 import org.openkilda.model.FlowCookie.FlowCookieData;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowCookieFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
@@ -38,8 +37,8 @@ import java.util.stream.Collectors;
  */
 public class FermaFlowCookieRepository extends FermaGenericRepository<FlowCookie, FlowCookieData, FlowCookieFrame>
         implements FlowCookieRepository {
-    public FermaFlowCookieRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaFlowCookieRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

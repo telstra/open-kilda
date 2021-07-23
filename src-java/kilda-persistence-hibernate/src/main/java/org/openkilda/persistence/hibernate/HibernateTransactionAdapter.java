@@ -15,8 +15,9 @@
 
 package org.openkilda.persistence.hibernate;
 
-import org.openkilda.persistence.tx.TransactionAdapter;
-import org.openkilda.persistence.tx.TransactionArea;
+import org.openkilda.persistence.context.PersistenceContext;
+import org.openkilda.persistence.context.PersistenceContextManager;
+import org.openkilda.persistence.tx.ImplementationTransactionAdapter;
 
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.Session;
@@ -24,22 +25,17 @@ import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.context.internal.ManagedSessionContext;
 
-import java.util.function.Supplier;
-
 @Slf4j
-public class HibernateTransactionAdapter extends TransactionAdapter {
-    private final Supplier<SessionFactory> factorySupplier;
+public class HibernateTransactionAdapter extends ImplementationTransactionAdapter<HibernatePersistenceImplementation> {
     private Session session;
 
-    public HibernateTransactionAdapter(TransactionArea area, Supplier<SessionFactory> factorySupplier) {
-        super(area);
-        this.factorySupplier = factorySupplier;
+    public HibernateTransactionAdapter(HibernatePersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override
     public void open() throws Exception {
-        SessionFactory factory = factorySupplier.get();
-        session = factory.openSession();
+        session = getSessionFactory().openSession();
         ManagedSessionContext.bind(session);
 
         log.debug("Open new hibernate transaction in thread {}", Thread.currentThread().getName());
@@ -74,8 +70,14 @@ public class HibernateTransactionAdapter extends TransactionAdapter {
         } catch (Exception e) {
             throw wrapException(e);
         } finally {
-            ManagedSessionContext.unbind(factorySupplier.get());
+            ManagedSessionContext.unbind(getSessionFactory());
             session.close();
         }
+    }
+
+    private SessionFactory getSessionFactory() {
+        PersistenceContext context = PersistenceContextManager.INSTANCE.getContextCreateIfMissing();
+        HibernateContextExtension contextExtension = getImplementation().getContextExtension(context);
+        return contextExtension.getSessionFactoryCreateIfMissing();
     }
 }

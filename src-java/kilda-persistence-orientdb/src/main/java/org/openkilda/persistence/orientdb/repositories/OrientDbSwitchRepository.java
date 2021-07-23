@@ -21,9 +21,8 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.ferma.frames.SwitchFrame;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.ferma.repositories.FermaSwitchRepository;
-import org.openkilda.persistence.orientdb.OrientDbGraphFactory;
+import org.openkilda.persistence.orientdb.OrientDbPersistenceImplementation;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResultSet;
 
@@ -31,16 +30,16 @@ import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResultSet;
  * OrientDB implementation of {@link SwitchRepository}.
  */
 public class OrientDbSwitchRepository extends FermaSwitchRepository {
-    private final OrientDbGraphFactory orientDbGraphFactory;
+    private final GraphSupplier graphSupplier;
 
-    OrientDbSwitchRepository(OrientDbGraphFactory orientDbGraphFactory, TransactionManager transactionManager) {
-        super(orientDbGraphFactory, transactionManager);
-        this.orientDbGraphFactory = orientDbGraphFactory;
+    OrientDbSwitchRepository(OrientDbPersistenceImplementation implementation, GraphSupplier graphSupplier) {
+        super(implementation);
+        this.graphSupplier = graphSupplier;
     }
 
     @Override
     public boolean exists(SwitchId switchId) {
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 format("SELECT @rid FROM %s WHERE %s = ? LIMIT 1",
                         SwitchFrame.FRAME_LABEL, SwitchFrame.SWITCH_ID_PROPERTY),
                 SwitchIdConverter.INSTANCE.toGraphProperty(switchId))) {

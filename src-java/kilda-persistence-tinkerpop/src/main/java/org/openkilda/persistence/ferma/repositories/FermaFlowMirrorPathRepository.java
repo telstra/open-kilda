@@ -21,7 +21,7 @@ import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowMirrorPathFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.PathSegmentFrame;
@@ -43,8 +43,8 @@ import java.util.stream.Collectors;
 public class FermaFlowMirrorPathRepository
         extends FermaGenericRepository<FlowMirrorPath, FlowMirrorPathData, FlowMirrorPathFrame>
         implements FlowMirrorPathRepository {
-    public FermaFlowMirrorPathRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaFlowMirrorPathRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override
@@ -106,7 +106,7 @@ public class FermaFlowMirrorPathRepository
 
     @Override
     public void updateStatus(PathId pathId, FlowPathStatus pathStatus) {
-        transactionManager.doInTransaction(() ->
+        getTransactionManager().doInTransaction(() ->
                 framedGraph().traverse(g -> g.V()
                         .hasLabel(FlowMirrorPathFrame.FRAME_LABEL)
                         .has(FlowMirrorPathFrame.PATH_ID_PROPERTY, PathIdConverter.INSTANCE.toGraphProperty(pathId)))
@@ -116,6 +116,7 @@ public class FermaFlowMirrorPathRepository
 
     @Override
     public Optional<FlowMirrorPath> remove(PathId pathId) {
+        TransactionManager transactionManager = getTransactionManager();
         if (transactionManager.isTxOpen()) {
             // This implementation removes dependant entities (segments) in a separate transactions,
             // so the path entity may require to be reloaded in a case of failed transaction.

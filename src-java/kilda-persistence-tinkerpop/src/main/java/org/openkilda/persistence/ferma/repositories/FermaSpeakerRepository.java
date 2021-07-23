@@ -17,18 +17,17 @@ package org.openkilda.persistence.ferma.repositories;
 
 import org.openkilda.model.Speaker;
 import org.openkilda.model.Speaker.SpeakerData;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.SpeakerFrame;
 import org.openkilda.persistence.repositories.SpeakerRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import java.util.Optional;
 
 public class FermaSpeakerRepository extends FermaGenericRepository<Speaker, SpeakerData, SpeakerFrame>
         implements SpeakerRepository {
-    public FermaSpeakerRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaSpeakerRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

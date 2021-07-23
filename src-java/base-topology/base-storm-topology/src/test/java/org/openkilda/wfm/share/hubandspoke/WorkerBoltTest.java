@@ -21,9 +21,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -74,8 +72,7 @@ public class WorkerBoltTest {
 
     @BeforeClass
     public static void initPersistenceManager() {
-        PersistenceProvider.makeDefault(
-                new InMemoryGraphPersistenceManager(new PropertiesBasedConfigurationProvider()));
+        InMemoryGraphPersistenceManager.newInstance().install();
     }
 
     @Before

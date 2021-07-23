@@ -19,7 +19,6 @@ import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 import static org.openkilda.testing.Constants.DEFAULT_COST;
 
-import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.Flow;
@@ -33,10 +32,12 @@ import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.model.history.FlowEvent;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.context.PersistenceContext;
+import org.openkilda.persistence.context.PersistenceContextManager;
 import org.openkilda.persistence.ferma.frames.IslFrame;
 import org.openkilda.persistence.ferma.frames.SwitchFrame;
-import org.openkilda.persistence.orientdb.OrientDbPersistenceManager;
-import org.openkilda.persistence.orientdb.ThreadLocalPersistenceContextManagerSupplier;
+import org.openkilda.persistence.orientdb.OrientDbContextExtension;
+import org.openkilda.persistence.orientdb.OrientDbPersistenceImplementation;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -46,9 +47,6 @@ import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
-import org.openkilda.persistence.spi.PersistenceManagerSupplier;
-import org.openkilda.persistence.tx.FlatTransactionLayout;
-import org.openkilda.persistence.tx.TransactionArea;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
@@ -72,9 +70,10 @@ import java.util.stream.Stream;
 public class DatabaseSupportImpl implements Database {
     private static final int DEFAULT_DEPTH = 7;
 
+    private final OrientDbPersistenceImplementation orientPersistenceImplementation;
+
     private final TransactionManager transactionManager;
     private final TransactionManager historyTransactionManager;
-    private final OrientDbPersistenceManager orientPersistanceManager;
     private final IslRepository islRepository;
     private final SwitchRepository switchRepository;
     private final FlowRepository flowRepository;
@@ -84,9 +83,10 @@ public class DatabaseSupportImpl implements Database {
     private final SwitchConnectedDeviceRepository switchDevicesRepository;
     private final FlowEventRepository flowEventRepository;
 
-    public DatabaseSupportImpl(PersistenceManager persistenceManager, ConfigurationProvider configurationProvider) {
-        this.transactionManager = persistenceManager.getTransactionManager();
-        historyTransactionManager = persistenceManager.getTransactionManager(TransactionArea.HISTORY);
+    public DatabaseSupportImpl(PersistenceManager persistenceManager) {
+        this.orientPersistenceImplementation = persistenceManager.getImplementation(
+                OrientDbPersistenceImplementation.class);
+
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         islRepository = repositoryFactory.createIslRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
@@ -97,12 +97,8 @@ public class DatabaseSupportImpl implements Database {
         flowEventRepository = repositoryFactory.createFlowEventRepository();
         flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
 
-        PersistenceManagerSupplier managerSupplier = new PersistenceManagerSupplier();
-        ThreadLocalPersistenceContextManagerSupplier contextManagerSupplier =
-                new ThreadLocalPersistenceContextManagerSupplier(managerSupplier);
-        managerSupplier.define(persistenceManager);
-        orientPersistanceManager = new OrientDbPersistenceManager(configurationProvider, contextManagerSupplier,
-                new FlatTransactionLayout());
+        this.transactionManager = persistenceManager.getTransactionManager();
+        historyTransactionManager = persistenceManager.getTransactionManager(flowEventRepository);
     }
 
     /**
@@ -311,7 +307,7 @@ public class DatabaseSupportImpl implements Database {
     @SuppressWarnings("unchecked")
     public List<PathInfoData> getPaths(SwitchId src, SwitchId dst) {
         return transactionManager.doInTransaction(() -> {
-            FramedGraph framedGraph = orientPersistanceManager.getGraphFactory().getGraph();
+            FramedGraph framedGraph = getGraph();
             GraphTraversal<?, ?> rawTraversal = framedGraph.traverse(input -> input
                     .V().hasLabel(SwitchFrame.FRAME_LABEL).has(SwitchFrame.SWITCH_ID_PROPERTY, src.toString())
                     .repeat(__.outE(IslFrame.FRAME_LABEL).has(IslFrame.STATUS_PROPERTY, "active")
@@ -470,7 +466,7 @@ public class DatabaseSupportImpl implements Database {
     @Override
     public List<Object> dumpAllNodes() {
         return transactionManager.doInTransaction(() ->
-                orientPersistanceManager.getGraphFactory().getGraph()
+                getGraph()
                         .traverse(g -> g.V()).getRawTraversal().toStream()
                         .map(v -> DetachedFactory.detach(v, true))
                         .collect(toList()));
@@ -479,7 +475,7 @@ public class DatabaseSupportImpl implements Database {
     @Override
     public List<Object> dumpAllRelations() {
         return transactionManager.doInTransaction(() ->
-                orientPersistanceManager.getGraphFactory().getGraph()
+                getGraph()
                         .traverse(g -> g.V().inE()).getRawTraversal().toStream()
                         .map(e -> DetachedFactory.detach(e, true))
                         .collect(toList()));
@@ -495,5 +491,11 @@ public class DatabaseSupportImpl implements Database {
     public List<Object> dumpAllIsls() {
         return transactionManager.doInTransaction(() ->
                 islRepository.findAll().stream().map(org.openkilda.model.Isl::new).collect(toList()));
+    }
+
+    private FramedGraph getGraph() {
+        PersistenceContext context = PersistenceContextManager.INSTANCE.getContextCreateIfMissing();
+        OrientDbContextExtension contextExtension = orientPersistenceImplementation.getContextExtension(context);
+        return contextExtension.getGraphCreateIfMissing();
     }
 }

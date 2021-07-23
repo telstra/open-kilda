@@ -24,21 +24,18 @@ import org.openkilda.model.history.FlowEventDump;
 import org.openkilda.model.history.FlowEventDump.FlowEventDumpCloner;
 import org.openkilda.model.history.FlowStatusView;
 import org.openkilda.persistence.exceptions.PersistenceException;
+import org.openkilda.persistence.hibernate.HibernatePersistenceImplementation;
 import org.openkilda.persistence.hibernate.entities.history.HibernateFlowEvent;
 import org.openkilda.persistence.hibernate.entities.history.HibernateFlowEventAction;
 import org.openkilda.persistence.hibernate.entities.history.HibernateFlowEventDump;
 import org.openkilda.persistence.hibernate.entities.history.HibernateFlowEvent_;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
-import org.openkilda.persistence.tx.TransactionManager;
-
-import org.hibernate.SessionFactory;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
@@ -48,25 +45,24 @@ import javax.persistence.criteria.Root;
 public class HibernateHistoryFlowEventRepository
         extends HibernateGenericRepository<FlowEvent, FlowEventData, HibernateFlowEvent>
         implements FlowEventRepository {
-    public HibernateHistoryFlowEventRepository(
-            TransactionManager transactionManager, Supplier<SessionFactory> factorySupplier) {
-        super(transactionManager, factorySupplier);
+    public HibernateHistoryFlowEventRepository(HibernatePersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override
     public boolean existsByTaskId(String taskId) {
-        return transactionManager.doInTransaction(() -> findEntityByTaskId(taskId).isPresent());
+        return getTransactionManager().doInTransaction(() -> findEntityByTaskId(taskId).isPresent());
     }
 
     @Override
     public Optional<FlowEvent> findByTaskId(String taskId) {
-        return transactionManager.doInTransaction(() -> findEntityByTaskId(taskId).map(FlowEvent::new));
+        return getTransactionManager().doInTransaction(() -> findEntityByTaskId(taskId).map(FlowEvent::new));
     }
 
     @Override
     public List<FlowEvent> findByFlowIdAndTimeFrame(
             String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
-        List<FlowEvent> results = transactionManager.doInTransaction(
+        List<FlowEvent> results = getTransactionManager().doInTransaction(
                 () -> fetch(flowId, timeFrom, timeTo, maxCount).stream()
                 .map(FlowEvent::new)
                 .collect(Collectors.toList()));
@@ -77,7 +73,7 @@ public class HibernateHistoryFlowEventRepository
     @Override
     public List<FlowStatusView> findFlowStatusesByFlowIdAndTimeFrame(
             String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
-        List<FlowStatusView> results = transactionManager.doInTransaction(
+        List<FlowStatusView> results = getTransactionManager().doInTransaction(
                 () -> fetch(flowId, timeFrom, timeTo, maxCount).stream()
                 .flatMap(entry -> entry.getActions().stream())
                 .map(this::extractStatusUpdates)

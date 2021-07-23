@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.connecteddevices;
 
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
@@ -39,9 +38,8 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
      * Creating topology.
      */
     public StormTopology createTopology() {
-
         TopologyBuilder builder = new TopologyBuilder();
-        PersistenceManager persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
+        PersistenceManager persistenceManager = new PersistenceManager(configurationProvider);
 
         createZkSpout(builder);
 
