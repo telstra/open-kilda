@@ -10,6 +10,7 @@ description = 'Flow Monitoring Storm Topology'
 dependencies {
     implementation project(':flowmonitoring-messaging')
     implementation project(':flowhs-messaging')
+    implementation project(':stats-messaging')
     implementation project(':base-storm-topology')
     implementation project(':server42-messaging')
     implementation project(':network-messaging')

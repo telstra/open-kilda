@@ -70,7 +70,7 @@ public class BfdHub extends AbstractBolt
 
     public static final String FIELD_ID_DATAPATH = SwitchHandler.FIELD_ID_DATAPATH;
     public static final String FIELD_ID_PORT_NUMBER = SwitchHandler.FIELD_ID_PORT_NUMBER;
-    public static final String FIELD_ID_COMMAND_KEY = MessageKafkaTranslator.KEY_FIELD;
+    public static final String FIELD_ID_COMMAND_KEY = MessageKafkaTranslator.FIELD_ID_KEY;
     public static final String FIELD_ID_COMMAND = SwitchHandler.FIELD_ID_COMMAND;
 
     public static final String STREAM_WORKER_ID = "worker";

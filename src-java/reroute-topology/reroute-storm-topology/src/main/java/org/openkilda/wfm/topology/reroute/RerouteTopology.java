@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.reroute;
 
+import static org.openkilda.wfm.share.hubandspoke.CoordinatorBolt.FIELDS_KEY;
 import static org.openkilda.wfm.topology.reroute.bolts.FlowRerouteQueueBolt.STREAM_NORTHBOUND_ID;
 import static org.openkilda.wfm.topology.reroute.bolts.OperationQueueBolt.REROUTE_QUEUE_STREAM;
 import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_MANUAL_REROUTE_REQUEST_ID;

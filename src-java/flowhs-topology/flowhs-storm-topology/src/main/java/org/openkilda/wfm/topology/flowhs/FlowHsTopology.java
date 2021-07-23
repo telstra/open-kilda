@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs;
 
+import static org.openkilda.wfm.share.hubandspoke.CoordinatorBolt.FIELDS_KEY;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_CREATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_CREATE_MIRROR_POINT_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_DELETE_HUB;
@@ -117,6 +118,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         pingOutput(tb);
         server42ControlTopologyOutput(tb);
         flowMonitoringTopologyOutput(tb);
+        statsTopologyOutput(tb);
 
         history(tb, persistenceManager);
 
@@ -581,6 +583,19 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                         Stream.HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name());
     }
 
+    private void statsTopologyOutput(TopologyBuilder topologyBuilder) {
+        KafkaBolt statsNotifyKafkaBolt = buildKafkaBolt(getConfig().getFlowStatsNotifyTopic());
+        declareBolt(topologyBuilder, statsNotifyKafkaBolt, ComponentId.STATS_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(),
+                        Stream.HUB_TO_STATS_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_UPDATE_HUB.name(),
+                        Stream.HUB_TO_STATS_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_REROUTE_HUB.name(),
+                        Stream.HUB_TO_STATS_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(),
+                        Stream.HUB_TO_STATS_TOPOLOGY_SENDER.name());
+    }
+
     private void history(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         HistoryBolt historyBolt = new HistoryBolt(persistenceManager);
         Fields grouping = HistoryBolt.newInputGroupingFields();
@@ -641,6 +656,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         FLOW_PING_SENDER("ping.kafka.bolt"),
         SERVER42_CONTROL_TOPOLOGY_SENDER("server42.control.kafka.bolt"),
         FLOW_MONITORING_TOPOLOGY_SENDER("flow.monitoring.kafka.bolt"),
+        STATS_TOPOLOGY_SENDER("stats.kafka.bolt"),
 
         SPEAKER_REQUEST_SENDER("speaker.kafka.bolt"),
 
@@ -692,7 +708,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         HUB_TO_RESPONSE_SENDER,
         HUB_TO_PING_SENDER,
         HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER,
-        HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER
+        HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER,
+        HUB_TO_STATS_TOPOLOGY_SENDER
     }
 
     /**

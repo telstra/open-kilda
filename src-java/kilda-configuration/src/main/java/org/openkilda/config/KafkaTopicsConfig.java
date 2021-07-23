@@ -221,4 +221,8 @@ public interface KafkaTopicsConfig {
     @Key("topo.network.flow.monitoring")
     @Default("kilda.network.flowmonitoring-notify.priv")
     String getNetworkFlowMonitoringNotifyTopic();
+
+    @Key("stats.notify.priv")
+    @Default("kilda.stats.notify.priv")
+    String getFlowStatsNotifyTopic();
 }

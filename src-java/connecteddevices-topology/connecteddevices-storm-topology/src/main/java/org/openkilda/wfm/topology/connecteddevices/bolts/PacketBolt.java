@@ -27,7 +27,6 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
-import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.connecteddevices.service.PacketService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -71,7 +70,6 @@ public class PacketBolt extends AbstractBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(AbstractTopology.fieldMessage);
         declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
                 ZooKeeperBolt.FIELD_ID_CONTEXT));
     }

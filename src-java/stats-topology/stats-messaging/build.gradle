@@ -1,0 +1,15 @@
+plugins {
+    id 'java-library'
+}
+
+description = 'Stats Topology Messaging'
+dependencies {
+    api project(':base-messaging')
+
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
+    implementation('com.fasterxml.jackson.core:jackson-databind')
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}

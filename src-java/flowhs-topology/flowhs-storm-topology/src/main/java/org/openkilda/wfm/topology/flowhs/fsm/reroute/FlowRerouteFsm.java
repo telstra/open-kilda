@@ -32,6 +32,8 @@ import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowMonitorAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowStatsOnNewPathsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowStatsOnRemovedPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
@@ -283,11 +285,20 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
-            builder.transition().from(State.PATHS_SWAPPED).to(State.INSTALLING_INGRESS_RULES).on(Event.NEXT)
-                    .perform(new InstallIngressRulesAction(persistenceManager, resourcesManager));
+            builder.transition()
+                    .from(State.PATHS_SWAPPED)
+                    .to(State.NOTIFY_FLOW_STATS_ON_NEW_PATHS)
+                    .on(Event.NEXT)
+                    .perform(new NotifyFlowStatsOnNewPathsAction<>(persistenceManager, carrier));
             builder.transitions().from(State.PATHS_SWAPPED)
                     .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
                     .onEach(Event.TIMEOUT, Event.ERROR);
+
+
+            builder.transition().from(State.NOTIFY_FLOW_STATS_ON_NEW_PATHS)
+                    .to(State.INSTALLING_INGRESS_RULES)
+                    .on(Event.NEXT)
+                    .perform(new InstallIngressRulesAction(persistenceManager, resourcesManager));
 
             builder.internalTransition().within(State.INSTALLING_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
@@ -326,12 +337,18 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
-            builder.transition().from(State.NEW_PATHS_INSTALLATION_COMPLETED)
-                    .to(State.REMOVING_OLD_RULES).on(Event.NEXT)
-                    .perform(new RemoveOldRulesAction(persistenceManager, resourcesManager));
+            builder.transition()
+                    .from(State.NEW_PATHS_INSTALLATION_COMPLETED)
+                    .to(State.NOTIFY_FLOW_STATS_ON_REMOVED_PATHS)
+                    .on(Event.NEXT)
+                    .perform(new NotifyFlowStatsOnRemovedPathsAction<>(persistenceManager, carrier));
             builder.transitions().from(State.NEW_PATHS_INSTALLATION_COMPLETED)
                     .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
                     .onEach(Event.TIMEOUT, Event.ERROR);
+
+            builder.transition().from(State.NOTIFY_FLOW_STATS_ON_REMOVED_PATHS)
+                    .to(State.REMOVING_OLD_RULES).on(Event.NEXT)
+                    .perform(new RemoveOldRulesAction(persistenceManager, resourcesManager));
 
             builder.internalTransition().within(State.REMOVING_OLD_RULES).on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
@@ -500,7 +517,10 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
         FINISHED_WITH_ERROR,
 
         NOTIFY_FLOW_MONITOR,
-        NOTIFY_FLOW_MONITOR_WITH_ERROR
+        NOTIFY_FLOW_MONITOR_WITH_ERROR,
+
+        NOTIFY_FLOW_STATS_ON_NEW_PATHS,
+        NOTIFY_FLOW_STATS_ON_REMOVED_PATHS
     }
 
     public enum Event {

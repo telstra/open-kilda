@@ -15,6 +15,8 @@ dependencies {
     implementation project(':server42-stats-messaging')
     implementation project(':server42-messaging')
     implementation project(':base-messaging')
+    implementation project(':stats-messaging')
+    implementation project(':isllatency-messaging')
     implementation project(':kilda-model')
     implementation project(':blue-green')
 
