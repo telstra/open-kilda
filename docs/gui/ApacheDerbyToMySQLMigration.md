@@ -20,7 +20,7 @@ Goal of this document is to provide a stepwise guide to migrate your application
 
 User will have to navigate to below mentioned location and execute following commands:
 
-- ```cd /open-kilda/tools/derby-to-mysql-migration```
+- ```cd /tools/derby-to-mysql-migration```
 - ```make pre-req "olddb=<oldDBName>" "newdb=<newDBName>" "derbydb=<derbyDBPath>"```
 
  **a. oldDBName:** Derby database name, which is SA by default
@@ -42,7 +42,7 @@ Enter Password:
 - ```mysql> show tables;```
 - ```mysql> select * from {tablename};```
 ## Cleanup
-In case there's a failure in migration at any step, first navigate to /opt directory and execute below command to cleanup the process and then start again from scratch by creating the directory(/opt/derby/derby-script-files) and keeping all the script files in this directory.
+In case there's a failure in migration at any step, first navigate to /opt directory and execute below command to cleanup the process and then start again from scratch i.e by navigating to /tools/derby-to-mysql-migration directory and then execute commands.
  
  - ```cd /opt``` 
  - ```rm -rf /opt/derby```
