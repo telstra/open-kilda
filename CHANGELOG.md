@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.100.0 (26/07/2021)
+
+### Bug Fixes:
+-  [#4337](https://github.com/telstra/open-kilda/pull/4337) Replace InetSocketAddress with own IpSocket objects [**floodlight**][**storm-topologies**]
+-  [#4381](https://github.com/telstra/open-kilda/pull/4381) [Server42] Support long flowid fixes #3720
+
+### Improvements:
+-  [#4352](https://github.com/telstra/open-kilda/pull/4352) DB cleanup after fix feature toggles
+-  [#4324](https://github.com/telstra/open-kilda/pull/4324) Rework flow monitoring topology to support parallelism (Issue: [#3968](https://github.com/telstra/open-kilda/issues/3968))
+-  [#4361](https://github.com/telstra/open-kilda/pull/4361) use sla.check variable in file with properties for func-tests [**tests**]
+-  [#4370](https://github.com/telstra/open-kilda/pull/4370) refactor MflStatSpec [**tests**]
+
+### Other changes:
+-  [#4362](https://github.com/telstra/open-kilda/pull/4362) Tests: fix case when traffgen cleanup is not being run [**tests**]
+-  [#4373](https://github.com/telstra/open-kilda/pull/4373) Update mirror tests to iterate over all available sw models [**tests**]
+-  [#4378](https://github.com/telstra/open-kilda/pull/4378) [Server42] Fix build dpdk on linux 5.6
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.99.0...v1.100.0).
+
+### Affected Components:
+network, flow-monitor, server42, fl
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
 ## v1.99.0 (15/07/2021)
 
 ### Features:
