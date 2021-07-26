@@ -28,19 +28,20 @@ import org.openkilda.wfm.topology.flowmonitoring.model.LinkState;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class IslCacheService {
 
     private Clock clock;
-    private long islRttLatencyExpiration;
+    private Duration islRttLatencyExpiration;
     private Map<Link, LinkState> linkStates;
 
-    public IslCacheService(PersistenceManager persistenceManager, Clock clock, long islRttLatencyExpiration) {
+    public IslCacheService(PersistenceManager persistenceManager, Clock clock, Duration islRttLatencyExpiration) {
         this.clock = clock;
         this.islRttLatencyExpiration = islRttLatencyExpiration;
 
@@ -60,6 +61,7 @@ public class IslCacheService {
                 .destSwitchId(data.getDstSwitchId())
                 .destPort(data.getDstPortNo())
                 .build();
+        log.info("One way latency for {} {}", link, data.getLatency());
         LinkState linkState = linkStates.get(link);
         if (linkState == null) {
             linkStates.put(link, LinkState.builder()
@@ -77,31 +79,35 @@ public class IslCacheService {
         List<Link> links = linkStates.keySet().stream()
                 .filter(link -> link.srcEquals(data.getSrcSwitchId(), data.getSrcPortNo()))
                 .collect(Collectors.toList());
-        long currentTimeMillis = clock.millis();
+        links.forEach(link -> log.info("Rtt latency for {} {}", link, data.getLatency()));
+        Instant instant = clock.instant();
         links.forEach(link -> {
             LinkState linkState = linkStates.get(link);
             if (linkState == null) {
                 linkStates.put(link, LinkState.builder()
                         .rttLatency(data.getLatency())
-                        .rttTimestamp(currentTimeMillis)
+                        .rttTimestamp(instant)
                         .build());
             } else {
                 linkState.setRttLatency(data.getLatency());
-                linkState.setRttTimestamp(currentTimeMillis);
+                linkState.setRttTimestamp(instant);
             }
         });
     }
 
     /**
-     * Calculate latency by path.
+     * Get latency for link.
      */
-    public long calculateLatencyForPath(List<Link> path) {
-        long currentTimeMillis = clock.millis();
-        return path.stream()
-                .map(link -> linkStates.get(link))
-                .filter(Objects::nonNull)
-                .mapToLong(linkState -> linkState.getLatency(currentTimeMillis, islRttLatencyExpiration))
-                .sum();
+    public Duration getLatencyForLink(Link link) {
+        log.info("Request for link latency {}", link);
+        LinkState linkState = linkStates.get(link);
+
+        if (linkState == null) {
+            log.warn("Link not found in ISL cache {}", link);
+            return Duration.ZERO;
+        } else {
+            return linkState.getLatency(clock.instant(), islRttLatencyExpiration);
+        }
     }
 
     /**
@@ -109,7 +115,6 @@ public class IslCacheService {
      */
     public void handleIslChangedData(IslChangedInfoData data) {
         cleanUpLinkStatesByEndpoint(data.getSource().getDatapath(), data.getSource().getPortNumber());
-        cleanUpLinkStatesByEndpoint(data.getDestination().getDatapath(), data.getDestination().getPortNumber());
         if (!data.isRemoved()) {
             // Handle moved or added ISL
             linkStates.put(Link.builder()
@@ -124,8 +129,7 @@ public class IslCacheService {
 
     private void cleanUpLinkStatesByEndpoint(SwitchId switchId, int port) {
         linkStates.keySet().stream()
-                .filter(link -> link.srcEquals(switchId, port)
-                        || link.destEquals(switchId, port))
+                .filter(link -> link.srcEquals(switchId, port))
                 .collect(Collectors.toList())
                 .forEach(link -> linkStates.remove(link));
     }

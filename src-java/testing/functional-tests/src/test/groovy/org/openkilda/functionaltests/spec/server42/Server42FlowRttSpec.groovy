@@ -53,6 +53,10 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix
 
+    @Shared
+    @Value('${flow.sla.check.interval.seconds}')
+    Integer flowSlaCheckIntervalSeconds
+
     @Tidy
     def "Create a #data.flowDescription flow with server42 Rtt feature and check datapoints in opentsdb"() {
         given: "Two active switches, src has server42 connected"
@@ -663,7 +667,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "Stats from flow monitoring feature for reverse direction only are available"
-        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+        Wrappers.wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET, 1) {
             def flMonitoringReverseData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "reverse",
@@ -680,7 +684,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         changeFlowRttSwitch(switchPair.src, false)
 
         then: "Stats from flow monitoring feature for forward direction are available"
-        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+        Wrappers.wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET, 1) {
             otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "forward",

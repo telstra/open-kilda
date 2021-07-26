@@ -18,6 +18,7 @@ package org.openkilda.floodlight.switchmanager;
 import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.converter.IofSwitchConverter;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
+import org.openkilda.floodlight.error.InvalidConnectionDataException;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.service.FeatureDetectorService;
@@ -36,9 +37,10 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.messaging.model.SpeakerSwitchView;
-import org.openkilda.model.SwitchFeature;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.SwitchId;
 
+import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
@@ -52,14 +54,14 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.Collection;
-import java.util.List;
-import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 
+@Slf4j
 public class SwitchTrackingService implements IOFSwitchListener, IService {
     private static final Logger logger = LoggerFactory.getLogger(SwitchTrackingService.class);
 
@@ -168,9 +170,14 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     private void dumpAllSwitchesAction(String dumpId) {
         Collection<IOFSwitch> iofSwitches = switchManager.getAllSwitchMap(true).values();
         for (IOFSwitch sw : iofSwitches) {
-            NetworkDumpSwitchData payload = new NetworkDumpSwitchData(
-                    buildSwitch(sw), dumpId, sw.getControllerRole() != OFControllerRole.ROLE_SLAVE);
-            emitDiscoveryEvent(sw.getId(), payload);
+            NetworkDumpSwitchData payload = null;
+            try {
+                payload = new NetworkDumpSwitchData(
+                        buildSwitch(sw), dumpId, sw.getControllerRole() != OFControllerRole.ROLE_SLAVE);
+                emitDiscoveryEvent(sw.getId(), payload);
+            } catch (SwitchOperationException e) {
+                log.error("Exclude {} from dump switches response - {}", sw.getId(), e.getMessage(), e);
+            }
         }
     }
 
@@ -200,7 +207,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
                 IOFSwitch sw = switchManager.lookupSwitch(dpId);
                 SpeakerSwitchView switchView = buildSwitch(sw);
                 payload = buildSwitchMessage(sw, switchView, event);
-            } catch (SwitchNotFoundException e) {
+            } catch (SwitchNotFoundException | InvalidConnectionDataException e) {
                 logger.error(
                         "Switch {} is not in management state now({}), switch ISL discovery details will be degraded.",
                         dpId, e.getMessage());
@@ -256,28 +263,84 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         return new InfoMessage(data, System.currentTimeMillis(), CorrelationContext.getId(), null, region);
     }
 
-    private SpeakerSwitchView buildSwitch(IOFSwitch sw) {
+    private SpeakerSwitchView buildSwitch(IOFSwitch sw) throws InvalidConnectionDataException {
+        SpeakerSwitchView.SpeakerSwitchViewBuilder builder = SpeakerSwitchView.builder()
+                .datapath(new SwitchId(sw.getId().getLong()))
+                .hostname(readHostname(sw.getInetAddress()))
+                .ofVersion(sw.getOFFactory().getVersion().toString())
+                .features(featureDetector.detectSwitch(sw));
+
         SwitchDescription ofDescription = sw.getSwitchDescription();
-        SpeakerSwitchDescription description = SpeakerSwitchDescription.builder()
+        builder.description(SpeakerSwitchDescription.builder()
                 .manufacturer(ofDescription.getManufacturerDescription())
                 .hardware(ofDescription.getHardwareDescription())
                 .software(ofDescription.getSoftwareDescription())
                 .serialNumber(ofDescription.getSerialNumber())
                 .datapath(ofDescription.getDatapathDescription())
-                .build();
-        Set<SwitchFeature> features = featureDetector.detectSwitch(sw);
-        List<SpeakerSwitchPortView> ports = switchManager.getPhysicalPorts(sw).stream()
+                .build());
+
+        switchManager.getPhysicalPorts(sw).stream()
                 .map(port -> new SpeakerSwitchPortView(
                         port.getPortNo().getPortNumber(),
                         port.isEnabled()
                                 ? SpeakerSwitchPortView.State.UP
                                 : SpeakerSwitchPortView.State.DOWN))
-                .collect(Collectors.toList());
-        return new SpeakerSwitchView(new SwitchId(sw.getId().getLong()),
-                                     (InetSocketAddress) sw.getInetAddress(),
-                                     (InetSocketAddress) (sw.getConnectionByCategory(
-                                                     LogicalOFMessageCategory.MAIN).getLocalInetAddress()),
-                                     sw.getOFFactory().getVersion().toString(),
-                                     description, features, ports);
+                .forEach(builder::port);
+
+        buildSwitchAddress(builder, sw);
+        buildSwitchSpeakerAddress(builder, sw);
+
+        return builder.build();
+    }
+
+    private void buildSwitchAddress(SpeakerSwitchView.SpeakerSwitchViewBuilder builder, IOFSwitch sw)
+            throws InvalidConnectionDataException {
+        SocketAddress socketAddress = sw.getInetAddress();
+        try {
+            builder.switchSocketAddress(readSocketAddress(socketAddress));
+        } catch (IllegalArgumentException e) {
+            throw InvalidConnectionDataException.ofSwitchSocket(sw.getId(), socketAddress);
+        }
+    }
+
+    private void buildSwitchSpeakerAddress(SpeakerSwitchView.SpeakerSwitchViewBuilder builder, IOFSwitch sw)
+            throws InvalidConnectionDataException {
+        SocketAddress socketAddress = sw.getConnectionByCategory(
+                LogicalOFMessageCategory.MAIN).getLocalInetAddress();
+        try {
+            builder.speakerSocketAddress(readSocketAddress(socketAddress));
+        } catch (IllegalArgumentException e) {
+            throw InvalidConnectionDataException.ofSpeakerSocket(sw.getId(), socketAddress);
+        }
+    }
+
+    private String readHostname(SocketAddress address) {
+        if (address instanceof InetSocketAddress) {
+            return readHostname((InetSocketAddress) address);
+        }
+        throw new IllegalArgumentException(String.format("Unsupported socket address format: %s", address));
+    }
+
+    private String readHostname(InetSocketAddress socketAddress) {
+        return socketAddress.getHostName();
+    }
+
+    private IpSocketAddress readSocketAddress(SocketAddress address) {
+        if (address instanceof InetSocketAddress) {
+            return readSocketAddress((InetSocketAddress) address);
+        }
+        throw new IllegalArgumentException(String.format("Unsupported socket address format: %s", address));
+    }
+
+    private IpSocketAddress readSocketAddress(InetSocketAddress socketAddress) {
+        if (socketAddress.isUnresolved()) {
+            return new IpSocketAddress(socketAddress.getHostString(), socketAddress.getPort());
+        }
+
+        InetAddress address = socketAddress.getAddress();
+        if (address != null) {
+            return new IpSocketAddress(address.getHostAddress(), socketAddress.getPort());
+        }
+        throw new IllegalArgumentException(String.format("Address %s is not resolvable", socketAddress));
     }
 }

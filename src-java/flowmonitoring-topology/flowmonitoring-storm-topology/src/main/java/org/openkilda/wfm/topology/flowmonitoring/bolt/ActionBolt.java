@@ -18,6 +18,8 @@ package org.openkilda.wfm.topology.flowmonitoring.bolt;
 import static org.openkilda.wfm.share.bolt.KafkaEncoder.FIELD_ID_PAYLOAD;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ACTION_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
+import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_DIRECTION_FIELD;
+import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_ID_FIELD;
 
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
@@ -42,8 +44,6 @@ import java.util.Collections;
 
 public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
 
-    public static final String FLOW_ID_FIELD = "flow-id";
-    public static final String FLOW_DIRECTION_FIELD = "flow-direction";
     public static final String LATENCY_FIELD = "latency";
     public static final String FLOW_INFO_FIELD = "flow-info";
 

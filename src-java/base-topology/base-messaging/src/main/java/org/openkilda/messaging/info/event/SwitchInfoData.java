@@ -44,9 +44,6 @@ public class SwitchInfoData extends CacheTimeTag {
     @JsonProperty("address")
     private String address;
 
-    @JsonProperty("hostname")
-    private String hostname;
-
     @JsonProperty("description")
     private String description;
 
@@ -73,7 +70,7 @@ public class SwitchInfoData extends CacheTimeTag {
 
     public SwitchInfoData(SwitchId switchId, SwitchChangeType state, String address, String hostname,
                           String description, String controller, boolean underMaintenance) {
-        this(switchId, state, address, hostname, description, controller, underMaintenance, null);
+        this(switchId, state, address, description, controller, underMaintenance, null);
     }
 
     /**
@@ -82,7 +79,6 @@ public class SwitchInfoData extends CacheTimeTag {
      * @param switchId    switch datapath id
      * @param state       switch state
      * @param address     switch ip address
-     * @param hostname    switch name
      * @param description switch description
      * @param controller  switch controller
      * @param switchView data for ISL/switch discovery
@@ -92,7 +88,6 @@ public class SwitchInfoData extends CacheTimeTag {
     public SwitchInfoData(@JsonProperty("switch_id") SwitchId switchId,
                           @JsonProperty("state") SwitchChangeType state,
                           @JsonProperty("address") String address,
-                          @JsonProperty("hostname") String hostname,
                           @JsonProperty("description") String description,
                           @JsonProperty("controller") String controller,
                           @JsonProperty("under_maintenance") boolean underMaintenance,
@@ -100,7 +95,6 @@ public class SwitchInfoData extends CacheTimeTag {
         this.switchId = switchId;
         this.state = state;
         this.address = address;
-        this.hostname = hostname;
         this.description = description;
         this.controller = controller;
         this.switchView = switchView;

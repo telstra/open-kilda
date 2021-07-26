@@ -28,6 +28,7 @@ import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.model.BfdProperties;
 import org.openkilda.model.BfdSession;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -54,7 +55,6 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.Optional;
@@ -84,15 +84,15 @@ public class NetworkBfdSessionServiceTest {
 
     private final Switch alphaSwitch = Switch.builder()
             .switchId(alphaEndpoint.getDatapath())
-            .socketAddress(getSocketAddress(alphaAddress, 30070))
+            .socketAddress(new IpSocketAddress(alphaAddress, 30070))
             .build();
     private final Switch betaSwitch = Switch.builder()
             .switchId(betaEndpoint.getDatapath())
-            .socketAddress(getSocketAddress(betaAddress, 30071))
+            .socketAddress(new IpSocketAddress(betaAddress, 30071))
             .build();
     private final Switch gammaSwitch = Switch.builder()
             .switchId(gammaEndpoint.getDatapath())
-            .socketAddress(getSocketAddress(gammaAddress, 30072))
+            .socketAddress(new IpSocketAddress(gammaAddress, 30072))
             .build();
 
     private final String setupRequestKey = "bfd-setup-speaker-key";
@@ -668,14 +668,6 @@ public class NetworkBfdSessionServiceTest {
     private void mockBfdSessionLookup(BfdSession session) {
         when(bfdSessionRepository.findBySwitchIdAndPort(session.getSwitchId(), session.getPort()))
                 .thenReturn(Optional.of(session));
-    }
-
-    private InetSocketAddress getSocketAddress(String host, int port) {
-        try {
-            return new InetSocketAddress(InetAddress.getByName(host), port);
-        } catch (UnknownHostException e) {
-            throw new IllegalStateException(e);
-        }
     }
 
     private void resetCarrier() {

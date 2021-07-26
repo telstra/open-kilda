@@ -15,6 +15,7 @@
 
 package org.openkilda.persistence.ferma.frames;
 
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Speaker;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchConnect.SwitchConnectData;
@@ -27,9 +28,6 @@ import org.openkilda.persistence.ferma.frames.converters.SwitchConnectModeConver
 import com.syncleus.ferma.annotations.Property;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.time.Instant;
 import java.util.Iterator;
 
@@ -122,50 +120,42 @@ public abstract class SwitchConnectFrame extends KildaBaseEdgeFrame implements S
     public abstract void setConnectedAt(Instant connectedAt);
 
     @Override
-    public InetSocketAddress getSwitchAddress() {
+    public IpSocketAddress getSwitchAddress() {
         return getAddress(SWITCH_ADDRESS_PROPERTY, SWITCH_ADDRESS_PORT_PROPERTY);
     }
 
     @Override
-    public void setSwitchAddress(InetSocketAddress address) {
+    public void setSwitchAddress(IpSocketAddress address) {
         setAddress(SWITCH_ADDRESS_PROPERTY, SWITCH_ADDRESS_PORT_PROPERTY, address);
     }
 
     @Override
-    public InetSocketAddress getSpeakerAddress() {
+    public IpSocketAddress getSpeakerAddress() {
         return getAddress(SPEAKER_ADDRESS_PROPERTY, SPEAKER_ADDRESS_PORT_PROPERTY);
     }
 
     @Override
-    public void setSpeakerAddress(InetSocketAddress address) {
+    public void setSpeakerAddress(IpSocketAddress address) {
         setAddress(SPEAKER_ADDRESS_PROPERTY, SPEAKER_ADDRESS_PORT_PROPERTY, address);
     }
 
-    private InetSocketAddress getAddress(String addressProperty, String portProperty) {
+    private IpSocketAddress getAddress(String addressProperty, String portProperty) {
         String address = getProperty(addressProperty);
         if (address == null) {
             return null;
         }
-
-        int port = getAddressPort(portProperty);
-        try {
-            return new InetSocketAddress(InetAddress.getByName(address), port);
-        } catch (UnknownHostException e) {
-            throw new IllegalStateException(String.format(
-                    "Switch connect relation stores invalid address %s:%d (fields %s / %s)",
-                    address, port, addressProperty, portProperty));
-        }
+        return new IpSocketAddress(address, getAddressPort(portProperty));
     }
 
-    private void setAddress(String addressProperty, String portProperty, InetSocketAddress address) {
-        if (address == null) {
+    private void setAddress(String addressProperty, String portProperty, IpSocketAddress ipSocketAddress) {
+        if (ipSocketAddress == null) {
             setProperty(addressProperty, null);
             setProperty(portProperty, null);
             return;
         }
 
-        setProperty(addressProperty, address.getAddress().getHostAddress());
-        setProperty(portProperty, address.getPort());
+        setProperty(addressProperty, ipSocketAddress.getAddress());
+        setProperty(portProperty, ipSocketAddress.getPort());
     }
 
     private int getAddressPort(String property) {

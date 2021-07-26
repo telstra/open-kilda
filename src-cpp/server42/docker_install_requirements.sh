@@ -3,8 +3,7 @@
 echo 'deb http://archive.ubuntu.com/ubuntu/ bionic-proposed main' > /etc/apt/sources.list.d/bionic-proposed.list
 
 apt-get update -y && \
-apt-get install -y libpcap-dev gcc g++ libnuma-dev make python3.7 python3.7-dev wget linux-headers-$(uname -r) patch sudo iproute2 && \
-update-alternatives --install /usr/bin/python python /usr/bin/python3.7 1000 && \
+apt-get install -y libpcap-dev gcc g++ libnuma-dev make python3 python3-dev wget linux-headers-$(uname -r) patch sudo iproute2 git && \
 mkdir -p bin && \
 mkdir -p tools/cmake && \
 cd tools/cmake && \
