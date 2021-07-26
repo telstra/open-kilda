@@ -16,28 +16,23 @@ Goal of this document is to provide a stepwise guide to migrate your application
 **e. derby.properties:** properties file to configure MySQL Database 
 **f. input.txt:** input file for IJ configuration
 
-## Setup:
-- Create a directory as mentioned below and keep all these script files (derbymysqlmigration.sh, derby-mysql-import.sh, derby-export.sql, derby-import.sql, derby.properties and input.txt) into the created directory. It is mandatory to create directory at this location only.
-  - ```mkdir /opt/derby/derby-script-files/```
-  and navigate to /opt/derby/derby-script-files/
-  - ```cd /opt/derby/derby-script-files/```
-- Configure derby.properties file
- **a. oldDB:** Derby database name, which is SA by default
- **b. newDB:** Name of the database you want to create in MySQL
- **c. derbyDbPath:** Path of your existing Derby database
+## Migration
+
+User will have to navigate to below mentioned location and execute following commands:
+
+- ```cd /open-kilda/tools/derby-to-mysql-migration```
+- ```make pre-req "olddb=<oldDBName>" "newdb=<newDBName>" "derbydb=<derbyDBPath>"```
+
+ **a. oldDBName:** Derby database name, which is SA by default
+ **b. newDBName:** Name of the database you want to create in MySQL
+ **c. derbyDBPath:** Path of your existing Derby database
 - Stop the application that is running with Derby database from which DB migration has to be done, in order to avoid any data loss. Also, this is mandatory for the successful execution of bash scripts.
 
-## Export & Import metadata and data from existing Derby DB:
-- Execute derbymysqlmigration.sh script for data export
-First Assign execute permission to this bash file and then execute 
-  - ```chmod +x derbymysqlmigration.sh```
-  - ```./derbymysqlmigration.sh```
-- Execute derby-mysql-import.sh script to import the data
-First Assign execute permission to this bash file and then execute 
-  - ``` chmod +x derby-mysql-import.sh``` 
-  - ``` ./derby-mysql-import.sh```
+## Export & Import metadata and data from existing Derby to MySQL DB:
+  - ```make export```
+  - ```make import```
 
-This script will lookup the metadata in form of SQLs and then will update those SQLs to make them compatible to MySQL. On execution, It will create the database in MySQL, along with all the tables and will also import all the records in db tables. **It will promt you for MySQL password twice**.
+This will lookup the metadata in form of SQLs and then will update those SQLs to make them compatible to MySQL. On execution, It will create the database in MySQL, along with all the tables and will also import all the records in db tables. **It will promt you for MySQL password twice**.
 
 ## Verification
 Follow below mentioned steps to Verify if scripts execution is successful and database is created successfully along with each table and its records. 

@@ -20,7 +20,6 @@ else
 fi
 
 
-mkdir -p /opt/derby
 cd /opt/derby
 
 if [ ! -d "/opt/derby/db-derby-10.14.2.0-bin/" ]; then
