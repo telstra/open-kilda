@@ -33,5 +33,5 @@ mkdir -p /opt/derby/derby-metadata
 cd /opt/derby/derby-script-files
 
 sed -i "s;##old-db-name##;$oldDB;" "/opt/derby/derby-script-files/derby-export.sql"
-sed -i "s;##derby-db-path##;$derbyDbPath;" "/opt/derby/derby-script-files/input_file.txt"
-java -jar /opt/derby/db-derby-10.14.2.0-bin/lib/derbyrun.jar ij input_file.txt > /tmp/export-data.log
+sed -i "s;##derby-db-path##;$derbyDbPath;" "/opt/derby/derby-script-files/input.txt"
+java -jar /opt/derby/db-derby-10.14.2.0-bin/lib/derbyrun.jar ij input.txt > /tmp/export-data.log
