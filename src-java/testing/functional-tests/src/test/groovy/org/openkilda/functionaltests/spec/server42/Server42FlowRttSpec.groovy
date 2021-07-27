@@ -127,11 +127,11 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
     @Tidy
     def "Flow rtt stats are available in forward and reverse directions for new flows"() {
-        given: "Two active switches with src switch having server42"
+        given: "Two active switches with switch having server42"
         def server42switches = topology.getActiveServer42Switches()
         def server42switchesDpIds = server42switches*.dpId
         def switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
-            it.src.dpId in server42switchesDpIds && !server42switchesDpIds.contains(it.dst.dpId)
+            [it.src, it.dst].every { it.dpId in server42switchesDpIds }
         }
         assumeTrue(switchPair != null, "Was not able to find a switch with a server42 connected")
         and: "server42FlowRtt feature toggle is set to true"
@@ -205,11 +205,11 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
     @Tidy
     def "Flow rtt stats are available only if both global and switch toggles are 'on' on both endpoints"() {
-        given: "Two active switches with src switch having server42"
+        given: "Two active switches with having server42"
         def server42switches = topology.getActiveServer42Switches()
         def server42switchesDpIds = server42switches*.dpId
         def switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
-            it.src.dpId in server42switchesDpIds && !server42switchesDpIds.contains(it.dst.dpId)
+            [it.src, it.dst].every { it.dpId in server42switchesDpIds }
         }
         assumeTrue(switchPair != null, "Was not able to find a switch with a server42 connected")
         def statsWaitSeconds = 4
@@ -891,12 +891,12 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     def changeFlowRttSwitch(Switch sw, boolean requiredState) {
         def originalProps = northbound.getSwitchProperties(sw.dpId)
         if (originalProps.server42FlowRtt != requiredState) {
+            def s42Config = sw.prop
             northbound.updateSwitchProperties(sw.dpId, originalProps.jacksonCopy().tap {
                 server42FlowRtt = requiredState
-                def props = sw.prop ?: SwitchHelper.dummyServer42Props
-                server42MacAddress = requiredState ? props.server42MacAddress : null
-                server42Port = requiredState ? props.server42Port : null
-                server42Vlan = requiredState ? props.server42Vlan : null
+                server42MacAddress = s42Config ? s42Config.server42MacAddress : null
+                server42Port = s42Config ? s42Config.server42Port : null
+                server42Vlan = s42Config ? s42Config.server42Vlan : null
             })
         }
         Wrappers.wait(RULES_INSTALLATION_TIME) {

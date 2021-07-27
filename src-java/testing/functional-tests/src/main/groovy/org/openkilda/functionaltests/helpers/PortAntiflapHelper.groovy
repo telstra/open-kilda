@@ -50,7 +50,8 @@ class PortAntiflapHelper {
      * Wait till the current port is in a stable state (deactivated antiflap) by analyzing its history.
      */
     void waitPortIsStable(SwitchId swId, int portNo, Long since = 0) {
-        Wrappers.wait(antiflapCooldown + WAIT_OFFSET) {
+        // '* 2' it takes more time on a hardware env for link via 'a-switch'
+        Wrappers.wait(antiflapCooldown + WAIT_OFFSET * 2) {
             def history = northboundV2.getPortHistory(swId, portNo, since, Long.MAX_VALUE)
 
             if (!history.empty) {

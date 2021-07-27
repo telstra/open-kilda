@@ -991,6 +991,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Cannot enable connected devices on switch if mirror is present"() {
         given: "A flow with a mirror endpoint"
+        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         def swPair = topologyHelper.switchPairs[0]
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)

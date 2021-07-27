@@ -102,7 +102,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
 
         cleanup: "Install missing default rules"
         northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        Wrappers.wait(RULES_INSTALLATION_TIME + discoveryInterval) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == defaultRules*.cookie.sort()
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
@@ -175,7 +175,7 @@ switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) 
 
         cleanup: "Install missing default rules and restore switch properties"
         northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        Wrappers.wait(RULES_INSTALLATION_TIME + discoveryInterval) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries.size() == defaultRules.size()
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
