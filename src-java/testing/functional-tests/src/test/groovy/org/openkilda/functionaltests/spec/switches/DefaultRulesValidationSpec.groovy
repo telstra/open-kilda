@@ -2,10 +2,12 @@ package org.openkilda.functionaltests.spec.switches
 
 import static org.hamcrest.Matchers.containsInAnyOrder
 import static org.junit.Assert.assertThat
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.model.SwitchFeature
@@ -28,6 +30,7 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(SMOKE)
+    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /single-table/)
     def "Switch and rule validation can properly detect default rules to 'proper' section (#sw.name #propsDescr)"(
             Map swProps, Switch sw, String propsDescr) {
         given: "Clean switch without customer flows and with the given switchProps"
