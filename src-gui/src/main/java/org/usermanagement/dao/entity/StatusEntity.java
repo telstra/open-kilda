@@ -17,20 +17,22 @@ package org.usermanagement.dao.entity;
 
 import org.openkilda.entity.BaseEntity;
 
+import org.hibernate.annotations.GenericGenerator;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "kilda_status")
+@Table(name = "KILDA_STATUS")
 public class StatusEntity extends BaseEntity {
 
     @Id
     @Column(name = "status_id", nullable = false)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(generator = "increment")
+    @GenericGenerator(name = "increment", strategy = "increment")
     private Integer statusId;
 
     @Column(name = "status_code", nullable = false)

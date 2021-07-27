@@ -18,22 +18,24 @@ package org.openkilda.store.auth.dao.entity;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.GenericGenerator;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "kilda_auth_type")
+@Table(name = "KILDA_AUTH_TYPE")
 @Data
 @NoArgsConstructor
 public class AuthTypeEntity {
 
     @Id
     @Column(name = "auth_type_id", nullable = false)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(generator = "increment")
+    @GenericGenerator(name = "increment", strategy = "increment")
     private Integer authTypeId;
 
     @Column(name = "auth_type_name", nullable = false)

@@ -1,0 +1,3 @@
+connect 'jdbc:derby:##derby-db-path##';
+RUN '/opt/derby/derby-script-files/derby-export.sql';
+EXIT;

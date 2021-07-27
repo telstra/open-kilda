@@ -34,7 +34,7 @@ import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "kilda_permission")
+@Table(name = "KILDA_PERMISSION")
 public class PermissionEntity extends BaseEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -62,7 +62,7 @@ public class PermissionEntity extends BaseEntity implements Serializable {
 
     /** The roles. */
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "role_permission", joinColumns = { @JoinColumn(name = "permission_id") }, inverseJoinColumns = {
+    @JoinTable(name = "ROLE_PERMISSION", joinColumns = { @JoinColumn(name = "permission_id") }, inverseJoinColumns = {
             @JoinColumn(name = "role_id") })
     private Set<RoleEntity> roles = new HashSet<RoleEntity>();
 

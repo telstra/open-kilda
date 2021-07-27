@@ -22,19 +22,20 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.GenericGenerator;
+
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "kilda_oauth_config")
+@Table(name = "KILDA_OAUTH_CONFIG")
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = false)
@@ -42,7 +43,8 @@ public class OauthConfigEntity extends BaseEntity {
 
     @Id
     @Column(name = "oauth_config_id", nullable = false)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(generator = "increment")
+    @GenericGenerator(name = "increment", strategy = "increment")
     private Integer oauthConfigId;
 
     @Column(name = "username", nullable = false)

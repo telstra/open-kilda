@@ -65,6 +65,24 @@ Some other commands will run in  openkilda-gui directory :
 + ```make stop```
 
 ----
+### MySQL Support
+By default, application is running with Apache Derby Database. In order to run the application with MySQL database, you'll have to update following properties in [main.yaml](https://github.com/telstra/open-kilda/blob/improvement/derby_to_mysql_migration/confd/vars/main.yaml) file.
+>kilda_gui_db_dialect: org.hibernate.dialect.MySQL5Dialect
+
+>kilda_gui_db_url:
+
+>kilda_gui_db_username:
+
+>kilda_gui_db_password:
+
+where 
+**kilda_gui_db_url** will be url to MySQL database along with database name
+Example:- jdbc:mysql://127.0.0.1:3306/dbname
+**kilda_gui_db_username** will be DB username
+**kilda_gui_db_password** will be DB password
+### MySQL Migration
+> See [Apache Derby To MySQL Migration](https://github.com/telstra/open-kilda/tree/improvement/derby_to_mysql_migration/docs/gui/ApacheDerbyToMySQLMigration.md) to view migration documention for migrating databasae from Derby to MySQL.
+
 
 ### User Documentation
 

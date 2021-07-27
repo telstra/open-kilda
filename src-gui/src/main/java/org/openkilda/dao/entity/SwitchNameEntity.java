@@ -30,7 +30,7 @@ import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
 @Entity
-@Table(name = "switch_name")
+@Table(name = "SWITCH_NAME")
 @Data
 public class SwitchNameEntity implements Serializable {
 
