@@ -8,7 +8,7 @@ Goal of this document is to provide a stepwise guide to migrate your application
 - **Required JAVA:** To check if JAVA_HOME is setup run below command
    - ```echo $JAVA_HOME```
 - **Required MySQL:** Click [here](https://dev.mysql.com/doc/mysql-installation-excerpt/5.7/en/) to view Mysql Installation guide
-- **Script Files** : Below mentioned script files that are needed for complete migration and are available [here](https://github.com/telstra/open-kilda/tree/improvement/derby_to_mysql_migration/tools/derby-to-mysql-migration/script-files).
+- **Script Files** : Below mentioned script files that are needed for complete migration and are available [here](/tools/derby-to-mysql-migration/script-files).
 **a. derbymysqlmigration.sh:** bash file that contains script to setup and install derby tools (dblook and ij). script to connect to ij and export the derby data to CSV files. These CSV files will later be used to import the data in MYSQL.
 **b. derby-mysql-import.sh:** bash file that contains the script which will lookup the derby db metadata in form of SQLs and then will update those SQLs to make them compatible with MYSQL and will create a MySQL compatible .sql metadata file. Then will create the database, along with tables and import all the table records.
 **c. derby-export.sql:** sql file that contains scripts to export the data from each Derby db table into CSV files.
