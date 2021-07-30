@@ -45,3 +45,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 011-lower-case-enum-constants-optional-rollback.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 012-lower-case-enum-constants.yaml

@@ -1,0 +1,87 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: surabujin
+      changes:
+        - tagDatabase:
+            tag: 012-lower-case-enum-constants.yaml
+
+  - changeSet:
+      id: flow_path.applications
+      author: surabujin
+      changes:
+        - sql: |-
+            UPDATE flow_path
+            SET applications = applications || ["telescope"] WHERE "TELESCOPE" in applications
+        - sql: |-
+            UPDATE flow_path
+            SET applications = applications.remove("TELESCOPE") WHERE "telescope" in applications
+      rollback:
+        - sql: |-
+            UPDATE flow_path
+            SET applications = applications || ["TELESCOPE"] WHERE "telescope" in applications
+        - sql: |-
+            UPDATE flow_path
+            SET applications = applications.remove("telescope") WHERE "TELESCOPE" in applications
+
+  - changeSet:
+      id: kilda_configuration.flow_encapsulation_type
+      author: surabujin
+      changes:
+        - sql: UPDATE kilda_configuration SET flow_encapsulation_type = flow_encapsulation_type.toLowerCase()
+      rollback:
+        - sql: UPDATE kilda_configuration SET flow_encapsulation_type = flow_encapsulation_type.toUpperCase()
+
+  - changeSet:
+      id: flow.encapsulation_type
+      author: surabujin
+      changes:
+        - sql: UPDATE flow SET encapsulation_type = encapsulation_type.toLowerCase()
+      rollback:
+        - sql: UPDATE flow SET encapsulation_type = encapsulation_type.toUpperCase()
+
+  - changeSet:
+      id: switch_properties.supported_transit_encapsulation
+      author: surabujin
+      changes:
+        - sql: |-
+            UPDATE switch_properties
+            SET supported_transit_encapsulation = supported_transit_encapsulation || ["transit_vlan"]
+            WHERE "TRANSIT_VLAN" in supported_transit_encapsulation
+        - sql: |-
+            UPDATE switch_properties
+            SET supported_transit_encapsulation = supported_transit_encapsulation || ["vxlan"]
+            WHERE "VXLAN" in supported_transit_encapsulation
+        - sql: |-
+            UPDATE switch_properties
+            SET supported_transit_encapsulation = supported_transit_encapsulation.remove("TRANSIT_VLAN")
+            WHERE "transit_vlan" in supported_transit_encapsulation
+        - sql: |-
+            UPDATE switch_properties
+            SET supported_transit_encapsulation = supported_transit_encapsulation.remove("VXLAN")
+            WHERE "vxlan" in supported_transit_encapsulation
+      rollback:
+        - sql: |-
+            UPDATE switch_properties
+            SET supported_transit_encapsulation = supported_transit_encapsulation || ["TRANSIT_VLAN"]
+            WHERE "transit_vlan" in supported_transit_encapsulation
+        - sql: |-
+            UPDATE switch_properties
+            SET supported_transit_encapsulation = supported_transit_encapsulation || ["VXLAN"]
+            WHERE "vxlan" in supported_transit_encapsulation
+        - sql: |-
+            UPDATE switch_properties
+            SET supported_transit_encapsulation = supported_transit_encapsulation.remove("transit_vlan")
+            WHERE "transit_vlan" in supported_transit_encapsulation
+        - sql: |-
+            UPDATE switch_properties
+            SET supported_transit_encapsulation = supported_transit_encapsulation.remove("vxlan")
+            WHERE "vxlan" in supported_transit_encapsulation
+
+  - changeSet:
+      id: flow_dump.encapsulation_type
+      author: surabujin
+      changes:
+        - sql: UPDATE flow_dump SET encapsulation_type = encapsulation_type.toLowerCase()
+      rollback:
+        - sql: UPDATE flow_dump SET encapsulation_type = encapsulation_type.toUpperCase()
