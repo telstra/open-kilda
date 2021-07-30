@@ -30,9 +30,11 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
+import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
+import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SpeakerRepository;
@@ -222,5 +224,16 @@ public class FermaRepositoryFactory implements RepositoryFactory {
     public FlowMirrorPathRepository createFlowMirrorPathRepository() {
         return new FermaFlowMirrorPathRepository(
                 graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
+    }
+
+    @Override
+    public LagLogicalPortRepository createLagLogicalPortRepository() {
+        return new FermaLagLogicalPortRepository(graphFactory, createPhysicalPortRepository(),
+                transactionManagerFactory.produce(TransactionArea.COMMON));
+    }
+
+    @Override
+    public PhysicalPortRepository createPhysicalPortRepository() {
+        return new FermaPhysicalPortRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 }

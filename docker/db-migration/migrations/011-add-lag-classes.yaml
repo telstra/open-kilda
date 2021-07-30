@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: snikitin
+      changes:
+        - tagDatabase:
+            tag: 011-add-lag-classes
+
+  - changeSet:
+      id: add_lag_logical_port_class
+      author: snikitin
+      changes:
+        - sql: "CREATE CLASS comprises IF NOT EXISTS EXTENDS E"
+        - sql: "CREATE CLASS lag_logical_port IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY lag_logical_port.switch_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY lag_logical_port.logical_port_number IF NOT EXISTS INTEGER"
+        - sql: "CREATE INDEX lag_logical_port.switch_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX lag_logical_port_unique on lag_logical_port (switch_id, logical_port_number) UNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DELETE VERTEX lag_logical_port"
+        - sql: "DROP INDEX lag_logical_port.switch_id"
+        - sql: "DROP INDEX lag_logical_port_unique"
+        - sql: "DROP CLASS lag_logical_port IF EXISTS"
+        - sql: "DROP CLASS comprises IF EXISTS"
+  - changeSet:
+      id: add_physical_port_class
+      author: snikitin
+      changes:
+        - sql: "CREATE CLASS physical_port IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY physical_port.switch_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY physical_port.port_number IF NOT EXISTS INTEGER"
+        - sql: "CREATE INDEX physical_port.switch_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX physical_port_unique on physical_port (switch_id, port_number) UNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DELETE VERTEX physical_port"
+        - sql: "DROP INDEX physical_port.switch_id"
+        - sql: "DROP INDEX physical_port_unique"
+        - sql: "DROP CLASS physical_port IF EXISTS"
