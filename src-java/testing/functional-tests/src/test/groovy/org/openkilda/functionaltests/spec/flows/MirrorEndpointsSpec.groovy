@@ -337,7 +337,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         [data, mirrorDirection] << [
                 [[
                          swPair: topologyHelper.getSwitchPairs(true).find { swP ->
-                             swP.paths.find { pathHelper.getInvolvedSwitches(it).every { isVxlanEnabled(it.dpId) } }
+                             swP.paths.find { pathHelper.getInvolvedSwitches(it).every { switchHelper.isVxlanEnabled(it.dpId) } }
                          },
                          encap : FlowEncapsulationType.VXLAN
                  ],
@@ -1190,11 +1190,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         }
     }
 
-    def isVxlanEnabled(SwitchId switchId) {
-        return initialSwPropsCache(switchId).supportedTransitEncapsulation
-                .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
-    }
-
     def isMultitable(SwitchId switchId) {
         return initialSwPropsCache(switchId).multiTable
     }
@@ -1240,7 +1235,9 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
     List<SwitchPair> getUniqueVxlanSwitchPairs(boolean needTraffgens) {
         getUniqueSwitchPairs({ SwitchPair swP ->
-            def vxlanCheck = swP.paths.find { pathHelper.getInvolvedSwitches(it).every { isVxlanEnabled(it.dpId) } }
+            def vxlanCheck = swP.paths.find {
+                pathHelper.getInvolvedSwitches(it).every { switchHelper.isVxlanEnabled(it.dpId) }
+            }
             def tgCheck = needTraffgens ? swP.src.traffGens && swP.dst.traffGens : true
             vxlanCheck && tgCheck
         })

@@ -257,16 +257,12 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
     def "Intentional flow reroute with VXLAN encapsulation is not causing any packet loss"() {
         given: "A vxlan flow"
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.findAll {
-            northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation
-                    .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+            switchHelper.isVxlanEnabled(it.dpId)
         }*.dpId ?: assumeTrue(false, "Should be at least two active traffgens connected to NoviFlow switches")
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
             allTraffgenSwitchIds.contains(swP.src.dpId) && allTraffgenSwitchIds.contains(swP.dst.dpId) &&
                     swP.paths.findAll { path ->
-                        pathHelper.getInvolvedSwitches(path).every {
-                            northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation
-                                    .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
-                        }
+                        pathHelper.getInvolvedSwitches(path).every {switchHelper.isVxlanEnabled(it.dpId) }
                     }.size() > 1
         } ?: assumeTrue(false, "Unable to find required switches/paths in topology")
         def availablePaths = switchPair.paths.findAll { pathHelper.getInvolvedSwitches(it).find { it.noviflow }}

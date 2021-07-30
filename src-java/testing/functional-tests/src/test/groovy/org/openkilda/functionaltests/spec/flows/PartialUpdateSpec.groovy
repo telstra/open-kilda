@@ -391,10 +391,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     def "Able to update flow encapsulationType using partial update"() {
         given: "A flow with a 'transit_vlan' encapsulation"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            [swP.src, swP.dst].every { sw ->
-                northbound.getSwitchProperties(sw.dpId).supportedTransitEncapsulation
-                        .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
-            }
+            [swP.src, swP.dst].every { switchHelper.isVxlanEnabled(it.dpId) }
         }
         assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
 

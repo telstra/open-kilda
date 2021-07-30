@@ -841,9 +841,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
     def "getSwPairConnectedToTraffGenForVxlanFlow"(List<SwitchId> switchIds) {
         getTopologyHelper().getSwitchPairs().find {
             [it.dst, it.src].every {
-                it.dpId in switchIds &&
-                        getNorthbound().getSwitchProperties(it.dpId).supportedTransitEncapsulation
-                                .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+                it.dpId in switchIds && switchHelper.isVxlanEnabled(it.dpId)
             }
         }
     }

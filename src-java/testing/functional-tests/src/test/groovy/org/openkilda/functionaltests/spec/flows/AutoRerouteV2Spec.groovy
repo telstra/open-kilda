@@ -975,16 +975,10 @@ triggering one more reroute of the current path"
     def getVxlanFlowWithPaths(List<SwitchPair> switchPairs, int minAltPathsCount) {
         def switchPair = switchPairs.find {swP ->
             swP.paths.findAll { path ->
-                pathHelper.getInvolvedSwitches(path).every { isVxlanEnabled(it.dpId) }
+                pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }
             }.size() > minAltPathsCount
         } ?: assumeTrue(false, "No suiting switches found")
         return [flowHelperV2.randomFlow(switchPair), switchPair.paths]
-    }
-
-    @Memoized
-    def isVxlanEnabled(SwitchId switchId) {
-        return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
-                .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 
     def cleanup() {
