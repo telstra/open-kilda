@@ -36,6 +36,6 @@ public class FlowEncapsulationTypeConverter implements AttributeConverter<FlowEn
         if (value == null || value.trim().isEmpty()) {
             return null;
         }
-        return FlowEncapsulationType.valueOf(value);
+        return FlowEncapsulationType.valueOf(value.toUpperCase());
     }
 }

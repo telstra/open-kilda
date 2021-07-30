@@ -93,7 +93,7 @@ public class OrientDbIslRepository extends FermaIslRepository {
 
     private static final String QUERY_FETCH_SWITCHES_BY_STATUS_AND_ENCAPSULATION =
             format("SELECT FROM (SELECT %s, %s, %s, out('%s').%s as sup_enc FROM %s UNWIND sup_enc) "
-                            + "WHERE %s = ? AND sup_enc CONTAINS ?",
+                            + "WHERE %s = ? AND (sup_enc CONTAINS ? OR sup_enc CONTAINS ?)",
                     SwitchFrame.SWITCH_ID_PROPERTY, SwitchFrame.POP_PROPERTY, SwitchFrame.STATUS_PROPERTY,
                     SwitchPropertiesFrame.HAS_BY_EDGE,
                     SwitchPropertiesFrame.SUPPORTED_TRANSIT_ENCAPSULATION_PROPERTY,
@@ -257,7 +257,7 @@ public class OrientDbIslRepository extends FermaIslRepository {
         Map<String, String> switches = new HashMap<>();
         try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
                 QUERY_FETCH_SWITCHES_BY_STATUS_AND_ENCAPSULATION,
-                switchStatusAsStr, flowEncapType)) {
+                switchStatusAsStr, flowEncapType.toUpperCase(), flowEncapType.toLowerCase())) {
             results.forEach(gs ->
                     switches.put(gs.getProperty(SwitchFrame.SWITCH_ID_PROPERTY),
                             gs.getProperty(SwitchFrame.POP_PROPERTY)));
