@@ -4,6 +4,7 @@ import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
@@ -310,6 +311,106 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
 
         cleanup: "Remove the flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+
+    @Tidy
+    @Tags([LOW_PRIORITY])
+    def "Not able to reroute to a path with not enough bandwidth available [v1 api]"() {
+        given: "A flow with alternate paths available"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+                assumeTrue(false, "No suiting switches found")
+        def flow = flowHelper.randomFlow(switchPair)
+        flow.maximumBandwidth = 10000
+        flowHelper.addFlow(flow)
+        def currentPath = PathHelper.convert(northbound.getFlowPath(flow.id))
+
+        when: "Make the current path less preferable than alternatives"
+        def alternativePaths = switchPair.paths.findAll { it != currentPath }
+        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
+
+        and: "Make all alternative paths to have not enough bandwidth to handle the flow"
+        def currentIsls = pathHelper.getInvolvedIsls(currentPath)
+        def changedIsls = alternativePaths.collect { altPath ->
+            def thinIsl = pathHelper.getInvolvedIsls(altPath).find {
+                !currentIsls.contains(it) && !currentIsls.contains(it.reversed)
+            }
+            def newBw = flow.maximumBandwidth - 1
+            [thinIsl, thinIsl.reversed].each {
+                database.updateIslMaxBandwidth(it, newBw)
+                database.updateIslAvailableBandwidth(it, newBw)
+            }
+            thinIsl
+        }
+
+        and: "Init a reroute to a more preferable path"
+        def rerouteResponse = northbound.rerouteFlow(flow.id)
+
+        then: "The flow is NOT rerouted because of not enough bandwidth on alternative paths"
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        !rerouteResponse.rerouted
+        rerouteResponse.path.path == currentPath
+        int seqId = 0
+        rerouteResponse.path.path.each { assert it.seqId == seqId++ }
+        PathHelper.convert(northbound.getFlowPath(flow.id)) == currentPath
+
+        cleanup: "Remove the flow, restore the bandwidth on ISLs, reset costs"
+        flowHelper.deleteFlow(flow.id)
+        changedIsls.each {
+            database.resetIslBandwidth(it)
+            database.resetIslBandwidth(it.reversed)
+        }
+    }
+
+    @Tidy
+    @Tags([LOW_PRIORITY])
+    def "Able to reroute to a better path if it has enough bandwidth [v1 api]"() {
+        given: "A flow with alternate paths available"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+                assumeTrue(false, "No suiting switches found")
+        def flow = flowHelper.randomFlow(switchPair)
+        flow.maximumBandwidth = 10000
+        flowHelper.addFlow(flow)
+        def currentPath = PathHelper.convert(northbound.getFlowPath(flow.id))
+
+        when: "Make one of the alternative paths to be the most preferable among all others"
+        def preferableAltPath = switchPair.paths.find { it != currentPath }
+        switchPair.paths.findAll { it != preferableAltPath }.each {
+            pathHelper.makePathMorePreferable(preferableAltPath, it)
+        }
+
+        and: "Make the future path to have exact bandwidth to handle the flow"
+        def currentIsls = pathHelper.getInvolvedIsls(currentPath)
+        def thinIsl = pathHelper.getInvolvedIsls(preferableAltPath).find {
+            !currentIsls.contains(it) && !currentIsls.contains(it.reversed)
+        }
+        [thinIsl, thinIsl.reversed].each {
+            database.updateIslMaxBandwidth(it, flow.maximumBandwidth)
+            database.updateIslAvailableBandwidth(it, flow.maximumBandwidth)
+        }
+
+        and: "Init a reroute of the flow"
+        def rerouteResponse = northbound.rerouteFlow(flow.id)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+
+        then: "The flow is successfully rerouted and goes through the preferable path"
+        def newPath = PathHelper.convert(northbound.getFlowPath(flow.id))
+        int seqId = 0
+
+        rerouteResponse.rerouted
+        rerouteResponse.path.path == newPath
+        rerouteResponse.path.path.each { assert it.seqId == seqId++ }
+
+        newPath == preferableAltPath
+        pathHelper.getInvolvedIsls(newPath).contains(thinIsl)
+
+        and: "'Thin' ISL has 0 available bandwidth left"
+        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+
+        cleanup: "Remove the flow, restore bandwidths on ISLs, reset costs"
+        flow && flowHelper.deleteFlow(flow.id)
+        thinIsl && [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
     }
 
     def cleanup() {

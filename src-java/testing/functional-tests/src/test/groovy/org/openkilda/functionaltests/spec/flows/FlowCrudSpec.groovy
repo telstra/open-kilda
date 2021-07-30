@@ -916,7 +916,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(LOW_PRIORITY)
     def "System doesn't create flow when reverse path has different bandwidth than forward path on the second link"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
@@ -992,21 +991,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
             message += " vlanId=${flow."$endpoint".vlanId}"
         }
         return message
-    }
-
-    //this is for pure v1
-    @Shared
-    def errorMessage = { String operation, FlowPayload flow, String endpoint, FlowPayload conflictingFlow,
-            String conflictingEndpoint ->
-        "Could not $operation flow: Requested flow '$conflictingFlow.id' conflicts with existing flow '$flow.id'. " +
-                "Details: requested flow '$conflictingFlow.id' $conflictingEndpoint: " +
-                "switch=${conflictingFlow."$conflictingEndpoint".datapath} " +
-                "port=${conflictingFlow."$conflictingEndpoint".portNumber} " +
-                "vlan=${conflictingFlow."$conflictingEndpoint".vlanId}, " +
-                "existing flow '$flow.id' $endpoint: " +
-                "switch=${flow."$endpoint".datapath} " +
-                "port=${flow."$endpoint".portNumber} " +
-                "vlan=${flow."$endpoint".vlanId}"
     }
 
     /**
@@ -1116,10 +1100,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         topology.getActiveSwitches()
                 .unique { it.description }
                 .collect { flowHelper.singleSwitchSinglePortFlow(it) }
-    }
-
-    Switch findSwitch(SwitchId swId) {
-        topology.activeSwitches.find { it.dpId == swId }
     }
 
     def getConflictingData() {

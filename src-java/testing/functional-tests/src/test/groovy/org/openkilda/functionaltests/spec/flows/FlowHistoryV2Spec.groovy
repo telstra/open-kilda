@@ -76,6 +76,12 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        //set non default values
+        flow.ignoreBandwidth = true
+        flow.periodicPings = true
+        flow.allocateProtectedPath = true
+        flow.source.innerVlanId = flow.destination.vlanId
+        flow.destination.innerVlanId = flow.source.vlanId
         flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
         flow.pathComputationStrategy = PathComputationStrategy.LATENCY
         flow.maxLatency = 12345678
@@ -85,7 +91,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         Long timestampAfterCreate = System.currentTimeSeconds()
         def flowHistory = northbound.getFlowHistory(flow.flowId, specStartTime, timestampAfterCreate)
         assert flowHistory.size() == 1
-        checkHistoryCreateV2Action(flowHistory[0], flow.flowId)
+        checkHistoryCreateAction(flowHistory[0], flow.flowId)
 
         and: "Flow history contains all flow properties in the dump section"
         with(flowHistory[0].dumps[0]) { dump ->
@@ -104,12 +110,14 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
             dump.forwardStatus == "IN_PROGRESS" // issue 3038
             dump.reverseStatus == "IN_PROGRESS"
             dump.reverseMeterId > 0
+            dump.sourceInnerVlan == flow.source.innerVlanId
+            dump.destinationInnerVlan == flow.destination.innerVlanId
             dump.allocateProtectedPath == flow.allocateProtectedPath
             dump.encapsulationType.toString() == flow.encapsulationType
             dump.pinned == flow.pinned
             dump.pathComputationStrategy.toString() == flow.pathComputationStrategy
             dump.periodicPings == flow.periodicPings
-            dump.maxLatency / 1000000L == flow.maxLatency
+            dump.maxLatency == flow.maxLatency * 1000000
             //groupId is tested in FlowDiversityV2Spec
             //loop_switch_id is tested in FlowLoopSpec
         }
@@ -182,7 +190,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         Long timestampAfterCreate = System.currentTimeSeconds()
         verifyAll(northbound.getFlowHistory(flow.flowId, specStartTime, timestampAfterCreate)) { flowH ->
             flowH.size() == 1
-            checkHistoryCreateV2Action(flowH[0], flow.flowId)
+            checkHistoryCreateAction(flowH[0], flow.flowId)
         }
 
         when: "Update the created flow"
@@ -229,7 +237,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         then: "History record is created"
         def flowHistory = northbound.getFlowHistory(flow.flowId)
         assert flowHistory.size() == 1
-        checkHistoryCreateV2Action(flowHistory[0], flow.flowId)
+        checkHistoryCreateAction(flowHistory[0], flow.flowId)
 
         when: "Update the created flow"
         flowHelperV2.updateFlow(flow.flowId, flow.tap { it.description = it.description + "updated" })
@@ -364,7 +372,47 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    void checkHistoryCreateV2Action(FlowHistoryEntry flowHistory, String flowId) {
+    @Tidy
+    @Tags([LOW_PRIORITY])
+    def "History records are created for the create/update actions using custom timeline [v1 api]"() {
+        when: "Create a flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flowHelper.addFlow(flow)
+
+        then: "History record is created"
+        Long timestampAfterCreate = System.currentTimeSeconds()
+        verifyAll(northbound.getFlowHistory(flow.id, specStartTime, timestampAfterCreate)) { flowH ->
+            flowH.size() == 1
+            checkHistoryCreateAction(flowH[0], flow.id)
+        }
+
+        when: "Update the created flow"
+        def flowInfo = northbound.getFlow(flow.id)
+        flowHelper.updateFlow(flowInfo.id, flowInfo.tap { it.description = it.description + "updated" })
+
+        then: "History record is created after updating the flow"
+        Long timestampAfterUpdate = System.currentTimeSeconds()
+        verifyAll(northbound.getFlowHistory(flow.id, specStartTime, timestampAfterUpdate)){ flowH ->
+            flowH.size() == 2
+            checkHistoryUpdateAction(flowH[1], flow.id)
+        }
+
+        while((System.currentTimeSeconds() - timestampAfterUpdate) < 1) {
+            TimeUnit.MILLISECONDS.sleep(100);
+        }
+
+        when: "Delete the updated flow"
+        def deleteResponse = flowHelper.deleteFlow(flow.id)
+
+        then: "History is still available for the deleted flow"
+        northbound.getFlowHistory(flow.id, specStartTime, timestampAfterUpdate).size() == 2
+
+        cleanup:
+        !deleteResponse && flowHelper.deleteFlow(flow.id)
+    }
+
+    void checkHistoryCreateAction(FlowHistoryEntry flowHistory, String flowId) {
         assert flowHistory.action == CREATE_ACTION
         assert flowHistory.payload.action[-1] == CREATE_SUCCESS
         checkHistoryCommonStuff(flowHistory, flowId)
@@ -384,7 +432,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
     /** We pass latest timestamp when changes were done.
      * Just for getting all records from history */
     void checkHistoryDeleteAction(List<FlowHistoryEntry> flowHistory, String flowId) {
-        checkHistoryCreateV2Action(flowHistory[0], flowId)
+        checkHistoryCreateAction(flowHistory[0], flowId)
         checkHistoryUpdateAction(flowHistory[1], flowId)
     }
 }

@@ -530,7 +530,7 @@ class SwitchHelper {
 
     @Memoized
     static boolean isVxlanEnabled(SwitchId switchId) {
-        return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
+        return northbound.get().getSwitchProperties(switchId).supportedTransitEncapsulation
                 .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 }

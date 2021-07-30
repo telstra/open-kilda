@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
@@ -309,6 +310,32 @@ bandwidth= ignored: Switch $flow.source.switchId doesn't have links with enough 
 
         cleanup: "Delete the flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    @Tags([LOW_PRIORITY])
+    def "Unable to exceed bandwidth limit on ISL when creating a flow [v1 api]"() {
+        given: "Two active switches"
+        def switchPair = topologyHelper.getNeighboringSwitchPair()
+
+        when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL"
+        def involvedBandwidths = []
+        switchPair.paths.each { path ->
+            pathHelper.getInvolvedIsls(path).each { link ->
+                involvedBandwidths.add(islUtils.getIslInfo(link).get().availableBandwidth)
+            }
+        }
+
+        def flow = flowHelper.randomFlow(switchPair)
+        flow.maximumBandwidth = involvedBandwidths.max() + 1
+        northbound.addFlow(flow)
+
+        then: "The flow is not created because flow path should not be found"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 404
+
+        cleanup:
+        !exc && flowHelper.deleteFlow(flow.id)
     }
 
     def cleanup() {

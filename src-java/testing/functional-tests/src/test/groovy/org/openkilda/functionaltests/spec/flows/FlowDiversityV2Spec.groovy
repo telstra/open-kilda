@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_ACTION
@@ -448,6 +449,34 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
 
         cleanup: "Delete flows"
         [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
+    }
+
+    @Tidy
+    @Deprecated //there is a v2 version
+    @Tags([LOW_PRIORITY])
+    def "Able to create diverse flows [v1 api]"() {
+        given: "Two active neighboring switches with three not overlapping paths at least"
+        def switchPair = getSwitchPair(3)
+
+        when: "Create three flows with diversity enabled"
+        def flow1 = flowHelper.randomFlow(switchPair, false)
+        def flow2 = flowHelper.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.id }
+        def flow3 = flowHelper.randomFlow(switchPair, false, [flow1, flow2]).tap { it.diverseFlowId = flow2.id }
+        [flow1, flow2, flow3].each { flowHelper.addFlow(it) }
+
+        then: "All flows have diverse flow IDs in response"
+        northbound.getFlow(flow1.id).diverseWith.sort() == [flow2.id, flow3.id].sort()
+        northbound.getFlow(flow2.id).diverseWith.sort() == [flow1.id, flow3.id].sort()
+        northbound.getFlow(flow3.id).diverseWith.sort() == [flow1.id, flow2.id].sort()
+
+        and: "All flows have different paths"
+        def allInvolvedIsls = [flow1, flow2, flow3].collectMany {
+            pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(it.id)))
+        }
+        allInvolvedIsls.unique(false) == allInvolvedIsls
+
+        cleanup: "Delete flows"
+        [flow1, flow2, flow3].each { it && flowHelper.deleteFlow(it.id) }
     }
 
     SwitchPair getSwitchPair(minNotOverlappingPaths) {
