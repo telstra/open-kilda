@@ -5,13 +5,9 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
-import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
@@ -25,7 +21,6 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.MeterId
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
 
 import org.springframework.http.HttpStatus
@@ -419,47 +414,5 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         cleanup:
         northboundV2.partialSwitchUpdate(sw.dpId, new SwitchPatchDto().tap { it.pop = initConf.pop ?: "" })
-    }
-
-    @Tags([VIRTUAL, LOW_PRIORITY])
-    def "System is able to fix rule and meter related to this rule by synchronize switch operation"() {
-        /**
-         * It works for default meters only.
-         * For example some default rule is missing,
-         * then syncSwitch before installing this rule, will check related meter and fix it (if needed).
-         */
-        given: "An active switch with missing default rule and misconfigured meter related to the rule"
-        def sw = topology.activeSwitches.first()
-        northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.REMOVE_BROADCAST)
-        def broadcastCookieMeterId = MeterId.createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue()
-        def meterToManipulate = northbound.getAllMeters(sw.dpId).meterEntries
-                .find{ it.meterId == broadcastCookieMeterId }
-        def newBurstSize = meterToManipulate.burstSize + 100
-        def newRate = meterToManipulate.rate + 100
-
-        lockKeeper.updateBurstSizeAndRate(sw, meterToManipulate.meterId, newBurstSize, newRate)
-        Wrappers.wait(RULES_DELETION_TIME) {
-            def validateInfo = northbound.validateSwitch(sw.dpId)
-            assert validateInfo.rules.missing.size() == 1
-            assert validateInfo.meters.misconfigured.size() == 1
-            assert validateInfo.meters.misconfigured[0].actual.burstSize == newBurstSize
-            assert validateInfo.meters.misconfigured[0].expected.burstSize == meterToManipulate.burstSize
-            assert validateInfo.meters.misconfigured[0].actual.rate == newRate
-            assert validateInfo.meters.misconfigured[0].expected.rate == meterToManipulate.rate
-        }
-
-        when: "Synchronize switch"
-        northbound.synchronizeSwitch(sw.dpId, false)
-
-        then: "The misconfigured meter was fixed an moved to the 'proper' section"
-        and: "The missing default rule was reinstalled"
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            with(northbound.validateSwitch(sw.dpId)) {
-                it.rules.missing.empty
-                it.meters.misconfigured.empty
-                it.meters.proper.find { it.meterId == broadcastCookieMeterId }.burstSize == meterToManipulate.burstSize
-                it.meters.proper.find { it.meterId == broadcastCookieMeterId }.rate == meterToManipulate.rate
-            }
-        }
     }
 }
