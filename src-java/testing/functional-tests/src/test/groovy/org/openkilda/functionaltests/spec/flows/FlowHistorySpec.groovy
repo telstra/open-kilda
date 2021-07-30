@@ -41,7 +41,7 @@ import java.util.concurrent.TimeUnit
 @Narrative("""Verify that history records are created for the create/update actions.
 History record is created in case the create/update action is completed successfully.""")
 @Slf4j
-class FlowHistoryV2Spec extends HealthCheckSpecification {
+class FlowHistorySpec extends HealthCheckSpecification {
     @Shared
     Long specStartTime
 
@@ -127,6 +127,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
             it.maximumBandwidth = flow.maximumBandwidth + 1
             it.maxLatency = flow.maxLatency + 1
             it.pinned = !flow.pinned
+            it.allocateProtectedPath = !flow.allocateProtectedPath
             it.periodicPings = !flow.periodicPings
             it.source.vlanId = flow.source.vlanId + 1
             it.destination.vlanId = flow.destination.vlanId + 1
@@ -174,53 +175,12 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         assert flowHistory3.size() == 2
         checkHistoryDeleteAction(flowHistory3, flow.flowId)
 
-        cleanup:
-        !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
-    }
-
-    @Tidy
-    @Tags(SMOKE)
-    def "History records are created for the create/update actions using custom timeline (v2)"() {
-        when: "Create a flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flowHelperV2.addFlow(flow)
-
-        then: "History record is created"
-        Long timestampAfterCreate = System.currentTimeSeconds()
-        verifyAll(northbound.getFlowHistory(flow.flowId, specStartTime, timestampAfterCreate)) { flowH ->
-            flowH.size() == 1
-            checkHistoryCreateAction(flowH[0], flow.flowId)
-        }
-
-        when: "Update the created flow"
-         def flowInfo = northboundV2.getFlow(flow.flowId)
-        flowHelperV2.updateFlow(flowInfo.flowId,
-                flowHelperV2.toRequest(flowInfo.tap { it.description = it.description + "updated" }))
-
-        then: "History record is created after updating the flow"
-        Long timestampAfterUpdate = System.currentTimeSeconds()
-        verifyAll(northbound.getFlowHistory(flow.flowId, specStartTime, timestampAfterUpdate)){ flowH ->
-            flowH.size() == 2
-            checkHistoryUpdateAction(flowH[1], flow.flowId)
-        }
-
-        while((System.currentTimeSeconds() - timestampAfterUpdate) < 1) {
-            TimeUnit.MILLISECONDS.sleep(100);
-        }
-
-        when: "Delete the updated flow"
-        def deleteResponse = flowHelperV2.deleteFlow(flow.flowId)
-
-        then: "History is still available for the deleted flow"
-        northbound.getFlowHistory(flow.flowId, specStartTime, timestampAfterUpdate).size() == 2
-
         and: "Flow history statuses returns all flow statuses for the whole life cycle"
         //create, update, delete
         northboundV2.getFlowHistoryStatuses(flow.flowId).historyStatuses*.statusBecome == ["UP", "UP", "DELETED"]
         //check custom timeLine and the 'count' option
         northboundV2.getFlowHistoryStatuses(flow.flowId, specStartTime, timestampAfterUpdate)
-            .historyStatuses*.statusBecome == ["UP", "UP"]
+                .historyStatuses*.statusBecome == ["UP", "UP"]
         northboundV2.getFlowHistoryStatuses(flow.flowId, 1).historyStatuses*.statusBecome == ["DELETED"]
 
         cleanup:

@@ -57,7 +57,7 @@ System can start to use protected path in two case:
 A flow has the status degraded in case when the main path is up and the protected path is down.
 
 Main and protected paths can't use the same link.""")
-class ProtectedPathV2Spec extends HealthCheckSpecification {
+class ProtectedPathSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider

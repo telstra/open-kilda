@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -144,7 +145,10 @@ class FlowHelper {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flowId).status != FlowState.IN_PROGRESS }
         log.debug("Deleting flow '$flowId'")
         def response = northbound.deleteFlow(flowId)
-        Wrappers.wait(WAIT_OFFSET) { assert !northbound.getFlowStatus(flowId) }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert !northbound.getFlowStatus(flowId)
+            assert northbound.getFlowHistory(flowId).find { it.payload.last().action == DELETE_SUCCESS }
+        }
         return response
     }
 

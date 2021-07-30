@@ -22,12 +22,14 @@ import org.openkilda.model.PathComputationStrategy
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Isolated
 import spock.lang.ResourceLock
 import spock.lang.See
 import spock.lang.Shared
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-monitoring")
 @Tags([VIRTUAL, LOW_PRIORITY])
+@Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
 class FlowMonitoringSpec extends HealthCheckSpecification {
     @Shared
     List<PathNode> mainPath, alternativePath

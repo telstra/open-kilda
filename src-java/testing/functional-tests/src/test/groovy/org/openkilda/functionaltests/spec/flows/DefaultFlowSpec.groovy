@@ -25,7 +25,7 @@ import javax.inject.Provider
 @Narrative("""System allows to create default port(vlan=0) and simple flow(vlan=<any number>) on the same port.
 Default flow has lower priority than simple flow.
 Also system allows to pass tagged traffic via default flow.""")
-class DefaultFlowV2Spec extends HealthCheckSpecification {
+class DefaultFlowSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider

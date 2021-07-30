@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit
 - In case of isl down such flow should be marked as DOWN.
 - On Isl up event such flow shouldn't be re-routed as well.
   Instead kilda should verify that it's path is online and mark flow as UP.""")
-class PinnedFlowV2Spec extends HealthCheckSpecification {
+class PinnedFlowSpec extends HealthCheckSpecification {
 
     @Tidy
     def "Able to CRUD pinned flow"() {

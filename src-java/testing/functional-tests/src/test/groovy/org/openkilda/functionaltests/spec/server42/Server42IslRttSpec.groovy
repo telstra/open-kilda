@@ -33,11 +33,13 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Isolated
 import spock.lang.ResourceLock
 import spock.lang.Shared
 
 @Slf4j
 @ResourceLock(S42_TOGGLE)
+@Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
 class Server42IslRttSpec extends HealthCheckSpecification {
     @Shared
     @Value('${opentsdb.metric.prefix}')

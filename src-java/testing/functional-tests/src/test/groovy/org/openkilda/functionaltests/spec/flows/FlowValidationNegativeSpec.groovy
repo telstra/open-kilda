@@ -26,7 +26,7 @@ import spock.lang.Narrative
                  - ingress, transit and egress switches
                  - Single switch, two switch and three+ switch flow spans.
             """)
-class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
+class FlowValidationNegativeSpec extends HealthCheckSpecification {
 
     @Tidy
     @IterationTag(tags = [SMOKE], iterationNameRegex = /reverse/)

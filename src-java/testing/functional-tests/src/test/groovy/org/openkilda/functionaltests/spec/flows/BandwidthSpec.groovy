@@ -23,7 +23,7 @@ import spock.lang.Ignore
 import spock.lang.Narrative
 
 @Narrative("Verify that ISL's bandwidth behaves consistently and does not allow any oversubscribtions etc.")
-class BandwidthV2Spec extends HealthCheckSpecification {
+class BandwidthSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(SMOKE)

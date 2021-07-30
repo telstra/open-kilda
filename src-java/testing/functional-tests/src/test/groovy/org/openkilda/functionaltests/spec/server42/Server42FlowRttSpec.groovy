@@ -35,6 +35,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
+import spock.lang.Isolated
 import spock.lang.Narrative
 import spock.lang.ResourceLock
 import spock.lang.Shared
@@ -50,6 +51,7 @@ Note that on hardware env it is very important for switch to have correct time, 
 switch timestamps, thus we may see no stats in otsdb if time on switch is incorrect
  */
 @ResourceLock(S42_TOGGLE)
+@Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
 class Server42FlowRttSpec extends HealthCheckSpecification {
     @Shared
     @Value('${opentsdb.metric.prefix}')

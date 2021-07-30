@@ -660,7 +660,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
                     iterationNameRegex = /srcVlanId: 10, srcInnerVlanId: 20, dstVlanId: 30, dstInnerVlanId: 0/)
     ])
     def "System allows to manipulate with QinQ vxlan flow\
-(srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
+[srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId]"() {
         given: "Two switches connected to traffgen and enabled multiTable mode"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
         assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find required switches in topology")

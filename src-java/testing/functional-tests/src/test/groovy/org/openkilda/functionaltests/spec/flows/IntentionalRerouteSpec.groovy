@@ -29,7 +29,7 @@ import javax.inject.Provider
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/reroute")
 @Narrative("Verify that on-demand reroute operations are performed accurately.")
-class IntentionalRerouteV2Spec extends HealthCheckSpecification {
+class IntentionalRerouteSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider

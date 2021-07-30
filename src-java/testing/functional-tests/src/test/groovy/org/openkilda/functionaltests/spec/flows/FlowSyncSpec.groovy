@@ -21,7 +21,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import groovy.time.TimeCategory
 import spock.lang.Shared
 
-class FlowSyncV2Spec extends HealthCheckSpecification {
+class FlowSyncSpec extends HealthCheckSpecification {
 
     @Shared
     int flowRulesCount = 2

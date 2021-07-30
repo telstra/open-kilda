@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.spec.switches
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -30,7 +29,6 @@ import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
-import spock.lang.ResourceLock
 import spock.lang.Unroll
 
 class DefaultRulesSpec extends HealthCheckSpecification {
@@ -383,22 +381,13 @@ switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    @ResourceLock(S42_TOGGLE)
     def "Able to delete/install the server42 Flow RTT turning rule on a switch"() {
         setup: "Select a switch which support server42 turning rule"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST) } ?:
                 assumeTrue(false, "No suiting switch found")
 
         and: "Server42 is enabled in feature toggle"
-        def initFeatureToggle = northbound.getFeatureToggles()
-        def featureToggleIsChanged = false
-        if (!initFeatureToggle.server42FlowRtt) {
-            northbound.toggleFeature(initFeatureToggle.jacksonCopy().tap { server42FlowRtt = true })
-            Wrappers.wait(RULES_INSTALLATION_TIME) {
-                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
-            }
-            featureToggleIsChanged = true
-        }
+        assumeTrue(northbound.getFeatureToggles().server42FlowRtt)
 
         when: "Delete the server42 turning rule from the switch"
         def deleteResponse = northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.REMOVE_SERVER_42_TURNING)
@@ -436,26 +425,17 @@ switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert !northbound.getSwitchRules(sw.dpId).flowEntries.findAll { it.cookie == SERVER_42_FLOW_RTT_TURNING_COOKIE }.empty
         }
-
-        cleanup: "Revert the feature toggle to init state"
-        featureToggleIsChanged && northbound.toggleFeature(initFeatureToggle)
     }
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    @ResourceLock(S42_TOGGLE)
     def "Able to delete/install the server42 ISL RTT turning rule on a switch"() {
         setup: "Select a switch which support server42 turning rule"
         def sw = topology.getActiveServer42Switches().find(s -> northbound.getSwitchProperties(s.dpId).server42IslRtt != "DISABLED");
         assumeTrue(sw != null, "No suiting switch found")
 
         and: "Server42 is enabled in feature toggle"
-        def initFeatureToggle = northbound.getFeatureToggles()
-        def featureToggleIsChanged = false
-        if (!initFeatureToggle.server42IslRtt) {
-            northbound.toggleFeature(initFeatureToggle.jacksonCopy().tap { server42IslRtt = true })
-            featureToggleIsChanged = true
-        }
+        assumeTrue(northbound.getFeatureToggles().server42IslRtt)
 
         and: "server42IslRtt is enabled on the switch"
         def originSwProps = northbound.getSwitchProperties(sw.dpId)
@@ -507,7 +487,6 @@ switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
         }
 
         cleanup: "Revert the feature toggle to init state"
-        featureToggleIsChanged && northbound.toggleFeature(initFeatureToggle)
         originSwProps && northbound.updateSwitchProperties(sw.dpId, originSwProps)
     }
 

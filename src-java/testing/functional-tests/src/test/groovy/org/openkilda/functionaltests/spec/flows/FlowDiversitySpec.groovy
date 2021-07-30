@@ -41,7 +41,7 @@ path. The cost of paths for diverse flows is calculated in real time and consist
 
 Refer to https://github.com/telstra/open-kilda/issues/1231 for more details.
 """)
-class FlowDiversityV2Spec extends HealthCheckSpecification {
+class FlowDiversitySpec extends HealthCheckSpecification {
 
     @Value('${diversity.isl.cost}')
     int diversityIslCost

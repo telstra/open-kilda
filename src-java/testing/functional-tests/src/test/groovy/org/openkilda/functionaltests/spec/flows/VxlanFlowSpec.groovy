@@ -53,8 +53,8 @@ flow with protected path, default flow) for a flow with VXLAN encapsulation.
 
 NOTE: A flow with the 'VXLAN' encapsulation is supported on a Noviflow switches.
 So, flow can be created on a Noviflow(src/dst/transit) switches only.""")
-class VxlanFlowV2Spec extends HealthCheckSpecification {
-    static Logger logger = LoggerFactory.getLogger(VxlanFlowV2Spec.class)
+class VxlanFlowSpec extends HealthCheckSpecification {
+    static Logger logger = LoggerFactory.getLogger(VxlanFlowSpec.class)
 
     @Autowired
     Provider<TraffExamService> traffExamProvider

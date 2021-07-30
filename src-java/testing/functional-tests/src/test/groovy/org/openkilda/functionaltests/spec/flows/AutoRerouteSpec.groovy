@@ -48,7 +48,7 @@ import java.util.concurrent.TimeUnit
 
 @Slf4j
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
-class AutoRerouteV2Spec extends HealthCheckSpecification {
+class AutoRerouteSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(SMOKE)
@@ -856,7 +856,7 @@ triggering one more reroute of the current path"
 @Slf4j
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
 @Isolated
-class AutoRerouteV2IsolatedSpec extends HealthCheckSpecification {
+class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
     @Tidy
     //isolation: global toggle flowsRerouteOnIslDiscoveryEnabled is changed
     def "Flow in 'Down' status is rerouted after switchUp event"() {
