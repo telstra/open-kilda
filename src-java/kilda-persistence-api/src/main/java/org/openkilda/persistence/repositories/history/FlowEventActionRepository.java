@@ -13,24 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.history.model;
+package org.openkilda.persistence.repositories.history;
 
-import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.model.history.FlowEventAction;
+import org.openkilda.persistence.repositories.Repository;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Value;
-
-import java.time.Instant;
-
-@Value
-@AllArgsConstructor
-@Builder
-public class PortHistoryData {
-    Endpoint endpoint;
-    PortHistoryEvent event;
-    Instant time;
-    int upEventsCount;
-    int downEventsCount;
+public interface FlowEventActionRepository extends Repository<FlowEventAction> {
 }
-

@@ -96,13 +96,13 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
     }
 
     private List<FlowHistoryPayload> listFlowHistories(FlowEvent flowEvent) {
-        return flowEvent.getHistoryRecords().stream()
+        return flowEvent.getEventActions().stream()
                 .map(HistoryMapper.INSTANCE::map)
                 .collect(Collectors.toList());
     }
 
     private List<FlowDumpPayload> listFlowDumps(FlowEvent flowEvent) {
-        return flowEvent.getFlowDumps()
+        return flowEvent.getEventDumps()
                 .stream()
                 .map(HistoryMapper.INSTANCE::map)
                 .collect(Collectors.toList());

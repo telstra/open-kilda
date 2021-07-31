@@ -15,8 +15,8 @@
 
 package org.openkilda.persistence.repositories.history;
 
-import org.openkilda.model.history.FlowDump;
+import org.openkilda.model.history.FlowEventDump;
 import org.openkilda.persistence.repositories.Repository;
 
-public interface FlowDumpRepository extends Repository<FlowDump> {
+public interface FlowEventDumpRepository extends Repository<FlowEventDump> {
 }

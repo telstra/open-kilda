@@ -21,7 +21,7 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
-import org.openkilda.model.history.FlowDump.FlowDumpData;
+import org.openkilda.model.history.FlowEventDump.FlowEventDumpData;
 import org.openkilda.persistence.ferma.frames.converters.Convert;
 import org.openkilda.persistence.ferma.frames.converters.FlowEncapsulationTypeConverter;
 import org.openkilda.persistence.ferma.frames.converters.FlowPathStatusConverter;
@@ -32,7 +32,7 @@ import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 
 import com.syncleus.ferma.annotations.Property;
 
-public abstract class FlowDumpFrame extends KildaBaseVertexFrame implements FlowDumpData {
+public abstract class FlowEventDumpFrame extends KildaBaseVertexFrame implements FlowEventDumpData {
     public static final String FRAME_LABEL = "flow_dump";
     public static final String TASK_ID_PROPERTY = "task_id";
     public static final String TYPE_PROPERTY = "type";

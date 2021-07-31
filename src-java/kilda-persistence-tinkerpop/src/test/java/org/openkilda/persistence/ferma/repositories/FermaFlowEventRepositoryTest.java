@@ -19,11 +19,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.history.FlowEvent;
-import org.openkilda.model.history.FlowHistory;
+import org.openkilda.model.history.FlowEventAction;
+import org.openkilda.model.history.FlowStatusView;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
+import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
-import org.openkilda.persistence.repositories.history.FlowEventRepository.FlowStatusesImmutableView;
-import org.openkilda.persistence.repositories.history.FlowHistoryRepository;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -52,12 +52,12 @@ public class FermaFlowEventRepositoryTest extends InMemoryGraphBasedTest {
     private static final Instant TIME_4 = Instant.parse("2020-07-06T11:04:50.321Z");
 
     private static FlowEventRepository flowEventRepository;
-    private static FlowHistoryRepository flowHistoryRepository;
+    private static FlowEventActionRepository flowEventActionRepository;
 
     @BeforeClass
     public static void setUp() {
         flowEventRepository = repositoryFactory.createFlowEventRepository();
-        flowHistoryRepository = repositoryFactory.createFlowHistoryRepository();
+        flowEventActionRepository = repositoryFactory.createFlowEventActionRepository();
     }
 
     @Test
@@ -117,13 +117,13 @@ public class FermaFlowEventRepositoryTest extends InMemoryGraphBasedTest {
         flowEventRepository.add(buildFlowEvent(FLOW_1, TASK_2, ACTION_2, TIME_2));
         flowEventRepository.add(buildFlowEvent(FLOW_1, TASK_3, ACTION_3, TIME_3));
 
-        flowHistoryRepository.add(buildFlowHistory(TASK_1,
+        flowEventActionRepository.add(buildFlowHistory(TASK_1,
                 FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(0) + "UP", TIME_1));
-        flowHistoryRepository.add(buildFlowHistory(TASK_2,
+        flowEventActionRepository.add(buildFlowHistory(TASK_2,
                 FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(1) + "DOWN", TIME_2));
-        flowHistoryRepository.add(buildFlowHistory(TASK_3, FermaFlowEventRepository.FLOW_DELETED_ACTION, TIME_3));
+        flowEventActionRepository.add(buildFlowHistory(TASK_3, FermaFlowEventRepository.FLOW_DELETED_ACTION, TIME_3));
 
-        List<FlowStatusesImmutableView> actual = flowEventRepository.findFlowStatusesByFlowIdAndTimeFrame(
+        List<FlowStatusView> actual = flowEventRepository.findFlowStatusesByFlowIdAndTimeFrame(
                 FLOW_1, TIME_1.minusSeconds(1), TIME_3.plusSeconds(1), 100);
 
         assertEquals(TIME_1, actual.get(0).getTimestamp());
@@ -144,17 +144,17 @@ public class FermaFlowEventRepositoryTest extends InMemoryGraphBasedTest {
         flowEventRepository.add(buildFlowEvent(FLOW_1, TASK_4, ACTION_4, TIME_4));
         flowEventRepository.add(buildFlowEvent(FLOW_2, TASK_5, ACTION_5, TIME_3));
 
-        flowHistoryRepository.add(buildFlowHistory(TASK_1,
+        flowEventActionRepository.add(buildFlowHistory(TASK_1,
                 FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(0) + "UP", TIME_1));
-        flowHistoryRepository.add(buildFlowHistory(TASK_2,
+        flowEventActionRepository.add(buildFlowHistory(TASK_2,
                 FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(1) + "DEGRADED", TIME_2));
-        flowHistoryRepository.add(buildFlowHistory(TASK_3,
+        flowEventActionRepository.add(buildFlowHistory(TASK_3,
                 FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(0) + "DOWN", TIME_3));
-        flowHistoryRepository.add(buildFlowHistory(TASK_4, FermaFlowEventRepository.FLOW_DELETED_ACTION, TIME_4));
-        flowHistoryRepository.add(buildFlowHistory(TASK_5,
+        flowEventActionRepository.add(buildFlowHistory(TASK_4, FermaFlowEventRepository.FLOW_DELETED_ACTION, TIME_4));
+        flowEventActionRepository.add(buildFlowHistory(TASK_5,
                 FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(1) + "DEGRADED", TIME_3));
 
-        List<FlowStatusesImmutableView> actual = flowEventRepository.findFlowStatusesByFlowIdAndTimeFrame(
+        List<FlowStatusView> actual = flowEventRepository.findFlowStatusesByFlowIdAndTimeFrame(
                 FLOW_1, TIME_2, TIME_3, 1000);
 
         assertEquals(TIME_2, actual.get(0).getTimestamp());
@@ -172,17 +172,17 @@ public class FermaFlowEventRepositoryTest extends InMemoryGraphBasedTest {
         flowEventRepository.add(buildFlowEvent(FLOW_1, TASK_4, ACTION_4, TIME_4));
         flowEventRepository.add(buildFlowEvent(FLOW_2, TASK_5, ACTION_5, TIME_3));
 
-        flowHistoryRepository.add(buildFlowHistory(TASK_1,
+        flowEventActionRepository.add(buildFlowHistory(TASK_1,
                 FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(0) + "UP", TIME_1));
-        flowHistoryRepository.add(buildFlowHistory(TASK_2,
+        flowEventActionRepository.add(buildFlowHistory(TASK_2,
                 FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(1) + "DEGRADED", TIME_2));
-        flowHistoryRepository.add(buildFlowHistory(TASK_3,
+        flowEventActionRepository.add(buildFlowHistory(TASK_3,
                 FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(0) + "DOWN", TIME_3));
-        flowHistoryRepository.add(buildFlowHistory(TASK_4, FermaFlowEventRepository.FLOW_DELETED_ACTION, TIME_4));
-        flowHistoryRepository.add(buildFlowHistory(TASK_5,
+        flowEventActionRepository.add(buildFlowHistory(TASK_4, FermaFlowEventRepository.FLOW_DELETED_ACTION, TIME_4));
+        flowEventActionRepository.add(buildFlowHistory(TASK_5,
                 FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(1) + "DEGRADED", TIME_3));
 
-        List<FlowStatusesImmutableView> actual = flowEventRepository.findFlowStatusesByFlowIdAndTimeFrame(
+        List<FlowStatusView> actual = flowEventRepository.findFlowStatusesByFlowIdAndTimeFrame(
                 FLOW_1, TIME_1, TIME_4, 2);
 
         assertEquals(TIME_3, actual.get(0).getTimestamp());
@@ -203,11 +203,11 @@ public class FermaFlowEventRepositoryTest extends InMemoryGraphBasedTest {
                 .build();
     }
 
-    private FlowHistory buildFlowHistory(String taskId, String action, Instant timestamp) {
-        FlowHistory flowHistory = new FlowHistory();
-        flowHistory.setTaskId(taskId);
-        flowHistory.setAction(action);
-        flowHistory.setTimestamp(timestamp);
-        return flowHistory;
+    private FlowEventAction buildFlowHistory(String taskId, String action, Instant timestamp) {
+        FlowEventAction flowEventAction = new FlowEventAction();
+        flowEventAction.setTaskId(taskId);
+        flowEventAction.setAction(action);
+        flowEventAction.setTimestamp(timestamp);
+        return flowEventAction;
     }
 }

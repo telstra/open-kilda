@@ -40,18 +40,18 @@ import java.time.Instant;
  */
 @DefaultSerializer(BeanSerializer.class)
 @ToString
-public class FlowHistory implements CompositeDataEntity<FlowHistory.FlowHistoryData> {
+public class FlowEventAction implements CompositeDataEntity<FlowEventAction.FlowEventActionData> {
     @Getter
     @Setter
     @Delegate
     @JsonIgnore
-    private FlowHistoryData data;
+    private FlowEventActionData data;
 
     /**
      * No args constructor for deserialization purpose.
      */
-    public FlowHistory() {
-        data = new FlowHistoryDataImpl();
+    public FlowEventAction() {
+        data = new FlowEventActionDataImpl();
     }
 
     /**
@@ -59,18 +59,18 @@ public class FlowHistory implements CompositeDataEntity<FlowHistory.FlowHistoryD
      *
      * @param entityToClone the entity to copy entity data from.
      */
-    public FlowHistory(@NonNull FlowHistory entityToClone) {
-        data = FlowHistoryCloner.INSTANCE.deepCopy(entityToClone.getData());
+    public FlowEventAction(@NonNull FlowEventAction entityToClone) {
+        data = FlowEventActionCloner.INSTANCE.deepCopy(entityToClone.getData());
     }
 
-    public FlowHistory(@NonNull FlowHistoryData data) {
+    public FlowEventAction(@NonNull FlowEventAction.FlowEventActionData data) {
         this.data = data;
     }
 
     /**
      * Defines persistable data of the FlowHistory.
      */
-    public interface FlowHistoryData {
+    public interface FlowEventActionData {
         Instant getTimestamp();
 
         void setTimestamp(Instant timestamp);
@@ -93,7 +93,7 @@ public class FlowHistory implements CompositeDataEntity<FlowHistory.FlowHistoryD
      */
     @Data
     @NoArgsConstructor
-    static final class FlowHistoryDataImpl implements FlowHistoryData, Serializable {
+    static final class FlowEventActionDataImpl implements FlowEventActionData, Serializable {
         private static final long serialVersionUID = 1L;
         Instant timestamp;
         String action;
@@ -102,16 +102,16 @@ public class FlowHistory implements CompositeDataEntity<FlowHistory.FlowHistoryD
     }
 
     @Mapper
-    public interface FlowHistoryCloner {
-        FlowHistoryCloner INSTANCE = Mappers.getMapper(FlowHistoryCloner.class);
+    public interface FlowEventActionCloner {
+        FlowEventActionCloner INSTANCE = Mappers.getMapper(FlowEventActionCloner.class);
 
-        void copy(FlowHistoryData source, @MappingTarget FlowHistoryData target);
+        void copy(FlowEventActionData source, @MappingTarget FlowEventActionData target);
 
         /**
          * Performs deep copy of entity data.
          */
-        default FlowHistoryData deepCopy(FlowHistoryData source) {
-            FlowHistoryData result = new FlowHistoryDataImpl();
+        default FlowEventActionData deepCopy(FlowEventActionData source) {
+            FlowEventActionData result = new FlowEventActionDataImpl();
             copy(source, result);
             return result;
         }

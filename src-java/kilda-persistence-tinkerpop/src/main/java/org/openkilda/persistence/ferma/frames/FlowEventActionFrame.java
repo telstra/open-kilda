@@ -15,7 +15,7 @@
 
 package org.openkilda.persistence.ferma.frames;
 
-import org.openkilda.model.history.FlowHistory.FlowHistoryData;
+import org.openkilda.model.history.FlowEventAction.FlowEventActionData;
 import org.openkilda.persistence.ferma.frames.converters.Convert;
 import org.openkilda.persistence.ferma.frames.converters.InstantLongConverter;
 
@@ -23,7 +23,7 @@ import com.syncleus.ferma.annotations.Property;
 
 import java.time.Instant;
 
-public abstract class FlowHistoryFrame extends KildaBaseVertexFrame implements FlowHistoryData {
+public abstract class FlowEventActionFrame extends KildaBaseVertexFrame implements FlowEventActionData {
     public static final String FRAME_LABEL = "flow_history";
     public static final String TASK_ID_PROPERTY = "task_id";
     public static final String TIMESTAMP_PROPERTY = "timestamp";
