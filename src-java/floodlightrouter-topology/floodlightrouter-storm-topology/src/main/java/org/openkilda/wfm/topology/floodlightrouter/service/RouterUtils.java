@@ -27,6 +27,7 @@ import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
+import org.openkilda.messaging.command.flow.ModifyDefaultMeterForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
@@ -112,6 +113,8 @@ public final class RouterUtils {
                 return ((DumpRulesForNbworkerRequest) commandData).getSwitchId();
             } else if (commandData instanceof MeterModifyCommandRequest) {
                 return ((MeterModifyCommandRequest) commandData).getSwitchId();
+            } else if (commandData instanceof ModifyDefaultMeterForSwitchManagerRequest) {
+                return ((ModifyDefaultMeterForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpRulesForSwitchManagerRequest) {
                 return ((DumpRulesForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof GetExpectedDefaultRulesRequest) {

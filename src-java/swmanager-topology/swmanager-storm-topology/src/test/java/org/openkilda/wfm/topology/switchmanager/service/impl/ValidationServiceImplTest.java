@@ -54,7 +54,6 @@ import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -113,9 +112,9 @@ public class ValidationServiceImplTest {
         List<FlowEntry> flowEntries =
                 Lists.newArrayList(FlowEntry.builder().cookie(1L).build(), FlowEntry.builder().cookie(2L).build());
         ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
-        assertEquals(ImmutableList.of(3L), response.getMissingRules());
-        assertEquals(ImmutableList.of(2L), response.getProperRules());
-        assertEquals(ImmutableList.of(1L), response.getExcessRules());
+        assertEquals(ImmutableSet.of(3L), response.getMissingRules());
+        assertEquals(ImmutableSet.of(2L), response.getProperRules());
+        assertEquals(ImmutableSet.of(1L), response.getExcessRules());
     }
 
     @Test

@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,20 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.model;
+package org.openkilda.messaging.info.switches;
 
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.model.SwitchId;
+
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
-import java.util.Set;
-
 @Value
-public class ValidateRulesResult {
-
-    Set<Long> missingRules;
-
-    Set<Long> properRules;
-
-    Set<Long> excessRules;
-
-    Set<Long> misconfiguredRules;
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = false)
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class ModifyMeterResponse extends InfoData {
+    SwitchId switchId;
+    long mererId;
 }

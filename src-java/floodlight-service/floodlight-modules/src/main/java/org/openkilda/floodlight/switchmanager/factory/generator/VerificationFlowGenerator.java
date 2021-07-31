@@ -64,9 +64,12 @@ import java.util.List;
 
 public class VerificationFlowGenerator extends MeteredFlowGenerator {
 
-    private boolean broadcast;
-    private KildaCore kildaCore;
-    private String verificationBcastPacketDst;
+    private final boolean broadcast;
+    private final long cookie;
+    private final long meterId;
+    private final long meterRate;
+    private final KildaCore kildaCore;
+    private final String verificationBcastPacketDst;
 
     @Builder
     public VerificationFlowGenerator(FeatureDetectorService featureDetectorService, boolean broadcast,
@@ -74,6 +77,9 @@ public class VerificationFlowGenerator extends MeteredFlowGenerator {
                                      String verificationBcastPacketDst) {
         super(featureDetectorService, config);
         this.broadcast = broadcast;
+        this.cookie = broadcast ? VERIFICATION_BROADCAST_RULE_COOKIE : VERIFICATION_UNICAST_RULE_COOKIE;
+        this.meterId = createMeterIdForDefaultRule(cookie).getValue();
+        this.meterRate = broadcast ? config.getBroadcastRateLimit() : config.getUnicastRateLimit();
         this.kildaCore = kildaCore;
         this.verificationBcastPacketDst = verificationBcastPacketDst;
     }
@@ -81,10 +87,7 @@ public class VerificationFlowGenerator extends MeteredFlowGenerator {
     @Override
     public SwitchFlowTuple generateFlow(IOFSwitch sw) {
         ArrayList<OFAction> actionList = new ArrayList<>();
-        long cookie = broadcast ? VERIFICATION_BROADCAST_RULE_COOKIE : VERIFICATION_UNICAST_RULE_COOKIE;
-        long meterId = createMeterIdForDefaultRule(cookie).getValue();
-        long meterRate = broadcast ? config.getBroadcastRateLimit() : config.getUnicastRateLimit();
-        OFMeterMod meter = generateMeterForDefaultRule(sw, meterId, meterRate,
+        OFMeterMod meter = generateAddMeterForDefaultRule(sw, meterId, meterRate,
                 config.getSystemMeterBurstSizeInPackets(), config.getDiscoPacketSize());
         OFInstructionMeter ofInstructionMeter = buildMeterInstruction(meterId, sw, actionList);
 
@@ -105,6 +108,12 @@ public class VerificationFlowGenerator extends MeteredFlowGenerator {
                 .meter(meter)
                 .group(group)
                 .build();
+    }
+
+    @Override
+    public OFMeterMod generateMeterModify(IOFSwitch sw) {
+        return generateModifyMeterForDefaultRule(sw, meterId, meterRate,
+                config.getSystemMeterBurstSizeInPackets(), config.getDiscoPacketSize());
     }
 
     private static void addStandardDiscoveryActions(IOFSwitch sw, ArrayList<OFAction> actionList) {

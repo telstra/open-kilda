@@ -47,7 +47,7 @@ public abstract class LldpFlowGenerator extends MeteredFlowGenerator {
         ArrayList<OFAction> actionList = new ArrayList<>();
         long cookie = getCookie();
         long meterId = createMeterIdForDefaultRule(cookie).getValue();
-        OFMeterMod meter = generateMeterForDefaultRule(sw, meterId, config.getLldpRateLimit(),
+        OFMeterMod meter = generateAddMeterForDefaultRule(sw, meterId, config.getLldpRateLimit(),
                 config.getLldpMeterBurstSizeInPackets(), config.getLldpPacketSize());
         OFInstructionMeter ofInstructionMeter = buildMeterInstruction(meter.getMeterId(), sw, actionList);
 
@@ -61,5 +61,12 @@ public abstract class LldpFlowGenerator extends MeteredFlowGenerator {
                 .flow(flowMod)
                 .meter(meter)
                 .build();
+    }
+
+    @Override
+    public OFMeterMod generateMeterModify(IOFSwitch sw) {
+        long meterId = createMeterIdForDefaultRule(getCookie()).getValue();
+        return generateModifyMeterForDefaultRule(sw, meterId, config.getLldpRateLimit(),
+                config.getLldpMeterBurstSizeInPackets(), config.getLldpPacketSize());
     }
 }

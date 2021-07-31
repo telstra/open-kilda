@@ -17,6 +17,8 @@ package org.openkilda.floodlight.switchmanager.factory.generator;
 
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildMeterMod;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.isOvs;
+import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.ADD;
+import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.MODIFY;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
@@ -32,6 +34,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMeterFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
+import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 
@@ -44,8 +47,21 @@ public abstract class MeteredFlowGenerator implements SwitchFlowGenerator {
     protected FeatureDetectorService featureDetectorService;
     protected SwitchManagerConfig config;
 
-    protected OFMeterMod generateMeterForDefaultRule(IOFSwitch sw, long meterId, long rateInPackets,
-                                                     long burstSizeInPackets, long packetSizeInBytes) {
+    public abstract OFMeterMod generateMeterModify(IOFSwitch sw);
+
+    protected OFMeterMod generateAddMeterForDefaultRule(IOFSwitch sw, long meterId, long rateInPackets,
+                                                        long burstSizeInPackets, long packetSizeInBytes) {
+        return generateMeterForDefaultRule(sw, meterId, rateInPackets, burstSizeInPackets, packetSizeInBytes, ADD);
+    }
+
+    protected OFMeterMod generateModifyMeterForDefaultRule(IOFSwitch sw, long meterId, long rateInPackets,
+                                                           long burstSizeInPackets, long packetSizeInBytes) {
+        return generateMeterForDefaultRule(sw, meterId, rateInPackets, burstSizeInPackets, packetSizeInBytes, MODIFY);
+    }
+
+    private OFMeterMod generateMeterForDefaultRule(
+            IOFSwitch sw, long meterId, long rateInPackets, long burstSizeInPackets, long packetSizeInBytes,
+            OFMeterModCommand commandType) {
         //FIXME: Since we can't read/validate meters from switches with OF 1.2 we should not install them
         if (sw.getOFFactory().getVersion().compareTo(OF_12) <= 0) {
             return null;
@@ -70,7 +86,7 @@ public abstract class MeteredFlowGenerator implements SwitchFlowGenerator {
                     switchFeatures);
         }
 
-        return buildMeterMod(sw.getOFFactory(), rate, burstSize, meterId, flags);
+        return buildMeterMod(sw.getOFFactory(), rate, burstSize, meterId, flags, commandType);
     }
 
     protected OFInstructionMeter buildMeterInstruction(long meterId, IOFSwitch sw, List<OFAction> actionList) {

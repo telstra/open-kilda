@@ -3,10 +3,14 @@ package org.openkilda.functionaltests.spec.switches
 import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
+import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 
@@ -22,11 +26,13 @@ import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.MeterId
 import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import groovy.transform.Memoized
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
@@ -351,6 +357,106 @@ class SwitchSyncSpec extends BaseSpecification {
 
         cleanup: "Delete the flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tags([VIRTUAL, LOW_PRIORITY])
+    def "Able to synchronize misconfigured default meter"() {
+        given: "An active switch with valid default rules and one misconfigured default meter"
+        def sw = topology.activeSwitches.first()
+        def broadcastCookieMeterId = MeterId.createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue()
+        def meterToManipulate = northbound.getAllMeters(sw.dpId).meterEntries
+                .find{ it.meterId == broadcastCookieMeterId }
+        def newBurstSize = meterToManipulate.burstSize + 100
+        def newRate = meterToManipulate.rate + 100
+
+        lockKeeper.updateBurstSizeAndRate(sw, meterToManipulate.meterId, newBurstSize, newRate)
+        Wrappers.wait(RULES_DELETION_TIME) {
+            def validateInfo = northbound.validateSwitch(sw.dpId)
+            assert validateInfo.rules.missing.empty
+            assert validateInfo.rules.misconfigured.empty
+            assert validateInfo.meters.misconfigured.size() == 1
+            assert validateInfo.meters.misconfigured[0].actual.burstSize == newBurstSize
+            assert validateInfo.meters.misconfigured[0].expected.burstSize == meterToManipulate.burstSize
+            assert validateInfo.meters.misconfigured[0].actual.rate == newRate
+            assert validateInfo.meters.misconfigured[0].expected.rate == meterToManipulate.rate
+        }
+
+        when: "Synchronize switch"
+        northbound.synchronizeSwitch(sw.dpId, false)
+
+        then: "The misconfigured meter is fixed and moved to the 'proper' section"
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            with(northbound.validateSwitch(sw.dpId)) {
+                it.meters.misconfigured.empty
+                it.meters.proper.find { it.meterId == broadcastCookieMeterId }.burstSize == meterToManipulate.burstSize
+                it.meters.proper.find { it.meterId == broadcastCookieMeterId }.rate == meterToManipulate.rate
+            }
+        }
+    }
+
+    @Tidy
+    @Tags([VIRTUAL, SMOKE])
+    def "Able to synchronize misconfigured flow meter"() {
+        given: "An active switch with flow on it"
+        def sw = topology.activeSwitches.first()
+        def flow = flowHelperV2.singleSwitchFlow(sw)
+        flowHelperV2.addFlow(flow)
+
+        when: "Update flow's meter"
+        def flowMeterIdToManipulate = northbound.getAllMeters(sw.dpId).meterEntries.find {
+            it.meterId >= MIN_FLOW_METER_ID
+        }
+        def newBurstSize = flowMeterIdToManipulate.burstSize + 100
+        def newRate = flowMeterIdToManipulate.rate + 100
+        lockKeeper.updateBurstSizeAndRate(sw, flowMeterIdToManipulate.meterId, newBurstSize, newRate)
+
+        then: "Flow is not valid"
+        def responseValidateFlow = northbound.validateFlow(flow.flowId).findAll { !it.discrepancies.empty }*.discrepancies
+        assert responseValidateFlow.size() == 1
+        def meterRateDiscrepancies = responseValidateFlow[0].find { it.field.toString() == "meterRate" }
+        def meterBurstSizeDiscrepancies = responseValidateFlow[0].find { it.field.toString() == "meterBurstSize" }
+        meterRateDiscrepancies.actualValue == newRate.toString()
+        meterRateDiscrepancies.expectedValue == flowMeterIdToManipulate.rate.toString()
+        meterBurstSizeDiscrepancies.actualValue == newBurstSize.toString()
+        meterBurstSizeDiscrepancies.expectedValue == flowMeterIdToManipulate.burstSize.toString()
+
+        and: "Validate switch endpoint shows the updated meter as misconfigured"
+        Wrappers.wait(RULES_DELETION_TIME) {
+            def validateInfo = northbound.validateSwitch(sw.dpId)
+            assert validateInfo.meters.misconfigured.size() == 1
+            assert validateInfo.meters.misconfigured[0].actual.burstSize == newBurstSize
+            assert validateInfo.meters.misconfigured[0].expected.burstSize == flowMeterIdToManipulate.burstSize
+            assert validateInfo.meters.misconfigured[0].actual.rate == newRate
+            assert validateInfo.meters.misconfigured[0].expected.rate == flowMeterIdToManipulate.rate
+        }
+
+        when: "Synchronize switch"
+        northbound.synchronizeSwitch(sw.dpId, false)
+
+        then: "The misconfigured meter was fixed and moved to the 'proper' section"
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            with(northbound.validateSwitch(sw.dpId)) {
+                it.meters.misconfigured.empty
+                it.meters.proper.find {
+                    it.meterId == flowMeterIdToManipulate.meterId
+                }.burstSize == flowMeterIdToManipulate.burstSize
+                it.meters.proper.find {
+                    it.meterId == flowMeterIdToManipulate.meterId
+                }.rate == flowMeterIdToManipulate.rate
+            }
+        }
+
+        and: "Flow is valid"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Memoized
+    def isVxlanEnabled(SwitchId switchId) {
+        return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
+                .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 
     private static Message buildMessage(final BaseInstallFlow commandData) {
