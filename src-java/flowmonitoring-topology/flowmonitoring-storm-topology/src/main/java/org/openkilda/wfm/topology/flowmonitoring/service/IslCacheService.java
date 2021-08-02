@@ -61,7 +61,6 @@ public class IslCacheService {
                 .destSwitchId(data.getDstSwitchId())
                 .destPort(data.getDstPortNo())
                 .build();
-        log.info("One way latency for {} {}", link, data.getLatency());
         LinkState linkState = linkStates.get(link);
         if (linkState == null) {
             linkStates.put(link, LinkState.builder()
@@ -79,7 +78,6 @@ public class IslCacheService {
         List<Link> links = linkStates.keySet().stream()
                 .filter(link -> link.srcEquals(data.getSrcSwitchId(), data.getSrcPortNo()))
                 .collect(Collectors.toList());
-        links.forEach(link -> log.info("Rtt latency for {} {}", link, data.getLatency()));
         Instant instant = clock.instant();
         links.forEach(link -> {
             LinkState linkState = linkStates.get(link);
@@ -99,7 +97,7 @@ public class IslCacheService {
      * Get latency for link.
      */
     public Duration getLatencyForLink(Link link) {
-        log.info("Request for link latency {}", link);
+        log.debug("Request for link latency {}", link);
         LinkState linkState = linkStates.get(link);
 
         if (linkState == null) {

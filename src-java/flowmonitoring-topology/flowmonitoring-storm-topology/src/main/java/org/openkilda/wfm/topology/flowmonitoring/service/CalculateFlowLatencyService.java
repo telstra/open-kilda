@@ -46,8 +46,9 @@ public class CalculateFlowLatencyService {
                 .filter(request -> request.getFlowId().equals(flowId) && request.getDirection() == direction)
                 .findAny()
                 .ifPresent(flowLatencyRequest -> {
-                    log.warn("Removing previous calculate flow latency request for {} {}", flowId, direction);
-                    requests.remove(flowLatencyRequest.getRequestId());
+                    FlowLatencyRequest remove = requests.remove(flowLatencyRequest.getRequestId());
+                    log.warn("Removing previous calculate flow latency request for {} {} for requestId {}",
+                            flowId, direction, remove.getRequestId());
                 });
 
         String requestId = UUID.randomUUID().toString();
@@ -65,7 +66,7 @@ public class CalculateFlowLatencyService {
      * Handle get link latency response. Send check flow latency request if ready.
      */
     public void handleGetLinkLatencyResponse(String requestId, Link link, Duration latency) {
-        log.info("Get link latency response for link {} with {}", link, latency);
+        log.debug("Get link latency response for link {} with {} and requestId {}", link, latency, requestId);
         FlowLatencyRequest flowLatencyRequest = requests.get(requestId);
         if (flowLatencyRequest == null) {
             log.warn("Link latency response for unknown request found {}", link);
@@ -74,7 +75,7 @@ public class CalculateFlowLatencyService {
         flowLatencyRequest.handleResponse(link, latency);
 
         if (flowLatencyRequest.isFulfilled()) {
-            log.info("Process calculated latency");
+            log.debug("Process calculated latency for requestId {}", requestId);
             String flowId = flowLatencyRequest.getFlowId();
             FlowDirection direction = flowLatencyRequest.getDirection();
             Duration result = flowLatencyRequest.getResult();

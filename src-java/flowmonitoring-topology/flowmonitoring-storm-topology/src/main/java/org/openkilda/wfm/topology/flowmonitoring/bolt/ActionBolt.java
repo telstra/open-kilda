@@ -20,6 +20,8 @@ import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.S
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_DIRECTION_FIELD;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_ID_FIELD;
+import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.LATENCY_FIELD;
+import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowSplitterBolt.INFO_DATA_FIELD;
 
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
@@ -43,10 +45,6 @@ import java.time.Duration;
 import java.util.Collections;
 
 public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
-
-    public static final String LATENCY_FIELD = "latency";
-    public static final String FLOW_INFO_FIELD = "flow-info";
-
 
     private PersistenceManager persistenceManager;
     private Duration timeout;
@@ -72,7 +70,7 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
             return;
         }
         if (FLOW_UPDATE_STREAM_ID.name().equals(input.getSourceStreamId())) {
-            UpdateFlowInfo flowInfo = pullValue(input, FLOW_INFO_FIELD, UpdateFlowInfo.class);
+            UpdateFlowInfo flowInfo = pullValue(input, INFO_DATA_FIELD, UpdateFlowInfo.class);
             actionService.updateFlowInfo(flowInfo);
             return;
         }
