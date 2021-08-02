@@ -91,7 +91,7 @@ class BaseSpecification extends Specification {
     @Value('${zookeeper.connect_string}') @Shared
     String zkConnectString
 
-    static InheritableThreadLocal<TopologyDefinition> threadLocalTopology = new InheritableThreadLocal<>()
+    static ThreadLocal<TopologyDefinition> threadLocalTopology = new ThreadLocal<>()
 
     def setupSpec() {
         log.info "Booked lab with id ${topology.getLabId().toString()} for spec ${this.class.simpleName}, thread: " +

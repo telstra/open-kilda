@@ -52,7 +52,7 @@ class ContentionSpec extends BaseSpecification {
         def flowsAmount = 20
         def group = new DefaultPGroup(flowsAmount)
         List<FlowRequestV2> flows = []
-        flowsAmount.times { flows << flowHelperV2.randomFlow(topologyHelper.notNeighboringSwitchPair, false , flows) }
+        flowsAmount.times { flows << flowHelperV2.randomFlow(topologyHelper.notNeighboringSwitchPair, false, flows) }
         def createTasks = flows.collect { flow ->
             group.task { flowHelperV2.addFlow(flow) }
         }

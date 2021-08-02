@@ -29,11 +29,11 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
 
     @Shared
     def propsDataForSearch = [
-            new LinkPropsDto("00:00:00:00:00:00:00:01", 1, "00:00:00:00:00:00:00:02", 1, [:]),
-            new LinkPropsDto("00:00:00:00:00:00:00:01", 2, "00:00:00:00:00:00:00:02", 1, [:]),
-            new LinkPropsDto("00:00:00:00:00:00:00:01", 2, "00:00:00:00:00:00:00:02", 2, [:]),
-            new LinkPropsDto("00:00:00:00:00:00:00:03", 3, "00:00:00:00:00:00:00:03", 3, [:]),
-            new LinkPropsDto("00:00:00:00:00:00:00:02", 1, "00:00:00:00:00:00:00:01", 1, [:])
+            new LinkPropsDto("0f:00:00:00:00:00:00:01", 1, "0f:00:00:00:00:00:00:02", 1, [:]),
+            new LinkPropsDto("0f:00:00:00:00:00:00:01", 2, "0f:00:00:00:00:00:00:02", 1, [:]),
+            new LinkPropsDto("0f:00:00:00:00:00:00:01", 2, "0f:00:00:00:00:00:00:02", 2, [:]),
+            new LinkPropsDto("0f:00:00:00:00:00:00:03", 3, "0f:00:00:00:00:00:00:03", 3, [:]),
+            new LinkPropsDto("0f:00:00:00:00:00:00:02", 1, "0f:00:00:00:00:00:00:01", 1, [:])
     ]
 
     //TODO(ylobankov): Actually this is abnormal behavior and we should have an error. But this test is aligned
@@ -42,15 +42,15 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
     @Tidy
     def "Link props are created with empty values when sending an invalid link props key"() {
         when: "Send link property request with invalid character"
-        def linkPropsCreate = [new LinkPropsDto("00:00:00:00:00:00:00:01", 1,
-                "00:00:00:00:00:00:00:02", 1, ["`cost": "700"])]
+        def linkPropsCreate = [new LinkPropsDto("0f:00:00:00:00:00:00:01", 1,
+                "0f:00:00:00:00:00:00:02", 1, ["`cost": "700"])]
         def response = northbound.updateLinkProps(linkPropsCreate)
 
         then: "Response states that operation succeeded"
         response.successes == 1
 
         and: "Link props are created but with empty values"
-        def linkProps = northboundGlobal.getLinkProps(null, 1, null, 1)
+        def linkProps = northboundGlobal.getLinkProps(null, 1, null, 1).findAll { it.srcSwitch.startsWith("0f") }
         linkProps.size() == 2
         linkProps.each { assert it.props.isEmpty() }
 
@@ -61,7 +61,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
     @Tidy
     def "Unable to create link property with invalid switchId format"() {
         when: "Try creating link property with invalid switchId format"
-        def linkProp = new LinkPropsDto("I'm invalid", 1, "00:00:00:00:00:00:00:02", 1, [:])
+        def linkProp = new LinkPropsDto("I'm invalid", 1, "0f:00:00:00:00:00:00:02", 1, [:])
         def response = northbound.updateLinkProps([linkProp])
 
         then: "Response with error is received"
@@ -73,7 +73,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
     def "Unable to create link property with non-numeric value for #key"() {
         when: "Try creating link property with non-numeric values"
         def nonNumericValue = "1000L"
-        def linkProp = new LinkPropsDto("00:00:00:00:00:00:00:01", 1, "00:00:00:00:00:00:00:02", 1,
+        def linkProp = new LinkPropsDto("0f:00:00:00:00:00:00:01", 1, "0f:00:00:00:00:00:00:02", 1,
                 [(key): nonNumericValue])
         northbound.updateLinkProps([linkProp])
 
@@ -93,6 +93,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
     def "Searching for link props with #data.descr"() {
         when: "Get link properties with search query"
         def foundProps = northboundGlobal.getLinkProps(*data.params)
+                .findAll { it.srcSwitch.startsWith("0f") } //exclude props from other labs
 
         then: "Returned props list match expected"
         foundProps.sort() == expected.sort()
@@ -101,37 +102,37 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         data << [
                 [
                         descr : "src switch and src port (single result)",
-                        params: [new SwitchId("00:00:00:00:00:00:00:01"), 1, null, null],
+                        params: [new SwitchId("0f:00:00:00:00:00:00:01"), 1, null, null],
                 ],
                 [
                         descr : "src switch and src port (multiple results)",
-                        params: [new SwitchId("00:00:00:00:00:00:00:01"), 2, null, null],
+                        params: [new SwitchId("0f:00:00:00:00:00:00:01"), 2, null, null],
                 ],
                 [
                         descr : "dst switch and dst port (single result)",
-                        params: [null, null, new SwitchId("00:00:00:00:00:00:00:02"), 2]
+                        params: [null, null, new SwitchId("0f:00:00:00:00:00:00:02"), 2]
                 ],
                 [
                         descr : "dst switch and dst port (multiple results)",
-                        params: [null, null, new SwitchId("00:00:00:00:00:00:00:02"), 1]
+                        params: [null, null, new SwitchId("0f:00:00:00:00:00:00:02"), 1]
                 ],
                 [
                         descr : "src switch and src port (no results)",
-                        params: [new SwitchId("00:00:00:00:00:00:00:03"), 2, null, null]
+                        params: [new SwitchId("0f:00:00:00:00:00:00:03"), 2, null, null]
                 ],
                 [
                         descr : "dst switch and dst port (no results)",
-                        params: [null, null, new SwitchId("00:00:00:00:00:00:00:03"), 2]
+                        params: [null, null, new SwitchId("0f:00:00:00:00:00:00:03"), 2]
                 ],
                 [
                         descr : "src and dst switch (different switches)",
-                        params: [new SwitchId("00:00:00:00:00:00:00:01"), null,
-                                 new SwitchId("00:00:00:00:00:00:00:02"), null]
+                        params: [new SwitchId("0f:00:00:00:00:00:00:01"), null,
+                                 new SwitchId("0f:00:00:00:00:00:00:02"), null]
                 ],
                 [
                         descr : "src and dst switch (same switch)",
-                        params: [new SwitchId("00:00:00:00:00:00:00:03"), null,
-                                 new SwitchId("00:00:00:00:00:00:00:03"), null]
+                        params: [new SwitchId("0f:00:00:00:00:00:00:03"), null,
+                                 new SwitchId("0f:00:00:00:00:00:00:03"), null]
                 ],
                 [
                         descr : "src and dst port",

@@ -78,4 +78,4 @@ flow.sla.check.interval.seconds = 10
 use.hs=true
 use.multitable=true
 cleanup.verifier=true
-parallel.topologies = 5
+parallel.topologies = 3
