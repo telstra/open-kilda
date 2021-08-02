@@ -1,0 +1,13 @@
+FROM python:3.7-slim
+
+ARG wheel
+
+# force preinstallation of patched oriendb client which one does not object against newer protocol version
+RUN pip install https://github.com/orientechnologies/pyorient/archive/5bbe000acb0e65d49a3f85bd0ecf9d40ae155467.zip
+
+WORKDIR /tmp
+COPY dist/${wheel} ./
+RUN pip install ${wheel}
+
+WORKDIR /
+ENTRYPOINT kilda-history-migration

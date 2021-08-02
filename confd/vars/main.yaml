@@ -10,6 +10,9 @@ kilda_orientdb_user: "kilda"
 kilda_orientdb_password: "kilda"
 kilda_orientdb_database: "kilda"
 
+kilda_persistence_implementation: "orientdb"
+#kilda_persistence_implementation: "orientdb-sql-mixture1"
+
 kilda_kafka_hosts: "kafka.pendev:9092"
 kilda_zookeeper_hosts: "zookeeper.pendev"
 kilda_zookeeper_state_root: "kilda"
@@ -19,6 +22,10 @@ kilda_zookeeper_reconnect_delay_ms_speaker: 1000
 kilda_opentsdb_hosts: "opentsdb.pendev"
 kilda_opentsdb_port: "4242"
 kilda_storm_numbus_hosts: "nimbus.pendev"
+
+kilda_hibernate_user: kilda
+kilda_hibernate_password: kilda
+kilda_hibernate_url: jdbc:mysql://mysql.pendev:3306/kilda
 
 kilda_gui_port: 1010
 kilda_gui_db_dialect: org.hibernate.dialect.DerbyTenSevenDialect
