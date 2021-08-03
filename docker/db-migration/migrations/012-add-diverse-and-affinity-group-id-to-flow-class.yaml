@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: dpoltavets
+      changes:
+        - tagDatabase:
+            tag: 012-add-diverse-and-affinity-group-id-to-flow-class
+
+  - changeSet:
+      id: add_diverse_and_affinity_group_id_to_flow_class
+      author: dpoltavets
+      changes:
+        - sql: "CREATE PROPERTY flow.diverse_group_id IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX flow.diverse_group_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE PROPERTY flow.affinity_group_id IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX flow.affinity_group_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE PROPERTY flow_dump.diverse_group_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_dump.affinity_group_id IF NOT EXISTS STRING"
+      rollback:
+        - sql: "DROP INDEX flow.diverse_group_id"
+        - sql: "UPDATE flow REMOVE diverse_group_id"
+        - sql: "DROP PROPERTY flow.diverse_group_id"
+        - sql: "DROP INDEX flow.affinity_group_id"
+        - sql: "UPDATE flow REMOVE affinity_group_id"
+        - sql: "DROP PROPERTY flow.affinity_group_id"
+        - sql: "UPDATE flow_dump REMOVE diverse_group_id"
+        - sql: "DROP PROPERTY flow_dump.diverse_group_id"
+        - sql: "UPDATE flow_dump REMOVE affinity_group_id"
+        - sql: "DROP PROPERTY flow_dump.affinity_group_id"

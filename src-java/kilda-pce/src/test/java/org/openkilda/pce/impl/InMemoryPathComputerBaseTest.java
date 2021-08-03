@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.PathComputationStrategy;
@@ -46,9 +47,11 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.Path;
+import org.openkilda.pce.Path.Segment;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
@@ -82,6 +85,7 @@ import java.util.UUID;
 public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
     public static SwitchId SWITCH_1 = new SwitchId(1);
     public static SwitchId SWITCH_2 = new SwitchId(2);
+    public static String TEST_FLOW_ID = "existed-flow";
 
     static SwitchRepository switchRepository;
     static SwitchPropertiesRepository switchPropertiesRepository;
@@ -522,7 +526,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         flowRepository.add(flow);
     }
 
-    // A - B - D    and A-B-D is used in flow group
+    // A - B - D    and A-B-D is used in flow diverse group
     //   + C +
     void createDiamondWithDiversity() {
         Switch nodeA = createSwitch("00:0A");
@@ -544,13 +548,13 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         int bandwith = 10;
         String flowId = "existed-flow";
 
-        String groupId = "diverse";
+        String diverseGroupId = "diverse";
 
         Flow flow = Flow.builder()
                 .flowId(flowId)
                 .srcSwitch(nodeA).srcPort(15)
                 .destSwitch(nodeD).destPort(16)
-                .groupId(groupId)
+                .diverseGroupId(diverseGroupId)
                 .bandwidth(bandwith)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build();
@@ -576,6 +580,204 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         flow.setReversePath(reversePath);
 
         flowRepository.add(flow);
+    }
+
+    // A - B - D    and A-B-D is used in flow affinity group
+    //   + C +
+    void createDiamondWithAffinity() {
+        Switch nodeA = createSwitch("00:0A");
+        Switch nodeB = createSwitch("00:0B");
+        Switch nodeC = createSwitch("00:0C");
+        Switch nodeD = createSwitch("00:0D");
+
+        IslStatus status = IslStatus.ACTIVE;
+        int cost = 100;
+        createIsl(nodeA, nodeB, status, status, cost * 2, 1000, 1, cost * 2);
+        createIsl(nodeA, nodeC, status, status, cost, 1000, 2, cost);
+        createIsl(nodeB, nodeD, status, status, cost * 2, 1000, 3, cost * 2);
+        createIsl(nodeC, nodeD, status, status, cost, 1000, 4, cost);
+        createIsl(nodeB, nodeA, status, status, cost * 2, 1000, 1, cost * 2);
+        createIsl(nodeC, nodeA, status, status, cost, 1000, 2, cost);
+        createIsl(nodeD, nodeB, status, status, cost * 2, 1000, 3, cost * 2);
+        createIsl(nodeD, nodeC, status, status, cost, 1000, 4, cost);
+
+        int bandwith = 10;
+
+        Flow flow = Flow.builder()
+                .flowId(TEST_FLOW_ID)
+                .srcSwitch(nodeA).srcPort(15)
+                .destSwitch(nodeD).destPort(16)
+                .affinityGroupId(TEST_FLOW_ID)
+                .bandwidth(bandwith)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .build();
+
+        FlowPath forwardPath = FlowPath.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(nodeA)
+                .destSwitch(nodeD)
+                .bandwidth(bandwith)
+                .cookie(new FlowSegmentCookie(1L).toBuilder().direction(FlowPathDirection.FORWARD).build())
+                .build();
+        addPathSegment(forwardPath, nodeA, nodeB, 1, 1);
+        addPathSegment(forwardPath, nodeB, nodeD, 3, 3);
+        flow.setForwardPath(forwardPath);
+
+        FlowPath reversePath = FlowPath.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(nodeD)
+                .destSwitch(nodeA)
+                .bandwidth(bandwith)
+                .cookie(new FlowSegmentCookie(1L).toBuilder().direction(FlowPathDirection.REVERSE).build())
+                .build();
+        addPathSegment(reversePath, nodeD, nodeB, 3, 3);
+        addPathSegment(reversePath, nodeB, nodeA, 1, 1);
+        flow.setReversePath(reversePath);
+
+        flowRepository.add(flow);
+    }
+
+    // A - B - C - D    and A-B-C-D is used in flow affinity group
+    // |   |   |   |
+    // E   F   \   |
+    // |   |     \ |
+    // G - H - - - Z
+    void createTestTopologyForAffinityTesting() {
+        final Switch nodeA = createSwitch("00:0A");
+        final Switch nodeB = createSwitch("00:0B");
+        final Switch nodeC = createSwitch("00:0C");
+        final Switch nodeD = createSwitch("00:0D");
+        final Switch nodeE = createSwitch("00:0E");
+        final Switch nodeF = createSwitch("00:0F");
+        final Switch nodeG = createSwitch("00:01");
+        final Switch nodeH = createSwitch("00:02");
+        final Switch nodeZ = createSwitch("00:03");
+
+        IslStatus status = IslStatus.ACTIVE;
+        int cost = 100;
+        long bw = 1000;
+        long latency = 1000;
+        createBiIsl(nodeA, nodeB, status, status, cost, bw, 1, latency);
+        createBiIsl(nodeB, nodeC, status, status, cost, bw, 2, latency);
+        createBiIsl(nodeC, nodeD, status, status, cost, bw, 3, latency);
+        createBiIsl(nodeA, nodeE, status, status, cost, bw, 4, latency);
+        createBiIsl(nodeE, nodeG, status, status, cost, bw, 5, latency);
+        createBiIsl(nodeG, nodeH, status, status, cost, bw, 6, latency);
+        createBiIsl(nodeB, nodeF, status, status, cost, bw, 7, latency);
+        createBiIsl(nodeF, nodeH, status, status, cost, bw, 8, latency);
+        createBiIsl(nodeH, nodeZ, status, status, cost, bw, 9, latency);
+        createBiIsl(nodeC, nodeZ, status, status, cost, bw, 10, latency);
+        createBiIsl(nodeD, nodeZ, status, status, cost, bw, 11, latency);
+
+        int bandwidth = 10;
+
+        Flow flow = Flow.builder()
+                .flowId(TEST_FLOW_ID)
+                .srcSwitch(nodeA).srcPort(15)
+                .destSwitch(nodeD).destPort(16)
+                .affinityGroupId(TEST_FLOW_ID)
+                .bandwidth(bandwidth)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .build();
+
+        FlowPath forwardPath = FlowPath.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(nodeA)
+                .destSwitch(nodeD)
+                .bandwidth(bandwidth)
+                .cookie(new FlowSegmentCookie(1L).toBuilder().direction(FlowPathDirection.FORWARD).build())
+                .build();
+        flow.setForwardPath(forwardPath);
+        addPathSegment(forwardPath, nodeA, nodeB, 1, 1);
+        addPathSegment(forwardPath, nodeB, nodeC, 2, 2);
+        addPathSegment(forwardPath, nodeC, nodeD, 3, 3);
+
+        FlowPath reversePath = FlowPath.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(nodeD)
+                .destSwitch(nodeA)
+                .bandwidth(bandwidth)
+                .cookie(new FlowSegmentCookie(1L).toBuilder().direction(FlowPathDirection.REVERSE).build())
+                .build();
+        flow.setReversePath(reversePath);
+        addPathSegment(reversePath, nodeD, nodeC, 3, 3);
+        addPathSegment(reversePath, nodeC, nodeB, 2, 2);
+        addPathSegment(reversePath, nodeB, nodeA, 1, 1);
+
+        flowRepository.add(flow);
+    }
+
+    void shouldFindAffinityPathOnDiamond(PathComputationStrategy pathComputationStrategy) throws Exception {
+        createDiamondWithAffinity();
+
+        Flow flow = Flow.builder()
+                .flowId("new-flow")
+                .affinityGroupId(TEST_FLOW_ID)
+                .bandwidth(10)
+                .srcSwitch(getSwitchById("00:0A"))
+                .destSwitch(getSwitchById("00:0D"))
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(pathComputationStrategy)
+                .build();
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
+        GetPathsResult affinityPath = pathComputer.getPath(flow);
+
+        List<Segment> segments = affinityPath.getForward().getSegments();
+        assertEquals(new SwitchId("00:0B"), segments.get(1).getSrcSwitchId());
+        assertEquals(new SwitchId("00:0B"), segments.get(0).getDestSwitchId());
+    }
+
+    void affinityPathShouldPreferIslsUsedByMainPath(PathComputationStrategy pathComputationStrategy) throws Exception {
+        createTestTopologyForAffinityTesting();
+
+        Flow flow = Flow.builder()
+                .flowId("new-flow")
+                .affinityGroupId(TEST_FLOW_ID)
+                .bandwidth(10)
+                .srcSwitch(getSwitchById("00:0E"))
+                .destSwitch(getSwitchById("00:0F"))
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(pathComputationStrategy)
+                .build();
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
+        GetPathsResult affinityPath = pathComputer.getPath(flow);
+
+        List<Segment> segments = affinityPath.getForward().getSegments();
+        assertEquals(3, segments.size());
+        assertEquals(new SwitchId("00:0E"), segments.get(0).getSrcSwitchId());
+        assertEquals(new SwitchId("00:0A"), segments.get(1).getSrcSwitchId());
+        assertEquals(new SwitchId("00:0B"), segments.get(2).getSrcSwitchId());
+
+        assertEquals(new SwitchId("00:0A"), segments.get(0).getDestSwitchId());
+        assertEquals(new SwitchId("00:0B"), segments.get(1).getDestSwitchId());
+        assertEquals(new SwitchId("00:0F"), segments.get(2).getDestSwitchId());
+    }
+
+    void affinityPathShouldSplitAsCloseAsPossibleToDestination(PathComputationStrategy pathComputationStrategy)
+            throws Exception {
+        createTestTopologyForAffinityTesting();
+
+        Flow flow = Flow.builder()
+                .flowId("new-flow")
+                .affinityGroupId(TEST_FLOW_ID)
+                .bandwidth(10)
+                .srcSwitch(getSwitchById("00:0A"))
+                .destSwitch(getSwitchById("00:03"))
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(pathComputationStrategy)
+                .build();
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
+        GetPathsResult affinityPath = pathComputer.getPath(flow);
+
+        List<Segment> segments = affinityPath.getForward().getSegments();
+        assertEquals(3, segments.size());
+        assertEquals(new SwitchId("00:0A"), segments.get(0).getSrcSwitchId());
+        assertEquals(new SwitchId("00:0B"), segments.get(1).getSrcSwitchId());
+        assertEquals(new SwitchId("00:0C"), segments.get(2).getSrcSwitchId());
+
+        assertEquals(new SwitchId("00:0B"), segments.get(0).getDestSwitchId());
+        assertEquals(new SwitchId("00:0C"), segments.get(1).getDestSwitchId());
+        assertEquals(new SwitchId("00:03"), segments.get(2).getDestSwitchId());
     }
 
     void createDiamond(IslStatus pathBstatus, IslStatus pathCstatus, int pathBcost, int pathCcost,
@@ -665,6 +867,12 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         isl.destPort(port);
 
         islRepository.add(isl.build());
+    }
+
+    void createBiIsl(Switch srcSwitch, Switch dstSwitch, IslStatus status, IslStatus actual,
+                     int cost, long bw, int port, long latency) {
+        createIsl(srcSwitch, dstSwitch, status, actual, cost, bw, port, latency);
+        createIsl(dstSwitch, srcSwitch, status, actual, cost, bw, port, latency);
     }
 
     private void addPathSegment(FlowPath flowPath, Switch src, Switch dst, int srcPort, int dstPort) {

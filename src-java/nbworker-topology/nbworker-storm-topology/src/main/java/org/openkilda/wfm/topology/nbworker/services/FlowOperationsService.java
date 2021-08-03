@@ -123,11 +123,11 @@ public class FlowOperationsService {
     }
 
     /**
-     * Return flow ids in the same flow group.
+     * Return flow ids in the same flow diverse group.
      */
     public Set<String> getDiverseFlowsId(Flow flow) {
-        return flow.getGroupId() == null ? Collections.emptySet() :
-                flowRepository.findFlowsIdByGroupId(flow.getGroupId()).stream()
+        return flow.getDiverseGroupId() == null ? Collections.emptySet() :
+                flowRepository.findFlowsIdByDiverseGroupId(flow.getDiverseGroupId()).stream()
                         .filter(flowId -> !flowId.equals(flow.getFlowId()))
                         .collect(Collectors.toSet());
     }
@@ -244,12 +244,12 @@ public class FlowOperationsService {
         Flow flow = flowRepository.findById(flowId)
                 .orElseThrow(() -> new FlowNotFoundException(flowId));
 
-        String groupId = flow.getGroupId();
+        String groupId = flow.getDiverseGroupId();
         if (groupId == null) {
             return Collections.singletonList(
                     toFlowPathDtoBuilder(flow).build());
         } else {
-            Collection<Flow> flowsInGroup = flowRepository.findByGroupId(groupId);
+            Collection<Flow> flowsInGroup = flowRepository.findByDiverseGroupId(groupId);
             Collection<FlowPath> flowPathsInGroup = flowPathRepository.findByFlowGroupId(groupId);
 
             IntersectionComputer primaryIntersectionComputer = new IntersectionComputer(
@@ -455,8 +455,8 @@ public class FlowOperationsService {
 
     private boolean updateRequiredByDiverseFlowIdField(FlowPatch flowPatch, Flow flow) {
         return flowPatch.getDiverseFlowId() != null
-                && flowRepository.getOrCreateFlowGroupId(flowPatch.getDiverseFlowId())
-                .map(groupId -> !flowRepository.findFlowsIdByGroupId(groupId).contains(flow.getFlowId()))
+                && flowRepository.getOrCreateDiverseFlowGroupId(flowPatch.getDiverseFlowId())
+                .map(groupId -> !flowRepository.findFlowsIdByDiverseGroupId(groupId).contains(flow.getFlowId()))
                 .orElse(true);
     }
 

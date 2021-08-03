@@ -189,8 +189,8 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
     }
 
     protected Set<String> getDiverseWithFlowIds(Flow flow) {
-        return flow.getGroupId() == null ? Collections.emptySet() :
-                flowRepository.findFlowsIdByGroupId(flow.getGroupId()).stream()
+        return flow.getDiverseGroupId() == null ? Collections.emptySet() :
+                flowRepository.findFlowsIdByDiverseGroupId(flow.getDiverseGroupId()).stream()
                         .filter(flowId -> !flowId.equals(flow.getFlowId()))
                         .collect(Collectors.toSet());
     }
@@ -232,7 +232,8 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
 
     protected Message buildResponseMessage(Flow flow, CommandContext commandContext) {
         InfoData flowData =
-                new FlowResponse(FlowMapper.INSTANCE.map(flow, getDiverseWithFlowIds(flow), getFlowMirrorPaths(flow)));
+                new FlowResponse(FlowMapper.INSTANCE.map(flow, getDiverseWithFlowIds(flow),
+                        getFlowMirrorPaths(flow)));
         return new InfoMessage(flowData, commandContext.getCreateTime(),
                 commandContext.getCorrelationId());
     }

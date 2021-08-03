@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -293,6 +293,25 @@ public class AvailableNetworkTest {
         assertEquals(1, edge.getDestSwitch().getDiversityGroupUseCounter());
     }
 
+    @Test
+    public void shouldFillAffinityWeights() {
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SRC_SWITCH, DST_SWITCH, 7, 60, 10, 3);
+        addLink(network, SRC_SWITCH, DST_SWITCH, 8, 61, 10, 3);
+        addLink(network, SRC_SWITCH, DST_SWITCH, 9, 62, 10, 3);
+        network.processAffinitySegments(
+                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 0)));
+
+        Node srcSwitch = network.getSwitch(SRC_SWITCH);
+
+        for (Edge edge : srcSwitch.getOutgoingLinks()) {
+            if (edge.getSrcPort() == 7) {
+                assertEquals(0, edge.getAffinityGroupUseCounter());
+                continue;
+            }
+            assertEquals(1, edge.getAffinityGroupUseCounter());
+        }
+    }
 
     /*
         A = B - C = D

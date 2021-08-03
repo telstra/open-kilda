@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -100,7 +100,8 @@ public class FlowEventDump implements CompositeDataEntity<FlowEventDump.FlowEven
                 .append(getDestinationInnerVlan(), that.getDestinationInnerVlan())
                 .append(getForwardMeterId(), that.getForwardMeterId())
                 .append(getReverseMeterId(), that.getReverseMeterId())
-                .append(getGroupId(), that.getGroupId())
+                .append(getDiverseGroupId(), that.getDiverseGroupId())
+                .append(getAffinityGroupId(), that.getAffinityGroupId())
                 .append(getForwardPath(), that.getForwardPath())
                 .append(getReversePath(), that.getReversePath())
                 .append(getForwardStatus(), that.getForwardStatus())
@@ -121,8 +122,8 @@ public class FlowEventDump implements CompositeDataEntity<FlowEventDump.FlowEven
                 getForwardCookie(), getReverseCookie(), getSourceSwitch(), getDestinationSwitch(),
                 getSourcePort(), getDestinationPort(), getSourceVlan(), getDestinationVlan(),
                 getSourceInnerVlan(), getDestinationInnerVlan(), getForwardMeterId(), getReverseMeterId(),
-                getGroupId(), getForwardPath(), getReversePath(), getForwardStatus(), getReverseStatus(),
-                isAllocateProtectedPath(), isPinned(), isPeriodicPings(), getEncapsulationType(),
+                getDiverseGroupId(), getAffinityGroupId(), getForwardPath(), getReversePath(), getForwardStatus(),
+                getReverseStatus(), isAllocateProtectedPath(), isPinned(), isPeriodicPings(), getEncapsulationType(),
                 getPathComputationStrategy(), getMaxLatency(), getLoopSwitchId());
     }
 
@@ -198,9 +199,13 @@ public class FlowEventDump implements CompositeDataEntity<FlowEventDump.FlowEven
 
         void setReverseMeterId(MeterId reverseMeterId);
 
-        String getGroupId();
+        String getDiverseGroupId();
 
-        void setGroupId(String groupId);
+        void setDiverseGroupId(String diverseGroupId);
+
+        String getAffinityGroupId();
+
+        void setAffinityGroupId(String affinityGroupId);
 
         String getForwardPath();
 
@@ -271,7 +276,8 @@ public class FlowEventDump implements CompositeDataEntity<FlowEventDump.FlowEven
         Integer destinationInnerVlan;
         MeterId forwardMeterId;
         MeterId reverseMeterId;
-        String groupId;
+        String diverseGroupId;
+        String affinityGroupId;
         String forwardPath;
         String reversePath;
         FlowPathStatus forwardStatus;

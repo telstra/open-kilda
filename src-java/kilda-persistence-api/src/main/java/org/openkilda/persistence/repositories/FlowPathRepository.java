@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -36,7 +36,9 @@ public interface FlowPathRepository extends Repository<FlowPath> {
 
     Collection<FlowPath> findByFlowGroupId(String flowGroupId);
 
-    Collection<PathId> findPathIdsByFlowGroupId(String flowGroupId);
+    Collection<PathId> findPathIdsByFlowDiverseGroupId(String flowDiverseGroupId);
+
+    Collection<PathId> findPathIdsByFlowAffinityGroupId(String flowAffinityGroupId);
 
     Collection<PathId> findActualPathIdsByFlowIds(Set<String> flowIds);
 

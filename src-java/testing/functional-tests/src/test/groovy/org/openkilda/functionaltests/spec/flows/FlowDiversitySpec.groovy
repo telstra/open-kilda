@@ -77,21 +77,21 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
 
-        and: "Flows' histories contain 'groupId' information"
+        and: "Flows' histories contain 'diverseGroupId' information"
         [flow2, flow3].each {//flow1 had no diversity at the time of creation
             assert northbound.getFlowHistory(it.flowId).find { it.action == CREATE_ACTION }.dumps
-                    .find { it.type == "stateAfter" }?.groupId
+                    .find { it.type == "stateAfter" }?.diverseGroupId
         }
 
         when: "Delete flows"
         [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
         def flowsAreDeleted = true
 
-        then: "Flows' histories contain 'groupId' information in 'delete' operation"
-        [flow1, flow2, flow3].each {
+        then: "Flows' histories contain 'diverseGroupId' information in 'delete' operation"
+        [flow1, flow2].each {
             verifyAll(northbound.getFlowHistory(it.flowId).find { it.action == DELETE_ACTION }.dumps) {
-                it.find { it.type == "stateBefore" }?.groupId
-                !it.find { it.type == "stateAfter" }?.groupId
+                it.find { it.type == "stateBefore" }?.diverseGroupId
+                !it.find { it.type == "stateAfter" }?.diverseGroupId
             }
         }
 
@@ -121,8 +121,8 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         and: "Second flow's history contains 'groupId' information"
         verifyAll(northbound.getFlowHistory(flow2.flowId).find { it.action == UPDATE_ACTION }.dumps) {
-            !it.find { it.type == "stateBefore" }?.groupId
-            it.find { it.type == "stateAfter" }?.groupId
+            !it.find { it.type == "stateBefore" }?.diverseGroupId
+            it.find { it.type == "stateAfter" }?.diverseGroupId
         }
 
         then: "Update response contains information about diverse flow"
@@ -190,7 +190,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         verifyAll(northbound.getFlowHistory(flow2.flowId).find { it.action == UPDATE_ACTION }.dumps) {
             //https://github.com/telstra/open-kilda/issues/3807
 //            it.find { it.type == "stateBefore" }.groupId
-            !it.find { it.type == "stateAfter" }.groupId
+            !it.find { it.type == "stateAfter" }.diverseGroupId
         }
 
         when: "Update the third flow to become not diverse"

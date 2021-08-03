@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -57,6 +57,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "detectConnectedDevices", source = "detectConnectedDevices")
     @Mapping(target = "transitEncapsulationId", ignore = true)
     @Mapping(target = "diverseFlowId", ignore = true)
+    @Mapping(target = "affinityFlowId", ignore = true)
     @Mapping(target = "type", ignore = true)
     @Mapping(target = "bulkUpdateFlowIds", ignore = true)
     @Mapping(target = "doNotRevert", ignore = true)
@@ -85,7 +86,8 @@ public abstract class RequestedFlowMapper {
             expression = "java(Optional.ofNullable(request.getPathComputationStrategy())"
                     + ".map(String::toUpperCase).map(PathComputationStrategy::valueOf).orElse(null))")
     @Mapping(target = "detectConnectedDevices", source = "detectConnectedDevices")
-    @Mapping(target = "groupId", ignore = true)
+    @Mapping(target = "diverseGroupId", ignore = true)
+    @Mapping(target = "affinityGroupId", ignore = true)
     @Mapping(target = "statusInfo", ignore = true)
     @Mapping(target = "targetPathComputationStrategy", ignore = true)
     @Mapping(target = "status", ignore = true)

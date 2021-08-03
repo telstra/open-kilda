@@ -39,6 +39,7 @@ public class FlowPatchV2 {
     private Integer priority;
 
     private String diverseFlowId;
+    private String affinityFlowId;
     private Boolean pinned;
     private Boolean allocateProtectedPath;
     private String encapsulationType;

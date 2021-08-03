@@ -53,6 +53,7 @@ import java.util.List;
 public class FlowMapperTest {
     private static final String FLOW_ID = "flow1";
     private static final String DIVERSE_FLOW_ID = "flow2";
+    private static final String AFFINITY_FLOW_ID = "flow3";
     private static final SwitchId SRC_SWITCH_ID = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId DST_SWITCH_ID = new SwitchId("00:00:00:00:00:00:00:02");
     private static final int SRC_PORT = 1;
@@ -238,7 +239,7 @@ public class FlowMapperTest {
                 new FlowPatchEndpoint(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, SRC_INNER_VLAN, SRC_DETECT_CONNECTED_DEVICES),
                 new FlowPatchEndpoint(DST_SWITCH_ID, DST_PORT, DST_VLAN, DST_INNER_VLAN, DST_DETECT_CONNECTED_DEVICES),
                 (long) BANDWIDTH, IGNORE_BANDWIDTH, STRICT_BANDWIDTH, PERIODIC_PINGS, DESCRIPTION,
-                LATENCY, LATENCY_TIER2, PRIORITY, DIVERSE_FLOW_ID, PINNED, ALLOCATE_PROTECTED_PATH,
+                LATENCY, LATENCY_TIER2, PRIORITY, DIVERSE_FLOW_ID, AFFINITY_FLOW_ID, PINNED, ALLOCATE_PROTECTED_PATH,
                 ENCAPSULATION_TYPE, PATH_COMPUTATION_STRATEGY, TARGET_PATH_COMPUTATION_STRATEGY);
         FlowPatch flowPatch = flowMapper.toFlowPatch(flowPatchDto);
 
@@ -265,6 +266,7 @@ public class FlowMapperTest {
         assertEquals(flowPatchDto.getTargetPathComputationStrategy(),
                 flowPatch.getTargetPathComputationStrategy().name().toLowerCase());
         assertEquals(flowPatchDto.getDiverseFlowId(), flowPatch.getDiverseFlowId());
+        assertEquals(flowPatchDto.getAffinityFlowId(), flowPatch.getAffinityFlowId());
         assertEquals(flowPatchDto.getMaximumBandwidth(), flowPatch.getBandwidth());
         assertEquals(flowPatchDto.getAllocateProtectedPath(), flowPatch.getAllocateProtectedPath());
         assertEquals(flowPatchDto.getPinned(), flowPatch.getPinned());

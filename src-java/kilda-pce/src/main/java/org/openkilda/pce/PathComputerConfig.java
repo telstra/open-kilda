@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -75,4 +75,12 @@ public interface PathComputerConfig extends Serializable {
     @Key("isl.latency.when.under.maintenance")
     @Default("10000000000")
     long getUnderMaintenanceLatencyRaise();
+
+    @Key("affinity.isl.cost")
+    @Default("10000")
+    long getAffinityIslCost();
+
+    @Key("affinity.isl.latency")
+    @Default("1000000000")
+    long getAffinityIslLatency();
 }

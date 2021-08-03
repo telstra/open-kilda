@@ -34,6 +34,9 @@ Flow groups is an implementation detail and there is no API to access it directl
 
 System knows nothing about physical network topology, so computed paths not truly diverse in hardware meaning.
 
+In the current implementation, affinity and diverse groups can not be specified at the same time for one flow.
+([Affinity flows](../pce-affinity-flows/pce-affinity-flows.md))
+
 ## Sequence Diagram
 ![Ability to create diverse flows](pce-diverse-flows-create.png)
 

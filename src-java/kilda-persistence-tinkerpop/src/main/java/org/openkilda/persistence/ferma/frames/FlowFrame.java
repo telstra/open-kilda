@@ -66,6 +66,8 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     public static final String PROTECTED_FORWARD_PATH_ID_PROPERTY = "protected_forward_path_id";
     public static final String PROTECTED_REVERSE_PATH_ID_PROPERTY = "protected_reverse_path_id";
     public static final String GROUP_ID_PROPERTY = "group_id";
+    public static final String DIVERSE_GROUP_ID_PROPERTY = "diverse_group_id";
+    public static final String AFFINITY_GROUP_ID_PROPERTY = "affinity_group_id";
     public static final String BANDWIDTH_PROPERTY = "bandwidth";
     public static final String PERIODIC_PINGS_PROPERTY = "periodic_pings";
     public static final String STATUS_PROPERTY = "status";
@@ -197,12 +199,27 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     public abstract void setProtectedReversePathId(PathId protectedReversePathId);
 
     @Override
-    @Property(GROUP_ID_PROPERTY)
-    public abstract String getGroupId();
+    public String getDiverseGroupId() {
+        String diverseGroupId = getProperty(GROUP_ID_PROPERTY);
+        if (diverseGroupId == null) {
+            diverseGroupId = getProperty(DIVERSE_GROUP_ID_PROPERTY);
+        }
+        return diverseGroupId;
+    }
 
     @Override
-    @Property(GROUP_ID_PROPERTY)
-    public abstract void setGroupId(String groupId);
+    public void setDiverseGroupId(String diverseGroupId) {
+        setProperty(GROUP_ID_PROPERTY, diverseGroupId);
+        setProperty(DIVERSE_GROUP_ID_PROPERTY, diverseGroupId);
+    }
+
+    @Override
+    @Property(AFFINITY_GROUP_ID_PROPERTY)
+    public abstract String getAffinityGroupId();
+
+    @Override
+    @Property(AFFINITY_GROUP_ID_PROPERTY)
+    public abstract void setAffinityGroupId(String affinityGroupId);
 
     @Override
     @Property(BANDWIDTH_PROPERTY)

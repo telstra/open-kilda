@@ -88,23 +88,23 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
     @Builder
     public Flow(@NonNull String flowId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
                 int srcPort, int srcVlan, int srcInnerVlan, int destPort, int destVlan, int destInnerVlan,
-                boolean allocateProtectedPath, String groupId, long bandwidth, boolean ignoreBandwidth,
+                boolean allocateProtectedPath, String diverseGroupId, long bandwidth, boolean ignoreBandwidth,
                 boolean strictBandwidth, String description, boolean periodicPings,
                 FlowEncapsulationType encapsulationType, FlowStatus status, String statusInfo,
                 Long maxLatency, Long maxLatencyTier2, Integer priority, boolean pinned,
                 DetectConnectedDevices detectConnectedDevices, PathComputationStrategy pathComputationStrategy,
-                PathComputationStrategy targetPathComputationStrategy, SwitchId loopSwitchId) {
+                PathComputationStrategy targetPathComputationStrategy, SwitchId loopSwitchId, String affinityGroupId) {
         FlowDataImpl.FlowDataImplBuilder builder = FlowDataImpl.builder()
                 .flowId(flowId).srcSwitch(srcSwitch).destSwitch(destSwitch)
                 .srcPort(srcPort).srcVlan(srcVlan).srcInnerVlan(srcInnerVlan)
                 .destPort(destPort).destVlan(destVlan).destInnerVlan(destInnerVlan)
-                .allocateProtectedPath(allocateProtectedPath).groupId(groupId)
+                .allocateProtectedPath(allocateProtectedPath).diverseGroupId(diverseGroupId)
                 .bandwidth(bandwidth).ignoreBandwidth(ignoreBandwidth).strictBandwidth(strictBandwidth)
                 .description(description).periodicPings(periodicPings).encapsulationType(encapsulationType)
                 .status(status).statusInfo(statusInfo).maxLatency(maxLatency).maxLatencyTier2(maxLatencyTier2)
                 .priority(priority).pinned(pinned).pathComputationStrategy(pathComputationStrategy)
                 .targetPathComputationStrategy(targetPathComputationStrategy)
-                .loopSwitchId(loopSwitchId);
+                .loopSwitchId(loopSwitchId).affinityGroupId(affinityGroupId);
         if (detectConnectedDevices != null) {
             builder.detectConnectedDevices(detectConnectedDevices);
         }
@@ -408,7 +408,7 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
                 .append(getReversePathId(), that.getReversePathId())
                 .append(getProtectedForwardPathId(), that.getProtectedForwardPathId())
                 .append(getProtectedReversePathId(), that.getProtectedReversePathId())
-                .append(getGroupId(), that.getGroupId())
+                .append(getDiverseGroupId(), that.getDiverseGroupId())
                 .append(getDescription(), that.getDescription())
                 .append(getEncapsulationType(), that.getEncapsulationType())
                 .append(getStatus(), that.getStatus())
@@ -430,7 +430,7 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
                 getSrcInnerVlan(), getDestPort(), getDestVlan(), getDestInnerVlan(),
                 getForwardPathId(), getReversePathId(),
                 isAllocateProtectedPath(), getProtectedForwardPathId(), getProtectedReversePathId(),
-                getGroupId(), getBandwidth(), isIgnoreBandwidth(), getDescription(), isPeriodicPings(),
+                getDiverseGroupId(), getBandwidth(), isIgnoreBandwidth(), getDescription(), isPeriodicPings(),
                 getEncapsulationType(), getStatus(), getStatusInfo(), getMaxLatency(), getPriority(), getTimeCreate(),
                 getTimeModify(), isPinned(), getDetectConnectedDevices(), getPathComputationStrategy(), getPaths());
     }
@@ -509,9 +509,13 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
 
         void setProtectedReversePathId(PathId protectedReversePathId);
 
-        String getGroupId();
+        String getDiverseGroupId();
 
-        void setGroupId(String groupId);
+        void setDiverseGroupId(String diverseGroupId);
+
+        String getAffinityGroupId();
+
+        void setAffinityGroupId(String affinityGroupId);
 
         long getBandwidth();
 
@@ -617,7 +621,8 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
         boolean allocateProtectedPath;
         PathId protectedForwardPathId;
         PathId protectedReversePathId;
-        String groupId;
+        String diverseGroupId;
+        String affinityGroupId;
         long bandwidth;
         boolean ignoreBandwidth;
         boolean strictBandwidth;

@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -187,6 +187,9 @@ public class FlowDto implements Serializable {
     @JsonProperty("diverse_with")
     private Set<String> diverseWith;
 
+    @JsonProperty("affinity_with")
+    private String affinityWith;
+
     @JsonProperty("loop_switch_id")
     private SwitchId loopSwitchId;
 
@@ -234,6 +237,7 @@ public class FlowDto implements Serializable {
      * @param pathComputationStrategy   path computation strategy
      * @param targetPathComputationStrategy   target path computation strategy
      * @param diverseWith               flow ids diverse with
+     * @param affinityWith              flow id affinity with
      * @param loopSwitchId              loop switch id
      * @param mirrorPointStatuses       mirror path statuses
      * @param forwardLatency            forward path latency nanoseconds
@@ -274,6 +278,7 @@ public class FlowDto implements Serializable {
                    @JsonProperty("target_path_computation_strategy")
                                PathComputationStrategy targetPathComputationStrategy,
                    @JsonProperty("diverse_with") Set<String> diverseWith,
+                   @JsonProperty("affinity_with") String affinityWith,
                    @JsonProperty("loop_switch_id") SwitchId loopSwitchId,
                    @JsonProperty("mirror_point_statuses") List<MirrorPointStatusDto> mirrorPointStatuses,
                    @JsonProperty("forward_latency") long forwardLatency,
@@ -310,6 +315,7 @@ public class FlowDto implements Serializable {
         this.pathComputationStrategy = pathComputationStrategy;
         this.targetPathComputationStrategy = targetPathComputationStrategy;
         this.diverseWith = diverseWith;
+        this.affinityWith = affinityWith;
         this.loopSwitchId = loopSwitchId;
         this.mirrorPointStatuses = mirrorPointStatuses;
         this.forwardLatency = forwardLatency;
@@ -355,7 +361,7 @@ public class FlowDto implements Serializable {
                 sourceVlan,
                 destinationVlan, 0, 0,
                 null, 0, null, null, null, null, null, null, pinned, null, detectConnectedDevices, null, null, null,
-                null, null, 0, 0);
+                null, null, null, 0, 0);
     }
 
     public FlowDto(FlowPayload input) {
@@ -390,7 +396,7 @@ public class FlowDto implements Serializable {
                         input.getDestination().getDetectConnectedDevices().isArp()),
                 input.getPathComputationStrategy() != null ? PathComputationStrategy.valueOf(
                         input.getPathComputationStrategy().toUpperCase()) : null, null, null,
-                null, null, 0L, 0L);
+                null, null, null, 0L, 0L);
     }
 
     @JsonIgnore
