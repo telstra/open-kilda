@@ -15,14 +15,18 @@
 
 package org.openkilda.floodlight.kafka;
 
+import static java.util.Collections.emptyList;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.mock;
+import static org.easymock.EasyMock.niceMock;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
+import static org.openkilda.messaging.command.switches.InstallRulesAction.INSTALL_DEFAULTS;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE;
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVER_42_FLOW_RTT_INPUT;
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVER_42_ISL_RTT_INPUT;
 
@@ -34,6 +38,7 @@ import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.InstallServer42Flow;
 import org.openkilda.messaging.command.flow.ReinstallServer42FlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSharedSegmentCookie;
@@ -42,6 +47,7 @@ import org.openkilda.model.cookie.PortColourCookie;
 
 import com.google.common.collect.Lists;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -70,7 +76,9 @@ public class RecordHandlerTest {
         expect(context.getModuleContext()).andReturn(floodlightModuleContext).anyTimes();
         expect(context.getKafkaSwitchManagerTopic()).andReturn("").anyTimes();
         replay(context);
-        recordHandler = new RecordHandler(context, null, null);
+
+        ConsumerRecord record = niceMock(ConsumerRecord.class);
+        recordHandler = new RecordHandler(context, null, record);
     }
 
     @Test
@@ -309,6 +317,27 @@ public class RecordHandlerTest {
 
         recordHandler.handleCommand(
                 new CommandMessage(new InstallFlowForSwitchManagerRequest(request), 0, CORRELATION_ID));
+        verify(switchManager);
+    }
+
+    @Test
+    public void shouldInstallServer42IslRttRulesOnInstallDefaults() throws SwitchOperationException {
+        expect(switchManager.installDefaultRules(DATAPATH_ID))
+                .andReturn(emptyList()).once();
+        expect(switchManager.installServer42IslRttOutputFlow(
+                DATAPATH_ID, SERVER42_PORT, SERVER42_VLAN, SERVER42_MAC_ADDRESS))
+                .andReturn(SERVER_42_ISL_RTT_OUTPUT_COOKIE).once();
+        expect(switchManager.installServer42IslRttTurningFlow(DATAPATH_ID))
+                .andReturn(SERVER_42_ISL_RTT_TURNING_COOKIE).once();
+        replay(switchManager);
+
+        SwitchRulesInstallRequest request = new SwitchRulesInstallRequest(SWITCH_ID, INSTALL_DEFAULTS);
+        request.setServer42IslRttEnabled(true);
+        request.setServer42Port(SERVER42_PORT);
+        request.setServer42Vlan(SERVER42_VLAN);
+        request.setServer42MacAddress(SERVER42_MAC_ADDRESS);
+        recordHandler.handleCommand(new CommandMessage(request, 0, CORRELATION_ID));
+
         verify(switchManager);
     }
 }
