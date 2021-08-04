@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -75,11 +76,11 @@ class DefaultRulesSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    def "Able to install default rule on an #sw.ofVersion switch(#sw.dpId, install-action=#data.installRulesAction)"(
+    def "Able to install default rule on an #sw.ofVersion switch[#sw.dpId, install-action=#data.installRulesAction]"(
             Map data, Switch sw) {
         given: "A switch without any rules"
         def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
-        assert defaultRules*.cookie.sort() == sw.defaultCookies.sort()
+        assertThat(defaultRules*.cookie.sort()).containsExactlyInAnyOrder(*sw.defaultCookies.sort())
 
         northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
         Wrappers.wait(RULES_DELETION_TIME) { assert northbound.getSwitchRules(sw.dpId).flowEntries.empty }
@@ -101,7 +102,8 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         cleanup: "Install missing default rules"
         northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
         Wrappers.wait(RULES_INSTALLATION_TIME + discoveryInterval) {
-            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == defaultRules*.cookie.sort()
+            assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray())
+                    .containsExactlyInAnyOrder(*defaultRules*.cookie.sort())
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
 

@@ -1,8 +1,11 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.assertj.core.api.Assertions.assertThat
+import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -15,6 +18,7 @@ import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.FlowEncapsulationType
@@ -27,6 +31,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
+import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
@@ -39,50 +44,38 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
-    @Tidy
-    @IterationTags([
-            @IterationTag(tags=[SMOKE_SWITCHES],
-                    iterationNameRegex = /srcVlanId: 10, srcInnerVlanId: 20, dstVlanId: 30, dstInnerVlanId: 0/)
-    ])
-    def "System allows to manipulate with QinQ flow\
-(srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
-        given: "Two switches connected to traffgen and enabled multiTable mode"
-        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
-        assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find required switches in topology")
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { sw ->
-                sw.dpId in allTraffGenSwitches*.dpId && northbound.getSwitchProperties(sw.dpId).multiTable
-            } && it.paths.size() > 2
-        } ?: assumeTrue(false, "Not able to find enough switches with traffgens and in multi-table mode")
+    def setupSpec() {
+        assumeTrue(useMultitable)
+    }
 
-        when: "Create a protected QinQ flow"
-        def qinqFlow = flowHelperV2.randomFlow(swP)
+    @Tidy
+    @Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
+    def "System allows to manipulate with QinQ flow\
+[srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.hwSwString()]#trafficDisclaimer"() {
+        assumeFalse(!trafficDisclaimer && (swPair.src.wb5164 || swPair.dst.wb5164),
+                "https://github.com/telstra/open-kilda/issues/4407")
+        when: "Create a QinQ flow"
+        def qinqFlow = flowHelperV2.randomFlow(swPair)
         qinqFlow.source.vlanId = srcVlanId
         qinqFlow.source.innerVlanId = srcInnerVlanId
         qinqFlow.destination.vlanId = dstVlanId
         qinqFlow.destination.innerVlanId = dstInnerVlanId
-        qinqFlow.allocateProtectedPath = true
         def response = flowHelperV2.addFlow(qinqFlow)
 
         then: "Response contains correct info about vlanIds"
-        /** System doesn't allow to create a flow with innerVlan and without vlan at the same time.
-         * for e.g.: when you create a flow with the following params:
-         * vlan == 0 and innerVlan != 0,
-         * then flow will be created with vlan != 0 and innerVlan == 0
-         */
         with(response) {
-            it.source.vlanId == (srcVlanId ? srcVlanId : srcInnerVlanId)
-            it.source.innerVlanId == (srcVlanId ? srcInnerVlanId : 0)
-            it.destination.vlanId == (dstVlanId ? dstVlanId : dstInnerVlanId)
-            it.destination.innerVlanId == (dstVlanId ? dstInnerVlanId : 0)
+            it.source.vlanId == srcVlanId
+            it.source.innerVlanId == srcInnerVlanId
+            it.destination.vlanId == dstVlanId
+            it.destination.innerVlanId == dstInnerVlanId
         }
 
         and: "Flow is really created with requested vlanIds"
         with(northbound.getFlow(qinqFlow.flowId)) {
-            it.source.vlanId == (srcVlanId ? srcVlanId : srcInnerVlanId)
-            it.source.innerVlanId == (srcVlanId ? srcInnerVlanId : 0)
-            it.destination.vlanId == (dstVlanId ? dstVlanId : dstInnerVlanId)
-            it.destination.innerVlanId == (dstVlanId ? dstInnerVlanId : 0)
+            it.source.vlanId == srcVlanId
+            it.source.innerVlanId == srcInnerVlanId
+            it.destination.vlanId == dstVlanId
+            it.destination.innerVlanId == dstInnerVlanId
         }
 
         and: "Flow is valid and pingable"
@@ -92,15 +85,17 @@ class QinQFlowSpec extends HealthCheckSpecification {
             it.reverse.pingSuccess
         }
 
-        and: "The flow allows traffic"
+        and: "The flow allows traffic (if applicable)"
         def traffExam = traffExamProvider.get()
         def examQinQFlow = new FlowTrafficExamBuilder(topology, traffExam)
                 .buildBidirectionalExam(flowHelperV2.toV1(qinqFlow), 1000, 5)
-        withPool {
-            [examQinQFlow.forward, examQinQFlow.reverse].eachParallel { direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                assert traffExam.waitExam(direction).hasTraffic()
+        if(!trafficDisclaimer) {
+            withPool {
+                [examQinQFlow.forward, examQinQFlow.reverse].eachParallel { direction ->
+                    def resources = traffExam.startExam(direction)
+                    direction.setResources(resources)
+                    assert traffExam.waitExam(direction).hasTraffic()
+                }
             }
         }
 
@@ -117,7 +112,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Create a vlan flow on the same port as QinQ flow"
-        def vlanFlow = flowHelper.randomFlow(swP).tap {
+        def vlanFlow = flowHelper.randomFlow(swPair).tap {
             it.source.portNumber = qinqFlow.source.portNumber
             it.source.vlanId = qinqFlow.source.vlanId + 1
             it.destination.portNumber = qinqFlow.destination.portNumber
@@ -149,15 +144,17 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         then: "Both flows allow traffic"
-        def examSimpleFlow = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(vlanFlow, 1000, 5)
-        withPool {
-            [examQinQFlow.forward, examQinQFlow.reverse, examSimpleFlow.forward, examSimpleFlow.reverse]
-                    .eachParallel { direction ->
-                        def resources = traffExam.startExam(direction)
-                        direction.setResources(resources)
-                        assert traffExam.waitExam(direction).hasTraffic()
-                    }
+        if(!trafficDisclaimer) {
+            def examSimpleFlow = new FlowTrafficExamBuilder(topology, traffExam)
+                    .buildBidirectionalExam(vlanFlow, 1000, 5)
+            withPool {
+                [examQinQFlow.forward, examQinQFlow.reverse, examSimpleFlow.forward, examSimpleFlow.reverse]
+                        .eachParallel { direction ->
+                            def resources = traffExam.startExam(direction)
+                            direction.setResources(resources)
+                            assert traffExam.waitExam(direction).hasTraffic()
+                        }
+            }
         }
 
         when: "Update the QinQ flow(outer/inner vlans)"
@@ -187,10 +184,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
         and: "Flow history shows actual info into stateBefore and stateAfter sections"
         def flowHistory = northbound.getFlowHistory(qinqFlow.flowId)
         with(flowHistory.last().dumps.find { it.type == "stateBefore" }){
-            it.sourceVlan == (srcVlanId ? srcVlanId : srcInnerVlanId)
-            it.sourceInnerVlan == (srcVlanId ? srcInnerVlanId : 0)
-            it.destinationVlan == (dstVlanId ? dstVlanId : dstInnerVlanId)
-            it.destinationInnerVlan ==  (dstVlanId ? dstInnerVlanId : 0)
+            it.sourceVlan == srcVlanId
+            it.sourceInnerVlan == srcInnerVlanId
+            it.destinationVlan == dstVlanId
+            it.destinationInnerVlan ==  dstInnerVlanId
         }
         with(flowHistory.last().dumps.find { it.type == "stateAfter" }){
             it.sourceVlan == vlanFlow.source.vlanId
@@ -223,7 +220,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Shared rule of flow is deleted"
-        [swP.src.dpId, swP.dst.dpId].each { swId ->
+        [swPair.src.dpId, swPair.dst.dpId].each { swId ->
             assert northbound.getSwitchRules(swId).flowEntries.findAll {
                 new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
             }.empty
@@ -234,21 +231,20 @@ class QinQFlowSpec extends HealthCheckSpecification {
         vlanFlow && !flowsAreDeleted && flowHelper.deleteFlow(vlanFlow.id)
 
         where:
-        srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
-        10        | 20             | 30        | 40
-        10        | 0              | 0         | 40
-        10        | 20             | 0         | 0
+        [srcVlanId, srcInnerVlanId, dstVlanId, dstInnerVlanId, swPair] << [
+                [[10, 20, 30, 40],
+                [10, 20, 0, 0]],
+                getUniqueSwitchPairs()
+        ].combinations().collect { it.flatten() }
+        trafficDisclaimer = swPair.src.traffGens && swPair.dst.traffGens ? "" : " !WARN: No traffic check!"
     }
 
     @Tidy
     def "System allows to create a single switch QinQ flow\
-(srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
-        given: "A switch with enabled multiTable mode"
-        def sw = topology.activeSwitches.find { northbound.getSwitchProperties(it.dpId).multiTable } ?:
-                assumeTrue(false, "Not able to find enough switches in multi-table mode")
-
+[srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.src.hwSwString]#trafficDisclaimer"() {
+        assumeFalse(!trafficDisclaimer && swPair.src.wb5164, "https://github.com/telstra/open-kilda/issues/4407")
         when: "Create a single switch QinQ flow"
-        def qinqFlow = flowHelperV2.singleSwitchFlow(sw)
+        def qinqFlow = flowHelperV2.singleSwitchFlow(swPair)
         qinqFlow.source.vlanId = srcVlanId
         qinqFlow.source.innerVlanId = srcInnerVlanId
         qinqFlow.destination.vlanId = dstVlanId
@@ -257,18 +253,18 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "Response contains correct info about vlanIds"
         with(response) {
-            it.source.vlanId == (srcVlanId ? srcVlanId : srcInnerVlanId)
-            it.source.innerVlanId == (srcVlanId ? srcInnerVlanId : 0)
-            it.destination.vlanId == (dstVlanId ? dstVlanId : dstInnerVlanId)
-            it.destination.innerVlanId == (dstVlanId ? dstInnerVlanId : 0)
+            it.source.vlanId == srcVlanId
+            it.source.innerVlanId == srcInnerVlanId
+            it.destination.vlanId == dstVlanId
+            it.destination.innerVlanId == dstInnerVlanId
         }
 
         and: "Flow is really created with requested vlanIds"
         with(northbound.getFlow(qinqFlow.flowId)) {
-            it.source.vlanId == (srcVlanId ? srcVlanId : srcInnerVlanId)
-            it.source.innerVlanId == (srcVlanId ? srcInnerVlanId : 0)
-            it.destination.vlanId == (dstVlanId ? dstVlanId : dstInnerVlanId)
-            it.destination.innerVlanId == (dstVlanId ? dstInnerVlanId : 0)
+            it.source.vlanId == srcVlanId
+            it.source.innerVlanId == srcInnerVlanId
+            it.destination.vlanId == dstVlanId
+            it.destination.innerVlanId == dstInnerVlanId
         }
 
         and: "Flow is valid"
@@ -282,10 +278,22 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Involved switches pass switch validation"
-        pathHelper.getInvolvedSwitches(pathHelper.convert(northbound.getFlowPath(qinqFlow.flowId))).each {
-            def validationInfo = northbound.validateSwitch(it.dpId)
-            validationInfo.verifyRuleSectionsAreEmpty(it.dpId, ["missing", "excess", "misconfigured"])
-            validationInfo.verifyMeterSectionsAreEmpty(it.dpId, ["missing", "excess", "misconfigured"])
+        def validationInfo = northbound.validateSwitch(swPair.src.dpId)
+        validationInfo.verifyRuleSectionsAreEmpty(swPair.src.dpId, ["missing", "excess", "misconfigured"])
+        validationInfo.verifyMeterSectionsAreEmpty(swPair.src.dpId, ["missing", "excess", "misconfigured"])
+
+        and: "Traffic examination is successful (if possible)"
+        if(!trafficDisclaimer) {
+            def traffExam = traffExamProvider.get()
+            def examQinQFlow = new FlowTrafficExamBuilder(topology, traffExam)
+                    .buildBidirectionalExam(flowHelperV2.toV1(qinqFlow), 1000, 5)
+            withPool {
+                [examQinQFlow.forward, examQinQFlow.reverse].eachParallel { direction ->
+                    def resources = traffExam.startExam(direction)
+                    direction.setResources(resources)
+                    assert traffExam.waitExam(direction).hasTraffic()
+                }
+            }
         }
 
         when: "Delete the flow"
@@ -294,9 +302,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "Flow rules are deleted"
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+            assertThat(northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.toArray())
+                    .containsExactlyInAnyOrder(*swPair.src.defaultCookies)
         }
-        northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
+        northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
             new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
         }.empty
 
@@ -304,19 +313,19 @@ class QinQFlowSpec extends HealthCheckSpecification {
         qinqFlow && !qinqFlowIsDeleted && flowHelperV2.deleteFlow(qinqFlow.flowId)
 
         where:
-        srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
-        10        | 20             | 30        | 40
-        10        | 0              | 0         | 40
-        10        | 20             | 0         | 0
+        [srcVlanId, srcInnerVlanId, dstVlanId, dstInnerVlanId, swPair] << [
+                [[10, 20, 30, 40],
+                 [10, 20, 0, 0]],
+                getUniqueSwitchPairs(topologyHelper.getAllSingleSwitchPairs())
+        ].combinations().collect { it.flatten() }
+        trafficDisclaimer = swPair.src.traffGens.size > 1 ? "" : " !WARN: No traffic check!"
     }
 
     @Tidy
-    @Tags(TOPOLOGY_DEPENDENT)
+    @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])
     def "System doesn't allow to create a QinQ flow when a switch supports multi table mode but it is disabled"() {
         given: "A switch pair with disabled multi table mode at least on the one switch"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].any { northbound.getSwitchProperties(it.dpId).multiTable }
-        } ?: assumeTrue(false, "Not able to find enough switches in multi-table mode")
+        def swP = topologyHelper.getAllNeighboringSwitchPairs()[0]
         def initSrcSwProps = northbound.getSwitchProperties(swP.src.dpId)
         SwitchHelper.updateSwitchProperties(swP.src, initSrcSwProps.jacksonCopy().tap {
             it.multiTable = false
@@ -346,9 +355,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
     def "System doesn't allow to create a QinQ flow with incorrect innerVlanIds\
 (src:#srcInnerVlanId, dst:#dstInnerVlanId)"() {
         given: "A switch pair with enabled multi table mode"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { northbound.getSwitchProperties(it.dpId).multiTable }
-        } ?: assumeTrue(false, "Not able to find enough switches in multi-table mode")
+        def swP = topologyHelper.getAllNeighboringSwitchPairs()[0]
 
         when: "Try to create a QinQ flow with incorrect innerVlanId"
         def flow = flowHelperV2.randomFlow(swP)
@@ -370,12 +377,39 @@ class QinQFlowSpec extends HealthCheckSpecification {
         10             | -1
     }
 
+    /** System doesn't allow to create a flow with innerVlan and without vlan at the same time.
+     * for e.g.: when you create a flow with the following params:
+     * vlan == 0 and innerVlan != 0,
+     * then flow will be created with vlan != 0 and innerVlan == 0
+     */
     @Tidy
-    def "System allow to create/update/delete a QinQ flow via APIv1"() {
+    def "Flow with innerVlan and vlanId=0 is transformed into a regular vlan flow without innerVlan"() {
+        when: "Create a flow with vlanId=0 and innerVlanId!=0"
+        def swP = topologyHelper.switchPairs[0]
+        def flow = flowHelper.randomFlow(swP)
+        flow.source.vlanId = 0
+        flow.source.innerVlanId = 123
+        flowHelper.addFlow(flow)
+
+        then: "Flow is created but with vlanId!=0 and innerVlanId==0"
+        with(northbound.getFlow(flow.id)) {
+            it.source.vlanId == flow.source.innerVlanId
+            it.source.innerVlanId  == 0
+        }
+
+        and: "Flow is valid"
+        northbound.validateFlow(flow.id).each { assert it.asExpected }
+
+        cleanup:
+        flowHelperV2.deleteFlow(flow.id)
+    }
+
+    @Tidy
+    def "System allow to create/update/delete a protected QinQ flow via APIv1"() {
         given: "Two switches with enabled multi table mode"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { northbound.getSwitchProperties(it.dpId).multiTable }
-        } ?: assumeTrue(false, "Not able to find enough switches in multi-table mode")
+        def swP = topologyHelper.getSwitchPairs().find {
+            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
+        } ?: assumeTrue(false, "Not able to find enough switches with 2 diverse paths")
 
         when: "Create a QinQ flow"
         def flow = flowHelper.randomFlow(swP)
@@ -439,13 +473,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Tidy
     def "System allows to create QinQ flow and vlan flow with the same vlan on the same port"() {
         given: "Two switches with enabled multi table mode"
-        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
-        assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find required switches in topology")
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { sw ->
-                sw.dpId in allTraffGenSwitches*.dpId && northbound.getSwitchProperties(sw.dpId).multiTable
-            }
-        } ?: assumeTrue(false, "Not able to find enough switches with traffgens and in multi-table mode")
+            it.src.traffGens && it.dst.traffGens
+        } ?: assumeTrue(false, "Not able to find enough switches with traffgens")
 
         when: "Create a QinQ flow"
         def flowWithQinQ = flowHelperV2.randomFlow(swP)
@@ -482,9 +512,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Tidy
     def "System detects conflict QinQ flows(oVlan: #conflictVlan, iVlan: #conflictInnerVlanId)"() {
         given: "Two switches with enabled multi table mode"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { northbound.getSwitchProperties(it.dpId).multiTable }
-        } ?: assumeTrue(false, "Not able to find enough switches in multi-table mode")
+        def swP = topologyHelper.getAllNeighboringSwitchPairs()[0]
 
         when: "Create a first flow"
         def flow = flowHelperV2.randomFlow(swP)
@@ -517,13 +545,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Tidy
     def "System allows to create more than one QinQ flow on the same port and with the same vlan"() {
         given: "Two switches connected to traffgen and enabled multiTable mode"
-        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
-        assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find required switches in topology")
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { sw ->
-                sw.dpId in allTraffGenSwitches*.dpId && northbound.getSwitchProperties(sw.dpId).multiTable
-            }
-        } ?: assumeTrue(false, "Not able to find enough switches with traffgens and in multi-table mode")
+            it.src.traffGens && it.dst.traffGens
+        } ?: assumeTrue(false, "Not able to find enough switches with traffgens")
 
         when: "Create a first QinQ flow"
         def flow1 = flowHelperV2.randomFlow(swP)
@@ -592,8 +616,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
     def "System allows to create a single-switch-port QinQ flow\
 (srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
         given: "A switch with enabled multiTable mode"
-        def sw = topology.activeSwitches.find { northbound.getSwitchProperties(it.dpId).multiTable } ?:
-                assumeTrue(false, "Not able to find enough switches in multi-table mode")
+        def sw = topology.activeSwitches[0]
 
         when: "Create a single switch QinQ flow"
         def qinqFlow = flowHelperV2.singleSwitchSinglePortFlow(sw)
@@ -605,18 +628,18 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "Response contains correct info about vlanIds"
         with(response) {
-            it.source.vlanId == (srcVlanId ? srcVlanId : srcInnerVlanId)
-            it.source.innerVlanId == (srcVlanId ? srcInnerVlanId : 0)
-            it.destination.vlanId == (dstVlanId ? dstVlanId : dstInnerVlanId)
-            it.destination.innerVlanId == (dstVlanId ? dstInnerVlanId : 0)
+            it.source.vlanId == srcVlanId
+            it.source.innerVlanId == srcInnerVlanId
+            it.destination.vlanId == dstVlanId
+            it.destination.innerVlanId == dstInnerVlanId
         }
 
         and: "Flow is really created with requested vlanIds"
         with(northbound.getFlow(qinqFlow.flowId)) {
-            it.source.vlanId == (srcVlanId ? srcVlanId : srcInnerVlanId)
-            it.source.innerVlanId == (srcVlanId ? srcInnerVlanId : 0)
-            it.destination.vlanId == (dstVlanId ? dstVlanId : dstInnerVlanId)
-            it.destination.innerVlanId == (dstVlanId ? dstInnerVlanId : 0)
+            it.source.vlanId == srcVlanId
+            it.source.innerVlanId == srcInnerVlanId
+            it.destination.vlanId == dstVlanId
+            it.destination.innerVlanId == dstInnerVlanId
         }
 
         and: "Flow is valid"
@@ -644,7 +667,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         where:
         srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
         10        | 20             | 30        | 40
-        10        | 0              | 0         | 40
         10        | 20             | 0         | 0
     }
 
@@ -652,28 +674,17 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Tags(HARDWARE) //not tested
     @IterationTags([
             @IterationTag(tags=[SMOKE_SWITCHES],
-                    iterationNameRegex = /srcVlanId: 10, srcInnerVlanId: 20, dstVlanId: 30, dstInnerVlanId: 0/)
+                    iterationNameRegex = /srcVlan:10, srcInnerVlan:20, dstVlan:30, dstInnerVlan:40/)
     ])
     def "System allows to manipulate with QinQ vxlan flow\
-(srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
-        given: "Two switches connected to traffgen and enabled multiTable mode"
-        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
-        assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find required switches in topology")
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { sw ->
-                sw.dpId in allTraffGenSwitches*.dpId && northbound.getSwitchProperties(sw.dpId).multiTable &&
-                        switchHelper.isVxlanEnabled(sw.dpId)
-            } && it.paths.size() > 2
-        } ?: assumeTrue(false, "Not able to find enough switches with traffgens and in multi-table mode")
-
-        when: "Create a protected QinQ vxlan flow"
-        def qinqFlow = flowHelperV2.randomFlow(swP)
+[srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.hwSwString()]#trafficDisclaimer"() {
+        when: "Create QinQ vxlan flow"
+        def qinqFlow = flowHelperV2.randomFlow(swPair)
         qinqFlow.encapsulationType = FlowEncapsulationType.VXLAN
         qinqFlow.source.vlanId = srcVlanId
         qinqFlow.source.innerVlanId = srcInnerVlanId
         qinqFlow.destination.vlanId = dstVlanId
         qinqFlow.destination.innerVlanId = dstInnerVlanId
-        qinqFlow.allocateProtectedPath = true
         def response = flowHelperV2.addFlow(qinqFlow)
 
         then: "Response contains correct info about vlanIds"
@@ -683,18 +694,18 @@ class QinQFlowSpec extends HealthCheckSpecification {
          * then flow will be created with vlan != 0 and innerVlan == 0
          */
         with(response) {
-            it.source.vlanId == (srcVlanId ? srcVlanId : srcInnerVlanId)
-            it.source.innerVlanId == (srcVlanId ? srcInnerVlanId : 0)
-            it.destination.vlanId == (dstVlanId ? dstVlanId : dstInnerVlanId)
-            it.destination.innerVlanId == (dstVlanId ? dstInnerVlanId : 0)
+            it.source.vlanId == srcVlanId
+            it.source.innerVlanId == srcInnerVlanId
+            it.destination.vlanId == dstVlanId
+            it.destination.innerVlanId == dstInnerVlanId
         }
 
         and: "Flow is really created with requested vlanIds"
         with(northbound.getFlow(qinqFlow.flowId)) {
-            it.source.vlanId == (srcVlanId ? srcVlanId : srcInnerVlanId)
-            it.source.innerVlanId == (srcVlanId ? srcInnerVlanId : 0)
-            it.destination.vlanId == (dstVlanId ? dstVlanId : dstInnerVlanId)
-            it.destination.innerVlanId == (dstVlanId ? dstInnerVlanId : 0)
+            it.source.vlanId == srcVlanId
+            it.source.innerVlanId == srcInnerVlanId
+            it.destination.vlanId == dstVlanId
+            it.destination.innerVlanId == dstInnerVlanId
         }
 
         and: "Flow is valid and pingable"
@@ -704,15 +715,17 @@ class QinQFlowSpec extends HealthCheckSpecification {
             it.reverse.pingSuccess
         }
 
-        and: "The flow allows traffic"
+        and: "The flow allows traffic (if applicable)"
         def traffExam = traffExamProvider.get()
         def examQinQFlow = new FlowTrafficExamBuilder(topology, traffExam)
                 .buildBidirectionalExam(flowHelperV2.toV1(qinqFlow), 1000, 5)
-        withPool {
-            [examQinQFlow.forward, examQinQFlow.reverse].eachParallel { direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                assert traffExam.waitExam(direction).hasTraffic()
+        if(!trafficDisclaimer) {
+            withPool {
+                [examQinQFlow.forward, examQinQFlow.reverse].eachParallel { direction ->
+                    def resources = traffExam.startExam(direction)
+                    direction.setResources(resources)
+                    assert traffExam.waitExam(direction).hasTraffic()
+                }
             }
         }
 
@@ -728,7 +741,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Create a vlan flow on the same port as QinQ flow"
-        def vlanFlow = flowHelper.randomFlow(swP).tap {
+        def vlanFlow = flowHelper.randomFlow(swPair).tap {
             it.source.portNumber = qinqFlow.source.portNumber
             it.source.vlanId = qinqFlow.source.vlanId + 1
             it.destination.portNumber = qinqFlow.destination.portNumber
@@ -760,15 +773,17 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         then: "Both flows allow traffic"
-        def examSimpleFlow = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(vlanFlow, 1000, 5)
-        withPool {
-            [examQinQFlow.forward, examQinQFlow.reverse, examSimpleFlow.forward, examSimpleFlow.reverse]
-                    .eachParallel { direction ->
-                        def resources = traffExam.startExam(direction)
-                        direction.setResources(resources)
-                        assert traffExam.waitExam(direction).hasTraffic()
-                    }
+        if(!trafficDisclaimer) {
+            def examSimpleFlow = new FlowTrafficExamBuilder(topology, traffExam)
+                    .buildBidirectionalExam(vlanFlow, 1000, 5)
+            withPool {
+                [examQinQFlow.forward, examQinQFlow.reverse, examSimpleFlow.forward, examSimpleFlow.reverse]
+                        .eachParallel { direction ->
+                            def resources = traffExam.startExam(direction)
+                            direction.setResources(resources)
+                            assert traffExam.waitExam(direction).hasTraffic()
+                        }
+            }
         }
 
         when: "Update the QinQ flow(outer/inner vlans)"
@@ -819,7 +834,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Shared rule of flow is deleted"
-        [swP.src.dpId, swP.dst.dpId].each { swId ->
+        [swPair.src.dpId, swPair.dst.dpId].each { swId ->
             assert northbound.getSwitchRules(swId).flowEntries.findAll {
                 new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
             }.empty
@@ -830,22 +845,21 @@ class QinQFlowSpec extends HealthCheckSpecification {
         vlanFlow && !flowsAreDeleted && flowHelper.deleteFlow(vlanFlow.id)
 
         where:
-        srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
-        10        | 20             | 30        | 40
-        10        | 0              | 0         | 40
-        10        | 20             | 0         | 0
+        [srcVlanId, srcInnerVlanId, dstVlanId, dstInnerVlanId, swPair] << [
+                [[10, 20, 30, 40],
+                 [10, 20, 0, 0]],
+                getUniqueSwitchPairs({ SwitchPair switchPair -> switchPair.paths.find {
+                    pathHelper.getInvolvedSwitches(it).every { switchHelper.isVxlanEnabled(it.dpId) }}})
+        ].combinations().collect { it.flatten() }
+        trafficDisclaimer = swPair.src.traffGens && swPair.dst.traffGens ? "" : " !WARN: No traffic check!"
     }
 
     @Tidy
     def "System is able to synchronize switch(flow rules)"() {
         given: "Two switches connected to traffgen and enabled multiTable mode"
-        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
-        assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find required switches in topology")
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { sw ->
-                sw.dpId in allTraffGenSwitches*.dpId && northbound.getSwitchProperties(sw.dpId).multiTable
-            }
-        } ?: assumeTrue(false, "Not able to find enough switches with traffgens and in multi-table mode")
+            it.src.traffGens && it.dst.traffGens
+        } ?: assumeTrue(false, "Not able to find enough switches with traffgens")
 
         and: "A QinQ flow on the given switches"
         def flow = flowHelperV2.randomFlow(swP)
@@ -896,13 +910,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Tidy
     def "System doesn't rebuild flow path to more preferable path while updating innerVlanId"() {
         given: "Two active switches connected to traffgens with two possible paths at least"
-        def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected*.dpId ?:
-                assumeTrue(false, "Should be at least two active traffgens connected to switches")
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { sw ->
-                sw.dpId in allTraffgenSwitchIds && northbound.getSwitchProperties(sw.dpId).multiTable
-            } && it.paths.size() > 2
-        } ?: assumeTrue(false, "Not able to find enough switches with traffgens and in multi-table mode")
+            it.src.traffGens && it.dst.traffGens && it.paths.size() > 2
+        } ?: assumeTrue(false, "Not able to find enough switches with traffgens and diverse paths")
 
         and: "A flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -966,5 +976,36 @@ class QinQFlowSpec extends HealthCheckSpecification {
         !involvedSwitchesPassSwValidation && currentPath*.switchId.each { SwitchId swId ->
             northbound.synchronizeSwitch(swId, true)
         }
+    }
+
+    @Memoized
+    List<SwitchPair> getUniqueSwitchPairs(List<SwitchPair> suitablePairs = topologyHelper.getSwitchPairs(true)) {
+        def unpickedUniqueSwitches = topology.activeSwitches.collect { it.hwSwString }.unique(false)
+        def unpickedSuitableSwitches = unpickedUniqueSwitches.intersect(
+                suitablePairs.collectMany { [it.src.hwSwString, it.dst.hwSwString] }.unique(false))
+        def untestedSwitches = unpickedUniqueSwitches - unpickedSuitableSwitches
+        if (untestedSwitches) {
+            log.warn("Switches left untested: ${untestedSwitches.inspect()}")
+        }
+        assumeFalse(unpickedSuitableSwitches.empty, "No switches that match required conditions") //not possible?
+        def result = []
+        while (!unpickedSuitableSwitches.empty) {
+            def pairs = suitablePairs.sort(false) { swPair ->
+                def score = 0
+                swPair.src.hwSwString in unpickedSuitableSwitches && score++
+                swPair.dst.hwSwString in unpickedSuitableSwitches && score++
+                if (swPair.src.dpId == swPair.dst.dpId) {
+                    if (swPair.src.traffGens.size() > 1) score++
+                } else {
+                    if (swPair.src.traffGens && swPair.dst.traffGens) score++
+                }
+                return score
+            }
+            //pick a highest score pair, update list of unpicked switches, re-run
+            def pair = pairs.last()
+            result << pair
+            unpickedSuitableSwitches = unpickedSuitableSwitches - pair.src.hwSwString - pair.dst.hwSwString
+        }
+        return result
     }
 }

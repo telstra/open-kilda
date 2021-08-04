@@ -1206,7 +1206,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
      */
     @Memoized
     List<SwitchPair> getUniqueSwitchPairs(Closure additionalConditions = { true }) {
-        def unpickedUniqueTgSwitches = topology.switches.findAll { it.traffGens }
+        def unpickedUniqueTgSwitches = topology.activeSwitches.findAll { it.traffGens }
                 .unique(false) { it.hwSwString }
         def tgPairs = topologyHelper.getSwitchPairs(true).findAll {
             additionalConditions(it)
