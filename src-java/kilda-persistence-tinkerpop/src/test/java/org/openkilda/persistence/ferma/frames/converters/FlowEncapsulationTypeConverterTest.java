@@ -32,7 +32,5 @@ public class FlowEncapsulationTypeConverterTest {
     public void shouldConvertToEntity() {
         assertEquals(FlowEncapsulationType.TRANSIT_VLAN,
                 FlowEncapsulationTypeConverter.INSTANCE.toEntityAttribute("transit_vlan"));
-        assertEquals(FlowEncapsulationType.TRANSIT_VLAN,
-                FlowEncapsulationTypeConverter.INSTANCE.toEntityAttribute("TRANSIT_VLAN"));
     }
 }
