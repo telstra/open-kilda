@@ -22,6 +22,10 @@ orientdb.url=remote:{{ getv "/kilda_orientdb_hosts_single" }}/{{ getv "/kilda_or
 {{end}}
 orientdb.user={{ getv "/kilda_orientdb_user" }}
 orientdb.password={{ getv "/kilda_orientdb_password" }}
+hibernate.user = {{ getv "/kilda_hibernate_user" }}
+hibernate.password = {{ getv "/kilda_hibernate_password" }}
+hibernate.url = {{ getv "/kilda_hibernate_url_tests" }}
+persistence.implementation = {{ getv "/kilda_persistence_implementation" }}
 
 elasticsearch.endpoint={{ getv "/kilda_logging_elasticsearch_proto" }}://{{ getv "/kilda_logging_elasticsearch_hosts" }}
 elasticsearch.username={{ getv "/kilda_logging_elasticsearch_user" }}

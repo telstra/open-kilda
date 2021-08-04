@@ -53,7 +53,7 @@ class PortAntiflapHelper {
     void waitPortIsStable(SwitchId swId, int portNo, Long since = 0) {
         // '* 2' it takes more time on a hardware env for link via 'a-switch'
         Wrappers.wait(antiflapCooldown + WAIT_OFFSET * 2) {
-            def history = northboundV2.getPortHistory(swId, portNo, since, Long.MAX_VALUE)
+            def history = northboundV2.getPortHistory(swId, portNo, since, null)
 
             if (!history.empty) {
                 def antiflapEvents = history.collect { PortHistoryEvent.valueOf(it.event) }.findAll {
