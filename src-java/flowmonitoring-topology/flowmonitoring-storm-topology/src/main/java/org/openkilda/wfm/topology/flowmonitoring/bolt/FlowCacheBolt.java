@@ -24,7 +24,6 @@ import static org.openkilda.wfm.topology.flowmonitoring.bolt.IslDataSplitterBolt
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
-import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.flow.UpdateFlowInfo;
 import org.openkilda.messaging.info.stats.FlowRttStatsData;
 import org.openkilda.persistence.PersistenceManager;
@@ -61,7 +60,6 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
     public static final String REQUEST_ID_FIELD = "request-id";
     public static final String LINK_FIELD = "link";
     public static final String LATENCY_FIELD = "latency";
-    public static final String FLOW_INFO_FIELD = "flow-info";
 
     private PersistenceManager persistenceManager;
     private Duration flowRttStatsExpirationTime;
@@ -88,8 +86,16 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
     @Override
     protected void handleInput(Tuple input) throws PipelineException {
         if (active) {
-            if (ComponentId.TICK_BOLT.name().equals(input.getSourceComponent())) {
-                flowCacheService.processFlowLatencyCheck();
+            if (ComponentId.FLOW_STATE_CACHE_BOLT.name().equals(input.getSourceComponent())) {
+                if (FLOW_UPDATE_STREAM_ID.name().equals(input.getSourceStreamId())) {
+                    UpdateFlowInfo updateFlowInfo = pullValue(input, INFO_DATA_FIELD, UpdateFlowInfo.class);
+                    flowCacheService.updateFlowInfo(updateFlowInfo);
+                    emit(FLOW_UPDATE_STREAM_ID.name(), input, new Values(updateFlowInfo.getFlowId(), updateFlowInfo,
+                            getCommandContext()));
+                } else {
+                    String flowId = pullValue(input, FLOW_ID_FIELD, String.class);
+                    flowCacheService.processFlowLatencyCheck(flowId);
+                }
                 return;
             }
 
@@ -101,18 +107,8 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
                 return;
             }
 
-            InfoData payload = pullValue(input, INFO_DATA_FIELD, InfoData.class);
-            if (payload instanceof FlowRttStatsData) {
-                FlowRttStatsData flowRttStatsData = (FlowRttStatsData) payload;
-                flowCacheService.processFlowRttStatsData(flowRttStatsData);
-            } else if (payload instanceof UpdateFlowInfo) {
-                UpdateFlowInfo updateFlowInfo = (UpdateFlowInfo) payload;
-                flowCacheService.updateFlowInfo(updateFlowInfo);
-                emit(FLOW_UPDATE_STREAM_ID.name(), input, new Values(updateFlowInfo.getFlowId(), updateFlowInfo,
-                        getCommandContext()));
-            } else {
-                unhandledInput(input);
-            }
+            FlowRttStatsData flowRttStatsData = pullValue(input, INFO_DATA_FIELD, FlowRttStatsData.class);
+            flowCacheService.processFlowRttStatsData(flowRttStatsData);
         }
     }
 
@@ -155,7 +151,7 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
         declarer.declare(new Fields(REQUEST_ID_FIELD, FLOW_ID_FIELD, ISL_KEY_FIELD, LINK_FIELD, FIELD_ID_CONTEXT));
         declarer.declareStream(ACTION_STREAM_ID.name(), new Fields(FLOW_ID_FIELD, FLOW_DIRECTION_FIELD,
                 LATENCY_FIELD, FIELD_ID_CONTEXT));
-        declarer.declareStream(FLOW_UPDATE_STREAM_ID.name(), new Fields(FLOW_ID_FIELD, FLOW_INFO_FIELD,
+        declarer.declareStream(FLOW_UPDATE_STREAM_ID.name(), new Fields(FLOW_ID_FIELD, INFO_DATA_FIELD,
                 FIELD_ID_CONTEXT));
         declarer.declareStream(STATS_STREAM_ID.name(), new Fields(KafkaEncoder.FIELD_ID_PAYLOAD));
         declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,

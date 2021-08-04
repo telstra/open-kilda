@@ -32,6 +32,7 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.ActionBolt;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowSplitterBolt;
+import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowStateCacheBolt;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.IslCacheBolt;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.IslDataSplitterBolt;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.RerouteEncoder;
@@ -71,6 +72,7 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
         PersistenceManager persistenceManager =
                 PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
 
+        flowStateCacheBolt(tb, persistenceManager);
         flowCacheBolt(tb, persistenceManager);
         islCacheBolt(tb, persistenceManager);
 
@@ -120,15 +122,23 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
                 ComponentId.TICK_BOLT.name());
     }
 
+    private void flowStateCacheBolt(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
+        FlowStateCacheBolt flowStateCacheBolt = new FlowStateCacheBolt(persistenceManager, ZooKeeperSpout.SPOUT_ID);
+        declareBolt(topologyBuilder, flowStateCacheBolt, ComponentId.FLOW_STATE_CACHE_BOLT.name())
+                .allGrouping(ComponentId.FLOW_SPLITTER_BOLT.name(), FLOW_UPDATE_STREAM_ID.name())
+                .allGrouping(ComponentId.TICK_BOLT.name())
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
+    }
+
     private void flowCacheBolt(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         FlowCacheBolt flowCacheBolt = new FlowCacheBolt(persistenceManager,
                 Duration.ofSeconds(getConfig().getFlowRttStatsExpirationSeconds()), getConfig().getMetricPrefix(),
                 ZooKeeperSpout.SPOUT_ID);
         declareBolt(topologyBuilder, flowCacheBolt, ComponentId.FLOW_CACHE_BOLT.name())
-                .fieldsGrouping(ComponentId.FLOW_SPLITTER_BOLT.name(), FLOW_UPDATE_STREAM_ID.name(), FLOW_ID_FIELDS)
+                .fieldsGrouping(ComponentId.FLOW_STATE_CACHE_BOLT.name(), FLOW_UPDATE_STREAM_ID.name(), FLOW_ID_FIELDS)
+                .fieldsGrouping(ComponentId.FLOW_STATE_CACHE_BOLT.name(), FLOW_ID_FIELDS)
                 .fieldsGrouping(ComponentId.FLOW_SPLITTER_BOLT.name(), FLOW_ID_FIELDS)
                 .fieldsGrouping(ComponentId.ISL_CACHE_BOLT.name(), FLOW_ID_FIELDS)
-                .allGrouping(ComponentId.TICK_BOLT.name())
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
@@ -179,9 +189,10 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
                 getZookeeperConfig(),
                 getBoltInstancesCount(ComponentId.ISL_CACHE_BOLT.name(), ComponentId.FLOW_CACHE_BOLT.name(),
-                        ComponentId.ACTION_BOLT.name()));
+                        ComponentId.ACTION_BOLT.name(), ComponentId.FLOW_STATE_CACHE_BOLT.name()));
         declareBolt(topology, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(ComponentId.ISL_CACHE_BOLT.name(), ZkStreams.ZK.toString())
+                .allGrouping(ComponentId.FLOW_STATE_CACHE_BOLT.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.FLOW_CACHE_BOLT.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.ACTION_BOLT.name(), ZkStreams.ZK.toString());
     }
@@ -200,6 +211,7 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
         ISL_SPLITTER_BOLT("isl.splitter.bolt"),
         FLOW_SPLITTER_BOLT("flow.splitter.bolt"),
 
+        FLOW_STATE_CACHE_BOLT("flow.state.cache.bolt"),
         FLOW_CACHE_BOLT("flow.cache.bolt"),
         ISL_CACHE_BOLT("isl.cache.bolt"),
         ACTION_BOLT("action.bolt"),

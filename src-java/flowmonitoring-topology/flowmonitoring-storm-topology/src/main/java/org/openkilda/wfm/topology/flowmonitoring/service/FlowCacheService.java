@@ -95,10 +95,15 @@ public class FlowCacheService {
     }
 
     /**
-     * Start latency check for all flows.
+     * Start latency check for flow with flowId.
      */
-    public void processFlowLatencyCheck() {
-        flowStates.forEach(this::checkFlowLatency);
+    public void processFlowLatencyCheck(String flowId) {
+        FlowState flowState = flowStates.get(flowId);
+        if (flowState != null) {
+            checkFlowLatency(flowId, flowState);
+        } else {
+            log.warn("Process flow latency check for unknown flow {}", flowId);
+        }
     }
 
     private void checkFlowLatency(String flowId, FlowState flowState) {

@@ -96,7 +96,7 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
         Flow flow = createFlow();
         service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
 
-        service.processFlowLatencyCheck();
+        service.processFlowLatencyCheck(flow.getFlowId());
 
         List<Link> expectedForwardPath = getLinks(SRC_SWITCH, ISL_SRC_PORT, DST_SWITCH, ISL_DST_PORT);
         verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.FORWARD, expectedForwardPath);
@@ -113,7 +113,7 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
         service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
         service.updateFlowInfo(updateFlowInfo);
 
-        service.processFlowLatencyCheck();
+        service.processFlowLatencyCheck(flow.getFlowId());
 
         verifyNoMoreInteractions(carrier);
     }
@@ -135,7 +135,7 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
                 .build(), maxLatency, maxLatencyTier2);
 
         service.updateFlowInfo(updateFlowInfo);
-        service.processFlowLatencyCheck();
+        service.processFlowLatencyCheck(flow.getFlowId());
 
         List<Link> expectedForwardPath = getLinks(SRC_SWITCH, ISL_SRC_PORT_2, DST_SWITCH, ISL_DST_PORT_2);
         verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.FORWARD, expectedForwardPath);
@@ -161,7 +161,7 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
                 .t1(t1)
                 .build();
         service.processFlowRttStatsData(flowRttStatsData);
-        service.processFlowLatencyCheck();
+        service.processFlowLatencyCheck(flow.getFlowId());
 
         List<Link> expectedForwardPath = getLinks(SRC_SWITCH, ISL_SRC_PORT, DST_SWITCH, ISL_DST_PORT);
         verify(carrier).emitCheckFlowLatencyRequest(flow.getFlowId(), FlowDirection.FORWARD,

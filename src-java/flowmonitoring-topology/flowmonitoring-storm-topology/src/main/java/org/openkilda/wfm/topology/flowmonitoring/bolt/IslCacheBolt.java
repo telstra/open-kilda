@@ -93,7 +93,6 @@ public class IslCacheBolt extends AbstractBolt {
 
             Duration latency = islCacheService.getLatencyForLink(link);
 
-            log.info("Emit response link {} latency {}", link, latency);
             emit(input, new Values(requestId, flowId, link, latency, getCommandContext()));
         } else {
             unhandledInput(input);
