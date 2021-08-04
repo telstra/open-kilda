@@ -32,13 +32,4 @@ public interface FlowEventRepository extends Repository<FlowEvent> {
 
     List<FlowStatusView> findFlowStatusesByFlowIdAndTimeFrame(String flowId, Instant timeFrom,
                                                               Instant timeTo, int maxCount);
-
-    /**
-     * Represents flow statuses as immutable plain data.
-     */
-    interface FlowStatusesImmutableView {
-        Instant getTimestamp();
-
-        String getStatusBecome();
-    }
 }

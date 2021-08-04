@@ -21,9 +21,9 @@ import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
-import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.persistence.tx.TransactionManager;
 
 import org.junit.Before;
@@ -31,9 +31,8 @@ import org.junit.BeforeClass;
 import org.mockito.Mockito;
 
 public abstract class InMemoryGraphBasedTest {
-
     protected static ConfigurationProvider configurationProvider;
-    protected static InMemoryGraphPersistenceManager inMemoryGraphPersistenceManager;
+    protected static InMemoryGraphPersistenceManager inMemoryPersistenceProvider;
     protected static PersistenceManager persistenceManager;
     protected static TransactionManager transactionManager;
     protected static RepositoryFactory repositoryFactory;
@@ -41,9 +40,10 @@ public abstract class InMemoryGraphBasedTest {
     @BeforeClass
     public static void initPersistenceManager() {
         configurationProvider = new PropertiesBasedConfigurationProvider();
-        NetworkConfig networkConfig = configurationProvider.getConfiguration(NetworkConfig.class);
-        inMemoryGraphPersistenceManager = new InMemoryGraphPersistenceManager(networkConfig);
-        persistenceManager = Mockito.spy(inMemoryGraphPersistenceManager);
+        inMemoryPersistenceProvider = new InMemoryGraphPersistenceManager(configurationProvider);
+        PersistenceProvider.makeDefault(inMemoryPersistenceProvider);
+
+        persistenceManager = Mockito.spy(inMemoryPersistenceProvider);
         transactionManager = persistenceManager.getTransactionManager();
         repositoryFactory = Mockito.spy(persistenceManager.getRepositoryFactory());
         Mockito.when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
@@ -51,7 +51,7 @@ public abstract class InMemoryGraphBasedTest {
 
     @Before
     public void cleanTinkerGraph() {
-        inMemoryGraphPersistenceManager.purgeData();
+        inMemoryPersistenceProvider.purgeData();
     }
 
     protected Switch createTestSwitch(long switchId) {

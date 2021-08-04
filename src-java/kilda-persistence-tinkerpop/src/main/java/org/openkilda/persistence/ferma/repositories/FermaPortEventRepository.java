@@ -34,6 +34,7 @@ import org.apache.tinkerpop.gremlin.structure.Vertex;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -73,6 +74,7 @@ public class FermaPortEventRepository extends FermaGenericRepository<PortEvent, 
         PortEventFrame frame = KildaBaseVertexFrame.addNewFramedVertex(framedGraph(),
                 PortEventFrame.FRAME_LABEL, PortEventFrame.class);
         PortEventCloner.INSTANCE.copy(data, frame);
+        frame.setRecordId(UUID.randomUUID());
         return frame;
     }
 

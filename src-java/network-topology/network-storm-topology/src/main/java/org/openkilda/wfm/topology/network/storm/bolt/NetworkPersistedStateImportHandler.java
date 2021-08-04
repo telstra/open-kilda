@@ -48,14 +48,11 @@ public class NetworkPersistedStateImportHandler extends AbstractBolt implements 
     public static final Fields STREAM_ZOOKEEPER_FIELDS = new Fields(ZooKeeperBolt.FIELD_ID_STATE,
             ZooKeeperBolt.FIELD_ID_CONTEXT);
 
-    private final PersistenceManager persistenceManager;
-
     private transient NetworkHistoryService service;
 
     public NetworkPersistedStateImportHandler(
             PersistenceManager persistenceManager, String lifeCycleEventSourceComponent) {
-        super(lifeCycleEventSourceComponent);
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager, lifeCycleEventSourceComponent);
     }
 
     @Override

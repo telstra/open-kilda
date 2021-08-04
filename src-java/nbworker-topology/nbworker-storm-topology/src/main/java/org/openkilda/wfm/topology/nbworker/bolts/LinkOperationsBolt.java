@@ -84,13 +84,12 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
         enableMeterRegistry("kilda.link_operations", StreamType.TO_METRICS_BOLT.name());
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void init() {
-        this.linkOperationsService = new LinkOperationsService(this, repositoryFactory, transactionManager);
-        this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
+        super.init();
+
+        linkOperationsService = new LinkOperationsService(this, repositoryFactory, transactionManager);
+        flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
         linkPropsRepository = repositoryFactory.createLinkPropsRepository();
         islRepository = repositoryFactory.createIslRepository();
     }

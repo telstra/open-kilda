@@ -18,17 +18,18 @@ package org.openkilda.messaging.info.grpc;
 import org.openkilda.messaging.model.grpc.PacketInOutStatsDto;
 import org.openkilda.model.SwitchId;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.io.IOException;
 
 public class ResponseSerialisationTest {
 
     private ObjectMapper mapper = new ObjectMapper();
 
     @Test
-    public void getPacketInOutStatsResponseTest() throws JsonProcessingException {
+    public void getPacketInOutStatsResponseTest() throws IOException {
         GetPacketInOutStatsResponse response = new GetPacketInOutStatsResponse(new SwitchId(1),
                 new PacketInOutStatsDto(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, true, 11));
 

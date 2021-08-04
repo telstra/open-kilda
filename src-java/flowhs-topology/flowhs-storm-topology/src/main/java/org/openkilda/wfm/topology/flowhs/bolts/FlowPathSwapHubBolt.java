@@ -59,7 +59,6 @@ import org.apache.storm.tuple.Values;
 public class FlowPathSwapHubBolt extends HubBolt implements FlowPathSwapHubCarrier {
 
     private final FlowPathSwapConfig config;
-    private final PersistenceManager persistenceManager;
     private final FlowResourcesConfig flowResourcesConfig;
 
     private transient FlowPathSwapService service;
@@ -69,10 +68,9 @@ public class FlowPathSwapHubBolt extends HubBolt implements FlowPathSwapHubCarri
 
     public FlowPathSwapHubBolt(FlowPathSwapConfig config, PersistenceManager persistenceManager,
                                FlowResourcesConfig flowResourcesConfig) {
-        super(config);
+        super(persistenceManager, config);
 
         this.config = config;
-        this.persistenceManager = persistenceManager;
         this.flowResourcesConfig = flowResourcesConfig;
 
         enableMeterRegistry("kilda.flow_pathswap", HUB_TO_METRICS_BOLT.name());
@@ -80,7 +78,6 @@ public class FlowPathSwapHubBolt extends HubBolt implements FlowPathSwapHubCarri
 
     @Override
     protected void init() {
-
         FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         service = new FlowPathSwapService(this, persistenceManager,
                 config.getSpeakerCommandRetriesLimit(), resourcesManager);

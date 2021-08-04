@@ -71,7 +71,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
     public NetworkTopology(LaunchEnvironment env) {
         super(env, "network-topology", NetworkTopologyConfig.class);
 
-        persistenceManager = PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
+        persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
         options = new NetworkOptions(getConfig());
         kafkaTopics = getConfig().getKafkaTopics();
     }

@@ -74,13 +74,10 @@ public class BfdWorker extends WorkerBolt {
     public static final String STREAM_GRPC_ID = "grpc";
     public static final Fields STREAM_GRPC_FIELDS = STREAM_FIELDS;
 
-    private final PersistenceManager persistenceManager;
-
     private transient SwitchRepository switchRepository;
 
     public BfdWorker(Config config, PersistenceManager persistenceManager) {
-        super(config);
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager, config);
     }
 
     @Override
@@ -202,7 +199,6 @@ public class BfdWorker extends WorkerBolt {
     @Override
     protected void init() {
         super.init();
-
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
     }
 

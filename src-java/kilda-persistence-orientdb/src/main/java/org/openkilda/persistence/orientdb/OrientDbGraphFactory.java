@@ -27,36 +27,29 @@ import com.syncleus.ferma.framefactories.FrameFactory;
 import com.syncleus.ferma.typeresolvers.TypeResolver;
 import com.syncleus.ferma.typeresolvers.UntypedTypeResolver;
 import lombok.NonNull;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.apache.tinkerpop.gremlin.orientdb.OrientGraph;
 import org.apache.tinkerpop.gremlin.orientdb.OrientGraphFactory;
 
+import java.io.Serializable;
+
 /**
  * A factory creates graph instances for interacting with OrientDB.
  */
 @Slf4j
-public class OrientDbGraphFactory implements FramedGraphFactory {
-    private final OrientGraphFactory factory;
-    private final FrameFactory builder = new AnnotationFrameFactoryWithConverterSupport();
-    private final TypeResolver typeResolver = new UntypedTypeResolver();
-    private final RetryPolicy<OrientGraph> poolAcquireRetryPolicy;
+public class OrientDbGraphFactory implements FramedGraphFactory<DelegatingFramedGraph<?>>, Serializable {
+    private final ThreadLocalPersistenceContextManagerSupplier contextManagerSupplier;
+    private final OrientDbConfig config;
 
-    OrientDbGraphFactory(@NonNull OrientDbConfig config) {
-        log.debug("Opening a graph for {}", config);
-        factory = new OrientGraphFactory(config.getUrl(), config.getUser(), config.getPassword());
-        factory.setupPool(config.getPoolSize());
-        log.debug("OrientGraphFactory instance has been created: {}", factory);
+    private transient volatile Connect connect;
 
-        poolAcquireRetryPolicy = new RetryPolicy<OrientGraph>()
-                .handle(OException.class)
-                .handle(RecoverablePersistenceException.class)
-                .withMaxRetries(config.getPoolAcquireAttempts())
-                .onRetry(e -> log.debug("Failure in acquiring a graph from the pool. Retrying #{}...",
-                        e.getAttemptCount(), e.getLastFailure()))
-                .onRetriesExceeded(e -> log.error("Failure in acquiring a graph from the pool. No more retries",
-                        e.getFailure()));
+    OrientDbGraphFactory(
+            ThreadLocalPersistenceContextManagerSupplier contextManagerSupplier, @NonNull OrientDbConfig config) {
+        this.contextManagerSupplier = contextManagerSupplier;
+        this.config = config;
     }
 
     /**
@@ -64,24 +57,43 @@ public class OrientDbGraphFactory implements FramedGraphFactory {
      * Create a new one if there's no such.
      */
     @Override
-    public DelegatingFramedGraph<?> getGraph() {
-        if (!ThreadLocalPersistenceContextHolder.INSTANCE.isContextInitialized()) {
+    public DelegatingFramedGraph<OrientGraph> getGraph() {
+        ThreadLocalPersistenceContextManager contextManager = contextManagerSupplier.get();
+        if (!contextManager.isContextInitialized()) {
             throw new PersistenceException("Persistence context is not initialized");
         }
 
-        DelegatingFramedGraph<?> result = ThreadLocalPersistenceContextHolder.INSTANCE.getCurrentGraph();
+        DelegatingFramedGraph<OrientGraph> result = contextManager.getCurrentGraph();
         if (result == null) {
+            Connect effectiveConnect = getConnectCreateIfMissing();
+
+            OrientGraphFactory factory = effectiveConnect.getFactory();
             log.debug("Opening a framed graph for {}", factory);
-            OrientGraph resultOrientGraph = Failsafe.with(poolAcquireRetryPolicy).get(() -> {
+
+            OrientGraph orientGraph = Failsafe.with(newPoolAcquireRetryPolicy()).get(() -> {
                 OrientGraph obtainedGraph = factory.getTx();
                 validateGraph(obtainedGraph);
                 return obtainedGraph;
             });
-            log.debug("OrientGraph instance has been created: {}", resultOrientGraph);
-            result = new DelegatingFramedGraph<>(resultOrientGraph, builder, typeResolver);
-            ThreadLocalPersistenceContextHolder.INSTANCE.setCurrentGraph(result);
+
+            log.debug("OrientGraph instance has been created: {}", orientGraph);
+            result = new DelegatingFramedGraph<>(
+                    orientGraph, effectiveConnect.getBuilder(), effectiveConnect.getTypeResolver());
+
+            contextManager.setCurrentGraph(result);
         }
         return result;
+    }
+
+    private RetryPolicy<OrientGraph> newPoolAcquireRetryPolicy() {
+        return new RetryPolicy<OrientGraph>()
+                .handle(OException.class)
+                .handle(RecoverablePersistenceException.class)
+                .withMaxRetries(config.getPoolAcquireAttempts())
+                .onRetry(e -> log.debug("Failure in acquiring a graph from the pool. Retrying #{}...",
+                        e.getAttemptCount(), e.getLastFailure()))
+                .onRetriesExceeded(e -> log.error("Failure in acquiring a graph from the pool. No more retries",
+                        e.getFailure()));
     }
 
     private void validateGraph(@NonNull OrientGraph obtainedGraph) {
@@ -96,7 +108,35 @@ public class OrientDbGraphFactory implements FramedGraphFactory {
     }
 
     public OrientGraph getOrientGraph() {
-        return (OrientGraph) getGraph().getBaseGraph();
+        return getGraph().getBaseGraph();
+    }
+
+    private Connect getConnectCreateIfMissing() {
+        if (connect == null) {
+            synchronized (this) {
+                if (connect == null) {
+                    connect = new Connect(config);
+                }
+            }
+        }
+        return connect;
+    }
+
+    @Value
+    private static class Connect {
+        OrientGraphFactory factory;
+        FrameFactory builder = new AnnotationFrameFactoryWithConverterSupport();
+        TypeResolver typeResolver = new UntypedTypeResolver();
+
+        public Connect(OrientDbConfig config) {
+            log.debug(
+                    "Opening a graph for (url=\"{}\", login=\"{}\", password=*****)",
+                    config.getUrl(), config.getUser());
+
+            factory = new OrientGraphFactory(config.getUrl(), config.getUser(), config.getPassword());
+            factory.setupPool(config.getPoolSize());
+            log.debug("OrientGraphFactory instance has been created: {}", factory);
+        }
     }
 }
 

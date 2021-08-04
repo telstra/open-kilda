@@ -21,6 +21,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -34,6 +37,7 @@ import org.apache.storm.tuple.Values;
 import org.apache.storm.utils.Utils;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -67,6 +71,12 @@ public class WorkerBoltTest {
 
     @Mock
     private TopologyContext topologyContext;
+
+    @BeforeClass
+    public static void initPersistenceManager() {
+        PersistenceProvider.makeDefault(
+                new InMemoryGraphPersistenceManager(new PropertiesBasedConfigurationProvider()));
+    }
 
     @Before
     public void setUp() {

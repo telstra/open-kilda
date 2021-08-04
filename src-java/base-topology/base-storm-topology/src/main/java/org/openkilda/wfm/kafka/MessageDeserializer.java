@@ -16,8 +16,8 @@
 package org.openkilda.wfm.kafka;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.SerializationUtils;
 import org.openkilda.messaging.error.DeserializationErrorMessage;
-import org.openkilda.wfm.topology.utils.SerializationUtils;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;

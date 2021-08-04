@@ -69,8 +69,7 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
         flowSplitterBolt(tb);
         tickBolt(tb);
 
-        PersistenceManager persistenceManager =
-                PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
+        PersistenceManager persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
 
         flowStateCacheBolt(tb, persistenceManager);
         flowCacheBolt(tb, persistenceManager);
@@ -131,9 +130,9 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
     }
 
     private void flowCacheBolt(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
-        FlowCacheBolt flowCacheBolt = new FlowCacheBolt(persistenceManager,
-                Duration.ofSeconds(getConfig().getFlowRttStatsExpirationSeconds()), getConfig().getMetricPrefix(),
-                ZooKeeperSpout.SPOUT_ID);
+        FlowCacheBolt flowCacheBolt = new FlowCacheBolt(
+                persistenceManager, ZooKeeperSpout.SPOUT_ID,
+                Duration.ofSeconds(getConfig().getFlowRttStatsExpirationSeconds()), getConfig().getMetricPrefix());
         declareBolt(topologyBuilder, flowCacheBolt, ComponentId.FLOW_CACHE_BOLT.name())
                 .fieldsGrouping(ComponentId.FLOW_STATE_CACHE_BOLT.name(), FLOW_UPDATE_STREAM_ID.name(), FLOW_ID_FIELDS)
                 .fieldsGrouping(ComponentId.FLOW_STATE_CACHE_BOLT.name(), FLOW_ID_FIELDS)

@@ -68,13 +68,10 @@ public class Router extends AbstractBolt
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_SWITCH_ID,
             FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
-    private final PersistenceManager persistenceManager;
     private transient RouterService service;
 
-
     public Router(PersistenceManager persistenceManager, String lifeCycleEventSourceComponent) {
-        super(lifeCycleEventSourceComponent);
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager, lifeCycleEventSourceComponent);
     }
 
     protected void init() {

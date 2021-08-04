@@ -73,8 +73,7 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
 
         declareKafkaSpout(topologyBuilder, topologyConfig.getKafkaTopoRerouteTopic(), SPOUT_ID_REROUTE);
 
-        PersistenceManager persistenceManager = PersistenceProvider.getInstance()
-                .getPersistenceManager(configurationProvider);
+        PersistenceManager persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
 
         rerouteBolt(topologyBuilder, persistenceManager);
         rerouteQueueBolt(topologyBuilder, persistenceManager);

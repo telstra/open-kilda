@@ -29,12 +29,9 @@ import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.topology.nbworker.services.PathsService;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.tuple.Tuple;
 
 import java.util.List;
-import java.util.Map;
 
 public class PathsBolt extends PersistenceOperationsBolt {
     private transient PathsService pathService;
@@ -46,10 +43,10 @@ public class PathsBolt extends PersistenceOperationsBolt {
     }
 
     @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        super.prepare(stormConf, context, collector);
-        pathService = new PathsService(
-                repositoryFactory, pathComputerConfig);
+    public void init() {
+        super.init();
+
+        pathService = new PathsService(repositoryFactory, pathComputerConfig);
     }
 
     @Override

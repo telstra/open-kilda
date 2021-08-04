@@ -50,7 +50,6 @@ import org.apache.storm.tuple.Values;
 public class FlowMirrorPointDeleteHubBolt extends HubBolt implements FlowMirrorPointDeleteHubCarrier {
 
     private final FlowMirrorPointDeleteConfig config;
-    private final PersistenceManager persistenceManager;
     private final FlowResourcesConfig flowResourcesConfig;
 
     private transient FlowMirrorPointDeleteService service;
@@ -61,10 +60,9 @@ public class FlowMirrorPointDeleteHubBolt extends HubBolt implements FlowMirrorP
     public FlowMirrorPointDeleteHubBolt(FlowMirrorPointDeleteConfig config,
                                         PersistenceManager persistenceManager,
                                         FlowResourcesConfig flowResourcesConfig) {
-        super(config);
+        super(persistenceManager, config);
 
         this.config = config;
-        this.persistenceManager = persistenceManager;
         this.flowResourcesConfig = flowResourcesConfig;
     }
 

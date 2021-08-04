@@ -32,21 +32,17 @@ import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowValidationHubService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.util.List;
-import java.util.Map;
 
 public class FlowValidationHubBolt extends HubBolt {
     public static final String ID = "flow.validation.hub";
     public static final String INCOME_STREAM = "flow.validation.stream";
 
-    private final PersistenceManager persistenceManager;
     private final FlowResourcesConfig flowResourcesConfig;
     private transient FlowValidationHubService service;
     private long flowMeterMinBurstSizeInKbits;
@@ -57,8 +53,8 @@ public class FlowValidationHubBolt extends HubBolt {
     public FlowValidationHubBolt(Config config, PersistenceManager persistenceManager,
                                  FlowResourcesConfig flowResourcesConfig,
                                  long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
-        super(config);
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager, config);
+
         this.flowResourcesConfig = flowResourcesConfig;
         this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
         this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;
@@ -67,8 +63,8 @@ public class FlowValidationHubBolt extends HubBolt {
     }
 
     @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        super.prepare(stormConf, context, collector);
+    public void init() {
+        super.init();
         service = new FlowValidationHubService(persistenceManager, flowResourcesConfig,
                 new FlowValidationHubCarrierImpl(null));
     }

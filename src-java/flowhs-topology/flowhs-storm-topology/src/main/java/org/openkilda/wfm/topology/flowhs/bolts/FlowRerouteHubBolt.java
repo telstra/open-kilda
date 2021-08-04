@@ -64,7 +64,6 @@ import org.apache.storm.tuple.Values;
 public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier {
 
     private final FlowRerouteConfig config;
-    private final PersistenceManager persistenceManager;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
 
@@ -75,10 +74,9 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
 
     public FlowRerouteHubBolt(FlowRerouteConfig config, PersistenceManager persistenceManager,
                               PathComputerConfig pathComputerConfig, FlowResourcesConfig flowResourcesConfig) {
-        super(config);
+        super(persistenceManager, config);
 
         this.config = config;
-        this.persistenceManager = persistenceManager;
         this.pathComputerConfig = pathComputerConfig;
         this.flowResourcesConfig = flowResourcesConfig;
 

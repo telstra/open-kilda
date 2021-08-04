@@ -82,7 +82,6 @@ public class BfdHub extends AbstractBolt
                                                                  FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
     private final NetworkOptions options;
-    private final PersistenceManager persistenceManager;
 
     private transient SwitchOnlineStatusMonitor switchOnlineStatusMonitor;
     private transient EndpointStatusMonitor endpointStatusMonitor;
@@ -93,8 +92,8 @@ public class BfdHub extends AbstractBolt
     private transient TaskIdBasedKeyFactory requestIdFactory;
 
     public BfdHub(NetworkOptions options, PersistenceManager persistenceManager) {
+        super(persistenceManager);
         this.options = options;
-        this.persistenceManager = persistenceManager;
     }
 
     @Override

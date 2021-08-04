@@ -101,11 +101,10 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
         enableMeterRegistry("kilda.switch_operations", StreamType.TO_METRICS_BOLT.name());
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void init() {
+        super.init();
+
         this.switchOperationsService =
                 new SwitchOperationsService(repositoryFactory, transactionManager, this, this);
         this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);

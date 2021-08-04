@@ -36,14 +36,13 @@ import org.apache.storm.tuple.Tuple;
 
 @Slf4j
 public class IslLatencyBolt extends AbstractBolt {
-    private final PersistenceManager persistenceManager;
     private final long latencyUpdateInterval; // emit data in DB interval
     private final long latencyUpdateTimeRange; // average latency will be calculated in this time range
     private transient IslLatencyService islLatencyService;
 
     public IslLatencyBolt(PersistenceManager persistenceManager, long latencyUpdateInterval,
                           long latencyUpdateTimeRange) {
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager);
         this.latencyUpdateInterval = latencyUpdateInterval;
         this.latencyUpdateTimeRange = latencyUpdateTimeRange;
     }

@@ -45,22 +45,19 @@ import java.time.Clock;
 import java.time.Duration;
 
 public class IslCacheBolt extends AbstractBolt {
-
-    private PersistenceManager persistenceManager;
     private Duration islRttLatencyExpiration;
 
     private transient IslCacheService islCacheService;
 
     public IslCacheBolt(PersistenceManager persistenceManager, Duration islRttLatencyExpiration,
                         String lifeCycleEventSourceComponent) {
-        super(lifeCycleEventSourceComponent);
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager, lifeCycleEventSourceComponent);
         this.islRttLatencyExpiration = islRttLatencyExpiration;
     }
 
-    @PersistenceContextRequired(requiresNew = true)
     protected void init() {
-        islCacheService = new IslCacheService(persistenceManager, Clock.systemUTC(), islRttLatencyExpiration);
+        super.init();
+        islCacheService = newIslCacheService();
     }
 
     @Override
@@ -104,5 +101,10 @@ public class IslCacheBolt extends AbstractBolt {
         declarer.declare(new Fields(REQUEST_ID_FIELD, FLOW_ID_FIELD, LINK_FIELD, LATENCY_FIELD, FIELD_ID_CONTEXT));
         declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
                 ZooKeeperBolt.FIELD_ID_CONTEXT));
+    }
+
+    @PersistenceContextRequired(requiresNew = true)
+    private IslCacheService newIslCacheService() {
+        return new IslCacheService(persistenceManager, Clock.systemUTC(), islRttLatencyExpiration);
     }
 }

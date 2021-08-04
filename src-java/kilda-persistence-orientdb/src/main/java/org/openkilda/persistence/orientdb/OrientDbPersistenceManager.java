@@ -15,53 +15,89 @@
 
 package org.openkilda.persistence.orientdb;
 
+import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.PersistenceConfig;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.PersistenceManagerBase;
+import org.openkilda.persistence.context.PersistenceContextManager;
 import org.openkilda.persistence.orientdb.repositories.OrientDbRepositoryFactory;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.spi.PersistenceManagerSupplier;
+import org.openkilda.persistence.tx.FlatTransactionLayout;
+import org.openkilda.persistence.tx.TransactionArea;
+import org.openkilda.persistence.tx.TransactionLayout;
 import org.openkilda.persistence.tx.TransactionManager;
+import org.openkilda.persistence.tx.TransactionManagerFactoryImpl;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * OrientDB implementation of {@link PersistenceManager}.
  */
 @Slf4j
-public class OrientDbPersistenceManager implements PersistenceManager {
-    private final PersistenceConfig persistenceConfig;
-    private final OrientDbConfig config;
-    private final NetworkConfig networkConfig;
+public class OrientDbPersistenceManager extends PersistenceManagerBase {
+    protected final PersistenceConfig persistenceConfig;
+    protected final NetworkConfig networkConfig;
 
-    private transient volatile OrientDbGraphFactory graphFactory;
+    private final TransactionLayout transactionLayout;
+    private final ThreadLocalPersistenceContextManagerSupplier contextManagerSupplier;
 
-    public OrientDbPersistenceManager(PersistenceConfig persistenceConfig,
-                                      OrientDbConfig config, NetworkConfig networkConfig) {
-        this.persistenceConfig = persistenceConfig;
-        this.config = config;
-        this.networkConfig = networkConfig;
+    @Getter
+    private final OrientDbGraphFactory graphFactory;
+
+    public OrientDbPersistenceManager(ConfigurationProvider configurationProvider) {
+        this(configurationProvider, null, new FlatTransactionLayout());
+    }
+
+    public OrientDbPersistenceManager(
+            ConfigurationProvider configurationProvider,
+            ThreadLocalPersistenceContextManagerSupplier contextManagerSupplier, TransactionLayout transactionLayout) {
+        super(configurationProvider);
+
+        persistenceConfig = configurationProvider.getConfiguration(PersistenceConfig.class);
+        networkConfig = configurationProvider.getConfiguration(NetworkConfig.class);
+
+        this.transactionLayout = transactionLayout;
+
+        // break dependency / init loop
+        PersistenceManagerSupplier managerSupplier = null;
+        if (contextManagerSupplier == null) {
+            managerSupplier = new PersistenceManagerSupplier();
+            contextManagerSupplier = new ThreadLocalPersistenceContextManagerSupplier(managerSupplier);
+        }
+        this.contextManagerSupplier = contextManagerSupplier;
+
+        graphFactory = new OrientDbGraphFactory(
+                this.contextManagerSupplier, configurationProvider.getConfiguration(OrientDbConfig.class));
+
+        if (managerSupplier != null) {
+            managerSupplier.define(this);
+        }
     }
 
     @Override
     public TransactionManager getTransactionManager() {
-        return new OrientDbTransactionManager(getGraphFactory(), persistenceConfig.getTransactionRetriesLimit(),
-                persistenceConfig.getTransactionRetriesMaxDelay());
+        return getTransactionManager(TransactionArea.FLAT);
     }
 
     @Override
     public RepositoryFactory getRepositoryFactory() {
-        return new OrientDbRepositoryFactory(getGraphFactory(), getTransactionManager(), networkConfig);
+        TransactionManagerFactoryImpl transactionManagerFactory = new TransactionManagerFactoryImpl(this);
+        return new OrientDbRepositoryFactory(graphFactory, transactionManagerFactory, networkConfig);
     }
 
-    private OrientDbGraphFactory getGraphFactory() {
-        if (graphFactory == null) {
-            synchronized (this) {
-                if (graphFactory == null) {
-                    log.debug("Creating an instance of OrientDbGraphFactory for {}", config);
-                    graphFactory = new OrientDbGraphFactory(config);
-                }
-            }
-        }
-        return graphFactory;
+    @Override
+    public PersistenceContextManager getPersistenceContextManager() {
+        return contextManagerSupplier.get();
+    }
+
+    @Override
+    protected TransactionManager makeTransactionManager(TransactionArea area) {
+        OrientDbTransactionAdapterFactory adapterFactory = new OrientDbTransactionAdapterFactory(area, graphFactory);
+        return new TransactionManager(
+                transactionLayout, adapterFactory,
+                persistenceConfig.getTransactionRetriesLimit(), persistenceConfig.getTransactionRetriesMaxDelay());
     }
 }

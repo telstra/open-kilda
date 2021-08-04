@@ -40,14 +40,11 @@ import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 import org.openkilda.wfm.topology.reroute.service.RerouteService;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -63,24 +60,17 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
     public static final String STREAM_OPERATION_QUEUE_ID = "operation-queue";
     public static final Fields FIELDS_OPERATION_QUEUE = new Fields(FLOW_ID_FIELD, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
-    private PersistenceManager persistenceManager;
     private transient RerouteService rerouteService;
 
 
     public RerouteBolt(PersistenceManager persistenceManager, String lifeCycleEventSourceComponent) {
-        super(lifeCycleEventSourceComponent);
-        this.persistenceManager = persistenceManager;
-
+        super(persistenceManager, lifeCycleEventSourceComponent);
         enableMeterRegistry("kilda.reroute", STREAM_TO_METRICS_BOLT);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
+    public void init() {
         this.rerouteService = new RerouteService(persistenceManager);
-        super.prepare(stormConf, context, collector);
     }
 
     /**

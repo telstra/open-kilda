@@ -17,6 +17,7 @@ dependencies {
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     implementation project(':kilda-reporting')
     runtimeClasspath project(':kilda-persistence-orientdb')
+    runtimeClasspath project(':kilda-persistence-mixture')
 
     compileOnly('org.apache.storm:storm-core')
 

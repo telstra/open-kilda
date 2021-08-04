@@ -15,6 +15,7 @@ dependencies {
     implementation project(':floodlight-api')
     implementation project(':blue-green')
     runtimeClasspath project(':kilda-persistence-orientdb')
+    runtimeClasspath project(':kilda-persistence-mixture')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
 
     implementation 'org.mapstruct:mapstruct'

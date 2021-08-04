@@ -25,10 +25,13 @@ import static org.mockito.Mockito.when;
 
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.bluegreen.Signal;
+import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.zk.ZooKeeperSpout;
@@ -47,6 +50,7 @@ import org.apache.storm.tuple.TupleImpl;
 import org.apache.storm.tuple.Values;
 import org.apache.storm.utils.Utils;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -80,6 +84,12 @@ public class SpeakerToNetworkProxyBoltTest {
     private GeneralTopologyContext generalTopologyContext;
 
     private final Map<String, String> topologyConfig = Collections.emptyMap();
+
+    @BeforeClass
+    public static void initPersistenceManager() {
+        PersistenceProvider.makeDefault(
+                new InMemoryGraphPersistenceManager(new PropertiesBasedConfigurationProvider()));
+    }
 
     @Before
     public void setUp() {

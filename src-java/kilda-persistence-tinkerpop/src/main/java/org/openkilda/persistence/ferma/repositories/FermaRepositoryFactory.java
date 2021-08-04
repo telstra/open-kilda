@@ -46,7 +46,8 @@ import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
 import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.persistence.repositories.history.PortEventRepository;
-import org.openkilda.persistence.tx.TransactionManager;
+import org.openkilda.persistence.tx.TransactionArea;
+import org.openkilda.persistence.tx.TransactionManagerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -57,13 +58,14 @@ import java.time.Duration;
  */
 public class FermaRepositoryFactory implements RepositoryFactory {
     protected final FramedGraphFactory<?> graphFactory;
-    protected final TransactionManager transactionManager;
+    protected final TransactionManagerFactory transactionManagerFactory;
     protected final IslConfig islConfig;
 
-    public FermaRepositoryFactory(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager,
-                                  NetworkConfig networkConfig) {
+    public FermaRepositoryFactory(
+            FramedGraphFactory<?> graphFactory, TransactionManagerFactory transactionManagerFactory,
+            NetworkConfig networkConfig) {
         this.graphFactory = graphFactory;
-        this.transactionManager = transactionManager;
+        this.transactionManagerFactory = transactionManagerFactory;
         this.islConfig = IslConfig.builder()
                 .unstableIslTimeout(Duration.ofSeconds(networkConfig.getIslUnstableTimeoutSec()))
                 .build();
@@ -76,139 +78,149 @@ public class FermaRepositoryFactory implements RepositoryFactory {
 
     @Override
     public FlowCookieRepository createFlowCookieRepository() {
-        return new FermaFlowCookieRepository(graphFactory, transactionManager);
+        return new FermaFlowCookieRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public FlowMeterRepository createFlowMeterRepository() {
-        return new FermaFlowMeterRepository(graphFactory, transactionManager);
+        return new FermaFlowMeterRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public FlowPathRepository createFlowPathRepository() {
-        return new FermaFlowPathRepository(graphFactory, transactionManager);
+        return new FermaFlowPathRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public FlowRepository createFlowRepository() {
-        return new FermaFlowRepository(graphFactory, createFlowPathRepository(),
-                transactionManager);
+        return new FermaFlowRepository(
+                graphFactory, createFlowPathRepository(), transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public IslRepository createIslRepository() {
-        return new FermaIslRepository(graphFactory, transactionManager,
+        return new FermaIslRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON),
                 (FermaFlowPathRepository) createFlowPathRepository(), islConfig);
     }
 
     @Override
     public LinkPropsRepository createLinkPropsRepository() {
-        return new FermaLinkPropsRepository(graphFactory, transactionManager);
+        return new FermaLinkPropsRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public SwitchRepository createSwitchRepository() {
-        return new FermaSwitchRepository(graphFactory, transactionManager);
+        return new FermaSwitchRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public SwitchConnectRepository createSwitchConnectRepository() {
-        return new FermaSwitchConnectRepository(graphFactory, transactionManager);
+        return new FermaSwitchConnectRepository(
+                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public TransitVlanRepository createTransitVlanRepository() {
-        return new FermaTransitVlanRepository(graphFactory, transactionManager);
+        return new FermaTransitVlanRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public VxlanRepository createVxlanRepository() {
-        return new FermaVxlanRepository(graphFactory, transactionManager);
+        return new FermaVxlanRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public KildaFeatureTogglesRepository createFeatureTogglesRepository() {
-        return new FermaKildaFeatureTogglesRepository(graphFactory, transactionManager);
+        return new FermaKildaFeatureTogglesRepository(
+                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public FlowEventRepository createFlowEventRepository() {
-        return new FermaFlowEventRepository(graphFactory, transactionManager);
+        return new FermaFlowEventRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public FlowEventActionRepository createFlowEventActionRepository() {
-        return new FermaFlowEventActionRepository(graphFactory, transactionManager);
+        return new FermaFlowEventActionRepository(
+                graphFactory, transactionManagerFactory.produce(TransactionArea.HISTORY));
     }
 
     @Override
     public FlowEventDumpRepository createFlowEventDumpRepository() {
-        return new FermaFlowEventDumpRepository(graphFactory, transactionManager);
+        return new FermaFlowEventDumpRepository(
+                graphFactory, transactionManagerFactory.produce(TransactionArea.HISTORY));
     }
 
     @Override
     public BfdSessionRepository createBfdSessionRepository() {
-        return new FermaBfdSessionRepository(graphFactory, transactionManager);
+        return new FermaBfdSessionRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public KildaConfigurationRepository createKildaConfigurationRepository() {
-        return new FermaKildaConfigurationRepository(graphFactory, transactionManager);
+        return new FermaKildaConfigurationRepository(
+                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public SwitchPropertiesRepository createSwitchPropertiesRepository() {
-        return new FermaSwitchPropertiesRepository(graphFactory, transactionManager);
+        return new FermaSwitchPropertiesRepository(
+                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public SwitchConnectedDeviceRepository createSwitchConnectedDeviceRepository() {
-        return new FermaSwitchConnectedDevicesRepository(graphFactory, transactionManager);
+        return new FermaSwitchConnectedDevicesRepository(
+                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public PortEventRepository createPortEventRepository() {
-        return new FermaPortEventRepository(graphFactory, transactionManager);
+        return new FermaPortEventRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.HISTORY));
     }
 
     @Override
     public PortPropertiesRepository createPortPropertiesRepository() {
-        return new FermaPortPropertiesRepository(graphFactory, transactionManager);
+        return new FermaPortPropertiesRepository(
+                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public PathSegmentRepository createPathSegmentRepository() {
-        return new FermaPathSegmentRepository(graphFactory, transactionManager, createIslRepository());
+        return new FermaPathSegmentRepository(
+                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON), createIslRepository());
     }
 
     @Override
     public ApplicationRepository createApplicationRepository() {
-        return new FermaApplicationRepository(graphFactory, transactionManager);
+        return new FermaApplicationRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public ExclusionIdRepository createExclusionIdRepository() {
-        return new FermaExclusionIdRepository(graphFactory, transactionManager);
+        return new FermaExclusionIdRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public MirrorGroupRepository createMirrorGroupRepository() {
-        return new FermaMirrorGroupRepository(graphFactory, transactionManager);
+        return new FermaMirrorGroupRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public SpeakerRepository createSpeakerRepository() {
-        return new FermaSpeakerRepository(graphFactory, transactionManager);
+        return new FermaSpeakerRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public FlowMirrorPointsRepository createFlowMirrorPointsRepository() {
         return new FermaFlowMirrorPointsRepository(graphFactory, createFlowMirrorPathRepository(),
-                transactionManager);
+                transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public FlowMirrorPathRepository createFlowMirrorPathRepository() {
-        return new FermaFlowMirrorPathRepository(graphFactory, transactionManager);
+        return new FermaFlowMirrorPathRepository(
+                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 }

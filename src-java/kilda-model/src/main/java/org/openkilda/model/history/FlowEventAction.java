@@ -27,12 +27,14 @@ import lombok.NonNull;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.Delegate;
+import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.Objects;
 
 /**
  * Represents information about the flow history.
@@ -65,6 +67,28 @@ public class FlowEventAction implements CompositeDataEntity<FlowEventAction.Flow
 
     public FlowEventAction(@NonNull FlowEventAction.FlowEventActionData data) {
         this.data = data;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        FlowEventAction that = (FlowEventAction) o;
+        return new EqualsBuilder()
+                .append(getTimestamp(), that.getTimestamp())
+                .append(getAction(), that.getAction())
+                .append(getTaskId(), that.getTaskId())
+                .append(getDetails(), that.getDetails())
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getTimestamp(), getAction(), getTaskId(), getDetails());
     }
 
     /**

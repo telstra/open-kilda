@@ -58,8 +58,6 @@ dependencies {
     api 'com.fasterxml.jackson.core:jackson-annotations'
     api 'com.fasterxml.jackson.core:jackson-databind'
     api 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider'
-    api 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
-    api 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     api 'args4j:args4j'
     implementation 'com.google.code.gson:gson'
     api 'com.fasterxml.uuid:java-uuid-generator'

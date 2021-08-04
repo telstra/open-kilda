@@ -118,10 +118,10 @@ public class FermaFlowEventRepositoryTest extends InMemoryGraphBasedTest {
         flowEventRepository.add(buildFlowEvent(FLOW_1, TASK_3, ACTION_3, TIME_3));
 
         flowEventActionRepository.add(buildFlowHistory(TASK_1,
-                FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(0) + "UP", TIME_1));
+                FlowEvent.FLOW_STATUS_ACTION_PARTS.get(0) + "UP", TIME_1));
         flowEventActionRepository.add(buildFlowHistory(TASK_2,
-                FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(1) + "DOWN", TIME_2));
-        flowEventActionRepository.add(buildFlowHistory(TASK_3, FermaFlowEventRepository.FLOW_DELETED_ACTION, TIME_3));
+                FlowEvent.FLOW_STATUS_ACTION_PARTS.get(1) + "DOWN", TIME_2));
+        flowEventActionRepository.add(buildFlowHistory(TASK_3, FlowEvent.FLOW_DELETED_ACTION, TIME_3));
 
         List<FlowStatusView> actual = flowEventRepository.findFlowStatusesByFlowIdAndTimeFrame(
                 FLOW_1, TIME_1.minusSeconds(1), TIME_3.plusSeconds(1), 100);
@@ -145,14 +145,14 @@ public class FermaFlowEventRepositoryTest extends InMemoryGraphBasedTest {
         flowEventRepository.add(buildFlowEvent(FLOW_2, TASK_5, ACTION_5, TIME_3));
 
         flowEventActionRepository.add(buildFlowHistory(TASK_1,
-                FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(0) + "UP", TIME_1));
+                FlowEvent.FLOW_STATUS_ACTION_PARTS.get(0) + "UP", TIME_1));
         flowEventActionRepository.add(buildFlowHistory(TASK_2,
-                FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(1) + "DEGRADED", TIME_2));
+                FlowEvent.FLOW_STATUS_ACTION_PARTS.get(1) + "DEGRADED", TIME_2));
         flowEventActionRepository.add(buildFlowHistory(TASK_3,
-                FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(0) + "DOWN", TIME_3));
-        flowEventActionRepository.add(buildFlowHistory(TASK_4, FermaFlowEventRepository.FLOW_DELETED_ACTION, TIME_4));
+                FlowEvent.FLOW_STATUS_ACTION_PARTS.get(0) + "DOWN", TIME_3));
+        flowEventActionRepository.add(buildFlowHistory(TASK_4, FlowEvent.FLOW_DELETED_ACTION, TIME_4));
         flowEventActionRepository.add(buildFlowHistory(TASK_5,
-                FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(1) + "DEGRADED", TIME_3));
+                FlowEvent.FLOW_STATUS_ACTION_PARTS.get(1) + "DEGRADED", TIME_3));
 
         List<FlowStatusView> actual = flowEventRepository.findFlowStatusesByFlowIdAndTimeFrame(
                 FLOW_1, TIME_2, TIME_3, 1000);
@@ -173,14 +173,14 @@ public class FermaFlowEventRepositoryTest extends InMemoryGraphBasedTest {
         flowEventRepository.add(buildFlowEvent(FLOW_2, TASK_5, ACTION_5, TIME_3));
 
         flowEventActionRepository.add(buildFlowHistory(TASK_1,
-                FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(0) + "UP", TIME_1));
+                FlowEvent.FLOW_STATUS_ACTION_PARTS.get(0) + "UP", TIME_1));
         flowEventActionRepository.add(buildFlowHistory(TASK_2,
-                FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(1) + "DEGRADED", TIME_2));
+                FlowEvent.FLOW_STATUS_ACTION_PARTS.get(1) + "DEGRADED", TIME_2));
         flowEventActionRepository.add(buildFlowHistory(TASK_3,
-                FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(0) + "DOWN", TIME_3));
-        flowEventActionRepository.add(buildFlowHistory(TASK_4, FermaFlowEventRepository.FLOW_DELETED_ACTION, TIME_4));
+                FlowEvent.FLOW_STATUS_ACTION_PARTS.get(0) + "DOWN", TIME_3));
+        flowEventActionRepository.add(buildFlowHistory(TASK_4, FlowEvent.FLOW_DELETED_ACTION, TIME_4));
         flowEventActionRepository.add(buildFlowHistory(TASK_5,
-                FermaFlowEventRepository.FLOW_STATUS_ACTION_PARTS.get(1) + "DEGRADED", TIME_3));
+                FlowEvent.FLOW_STATUS_ACTION_PARTS.get(1) + "DEGRADED", TIME_3));
 
         List<FlowStatusView> actual = flowEventRepository.findFlowStatusesByFlowIdAndTimeFrame(
                 FLOW_1, TIME_1, TIME_4, 2);

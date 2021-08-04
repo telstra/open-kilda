@@ -93,18 +93,16 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     private transient NetworkAntiFlapService antiFlapService;
 
     private Config antiFlapConfig;
-    private PersistenceManager persistenceManager;
 
     public PortHandler(NetworkOptions options, PersistenceManager persistenceManager,
                        String lifeCycleEventSourceComponent) {
-        super(lifeCycleEventSourceComponent);
+        super(persistenceManager, lifeCycleEventSourceComponent);
         this.antiFlapConfig = Config.builder()
                 .delayCoolingDown(options.getDelayCoolingDown())
                 .delayWarmUp(options.getDelayWarmUp())
                 .delayMin(options.getDelayMin())
                 .antiFlapStatsDumpingInterval(options.getAntiFlapStatsDumpingInterval())
                 .build();
-        this.persistenceManager = persistenceManager;
     }
 
     @Override

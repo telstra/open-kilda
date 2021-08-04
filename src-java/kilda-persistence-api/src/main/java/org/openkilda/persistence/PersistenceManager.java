@@ -15,7 +15,9 @@
 
 package org.openkilda.persistence;
 
+import org.openkilda.persistence.context.PersistenceContextManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.tx.TransactionArea;
 import org.openkilda.persistence.tx.TransactionManager;
 
 import java.io.Serializable;
@@ -28,5 +30,12 @@ import java.io.Serializable;
 public interface PersistenceManager extends Serializable {
     TransactionManager getTransactionManager();
 
+    TransactionManager getTransactionManager(TransactionArea area);
+
     RepositoryFactory getRepositoryFactory();
+
+    /**
+     * Obtains a {@link PersistenceContextManager}.
+     */
+    PersistenceContextManager getPersistenceContextManager();
 }

@@ -89,8 +89,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         inputSpout(tb);
         inputRouter(tb);
 
-        PersistenceManager persistenceManager =
-                PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
+        PersistenceManager persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
 
         flowCreateHub(tb, persistenceManager);
         flowUpdateHub(tb, persistenceManager);

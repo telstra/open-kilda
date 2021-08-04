@@ -82,11 +82,10 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         enableMeterRegistry("kilda.flow_operations", StreamType.TO_METRICS_BOLT.name());
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void init() {
+        super.init();
+
         this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
     }
 

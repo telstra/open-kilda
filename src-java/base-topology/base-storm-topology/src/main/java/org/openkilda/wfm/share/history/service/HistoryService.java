@@ -27,6 +27,7 @@ import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
 import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.persistence.repositories.history.PortEventRepository;
+import org.openkilda.persistence.tx.TransactionArea;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.history.model.PortEventData;
@@ -35,8 +36,8 @@ import org.openkilda.wfm.share.mappers.HistoryMapper;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Slf4j
 public class HistoryService {
@@ -47,11 +48,9 @@ public class HistoryService {
     private final FlowEventDumpRepository flowEventDumpRepository;
 
     public HistoryService(PersistenceManager persistenceManager) {
-        this(persistenceManager.getTransactionManager(), persistenceManager.getRepositoryFactory());
-    }
+        transactionManager = persistenceManager.getTransactionManager(TransactionArea.HISTORY);
 
-    public HistoryService(TransactionManager transactionManager, RepositoryFactory repositoryFactory) {
-        this.transactionManager = transactionManager;
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowEventRepository = repositoryFactory.createFlowEventRepository();
         portEventRepository = repositoryFactory.createPortEventRepository();
         flowEventActionRepository = repositoryFactory.createFlowEventActionRepository();
@@ -90,25 +89,28 @@ public class HistoryService {
      * Persist the history record.
      */
     public void store(PortEventData data) {
-        PortEvent entity = HistoryMapper.INSTANCE.map(data);
-        entity.setRecordId(UUID.randomUUID());
-        portEventRepository.add(entity);
+        portEventRepository.add(HistoryMapper.INSTANCE.map(data));
     }
 
     /**
      * Fetches flow history records by a flow ID and a time period.
      */
     public List<FlowEvent> listFlowEvents(String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
-        List<FlowEvent> result = flowEventRepository.findByFlowIdAndTimeFrame(flowId, timeFrom, timeTo, maxCount);
-        result.forEach(flowEventRepository::detach);
+        List<FlowEvent> result = new ArrayList<>();
+        transactionManager.doInTransaction(() -> flowEventRepository
+                .findByFlowIdAndTimeFrame(flowId, timeFrom, timeTo, maxCount)
+                .forEach(entry -> {
+                    flowEventRepository.detach(entry);
+                    result.add(entry);
+                }));
         return result;
     }
 
     /**
      * Fetches flow status timestamps by a flow ID and a time period.
      */
-    public List<FlowStatusView>  getFlowStatusTimestamps(String flowId,
-                                                         Instant timeFrom, Instant timeTo, int maxCount) {
+    public List<FlowStatusView> getFlowStatusTimestamps(String flowId,
+                                                        Instant timeFrom, Instant timeTo, int maxCount) {
         return flowEventRepository.findFlowStatusesByFlowIdAndTimeFrame(flowId, timeFrom, timeTo, maxCount);
     }
 
@@ -116,8 +118,13 @@ public class HistoryService {
      * Fetches port history records.
      */
     public List<PortEvent> listPortHistory(SwitchId switchId, int portNumber, Instant start, Instant end) {
-        List<PortEvent> result = portEventRepository.findBySwitchIdAndPortNumber(switchId, portNumber, start, end);
-        result.forEach(portEventRepository::detach);
+        List<PortEvent> result = new ArrayList<>();
+        transactionManager.doInTransaction(() -> portEventRepository
+                .findBySwitchIdAndPortNumber(switchId, portNumber, start, end)
+                .forEach(entry -> {
+                    portEventRepository.detach(entry);
+                    result.add(entry);
+                }));
         return result;
     }
 }

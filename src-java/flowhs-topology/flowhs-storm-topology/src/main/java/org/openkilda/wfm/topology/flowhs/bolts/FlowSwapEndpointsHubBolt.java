@@ -48,22 +48,19 @@ import org.apache.storm.tuple.Values;
 
 public class FlowSwapEndpointsHubBolt extends HubBolt implements FlowSwapEndpointsHubCarrier {
 
-    private final PersistenceManager persistenceManager;
     private transient FlowSwapEndpointsHubService service;
     private String currentKey;
 
     private LifecycleEvent deferredShutdownEvent;
 
     public FlowSwapEndpointsHubBolt(Config config, PersistenceManager persistenceManager) {
-        super(config);
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager, config);
     }
 
     @Override
     public void init() {
         service = new FlowSwapEndpointsHubService(this, persistenceManager);
     }
-
 
     @Override
     protected boolean deactivate(LifecycleEvent event) {
