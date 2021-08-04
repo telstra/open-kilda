@@ -107,10 +107,9 @@ class FlowHelperV2 {
      */
     FlowRequestV2 singleSwitchFlow(Switch sw, boolean useTraffgenPorts = true,
             List<FlowRequestV2> existingFlows = []) {
-        def allowedPorts = topology.getAllowedPortsForSwitch(sw)
         Wrappers.retry(3, 0) {
-            def srcEndpoint = getFlowEndpoint(sw, allowedPorts, useTraffgenPorts)
-            def dstEndpoint = getFlowEndpoint(sw, allowedPorts - srcEndpoint.portNumber, useTraffgenPorts)
+            def srcEndpoint = getFlowEndpoint(sw, [], useTraffgenPorts)
+            def dstEndpoint = getFlowEndpoint(sw, [srcEndpoint.portNumber], useTraffgenPorts)
             def newFlow = FlowRequestV2.builder()
                     .flowId(generateFlowId())
                     .source(srcEndpoint)
@@ -128,14 +127,18 @@ class FlowHelperV2 {
         } as FlowRequestV2
     }
 
+    FlowRequestV2 singleSwitchFlow(SwitchPair switchPair, boolean useTraffgenPorts = true,
+                                   List<FlowRequestV2> existingFlows = []) {
+        singleSwitchFlow(switchPair.src, useTraffgenPorts, existingFlows)
+    }
+
     /**
      * Creates a FlowPayload instance with random vlan and flow id suitable for a single-switch flow.
      * The flow will be on the same port.
      */
     FlowRequestV2 singleSwitchSinglePortFlow(Switch sw) {
-        def allowedPorts = topology.getAllowedPortsForSwitch(sw)
-        def srcEndpoint = getFlowEndpoint(sw, allowedPorts)
-        def dstEndpoint = getFlowEndpoint(sw, [srcEndpoint.portNumber])
+        def srcEndpoint = getFlowEndpoint(sw, [])
+        def dstEndpoint = getFlowEndpoint(sw, []).tap { it.portNumber = srcEndpoint.portNumber }
         if (srcEndpoint.vlanId == dstEndpoint.vlanId) { //ensure same vlan is not randomly picked
             dstEndpoint.vlanId--
         }
@@ -337,21 +340,21 @@ class FlowHelperV2 {
      * @param useTraffgenPorts whether to try finding a traffgen port
      */
     private FlowEndpointV2 getFlowEndpoint(Switch sw, boolean useTraffgenPorts = true) {
-        getFlowEndpoint(sw, topology.getAllowedPortsForSwitch(sw), useTraffgenPorts)
+        getFlowEndpoint(sw, [], useTraffgenPorts)
     }
 
     /**
      * Returns flow endpoint with randomly chosen vlan.
      *
-     * @param allowedPorts list of ports to randomly choose port from
-     * @param useTraffgenPorts if true, will try to use a port attached to a traffgen. The port must be present
-     * in 'allowedPorts'
+     * @param excludePorts list of ports that should not be picked
+     * @param useTraffgenPorts if true, will try to use a port attached to a traffgen
      */
-    private FlowEndpointV2 getFlowEndpoint(Switch sw, List<Integer> allowedPorts,
+    private FlowEndpointV2 getFlowEndpoint(Switch sw, List<Integer> excludePorts,
             boolean useTraffgenPorts = true) {
-        int port = allowedPorts[random.nextInt(allowedPorts.size())]
+        def ports = topology.getAllowedPortsForSwitch(sw) - excludePorts
+        int port = ports[random.nextInt(ports.size())]
         if (useTraffgenPorts) {
-            List<Integer> tgPorts = sw.traffGens*.switchPort.findAll { allowedPorts.contains(it) }
+            List<Integer> tgPorts = sw.traffGens*.switchPort - excludePorts
             if (tgPorts) {
                 port = tgPorts[0]
             }
