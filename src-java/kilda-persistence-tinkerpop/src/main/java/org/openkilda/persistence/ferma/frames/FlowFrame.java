@@ -65,7 +65,6 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     public static final String REVERSE_PATH_ID_PROPERTY = "reverse_path_id";
     public static final String PROTECTED_FORWARD_PATH_ID_PROPERTY = "protected_forward_path_id";
     public static final String PROTECTED_REVERSE_PATH_ID_PROPERTY = "protected_reverse_path_id";
-    public static final String GROUP_ID_PROPERTY = "group_id";
     public static final String DIVERSE_GROUP_ID_PROPERTY = "diverse_group_id";
     public static final String AFFINITY_GROUP_ID_PROPERTY = "affinity_group_id";
     public static final String BANDWIDTH_PROPERTY = "bandwidth";
@@ -199,19 +198,12 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     public abstract void setProtectedReversePathId(PathId protectedReversePathId);
 
     @Override
-    public String getDiverseGroupId() {
-        String diverseGroupId = getProperty(GROUP_ID_PROPERTY);
-        if (diverseGroupId == null) {
-            diverseGroupId = getProperty(DIVERSE_GROUP_ID_PROPERTY);
-        }
-        return diverseGroupId;
-    }
+    @Property(DIVERSE_GROUP_ID_PROPERTY)
+    public abstract String getDiverseGroupId();
 
     @Override
-    public void setDiverseGroupId(String diverseGroupId) {
-        setProperty(GROUP_ID_PROPERTY, diverseGroupId);
-        setProperty(DIVERSE_GROUP_ID_PROPERTY, diverseGroupId);
-    }
+    @Property(DIVERSE_GROUP_ID_PROPERTY)
+    public abstract void setDiverseGroupId(String diverseGroupId);
 
     @Override
     @Property(AFFINITY_GROUP_ID_PROPERTY)

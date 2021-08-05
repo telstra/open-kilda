@@ -106,7 +106,7 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
 
     @Override
     public Collection<Flow> findByDiverseGroupId(String flowDiverseGroupId) {
-        return findByGroupId(FlowFrame.GROUP_ID_PROPERTY, flowDiverseGroupId);
+        return findByGroupId(FlowFrame.DIVERSE_GROUP_ID_PROPERTY, flowDiverseGroupId);
     }
 
     @Override
@@ -125,7 +125,7 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
 
     @Override
     public Collection<String> findFlowsIdByDiverseGroupId(String flowDiverseGroupId) {
-        return findFlowsIdByGroupId(FlowFrame.GROUP_ID_PROPERTY, flowDiverseGroupId);
+        return findFlowsIdByGroupId(FlowFrame.DIVERSE_GROUP_ID_PROPERTY, flowDiverseGroupId);
     }
 
     @Override
