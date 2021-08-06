@@ -1357,6 +1357,7 @@ switches"() {
     }
 
     @Tidy
+    @Ignore("https://github.com/telstra/open-kilda/issues/4409")
     def "Able to swap endpoints (#data.description) for two qinq flows with the same source and destination switches"() {
         given: "Two flows with the same source and destination switches"
         flow1.source.innerVlanId = 300
@@ -1413,8 +1414,8 @@ switches"() {
                 destination.innerVlanId = 400
             }
             def flow2 = getSecondFlow(switchPair, switchPair, flow1).tap {
-                source.innerVlanId = 400
-                destination.innerVlanId = 500
+                source.innerVlanId = 500
+                destination.innerVlanId = 600
             }
             [switchPair: switchPair, flow1: flow1, flow2: flow2].tap(iterationData)
         }
