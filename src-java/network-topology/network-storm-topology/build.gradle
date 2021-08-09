@@ -10,6 +10,7 @@ description = 'Network Storm Topology'
 dependencies {
     implementation project(':blue-green')
     implementation project(':network-messaging')
+    implementation project(':swmanager-messaging')
     implementation project(':base-storm-topology')
     runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')

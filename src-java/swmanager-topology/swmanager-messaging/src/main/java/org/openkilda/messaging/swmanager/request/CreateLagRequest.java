@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,11 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager;
+package org.openkilda.messaging.swmanager.request;
 
-public enum StreamType {
-    TO_NORTHBOUND,
-    TO_FLOODLIGHT,
-    TO_GRPC,
-    HUB_TO_METRICS_BOLT
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.SwitchId;
+
+import lombok.EqualsAndHashCode;
+import lombok.Value;
+
+import java.util.List;
+
+@Value
+@EqualsAndHashCode(callSuper = false)
+public class CreateLagRequest extends CommandData {
+    SwitchId switchId;
+    List<Integer> portNumbers;
 }
+

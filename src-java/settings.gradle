@@ -49,6 +49,7 @@ include 'server42-messaging'
 include 'server42-control-storm-topology'
 include 'stats-messaging'
 include 'stats-storm-topology'
+include 'swmanager-messaging'
 include 'swmanager-storm-topology'
 include 'atdd-staging'
 include 'functional-tests'
@@ -92,6 +93,7 @@ project(':server42-messaging').projectDir = "$rootDir/server42/server42-messagin
 project(':server42-control-storm-topology').projectDir = "$rootDir/server42/server42-control-storm-topology" as File
 project(':stats-messaging').projectDir = "$rootDir/stats-topology/stats-messaging" as File
 project(':stats-storm-topology').projectDir = "$rootDir/stats-topology/stats-storm-topology" as File
+project(':swmanager-messaging').projectDir = "$rootDir/swmanager-topology/swmanager-messaging" as File
 project(':swmanager-storm-topology').projectDir = "$rootDir/swmanager-topology/swmanager-storm-topology" as File
 
 project(':atdd-staging').projectDir = "$rootDir/testing/atdd-staging" as File

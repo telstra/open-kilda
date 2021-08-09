@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,11 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager;
+package org.openkilda.northbound.converter;
 
-public enum StreamType {
-    TO_NORTHBOUND,
-    TO_FLOODLIGHT,
-    TO_GRPC,
-    HUB_TO_METRICS_BOLT
+import org.openkilda.messaging.swmanager.response.LagResponse;
+import org.openkilda.northbound.dto.v2.switches.LagDto;
+
+import org.mapstruct.Mapper;
+
+@Mapper(componentModel = "spring")
+public interface LagMapper {
+    LagDto map(LagResponse response);
 }

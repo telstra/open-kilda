@@ -1,0 +1,16 @@
+digraph {
+compound=true;
+subgraph cluster_StateMachine {
+label="org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm";
+START [label="START"];
+CREATE_LAG_IN_DB [label="CREATE_LAG_IN_DB"];
+GRPC_COMMAND_SEND [label="GRPC_COMMAND_SEND"];
+FINISHED [label="FINISHED"];
+FINISHED_WITH_ERROR [label="FINISHED_WITH_ERROR"];
+
+START -> CREATE_LAG_IN_DB [ label="NEXT"];
+START -> FINISHED_WITH_ERROR [ label="ERROR"];
+CREATE_LAG_IN_DB -> GRPC_COMMAND_SEND [ label="NEXT"];
+CREATE_LAG_IN_DB -> FINISHED_WITH_ERROR [ label="ERROR"];
+GRPC_COMMAND_SEND -> FINISHED [ label="LAG_INSTALLED"];
+GRPC_COMMAND_SEND -> FINISHED_WITH_ERROR [ label="ERROR"];}}

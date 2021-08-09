@@ -1,0 +1,20 @@
+plugins {
+    id 'java-library'
+}
+
+description = 'SW Manager Messaging'
+dependencies {
+    api project(':base-messaging')
+    testImplementation project(path: ':base-messaging', configuration: 'testArtifacts')
+
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
+    implementation('com.fasterxml.jackson.core:jackson-databind')
+    implementation 'com.google.guava:guava'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}

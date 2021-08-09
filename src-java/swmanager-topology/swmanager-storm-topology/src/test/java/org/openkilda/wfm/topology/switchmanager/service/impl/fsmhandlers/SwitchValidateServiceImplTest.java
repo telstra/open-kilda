@@ -160,7 +160,7 @@ public class SwitchValidateServiceImplTest {
         service.handleTaskTimeout(KEY);
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
-        verify(carrier).errorResponse(eq(KEY), eq(ErrorType.OPERATION_TIMED_OUT), any(String.class));
+        verify(carrier).errorResponse(eq(KEY), eq(ErrorType.OPERATION_TIMED_OUT), any(String.class), any(String.class));
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
     }
@@ -174,7 +174,8 @@ public class SwitchValidateServiceImplTest {
         service.handleTaskError(KEY, errorMessage);
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
-        verify(carrier).errorResponse(eq(KEY), eq(errorMessage.getData().getErrorType()), any(String.class));
+        verify(carrier).errorResponse(eq(KEY), eq(errorMessage.getData().getErrorType()), any(String.class),
+                any(String.class));
 
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
@@ -256,7 +257,7 @@ public class SwitchValidateServiceImplTest {
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<String> errorCaptor = ArgumentCaptor.forClass(String.class);
-        verify(carrier).errorResponse(eq(KEY), eq(ErrorType.INTERNAL_ERROR), errorCaptor.capture());
+        verify(carrier).errorResponse(eq(KEY), eq(ErrorType.INTERNAL_ERROR), errorCaptor.capture(), any(String.class));
         assertEquals(errorMessage, errorCaptor.getValue());
 
         verifyNoMoreInteractions(carrier);
@@ -291,7 +292,8 @@ public class SwitchValidateServiceImplTest {
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         verify(carrier).errorResponse(
-                eq(KEY), eq(ErrorType.NOT_FOUND), eq(String.format("Switch '%s' not found", request.getSwitchId())));
+                eq(KEY), eq(ErrorType.NOT_FOUND), eq(String.format("Switch '%s' not found", request.getSwitchId())),
+                any(String.class));
 
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
