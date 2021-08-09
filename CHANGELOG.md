@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.101.0 (09/08/2021)
+
+### Features:
+-  [#4380](https://github.com/telstra/open-kilda/pull/4380) Persistence layer implementation based on hibernate ORM [**storm-topologies**]
+
+### Bug Fixes:
+-  [#4363](https://github.com/telstra/open-kilda/pull/4363) Fixed misconfigured meters (Issues: [#4366](https://github.com/telstra/open-kilda/issues/4366) [#4367](https://github.com/telstra/open-kilda/issues/4367)) [**floodlight**][**storm-topologies**]
+-  [#4408](https://github.com/telstra/open-kilda/pull/4408) Forbid QinQ flows for WB-series switches 
+-  [#4393](https://github.com/telstra/open-kilda/pull/4393) fixes direct links in gui README.md file [**gui**]
+
+### Improvements:
+-  [#4376](https://github.com/telstra/open-kilda/pull/4376) Rearrange history models naming scheme [**storm-topologies**]
+-  [#4388](https://github.com/telstra/open-kilda/pull/4388) Improve flow monitoring cache init 
+-  [#4356](https://github.com/telstra/open-kilda/pull/4356) extract isVxlanEnabled into switchHelper [**tests**]
+-  [#4399](https://github.com/telstra/open-kilda/pull/4399) Fix flow monitoring parallelism issue 
+-  [#4369](https://github.com/telstra/open-kilda/pull/4369) test for s42 + wb switch [**tests**]
+-  [#4311](https://github.com/telstra/open-kilda/pull/4311) Toolset to migrate histrory data between OrientDB and MySQL 
+-  [#4379](https://github.com/telstra/open-kilda/pull/4379) Test/fix unstable [**tests**]
+-  [#4382](https://github.com/telstra/open-kilda/pull/4382) Improvement/derby to mysql migration [**gui**]
+-  [#4383](https://github.com/telstra/open-kilda/pull/4383) fix/refactor unstable func tests [**tests**]
+-  [#4384](https://github.com/telstra/open-kilda/pull/4384) Move single-table mode tests to low_prio [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.100.0...v1.101.0).
+
+### Affected Components:
+isllatency, nbworker, router, ping, reroute, fl, swmanager, gui, flow-hs, network, flow-monitor
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
 ## v1.100.0 (26/07/2021)
 
 ### Bug Fixes:
