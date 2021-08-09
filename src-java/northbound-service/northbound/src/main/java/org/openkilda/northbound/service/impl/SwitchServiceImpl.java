@@ -54,6 +54,7 @@ import org.openkilda.messaging.nbtopology.request.GetAllSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetPortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchConnectedDevicesRequest;
+import org.openkilda.messaging.nbtopology.request.GetSwitchLagPortsRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
@@ -65,6 +66,7 @@ import org.openkilda.messaging.nbtopology.request.UpdateSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
+import org.openkilda.messaging.nbtopology.response.SwitchLagPortResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
@@ -610,6 +612,21 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         return messagingChannel.sendAndGet(switchManagerTopic, request)
                 .thenApply(LagPortResponse.class::cast)
                 .thenApply(lagPortMapper::map);
+    }
+
+    @Override
+    public CompletableFuture<List<LagPortDto>> getLagPorts(SwitchId switchId) {
+        logger.info("Getting Link aggregation groups on switch {}", switchId);
+
+        GetSwitchLagPortsRequest data = new GetSwitchLagPortsRequest(switchId);
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
+                .thenApply(result -> result.stream()
+                        .map(SwitchLagPortResponse.class::cast)
+                        .map(SwitchLagPortResponse::getData)
+                        .map(lagPortMapper::map)
+                        .collect(Collectors.toList()));
     }
 
     private Boolean toPortAdminDown(PortStatus status) {

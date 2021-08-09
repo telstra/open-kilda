@@ -13,16 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.converter;
+package org.openkilda.messaging.nbtopology.response;
 
-import org.openkilda.messaging.swmanager.response.LagPortResponse;
-import org.openkilda.northbound.dto.v2.switches.LagPortDto;
+import org.openkilda.messaging.info.InfoData;
 
-import org.mapstruct.Mapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
-@Mapper(componentModel = "spring")
-public interface LagPortMapper {
-    LagPortDto map(LagPortResponse response);
-
-    LagPortDto map(org.openkilda.messaging.nbtopology.response.LagPortDto response);
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = false)
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class SwitchLagPortResponse extends InfoData {
+    private LagPortDto data;
 }

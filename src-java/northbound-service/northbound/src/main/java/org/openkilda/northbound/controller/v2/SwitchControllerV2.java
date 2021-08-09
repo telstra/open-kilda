@@ -199,4 +199,16 @@ public class SwitchControllerV2 extends BaseController {
                                                        @RequestBody CreateLagPortDto createLagPortDto) {
         return switchService.createLag(switchId, createLagPortDto);
     }
+
+    /**
+     * Get LAG logical ports.
+     *
+     * @param switchId the switch
+     */
+    @ApiOperation(value = "Get LAG logical ports", response = LagPortDto.class)
+    @GetMapping(value = "/{switch_id}/lags")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<List<LagPortDto>> getLagPorts(@PathVariable("switch_id") SwitchId switchId) {
+        return switchService.getLagPorts(switchId);
+    }
 }

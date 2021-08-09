@@ -13,16 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.converter;
+package org.openkilda.wfm.share.mappers;
 
-import org.openkilda.messaging.swmanager.response.LagPortResponse;
-import org.openkilda.northbound.dto.v2.switches.LagPortDto;
+import org.openkilda.messaging.nbtopology.response.LagPortDto;
+import org.openkilda.model.LagLogicalPort;
+import org.openkilda.model.PhysicalPort;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.factory.Mappers;
 
-@Mapper(componentModel = "spring")
-public interface LagPortMapper {
-    LagPortDto map(LagPortResponse response);
+@Mapper
+public abstract class LagPortMapper {
 
-    LagPortDto map(org.openkilda.messaging.nbtopology.response.LagPortDto response);
+    public static final LagPortMapper INSTANCE = Mappers.getMapper(LagPortMapper.class);
+
+    @Mapping(target = "portNumbers", source = "physicalPorts")
+    public abstract LagPortDto map(LagLogicalPort port);
+
+    public Integer map(PhysicalPort port) {
+        return port.getPortNumber();
+    }
 }

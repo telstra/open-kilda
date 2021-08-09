@@ -31,6 +31,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.IslStatus;
+import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PhysicalPort;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
@@ -45,6 +46,7 @@ import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -81,6 +83,7 @@ public class SwitchOperationsService {
     private SwitchConnectRepository switchConnectRepository;
     private PortPropertiesRepository portPropertiesRepository;
     private SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
+    private LagLogicalPortRepository lagLogicalPortRepository;
     private FlowMirrorPointsRepository flowMirrorPointsRepository;
     private FlowMirrorPathRepository flowMirrorPathRepository;
     private TransactionManager transactionManager;
@@ -104,6 +107,7 @@ public class SwitchOperationsService {
         this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.switchConnectRepository = repositoryFactory.createSwitchConnectRepository();
         this.switchConnectedDeviceRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
+        this.lagLogicalPortRepository = repositoryFactory.createLagLogicalPortRepository();
         this.flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
         this.flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
         this.physicalPortRepository = repositoryFactory.createPhysicalPortRepository();
@@ -518,6 +522,20 @@ public class SwitchOperationsService {
             }
 
             return switchConnectedDeviceRepository.findBySwitchId(switchId);
+        });
+    }
+
+    /**
+     * Get switch LAG ports.
+     *
+     * @param switchId target switch id
+     */
+    public Collection<LagLogicalPort> getSwitchLagPorts(SwitchId switchId) throws SwitchNotFoundException {
+        return transactionManager.doInTransaction(() -> {
+            if (!switchRepository.exists(switchId)) {
+                throw new SwitchNotFoundException(switchId);
+            }
+            return lagLogicalPortRepository.findBySwitchId(switchId);
         });
     }
 
