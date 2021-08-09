@@ -26,6 +26,7 @@ import org.openkilda.floodlight.feature.InaccurateMeterFeature;
 import org.openkilda.floodlight.feature.InaccurateSetVlanVidAction;
 import org.openkilda.floodlight.feature.KildaOvsCopyFieldFeature;
 import org.openkilda.floodlight.feature.KildaOvsSwapFieldFeature;
+import org.openkilda.floodlight.feature.LagFeature;
 import org.openkilda.floodlight.feature.LimitedBurstSizeFeature;
 import org.openkilda.floodlight.feature.MatchUdpPortFeature;
 import org.openkilda.floodlight.feature.MaxBurstCoefficientLimitationFeature;
@@ -91,6 +92,7 @@ public class FeatureDetectorService implements IService {
                 new NoviFlowSwapEthSrcEthDstFeature(),
                 new GroupsFeature(),
                 new KildaOvsCopyFieldFeature(),
-                new KildaOvsSwapFieldFeature());
+                new KildaOvsSwapFieldFeature(),
+                new LagFeature());
     }
 }

@@ -88,13 +88,17 @@ import java.util.Set;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkSwitchServiceTest {
-    private static final int BFD_LOGICAL_PORT_OFFSET = 200;
+    private static final int BFD_LOGICAL_PORT_OFFSET = 1000;
+    private static final int BFD_LOGICAL_PORT_MAX_NUMBER = 1999;
+    private static final int LAG_LOGICAL_PORT_OFFSET = 2000;
     private static final int SYNC_ATTEMPTS = 2;
 
     private static final String DUMMY_CORRELATION_ID = "dummy";
 
     private NetworkOptions options = NetworkOptions.builder()
             .bfdLogicalPortOffset(BFD_LOGICAL_PORT_OFFSET)
+            .bfdLogicalPortMaxNumber(BFD_LOGICAL_PORT_MAX_NUMBER)
+            .lagLogicalPortOffset(LAG_LOGICAL_PORT_OFFSET)
             .dbRepeatMaxDurationSeconds(30)
             .countSynchronizationAttempts(SYNC_ATTEMPTS)
             .switchOfflineGenerationLag(2)

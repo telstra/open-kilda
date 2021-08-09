@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.service.impl;
+package org.openkilda.wfm.topology.switchmanager.service.impl.fsmhandlers;
 
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -27,6 +27,7 @@ import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 import org.openkilda.wfm.topology.switchmanager.service.CommandBuilder;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchSyncService;
+import org.openkilda.wfm.topology.switchmanager.service.impl.CommandBuilderImpl;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Getter;

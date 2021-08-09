@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.service.impl;
+package org.openkilda.wfm.topology.switchmanager.service.impl.fsmhandlers;
 
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.emptyList;
@@ -61,6 +61,7 @@ import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
+import org.openkilda.wfm.topology.switchmanager.service.impl.ValidationServiceImpl;
 
 import org.junit.Before;
 import org.junit.Test;

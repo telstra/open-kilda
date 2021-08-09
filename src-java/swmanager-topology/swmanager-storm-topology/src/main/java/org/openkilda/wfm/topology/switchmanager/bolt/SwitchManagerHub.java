@@ -58,9 +58,9 @@ import org.openkilda.wfm.topology.switchmanager.service.SwitchRuleService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchSyncService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchValidateService;
 import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchRuleServiceImpl;
-import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchSyncServiceImpl;
-import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchValidateServiceImpl;
 import org.openkilda.wfm.topology.switchmanager.service.impl.ValidationServiceImpl;
+import org.openkilda.wfm.topology.switchmanager.service.impl.fsmhandlers.SwitchSyncServiceImpl;
+import org.openkilda.wfm.topology.switchmanager.service.impl.fsmhandlers.SwitchValidateServiceImpl;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;

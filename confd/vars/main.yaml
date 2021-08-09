@@ -123,7 +123,9 @@ kilda_port_up_down_throttling_delay_seconds_min: 1
 kilda_port_up_down_throttling_delay_seconds_warm_up: 3
 kilda_port_up_down_throttling_delay_seconds_cool_down: 7
 
-kilda_bfd_port_offset: 200
+kilda_lag_port_offset: 2000
+kilda_bfd_port_offset: 1000
+kilda_bfd_port_max_number: 1999
 kilda_bfd_interval_ms: 350
 kilda_bfd_multiplier: 3
 

@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,8 +15,6 @@
 
 package org.openkilda.messaging.command.grpc;
 
-import org.openkilda.messaging.command.CommandData;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -24,18 +22,14 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class DeleteLogicalPortRequest extends CommandData {
-
-    @JsonProperty("address")
-    private String address;
-
+public class DeleteLogicalPortRequest extends GrpcBaseRequest {
     @JsonProperty("logical_port_number")
     private int logicalPortNumber;
 
     @JsonCreator
     public DeleteLogicalPortRequest(@JsonProperty("address") String address,
                                     @JsonProperty("logical_port_number") int logicalPortNumber) {
-        this.address = address;
+        super(address);
         this.logicalPortNumber = logicalPortNumber;
     }
 }
