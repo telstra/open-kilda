@@ -63,12 +63,6 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     }
 
     @Override
-    protected void unhandledInput(String key, Tuple input) {
-        log.info("{} drop worker async response. because {} key is not listed in pending response list [{}]",
-                getComponentId(), key, formatTuplePayload(input));
-    }
-
-    @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
 
