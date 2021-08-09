@@ -131,9 +131,6 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
     private String floodlightTopic;
 
-    @Value("#{kafkaTopicsConfig.getNorthboundTopic()}")
-    private String northboundTopic;
-
     @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
     private String nbworkerTopic;
 

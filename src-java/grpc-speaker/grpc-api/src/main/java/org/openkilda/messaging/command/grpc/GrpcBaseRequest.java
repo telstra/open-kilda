@@ -15,27 +15,20 @@
 
 package org.openkilda.messaging.command.grpc;
 
-import org.openkilda.model.SwitchId;
+import org.openkilda.messaging.command.CommandData;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 @Data
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(callSuper = false)
 @AllArgsConstructor
+@NoArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class GetPacketInOutStatsRequest extends GrpcBaseRequest {
-    private SwitchId switchId;
-
-    @JsonCreator
-    public GetPacketInOutStatsRequest(@JsonProperty("address") String address,
-                                      @JsonProperty("switch_id") SwitchId switchId) {
-        super(address);
-        this.switchId = switchId;
-    }
+public class GrpcBaseRequest extends CommandData {
+    private String address;
 }

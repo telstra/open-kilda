@@ -15,22 +15,16 @@
 
 package org.openkilda.messaging.command.grpc;
 
-import org.openkilda.messaging.command.CommandData;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 @Data
-@EqualsAndHashCode(callSuper = false)
-public class GetSwitchInfoRequest extends CommandData {
-
-    @JsonProperty("address")
-    private String address;
-
+@EqualsAndHashCode(callSuper = true)
+public class GetSwitchInfoRequest extends GrpcBaseRequest {
     @JsonCreator
     public GetSwitchInfoRequest(@JsonProperty("address") String address) {
-        this.address = address;
+        super(address);
     }
 }
