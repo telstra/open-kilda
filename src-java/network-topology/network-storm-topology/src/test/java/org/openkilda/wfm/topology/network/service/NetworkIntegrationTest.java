@@ -24,7 +24,6 @@ import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 
@@ -85,8 +84,7 @@ public class NetworkIntegrationTest {
 
     @BeforeClass
     public static void setUpOnce() {
-        persistenceManager = new InMemoryGraphPersistenceManager(
-                new PropertiesBasedConfigurationProvider().getConfiguration(NetworkConfig.class));
+        persistenceManager = new InMemoryGraphPersistenceManager(new PropertiesBasedConfigurationProvider());
     }
 
     @Before

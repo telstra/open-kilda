@@ -1,0 +1,28 @@
+plugins {
+    id 'java-library'
+}
+
+description = 'Kilda Persistence Hibernate Implemention'
+dependencies {
+    api project(':kilda-persistence-api')
+    api project(':kilda-model')
+    api project(':base-messaging')
+    implementation project(':kilda-configuration')
+
+    implementation 'com.google.guava:guava'
+    implementation 'net.jodah:failsafe'
+    implementation 'commons-codec:commons-codec'
+
+    implementation 'org.hibernate:hibernate-core:5.4.32.Final'
+    implementation 'org.hibernate:hibernate-c3p0:5.4.32.Final'
+    implementation 'com.fasterxml.jackson.module:jackson-module-jaxb-annotations'
+    implementation('com.vladmihalcea:hibernate-types-52:2.12.0') {
+        exclude group: 'com.fasterxml.jackson.module', module: 'jackson-module-jaxb-annotations'
+    }
+
+    runtimeClasspath 'mysql:mysql-connector-java:8.0.25'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.hibernate:hibernate-jpamodelgen:5.4.32.Final'
+}

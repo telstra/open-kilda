@@ -83,18 +83,13 @@ public class CacheBolt extends AbstractBolt {
             CacheBolt.class);
 
     /**
-     * Path computation instance.
-     */
-    private final PersistenceManager persistenceManager;
-
-    /**
      * Cookie to flow and meter to flow maps.
      */
     private final Map<CookieCacheKey, CacheFlowEntry> cookieToFlow = new HashMap<>();
     private final Map<MeterCacheKey, CacheFlowEntry> switchAndMeterToFlow = new HashMap<>();
 
     public CacheBolt(PersistenceManager persistenceManager) {
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager);
     }
 
     private void initFlowCache(FlowRepository flowRepository) {

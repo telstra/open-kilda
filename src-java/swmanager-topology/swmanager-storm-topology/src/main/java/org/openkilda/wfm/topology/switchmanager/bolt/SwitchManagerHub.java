@@ -41,6 +41,7 @@ import org.openkilda.messaging.info.switches.DeleteGroupResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
 import org.openkilda.messaging.info.switches.InstallGroupResponse;
 import org.openkilda.messaging.info.switches.ModifyGroupResponse;
+import org.openkilda.messaging.info.switches.ModifyMeterResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
@@ -62,14 +63,10 @@ import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchValidateServi
 import org.openkilda.wfm.topology.switchmanager.service.impl.ValidationServiceImpl;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-
-import java.util.Map;
 
 public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     public static final String ID = "switch.manager.hub";
@@ -84,7 +81,6 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     public static final Fields ZOOKEEPER_STREAM_FIELDS = new Fields(
             ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT);
 
-    private final PersistenceManager persistenceManager;
     private final FlowResourcesConfig flowResourcesConfig;
     private final SwitchManagerTopologyConfig topologyConfig;
     private transient SwitchValidateService validateService;
@@ -96,8 +92,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     public SwitchManagerHub(HubBolt.Config hubConfig, PersistenceManager persistenceManager,
                             SwitchManagerTopologyConfig topologyConfig,
                             FlowResourcesConfig flowResourcesConfig) {
-        super(hubConfig);
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager, hubConfig);
         this.topologyConfig = topologyConfig;
         this.flowResourcesConfig = flowResourcesConfig;
 
@@ -105,8 +100,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     }
 
     @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        super.prepare(stormConf, context, collector);
+    public void init() {
+        super.init();
 
         validateService = new SwitchValidateServiceImpl(this, persistenceManager,
                 new ValidationServiceImpl(persistenceManager, topologyConfig, flowResourcesConfig));
@@ -172,6 +167,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                 syncService.handleReinstallDefaultRulesResponse(key, (FlowReinstallResponse) data);
             } else if (data instanceof DeleteMeterResponse) {
                 syncService.handleRemoveMetersResponse(key);
+            } else if (data instanceof ModifyMeterResponse) {
+                syncService.handleModifyMetersResponse(key);
             } else if (data instanceof InstallGroupResponse) {
                 syncService.handleInstallGroupResponse(key);
             } else if (data instanceof ModifyGroupResponse) {

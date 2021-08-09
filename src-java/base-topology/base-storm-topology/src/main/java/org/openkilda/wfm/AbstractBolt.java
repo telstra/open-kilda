@@ -19,7 +19,9 @@ import static org.openkilda.wfm.share.zk.ZooKeeperSpout.FIELD_ID_LIFECYCLE_EVENT
 
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.bluegreen.Signal;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.context.PersistenceContextRequired;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.share.metrics.PushToStreamMeterRegistry;
@@ -49,8 +51,10 @@ public abstract class AbstractBolt extends BaseRichBolt {
     public static final String FIELD_ID_CONTEXT = "context";
 
     protected transient Logger log = makeLog();
-
     protected boolean active = false;
+
+    @Getter
+    protected final PersistenceManager persistenceManager;
 
     @Getter(AccessLevel.PROTECTED)
     private transient OutputCollector output;
@@ -75,10 +79,19 @@ public abstract class AbstractBolt extends BaseRichBolt {
     private transient PushToStreamMeterRegistry meterRegistry;
 
     public AbstractBolt() {
-        this(null);
+        this(null, null);
     }
 
     public AbstractBolt(String lifeCycleEventSourceComponent) {
+        this(null, lifeCycleEventSourceComponent);
+    }
+
+    public AbstractBolt(PersistenceManager persistenceManager) {
+        this(persistenceManager, null);
+    }
+
+    public AbstractBolt(PersistenceManager persistenceManager, String lifeCycleEventSourceComponent) {
+        this.persistenceManager = persistenceManager;
         this.lifeCycleEventSourceComponent = lifeCycleEventSourceComponent;
     }
 
@@ -225,6 +238,10 @@ public abstract class AbstractBolt extends BaseRichBolt {
         this.output = collector;
         this.taskId = context.getThisTaskId();
         this.componentId = String.format("%s:%d", context.getThisComponentId(), this.taskId);
+
+        if (persistenceManager != null) {
+            PersistenceProvider.makeDefault(persistenceManager);
+        }
 
         initMeterRegistry();
 

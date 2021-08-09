@@ -17,6 +17,7 @@ dependencies {
     implementation project(':server42-messaging')
 
     runtimeClasspath project(':kilda-persistence-orientdb')
+    runtimeClasspath project(':kilda-persistence-mixture')
     aspect project(':kilda-persistence-api')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
 

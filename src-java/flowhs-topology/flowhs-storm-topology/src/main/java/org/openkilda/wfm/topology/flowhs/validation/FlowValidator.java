@@ -103,6 +103,9 @@ public class FlowValidator {
             checkDiverseFlow(flow);
         }
         validateFlowLoop(flow);
+
+        //todo remove after noviflow fix
+        validateQinQonWB(flow);
     }
 
     private void validateFlowLoop(RequestedFlow requestedFlow) throws InvalidFlowException {
@@ -547,6 +550,37 @@ public class FlowValidator {
                             flow.getFlowId(), destination);
                     throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
                 }
+            }
+        }
+    }
+
+    @VisibleForTesting
+    void validateQinQonWB(RequestedFlow requestedFlow)
+            throws UnavailableFlowEndpointException, InvalidFlowException {
+        final FlowEndpoint source = RequestedFlowMapper.INSTANCE.mapSource(requestedFlow);
+        final FlowEndpoint destination = RequestedFlowMapper.INSTANCE.mapDest(requestedFlow);
+
+        if (source.getInnerVlanId() != 0) {
+            Switch srcSwitch = switchRepository.findById(source.getSwitchId())
+                    .orElseThrow(() -> new UnavailableFlowEndpointException(format("Endpoint switch not found %s",
+                            source.getSwitchId())));
+            if (Switch.isNoviflowESwitch(srcSwitch.getOfDescriptionManufacturer(),
+                    srcSwitch.getOfDescriptionHardware())) {
+                String message = format("QinQ feature is temporary disabled for WB-series switch '%s'",
+                        srcSwitch.getSwitchId());
+                throw new InvalidFlowException(message, ErrorType.PARAMETERS_INVALID);
+            }
+        }
+
+        if (destination.getInnerVlanId() != 0) {
+            Switch destSwitch = switchRepository.findById(destination.getSwitchId())
+                    .orElseThrow(() -> new UnavailableFlowEndpointException(format("Endpoint switch not found %s",
+                            destination.getSwitchId())));
+            if (Switch.isNoviflowESwitch(destSwitch.getOfDescriptionManufacturer(),
+                    destSwitch.getOfDescriptionHardware())) {
+                String message = format("QinQ feature is temporary disabled for WB-series switch '%s'",
+                        destSwitch.getSwitchId());
+                throw new InvalidFlowException(message, ErrorType.PARAMETERS_INVALID);
             }
         }
     }

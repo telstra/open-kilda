@@ -69,8 +69,7 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
                 .allGrouping(CoordinatorSpout.ID)
                 .fieldsGrouping(SwitchManagerHub.ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
 
-        PersistenceManager persistenceManager =
-                PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
+        PersistenceManager persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
 
         HubBolt.Config hubConfig = HubBolt.Config.builder()
                 .requestSenderComponent(HUB_SPOUT)

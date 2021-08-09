@@ -214,7 +214,14 @@ subprojects {
                 jf.entries().each { file ->
                     // TODO: it's good to reuse shadowJar plugin's patterns
                     if (file.name.endsWith('.class') && file.name != 'module-info.class') {
-                        if (classes.containsKey(file.name)) {
+                        boolean knownCollisions = [
+                                // ignore collision between jaxb and jakarta
+                                "javax/xml/bind/", "META-INF/versions/9/javax/xml/bind", "javax/activation/",
+                                "com/sun/xml/bind/", "com/sun/xml/txw2", "com/sun/istack"
+                        ].any { entry -> file.name.startsWith(entry) }
+                        if (knownCollisions) {
+                            // do nothing
+                        } else if (classes.containsKey(file.name)) {
                             throw new GradleException("shadowJar failure: ${file.name} conflicts in jars:${classes.get(file.name)} and ${jar}")
                         }
                         classes.put(file.name, jar)

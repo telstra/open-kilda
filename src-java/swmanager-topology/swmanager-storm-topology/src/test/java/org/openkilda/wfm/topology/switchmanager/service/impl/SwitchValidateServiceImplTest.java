@@ -15,7 +15,9 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -128,8 +130,8 @@ public class SwitchValidateServiceImplTest {
         meterEntry = new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"});
 
         when(validationService.validateRules(any(), any(), any()))
-                .thenReturn(new ValidateRulesResult(singletonList(flowEntry.getCookie()), emptyList(), emptyList(),
-                        emptyList()));
+                .thenReturn(new ValidateRulesResult(newHashSet(flowEntry.getCookie()), emptySet(), emptySet(),
+                        emptySet()));
         when(validationService.validateMeters(any(), any(), any()))
                 .thenReturn(new ValidateMetersResult(emptyList(), emptyList(), emptyList(), emptyList()));
     }

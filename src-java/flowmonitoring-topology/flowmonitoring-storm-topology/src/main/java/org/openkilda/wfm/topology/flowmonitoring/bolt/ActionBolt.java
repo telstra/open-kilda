@@ -20,6 +20,8 @@ import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.S
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_DIRECTION_FIELD;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_ID_FIELD;
+import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.LATENCY_FIELD;
+import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowSplitterBolt.INFO_DATA_FIELD;
 
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
@@ -44,25 +46,21 @@ import java.util.Collections;
 
 public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
 
-    public static final String LATENCY_FIELD = "latency";
-    public static final String FLOW_INFO_FIELD = "flow-info";
-
-
-    private PersistenceManager persistenceManager;
     private Duration timeout;
     private float threshold;
     private transient ActionService actionService;
 
-    public ActionBolt(PersistenceManager persistenceManager, Duration timeout, float threshold,
-                      String lifeCycleEventSourceComponent) {
-        super(lifeCycleEventSourceComponent);
-        this.persistenceManager = persistenceManager;
+    public ActionBolt(
+            PersistenceManager persistenceManager, Duration timeout, float threshold,
+            String lifeCycleEventSourceComponent) {
+        super(persistenceManager, lifeCycleEventSourceComponent);
         this.timeout = timeout;
         this.threshold = threshold;
     }
 
     @Override
     protected void init() {
+        super.init();
         actionService = new ActionService(this, persistenceManager, Clock.systemUTC(), timeout, threshold);
     }
 
@@ -72,7 +70,7 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
             return;
         }
         if (FLOW_UPDATE_STREAM_ID.name().equals(input.getSourceStreamId())) {
-            UpdateFlowInfo flowInfo = pullValue(input, FLOW_INFO_FIELD, UpdateFlowInfo.class);
+            UpdateFlowInfo flowInfo = pullValue(input, INFO_DATA_FIELD, UpdateFlowInfo.class);
             actionService.updateFlowInfo(flowInfo);
             return;
         }

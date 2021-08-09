@@ -20,6 +20,7 @@ import org.openkilda.model.CompositeDataEntity;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.BeanSerializer;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.collect.Lists;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -49,6 +50,10 @@ import java.util.stream.Collectors;
 @DefaultSerializer(BeanSerializer.class)
 @ToString
 public class FlowEvent implements CompositeDataEntity<FlowEvent.FlowEventData> {
+    public static final List<String> FLOW_STATUS_ACTION_PARTS =
+            Lists.newArrayList("The flow status was set to ", "The flow status was reverted to ");
+    public static final String FLOW_DELETED_ACTION = "Flow was deleted successfully";
+
     @Getter
     @Setter
     @Delegate
@@ -135,9 +140,9 @@ public class FlowEvent implements CompositeDataEntity<FlowEvent.FlowEventData> {
 
         void setDetails(String details);
 
-        List<FlowHistory> getHistoryRecords();
+        List<FlowEventAction> getEventActions();
 
-        List<FlowDump> getFlowDumps();
+        List<FlowEventDump> getEventDumps();
     }
 
     /**
@@ -156,17 +161,17 @@ public class FlowEvent implements CompositeDataEntity<FlowEvent.FlowEventData> {
         String taskId;
         String details;
         @Builder.Default
-        List<FlowHistory> historyRecords = new ArrayList<>();
+        List<FlowEventAction> eventActions = new ArrayList<>();
         @Builder.Default
-        List<FlowDump> flowDumps = new ArrayList<>();
+        List<FlowEventDump> eventDumps = new ArrayList<>();
     }
 
     @Mapper(collectionMappingStrategy = CollectionMappingStrategy.TARGET_IMMUTABLE)
     public interface FlowEventCloner {
         FlowEventCloner INSTANCE = Mappers.getMapper(FlowEventCloner.class);
 
-        @Mapping(target = "historyRecords", ignore = true)
-        @Mapping(target = "flowDumps", ignore = true)
+        @Mapping(target = "eventActions", ignore = true)
+        @Mapping(target = "eventDumps", ignore = true)
         void copyWithoutRecordsAndDumps(FlowEventData source, @MappingTarget FlowEventData target);
 
         /**
@@ -175,11 +180,11 @@ public class FlowEvent implements CompositeDataEntity<FlowEvent.FlowEventData> {
         default FlowEventData deepCopy(FlowEventData source) {
             FlowEventDataImpl result = new FlowEventDataImpl();
             copyWithoutRecordsAndDumps(source, result);
-            result.setHistoryRecords(source.getHistoryRecords().stream()
-                    .map(FlowHistory::new)
+            result.setEventActions(source.getEventActions().stream()
+                    .map(FlowEventAction::new)
                     .collect(Collectors.toList()));
-            result.setFlowDumps(source.getFlowDumps().stream()
-                    .map(FlowDump::new)
+            result.setEventDumps(source.getEventDumps().stream()
+                    .map(FlowEventDump::new)
                     .collect(Collectors.toList()));
             return result;
         }

@@ -30,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -46,9 +47,18 @@ public class IslCacheService {
         this.islRttLatencyExpiration = islRttLatencyExpiration;
 
         IslRepository islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
+        initCache(islRepository);
+    }
 
-        linkStates = islRepository.findAll().stream()
-                .collect(Collectors.toMap(LinkMapper.INSTANCE::toLink, (link) -> LinkState.builder().build()));
+    private void initCache(IslRepository islRepository) {
+        try {
+            linkStates = islRepository.findAll().stream()
+                    .collect(Collectors.toMap(LinkMapper.INSTANCE::toLink, (link) -> LinkState.builder().build()));
+            log.info("Isl cache initialized successfully.");
+        } catch (Exception e) {
+            log.error("Isl cache initialization exception. Empty cache is used.", e);
+            linkStates = new HashMap<>();
+        }
     }
 
     /**
@@ -61,7 +71,6 @@ public class IslCacheService {
                 .destSwitchId(data.getDstSwitchId())
                 .destPort(data.getDstPortNo())
                 .build();
-        log.info("One way latency for {} {}", link, data.getLatency());
         LinkState linkState = linkStates.get(link);
         if (linkState == null) {
             linkStates.put(link, LinkState.builder()
@@ -79,7 +88,6 @@ public class IslCacheService {
         List<Link> links = linkStates.keySet().stream()
                 .filter(link -> link.srcEquals(data.getSrcSwitchId(), data.getSrcPortNo()))
                 .collect(Collectors.toList());
-        links.forEach(link -> log.info("Rtt latency for {} {}", link, data.getLatency()));
         Instant instant = clock.instant();
         links.forEach(link -> {
             LinkState linkState = linkStates.get(link);
@@ -99,7 +107,7 @@ public class IslCacheService {
      * Get latency for link.
      */
     public Duration getLatencyForLink(Link link) {
-        log.info("Request for link latency {}", link);
+        log.debug("Request for link latency {}", link);
         LinkState linkState = linkStates.get(link);
 
         if (linkState == null) {

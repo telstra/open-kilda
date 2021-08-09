@@ -32,33 +32,25 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.model.FlowPatch;
 import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.util.Collections;
-import java.util.Map;
 
 //TODO(dpoltavets): It is necessary to transfer the logic of this bolt to another place.
 public class FlowPatchBolt extends AbstractBolt implements FlowOperationsCarrier {
-    private final PersistenceManager persistenceManager;
-    private transient RepositoryFactory repositoryFactory;
-    private transient TransactionManager transactionManager;
     private transient FlowOperationsService flowOperationsService;
 
     public FlowPatchBolt(PersistenceManager persistenceManager) {
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager);
     }
 
     protected String getCorrelationId() {
@@ -66,18 +58,11 @@ public class FlowPatchBolt extends AbstractBolt implements FlowOperationsCarrier
     }
 
     @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        repositoryFactory = persistenceManager.getRepositoryFactory();
-        transactionManager = persistenceManager.getTransactionManager();
-        super.prepare(stormConf, context, collector);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void init() {
-        this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
+        super.init();
+
+        this.flowOperationsService = new FlowOperationsService(
+                persistenceManager.getRepositoryFactory(), persistenceManager.getTransactionManager());
     }
 
     protected void handleInput(Tuple input) throws Exception {

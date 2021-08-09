@@ -16,6 +16,7 @@
 package org.openkilda.persistence.repositories.history;
 
 import org.openkilda.model.history.FlowEvent;
+import org.openkilda.model.history.FlowStatusView;
 import org.openkilda.persistence.repositories.Repository;
 
 import java.time.Instant;
@@ -29,15 +30,6 @@ public interface FlowEventRepository extends Repository<FlowEvent> {
 
     List<FlowEvent> findByFlowIdAndTimeFrame(String flowId, Instant timeFrom, Instant timeTo, int maxCount);
 
-    List<FlowStatusesImmutableView>  findFlowStatusesByFlowIdAndTimeFrame(String flowId, Instant timeFrom,
-                                                                          Instant timeTo, int maxCount);
-
-    /**
-     * Represents flow statuses as immutable plain data.
-     */
-    interface FlowStatusesImmutableView {
-        Instant getTimestamp();
-
-        String getStatusBecome();
-    }
+    List<FlowStatusView> findFlowStatusesByFlowIdAndTimeFrame(String flowId, Instant timeFrom,
+                                                              Instant timeTo, int maxCount);
 }

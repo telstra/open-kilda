@@ -96,7 +96,6 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     public static final Fields STREAM_FLOW_MONITORING_FIELDS = new Fields(
             KafkaEncoder.FIELD_ID_KEY, KafkaEncoder.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
-    private final PersistenceManager persistenceManager;
     private final NetworkOptions options;
 
     private transient NetworkIslService service;
@@ -104,7 +103,7 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     private transient TaskIdBasedKeyFactory keyFactory;
 
     public IslHandler(PersistenceManager persistenceManager, NetworkOptions options) {
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager);
         this.options = options;
     }
 

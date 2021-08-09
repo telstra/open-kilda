@@ -35,7 +35,7 @@ import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "kilda_role")
+@Table(name = "KILDA_ROLE")
 public class RoleEntity extends BaseEntity implements Serializable {
 
     private static final long serialVersionUID = -57044334239698601L;
@@ -56,18 +56,18 @@ public class RoleEntity extends BaseEntity implements Serializable {
     private StatusEntity statusEntity;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "role_permission", joinColumns = { @JoinColumn(name = "role_id") }, inverseJoinColumns = {
+    @JoinTable(name = "ROLE_PERMISSION", joinColumns = { @JoinColumn(name = "role_id") }, inverseJoinColumns = {
             @JoinColumn(name = "permission_id") })
     private Set<PermissionEntity> permissions = new HashSet<PermissionEntity>();
 
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "user_role", joinColumns = { @JoinColumn(name = "role_id") }, inverseJoinColumns = {
+    @JoinTable(name = "USER_ROLE", joinColumns = { @JoinColumn(name = "role_id") }, inverseJoinColumns = {
             @JoinColumn(name = "user_id") })
     private Set<UserEntity> users = new HashSet<UserEntity>();
     
     
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "saml_user_roles", joinColumns = { @JoinColumn(name = "role_id") }, inverseJoinColumns = {
+    @JoinTable(name = "SAML_USER_ROLES", joinColumns = { @JoinColumn(name = "role_id") }, inverseJoinColumns = {
             @JoinColumn(name = "id") })
     private Set<SamlConfigEntity> samlUsers = new HashSet<SamlConfigEntity>();
     

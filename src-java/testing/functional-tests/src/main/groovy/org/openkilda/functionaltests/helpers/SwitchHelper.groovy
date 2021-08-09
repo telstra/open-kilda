@@ -36,6 +36,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
@@ -522,5 +523,11 @@ class SwitchHelper {
 
     void reviveSwitch(Switch sw, List<FloodlightResourceAddress> flResourceAddress) {
         reviveSwitch(sw, flResourceAddress, false)
+    }
+
+    @Memoized
+    static boolean isVxlanEnabled(SwitchId switchId) {
+        return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
+                .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 }

@@ -69,7 +69,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
         }
 
         kafkaTopics = topologyConfig.getKafkaTopics();
-        persistenceManager = PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
+        persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
     }
 
     @Override

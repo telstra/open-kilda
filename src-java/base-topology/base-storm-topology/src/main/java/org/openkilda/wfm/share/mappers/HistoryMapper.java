@@ -24,20 +24,22 @@ import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.FlowSegmentCookie.FlowSegmentCookieBuilder;
-import org.openkilda.model.history.FlowDump;
 import org.openkilda.model.history.FlowEvent;
-import org.openkilda.model.history.FlowHistory;
-import org.openkilda.model.history.PortHistory;
-import org.openkilda.persistence.repositories.history.FlowEventRepository.FlowStatusesImmutableView;
+import org.openkilda.model.history.FlowEventAction;
+import org.openkilda.model.history.FlowEventDump;
+import org.openkilda.model.history.FlowStatusView;
+import org.openkilda.model.history.PortEvent;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
-import org.openkilda.wfm.share.history.model.PortHistoryData;
+import org.openkilda.wfm.share.history.model.PortEventData;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +47,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
+import java.time.Instant;
 import java.util.List;
 
 @Slf4j
@@ -52,29 +55,27 @@ import java.util.List;
 public abstract class HistoryMapper {
     public static final HistoryMapper INSTANCE = Mappers.getMapper(HistoryMapper.class);
 
-    @Mapping(target = "timestamp", expression = "java(flowEvent.getTimestamp().getEpochSecond())")
     @Mapping(target = "payload", source = "payload")
     @Mapping(target = "dumps", source = "dumps")
     public abstract FlowHistoryEntry map(
             FlowEvent flowEvent, List<FlowHistoryPayload> payload, List<FlowDumpPayload> dumps);
 
-    @Mapping(target = "timestamp", expression = "java(flowHistory.getTimestamp().getEpochSecond())")
-    public abstract FlowHistoryPayload map(FlowHistory flowHistory);
+    public abstract FlowHistoryPayload map(FlowEventAction action);
 
-    @Mapping(target = "forwardCookie",
-            expression = "java(flowDump.getForwardCookie() != null ? flowDump.getForwardCookie().getValue() : null)")
-    @Mapping(target = "reverseCookie",
-            expression = "java(flowDump.getReverseCookie() != null ? flowDump.getReverseCookie().getValue() : null)")
-    @Mapping(target = "forwardMeterId",
-            expression = "java(flowDump.getForwardMeterId() != null ? flowDump.getForwardMeterId().getValue() : null)")
-    @Mapping(target = "reverseMeterId",
-            expression = "java(flowDump.getReverseMeterId() != null ? flowDump.getReverseMeterId().getValue() : null)")
-    public abstract FlowDumpPayload map(FlowDump flowDump);
+    /**
+     * Map {@link FlowEventDump} into {@link FlowDumpPayload}.
+     */
+    public FlowDumpPayload map(FlowEventDump dump) {
+        FlowDumpPayload result = generatedMap(dump);
+        result.setForwardCookie(fallbackIfNull(mapCookie(dump.getForwardCookie()), 0L));
+        result.setReverseCookie(fallbackIfNull(mapCookie(dump.getReverseCookie()), 0L));
+        return result;
+    }
 
-    @Mapping(target = "type", expression = "java(dumpData.getDumpType().getType())")
+    @Mapping(target = "type", source = "dumpType")
     @Mapping(target = "taskId", ignore = true)
     @Mapping(target = "data", ignore = true)
-    public abstract FlowDump map(FlowDumpData dumpData);
+    public abstract FlowEventDump map(FlowDumpData dump);
 
     /**
      * Note: you have to additionally set {@link org.openkilda.wfm.share.history.model.FlowDumpData.DumpType}
@@ -128,7 +129,7 @@ public abstract class HistoryMapper {
     @Mapping(source = "description", target = "details")
     @Mapping(target = "taskId", ignore = true)
     @Mapping(target = "data", ignore = true)
-    public abstract FlowHistory map(FlowHistoryData historyData);
+    public abstract FlowEventAction map(FlowHistoryData historyData);
 
     @Mapping(source = "eventData.initiator", target = "actor")
     @Mapping(source = "eventData.event.description", target = "action")
@@ -136,15 +137,15 @@ public abstract class HistoryMapper {
     @Mapping(target = "taskId", ignore = true)
     public abstract FlowEvent map(FlowEventData eventData);
 
-    @Mapping(target = "switchId", expression = "java(data.getEndpoint().getDatapath())")
-    @Mapping(target = "portNumber", expression = "java(data.getEndpoint().getPortNumber())")
+    @Mapping(target = "switchId", source = "endpoint.datapath")
+    @Mapping(target = "portNumber", source = "endpoint.portNumber")
     @Mapping(target = "recordId", ignore = true)
     @Mapping(target = "data", ignore = true)
-    public abstract PortHistory map(PortHistoryData data);
+    public abstract PortEvent map(PortEventData data);
 
     @Mapping(target = "timestamp", ignore = true)
     @Mapping(target = "id", source = "recordId")
-    public abstract PortHistoryPayload map(PortHistory portHistory);
+    public abstract PortHistoryPayload map(PortEvent portEvent);
 
     public String map(SwitchId switchId) {
         return switchId.toString();
@@ -152,7 +153,7 @@ public abstract class HistoryMapper {
 
     @Mapping(target = "statusChangeTimestamp", source = "timestamp")
     @Mapping(target = "timestamp", ignore = true)
-    public abstract FlowStatusTimestampsEntry map(FlowStatusesImmutableView flowStatusesImmutableView);
+    public abstract FlowStatusTimestampsEntry map(FlowStatusView flowStatusesImmutableView);
 
     @Mapping(source = "flow.srcSwitch.switchId", target = "sourceSwitch")
     @Mapping(source = "flow.destSwitch.switchId", target = "destinationSwitch")
@@ -175,6 +176,10 @@ public abstract class HistoryMapper {
     @Mapping(target = "reverseStatus", ignore = true)
     protected abstract FlowDumpData generatedMap(Flow flow, FlowResources resources, DumpType dumpType);
 
+    @Mapping(target = "forwardCookie", ignore = true)
+    @Mapping(target = "reverseCookie", ignore = true)
+    protected abstract FlowDumpPayload generatedMap(FlowEventDump dump);
+
     /**
      * Adds string representation of flow path into {@link FlowDumpData}.
      */
@@ -185,5 +190,52 @@ public abstract class HistoryMapper {
             log.error("Unable to map the path: {}", path, ex);
             return null;
         }
+    }
+
+    /**
+     * Map {@link Instant} into {@link long}.
+     */
+    public long mapTimestamp(Instant value) {
+        if (value == null) {
+            return 0;
+        }
+        return value.getEpochSecond();
+    }
+
+    /**
+     * Map {@link Cookie} into {@link long}.
+     */
+    public Long mapCookie(Cookie value) {
+        if (value == null) {
+            return null;
+        }
+        return value.getValue();
+    }
+
+    /**
+     * Map {@link MeterId} into {@link long}.
+     */
+    public Long mapMeterId(MeterId value) {
+        if (value == null) {
+            return null;
+        }
+        return value.getValue();
+    }
+
+    /**
+     * Map {@link DumpType} into {@link String}.
+     */
+    public String mapDumpType(DumpType value) {
+        if (value == null) {
+            return null;
+        }
+        return value.getType();
+    }
+
+    private <T> T fallbackIfNull(T value, T fallback) {
+        if (value == null) {
+            return fallback;
+        }
+        return value;
     }
 }

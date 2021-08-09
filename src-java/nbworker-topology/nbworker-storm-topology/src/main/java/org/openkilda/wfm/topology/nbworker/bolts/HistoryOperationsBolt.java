@@ -45,8 +45,10 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
     }
 
     @Override
-    protected void init() {
-        historyService = new HistoryService(transactionManager, repositoryFactory);
+    public void init() {
+        super.init();
+
+        historyService = new HistoryService(persistenceManager);
     }
 
     @Override
@@ -96,13 +98,13 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
     }
 
     private List<FlowHistoryPayload> listFlowHistories(FlowEvent flowEvent) {
-        return flowEvent.getHistoryRecords().stream()
+        return flowEvent.getEventActions().stream()
                 .map(HistoryMapper.INSTANCE::map)
                 .collect(Collectors.toList());
     }
 
     private List<FlowDumpPayload> listFlowDumps(FlowEvent flowEvent) {
-        return flowEvent.getFlowDumps()
+        return flowEvent.getEventDumps()
                 .stream()
                 .map(HistoryMapper.INSTANCE::map)
                 .collect(Collectors.toList());

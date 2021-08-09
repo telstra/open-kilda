@@ -49,13 +49,11 @@ public class FlowRerouteQueueBolt extends CoordinatedBolt implements IRerouteQue
 
     private final int defaultFlowPriority;
     private final int maxRetry;
-    private PersistenceManager persistenceManager;
     private transient RerouteQueueService rerouteQueueService;
 
     public FlowRerouteQueueBolt(PersistenceManager persistenceManager,
                                 int defaultFlowPriority, int maxRetry, int rerouteTimeout) {
-        super(true, rerouteTimeout, null);
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager, true, rerouteTimeout, null);
         this.defaultFlowPriority = defaultFlowPriority;
         this.maxRetry = maxRetry;
     }

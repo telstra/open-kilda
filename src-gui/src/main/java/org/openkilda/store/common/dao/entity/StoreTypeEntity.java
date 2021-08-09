@@ -20,26 +20,28 @@ import org.openkilda.store.auth.dao.entity.OauthConfigEntity;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.GenericGenerator;
+
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "kilda_store_type")
+@Table(name = "KILDA_STORE_TYPE")
 @Data
 @NoArgsConstructor
 public class StoreTypeEntity {
 
     @Id
     @Column(name = "store_type_id", nullable = false)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(generator = "increment")
+    @GenericGenerator(name = "increment", strategy = "increment")
     private Integer storeTypeId;
 
     @Column(name = "store_type_name", nullable = false)

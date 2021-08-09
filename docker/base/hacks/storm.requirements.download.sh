@@ -21,7 +21,7 @@ PROJECT_ROOT=$(cd "$(dirname "$0")/../.."; pwd)
 
 TARGET=${PROJECT_ROOT}/storm/lib
 
-JACKSON_VERSION=2.9.3
+JACKSON_VERSION=2.10.0
 
 CLI="mvn org.apache.maven.plugins:maven-dependency-plugin:2.8:copy"
 

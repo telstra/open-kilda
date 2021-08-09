@@ -552,14 +552,14 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         allFlowPaths.findAll { it != flowPath }.each { pathHelper.makePathMorePreferable(it, flowPath) }
 
         when: "Bring the flow port down on the source switch"
-        antiflap.portDown(flow.source.switchId, flow.source.portNumber)
+        northbound.portDown(flow.source.switchId, flow.source.portNumber)
 
         then: "The flow is not rerouted"
         TimeUnit.SECONDS.sleep(rerouteDelay)
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
 
         when: "Bring the flow port down on the destination switch"
-        antiflap.portDown(flow.destination.switchId, flow.destination.portNumber)
+        northbound.portDown(flow.destination.switchId, flow.destination.portNumber)
 
         then: "The flow is not rerouted"
         TimeUnit.SECONDS.sleep(rerouteDelay)
@@ -568,7 +568,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         cleanup: "Bring flow ports up and delete the flow"
         if (flow) {
             flowHelperV2.deleteFlow(flow.flowId)
-            ["source", "destination"].each { antiflap.portUp(flow."$it".switchId, flow."$it".portNumber) }
+            ["source", "destination"].each { northbound.portUp(flow."$it".switchId, flow."$it".portNumber) }
         }
     }
 
@@ -975,16 +975,10 @@ triggering one more reroute of the current path"
     def getVxlanFlowWithPaths(List<SwitchPair> switchPairs, int minAltPathsCount) {
         def switchPair = switchPairs.find {swP ->
             swP.paths.findAll { path ->
-                pathHelper.getInvolvedSwitches(path).every { isVxlanEnabled(it.dpId) }
+                pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }
             }.size() > minAltPathsCount
         } ?: assumeTrue(false, "No suiting switches found")
         return [flowHelperV2.randomFlow(switchPair), switchPair.paths]
-    }
-
-    @Memoized
-    def isVxlanEnabled(SwitchId switchId) {
-        return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
-                .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 
     def cleanup() {

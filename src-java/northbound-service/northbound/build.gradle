@@ -19,6 +19,7 @@ dependencies {
     implementation project(':kilda-persistence-api')
     implementation project(':blue-green')
     runtimeClasspath project(':kilda-persistence-orientdb')
+    runtimeClasspath project(':kilda-persistence-mixture')
     implementation project(':kilda-configuration')
     testImplementation project(':kilda-utils:stubs')
 

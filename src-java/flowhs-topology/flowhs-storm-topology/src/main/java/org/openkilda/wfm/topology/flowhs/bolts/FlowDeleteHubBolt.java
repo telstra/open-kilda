@@ -60,7 +60,6 @@ import org.apache.storm.tuple.Values;
 public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
 
     private final FlowDeleteConfig config;
-    private final PersistenceManager persistenceManager;
     private final FlowResourcesConfig flowResourcesConfig;
 
     private transient FlowDeleteService service;
@@ -70,10 +69,9 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
 
     public FlowDeleteHubBolt(FlowDeleteConfig config, PersistenceManager persistenceManager,
                              FlowResourcesConfig flowResourcesConfig) {
-        super(config);
+        super(persistenceManager, config);
 
         this.config = config;
-        this.persistenceManager = persistenceManager;
         this.flowResourcesConfig = flowResourcesConfig;
 
         enableMeterRegistry("kilda.flow_delete", HUB_TO_METRICS_BOLT.name());
@@ -85,7 +83,6 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
         service = new FlowDeleteService(this, persistenceManager, resourcesManager,
                 config.getSpeakerCommandRetriesLimit());
     }
-
 
     @Override
     protected boolean deactivate(LifecycleEvent event) {

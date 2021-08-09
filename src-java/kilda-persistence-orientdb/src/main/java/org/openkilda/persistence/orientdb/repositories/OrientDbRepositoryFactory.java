@@ -30,7 +30,8 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.VxlanRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
-import org.openkilda.persistence.tx.TransactionManager;
+import org.openkilda.persistence.tx.TransactionArea;
+import org.openkilda.persistence.tx.TransactionManagerFactory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -41,67 +42,78 @@ import lombok.extern.slf4j.Slf4j;
 public class OrientDbRepositoryFactory extends FermaRepositoryFactory {
     private final OrientDbGraphFactory orientDbGraphFactory;
 
-    public OrientDbRepositoryFactory(OrientDbGraphFactory orientDbGraphFactory, TransactionManager transactionManager,
+    public OrientDbRepositoryFactory(OrientDbGraphFactory orientDbGraphFactory,
+                                     TransactionManagerFactory transactionManagerFactory,
                                      NetworkConfig networkConfig) {
-        super(orientDbGraphFactory, transactionManager, networkConfig);
+        super(orientDbGraphFactory, transactionManagerFactory, networkConfig);
 
         this.orientDbGraphFactory = orientDbGraphFactory;
     }
 
     @Override
     public FlowCookieRepository createFlowCookieRepository() {
-        return new OrientDbFlowCookieRepository(orientDbGraphFactory, transactionManager);
+        return new OrientDbFlowCookieRepository(
+                orientDbGraphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public FlowMeterRepository createFlowMeterRepository() {
-        return new OrientDbFlowMeterRepository(orientDbGraphFactory, transactionManager);
+        return new OrientDbFlowMeterRepository(
+                orientDbGraphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public FlowPathRepository createFlowPathRepository() {
-        return new OrientDbFlowPathRepository(orientDbGraphFactory, transactionManager);
+        return new OrientDbFlowPathRepository(
+                orientDbGraphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public FlowRepository createFlowRepository() {
         return new OrientDbFlowRepository(orientDbGraphFactory, createFlowPathRepository(),
-                transactionManager);
+                transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public IslRepository createIslRepository() {
-        return new OrientDbIslRepository(orientDbGraphFactory, transactionManager,
+        return new OrientDbIslRepository(
+                orientDbGraphFactory, transactionManagerFactory.produce(TransactionArea.COMMON),
                 (OrientDbFlowPathRepository) createFlowPathRepository(), islConfig);
     }
 
     @Override
     public SwitchRepository createSwitchRepository() {
-        return new OrientDbSwitchRepository(orientDbGraphFactory, transactionManager);
+        return new OrientDbSwitchRepository(
+                orientDbGraphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public TransitVlanRepository createTransitVlanRepository() {
-        return new OrientDbTransitVlanRepository(orientDbGraphFactory, transactionManager);
+        return new OrientDbTransitVlanRepository(
+                orientDbGraphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public VxlanRepository createVxlanRepository() {
-        return new OrientDbVxlanRepository(orientDbGraphFactory, transactionManager);
+        return new OrientDbVxlanRepository(
+                orientDbGraphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public FlowEventRepository createFlowEventRepository() {
-        return new OrientDbFlowEventRepository(orientDbGraphFactory, transactionManager);
+        return new OrientDbFlowEventRepository(
+                orientDbGraphFactory, transactionManagerFactory.produce(TransactionArea.HISTORY));
     }
 
     @Override
     public BfdSessionRepository createBfdSessionRepository() {
-        return new OrientDbBfdSessionRepository(orientDbGraphFactory, transactionManager);
+        return new OrientDbBfdSessionRepository(
+                orientDbGraphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
     }
 
     @Override
     public PathSegmentRepository createPathSegmentRepository() {
-        return new OrientDbPathSegmentRepository(orientDbGraphFactory, transactionManager, createIslRepository());
+        return new OrientDbPathSegmentRepository(
+                orientDbGraphFactory, transactionManagerFactory.produce(TransactionArea.COMMON), createIslRepository());
     }
 }

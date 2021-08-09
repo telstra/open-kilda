@@ -25,7 +25,7 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "activity_type")
+@Table(name = "ACTIVITY_TYPE")
 public class ActivityTypeEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;

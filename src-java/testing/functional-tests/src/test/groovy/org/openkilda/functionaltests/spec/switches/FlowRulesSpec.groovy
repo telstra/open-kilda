@@ -105,9 +105,9 @@ class FlowRulesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([SMOKE])
+    @Tags([SMOKE, LOW_PRIORITY])
     @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /delete-action=DROP_ALL\)/)
-    def "Able to delete rules from a switch (delete-action=#data.deleteRulesAction)"() {
+    def "Able to delete rules from a single-table mode switch (delete-action=#data.deleteRulesAction)"() {
         given: "A switch with some flow rules installed"
         assumeTrue(!northbound.getSwitchProperties(srcSwitch.dpId).multiTable,
 "Multi table should be disabled on the src switch")
@@ -610,7 +610,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([SMOKE, SMOKE_SWITCHES])
+    @Tags([SMOKE_SWITCHES, LOW_PRIORITY])
     def "Traffic counters in ingress rule are reset on flow rerouting(singleTable mode)"() {
         given: "Two active neighboring switches and two possible flow paths at least"
         assumeTrue(!useMultitable, "This test is not ready to be run under multiTable mode")
@@ -827,7 +827,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         given: "Two active not neighboring Noviflow switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
             swP.paths.find { path ->
-                pathHelper.getInvolvedSwitches(path).every { isVxlanEnabled(it.dpId) }
+                pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }
             }
         } ?: assumeTrue(false, "Unable to find required switches in topology")
 
@@ -968,11 +968,5 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
     List<FlowEntry> getFlowRules(Switch sw) {
         northbound.getSwitchRules(sw.dpId).flowEntries.findAll { !(it.cookie in sw.defaultCookies) }.sort()
-    }
-
-    @Memoized
-    def isVxlanEnabled(SwitchId switchId) {
-        return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
-                .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 }

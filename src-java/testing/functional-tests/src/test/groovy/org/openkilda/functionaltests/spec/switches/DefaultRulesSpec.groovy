@@ -23,10 +23,8 @@ import org.openkilda.messaging.command.CommandData
 import org.openkilda.messaging.command.CommandMessage
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
-import org.openkilda.messaging.model.SwitchPropertiesDto
 import org.openkilda.messaging.model.SwitchPropertiesDto.RttState
 import org.openkilda.model.SwitchFeature
-import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -102,7 +100,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
 
         cleanup: "Install missing default rules"
         northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        Wrappers.wait(RULES_INSTALLATION_TIME + discoveryInterval) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == defaultRules*.cookie.sort()
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
@@ -175,7 +173,7 @@ switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) 
 
         cleanup: "Install missing default rules and restore switch properties"
         northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        Wrappers.wait(RULES_INSTALLATION_TIME + discoveryInterval) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries.size() == defaultRules.size()
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }

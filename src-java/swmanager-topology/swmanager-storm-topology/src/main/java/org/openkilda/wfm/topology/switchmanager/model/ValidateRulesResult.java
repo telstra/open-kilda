@@ -17,16 +17,16 @@ package org.openkilda.wfm.topology.switchmanager.model;
 
 import lombok.Value;
 
-import java.util.List;
+import java.util.Set;
 
 @Value
 public class ValidateRulesResult {
 
-    private List<Long> missingRules;
+    Set<Long> missingRules;
 
-    private List<Long> properRules;
+    Set<Long> properRules;
 
-    private List<Long> excessRules;
+    Set<Long> excessRules;
 
-    private List<Long> misconfiguredRules;
+    Set<Long> misconfiguredRules;
 }

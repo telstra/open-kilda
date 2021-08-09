@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.resilience
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PATH_SWAP_ACTION
@@ -534,6 +535,7 @@ and at least 1 path must remain safe"
     }
 
     @Tidy
+    @Tags(LOW_PRIORITY)
     def "System remains in consistent state when flow retries its reroute after table mode change"() {
         given: "A flow, with src switch supporting multi-table (currently in single-table)"
         def swPair = topologyHelper.switchPairs.find {
@@ -592,7 +594,8 @@ and at least 1 path must remain safe"
         swDown = false
 
         then: "Flow goes UP"
-        wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+        //sometimes flow is rerouted with ignore_bandwidth, then flow is DEGRADED
+        wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status in [FlowState.UP, FlowState.DEGRADED] }
 
         and: "Flow and switches are valid"
         northbound.validateFlow(flow.flowId).every { it.asExpected }

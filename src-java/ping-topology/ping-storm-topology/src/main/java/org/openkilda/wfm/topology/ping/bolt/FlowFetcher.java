@@ -62,7 +62,6 @@ public class FlowFetcher extends Abstract {
             FIELD_ID_ON_DEMAND_RESPONSE, FIELD_ID_CONTEXT);
     public static final String STREAM_ON_DEMAND_RESPONSE_ID = "on_demand_response";
 
-    private final PersistenceManager persistenceManager;
     private final FlowResourcesConfig flowResourcesConfig;
     private transient FlowResourcesManager flowResourcesManager;
     private transient FlowRepository flowRepository;
@@ -72,7 +71,7 @@ public class FlowFetcher extends Abstract {
 
     public FlowFetcher(PersistenceManager persistenceManager, FlowResourcesConfig flowResourcesConfig,
                        long periodicPingCacheExpiryInterval) {
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager);
         this.flowResourcesConfig = flowResourcesConfig;
         this.periodicPingCacheExpiryInterval = TimeUnit.SECONDS.toMillis(periodicPingCacheExpiryInterval);
     }
@@ -233,6 +232,8 @@ public class FlowFetcher extends Abstract {
     @Override
     @PersistenceContextRequired(requiresNew = true)
     public void init() {
+        super.init();
+
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         try {

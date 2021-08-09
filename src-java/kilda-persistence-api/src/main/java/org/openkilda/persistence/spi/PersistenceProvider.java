@@ -16,45 +16,87 @@
 package org.openkilda.persistence.spi;
 
 import org.openkilda.config.provider.ConfigurationProvider;
+import org.openkilda.persistence.PersistenceConfig;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.context.PersistenceContextManager;
 
+import java.io.Serializable;
+import java.util.HashSet;
 import java.util.ServiceLoader;
+import java.util.Set;
 
 /**
  * A provider for persistence manager(s). SPI is used to locate an implementation.
  *
  * @see ServiceLoader
  */
-public interface PersistenceProvider {
+public final class PersistenceProvider implements Serializable {
+    private static PersistenceManager OVERLAY;
 
     /**
-     * Creates a {@link PersistenceProvider} instance. The provider is loaded using the {@link
-     * ServiceLoader#load(Class)} method.
-     *
-     * @return a {@link PersistenceProvider} implementation.
-     * @see ServiceLoader
+     * Load {@link PersistenceManager} and make default i.e. used by aspects.
      */
-    static PersistenceProvider getInstance() {
-        ServiceLoader<PersistenceProvider> loader = ServiceLoader.load(PersistenceProvider.class);
-        PersistenceProvider instance = loader.iterator().next();
-        if (instance != null) {
-            return instance;
-        } else {
-            throw new IllegalStateException("No implementation for PersistenceProvider found.");
-        }
+    public static PersistenceManager loadAndMakeDefault(ConfigurationProvider configurationProvider) {
+        return makeDefault(load(configurationProvider));
     }
 
     /**
-     * Creates a {@link PersistenceManager} for given configuration.
-     *
-     * @param configurationProvider configuration provider to initialize the manager.
-     * @return a {@link PersistenceManager} implementation.
+     * Load and init a {@link PersistenceManager} instance using data provided in configuration to choose specific
+     * implementation.
      */
-    PersistenceManager getPersistenceManager(ConfigurationProvider configurationProvider);
+    public static PersistenceManager load(ConfigurationProvider configurationProvider) {
+        if (OVERLAY != null) {
+            return OVERLAY;
+        }
 
-    /**
-     * Obtains a {@link PersistenceContextManager}.
-     */
-    PersistenceContextManager getPersistenceContextManager();
+        PersistenceConfig persistenceConfig = configurationProvider.getConfiguration(PersistenceConfig.class);
+        PersistenceManagerFactory factory = loadFactory(persistenceConfig.getImplementationName());
+
+        return factory.produce(configurationProvider);
+    }
+
+    public static PersistenceManager makeDefault(PersistenceManager manager) {
+        PersistenceManagerSupplier.DEFAULT.define(manager);
+        return manager;
+    }
+
+    public static void setupLoadOverlay(PersistenceManager overlay) {
+        OVERLAY = overlay;
+    }
+
+    public static void removeLoadOverlay() {
+        OVERLAY = null;
+    }
+
+    private static PersistenceManagerFactory loadFactory(String implementationName) {
+        ServiceLoader<PersistenceManagerFactory> loader = ServiceLoader.load(PersistenceManagerFactory.class);
+
+        Set<String> seen = new HashSet<>();
+        String normalizedName = implementationName.toLowerCase();
+        PersistenceManagerFactory needle = null;
+        for (PersistenceManagerFactory entry : loader) {
+            String current = entry.getImplementationName().toLowerCase();
+            seen.add(current);
+            if (normalizedName.equals(current)) {
+                if (needle != null) {
+                    throw new IllegalStateException(String.format(
+                            "Locate more than 1 persistence provider implementation names as \"%s\"",
+                            implementationName));
+                }
+                needle = entry;
+            }
+        }
+        if (needle == null) {
+            throw new IllegalStateException(
+                    String.format("No implementation of %s with implementation name %s have been found "
+                                    + "(seen implementations: \"%s\").",
+                            PersistenceManagerFactory.class.getName(), implementationName,
+                            String.join("\", \"", seen)));
+        }
+
+        return needle;
+    }
+
+    private PersistenceProvider() {
+        // do not allow to make any instances
+    }
 }

@@ -2,8 +2,7 @@ package org.openkilda.functionaltests.spec.multitable
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
@@ -56,7 +55,7 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
     Provider<TraffExamService> traffExamProvider
 
     @Tidy
-    @Tags([SMOKE, SMOKE_SWITCHES])
+    @Tags([LOW_PRIORITY])
     def "System can use both single-table and multi-table switches in flow path at the same time, change switch table \
 mode with existing flows and hold flows of different table-mode types"() {
         given: "A potential flow on a path of 4 switches: multi -> single -> multi -> single"
@@ -218,6 +217,7 @@ mode with existing flows and hold flows of different table-mode types"() {
     }
 
     @Tidy
+    @Tags([LOW_PRIORITY])
     def "Single-switch flow rules are (re)installed according to switch property while rerouting,syncing,updating"() {
         given: "An active switch"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.MULTI_TABLE) }
@@ -370,7 +370,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         initSwProps && revertSwitchToInitState(sw, initSwProps)
     }
 
-    @Tags([SMOKE_SWITCHES])
+    @Tags([LOW_PRIORITY])
     @Ignore("https://github.com/telstra/open-kilda/issues/3961, https://github.com/telstra/open-kilda/issues/4170")
     def "Flow rules are (re)installed according to switch property while syncing and updating flow endpoint"() {
         given: "Three active switches"
@@ -492,6 +492,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
+    @Tags([LOW_PRIORITY])
     @Ignore("https://github.com/telstra/open-kilda/issues/3961")
     def "Flow rules are (re)installed according to switch property while rerouting"() {
         given: "Three active switches, src and dst switches are connected to traffgen"
@@ -681,6 +682,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         database.resetCosts()
     }
 
+    @Tags([LOW_PRIORITY])
     @Ignore("https://github.com/telstra/open-kilda/issues/4043")
     def "Flow rules are not reinstalled according to switch property while swapping to protected path"() {
         given: "Three active switches with 3 diverse paths at least"
@@ -814,6 +816,7 @@ mode with existing flows and hold flows of different table-mode types"() {
     }
 
     @Tidy
+    @Tags([LOW_PRIORITY])
     def "Single switch flow rules are not reinstalled according to switch props when the update procedure is failed"() {
         given: "An active switch"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.MULTI_TABLE) }
@@ -879,6 +882,7 @@ mode with existing flows and hold flows of different table-mode types"() {
     }
 
     @Tidy
+    @Tags([LOW_PRIORITY])
     def "Flow rules are not recreated when pinned flow changes state to up/down"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null
@@ -1008,7 +1012,7 @@ mode with existing flows and hold flows of different table-mode types"() {
     }
 
     @Tidy
-    @Tags([SMOKE_SWITCHES])
+    @Tags([LOW_PRIORITY])
     def "Flow rules are re(installed) according to switch props while syncing switch and rules"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null
@@ -1210,6 +1214,7 @@ mode with existing flows and hold flows of different table-mode types"() {
     }
 
     @Tidy
+    @Tags([LOW_PRIORITY])
     def "System detects excess rules after removing multi table flow from a switch with single table mode"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null
@@ -1312,7 +1317,7 @@ mode with existing flows and hold flows of different table-mode types"() {
                 "Switch $sw.dpId doesn't support requested feature MULTI_TABLE"
     }
 
-    @Tags(TOPOLOGY_DEPENDENT)
+    @Tags([LOW_PRIORITY, TOPOLOGY_DEPENDENT])
     @Ignore("wait until knockout switch is fixed for staging")
     def "System connects a new switch with disabled multiTable mode when the switch does not support that mode"() {
         given: "Unsupported switch"
@@ -1349,6 +1354,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         !initConf.useMultiTable && northbound.updateKildaConfiguration(initConf)
     }
 
+    @Tags(TOPOLOGY_DEPENDENT)
     @Ignore("https://github.com/telstra/open-kilda/issues/3961")
     def "System can manipulate protected flow, where paths are in different table modes"() {
         given: "Switches with 3 diverse paths"

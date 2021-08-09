@@ -15,10 +15,10 @@
 
 package org.openkilda.persistence.repositories;
 
-import org.openkilda.persistence.repositories.history.FlowDumpRepository;
+import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
+import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
-import org.openkilda.persistence.repositories.history.FlowHistoryRepository;
-import org.openkilda.persistence.repositories.history.PortHistoryRepository;
+import org.openkilda.persistence.repositories.history.PortEventRepository;
 
 /**
  * Factory to obtain {@link Repository} instances.
@@ -48,9 +48,9 @@ public interface RepositoryFactory {
 
     FlowEventRepository createFlowEventRepository();
 
-    FlowHistoryRepository createFlowHistoryRepository();
+    FlowEventActionRepository createFlowEventActionRepository();
 
-    FlowDumpRepository createFlowDumpRepository();
+    FlowEventDumpRepository createFlowEventDumpRepository();
 
     BfdSessionRepository createBfdSessionRepository();
 
@@ -60,7 +60,7 @@ public interface RepositoryFactory {
 
     SwitchConnectedDeviceRepository createSwitchConnectedDeviceRepository();
 
-    PortHistoryRepository createPortHistoryRepository();
+    PortEventRepository createPortEventRepository();
 
     PortPropertiesRepository createPortPropertiesRepository();
 

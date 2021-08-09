@@ -113,8 +113,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         cacheSyncFilter(builder);
 
         // Cache bolt get data from the database on start
-        PersistenceManager persistenceManager =
-                PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
+        PersistenceManager persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
         declareBolt(builder, new CacheBolt(persistenceManager), STATS_CACHE_BOLT.name())
                 .allGrouping(STATS_CACHE_FILTER_BOLT.name(), CACHE_UPDATE.name())
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.CACHE_DATA.toString(), statsFields);

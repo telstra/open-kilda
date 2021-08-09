@@ -208,7 +208,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
     def "Able to CRUD a pinned flow with 'VXLAN' encapsulation"() {
         when: "Create a flow"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            [swP.src, swP.dst].every { sw -> isVxlanEnabled(sw.dpId) }
+            [swP.src, swP.dst].every { sw -> switchHelper.isVxlanEnabled(sw.dpId) }
         }
         assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
 
@@ -241,13 +241,13 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
     def "Able to CRUD a vxlan flow with protected path"() {
         given: "Two active VXLAN supported switches with two available path at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            [swP.src, swP.dst].every { sw -> isVxlanEnabled(sw.dpId) } && swP.paths.unique(false) {
+            [swP.src, swP.dst].every { sw -> switchHelper.isVxlanEnabled(sw.dpId) } && swP.paths.unique(false) {
                 a, b -> a.intersect(b) == [] ? 1 : 0
             }.size() >= 2
         } ?: assumeTrue(false, "No suiting switches found")
 
         def availablePaths = switchPair.paths.findAll { path ->
-            pathHelper.getInvolvedSwitches(path).every { isVxlanEnabled(it.dpId) }
+            pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }
         }
         assumeTrue(availablePaths.size() >= 2, "Unable to find required paths between switches")
 
@@ -361,7 +361,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
         given: "Two active VXLAN supported switches connected to traffgen"
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.findAll {
-            isVxlanEnabled(it.dpId)
+            switchHelper.isVxlanEnabled(it.dpId)
         }*.dpId ?: assumeTrue(false,
 "Should be at least two active traffgens connected to VXLAN supported switches")
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -511,7 +511,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
     def "Unable to create a vxlan flow when dst switch does not support it"() {
         given: "VXLAN supported and not supported switches"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            isVxlanEnabled(it.src.dpId) && !isVxlanEnabled(it.dst.dpId)
+            switchHelper.isVxlanEnabled(it.src.dpId) && !switchHelper.isVxlanEnabled(it.dst.dpId)
         }
         assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
         def dstSupportedEncapsulationTypes = northbound.getSwitchProperties(switchPair.dst.dpId)
@@ -539,7 +539,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
     def "System allows to create/update encapsulation type for a one-switch flow\
 (#encapsulationCreate.toString() -> #encapsulationUpdate.toString())"() {
         when: "Try to create a one-switch flow"
-        def sw = topology.activeSwitches.find { isVxlanEnabled(it.dpId) }
+        def sw = topology.activeSwitches.find { switchHelper.isVxlanEnabled(it.dpId) }
         assumeTrue(sw as boolean, "Require at least 1 VXLAN supported switch")
         def flow = flowHelperV2.singleSwitchFlow(sw)
         flow.encapsulationType = encapsulationCreate
@@ -632,7 +632,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
      * Get minimum amount of switchPairs that will use every unique legal switch as src or dst at least once
      */
     List<SwitchPair> getUniqueVxlanSwitchPairs() {
-        def vxlanEnabledSwitches = topology.activeSwitches.findAll { isVxlanEnabled(it.dpId) }
+        def vxlanEnabledSwitches = topology.activeSwitches.findAll { switchHelper.isVxlanEnabled(it.dpId) }
         def vxlanSwitchPairs = topologyHelper.getSwitchPairs().findAll { swPair ->
             swPair.paths.find { pathHelper.getInvolvedSwitches(it).every { it in vxlanEnabledSwitches } }
         }
@@ -646,12 +646,6 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             }
             r
         } as List<SwitchPair>
-    }
-
-    @Memoized
-    def isVxlanEnabled(SwitchId switchId) {
-        return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
-                .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 
     def getUnsupportedVxlanErrorDescription(endpointName, dpId, supportedEncapsulationTypes) {

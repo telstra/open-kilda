@@ -30,7 +30,7 @@ import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
 @Entity
-@Table(name = "application_setting")
+@Table(name = "APPLICATION_SETTING")
 @Data
 public class ApplicationSettingEntity implements Serializable {
 

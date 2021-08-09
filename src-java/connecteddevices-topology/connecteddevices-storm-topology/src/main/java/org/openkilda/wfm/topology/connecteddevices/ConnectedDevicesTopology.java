@@ -41,8 +41,7 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
     public StormTopology createTopology() {
 
         TopologyBuilder builder = new TopologyBuilder();
-        PersistenceManager persistenceManager =
-                PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
+        PersistenceManager persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
 
         createZkSpout(builder);
 

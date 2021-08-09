@@ -17,7 +17,8 @@ package org.openkilda.persistence.ferma.repositories;
 
 import org.openkilda.model.history.FlowEvent;
 import org.openkilda.model.history.FlowEvent.FlowEventData;
-import org.openkilda.model.history.FlowHistory;
+import org.openkilda.model.history.FlowEventAction;
+import org.openkilda.model.history.FlowStatusView;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.FlowEventFrame;
@@ -26,9 +27,6 @@ import org.openkilda.persistence.ferma.frames.converters.InstantLongConverter;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 
-import com.google.common.collect.Lists;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 import org.apache.tinkerpop.gremlin.process.traversal.Order;
 import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
@@ -46,10 +44,6 @@ import java.util.stream.Collectors;
  */
 public class FermaFlowEventRepository extends FermaGenericRepository<FlowEvent, FlowEventData, FlowEventFrame>
         implements FlowEventRepository {
-    public static final List<String> FLOW_STATUS_ACTION_PARTS =
-            Lists.newArrayList("The flow status was set to ", "The flow status was reverted to ");
-    public static final String FLOW_DELETED_ACTION = "Flow was deleted successfully";
-
     public FermaFlowEventRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
         super(graphFactory, transactionManager);
     }
@@ -100,25 +94,25 @@ public class FermaFlowEventRepository extends FermaGenericRepository<FlowEvent, 
     }
 
     @Override
-    public List<FlowStatusesImmutableView> findFlowStatusesByFlowIdAndTimeFrame(String flowId, Instant timeFrom,
-                                                                                Instant timeTo, int maxCount) {
-        List<FlowStatusesImmutableView> statuses = new ArrayList<>();
+    public List<FlowStatusView> findFlowStatusesByFlowIdAndTimeFrame(String flowId, Instant timeFrom,
+                                                                     Instant timeTo, int maxCount) {
+        List<FlowStatusView> statuses = new ArrayList<>();
         findByFlowIdAndTimeFrame(flowId, timeFrom, timeTo, maxCount).forEach(flowEvent -> {
-            for (FlowHistory flowHistory : flowEvent.getHistoryRecords()) {
-                String action = flowHistory.getAction();
-                if (action.equals(FLOW_DELETED_ACTION)) {
-                    statuses.add(new FlowStatusesViewImpl(flowHistory.getTimestamp(), "DELETED"));
+            for (FlowEventAction flowEventAction : flowEvent.getEventActions()) {
+                String action = flowEventAction.getAction();
+                if (action.equals(FlowEvent.FLOW_DELETED_ACTION)) {
+                    statuses.add(new FlowStatusView(flowEventAction.getTimestamp(), "DELETED"));
                 }
-                for (String actionPart : FLOW_STATUS_ACTION_PARTS) {
+                for (String actionPart : FlowEvent.FLOW_STATUS_ACTION_PARTS) {
                     if (action.contains(actionPart)) {
-                        statuses.add(new FlowStatusesViewImpl(flowHistory.getTimestamp(),
-                                action.replace(actionPart, "")));
+                        statuses.add(new FlowStatusView(
+                                flowEventAction.getTimestamp(), action.replace(actionPart, "")));
                     }
                 }
             }
         });
 
-        statuses.sort(Comparator.comparing(FlowStatusesImmutableView::getTimestamp));
+        statuses.sort(Comparator.comparing(FlowStatusView::getTimestamp));
         return statuses;
     }
 
@@ -138,15 +132,5 @@ public class FermaFlowEventRepository extends FermaGenericRepository<FlowEvent, 
     @Override
     protected FlowEventData doDetach(FlowEvent entity, FlowEventFrame frame) {
         return FlowEvent.FlowEventCloner.INSTANCE.deepCopy(frame);
-    }
-
-    /**
-     * An implementation of FlowStatusesImmutableView.
-     */
-    @Getter
-    @AllArgsConstructor
-    protected static class FlowStatusesViewImpl implements FlowStatusesImmutableView {
-        private final Instant timestamp;
-        private final String statusBecome;
     }
 }

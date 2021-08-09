@@ -32,8 +32,6 @@ import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FeatureTogglesService;
 import org.openkilda.wfm.topology.nbworker.services.IFeatureTogglesCarrier;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -41,7 +39,6 @@ import org.apache.storm.tuple.Values;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 public class FeatureTogglesBolt extends PersistenceOperationsBolt implements IFeatureTogglesCarrier {
     public static final String STREAM_NOTIFICATION_ID = StreamType.NOTIFICATION.toString();
@@ -55,8 +52,9 @@ public class FeatureTogglesBolt extends PersistenceOperationsBolt implements IFe
     }
 
     @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        super.prepare(stormConf, context, collector);
+    public void init() {
+        super.init();
+
         featureTogglesService = new FeatureTogglesService(this, repositoryFactory, transactionManager);
     }
 

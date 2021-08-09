@@ -67,7 +67,7 @@ public class MeterInstallCommand extends AbstractMeterInstall<MeterInstallReport
         return new MeterInstallReport(this, error);
     }
 
-    private MeterInstallReport makeSuccessReport() {
+    protected MeterInstallReport makeSuccessReport() {
         return new MeterInstallReport(this);
     }
 
@@ -115,7 +115,7 @@ public class MeterInstallCommand extends AbstractMeterInstall<MeterInstallReport
         }
     }
 
-    private void ensureMeterIdValid() throws InvalidMeterIdException {
+    protected void ensureMeterIdValid() throws InvalidMeterIdException {
         MeterId meterId = meterConfig.getId();
         if (meterId == null || meterId.getValue() <= 0L) {
             throw new InvalidMeterIdException(getSw().getId(), String.format(

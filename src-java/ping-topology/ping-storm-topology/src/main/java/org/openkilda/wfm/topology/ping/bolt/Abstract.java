@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.ping.bolt;
 
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.ping.model.Group;
 import org.openkilda.wfm.topology.ping.model.PingContext;
@@ -26,10 +27,19 @@ abstract class Abstract extends org.openkilda.wfm.AbstractBolt {
     public static final String FIELD_ID_PING_GROUP = "ping.group";
 
     public Abstract() {
+        super();
     }
 
     public Abstract(String lifeCycleEventSourceComponent) {
         super(lifeCycleEventSourceComponent);
+    }
+
+    public Abstract(PersistenceManager persistenceProvider) {
+        super(persistenceProvider);
+    }
+
+    public Abstract(PersistenceManager persistenceProvider, String lifeCycleEventSourceComponent) {
+        super(persistenceProvider, lifeCycleEventSourceComponent);
     }
 
     protected PingContext pullPingContext(Tuple input) throws PipelineException {

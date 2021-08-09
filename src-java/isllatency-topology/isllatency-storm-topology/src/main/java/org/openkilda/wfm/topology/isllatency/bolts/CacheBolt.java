@@ -41,17 +41,16 @@ import org.apache.storm.tuple.Values;
 
 
 public class CacheBolt extends AbstractBolt implements CacheCarrier {
-    private final PersistenceManager persistenceManager;
     private transient CacheService cacheService;
 
     public CacheBolt(PersistenceManager persistenceManager) {
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager);
     }
 
     @Override
-    @PersistenceContextRequired(requiresNew = true)
     public void init() {
-        cacheService = new CacheService(this, persistenceManager.getRepositoryFactory());
+        super.init();
+        cacheService = newCacheService();
     }
 
     @Override
@@ -86,5 +85,10 @@ public class CacheBolt extends AbstractBolt implements CacheCarrier {
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         Fields fields = new Fields(ISL_GROUPING_FIELD, LATENCY_DATA_FIELD, CACHE_DATA_FIELD, FIELD_ID_CONTEXT);
         declarer.declareStream(StreamType.LATENCY.toString(), fields);
+    }
+
+    @PersistenceContextRequired(requiresNew = true)
+    private CacheService newCacheService() {
+        return new CacheService(this, persistenceManager.getRepositoryFactory());
     }
 }

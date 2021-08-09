@@ -1,0 +1,20 @@
+plugins {
+    id 'java-library'
+}
+
+description = 'Kilda mixed Persistence layer above OrienDB and SQL storages'
+dependencies {
+    api project(':kilda-persistence-api')
+    api project(':kilda-model')
+    implementation project(':kilda-configuration')
+
+    implementation project(':kilda-persistence-orientdb')
+    implementation project(':kilda-persistence-hibernate')
+    implementation project(':kilda-persistence-tinkerpop')
+
+    implementation 'org.hibernate:hibernate-core:5.4.32.Final'
+    implementation 'mysql:mysql-connector-java:8.0.25'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}

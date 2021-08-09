@@ -88,13 +88,12 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
             KafkaEncoder.FIELD_ID_KEY, KafkaEncoder.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     private final NetworkOptions options;
-    private final PersistenceManager persistenceManager;
 
     private transient NetworkSwitchService service;
 
     public SwitchHandler(NetworkOptions options, PersistenceManager persistenceManager) {
+        super(persistenceManager);
         this.options = options;
-        this.persistenceManager = persistenceManager;
     }
 
     @Override

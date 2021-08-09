@@ -37,12 +37,10 @@ import org.apache.storm.tuple.Tuple;
 
 @Slf4j
 public class PacketBolt extends AbstractBolt {
-    private final PersistenceManager persistenceManager;
     private transient PacketService packetService;
 
     public PacketBolt(PersistenceManager persistenceManager, String lifeCycleEventSourceComponent) {
-        super(lifeCycleEventSourceComponent);
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager, lifeCycleEventSourceComponent);
     }
 
     @Override

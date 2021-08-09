@@ -1,9 +1,11 @@
 package org.openkilda.functionaltests.spec.configuration
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -12,12 +14,14 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
@@ -37,10 +41,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
     def "System takes into account default flow encapsulation type while creating a flow"() {
         when: "Create a flow without encapsulation type"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            [swP.src, swP.dst].every { sw ->
-                northbound.getSwitchProperties(sw.dpId).supportedTransitEncapsulation
-                    .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
-            }
+            [swP.src, swP.dst].every { sw -> switchHelper.isVxlanEnabled(sw.dpId) }
         }
         def flow1 = flowHelperV2.randomFlow(switchPair)
         flow1.encapsulationType = null
@@ -114,15 +115,23 @@ class ConfigurationSpec extends HealthCheckSpecification {
         }
 
         when: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
+        //https://github.com/telstra/open-kilda/issues/4130
+        withPool {
+            isls.eachParallel { Isl isl ->
+                northboundV2.updatePortProperties(isl.srcSwitch.dpId, isl.srcPort,
+                        new PortPropertiesDto(discoveryEnabled: false))
+                northboundV2.updatePortProperties(isl.dstSwitch.dpId,isl.dstPort,
+                        new PortPropertiesDto(discoveryEnabled: false))
+            }
+        }
+        def portDiscoveryIsEnabled = false
         def blockData = switchHelper.knockoutSwitch(sw, RW, true)
-        Wrappers.retry(2, 1) { //https://github.com/telstra/open-kilda/issues/4130
-            Wrappers.silent { isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) } }
-            Wrappers.wait(WAIT_OFFSET) {
-                def links = northbound.getAllLinks()
-                isls.each {
-                    assert !islUtils.getIslInfo(links, it).present
-                    assert !islUtils.getIslInfo(links, it.reversed).present
-                }
+        isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
+        wait(WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            isls.each {
+                assert !islUtils.getIslInfo(links, it).present
+                assert !islUtils.getIslInfo(links, it.reversed).present
             }
         }
         northbound.deleteSwitch(sw.dpId, false)
@@ -134,19 +143,50 @@ class ConfigurationSpec extends HealthCheckSpecification {
         })
 
         and: "New switch connects"
-        switchHelper.reviveSwitch(sw, blockData, true)
+        switchHelper.reviveSwitch(sw, blockData, false)
+        withPool {
+            isls.eachParallel { Isl isl ->
+                northboundV2.updatePortProperties(isl.srcSwitch.dpId, isl.srcPort,
+                        new PortPropertiesDto(discoveryEnabled: true))
+                northboundV2.updatePortProperties(isl.dstSwitch.dpId,isl.dstPort,
+                        new PortPropertiesDto(discoveryEnabled: true))
+            }
+        }
+        wait(discoveryInterval + WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            withPool {
+                isls.eachParallel { Isl isl ->
+                    assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
+                    assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
+                }
+            }
+        }
         def switchIsActivated = true
+        portDiscoveryIsEnabled = true
 
         then: "Switch is added with switch property according to the kilda configuration"
         northbound.getSwitchProperties(sw.dpId).multiTable == newMultiTableValue
 
         cleanup: "Revert system to origin state"
-        blockData && !switchIsActivated && switchHelper.reviveSwitch(sw, blockData, true)
+        blockData && !switchIsActivated && switchHelper.reviveSwitch(sw, blockData, false)
+        if (isls && !portDiscoveryIsEnabled) {
+            withPool {
+                isls.eachParallel { Isl isl ->
+                    northboundV2.updatePortProperties(isl.srcSwitch.dpId, isl.srcPort,
+                            new PortPropertiesDto(discoveryEnabled: true))
+                    northboundV2.updatePortProperties(isl.dstSwitch.dpId,isl.dstPort,
+                            new PortPropertiesDto(discoveryEnabled: true))
+                }
+            }
+        }
         initConf && northbound.updateKildaConfiguration(initConf)
         initConf && northbound.updateSwitchProperties(sw.dpId,
                 northbound.getSwitchProperties(sw.dpId).tap { multiTable = initConf.useMultiTable })
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
+        wait(RULES_INSTALLATION_TIME) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+        }
+        wait(discoveryInterval + WAIT_OFFSET) {
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
     }
 }

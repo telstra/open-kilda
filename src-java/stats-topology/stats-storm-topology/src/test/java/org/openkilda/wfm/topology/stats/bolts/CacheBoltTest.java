@@ -21,6 +21,7 @@ import static org.openkilda.wfm.topology.stats.MeasurePoint.EGRESS;
 import static org.openkilda.wfm.topology.stats.MeasurePoint.INGRESS;
 import static org.openkilda.wfm.topology.stats.MeasurePoint.TRANSIT;
 
+import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.MeterStatsData;
@@ -34,13 +35,16 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.MeasurePoint;
 import org.openkilda.wfm.topology.stats.MeterCacheKey;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -75,6 +79,12 @@ public class CacheBoltTest {
     private RepositoryFactory repositoryFactory;
     @Mock
     private FlowRepository flowRepository;
+
+    @BeforeClass
+    public static void initPersistenceManager() {
+        PersistenceProvider.makeDefault(
+                new InMemoryGraphPersistenceManager(new PropertiesBasedConfigurationProvider()));
+    }
 
     @Test
     public void cacheBoltInitCookieTest() {

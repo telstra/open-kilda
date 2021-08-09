@@ -69,6 +69,7 @@ import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -382,10 +383,10 @@ public class ValidationServiceImpl implements ValidationService {
         }
 
         return new ValidateRulesResult(
-                ImmutableList.copyOf(missingRules),
-                ImmutableList.copyOf(properRules),
-                ImmutableList.copyOf(excessRules),
-                ImmutableList.copyOf(misconfiguredRules));
+                ImmutableSet.copyOf(missingRules),
+                ImmutableSet.copyOf(properRules),
+                ImmutableSet.copyOf(excessRules),
+                ImmutableSet.copyOf(misconfiguredRules));
     }
 
     private void validateDefaultRules(List<FlowEntry> presentRules, List<FlowEntry> expectedDefaultRules,

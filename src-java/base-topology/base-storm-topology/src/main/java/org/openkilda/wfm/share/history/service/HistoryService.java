@@ -16,46 +16,45 @@
 package org.openkilda.wfm.share.history.service;
 
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.history.FlowDump;
 import org.openkilda.model.history.FlowEvent;
-import org.openkilda.model.history.FlowHistory;
-import org.openkilda.model.history.PortHistory;
+import org.openkilda.model.history.FlowEventAction;
+import org.openkilda.model.history.FlowEventDump;
+import org.openkilda.model.history.FlowStatusView;
+import org.openkilda.model.history.PortEvent;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.history.FlowDumpRepository;
+import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
+import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
-import org.openkilda.persistence.repositories.history.FlowEventRepository.FlowStatusesImmutableView;
-import org.openkilda.persistence.repositories.history.FlowHistoryRepository;
-import org.openkilda.persistence.repositories.history.PortHistoryRepository;
+import org.openkilda.persistence.repositories.history.PortEventRepository;
+import org.openkilda.persistence.tx.TransactionArea;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
-import org.openkilda.wfm.share.history.model.PortHistoryData;
+import org.openkilda.wfm.share.history.model.PortEventData;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Slf4j
 public class HistoryService {
     private final TransactionManager transactionManager;
     private final FlowEventRepository flowEventRepository;
-    private final FlowHistoryRepository flowHistoryRepository;
-    private final FlowDumpRepository flowDumpRepository;
-    private final PortHistoryRepository portHistoryRepository;
+    private final PortEventRepository portEventRepository;
+    private final FlowEventActionRepository flowEventActionRepository;
+    private final FlowEventDumpRepository flowEventDumpRepository;
 
     public HistoryService(PersistenceManager persistenceManager) {
-        this(persistenceManager.getTransactionManager(), persistenceManager.getRepositoryFactory());
-    }
+        transactionManager = persistenceManager.getTransactionManager(TransactionArea.HISTORY);
 
-    public HistoryService(TransactionManager transactionManager, RepositoryFactory repositoryFactory) {
-        this.transactionManager = transactionManager;
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowEventRepository = repositoryFactory.createFlowEventRepository();
-        flowHistoryRepository = repositoryFactory.createFlowHistoryRepository();
-        flowDumpRepository = repositoryFactory.createFlowDumpRepository();
-        portHistoryRepository = repositoryFactory.createPortHistoryRepository();
+        portEventRepository = repositoryFactory.createPortEventRepository();
+        flowEventActionRepository = repositoryFactory.createFlowEventActionRepository();
+        flowEventDumpRepository = repositoryFactory.createFlowEventDumpRepository();
     }
 
     /**
@@ -73,15 +72,15 @@ public class HistoryService {
             }
 
             if (historyHolder.getFlowHistoryData() != null) {
-                FlowHistory history = HistoryMapper.INSTANCE.map(historyHolder.getFlowHistoryData());
+                FlowEventAction history = HistoryMapper.INSTANCE.map(historyHolder.getFlowHistoryData());
                 history.setTaskId(taskId);
-                flowHistoryRepository.add(history);
+                flowEventActionRepository.add(history);
             }
 
             if (historyHolder.getFlowDumpData() != null) {
-                FlowDump dump = HistoryMapper.INSTANCE.map(historyHolder.getFlowDumpData());
+                FlowEventDump dump = HistoryMapper.INSTANCE.map(historyHolder.getFlowDumpData());
                 dump.setTaskId(taskId);
-                flowDumpRepository.add(dump);
+                flowEventDumpRepository.add(dump);
             }
         });
     }
@@ -89,35 +88,43 @@ public class HistoryService {
     /**
      * Persist the history record.
      */
-    public void store(PortHistoryData data) {
-        PortHistory entity = HistoryMapper.INSTANCE.map(data);
-        entity.setRecordId(UUID.randomUUID());
-        portHistoryRepository.add(entity);
+    public void store(PortEventData data) {
+        portEventRepository.add(HistoryMapper.INSTANCE.map(data));
     }
 
     /**
      * Fetches flow history records by a flow ID and a time period.
      */
     public List<FlowEvent> listFlowEvents(String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
-        List<FlowEvent> result = flowEventRepository.findByFlowIdAndTimeFrame(flowId, timeFrom, timeTo, maxCount);
-        result.forEach(flowEventRepository::detach);
+        List<FlowEvent> result = new ArrayList<>();
+        transactionManager.doInTransaction(() -> flowEventRepository
+                .findByFlowIdAndTimeFrame(flowId, timeFrom, timeTo, maxCount)
+                .forEach(entry -> {
+                    flowEventRepository.detach(entry);
+                    result.add(entry);
+                }));
         return result;
     }
 
     /**
      * Fetches flow status timestamps by a flow ID and a time period.
      */
-    public List<FlowStatusesImmutableView>  getFlowStatusTimestamps(String flowId,
-                                                                    Instant timeFrom, Instant timeTo, int maxCount) {
+    public List<FlowStatusView> getFlowStatusTimestamps(String flowId,
+                                                        Instant timeFrom, Instant timeTo, int maxCount) {
         return flowEventRepository.findFlowStatusesByFlowIdAndTimeFrame(flowId, timeFrom, timeTo, maxCount);
     }
 
     /**
      * Fetches port history records.
      */
-    public List<PortHistory> listPortHistory(SwitchId switchId, int portNumber, Instant start, Instant end) {
-        List<PortHistory> result = portHistoryRepository.findBySwitchIdAndPortNumber(switchId, portNumber, start, end);
-        result.forEach(portHistoryRepository::detach);
+    public List<PortEvent> listPortHistory(SwitchId switchId, int portNumber, Instant start, Instant end) {
+        List<PortEvent> result = new ArrayList<>();
+        transactionManager.doInTransaction(() -> portEventRepository
+                .findBySwitchIdAndPortNumber(switchId, portNumber, start, end)
+                .forEach(entry -> {
+                    portEventRepository.detach(entry);
+                    result.add(entry);
+                }));
         return result;
     }
 }

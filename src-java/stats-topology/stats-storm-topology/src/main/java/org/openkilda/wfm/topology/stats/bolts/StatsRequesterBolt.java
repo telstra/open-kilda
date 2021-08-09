@@ -43,17 +43,17 @@ import java.util.Optional;
 public class StatsRequesterBolt extends AbstractBolt {
     public static final String ZOOKEEPER_STREAM = ZkStreams.ZK.toString();
 
-    private final PersistenceManager persistenceManager;
     private transient SwitchRepository switchRepository;
     private transient KildaFeatureTogglesRepository featureTogglesRepository;
 
     public StatsRequesterBolt(PersistenceManager persistenceManager, String lifeCycleEventSourceComponent) {
-        super(lifeCycleEventSourceComponent);
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager, lifeCycleEventSourceComponent);
     }
 
     @Override
     protected void init() {
+        super.init();
+
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
     }

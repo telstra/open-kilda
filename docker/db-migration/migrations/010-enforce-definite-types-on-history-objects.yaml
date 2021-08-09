@@ -1,0 +1,48 @@
+---
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: surabujin
+      changes:
+        - tagDatabase:
+            tag: 010-enforce-definite-types-on-history-objects
+
+  - changeSet:
+      id: add_unique_index_for_port_history
+      author: surabujin
+      changes:
+        - sql: "CREATE PROPERTY port_history.id IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX port_history.id UNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DROP INDEX port_history.id"
+        - sql: "DROP PROPERTY port_history.id"
+
+  - changeSet:
+      id: enforce_definite_types_for_flow_dump_objects
+      author: surabujin
+      changes:
+        - sql: "CREATE PROPERTY flow_dump.bandwidth IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY flow_dump.forward_cookie IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY flow_dump.reverse_cookie IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY flow_dump.src_port IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_dump.dst_port IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_dump.src_vlan IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_dump.dst_vlan IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_dump.src_inner_vlan IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_dump.dst_inner_vlan IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_dump.forward_meter_id IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY flow_dump.reverse_meter_id IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY flow_dump.max_latency IF NOT EXISTS LONG"
+      rollback:
+        - sql: "DROP PROPERTY flow_dump.max_latency"
+        - sql: "DROP PROPERTY flow_dump.reverse_meter_id"
+        - sql: "DROP PROPERTY flow_dump.forward_meter_id"
+        - sql: "DROP PROPERTY flow_dump.dst_inner_vlan"
+        - sql: "DROP PROPERTY flow_dump.src_inner_vlan"
+        - sql: "DROP PROPERTY flow_dump.dst_vlan"
+        - sql: "DROP PROPERTY flow_dump.src_vlan"
+        - sql: "DROP PROPERTY flow_dump.dst_port"
+        - sql: "DROP PROPERTY flow_dump.src_port"
+        - sql: "DROP PROPERTY flow_dump.reverse_cookie"
+        - sql: "DROP PROPERTY flow_dump.forward_cookie"
+        - sql: "DROP PROPERTY flow_dump.bandwidth"
