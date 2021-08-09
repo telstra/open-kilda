@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.switchmanager.bolt;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.grpc.GrpcBaseRequest;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
 import org.openkilda.wfm.topology.switchmanager.StreamType;
@@ -50,7 +51,11 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
         String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
         CommandData command = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, CommandData.class);
 
-        service.sendCommand(key, command);
+        if (command instanceof GrpcBaseRequest) {
+            service.sendGrpcCommand(key, command);
+        } else {
+            service.sendFloodlightCommand(key, command);
+        }
     }
 
     @Override
@@ -70,11 +75,17 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
         declarer.declareStream(StreamType.TO_FLOODLIGHT.toString(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(StreamType.TO_GRPC.toString(), MessageKafkaTranslator.STREAM_FIELDS);
     }
 
     @Override
-    public void sendCommand(String key, CommandMessage command) {
+    public void sendFloodlightCommand(String key, CommandMessage command) {
         emitWithContext(StreamType.TO_FLOODLIGHT.toString(), getCurrentTuple(), new Values(key, command));
+    }
+
+    @Override
+    public void sendGrpcCommand(String key, CommandMessage command) {
+        emitWithContext(StreamType.TO_GRPC.toString(), getCurrentTuple(), new Values(key, command));
     }
 
     @Override

@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,11 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager;
+package org.openkilda.northbound.dto.v2.switches;
 
-public enum StreamType {
-    TO_NORTHBOUND,
-    TO_FLOODLIGHT,
-    TO_GRPC,
-    HUB_TO_METRICS_BOLT
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
+public class LagPostDto {
+    private List<Integer> portNumbers;
 }

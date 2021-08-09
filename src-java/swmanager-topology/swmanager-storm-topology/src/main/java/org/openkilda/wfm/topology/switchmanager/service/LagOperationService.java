@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,15 +15,21 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
-import org.openkilda.messaging.Message;
-import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeature;
+import org.openkilda.model.SwitchId;
 
-public interface SpeakerCommandCarrier {
+import java.util.List;
+import java.util.Set;
 
-    void sendFloodlightCommand(String key, CommandMessage command) throws PipelineException;
+public interface LagOperationService {
+    int createLagPort(SwitchId switchId, List<Integer> physicalPortNumbers);
 
-    void sendGrpcCommand(String key, CommandMessage command) throws PipelineException;
+    void removeCreatedLagPort(SwitchId switchId, List<Integer> physicalPortNumbers);
 
-    void sendResponse(String key, Message response) throws PipelineException;
+    void validatePhysicalPorts(SwitchId switchId, List<Integer> physicalPortNumbers, Set<SwitchFeature> features);
+
+    String getSwitchIpAddress(Switch sw);
+
+    Switch getSwitch(SwitchId switchId);
 }

@@ -26,7 +26,7 @@ public interface SwitchManagerCarrier {
 
     void response(String key, Message message);
 
-    void errorResponse(String key, ErrorType error, String message);
+    void errorResponse(String key, ErrorType error, String message, String description);
 
     void cancelTimeoutCallback(String key);
 

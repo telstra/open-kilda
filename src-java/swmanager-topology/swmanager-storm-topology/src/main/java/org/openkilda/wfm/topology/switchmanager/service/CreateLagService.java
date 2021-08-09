@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,15 +15,23 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
-import org.openkilda.messaging.Message;
-import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
+import org.openkilda.messaging.swmanager.request.CreateLagRequest;
 
-public interface SpeakerCommandCarrier {
+public interface CreateLagService {
 
-    void sendFloodlightCommand(String key, CommandMessage command) throws PipelineException;
+    void handleCreateLagRequest(String key, CreateLagRequest request);
 
-    void sendGrpcCommand(String key, CommandMessage command) throws PipelineException;
+    void handleGrpcResponse(String key, CreateLogicalPortResponse response);
 
-    void sendResponse(String key, Message response) throws PipelineException;
+    void handleTaskTimeout(String key);
+
+    void handleTaskError(String key, ErrorMessage message);
+
+    void activate();
+
+    boolean deactivate();
+
+    boolean isAllOperationsCompleted();
 }

@@ -19,6 +19,8 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.controller.BaseController;
+import org.openkilda.northbound.dto.v2.switches.LagDto;
+import org.openkilda.northbound.dto.v2.switches.LagPostDto;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
@@ -38,6 +40,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -168,5 +171,19 @@ public class SwitchControllerV2 extends BaseController {
     @GetMapping(path = "/{switch_id}/connections")
     public CompletableFuture<SwitchConnectionsResponse> getConnections(@PathVariable("switch_id") SwitchId switchId) {
         return switchService.getSwitchConnections(switchId);
+    }
+
+    /**
+     * Create LAG logical port.
+     *
+     * @param switchId the switch
+     */
+    @ApiOperation(value = "Create LAG logical port", response = LagDto.class)
+    @PostMapping(value = "/{switch_id}/lags")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<LagDto> createLags(@PathVariable("switch_id") SwitchId switchId,
+                                                @ApiParam(value = "Physical ports which will be grouped")
+                                                @RequestBody LagPostDto lagPostDto) {
+        return switchService.createLag(switchId, lagPostDto);
     }
 }

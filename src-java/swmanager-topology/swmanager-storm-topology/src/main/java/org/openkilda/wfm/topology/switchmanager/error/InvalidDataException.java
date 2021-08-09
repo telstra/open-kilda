@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,11 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager;
+package org.openkilda.wfm.topology.switchmanager.error;
 
-public enum StreamType {
-    TO_NORTHBOUND,
-    TO_FLOODLIGHT,
-    TO_GRPC,
-    HUB_TO_METRICS_BOLT
+import org.openkilda.messaging.error.ErrorType;
+
+import lombok.Getter;
+
+@Getter
+public class InvalidDataException extends SwitchManagerException {
+    public InvalidDataException(String message) {
+        super(ErrorType.DATA_INVALID, message);
+    }
 }

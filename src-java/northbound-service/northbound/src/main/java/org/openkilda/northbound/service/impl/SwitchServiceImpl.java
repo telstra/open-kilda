@@ -69,11 +69,14 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.messaging.payload.switches.PortPropertiesPayload;
+import org.openkilda.messaging.swmanager.request.CreateLagRequest;
+import org.openkilda.messaging.swmanager.response.LagResponse;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.FlowMapper;
+import org.openkilda.northbound.converter.LagMapper;
 import org.openkilda.northbound.converter.PortPropertiesMapper;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.dto.v1.switches.DeleteMeterResult;
@@ -86,6 +89,8 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
+import org.openkilda.northbound.dto.v2.switches.LagDto;
+import org.openkilda.northbound.dto.v2.switches.LagPostDto;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
@@ -118,6 +123,9 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Autowired
     private SwitchMapper switchMapper;
+
+    @Autowired
+    private LagMapper lagMapper;
 
     @Autowired
     private ConnectedDeviceMapper connectedDeviceMapper;
@@ -573,6 +581,18 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         return sendRequest(nbworkerTopic, new SwitchConnectionsRequest(switchId))
                 .thenApply(org.openkilda.messaging.nbtopology.response.SwitchConnectionsResponse.class::cast)
                 .thenApply(switchMapper::map);
+    }
+
+    @Override
+    public CompletableFuture<LagDto> createLag(SwitchId switchId, LagPostDto lagPostDto) {
+        logger.info("Create Link aggregation group on switch {}, ports {}", switchId, lagPostDto.getPortNumbers());
+
+        CreateLagRequest data = new CreateLagRequest(switchId, lagPostDto.getPortNumbers());
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGet(switchManagerTopic, request)
+                .thenApply(LagResponse.class::cast)
+                .thenApply(lagMapper::map);
     }
 
     private Boolean toPortAdminDown(PortStatus status) {
