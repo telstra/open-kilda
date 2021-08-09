@@ -1,5 +1,5 @@
 ---
-#no_gui: true
+no_gui: true
 #no_kibana: true
 #no_floodlight_2: true
 #no_floodlight_stats: true
@@ -10,8 +10,8 @@
 #no_logstash: true
 #no_grpc_stub: true
 no_server42_server: true
-#no_server42_control: true
-#no_server42_stats: true
-#no_server42_server_stub: true
-#no_server42_storm_stub: true
+no_server42_control: true
+no_server42_stats: true
+no_server42_server_stub: true
+no_server42_storm_stub: true
 single_orientdb: true
