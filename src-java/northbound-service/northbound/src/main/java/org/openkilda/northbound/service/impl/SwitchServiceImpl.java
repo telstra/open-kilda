@@ -73,6 +73,7 @@ import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.messaging.payload.switches.PortPropertiesPayload;
 import org.openkilda.messaging.swmanager.request.CreateLagPortRequest;
+import org.openkilda.messaging.swmanager.request.DeleteLagPortRequest;
 import org.openkilda.messaging.swmanager.response.LagPortResponse;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.PortStatus;
@@ -627,6 +628,18 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
                         .map(SwitchLagPortResponse::getData)
                         .map(lagPortMapper::map)
                         .collect(Collectors.toList()));
+    }
+
+    @Override
+    public CompletableFuture<LagPortDto> deleteLagPort(SwitchId switchId, Integer logicalPortNumber) {
+        logger.info("Removing Link aggregation group {} on switch {}", logicalPortNumber, switchId);
+
+        DeleteLagPortRequest data = new DeleteLagPortRequest(switchId, logicalPortNumber);
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGet(switchManagerTopic, request)
+                .thenApply(LagPortResponse.class::cast)
+                .thenApply(lagPortMapper::map);
     }
 
     private Boolean toPortAdminDown(PortStatus status) {
