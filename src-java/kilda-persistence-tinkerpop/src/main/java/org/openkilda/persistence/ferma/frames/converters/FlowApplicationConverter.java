@@ -28,7 +28,7 @@ public class FlowApplicationConverter implements AttributeConverter<FlowApplicat
         if (value == null) {
             return null;
         }
-        return value.name();
+        return value.name().toLowerCase();
     }
 
     @Override
