@@ -31,9 +31,11 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
+import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
+import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SpeakerRepository;
@@ -200,5 +202,15 @@ public class SqlHistoryRepositoryFactory implements RepositoryFactory {
     @Override
     public FlowMirrorPathRepository createFlowMirrorPathRepository() {
         return orientRepositoryFactory.createFlowMirrorPathRepository();
+    }
+
+    @Override
+    public LagLogicalPortRepository createLagLogicalPortRepository() {
+        return orientRepositoryFactory.createLagLogicalPortRepository();
+    }
+
+    @Override
+    public PhysicalPortRepository createPhysicalPortRepository() {
+        return orientRepositoryFactory.createPhysicalPortRepository();
     }
 }

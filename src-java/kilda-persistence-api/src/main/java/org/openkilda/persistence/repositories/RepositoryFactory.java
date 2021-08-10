@@ -77,4 +77,8 @@ public interface RepositoryFactory {
     FlowMirrorPointsRepository createFlowMirrorPointsRepository();
 
     FlowMirrorPathRepository createFlowMirrorPathRepository();
+
+    LagLogicalPortRepository createLagLogicalPortRepository();
+
+    PhysicalPortRepository createPhysicalPortRepository();
 }
