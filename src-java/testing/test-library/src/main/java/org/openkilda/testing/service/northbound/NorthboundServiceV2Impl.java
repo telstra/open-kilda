@@ -30,6 +30,8 @@ import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 import org.openkilda.northbound.dto.v2.links.BfdProperties;
 import org.openkilda.northbound.dto.v2.links.BfdPropertiesPayload;
+import org.openkilda.northbound.dto.v2.switches.LagDto;
+import org.openkilda.northbound.dto.v2.switches.LagPostDto;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
@@ -292,6 +294,30 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
         log.debug("Get all switch properties");
         return restTemplate.exchange("/api/v2/switches/properties", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchPropertiesDump.class).getBody();
+    }
+
+    @Override
+    public List<LagDto> getLagLogicalPort(SwitchId switchId) {
+        log.debug("Get LAG ports from switch('{}')", switchId);
+        LagDto[] lagPorts = restTemplate.exchange("/api/v2/switches/{switchId}/lags", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), LagDto[].class, switchId).getBody();
+        return Arrays.asList(lagPorts);
+    }
+
+    @Override
+    public LagDto createLagLogicalPort(SwitchId switchId, LagPostDto payload) {
+        log.debug("Create LAG port on switch('{}')", switchId);
+        HttpEntity<LagPostDto> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v2/switches/{switchId}/lags", HttpMethod.POST, httpEntity,
+                LagDto.class, switchId).getBody();
+    }
+
+    @Override
+    public LagDto deleteLagLogicalPort(SwitchId switchId, Integer logicalPortNumber) {
+        log.debug("Delete LAG port('{}') from switch('{}')", logicalPortNumber, switchId);
+        return restTemplate.exchange("/api/v2/switches/{switch_id}/lags/{logical_port_number}", HttpMethod.DELETE,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), LagDto.class, switchId,
+                logicalPortNumber).getBody();
     }
 
     @Override
