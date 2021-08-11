@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.service.impl;
+package org.openkilda.wfm.topology.switchmanager.service.impl.fsmhandlers;
 
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.emptyList;

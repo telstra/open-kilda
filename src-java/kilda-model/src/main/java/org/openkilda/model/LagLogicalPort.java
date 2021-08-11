@@ -41,6 +41,7 @@ import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -112,6 +113,11 @@ public class LagLogicalPort implements CompositeDataEntity<LagLogicalPortData> {
     @Override
     public int hashCode() {
         return Objects.hash(getSwitchId(), getLogicalPortNumber());
+    }
+
+    public static int generateLogicalPortNumber(Collection<Integer> physicalPorts, int lagPortOffset) {
+        return physicalPorts.stream().min(Integer::compareTo).map(port -> port + lagPortOffset).orElseThrow(
+                () -> new IllegalArgumentException("No physical ports provided"));
     }
 
     /**

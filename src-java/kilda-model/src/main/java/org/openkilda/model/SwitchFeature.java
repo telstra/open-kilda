@@ -33,5 +33,6 @@ public enum SwitchFeature {
     NOVIFLOW_SWAP_ETH_SRC_ETH_DST,
     GROUPS,
     KILDA_OVS_COPY_FIELD,
-    KILDA_OVS_SWAP_FIELD
+    KILDA_OVS_SWAP_FIELD,
+    LAG
 }

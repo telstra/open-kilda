@@ -13,18 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.grpc;
+package org.openkilda.floodlight.feature;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import org.openkilda.model.SwitchFeature;
 
-@Data
-@EqualsAndHashCode(callSuper = true)
-public class DumpLogicalPortsRequest extends GrpcBaseRequest {
-    @JsonCreator
-    public DumpLogicalPortsRequest(@JsonProperty("address") String address) {
-        super(address);
+import net.floodlightcontroller.core.IOFSwitch;
+
+import java.util.Optional;
+
+public class LagFeature extends NoviflowSpecificFeature {
+    @Override
+    public Optional<SwitchFeature> discover(IOFSwitch sw) {
+        if (isNoviSwitch(sw)) {
+            return Optional.of(SwitchFeature.LAG);
+        }
+        return Optional.empty();
     }
 }

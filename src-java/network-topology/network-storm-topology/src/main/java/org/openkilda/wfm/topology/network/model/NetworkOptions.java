@@ -41,6 +41,10 @@ public class NetworkOptions implements Serializable {
 
     private Integer bfdLogicalPortOffset;
 
+    private Integer bfdLogicalPortMaxNumber;
+
+    private Integer lagLogicalPortOffset;
+
     private boolean bfdEnabled;
 
     private long delayWarmUp;
@@ -68,7 +72,9 @@ public class NetworkOptions implements Serializable {
         discoveryPacketTtl = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryPacketTtl());
         discoveryTimeout = Duration.ofSeconds(topologyConfig.getDiscoveryTimeout());
 
+        lagLogicalPortOffset = topologyConfig.getLagPortOffset();
         bfdLogicalPortOffset = topologyConfig.getBfdPortOffset();
+        bfdLogicalPortMaxNumber = topologyConfig.getBfdPortMaxNumber();
         bfdEnabled = topologyConfig.isBfdEnabled();
 
         delayWarmUp = TimeUnit.SECONDS.toNanos(topologyConfig.getPortUpDownThrottlingDelaySecondsWarmUp());

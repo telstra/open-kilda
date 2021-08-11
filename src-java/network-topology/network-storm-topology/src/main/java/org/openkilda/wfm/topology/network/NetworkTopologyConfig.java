@@ -51,8 +51,16 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
     }
 
     @Key("bfd.port.offset")
-    @Default("200")
+    @Default("1000")
     int getBfdPortOffset();
+
+    @Key("bfd.port.max.number")
+    @Default("1999")
+    int getBfdPortMaxNumber();
+
+    @Key("lag.port.offset")
+    @Default("2000")
+    int getLagPortOffset();
 
     @Key("speaker.io.timeout.seconds")
     @Default("60")

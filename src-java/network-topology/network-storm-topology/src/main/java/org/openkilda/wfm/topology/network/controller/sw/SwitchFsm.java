@@ -607,23 +607,42 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         AbstractPort record;
         if (isPhysicalPort(endpoint.getPortNumber())) {
             record = new PhysicalPort(endpoint);
-        } else {
-            // at this moment we know only 2 kind of ports - physical and logical-BFD
+        } else if (isBfdPort(endpoint.getPortNumber())) {
             record = new LogicalBfdPort(endpoint, endpoint.getPortNumber() - options.getBfdLogicalPortOffset());
+        } else if (isLagPort(endpoint.getPortNumber())) {
+            record = new LogicalLagPort(endpoint);
+        } else {
+            log.warn(String.format("Got unknown port %s", endpoint));
+            record = new UnknownPort(endpoint);
         }
 
         return record;
     }
 
+    private boolean isBfdPort(int portNumber) {
+        if (features.contains(SwitchFeature.BFD)) {
+            return portNumber >= options.getBfdLogicalPortOffset()
+                    && portNumber <= options.getBfdLogicalPortMaxNumber();
+        }
+        return false;
+    }
+
+    private boolean isLagPort(int portNumber) {
+        if (features.contains(SwitchFeature.LAG)) {
+            return portNumber >= options.getLagLogicalPortOffset();
+        }
+        return false;
+    }
+
     /**
      * Distinguish physical ports from other port types.
-     *
-     * <p>At this moment we have 2 kind of ports - physical ports and logical-BFD ports. So if this method return false
-     * wee have a deal with logical-BFD port.
      */
     private boolean isPhysicalPort(int portNumber) {
         if (features.contains(SwitchFeature.BFD)) {
             return portNumber < options.getBfdLogicalPortOffset();
+        }
+        if (features.contains(SwitchFeature.LAG)) {
+            return portNumber < options.getLagLogicalPortOffset();
         }
         return true;
     }
