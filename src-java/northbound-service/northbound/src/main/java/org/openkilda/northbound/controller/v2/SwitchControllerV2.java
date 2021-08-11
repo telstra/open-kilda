@@ -26,6 +26,7 @@ import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
+import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
 import org.openkilda.northbound.service.SwitchService;
 
 import io.swagger.annotations.ApiOperation;
@@ -168,5 +169,17 @@ public class SwitchControllerV2 extends BaseController {
     @GetMapping(path = "/{switch_id}/connections")
     public CompletableFuture<SwitchConnectionsResponse> getConnections(@PathVariable("switch_id") SwitchId switchId) {
         return switchService.getSwitchConnections(switchId);
+    }
+
+    /**
+     * Get switch properties.
+     *
+     * @return switch ports description.
+     */
+    @ApiOperation(value = "Get switch properties for all switches", response = SwitchPropertiesDump.class)
+    @GetMapping(value = "/properties")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchPropertiesDump> getSwitchProperties() {
+        return switchService.dumpSwitchProperties();
     }
 }

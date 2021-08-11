@@ -43,6 +43,7 @@ import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
+import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
 
 import java.time.Instant;
 import java.util.List;
@@ -244,6 +245,13 @@ public interface SwitchService {
      */
     CompletableFuture<SwitchPropertiesDto> getSwitchProperties(SwitchId switchId);
 
+
+    /**
+     * Dump switch properties.
+     *
+     * @return switch properties object
+     */
+    CompletableFuture<SwitchPropertiesDump> dumpSwitchProperties();
 
     /**
      * Update switch properties.

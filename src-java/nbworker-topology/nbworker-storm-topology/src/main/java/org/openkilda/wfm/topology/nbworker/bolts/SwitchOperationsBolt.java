@@ -28,6 +28,7 @@ import org.openkilda.messaging.info.event.DeactivateSwitchInfoData;
 import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
+import org.openkilda.messaging.nbtopology.request.GetAllSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetPortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchConnectedDevicesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchPropertiesRequest;
@@ -138,12 +139,14 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
             result = Collections.singletonList(updateSwitchProperties((UpdateSwitchPropertiesRequest) request));
         } else if (request instanceof GetPortPropertiesRequest) {
             result = Collections.singletonList(getPortProperties((GetPortPropertiesRequest) request));
-        }  else if (request instanceof GetSwitchConnectedDevicesRequest) {
+        } else if (request instanceof GetSwitchConnectedDevicesRequest) {
             result = Collections.singletonList(getSwitchConnectedDevices((GetSwitchConnectedDevicesRequest) request));
-        }  else if (request instanceof SwitchPatchRequest) {
+        } else if (request instanceof SwitchPatchRequest) {
             result = Collections.singletonList(patchSwitch((SwitchPatchRequest) request));
         } else if (request instanceof SwitchConnectionsRequest) {
             result = Collections.singletonList(getSwitchConnections((SwitchConnectionsRequest) request));
+        } else if (request instanceof GetAllSwitchPropertiesRequest) {
+            result = getSwitchProperties();
         } else {
             unhandledInput(tuple);
         }
@@ -225,6 +228,10 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
 
         log.info("{} deletion of switch '{}'", deleted ? "Successful" : "Unsuccessful", switchId);
         return new DeleteSwitchResponse(deleted);
+    }
+
+    private List<SwitchPropertiesResponse> getSwitchProperties() {
+        return switchOperationsService.getSwitchProperties();
     }
 
     private SwitchPropertiesResponse getSwitchProperties(GetSwitchPropertiesRequest request) {

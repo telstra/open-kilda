@@ -15,6 +15,8 @@
 
 package org.openkilda.northbound.dto.v1.switches;
 
+import org.openkilda.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -24,6 +26,9 @@ import java.util.List;
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SwitchPropertiesDto {
+    @JsonProperty("switch_id")
+    private SwitchId switchId;
+
     @JsonProperty("supported_transit_encapsulation")
     private List<String> supportedTransitEncapsulation;
 
