@@ -20,6 +20,7 @@ import org.openkilda.testing.tools.IslUtils
 import groovy.util.logging.Slf4j
 import org.spockframework.runtime.extension.AbstractGlobalExtension
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 
 @Slf4j
@@ -28,7 +29,7 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
     @Autowired
     TopologyDefinition topology
 
-    @Autowired
+    @Autowired @Qualifier("islandNb")
     NorthboundService northbound
 
     @Autowired
@@ -89,7 +90,7 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
 
     def resetCosts() {
         log.info("Resetting all link costs")
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     def resetBandwidth(List<IslInfoData> links) {

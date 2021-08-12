@@ -19,6 +19,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.core.Every.everyItem;
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
 
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -36,6 +37,8 @@ import org.openkilda.testing.service.northbound.NorthboundService;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -47,9 +50,11 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Component
+@Scope(SCOPE_PROTOTYPE)
 public class IslUtils {
 
     @Autowired
+    @Qualifier("islandNb")
     private NorthboundService northbound;
 
     @Autowired

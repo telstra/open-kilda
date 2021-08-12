@@ -12,7 +12,6 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
-import org.openkilda.functionaltests.extension.tags.Tag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.LoopTask
@@ -21,6 +20,7 @@ import org.openkilda.testing.tools.SoftAssertions
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Isolated
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -33,6 +33,7 @@ Every switch can be connected to multiple floodlights. Floodlight can be either 
 or 'read-write'(management floodlights). System chooses one 'master' fl between all RW fls.
 All switch floodlights can be checked via 'GET /api/v2/switches/{switchId}/connections'
 """)
+@Isolated
 class MultiFloodlightsSpec extends HealthCheckSpecification {
     @Shared ExecutorService executor = Executors.newFixedThreadPool(2)
 

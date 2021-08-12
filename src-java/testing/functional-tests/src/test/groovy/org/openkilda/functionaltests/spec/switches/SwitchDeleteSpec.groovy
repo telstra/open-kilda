@@ -93,7 +93,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
             def links = northbound.getAllLinks()
             swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -154,7 +154,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
             def links = northbound.getAllLinks()
             swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -196,6 +196,6 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
             swIsls.collectMany { [it, it.reversed] }
                     .each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 }

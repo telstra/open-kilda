@@ -2,8 +2,11 @@ package org.openkilda.functionaltests.helpers
 
 import static FlowHistoryConstants.UPDATE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_MIRROR_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
@@ -27,6 +30,8 @@ import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import com.github.javafaker.Faker
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
 import java.text.SimpleDateFormat
@@ -36,12 +41,13 @@ import java.text.SimpleDateFormat
  */
 @Component
 @Slf4j
+@Scope(SCOPE_PROTOTYPE)
 class FlowHelperV2 {
     @Autowired
     TopologyDefinition topology
-    @Autowired
+    @Autowired @Qualifier("islandNbV2")
     NorthboundServiceV2 northboundV2
-    @Autowired
+    @Autowired @Qualifier("islandNb")
     NorthboundService northbound
 
     def random = new Random()
@@ -148,7 +154,10 @@ class FlowHelperV2 {
     FlowResponseV2 addFlow(FlowRequestV2 flow) {
         log.debug("Adding flow '${flow.flowId}'")
         def response = northboundV2.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == CREATE_SUCCESS
+        }
         return response
     }
 
@@ -166,7 +175,10 @@ class FlowHelperV2 {
         Wrappers.wait(WAIT_OFFSET * 2) { assert northboundV2.getFlowStatus(flowId).status != FlowState.IN_PROGRESS }
         log.debug("Deleting flow '$flowId'")
         def response = northboundV2.deleteFlow(flowId)
-        Wrappers.wait(WAIT_OFFSET) { assert !northboundV2.getFlowStatus(flowId) }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert !northboundV2.getFlowStatus(flowId)
+            assert northbound.getFlowHistory(flowId).find { it.payload.last().action == DELETE_SUCCESS }
+        }
         return response
     }
 
@@ -176,7 +188,10 @@ class FlowHelperV2 {
     FlowResponseV2 updateFlow(String flowId, FlowRequestV2 flow) {
         log.debug("Updating flow '${flowId}'")
         def response = northboundV2.updateFlow(flowId, flow)
-        Wrappers.wait(PATH_INSTALLATION_TIME) { assert northboundV2.getFlowStatus(flowId).status == FlowState.UP }
+        Wrappers.wait(PATH_INSTALLATION_TIME) {
+            assert northboundV2.getFlowStatus(flowId).status == FlowState.UP
+            assert northbound.getFlowHistory(flowId).last().payload.last().action == UPDATE_SUCCESS
+        }
         return response
     }
 

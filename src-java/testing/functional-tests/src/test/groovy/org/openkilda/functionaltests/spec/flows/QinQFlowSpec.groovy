@@ -1,10 +1,12 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -282,11 +284,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Involved switches pass switch validation"
-        pathHelper.getInvolvedSwitches(pathHelper.convert(northbound.getFlowPath(qinqFlow.flowId))).each {
-            def validationInfo = northbound.validateSwitch(it.dpId)
-            validationInfo.verifyRuleSectionsAreEmpty(it.dpId, ["missing", "excess", "misconfigured"])
-            validationInfo.verifyMeterSectionsAreEmpty(it.dpId, ["missing", "excess", "misconfigured"])
-        }
+        def validationInfo = northbound.validateSwitch(sw.dpId)
+        validationInfo.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+        validationInfo.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(qinqFlow.flowId)
@@ -416,12 +416,17 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         when: "Delete the flow via APIv1"
         northbound.deleteFlow(flow.id)
+        Wrappers.wait(WAIT_OFFSET) {
+            assert !northbound.getFlowStatus(flow.id)
+            assert northbound.getFlowHistory(flow.id).find { it.payload.last().action == DELETE_SUCCESS }
+        }
         def flowIsDeleted = true
 
         then: "Flows rules are deleted"
         [swP.src, swP.dst].each { sw ->
             Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+                assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray())
+                        .containsExactlyInAnyOrder(*sw.defaultCookies)
             }
         }
 
@@ -655,7 +660,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
                     iterationNameRegex = /srcVlanId: 10, srcInnerVlanId: 20, dstVlanId: 30, dstInnerVlanId: 0/)
     ])
     def "System allows to manipulate with QinQ vxlan flow\
-(srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
+[srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId]"() {
         given: "Two switches connected to traffgen and enabled multiTable mode"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
         assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find required switches in topology")
@@ -962,7 +967,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         cleanup: "Revert system to original state"
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         !involvedSwitchesPassSwValidation && currentPath*.switchId.each { SwitchId swId ->
             northbound.synchronizeSwitch(swId, true)
         }

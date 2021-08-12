@@ -13,7 +13,10 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.links.LinkPropsDto
 import org.openkilda.testing.Constants
+import org.openkilda.testing.service.northbound.NorthboundService
 
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Shared
@@ -21,29 +24,17 @@ import spock.lang.Shared
 import java.util.concurrent.TimeUnit
 
 class LinkPropertiesSpec extends HealthCheckSpecification {
+    @Autowired @Shared @Qualifier("northboundServiceImpl")
+    NorthboundService northboundGlobal
 
     @Shared
     def propsDataForSearch = [
-            new LinkPropsDto("00:00:00:00:00:00:00:01", 1, "00:00:00:00:00:00:00:02", 1, [:]),
-            new LinkPropsDto("00:00:00:00:00:00:00:01", 2, "00:00:00:00:00:00:00:02", 1, [:]),
-            new LinkPropsDto("00:00:00:00:00:00:00:01", 2, "00:00:00:00:00:00:00:02", 2, [:]),
-            new LinkPropsDto("00:00:00:00:00:00:00:03", 3, "00:00:00:00:00:00:00:03", 3, [:]),
-            new LinkPropsDto("00:00:00:00:00:00:00:02", 1, "00:00:00:00:00:00:00:01", 1, [:])
+            new LinkPropsDto("0f:00:00:00:00:00:00:01", 1, "0f:00:00:00:00:00:00:02", 1, [:]),
+            new LinkPropsDto("0f:00:00:00:00:00:00:01", 2, "0f:00:00:00:00:00:00:02", 1, [:]),
+            new LinkPropsDto("0f:00:00:00:00:00:00:01", 2, "0f:00:00:00:00:00:00:02", 2, [:]),
+            new LinkPropsDto("0f:00:00:00:00:00:00:03", 3, "0f:00:00:00:00:00:00:03", 3, [:]),
+            new LinkPropsDto("0f:00:00:00:00:00:00:02", 1, "0f:00:00:00:00:00:00:01", 1, [:])
     ]
-
-    def setupSpec() {
-        //clear any existing properties before tests start
-        def allLinkProps = northbound.getAllLinkProps()
-        northbound.deleteLinkProps(allLinkProps)
-        //make sure all costs are default
-        database.resetCosts()
-    }
-
-    @Tidy
-    def "Empty list is returned if there are no properties"() {
-        expect: "Get link properties is empty for no properties"
-        northbound.getAllLinkProps().empty
-    }
 
     //TODO(ylobankov): Actually this is abnormal behavior and we should have an error. But this test is aligned
     // with the current system behavior to verify that system is not hanging. Need to rework the test when system
@@ -51,25 +42,26 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
     @Tidy
     def "Link props are created with empty values when sending an invalid link props key"() {
         when: "Send link property request with invalid character"
-        def response = northbound.updateLinkProps([new LinkPropsDto("00:00:00:00:00:00:00:01", 1,
-                "00:00:00:00:00:00:00:02", 1, ["`cost": "700"])])
+        def linkPropsCreate = [new LinkPropsDto("0f:00:00:00:00:00:00:01", 1,
+                "0f:00:00:00:00:00:00:02", 1, ["`cost": "700"])]
+        def response = northbound.updateLinkProps(linkPropsCreate)
 
         then: "Response states that operation succeeded"
         response.successes == 1
 
         and: "Link props are created but with empty values"
-        def linkProps = northbound.getLinkProps(null, 1, null, 1)
+        def linkProps = northboundGlobal.getLinkProps(null, 1, null, 1).findAll { it.srcSwitch.startsWith("0f") }
         linkProps.size() == 2
         linkProps.each { assert it.props.isEmpty() }
 
         cleanup: "Delete created link props"
-        northbound.deleteLinkProps(linkProps)
+        northbound.deleteLinkProps(linkPropsCreate)
     }
 
     @Tidy
     def "Unable to create link property with invalid switchId format"() {
         when: "Try creating link property with invalid switchId format"
-        def linkProp = new LinkPropsDto("I'm invalid", 1, "00:00:00:00:00:00:00:02", 1, [:])
+        def linkProp = new LinkPropsDto("I'm invalid", 1, "0f:00:00:00:00:00:00:02", 1, [:])
         def response = northbound.updateLinkProps([linkProp])
 
         then: "Response with error is received"
@@ -81,7 +73,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
     def "Unable to create link property with non-numeric value for #key"() {
         when: "Try creating link property with non-numeric values"
         def nonNumericValue = "1000L"
-        def linkProp = new LinkPropsDto("00:00:00:00:00:00:00:01", 1, "00:00:00:00:00:00:00:02", 1,
+        def linkProp = new LinkPropsDto("0f:00:00:00:00:00:00:01", 1, "0f:00:00:00:00:00:00:02", 1,
                 [(key): nonNumericValue])
         northbound.updateLinkProps([linkProp])
 
@@ -100,7 +92,8 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
     @TestFixture(setup = "prepareLinkPropsForSearch", cleanup = "cleanLinkPropsAfterSearch")
     def "Searching for link props with #data.descr"() {
         when: "Get link properties with search query"
-        def foundProps = northbound.getLinkProps(*data.params)
+        def foundProps = northboundGlobal.getLinkProps(*data.params)
+                .findAll { it.srcSwitch.startsWith("0f") } //exclude props from other labs
 
         then: "Returned props list match expected"
         foundProps.sort() == expected.sort()
@@ -109,37 +102,37 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         data << [
                 [
                         descr : "src switch and src port (single result)",
-                        params: [new SwitchId("00:00:00:00:00:00:00:01"), 1, null, null],
+                        params: [new SwitchId("0f:00:00:00:00:00:00:01"), 1, null, null],
                 ],
                 [
                         descr : "src switch and src port (multiple results)",
-                        params: [new SwitchId("00:00:00:00:00:00:00:01"), 2, null, null],
+                        params: [new SwitchId("0f:00:00:00:00:00:00:01"), 2, null, null],
                 ],
                 [
                         descr : "dst switch and dst port (single result)",
-                        params: [null, null, new SwitchId("00:00:00:00:00:00:00:02"), 2]
+                        params: [null, null, new SwitchId("0f:00:00:00:00:00:00:02"), 2]
                 ],
                 [
                         descr : "dst switch and dst port (multiple results)",
-                        params: [null, null, new SwitchId("00:00:00:00:00:00:00:02"), 1]
+                        params: [null, null, new SwitchId("0f:00:00:00:00:00:00:02"), 1]
                 ],
                 [
                         descr : "src switch and src port (no results)",
-                        params: [new SwitchId("00:00:00:00:00:00:00:03"), 2, null, null]
+                        params: [new SwitchId("0f:00:00:00:00:00:00:03"), 2, null, null]
                 ],
                 [
                         descr : "dst switch and dst port (no results)",
-                        params: [null, null, new SwitchId("00:00:00:00:00:00:00:03"), 2]
+                        params: [null, null, new SwitchId("0f:00:00:00:00:00:00:03"), 2]
                 ],
                 [
                         descr : "src and dst switch (different switches)",
-                        params: [new SwitchId("00:00:00:00:00:00:00:01"), null,
-                                 new SwitchId("00:00:00:00:00:00:00:02"), null]
+                        params: [new SwitchId("0f:00:00:00:00:00:00:01"), null,
+                                 new SwitchId("0f:00:00:00:00:00:00:02"), null]
                 ],
                 [
                         descr : "src and dst switch (same switch)",
-                        params: [new SwitchId("00:00:00:00:00:00:00:03"), null,
-                                 new SwitchId("00:00:00:00:00:00:00:03"), null]
+                        params: [new SwitchId("0f:00:00:00:00:00:00:03"), null,
+                                 new SwitchId("0f:00:00:00:00:00:00:03"), null]
                 ],
                 [
                         descr : "src and dst port",
@@ -170,7 +163,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         def maxBandwidthValue = "54321"
         def linkProps = [islUtils.toLinkProps(isl, ["cost": costValue, "max_bandwidth": maxBandwidthValue])]
         northbound.updateLinkProps(linkProps)
-        assert northbound.getAllLinkProps().size() == 2
+        assert northbound.getLinkProps(topology.isls).size() == 2
 
         then: "Cost on forward and reverse ISLs is really updated"
         database.getIslCost(isl) == costValue.toInteger()
@@ -186,7 +179,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         northbound.updateLinkProps([islUtils.toLinkProps(isl, ["cost": newCostValue])])
 
         then: "Forward and reverse directions of the link props are really updated"
-        northbound.getAllLinkProps().each {
+        northbound.getLinkProps(topology.isls).each {
             assert it.props.cost == newCostValue
         }
 
@@ -208,7 +201,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         islUtils.getIslInfo(links, isl.reversed).get().maxBandwidth == initialMaxBandwidth
 
         cleanup:
-        !linkPropsAreDeleted && northbound.deleteLinkProps(northbound.getAllLinkProps())
+        !linkPropsAreDeleted && northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tags(SMOKE)
@@ -260,7 +253,6 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         }
         //DELETE /link/props deletes props for both directions, even if only one direction specified
         linkProps && northbound.deleteLinkProps(linkProps)
-        northbound.getAllLinkProps().empty
     }
 
     def prepareLinkPropsForSearch() {
@@ -269,6 +261,6 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
 
     def cleanLinkPropsAfterSearch() {
         northbound.deleteLinkProps(propsDataForSearch)
-        Wrappers.wait(WAIT_OFFSET / 2) { assert northbound.getAllLinkProps().empty }
+        Wrappers.wait(WAIT_OFFSET / 2) { assert northbound.getLinkProps(topology.isls).empty }
     }
 }

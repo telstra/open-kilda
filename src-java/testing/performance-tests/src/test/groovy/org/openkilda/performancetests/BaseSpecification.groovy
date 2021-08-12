@@ -34,10 +34,10 @@ class BaseSpecification extends Specification {
     private static boolean healthCheckRan = false
 
     @Autowired
-    @Shared
+    @Shared @Qualifier("islandNb")
     NorthboundService northbound
     @Autowired
-    @Shared
+    @Shared @Qualifier("islandNbV2")
     NorthboundServiceV2 northboundV2
     @Autowired
     @Shared

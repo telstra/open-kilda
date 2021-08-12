@@ -27,8 +27,9 @@ dependencies {
     implementation 'org.hibernate.validator:hibernate-validator'
     implementation 'org.glassfish:jakarta.el'
 
-    implementation 'org.spockframework:spock-spring:2.0-M5-groovy-3.0'
-    implementation 'org.spockframework:spock-core:2.0-M5-groovy-3.0'
+    implementation 'org.spockframework:spock-spring:2.0-groovy-3.0'
+    implementation 'org.spockframework:spock-core:2.0-groovy-3.0'
+    implementation('com.athaydes:spock-reports:2.0-groovy-3.0') { transitive = false }
     implementation 'net.jodah:failsafe'
     implementation 'org.hamcrest:hamcrest-all:1.3'
     implementation ('org.apache.zookeeper:zookeeper:3.4.0') {
@@ -89,13 +90,13 @@ tasks.withType(Test) {
     }
     retry { //test-retry plugin config
         maxRetries = 1
-        maxFailures = 3
+        maxFailures = 5
         failOnPassedAfterRetry = false
     }
 }
 
 testlogger {
-    theme 'mocha'
+    theme 'mocha-parallel'
     showExceptions true
     showStackTraces true
     showFullStackTraces true

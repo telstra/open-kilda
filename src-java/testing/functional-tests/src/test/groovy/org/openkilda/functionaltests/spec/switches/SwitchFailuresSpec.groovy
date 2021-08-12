@@ -45,9 +45,9 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
         when: "Two neighbouring switches of the flow go down simultaneously"
         def srcBlockData = lockKeeper.knockoutSwitch(isl.srcSwitch, RW)
+        def timeSwitchesBroke = System.currentTimeMillis()
         def dstBlockData = lockKeeper.knockoutSwitch(isl.dstSwitch, RW)
         def switchesAreOffline = true
-        def timeSwitchesBroke = System.currentTimeMillis()
         def untilIslShouldFail = { timeSwitchesBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
 
         and: "ISL between those switches looses connection"
@@ -60,12 +60,11 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         switchesAreOffline = false
 
         then: "ISL still remains up right before discovery timeout should end"
-        sleep(untilIslShouldFail() - 2000)
+        sleep(untilIslShouldFail() - 2500)
         islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
 
         and: "ISL fails after discovery timeout"
-        //TODO(rtretiak): Using big timeout here. This is an abnormal behavior
-        Wrappers.wait(untilIslShouldFail() / 1000 + WAIT_OFFSET * 1.5) {
+        Wrappers.wait(untilIslShouldFail() / 1000 + WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
         }
 
@@ -130,7 +129,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         lockKeeper.cleanupTrafficShaperRules(swPair.dst.regions)
         flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy

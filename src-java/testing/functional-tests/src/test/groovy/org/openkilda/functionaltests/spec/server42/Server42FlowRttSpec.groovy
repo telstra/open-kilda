@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.server42
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -16,7 +17,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.model.system.FeatureTogglesDto
@@ -35,7 +35,9 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
+import spock.lang.Isolated
 import spock.lang.Narrative
+import spock.lang.ResourceLock
 import spock.lang.Shared
 import spock.util.mop.Use
 
@@ -48,6 +50,8 @@ see server42-control-server-stub.
 Note that on hardware env it is very important for switch to have correct time, since data in otsdb it posted using
 switch timestamps, thus we may see no stats in otsdb if time on switch is incorrect
  */
+@ResourceLock(S42_TOGGLE)
+@Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
 class Server42FlowRttSpec extends HealthCheckSpecification {
     @Shared
     @Value('${opentsdb.metric.prefix}')
@@ -137,7 +141,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         given: "Two active switches with switch having server42"
         def server42switches = topology.getActiveServer42Switches()
         def server42switchesDpIds = server42switches*.dpId
-        def switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
+        SwitchPair switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
             [it.src, it.dst].every { it.dpId in server42switchesDpIds }
         }
         assumeTrue(switchPair != null, "Was not able to find a switch with a server42 connected")
@@ -156,6 +160,9 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         and: "Create a reversed flow for backward metric"
         def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed, false, [flow]).tap {
             flowId = it.flowId.take(25)
+            //don't pick same ports as flow1 in order to get expected amount of s42_input rules
+            source.portNumber = (topology.getAllowedPortsForSwitch(switchPair.dst) - flow.destination.portNumber)[0]
+            destination.portNumber = (topology.getAllowedPortsForSwitch(switchPair.src) - flow.source.portNumber)[0]
         }
         flowHelperV2.addFlow(reversedFlow)
 
@@ -822,7 +829,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def amountOfS42Rules = switchPair.src.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) ? 2 : 1
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             def s42Rules = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-                it.cookie in  [Cookie.SERVER_42_OUTPUT_VLAN_COOKIE, Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE]
+                it.cookie in  [SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE, SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE]
             }
             assert s42Rules.size() == amountOfS42Rules
             assert s42Rules*.instructions.applyActions.flowOutput.unique() == [newS42Port.toString()]
@@ -863,7 +870,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                 new Cookie(it.cookie).getType() in [CookieType.SERVER_42_INPUT, CookieType.SERVER_42_INGRESS]
             }
             def swS42Rules = swRules.findAll {
-                it.cookie in [Cookie.SERVER_42_OUTPUT_VLAN_COOKIE, Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE]
+                it.cookie in [SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE, SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE]
             }
             assert swS42Rules.size() == amountOfS42Rules
             assert swS42Rules*.instructions.applyActions.flowOutput.unique() == [newS42Port.toString()]

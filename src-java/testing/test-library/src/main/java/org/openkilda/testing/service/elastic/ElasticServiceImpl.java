@@ -34,9 +34,8 @@ import java.util.Map;
 
 /**
  * An interface to the Elastic Search. Set following variables in the kilda.properties for it to work:
- * elasticsearch.endpoint = URL to Elastic
- * elasticsearch.username = User with read access
- * elasticsearch.password = User's password
+ * elasticsearch.endpoint = URL to Elastic elasticsearch.username = User with read access elasticsearch.password =
+ * User's password
  */
 
 @Component
@@ -48,12 +47,10 @@ public class ElasticServiceImpl implements ElasticService {
     private RestTemplate restTemplate;
 
     /**
-     * Searches the Elastic Search database for a specific log entries.
-     * In case you need to lookup multiple application IDs, tags or log levels, pass parameters as:
-     * "VALUE1 OR VALUE2 OR ... OR VALUE_N"
+     * Searches the Elastic Search database for a specific log entries. In case you need to lookup multiple application
+     * IDs, tags or log levels, pass parameters as: "VALUE1 OR VALUE2 OR ... OR VALUE_N"
      *
-     * @param query - ElasticQuery instance (use ElasticQueryBuilder to build this one, be sure to specify
-     *                either appId or tags)
+     * @param query - ElasticQuery instance (use ElasticQueryBuilder, be sure to specify either appId or tags)
      * @return ElasticResponseDto
      */
     public ElasticResponseDto getLogs(ElasticQuery query) {
@@ -70,21 +67,21 @@ public class ElasticServiceImpl implements ElasticService {
                 queryString.append(entry.getKey()).append(": (").append(entry.getValue()).append(")");
             }
         }
-        if (query.appId  != null && !"".equals(query.appId)) {
+        if (query.appId != null && !"".equals(query.appId)) {
             if (queryString.length() > 0) {
                 queryString.append(" AND ");
             }
             queryString.append("app_id: (").append(query.appId).append(")");
         }
 
-        if (query.tags  != null && !"".equals(query.tags)) {
+        if (query.tags != null && !"".equals(query.tags)) {
             if (queryString.length() > 0) {
                 queryString.append(" AND ");
             }
             queryString.append("tags: (").append(query.tags).append(")");
         }
 
-        if (query.level  != null && !"".equals(query.level)) {
+        if (query.level != null && !"".equals(query.level)) {
             queryString.append(" AND level: (").append(query.level).append(")");
         }
 

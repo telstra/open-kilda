@@ -29,6 +29,7 @@ import org.openkilda.testing.service.northbound.NorthboundService;
 
 import org.junit.Assume;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
@@ -49,7 +50,7 @@ import java.util.stream.Collectors;
 public class FlowManagerImpl implements FlowManager {
     private final SimpleDateFormat sdf;
 
-    @Autowired
+    @Autowired @Qualifier("northboundServiceImpl")
     private NorthboundService northboundService;
 
     @Autowired

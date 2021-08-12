@@ -8,6 +8,7 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
@@ -17,9 +18,9 @@ import org.springframework.stereotype.Component
  */
 @Component
 class PortAntiflapHelper {
-    @Autowired
+    @Autowired @Qualifier("islandNb")
     NorthboundService northbound
-    @Autowired
+    @Autowired @Qualifier("islandNbV2")
     NorthboundServiceV2 northboundV2
 
     @Value('${antiflap.min}')

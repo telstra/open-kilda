@@ -15,13 +15,14 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
 @Component("performance")
 class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelper {
 
-    @Autowired
+    @Autowired @Qualifier("islandNb")
     NorthboundService northbound
     @Autowired
     LabService labService

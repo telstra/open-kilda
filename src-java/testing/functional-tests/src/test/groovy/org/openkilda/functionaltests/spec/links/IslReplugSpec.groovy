@@ -108,7 +108,7 @@ class IslReplugSpec extends HealthCheckSpecification {
                 assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -155,9 +155,13 @@ class IslReplugSpec extends HealthCheckSpecification {
         def newIslIsRemoved = true
 
         and: "The src and dst switches of the isl pass switch validation"
-        [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique().each { swId ->
-            with(northbound.validateSwitch(swId)) { validationResponse ->
-                validationResponse.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+        /* Need wait because of parallel s42 tests. Sw validation may show a missing s42 rule. Just wait for it.
+        If problem persists, add a 'read' resource lock for s42_toggle */
+        Wrappers.wait(WAIT_OFFSET) {
+            [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique().each { swId ->
+                with(northbound.validateSwitch(swId)) { validationResponse ->
+                    validationResponse.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                }
             }
         }
 
@@ -173,7 +177,7 @@ class IslReplugSpec extends HealthCheckSpecification {
                 assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -208,7 +212,7 @@ class IslReplugSpec extends HealthCheckSpecification {
             islUtils.replug(loopedIsl, true, isl, false, false)
             islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tags(SMOKE)
@@ -259,7 +263,7 @@ class IslReplugSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/3780")

@@ -17,16 +17,19 @@ package org.openkilda.testing.service.floodlight;
 
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
 
 import org.openkilda.testing.service.floodlight.model.Floodlight;
 import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
+@Scope(SCOPE_PROTOTYPE)
 public class FloodlightsHelper {
     @Autowired
     List<Floodlight> floodlights;

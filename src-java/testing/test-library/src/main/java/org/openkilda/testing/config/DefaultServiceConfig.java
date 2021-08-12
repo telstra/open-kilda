@@ -15,7 +15,10 @@
 
 package org.openkilda.testing.config;
 
-import org.openkilda.testing.service.floodlight.FloodlightServiceImpl;
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
+
+import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.service.floodlight.IslandFloodlightService;
 import org.openkilda.testing.service.floodlight.model.Floodlight;
 import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode;
 import org.openkilda.testing.tools.ExtendedErrorHandler;
@@ -23,11 +26,13 @@ import org.openkilda.testing.tools.LoggingRequestInterceptor;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.EnumUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
+import org.springframework.context.annotation.Scope;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.BufferingClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestExecution;
@@ -104,11 +109,13 @@ public class DefaultServiceConfig {
     }
 
     @Bean
+    @Scope(SCOPE_PROTOTYPE)
     public List<Floodlight> floodlights(@Value("#{'${floodlight.openflows}'.split(',')}") List<String> openflows,
                                         @Value("#{'${floodlight.endpoints}'.split(',')}") List<String> endpoints,
                                         @Value("#{'${floodlight.containers}'.split(',')}") List<String> containers,
                                         @Value("#{'${floodlight.regions}'.split(',')}") List<String> regions,
-                                        @Value("#{'${floodlight.modes}'.split(',')}") List<String> modes) {
+                                        @Value("#{'${floodlight.modes}'.split(',')}") List<String> modes,
+                                        @Autowired TopologyDefinition topo) {
         if (openflows.size() != endpoints.size() || openflows.size() != containers.size()
                 || openflows.size() != regions.size() || openflows.size() != modes.size()) {
             throw new IllegalArgumentException("Floodlight test properties are illegal. Sizes of floodlight.openflows,"
@@ -118,7 +125,7 @@ public class DefaultServiceConfig {
         List<Floodlight> floodlights = new ArrayList<>();
         for (int i = 0; i < regions.size(); i++) {
             floodlights.add(new Floodlight(openflows.get(i), containers.get(i), regions.get(i),
-                    new FloodlightServiceImpl(endpoints.get(i)),
+                    new IslandFloodlightService(endpoints.get(i), topo),
                     EnumUtils.getEnumIgnoreCase(FloodlightConnectMode.class, modes.get(i))));
         }
         return floodlights;

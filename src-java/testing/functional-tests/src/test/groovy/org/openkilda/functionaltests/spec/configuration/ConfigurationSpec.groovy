@@ -25,6 +25,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Isolated
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -32,6 +33,7 @@ import spock.lang.Shared
 Kilda configuration is a special lever that allows to change default flow encapsulation type while creating.
 This spec assumes that 'transit_vlan' is always default type
 """)
+@Isolated //kilda config updates
 class ConfigurationSpec extends HealthCheckSpecification {
     @Shared
     FlowEncapsulationType defaultEncapsulationType = FlowEncapsulationType.TRANSIT_VLAN

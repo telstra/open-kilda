@@ -60,6 +60,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @Component
 public class DatabaseSupportImpl implements Database {
@@ -223,7 +224,7 @@ public class DatabaseSupportImpl implements Database {
     }
 
     /**
-     * Set cost for all ISLs to be equal to DEFAULT_COST value.
+     * Set cost for all ISLs to be equal to DEFAULT_COST value, remove timeUnstable.
      *
      * @return true if at least 1 ISL was affected
      */
@@ -236,6 +237,23 @@ public class DatabaseSupportImpl implements Database {
                 isl.setTimeUnstable(null);
             });
             return allIsls.size() > 0;
+        });
+    }
+
+    /**
+     * Set cost for passed ISLs to be equal to DEFAULT_COST value, remove timeUnstable.
+     *
+     * @return true if at least 1 ISL was affected
+     */
+    @Override
+    public boolean resetCosts(List<Isl> isls) {
+        return transactionManager.doInTransaction(() -> {
+            Collection<org.openkilda.model.Isl> dbIsls = getIsls(isls);
+            dbIsls.forEach(isl -> {
+                isl.setCost(DEFAULT_COST);
+                isl.setTimeUnstable(null);
+            });
+            return dbIsls.size() > 0;
         });
     }
 
@@ -425,8 +443,13 @@ public class DatabaseSupportImpl implements Database {
     }
 
     @Override
-    public List<org.openkilda.model.Isl> getAllIsls() {
-        return new ArrayList<>(transactionManager.doInTransaction(islRepository::findAll));
+    public List<org.openkilda.model.Isl> getIsls(List<Isl> isls) {
+        return transactionManager.doInTransaction(() -> islRepository.findAll().stream().filter(dbIsl ->
+                isls.stream().flatMap(isl -> Stream.of(isl, isl.getReversed())).anyMatch(isl ->
+                        (dbIsl.getSrcSwitch().getSwitchId().equals(isl.getSrcSwitch().getDpId())
+                                && dbIsl.getSrcPort() == isl.getSrcPort()
+                                && dbIsl.getDestSwitch().getSwitchId().equals(isl.getDstSwitch().getDpId())
+                                && dbIsl.getDestPort() == isl.getDstPort()))).collect(toList()));
     }
 
     @Override

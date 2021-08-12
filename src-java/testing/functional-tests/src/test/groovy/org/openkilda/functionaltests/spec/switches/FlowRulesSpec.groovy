@@ -511,7 +511,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         cleanup: "Delete the flow and reset costs"
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
         where:
         description         | maximumBandwidth
@@ -668,7 +668,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -818,7 +818,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy

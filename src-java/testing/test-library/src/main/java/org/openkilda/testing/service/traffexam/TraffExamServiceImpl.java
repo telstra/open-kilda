@@ -18,7 +18,6 @@ package org.openkilda.testing.service.traffexam;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen;
 import org.openkilda.testing.model.topology.TopologyDefinition.TraffGenConfig;
-import org.openkilda.testing.service.labservice.LabService;
 import org.openkilda.testing.service.traffexam.model.Address;
 import org.openkilda.testing.service.traffexam.model.AddressResponse;
 import org.openkilda.testing.service.traffexam.model.AddressStats;
@@ -82,8 +81,6 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
     @Value("${lab-api.endpoint}")
     private String labEndpoint;
 
-    @Autowired
-    private LabService labService;
     private String baseUrl;
 
     @Autowired
@@ -106,7 +103,7 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
 
     @PostConstruct
     void initializePools() {
-        baseUrl = labEndpoint + "/api/" + labService.getLab().getLabId() + "/traffgen/";
+        baseUrl = labEndpoint + "/api/" + topology.getLabId() + "/traffgen/";
         hostsPool = new ConcurrentHashMap<>();
 
         for (TraffGen traffGen : topology.getActiveTraffGens()) {
@@ -390,7 +387,7 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
                 makeHostUri(address.getHost()).path("address/").path(address.getId().toString()).path("/arp").build(),
                 arpData);
     }
-    
+
     @Override
     public void sendUdp(Address address, UdpData udpData) {
         restTemplate.put(

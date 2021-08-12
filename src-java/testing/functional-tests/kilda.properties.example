@@ -68,13 +68,14 @@ grpc.password=kilda
 grpc.remote.log.server.ip=1.1.1.1
 grpc.remote.log.server.port=321
 
-use.hs=true
-use.multitable=true
-cleanup.verifier=true
-
 flow.ping.interval=5
 # remote docker host http://<ip>:2376
 docker.host=localhost
 
 latency.update.interval = 120
 flow.sla.check.interval.seconds = 10
+
+use.hs=true
+use.multitable=true
+cleanup.verifier=true
+parallel.topologies = 3

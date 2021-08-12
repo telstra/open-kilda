@@ -88,7 +88,7 @@ class RoundTripIslSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(allLinks, isl).get().roundTripStatus == DISCOVERED
             assert islUtils.getIslInfo(allLinks, isl.reversed).get().roundTripStatus == DISCOVERED
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
 
         where:
         bfd << [false, true]
@@ -114,9 +114,8 @@ class RoundTripIslSpec extends HealthCheckSpecification {
         } ?: assumeTrue(false, "Wasn't able to find a switch with suitable links")
 
         when: "Simulate connection lose between the switch and FL, the switch becomes DEACTIVATED and remains operable"
-        def mgmtBlockData = lockKeeper.knockoutSwitch(swToDeactivate, RW)
-
         def isSwDeactivated = true
+        def mgmtBlockData = lockKeeper.knockoutSwitch(swToDeactivate, RW)
         Wrappers.wait(customWaitOffset) {
             assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.DEACTIVATED
         }
@@ -147,7 +146,7 @@ for ISL alive confirmation)"
                 }.size() == topology.islsForActiveSwitches.size() * 2
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -193,7 +192,7 @@ on both switches)"
                 assert islUtils.getIslInfo(allLinks, roundTripIsl.reversed).get().roundTripStatus == DISCOVERED
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -294,7 +293,7 @@ round trip latency rule is removed on the dst switch"() {
                 assert northbound.validateSwitch(dstSw.dpId).rules.missing.empty
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy

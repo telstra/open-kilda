@@ -6,6 +6,8 @@ import org.openkilda.model.IslStatus
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -19,6 +21,7 @@ import org.spockframework.runtime.extension.IMethodInvocation
 import org.spockframework.runtime.model.MethodKind
 import org.spockframework.runtime.model.SpecInfo
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 
 /**
@@ -34,9 +37,9 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
     @Value('${cleanup.verifier}')
     boolean enabled
 
-    @Autowired
+    @Autowired @Qualifier("islandNb")
     NorthboundService northbound
-    @Autowired
+    @Autowired @Qualifier("islandNbV2")
     NorthboundServiceV2 northboundV2
     @Autowired
     TopologyDefinition topology
@@ -77,18 +80,16 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
     }
 
     def runVerifications() {
+        context.autowireCapableBeanFactory.autowireBean(this)
         assert northboundV2.getAllFlows().empty
         withPool {
-            northbound.getAllSwitches().eachParallel { sw ->
-                def validation = northbound.validateSwitch(sw.switchId)
-                validation.verifyRuleSectionsAreEmpty(sw.switchId)
-                validation.verifyMeterSectionsAreEmpty(sw.switchId)
-                if (sw.ofVersion == "OF_13") {
-                    assert northbound.getSwitchRules(sw.switchId).flowEntries.find { it.cookie == Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE }
-                }
-                def swProps = northbound.getSwitchProperties(sw.switchId)
+            topology.switches.eachParallel { Switch sw ->
+                def validation = northbound.validateSwitch(sw.dpId)
+                validation.verifyRuleSectionsAreEmpty(sw.dpId)
+                validation.verifyMeterSectionsAreEmpty(sw.dpId)
+                def swProps = northbound.getSwitchProperties(sw.dpId)
                 assert swProps.multiTable == useMultitable
-                def s42Config = topology.switches.find { sw.switchId == it.dpId}.prop
+                def s42Config = sw.prop
                 if (s42Config) {
                     assert swProps.server42FlowRtt == s42Config.server42FlowRtt
                     assert swProps.server42Port == s42Config.server42Port
@@ -109,7 +110,7 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
         }
         regionVerifications.verify()
         withPool {
-            database.getAllIsls().eachParallel {
+            database.getIsls(topology.isls).eachParallel {
                 assert it.timeUnstable == null
                 assert it.status == IslStatus.ACTIVE
                 assert it.actualStatus == IslStatus.ACTIVE
@@ -118,6 +119,6 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
                 assert it.cost == Constants.DEFAULT_COST || it.cost == 0
             }
         }
-        assert northbound.getAllLinkProps().empty
+        assert northbound.getLinkProps(topology.isls).empty
     }
 }

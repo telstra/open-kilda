@@ -78,7 +78,7 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
 
         where:
         isl << uniqueIsls
@@ -104,7 +104,7 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
 
         cleanup:
         !portUp && northbound.portUp(sw.dpId, port)
-        database.resetCosts()
+        database.resetCosts(topology.isls)
 
         where:
         // It is impossible to understand whether ISL-free port is UP/DOWN on OF_12 switches.

@@ -59,6 +59,6 @@ public interface TraffExamService {
     void sendArp(Address address, ArpData arpData);
 
     void sendUdp(Address address, UdpData udpData);
-    
+
     AddressStats getStats(Address address);
 }

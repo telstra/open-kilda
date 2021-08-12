@@ -7,4 +7,13 @@
     <context:component-scan base-package="org.openkilda.testing.config, org.openkilda.functionaltests.config"/>
     <bean id="applicationContextProvider"
           class="org.openkilda.functionaltests.extension.spring.SpringContextNotifier"/>
+    <bean class="org.springframework.beans.factory.config.CustomScopeConfigurer">
+        <property name="scopes">
+            <map>
+                <entry key="specThread">
+                    <bean class="org.openkilda.functionaltests.SpecThreadScope"/>
+                </entry>
+            </map>
+        </property>
+    </bean>
 </beans>

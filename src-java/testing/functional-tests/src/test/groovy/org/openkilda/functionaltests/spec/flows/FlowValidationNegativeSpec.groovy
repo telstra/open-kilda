@@ -1,14 +1,12 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
-import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.SwitchId
@@ -28,39 +26,38 @@ import spock.lang.Narrative
                  - ingress, transit and egress switches
                  - Single switch, two switch and three+ switch flow spans.
             """)
-@Tags([LOW_PRIORITY])
 class FlowValidationNegativeSpec extends HealthCheckSpecification {
 
     @Tidy
     @IterationTag(tags = [SMOKE], iterationNameRegex = /reverse/)
-    def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration"() {
+    def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration [#flowType]"() {
         given: "Two flows with #flowConfig configuration"
-        def flowToBreak = flowHelper.randomFlow(switchPair, false)
-        def intactFlow = flowHelper.randomFlow(switchPair, false, [flowToBreak])
+        def flowToBreak = flowHelperV2.randomFlow(switchPair, false)
+        def intactFlow = flowHelperV2.randomFlow(switchPair, false, [flowToBreak])
 
-        flowHelper.addFlow(flowToBreak)
-        flowHelper.addFlow(intactFlow)
+        flowHelperV2.addFlow(flowToBreak)
+        flowHelperV2.addFlow(intactFlow)
 
         and: "Both flows have the same switches in path"
-        def damagedFlowSwitches = pathHelper.getInvolvedSwitches(flowToBreak.id)*.dpId
-        def intactFlowSwitches = pathHelper.getInvolvedSwitches(intactFlow.id)*.dpId
+        def damagedFlowSwitches = pathHelper.getInvolvedSwitches(flowToBreak.flowId)*.dpId
+        def intactFlowSwitches = pathHelper.getInvolvedSwitches(intactFlow.flowId)*.dpId
         assert damagedFlowSwitches.equals(intactFlowSwitches)
 
         when: "#flowType flow rule from first flow on #switchNo switch gets deleted"
-        def cookieToDelete = flowType == "forward" ? database.getFlow(flowToBreak.id).forwardPath.cookie.value :
-                database.getFlow(flowToBreak.id).reversePath.cookie.value
+        def cookieToDelete = flowType == "forward" ? database.getFlow(flowToBreak.flowId).forwardPath.cookie.value :
+                database.getFlow(flowToBreak.flowId).reversePath.cookie.value
         SwitchId damagedSwitch = damagedFlowSwitches[item]
         northbound.deleteSwitchRules(damagedSwitch, cookieToDelete)
 
         then: "Intact flow should be validated successfully"
-        def intactFlowValidation = northbound.validateFlow(intactFlow.id)
+        def intactFlowValidation = northbound.validateFlow(intactFlow.flowId)
         intactFlowValidation.each { direction ->
             assert direction.discrepancies.empty
             assert direction.asExpected
         }
 
         and: "Damaged #flowType flow validation should fail, while other direction should be validated successfully"
-        def brokenFlowValidation = northbound.validateFlow(flowToBreak.id)
+        def brokenFlowValidation = northbound.validateFlow(flowToBreak.flowId)
         brokenFlowValidation.findAll { it.discrepancies.empty && it.asExpected }.size() == 1
         def damagedDirection = brokenFlowValidation.findAll { !it.discrepancies.empty && !it.asExpected }
         damagedDirection.size() == 1
@@ -81,12 +78,12 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         and: "Validation of non-affected switches (if any) should succeed"
         if (damagedFlowSwitches.size() > 1) {
             def nonAffectedSwitches = damagedFlowSwitches.findAll { it != damagedFlowSwitches[item] }
-            assert nonAffectedSwitches.every { sw -> northbound.validateSwitchRules(sw).missingRules.size() == 0 }
-            assert nonAffectedSwitches.every { sw -> northbound.validateSwitchRules(sw).excessRules.size() == 0 }
+            nonAffectedSwitches.each { sw -> assert northbound.validateSwitchRules(sw).missingRules.size() == 0 }
+            nonAffectedSwitches.each { sw -> assert northbound.validateSwitchRules(sw).excessRules.size() == 0 }
         }
 
         cleanup: "Delete the flows"
-        [flowToBreak, intactFlow].each {it && flowHelper.deleteFlow(it.id) }
+        [flowToBreak, intactFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
 
         where:
         flowConfig      | switchPair                                        | item | switchNo | flowType
@@ -121,13 +118,13 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         data << [
                 [
                         description: "get",
-                        operation: { getNorthbound().getFlow(NON_EXISTENT_FLOW_ID) },
+                        operation: { getNorthboundV2().getFlow(NON_EXISTENT_FLOW_ID) },
                         message: "Can not get flow: Flow $NON_EXISTENT_FLOW_ID not found",
                         errorDescr: "Flow not found"
                 ],
                 [
                         description: "reroute",
-                        operation: { getNorthbound().rerouteFlow(NON_EXISTENT_FLOW_ID) },
+                        operation: { getNorthboundV2().rerouteFlow(NON_EXISTENT_FLOW_ID) },
                         message: "Could not reroute flow",
                         errorDescr: "Flow $NON_EXISTENT_FLOW_ID not found"
                 ],
@@ -142,6 +139,18 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
                         operation: { getNorthbound().synchronizeFlow(NON_EXISTENT_FLOW_ID) },
                         message: "Could not reroute flow",
                         errorDescr: "Flow $NON_EXISTENT_FLOW_ID not found"
+                ],
+                [
+                        description: "get",
+                        operation: { getNorthbound().getFlow(NON_EXISTENT_FLOW_ID) },
+                        message: "Can not get flow: Flow $NON_EXISTENT_FLOW_ID not found",
+                        errorDescr: "Flow not found"
+                ],
+                [
+                        description: "reroute",
+                        operation: { getNorthbound().rerouteFlow(NON_EXISTENT_FLOW_ID) },
+                        message: "Could not reroute flow",
+                        errorDescr: "Flow $NON_EXISTENT_FLOW_ID not found"
                 ]
         ]
     }
@@ -152,20 +161,20 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
             it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
         } ?: assumeTrue(false, "No suiting switches found")
-        def flow = flowHelper.randomFlow(switchPair)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.allocateProtectedPath = true
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         then: "Flow with protected path is created"
-        northbound.getFlowPath(flow.id).protectedPath
+        northbound.getFlowPath(flow.flowId).protectedPath
 
         and: "Validation of flow with protected path must be successful"
-        northbound.validateFlow(flow.id).each { direction ->
+        northbound.validateFlow(flow.flowId).each { direction ->
             assert direction.discrepancies.empty
         }
 
         when: "Delete rule of protected path on the srcSwitch"
-        def flowPathInfo = northbound.getFlowPath(flow.id)
+        def flowPathInfo = northbound.getFlowPath(flow.flowId)
         def protectedPath = flowPathInfo.protectedPath.forwardPath
         def rules = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
             !new Cookie(it.cookie).serviceFlag
@@ -180,7 +189,7 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
 
         then: "Flow validate detects discrepancies"
         //TODO(andriidovhan) try to extend this test when the issues/2302 is fixed
-        def responseValidateFlow = northbound.validateFlow(flow.id).findAll { !it.discrepancies.empty }*.discrepancies
+        def responseValidateFlow = northbound.validateFlow(flow.flowId).findAll { !it.discrepancies.empty }*.discrepancies
         assert responseValidateFlow.size() == 1
         responseValidateFlow[0].expectedValue[0] == ruleToDelete.toString()
 
@@ -192,11 +201,11 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         }
 
         then: "Flow validate detects discrepancies for all deleted rules"
-        def responseValidateFlow2 = northbound.validateFlow(flow.id).findAll { !it.discrepancies.empty }*.discrepancies
+        def responseValidateFlow2 = northbound.validateFlow(flow.flowId).findAll { !it.discrepancies.empty }*.discrepancies
         assert responseValidateFlow2.size() == 4
 
-        cleanup:
-        flow && flowHelper.deleteFlow(flow.id)
+        cleanup: "Delete the flow"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     /**

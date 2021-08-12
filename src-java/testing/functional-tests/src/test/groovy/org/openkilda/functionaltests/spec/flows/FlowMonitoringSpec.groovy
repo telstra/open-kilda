@@ -1,6 +1,8 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.ResourceLockConstants.FLOW_MON_TOGGLE
+import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
@@ -20,11 +22,14 @@ import org.openkilda.model.PathComputationStrategy
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Isolated
+import spock.lang.ResourceLock
 import spock.lang.See
 import spock.lang.Shared
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-monitoring")
 @Tags([VIRTUAL, LOW_PRIORITY])
+@Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
 class FlowMonitoringSpec extends HealthCheckSpecification {
     @Shared
     List<PathNode> mainPath, alternativePath
@@ -66,6 +71,8 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @ResourceLock(S42_TOGGLE)
+    @ResourceLock(FLOW_MON_TOGGLE)
     def "Able to detect and reroute a flow with MAX_LATENCY strategy when main path does not satisfy latency SLA"() {
         given: "2 non-overlapping paths with 200 and 250 latency"
         setLatencyForPaths(200, 250)
@@ -135,6 +142,8 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @ResourceLock(S42_TOGGLE)
+    @ResourceLock(FLOW_MON_TOGGLE)
     def "System doesn't try to reroute a MAX_LATENCY flow when a flow path doesn't satisfy latency SLA \
 and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         given: "2 non-overlapping paths with 200 and 250 latency"
@@ -223,6 +232,6 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         wait(getDiscoveryInterval() + WAIT_OFFSET) {
             assert getNorthbound().getActiveLinks().size() == getTopology().islsForActiveSwitches.size() * 2
         }
-        getDatabase().resetCosts()
+        getDatabase().resetCosts(getTopology().isls)
     }
 }

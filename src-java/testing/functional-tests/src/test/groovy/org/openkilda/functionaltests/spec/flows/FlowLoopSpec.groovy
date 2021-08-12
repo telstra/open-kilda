@@ -6,6 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_SUCCESS
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
@@ -355,7 +356,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -468,6 +469,10 @@ class FlowLoopSpec extends HealthCheckSpecification {
         }
         flowHelperV2.addFlow(flow)
         northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == UPDATE_SUCCESS
+        }
 
         when: "Break ISL on the main path (bring port down) to init auto swap"
         def flowPathInfo = northbound.getFlowPath(flow.flowId)
@@ -522,7 +527,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy

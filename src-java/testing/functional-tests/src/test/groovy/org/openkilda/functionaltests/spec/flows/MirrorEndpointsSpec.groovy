@@ -693,7 +693,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
         where:
         data << [
