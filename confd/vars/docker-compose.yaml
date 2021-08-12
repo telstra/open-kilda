@@ -1,5 +1,5 @@
 ---
-#no_gui: true
+no_gui: true
 #no_kibana: true
 #no_floodlight_2: true
 #no_floodlight_stats: true

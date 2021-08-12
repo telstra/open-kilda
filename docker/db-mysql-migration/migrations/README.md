@@ -1,17 +1,11 @@
-# OrientDB migrations
-
-## Migration sets:
-* `initial-access-management.yaml` - create required roles and users, executed from `root` user, applied only on dev 
-  environment.
-* `prehistory.yaml` - migration steps already applied to the prod DB on the moment when this migration toolset created, 
-  applied to the dev environment 
-* `root.yaml` - main migration set, applied on all environments.
+# MySQL migrations
 
 ## migrations concepts
 * use `yaml` format
 * do not include `changeSet` entries directly into `root.yaml` - create a separate migration file for each migration and 
   include it into `root.yaml`
 * put all request that must be applied as one transaction inside one `changeSet`
+* prefer liquibase "change types" over plain SQL requests 
 * filename + changeSet id + author together represents a unique identifier for changeSet, used by `liquibase` to track
   the history of migration, so you `id` records must be unique for the migration file
 * name migration files as `NNN-human-readable-description.yaml`, where `NNN` is a decimal digit with leading zeros (for
@@ -58,20 +52,21 @@ docker-compose build db_migration
 And execute following command (for DB on some foreign host):
 ```shell script
 docker run \
-  --volume /etc/resolv.conf:/etc/resolv.conf --rm --network host \
-  --env=KILDA_ORIENTDB_HOST=some.foreign.host.name \
-  --env=KILDA_ORIENTDB_DB_NAME=kilda \
-  --env=KILDA_ORIENTDB_USER=kilda \
-  --env=KILDA_ORIENTDB_PASSWORD=password \
-  open-kilda_db_migration:latest
+  --volume=/etc/resolv.conf:/etc/resolv.conf --rm --network=host \
+  open-kilda_db_mysql_migration:latest \
+  --username="kilda" \
+  --password="password" \
+  --url="jdbc:mysql://mysql.pendev/kilda" \
+  update --changelog-file="root.yaml"
 ```
 
 For rollback changes up to some specific tag, execute command
 ```shell script
-docker run --volume /etc/resolv.conf:/etc/resolv.conf --rm --network host \
-  --env=KILDA_ORIENTDB_HOST=some.foreign.host.name \
-  --env=KILDA_ORIENTDB_DB_NAME=kilda \
-  --env=KILDA_ORIENTDB_USER=kilda \
-  --env=KILDA_ORIENTDB_PASSWORD=password \
-  open-kilda_db_migration:latest /kilda/migrate.sh some-specific-tag
+docker run \
+  --volume=/etc/resolv.conf:/etc/resolv.conf --rm --network=host \
+  open-kilda_db_mysql_migration:latest \
+  --username="kilda" \
+  --password="password" \
+  --url="jdbc:mysql://mysql.pendev/kilda" \
+  rollback --changelog-file="root.yaml" --tag="some-specific-tag"
 ```
