@@ -1031,6 +1031,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Cannot create mirror on a switch with enabled connected devices"() {
         given: "A switch with enabled connected devices"
+        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         def swPair = topologyHelper.switchPairs[0]
         def originalProps = northbound.getSwitchProperties(swPair.src.dpId)
         northbound.updateSwitchProperties(swPair.src.dpId, originalProps.jacksonCopy().tap {
