@@ -72,7 +72,6 @@ import org.apache.storm.topology.IRichBolt;
 import org.apache.storm.topology.IRichSpout;
 import org.apache.storm.topology.SpoutDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
-import org.apache.storm.tuple.Fields;
 import org.kohsuke.args4j.CmdLineException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,11 +95,6 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     private static final String MAX_SPOUT_PENDING_SPOUT_DEF_KEY = "max.spout.pending";
 
     public static final String BOLT_ID_CTRL_ROUTE = "ctrl.route";
-
-    public static final String KEY_FIELD = "key";
-    public static final String MESSAGE_FIELD = "message";
-    public static final Fields fieldMessage = new Fields(MESSAGE_FIELD);
-    public static final Fields FIELDS_KEY = new Fields(KEY_FIELD);
 
     protected final String topologyName;
 

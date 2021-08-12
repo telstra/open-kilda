@@ -37,6 +37,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.DeallocateResourcesA
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.HandleNotCompletedCommandsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.HandleNotDeallocatedResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.HandleNotRemovedPathsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.NotifyFlowStatsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.OnErrorResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.OnFinishedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.OnFinishedWithErrorAction;
@@ -198,7 +199,13 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
                     .on(Event.ERROR)
                     .perform(new HandleNotCompletedCommandsAction());
 
-            builder.transition().from(State.RULES_REMOVED).to(State.PATHS_REMOVED).on(Event.NEXT)
+            builder.transition()
+                    .from(State.RULES_REMOVED)
+                    .to(State.NOTIFY_FLOW_STATS)
+                    .on(Event.NEXT)
+                    .perform(new NotifyFlowStatsAction(persistenceManager, carrier));
+
+            builder.transition().from(State.NOTIFY_FLOW_STATS).to(State.PATHS_REMOVED).on(Event.NEXT)
                     .perform(new CompleteFlowPathRemovalAction(persistenceManager));
 
             builder.transition().from(State.PATHS_REMOVED).to(State.DEALLOCATING_RESOURCES)
@@ -291,7 +298,9 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
         FINISHED_WITH_ERROR,
 
         NOTIFY_FLOW_MONITOR,
-        NOTIFY_FLOW_MONITOR_WITH_ERROR
+        NOTIFY_FLOW_MONITOR_WITH_ERROR,
+
+        NOTIFY_FLOW_STATS
     }
 
     public enum Event {

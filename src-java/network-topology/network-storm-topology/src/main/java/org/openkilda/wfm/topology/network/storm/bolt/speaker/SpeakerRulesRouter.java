@@ -40,7 +40,7 @@ import org.apache.storm.tuple.Values;
 public class SpeakerRulesRouter extends AbstractBolt {
     public static final String BOLT_ID = ComponentId.SPEAKER_RULES_ROUTER.toString();
 
-    public static final String FIELD_ID_KEY = MessageKafkaTranslator.KEY_FIELD;
+    public static final String FIELD_ID_KEY = MessageKafkaTranslator.FIELD_ID_KEY;
     public static final String FIELD_ID_INPUT = MessageKafkaTranslator.FIELD_ID_PAYLOAD;
 
     public static final String STREAM_WORKER_ID = "worker";

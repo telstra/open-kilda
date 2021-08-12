@@ -20,7 +20,7 @@ import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.wfm.share.utils.MetricFormatter;
-import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -28,6 +28,7 @@ import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,9 @@ import java.util.Map;
 
 public class ParsePortInfoBolt extends BaseRichBolt {
     private static final Logger logger = LoggerFactory.getLogger(ParsePortInfoBolt.class);
+
+    public static final Fields OUTGOING_STREAM_FIELDS = new Fields(KafkaRecordTranslator.FIELD_ID_PAYLOAD);
+
     private final String metricName;
     private transient OutputCollector collector;
     private transient Table<String, Integer, Map<String, String>> tagsTable;
@@ -122,6 +126,6 @@ public class ParsePortInfoBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(AbstractTopology.fieldMessage);
+        declarer.declare(OUTGOING_STREAM_FIELDS);
     }
 }

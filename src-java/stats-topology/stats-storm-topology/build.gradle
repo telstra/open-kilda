@@ -8,6 +8,7 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 
 description = 'Stats Storm Topology'
 dependencies {
+    implementation project(':stats-messaging')
     implementation project(':base-storm-topology')
     runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
