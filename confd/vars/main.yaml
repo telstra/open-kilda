@@ -140,7 +140,7 @@ kilda_logging_elasticsearch_proto: "http"
 kilda_logging_elasticsearch_hosts: "elasticsearch.pendev:9200"
 kilda_logging_elasticsearch_user: "kilda"
 kilda_logging_elasticsearch_pass: "kilda"
-kilda_logging_elasticsearch_index: "kilda-*"
+kilda_logging_elasticsearch_index: "kilda-%{+YYYY.MM.dd}"
 kilda_logging_fl_loglevel: "DEBUG"
 kilda_logging_fl_logaccess: True
 kilda_logging_port_storm: 5001
