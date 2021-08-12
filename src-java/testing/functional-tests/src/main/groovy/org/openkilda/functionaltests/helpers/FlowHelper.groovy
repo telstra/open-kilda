@@ -188,7 +188,7 @@ class FlowHelper {
      * @param endpoint FlowEndpointPayload object to convert
      */
     static FlowEndpointV2 toFlowEndpointV2(FlowEndpointPayload endpoint) {
-        new FlowEndpointV2(endpoint.datapath, endpoint.portNumber, endpoint.vlanId,
+        new FlowEndpointV2(endpoint.datapath, endpoint.portNumber, endpoint.vlanId, (endpoint.innerVlanId ?: 0),
                 toFlowConnectedDevicesV2(endpoint.detectConnectedDevices))
     }
 
