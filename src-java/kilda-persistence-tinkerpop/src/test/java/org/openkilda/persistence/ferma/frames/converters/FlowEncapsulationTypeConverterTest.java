@@ -24,7 +24,7 @@ import org.junit.Test;
 public class FlowEncapsulationTypeConverterTest {
     @Test
     public void shouldConvertToGraphProperty() {
-        assertEquals("TRANSIT_VLAN",
+        assertEquals("transit_vlan",
                 FlowEncapsulationTypeConverter.INSTANCE.toGraphProperty(FlowEncapsulationType.TRANSIT_VLAN));
     }
 
@@ -32,7 +32,5 @@ public class FlowEncapsulationTypeConverterTest {
     public void shouldConvertToEntity() {
         assertEquals(FlowEncapsulationType.TRANSIT_VLAN,
                 FlowEncapsulationTypeConverter.INSTANCE.toEntityAttribute("transit_vlan"));
-        assertEquals(FlowEncapsulationType.TRANSIT_VLAN,
-                FlowEncapsulationTypeConverter.INSTANCE.toEntityAttribute("TRANSIT_VLAN"));
     }
 }

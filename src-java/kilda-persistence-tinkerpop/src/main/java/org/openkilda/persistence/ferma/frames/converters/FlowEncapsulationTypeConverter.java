@@ -28,7 +28,7 @@ public class FlowEncapsulationTypeConverter implements AttributeConverter<FlowEn
         if (value == null) {
             return null;
         }
-        return value.name();
+        return value.name().toLowerCase();
     }
 
     @Override
