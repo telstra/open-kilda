@@ -22,13 +22,17 @@ NOTE: The GRPC implementation supports the LAG type only and it is set by defaul
 class LogicalPortSpec extends GrpcBaseSpecification {
 
     @Tidy
-    @Tags(HARDWARE) //https://github.com/telstra/open-kilda/issues/3904
-    def "Able to create/read/delete logicalport on the #sw.hwSwString switch"() {
-        /**the update action is not working(issue on a Noviflow switch side)*/
+    def "Able to create/read/delete logicalport on the #switches.switchId switch"() {
         when: "Create logical port"
-        def switchPort = northbound.getPorts(sw.switchId).find {
-            it.state[0] == "LINK_DOWN" && !it.name.contains("novi_lport")
-        }.portNumber
+        def switchPort
+        if (profile == "virtual") {
+            switchPort = (Math.random()*100).toInteger()
+        } else {
+            switchPort = northbound.getPorts(sw.switchId).find {
+                it.state[0] == "LINK_DOWN" && !it.name.contains("novi_lport")
+            }.portNumber
+        }
+
         def switchLogicalPort = 1100 + switchPort
         def request = new LogicalPortDto(LogicalPortType.BFD, [switchPort], switchLogicalPort)
         def responseAfterCreating = grpc.createLogicalPort(sw.address, request)
@@ -44,8 +48,6 @@ class LogicalPortSpec extends GrpcBaseSpecification {
         and: "The created port is exist in a list of all logical port"
         grpc.getSwitchLogicalPorts(sw.address).contains(responseAfterGetting)
 
-        //        TODO(andriidovhan): add update action
-        //        and: "able to edit the created logical port"
         when: "Try to delete the created logical port"
         def responseAfterDeleting = grpc.deleteSwitchLogicalPort(sw.address, switchLogicalPort)
 
