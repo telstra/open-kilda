@@ -3,8 +3,8 @@
 # Xms represents the initial size of total heap space
 # Xmx represents the maximum size of total heap space
 
-#-Xms200m
-#-Xmx501m
+#-Xms512m
+#-Xmx512m
 
 ################################################################
 ## Expert settings
@@ -17,17 +17,11 @@
 ################################################################
 
 ## GC configuration
--XX:+UseParNewGC
--XX:+UseConcMarkSweepGC
--XX:CMSInitiatingOccupancyFraction=75
--XX:+UseCMSInitiatingOccupancyOnly
+8-13:-XX:+UseConcMarkSweepGC
+8-13:-XX:CMSInitiatingOccupancyFraction=75
+8-13:-XX:+UseCMSInitiatingOccupancyOnly
 
-## optimizations
-
-# disable calls to System#gc
--XX:+DisableExplicitGC
-
-## locale
+## Locale
 # Set the locale language
 #-Duser.language=en
 
@@ -51,6 +45,13 @@
 # use our provided JNA always versus the system one
 #-Djna.nosys=true
 
+# Turn on JRuby invokedynamic
+-Djruby.compile.invokedynamic=true
+# Force Compilation
+-Djruby.jit.threshold=0
+# Make sure joni regexp interruptability is enabled
+-Djruby.regexp.interruptible=true
+
 ## heap dumps
 
 # generate a heap dump when an allocation from the Java heap fails
@@ -72,3 +73,9 @@
 # log GC status to a file with time stamps
 # ensure the directory exists
 #-Xloggc:${LS_GC_LOG_FILE}
+
+# Entropy source for randomness
+-Djava.security.egd=file:/dev/urandom
+
+# Copy the logging context from parent threads to children
+-Dlog4j2.isThreadContextMapInheritable=true

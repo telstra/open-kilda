@@ -1,27 +1,21 @@
 TASK := functionalTest
-STABLE_TAG := "stable"
+STABLE_TAG ?= "stable"
+BASE_UBUNTU ?= "ubuntu:20.04"
 
 build-base: {{if not (exists "/no_grpc_stub")}}build-grpc-stub {{end}}build-lock-keeper update-props docker/storm/lib {{if not (exists "/no_server42_server")}}build-server42dpdk{{end}}
-	docker build -t kilda/base-ubuntu:latest docker/base/kilda-base-ubuntu/
-	docker build -t kilda/zookeeper:latest docker/zookeeper
-	docker build -t kilda/kafka:latest docker/kafka
-	docker build -t kilda/hbase:latest docker/hbase
-	docker build -t kilda/storm:latest docker/storm
-{{if not (exists "/no_opentsdb")}}	docker build -t kilda/opentsdb:latest docker/opentsdb
-{{end}}{{if not (exists "/no_logstash")}}	docker build -t kilda/logstash:latest docker/logstash
-{{end}}{{if not (exists "/no_elasticsearch")}}	docker build -t kilda/elasticsearch:latest docker/elasticsearch
-{{end}}	$(MAKE) -C src-python/lab-service find-python-requirements
-	docker build -t kilda/base-lab-service:latest docker/base/kilda-base-lab-service/ {{if (exists "/ovs_vxlan")}} --build-arg=OVS_VERSION=kilda.v2.15.1.3{{end}}
+	$(MAKE) -C src-python/lab-service find-python-requirements
+	docker build -t kilda/base-ubuntu:$(STABLE_TAG)      --build-arg base_image=$(BASE_UBUNTU) docker/base/kilda-base-ubuntu/
+	docker build -t kilda/base-lab-service:$(STABLE_TAG) --build-arg base_image=$(BASE_UBUNTU) {{if (exists "/ovs_vxlan")}} --build-arg=OVS_VERSION=kilda.v2.15.1.3 {{end}}docker/base/kilda-base-lab-service/
 
 .PHONY: build-lock-keeper
 build-lock-keeper:
 	cp src-python/lock-keeper/* docker/lock-keeper/
-	docker build -t kilda/lock-keeper:latest docker/lock-keeper/
+	docker build -t kilda/lock-keeper:$(STABLE_TAG) docker/lock-keeper/
 
 .PHONY: build-grpc-stub
 build-grpc-stub:
 	cp src-python/grpc-stub/* docker/grpc-stub/
-	docker build -t kilda/grpc-stub:latest docker/grpc-stub/
+	docker build -t kilda/grpc-stub:$(STABLE_TAG) docker/grpc-stub/
 {{if not (exists "/no_server42_server")}}
 .PHONY: build-server42dpdk
 build-server42dpdk:

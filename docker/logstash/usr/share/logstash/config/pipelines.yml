@@ -1,0 +1,4 @@
+- pipeline.id: main
+  path.config: "/usr/share/logstash/pipeline"
+  dead_letter_queue.enable: true
+  dead_letter_queue.max_bytes: 1024mb
