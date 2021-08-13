@@ -1,15 +1,23 @@
-ARG base_image=logstash:5.6.12
+ARG base_image=logstash:7.14.0
 FROM ${base_image}
 
 COPY . /
 
+USER root
 RUN \
-    export DEBIAN_FRONTEND=noninteractive && \
-    apt -y update && \
-    apt -y install net-tools telnet netcat && \
-    rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    yum -y install epel-release && \
+    yum -y \
+        install \
+            supervisor \
+            net-tools \
+            telnet \
+            netcat \
+            jemalloc && \
+    yum clean all && \
+    rm -rf /var/cache/yum && \
+    rm -rf /usr/share/logstash/config/logstash-sample.conf
 
-CMD ["-f", "/etc/logstash/conf.d/logstash.conf"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf", "--nodaemon"]
 
 
 EXPOSE 5000 5001 5002 5003 5004 5005

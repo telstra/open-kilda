@@ -1,5 +1,5 @@
 [template]
 src = "logstash/logstash.conf.tmpl"
-dest = "docker/logstash/etc/logstash/conf.d/logstash.conf"
+dest = "docker/logstash/usr/share/logstash/pipeline/logstash.conf"
 keys = [ "/" ]
 mode = "0644"
