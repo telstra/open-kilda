@@ -111,7 +111,7 @@ public class LagOperationServiceImpl implements LagOperationService {
 
     @Override
     public void validatePhysicalPorts(SwitchId switchId, List<Integer> physicalPortNumbers,
-                                      Set<SwitchFeature> features) {
+                                      Set<SwitchFeature> features) throws InvalidDataException {
         if (physicalPortNumbers == null || physicalPortNumbers.isEmpty()) {
             throw new InvalidDataException("Physical ports list is empty");
         }
@@ -131,7 +131,8 @@ public class LagOperationServiceImpl implements LagOperationService {
         }
     }
 
-    private void validatePhysicalPort(SwitchId switchId, Set<SwitchFeature> features, Integer portNumber) {
+    private void validatePhysicalPort(SwitchId switchId, Set<SwitchFeature> features, Integer portNumber)
+            throws InvalidDataException {
         if (portNumber == null || portNumber <= 0) {
             throw new InvalidDataException(format("Invalid physical port number %s. It can't be null or negative.",
                     portNumber));
@@ -185,7 +186,7 @@ public class LagOperationServiceImpl implements LagOperationService {
     }
 
     @Override
-    public String getSwitchIpAddress(Switch sw) {
+    public String getSwitchIpAddress(Switch sw) throws InvalidDataException, InconsistentDataException {
         if (!sw.getFeatures().contains(LAG)) {
             throw new InvalidDataException(format("Switch %s doesn't support LAG.", sw.getSwitchId()));
         }
@@ -196,7 +197,7 @@ public class LagOperationServiceImpl implements LagOperationService {
     }
 
     @Override
-    public Switch getSwitch(SwitchId switchId) {
+    public Switch getSwitch(SwitchId switchId) throws SwitchNotFoundException {
         return switchRepository.findById(switchId).orElseThrow(() -> new SwitchNotFoundException(switchId));
     }
 }

@@ -33,7 +33,10 @@ import org.openkilda.messaging.swmanager.request.CreateLagRequest;
 import org.openkilda.messaging.swmanager.response.LagResponse;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
+import org.openkilda.wfm.topology.switchmanager.error.InvalidDataException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchManagerException;
+import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagContext;
 import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagState;
@@ -113,12 +116,16 @@ public class CreateLagFsm extends AbstractStateMachine<
 
     void createLagInDb(CreateLagState from, CreateLagState to, CreateLagEvent event, CreateLagContext context) {
         log.info("Creating LAG {} on switch {}. Key={}", request, switchId, key);
-
-        Switch sw = lagOperationService.getSwitch(switchId);
-        String ipAddress = lagOperationService.getSwitchIpAddress(sw);
-        lagOperationService.validatePhysicalPorts(switchId, request.getPortNumbers(), sw.getFeatures());
-        lagLogicalPortNumber = lagOperationService.createLagPort(switchId, request.getPortNumbers());
-        grpcRequest = new CreateLogicalPortRequest(ipAddress, request.getPortNumbers(), lagLogicalPortNumber, LAG);
+        try {
+            Switch sw = lagOperationService.getSwitch(switchId);
+            String ipAddress = lagOperationService.getSwitchIpAddress(sw);
+            lagOperationService.validatePhysicalPorts(switchId, request.getPortNumbers(), sw.getFeatures());
+            lagLogicalPortNumber = lagOperationService.createLagPort(switchId, request.getPortNumbers());
+            grpcRequest = new CreateLogicalPortRequest(ipAddress, request.getPortNumbers(), lagLogicalPortNumber, LAG);
+        } catch (InvalidDataException | InconsistentDataException | SwitchNotFoundException e) {
+            log.error(format("Enable to create LAG port %s in DB. Error: %s", request, e.getMessage()), e);
+            fire(ERROR, CreateLagContext.builder().error(e).build());
+        }
     }
 
     void sendGrpcRequest(CreateLagState from, CreateLagState to, CreateLagEvent event, CreateLagContext context) {
@@ -151,7 +158,7 @@ public class CreateLagFsm extends AbstractStateMachine<
                 request, switchId, key, error.getMessage()), error);
 
         carrier.cancelTimeoutCallback(key);
-        carrier.errorResponse(key, error.getError(), error.getMessage(), "Error during LAG create");
+        carrier.errorResponse(key, error.getError(), "Error during LAG create", error.getMessage());
     }
 
     @Override
