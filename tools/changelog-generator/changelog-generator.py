@@ -7,7 +7,8 @@ import click
 
 
 def get_issues_from_pr(p):
-    return [m.groups()[0] for m in re.finditer(r"#(\d+)", p.body)]
+    text = "{}\n{}".format(p.title, "" if p.body is None else p.body)
+    return [m.groups()[0] for m in re.finditer(r"#(\d+)", text)]
 
 
 def generate_topic_list(labels):
