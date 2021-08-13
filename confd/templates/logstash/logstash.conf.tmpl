@@ -77,6 +77,6 @@ filter {
 output {
   elasticsearch {
     hosts => "{{ getv "/kilda_logging_elasticsearch_hosts" }}"
-    index => "{{ getv "/kilda_logging_elasticsearch_index" }}"
+    index => "{{ getv "/kilda_logging_elasticsearch_logstash_index_pattern" }}"
   }
 }
