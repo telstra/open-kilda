@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.102.0 (13/08/2021)
+
+### Features:
+-  [#4416](https://github.com/telstra/open-kilda/pull/4416) LAG: preparation [**storm-topologies**]
+-  [#4397](https://github.com/telstra/open-kilda/pull/4397) Added LAG DB objects
+-  [#4371](https://github.com/telstra/open-kilda/pull/4371) Add design for port LAGs [**docs**]
+
+### Bug Fixes:
+-  [#4432](https://github.com/telstra/open-kilda/pull/4432) Fix index pattern
+-  [#4402](https://github.com/telstra/open-kilda/pull/4402) Fix missing ISL RTT rules after InstallDefaults operation (Issue: [#4389](https://github.com/telstra/open-kilda/issues/4389)) [**floodlight**]
+-  [#4415](https://github.com/telstra/open-kilda/pull/4415) Added missed Logical port type in GRPC stub
+
+### Improvements:
+-  [#4419](https://github.com/telstra/open-kilda/pull/4419) Changed log level of "drop async response" message [**storm-topologies**]
+-  [#4420](https://github.com/telstra/open-kilda/pull/4420) add test for #4411 [**tests**]
+-  [#4390](https://github.com/telstra/open-kilda/pull/4390) Introduce Stats Messaging (+ notifications on flow events) [**storm-topologies**]
+-  [#4428](https://github.com/telstra/open-kilda/pull/4428) Make logstash index configurable
+-  [#4410](https://github.com/telstra/open-kilda/pull/4410) ignore test: qinq + swapEndpoint [**tests**]
+-  [#4413](https://github.com/telstra/open-kilda/pull/4413) fix test mirror+connectedDevice in singleTable [**tests**]
+
+### Other changes:
+-  [#4365](https://github.com/telstra/open-kilda/pull/4365) Parallel topologies, parallel tests [**tests**]
+-  [#4406](https://github.com/telstra/open-kilda/pull/4406) Update some tests to iterate over all switch models [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.101.0...v1.102.0).
+
+### Affected Components:
+orientdb, grpc, flow, flow-hs, stats, network, fl
+
 ## v1.101.0 (09/08/2021)
 
 ### Features:
