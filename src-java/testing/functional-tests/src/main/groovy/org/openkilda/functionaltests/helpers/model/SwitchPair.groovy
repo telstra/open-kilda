@@ -27,4 +27,8 @@ class SwitchPair {
     String toString() {
         return "$src.dpId-$dst.dpId"
     }
+
+    String hwSwString() {
+        return "$src.hwSwString-$dst.hwSwString"
+    }
 }
