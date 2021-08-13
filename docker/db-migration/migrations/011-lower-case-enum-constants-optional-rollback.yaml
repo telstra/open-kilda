@@ -1,0 +1,62 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: surabujin
+      changes:
+        - tagDatabase:
+            tag: 011-lower-case-enum-constants-optional-rollback
+
+  - changeSet:
+      id: flow_path.applications
+      author: surabujin
+      changes: []
+      rollback:
+        - sql: |-
+            UPDATE flow_path
+            SET applications = applications || ["TELESCOPE"] WHERE "telescope" in applications
+        - sql: |-
+            UPDATE flow_path
+            SET applications = applications.remove("telescope") WHERE "TELESCOPE" in applications
+
+  - changeSet:
+      id: kilda_configuration.flow_encapsulation_type
+      author: surabujin
+      changes: []
+      rollback:
+        - sql: UPDATE kilda_configuration SET flow_encapsulation_type = flow_encapsulation_type.toUpperCase()
+
+  - changeSet:
+      id: flow.encapsulation_type
+      author: surabujin
+      changes: []
+      rollback:
+        - sql: UPDATE flow SET encapsulation_type = encapsulation_type.toUpperCase()
+
+  - changeSet:
+      id: switch_properties.supported_transit_encapsulation
+      author: surabujin
+      changes: []
+      rollback:
+        - sql: |-
+            UPDATE switch_properties
+            SET supported_transit_encapsulation = supported_transit_encapsulation || ["TRANSIT_VLAN"]
+            WHERE "transit_vlan" in supported_transit_encapsulation
+        - sql: |-
+            UPDATE switch_properties
+            SET supported_transit_encapsulation = supported_transit_encapsulation || ["VXLAN"]
+            WHERE "vxlan" in supported_transit_encapsulation
+        - sql: |-
+            UPDATE switch_properties
+            SET supported_transit_encapsulation = supported_transit_encapsulation.remove("transit_vlan")
+            WHERE "transit_vlan" in supported_transit_encapsulation
+        - sql: |-
+            UPDATE switch_properties
+            SET supported_transit_encapsulation = supported_transit_encapsulation.remove("vxlan")
+            WHERE "vxlan" in supported_transit_encapsulation
+
+  - changeSet:
+      id: flow_dump.encapsulation_type
+      author: surabujin
+      changes: []
+      rollback:
+        - sql: UPDATE flow_dump SET encapsulation_type = encapsulation_type.toUpperCase()
