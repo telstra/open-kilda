@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.switchmanager.service.impl.fsmhandlers;
 
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
@@ -110,6 +111,12 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
     public void handleGroupEntriesResponse(String key, SwitchGroupEntries data) {
         handle(key, SwitchValidateEvent.GROUPS_RECEIVED,
                 SwitchValidateContext.builder().groupEntries(data.getGroupEntries()).build());
+    }
+
+    @Override
+    public void handleLogicalPortResponse(String key, DumpLogicalPortsResponse data) {
+        handle(key, SwitchValidateEvent.LOGICAL_PORTS_RECEIVED, SwitchValidateContext.builder()
+                .logicalPortEntries(data.getLogicalPorts()).build());
     }
 
     @Override

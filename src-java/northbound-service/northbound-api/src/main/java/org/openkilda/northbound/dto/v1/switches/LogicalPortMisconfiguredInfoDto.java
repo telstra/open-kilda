@@ -16,21 +16,21 @@
 package org.openkilda.northbound.dto.v1.switches;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
-@JsonInclude(Include.NON_NULL)
-public class SwitchValidationResult {
-    private RulesValidationDto rules;
-    private MetersValidationDto meters;
-    private GroupsValidationDto groups;
-    private LogicalPortsValidationDto logicalPorts;
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class LogicalPortMisconfiguredInfoDto {
+    @JsonProperty("type")
+    private String type;
+
+    @JsonProperty("physical_ports")
+    private List<Integer> physicalPorts;
 }

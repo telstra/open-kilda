@@ -29,6 +29,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
+import static org.openkilda.model.SwitchFeature.LAG;
 import static org.openkilda.model.SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES;
 
 import org.openkilda.messaging.command.CommandData;
@@ -54,6 +55,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
+import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -63,6 +65,7 @@ import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.impl.ValidationServiceImpl;
 
+import com.google.common.collect.Sets;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -77,9 +80,10 @@ import java.util.Optional;
 @RunWith(MockitoJUnitRunner.class)
 public class SwitchValidateServiceImplTest {
 
-    private static SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
-    private static SwitchId SWITCH_ID_MISSING = new SwitchId(0x0000000000000002L);
-    private static String KEY = "KEY";
+    private static final SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
+    private static final SwitchId SWITCH_ID_MISSING = new SwitchId(0x0000000000000002L);
+    private static final Switch SWITCH_1 = Switch.builder().switchId(SWITCH_ID).features(Sets.newHashSet(LAG)).build();
+    private static final String KEY = "KEY";
 
     @Mock
     private PersistenceManager persistenceManager;
@@ -102,8 +106,8 @@ public class SwitchValidateServiceImplTest {
         FlowPathRepository flowPathRepository = Mockito.mock(FlowPathRepository.class);
         FlowRepository flowRepository = Mockito.mock(FlowRepository.class);
         SwitchRepository switchRepository = Mockito.mock(SwitchRepository.class);
-        when(switchRepository.exists(eq(SWITCH_ID))).thenReturn(true);
-        when(switchRepository.exists(eq(SWITCH_ID_MISSING))).thenReturn(false);
+        when(switchRepository.findById(eq(SWITCH_ID))).thenReturn(Optional.of(SWITCH_1));
+        when(switchRepository.findById(eq(SWITCH_ID_MISSING))).thenReturn(Optional.empty());
         SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
         when(switchPropertiesRepository.findBySwitchId(any(SwitchId.class))).thenAnswer((invocation) ->
                 Optional.of(SwitchProperties.builder()
@@ -115,6 +119,7 @@ public class SwitchValidateServiceImplTest {
         IslRepository islRepository = Mockito.mock(IslRepository.class);
         when(islRepository.findBySrcSwitch(any(SwitchId.class))).thenAnswer((invocation) ->
                 Collections.emptyList());
+        LagLogicalPortRepository lagLogicalPortRepository = Mockito.mock(LagLogicalPortRepository.class);
         KildaFeatureTogglesRepository featureTogglesRepository = mock(KildaFeatureTogglesRepository.class);
         when(featureTogglesRepository.getOrDefault()).thenReturn(KildaFeatureToggles.DEFAULTS);
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);

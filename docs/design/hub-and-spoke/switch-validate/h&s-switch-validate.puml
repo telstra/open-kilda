@@ -7,6 +7,7 @@ participant SwitchManager << Hub >>
 participant SpeakerWorker
 participant ValidationService
 participant Floodlight as FL
+participant GRPC
 database DAO
 
 User -> NB : Switch validate
@@ -19,15 +20,25 @@ SwitchManager ->> SpeakerWorker : DumpRulesRequest
 SpeakerWorker ->> FL : DumpRulesRequest
 
 SwitchManager ->> SpeakerWorker : DumpMetersRequest
-SpeakerWorker ->> FL : DumpRulesRequest
+SpeakerWorker ->> FL : DumpMetersRequest
+
+SwitchManager ->> SpeakerWorker : DumpGroupsForSwitchManagerRequest
+SpeakerWorker ->> FL : DumpGroupsForSwitchManagerRequest
+
+SwitchManager ->> SpeakerWorker : DumpLogicalPortsRequest
 deactivate SwitchManager
+SpeakerWorker ->> GRPC : DumpLogicalPortsRequest
 
 FL ->> SpeakerWorker : SwitchFlowEntries
 SpeakerWorker ->> SwitchManager : SwitchFlowEntries
+activate SwitchManager
 FL ->> SpeakerWorker : SwitchMeterData
 SpeakerWorker ->> SwitchManager : SwitchMeterData
+FL ->> SpeakerWorker : GroupEntries
+SpeakerWorker ->> SwitchManager : GroupEntries
+GRPC ->> SpeakerWorker : LogicalPorts
+SpeakerWorker ->> SwitchManager : LogicalPorts
 
-activate SwitchManager
 SwitchManager -> ValidationService : Validate rules
 activate ValidationService
 ValidationService -> DAO : Get path segments\nby dst switch id
@@ -40,7 +51,7 @@ DAO -> ValidationService : Flow paths
 deactivate DAO
 ValidationService -> ValidationService : Compute\nmissing/proper/excess\nrules
 
-ValidationService -> SwitchManager : Validate rules\nresult
+ValidationService -> SwitchManager : Validate rules result
 deactivate ValidationService
 
 opt Switch support meters
@@ -53,9 +64,29 @@ opt Switch support meters
     deactivate DAO
     ValidationService -> ValidationService : Compute\nmissing/misconfigured\n/proper/excess\nmeters
 
-    ValidationService -> SwitchManager : Validate meters\nresult
+    ValidationService -> SwitchManager : Validate meters result
     deactivate ValidationService
 end
+
+SwitchManager -> ValidationService : Validate groups
+activate ValidationService
+ValidationService -> DAO : Get expected groups
+activate DAO
+DAO -> ValidationService : Expected groups
+deactivate DAO
+ValidationService -> ValidationService : Compute missing/proper/\nexcess/misconfigures groups
+ValidationService -> SwitchManager : Validate groups result
+deactivate ValidationService
+
+SwitchManager -> ValidationService : Validate logical ports
+activate ValidationService
+ValidationService -> DAO : Get expected logical ports
+activate DAO
+DAO -> ValidationService : Expected logical ports
+deactivate DAO
+ValidationService -> ValidationService : Compute missing/proper/\nexcess/misconfigures\nlogical ports
+ValidationService -> SwitchManager : Validate logical ports result
+deactivate ValidationService
 
 SwitchManager -> NB : SwitchValidationResponse
 deactivate SwitchManager

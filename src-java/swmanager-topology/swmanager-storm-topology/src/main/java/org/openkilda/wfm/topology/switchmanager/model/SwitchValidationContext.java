@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.GroupEntry;
+import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.ImmutableList;
@@ -39,10 +40,12 @@ public class SwitchValidationContext {
     List<MeterEntry> actualMeters;
 
     List<GroupEntry> actualGroupEntries;
+    List<LogicalPort> actualLogicalPortEntries;
 
     ValidateRulesResult ofFlowsValidationReport;
     ValidateMetersResult metersValidationReport;
     ValidateGroupsResult validateGroupsResult;
+    ValidateLogicalPortsResult validateLogicalPortResult;
 
     @Builder(toBuilder = true)
     protected SwitchValidationContext(
@@ -50,8 +53,9 @@ public class SwitchValidationContext {
             List<FlowEntry> expectedServiceOfFlows, List<FlowEntry> actualOfFlows,
             List<MeterEntry> expectedServiceMeters, List<MeterEntry> actualMeters,
             List<GroupEntry> actualGroupEntries,
+            List<LogicalPort> actualLogicalPortEntries,
             ValidateRulesResult ofFlowsValidationReport, ValidateMetersResult metersValidationReport,
-            ValidateGroupsResult validateGroupsResult) {
+            ValidateGroupsResult validateGroupsResult, ValidateLogicalPortsResult validateLogicalPortResult) {
         this.switchId = switchId;
 
         this.expectedFlowSegments = expectedFlowSegments != null ? ImmutableList.copyOf(expectedFlowSegments) : null;
@@ -63,10 +67,13 @@ public class SwitchValidationContext {
         this.actualMeters = actualMeters != null ? ImmutableList.copyOf(actualMeters) : null;
 
         this.actualGroupEntries = actualGroupEntries != null ? ImmutableList.copyOf(actualGroupEntries) : null;
+        this.actualLogicalPortEntries = actualLogicalPortEntries != null
+                ? ImmutableList.copyOf(actualLogicalPortEntries) : null;
 
         this.ofFlowsValidationReport = ofFlowsValidationReport;
         this.metersValidationReport = metersValidationReport;
         this.validateGroupsResult = validateGroupsResult;
+        this.validateLogicalPortResult = validateLogicalPortResult;
     }
 
     public static SwitchValidationContextBuilder builder(SwitchId switchId) {
