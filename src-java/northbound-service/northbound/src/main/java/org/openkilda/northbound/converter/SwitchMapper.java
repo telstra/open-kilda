@@ -20,6 +20,7 @@ import org.openkilda.messaging.info.switches.GroupInfoEntry;
 import org.openkilda.messaging.info.switches.GroupInfoEntry.BucketEntry;
 import org.openkilda.messaging.info.switches.GroupSyncEntry;
 import org.openkilda.messaging.info.switches.GroupsValidationEntry;
+import org.openkilda.messaging.info.switches.LogicalPortsSyncEntry;
 import org.openkilda.messaging.info.switches.LogicalPortsValidationEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
@@ -42,6 +43,7 @@ import org.openkilda.northbound.dto.v1.switches.GroupInfoDto;
 import org.openkilda.northbound.dto.v1.switches.GroupInfoDto.BucketDto;
 import org.openkilda.northbound.dto.v1.switches.GroupsSyncDto;
 import org.openkilda.northbound.dto.v1.switches.GroupsValidationDto;
+import org.openkilda.northbound.dto.v1.switches.LogicalPortsSyncDto;
 import org.openkilda.northbound.dto.v1.switches.LogicalPortsValidationDto;
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto;
 import org.openkilda.northbound.dto.v1.switches.MeterMisconfiguredInfoDto;
@@ -130,6 +132,8 @@ public abstract class SwitchMapper {
     public abstract MetersSyncDto toMetersSyncDto(MetersSyncEntry data);
 
     public abstract GroupsSyncDto toGroupsSyncDto(GroupSyncEntry data);
+
+    public abstract LogicalPortsSyncDto toLogicalPortsSyncDto(LogicalPortsSyncEntry data);
 
     @Mapping(target = "rules.missingHex", ignore = true)
     @Mapping(target = "rules.misconfiguredHex", ignore = true)

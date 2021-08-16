@@ -40,6 +40,10 @@ public interface SwitchSyncService {
 
     void handleDeleteGroupResponse(String key);
 
+    void handleCreateLogicalPortResponse(String key);
+
+    void handleDeleteLogicalPortResponse(String key);
+
     void handleTaskTimeout(String key);
 
     void handleTaskError(String key, ErrorMessage message);

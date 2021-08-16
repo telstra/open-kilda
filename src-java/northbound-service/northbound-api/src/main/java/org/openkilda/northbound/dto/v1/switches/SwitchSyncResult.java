@@ -32,4 +32,5 @@ public class SwitchSyncResult {
     private RulesSyncDto rules;
     private MetersSyncDto meters;
     private GroupsSyncDto groups;
+    private LogicalPortsSyncDto logicalPorts;
 }

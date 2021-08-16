@@ -100,7 +100,8 @@ public class CreateLagPortServiceImpl implements CreateLagPortService {
     @Override
     public void handleGrpcResponse(String key, CreateLogicalPortResponse response) {
         if (!fsms.containsKey(key)) {
-            logCreateFsmNotFound(key);
+            // CreateLogicalPortResponse could belong to SwitchSyncFsm so log level is Info
+            logCreateFsmNotFound(key, true);
             return;
         }
         fireFsmEvent(fsms.get(key), CreateLagEvent.LAG_INSTALLED,
@@ -124,7 +125,16 @@ public class CreateLagPortServiceImpl implements CreateLagPortService {
     }
 
     private void logCreateFsmNotFound(String key) {
-        log.warn("Create LAG fsm with key {} not found", key);
+        logCreateFsmNotFound(key, false);
+    }
+
+    private void logCreateFsmNotFound(String key, boolean info) {
+        String message = "Create LAG fsm with key {} not found";
+        if (info) {
+            log.info(message, key);
+        } else {
+            log.warn(message, key);
+        }
     }
 
     private void fireFsmEvent(CreateLagPortFsm fsm, CreateLagEvent event, CreateLagContext context) {

@@ -100,7 +100,8 @@ public class DeleteLagPortServiceImpl implements DeleteLagPortService {
     @Override
     public void handleGrpcResponse(String key, DeleteLogicalPortResponse response) {
         if (!fsms.containsKey(key)) {
-            logDeleteFsmNotFound(key);
+            // DeleteLogicalPortResponse could belong to SwitchSyncFsm so log level is Info
+            logDeleteFsmNotFound(key, true);
             return;
         }
         fireFsmEvent(fsms.get(key), DeleteLagEvent.LAG_REMOVED,
@@ -124,7 +125,16 @@ public class DeleteLagPortServiceImpl implements DeleteLagPortService {
     }
 
     private void logDeleteFsmNotFound(String key) {
-        log.warn("Delete LAG fsm with key {} not found", key);
+        logDeleteFsmNotFound(key, false);
+    }
+
+    private void logDeleteFsmNotFound(String key, boolean info) {
+        String message = "Delete LAG fsm with key {} not found";
+        if (info) {
+            log.info(message, key);
+        } else {
+            log.warn(message, key);
+        }
     }
 
     private void fireFsmEvent(DeleteLagPortFsm fsm, DeleteLagEvent event, DeleteLagContext context) {

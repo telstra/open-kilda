@@ -46,7 +46,16 @@ public abstract class LogicalPortMapper {
     }
 
     public LogicalPortType map(org.openkilda.messaging.model.grpc.LogicalPortType type) {
-        return Optional.ofNullable(type).map(portType -> org.openkilda.messaging.info.switches.LogicalPortType.of(
+        return Optional.ofNullable(type).map(portType -> LogicalPortType.of(
                 type.name())).orElse(null);
+    }
+
+    /**
+     * Maps messaging LogicalPortType to GRPC LogicalPortType.
+     */
+    public org.openkilda.messaging.model.grpc.LogicalPortType map(LogicalPortType type) {
+        return Optional.ofNullable(type)
+                .map(portType -> org.openkilda.messaging.model.grpc.LogicalPortType.valueOf(type.name()))
+                .orElse(null);
     }
 }

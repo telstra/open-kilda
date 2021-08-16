@@ -19,10 +19,16 @@ import org.openkilda.messaging.info.switches.LogicalPortInfoEntry;
 
 import lombok.Value;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Value
 public class ValidateLogicalPortsResult {
+    public static ValidateLogicalPortsResult newEmpty() {
+        return new ValidateLogicalPortsResult(
+                new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+    }
+
     List<LogicalPortInfoEntry> properLogicalPorts;
     List<LogicalPortInfoEntry> missingLogicalPorts;
     List<LogicalPortInfoEntry> excessLogicalPorts;

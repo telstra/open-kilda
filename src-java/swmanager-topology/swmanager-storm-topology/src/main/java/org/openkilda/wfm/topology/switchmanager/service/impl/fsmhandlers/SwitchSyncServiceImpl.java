@@ -165,6 +165,32 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
     }
 
     @Override
+    public void handleCreateLogicalPortResponse(String key) {
+        SwitchSyncFsm fsm = fsms.get(key);
+        if (fsm == null) {
+            // InstallLogicalPortResponse could belong to CreateLagFsm so log level is Info
+            logFsmNotFound(key, true);
+            return;
+        }
+
+        fsm.fire(SwitchSyncEvent.LOGICAL_PORT_INSTALLED);
+        process(fsm);
+    }
+
+    @Override
+    public void handleDeleteLogicalPortResponse(String key) {
+        SwitchSyncFsm fsm = fsms.get(key);
+        if (fsm == null) {
+            // DeleteLogicalPortResponse could belong to DeleteLagFsm so log level is Info
+            logFsmNotFound(key, true);
+            return;
+        }
+
+        fsm.fire(SwitchSyncEvent.LOGICAL_PORT_REMOVED);
+        process(fsm);
+    }
+
+    @Override
     public void handleTaskTimeout(String key) {
         SwitchSyncFsm fsm = fsms.get(key);
         if (fsm == null) {
@@ -187,7 +213,16 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
     }
 
     private void logFsmNotFound(String key) {
-        log.warn("Switch sync FSM with key {} not found", key);
+        logFsmNotFound(key, false);
+    }
+
+    private void logFsmNotFound(String key, boolean info) {
+        String message = "Switch sync FSM with key {} not found";
+        if (info) {
+            log.info(message, key);
+        } else {
+            log.warn(message, key);
+        }
     }
 
     void process(SwitchSyncFsm fsm) {
