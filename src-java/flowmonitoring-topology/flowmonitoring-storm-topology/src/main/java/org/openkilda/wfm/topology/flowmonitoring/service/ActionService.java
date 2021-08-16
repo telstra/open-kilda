@@ -19,7 +19,7 @@ import static java.lang.String.format;
 import static org.openkilda.server42.messaging.FlowDirection.FORWARD;
 import static org.openkilda.server42.messaging.FlowDirection.REVERSE;
 
-import org.openkilda.messaging.info.flow.UpdateFlowInfo;
+import org.openkilda.messaging.info.flow.UpdateFlowCommand;
 import org.openkilda.model.Flow;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.persistence.PersistenceManager;
@@ -78,22 +78,20 @@ public class ActionService implements FlowSlaMonitoringCarrier {
     /**
      * Update flow info.
      */
-    public void updateFlowInfo(UpdateFlowInfo flowInfo) {
+    public void updateFlowInfo(UpdateFlowCommand flowInfo) {
         String flowId = flowInfo.getFlowId();
-        if (flowInfo.getFlowPath().getForwardPath() == null
-                || flowInfo.getFlowPath().getForwardPath().isEmpty()) {
-            fsms.remove(getFsmKey(flowId, FORWARD));
-        } else {
-            fsms.put(getFsmKey(flowId, FORWARD), fsmFactory.produce(flowId, FORWARD.name().toLowerCase(),
-                    flowInfo.getMaxLatency(), flowInfo.getMaxLatencyTier2()));
-        }
-        if (flowInfo.getFlowPath().getReversePath() == null
-                || flowInfo.getFlowPath().getReversePath().isEmpty()) {
-            fsms.remove(getFsmKey(flowId, REVERSE));
-        } else {
-            fsms.put(getFsmKey(flowId, REVERSE), fsmFactory.produce(flowId, REVERSE.name().toLowerCase(),
-                    flowInfo.getMaxLatency(), flowInfo.getMaxLatencyTier2()));
-        }
+        fsms.put(getFsmKey(flowId, FORWARD), fsmFactory.produce(flowId, FORWARD.name().toLowerCase(),
+                flowInfo.getMaxLatency(), flowInfo.getMaxLatencyTier2()));
+        fsms.put(getFsmKey(flowId, REVERSE), fsmFactory.produce(flowId, REVERSE.name().toLowerCase(),
+                flowInfo.getMaxLatency(), flowInfo.getMaxLatencyTier2()));
+    }
+
+    /**
+     * Remove flow info.
+     */
+    public void removeFlowInfo(String flowId) {
+        fsms.remove(getFsmKey(flowId, FORWARD));
+        fsms.remove(getFsmKey(flowId, REVERSE));
     }
 
     /**

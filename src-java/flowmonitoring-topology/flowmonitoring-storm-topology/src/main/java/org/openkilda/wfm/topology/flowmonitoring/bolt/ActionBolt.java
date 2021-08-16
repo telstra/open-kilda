@@ -17,15 +17,16 @@ package org.openkilda.wfm.topology.flowmonitoring.bolt;
 
 import static org.openkilda.wfm.share.bolt.KafkaEncoder.FIELD_ID_PAYLOAD;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ACTION_STREAM_ID;
+import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_REMOVE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_DIRECTION_FIELD;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_ID_FIELD;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.LATENCY_FIELD;
-import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowSplitterBolt.INFO_DATA_FIELD;
+import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowSplitterBolt.COMMAND_DATA_FIELD;
 
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
-import org.openkilda.messaging.info.flow.UpdateFlowInfo;
+import org.openkilda.messaging.info.flow.UpdateFlowCommand;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.server42.messaging.FlowDirection;
 import org.openkilda.wfm.AbstractBolt;
@@ -70,8 +71,13 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
             return;
         }
         if (FLOW_UPDATE_STREAM_ID.name().equals(input.getSourceStreamId())) {
-            UpdateFlowInfo flowInfo = pullValue(input, INFO_DATA_FIELD, UpdateFlowInfo.class);
-            actionService.updateFlowInfo(flowInfo);
+            UpdateFlowCommand updateFlowCommand = pullValue(input, COMMAND_DATA_FIELD, UpdateFlowCommand.class);
+            actionService.updateFlowInfo(updateFlowCommand);
+            return;
+        }
+        if (FLOW_REMOVE_STREAM_ID.name().equals(input.getSourceStreamId())) {
+            String flowId = pullValue(input, FLOW_ID_FIELD, String.class);
+            actionService.removeFlowInfo(flowId);
             return;
         }
 

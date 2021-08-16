@@ -15,7 +15,9 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
-import org.openkilda.messaging.info.flow.UpdateFlowInfo;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.info.flow.RemoveFlowCommand;
+import org.openkilda.messaging.info.flow.UpdateFlowCommand;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowPathDtoBuilder;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
@@ -45,15 +47,15 @@ public class NotifyFlowMonitorAction<T extends FlowProcessingFsm<T, S, E, C>, S,
         carrier.sendNotifyFlowMonitor(getFlowInfo(stateMachine.getFlowId()));
     }
 
-    private UpdateFlowInfo getFlowInfo(String flowId) {
+    private CommandData getFlowInfo(String flowId) {
         Optional<Flow> flow = flowRepository.findById(flowId);
-        if (!flow.isPresent()) {
-            return new UpdateFlowInfo(flowId, FlowPathDto.builder().build(), null, null);
+        if (!flow.isPresent() || flow.get().isOneSwitchFlow()) {
+            return new RemoveFlowCommand(flowId);
         }
 
         FlowPathDto flowPathDto = toFlowPathDtoBuilder(flow.get()).build();
 
-        return new UpdateFlowInfo(flowId, flowPathDto, flow.get().getMaxLatency(), flow.get().getMaxLatencyTier2());
+        return new UpdateFlowCommand(flowId, flowPathDto, flow.get().getMaxLatency(), flow.get().getMaxLatencyTier2());
     }
 
     private FlowPathDtoBuilder toFlowPathDtoBuilder(Flow flow) {
