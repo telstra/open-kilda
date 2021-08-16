@@ -51,8 +51,6 @@ public class FlowLatencyRequest {
      * Handle get link latency response.
      */
     public void handleResponse(Link link, Duration latency) {
-        log.info("Handle response {} for requestId {}", link, requestId);
-        log.info("Waiting for {} for requestId {}", responses.keySet(), requestId);
         responses.put(link, latency);
     }
 
