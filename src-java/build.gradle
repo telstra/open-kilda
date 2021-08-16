@@ -103,10 +103,10 @@ subprojects {
             testImplementation 'io.netty:netty-all:4.1.60.Final'
             testRuntimeOnly 'javax.servlet:javax.servlet-api:3.1.0'
 
-            implementation 'jakarta.validation:jakarta.validation-api:3.0.0'
-            implementation 'org.hibernate.validator:hibernate-validator:7.0.1.Final'
-            implementation 'org.glassfish:jakarta.el:4.0.1'
-            testImplementation 'org.glassfish:jakarta.el:4.0.1'
+            implementation 'javax.validation:validation-api:2.0.1.Final'
+            implementation 'org.hibernate.validator:hibernate-validator:6.0.1.Final'
+            implementation 'org.glassfish:javax.el:3.0.1-b09'
+            testImplementation 'org.glassfish:javax.el:3.0.1-b09'
 
             implementation 'org.aspectj:aspectjrt:1.9.6'
             implementation 'org.mapstruct:mapstruct:1.4.2.Final'
@@ -214,14 +214,7 @@ subprojects {
                 jf.entries().each { file ->
                     // TODO: it's good to reuse shadowJar plugin's patterns
                     if (file.name.endsWith('.class') && file.name != 'module-info.class') {
-                        boolean knownCollisions = [
-                                // ignore collision between jaxb and jakarta
-                                "javax/xml/bind/", "META-INF/versions/9/javax/xml/bind", "javax/activation/",
-                                "com/sun/xml/bind/", "com/sun/xml/txw2", "com/sun/istack"
-                        ].any { entry -> file.name.startsWith(entry) }
-                        if (knownCollisions) {
-                            // do nothing
-                        } else if (classes.containsKey(file.name)) {
+                        if (classes.containsKey(file.name)) {
                             throw new GradleException("shadowJar failure: ${file.name} conflicts in jars:${classes.get(file.name)} and ${jar}")
                         }
                         classes.put(file.name, jar)

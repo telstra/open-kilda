@@ -27,6 +27,7 @@ dependencies {
     implementation('org.springframework.boot:spring-boot-starter-web')
     implementation('org.springframework.boot:spring-boot-starter')
     implementation 'org.springframework.boot:spring-boot-starter-log4j2'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.security:spring-security-config'
     implementation 'org.springframework.security:spring-security-web'
     implementation 'org.springframework.boot:spring-boot-starter-tomcat'
@@ -63,6 +64,8 @@ dependencies {
     implementation 'com.google.guava:guava'
     implementation 'org.apache.commons:commons-collections4'
     implementation 'com.sabre.oss.conf4j:conf4j-spring-boot'
+
+    implementation 'javax.validation:validation-api'
 
     implementation 'org.mapstruct:mapstruct'
     implementation 'org.mapstruct:mapstruct-processor'
