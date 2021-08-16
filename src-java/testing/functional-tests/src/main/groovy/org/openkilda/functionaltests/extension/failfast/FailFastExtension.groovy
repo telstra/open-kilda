@@ -33,7 +33,7 @@ class FailFastExtension extends AbstractGlobalExtension {
                     invocation.proceed()
                 } catch(Throwable t) {
                     if(!(t in IncompleteExecutionException) && !invocation.feature.featureMethod.getAnnotation(Tidy)) {
-                        failedTest = invocation.iteration.name
+                        failedTest = invocation.iteration.displayName
                     }
                     throw t
                 }

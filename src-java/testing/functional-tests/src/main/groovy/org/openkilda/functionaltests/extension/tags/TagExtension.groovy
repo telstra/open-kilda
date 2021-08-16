@@ -42,13 +42,13 @@ class TagExtension extends AbstractGlobalExtension {
             def iterationTags = (featureMethod.getAnnotation(IterationTags)?.value()?.toList() ?: [] +
                     featureMethod.getAnnotation(IterationTag)).findAll()
             def applicableTags = iterationTags.findAll {
-                iteration.name =~ it.iterationNameRegex()
+                iteration.displayName =~ it.iterationNameRegex()
             }.collectMany { it.tags().toList() }
             def tagsAnnotation = featureMethod.getAnnotation(Tags)
             if (tagsAnnotation) {
                 applicableTags.addAll(tagsAnnotation.value().toList())
             }
-            return iteration.name + tagsCollectionToString(applicableTags)
+            return iteration.displayName + tagsCollectionToString(applicableTags)
         }
     }
 
@@ -68,7 +68,7 @@ class TagExtension extends AbstractGlobalExtension {
             if (!iterationTags) {
                 feature.excluded = !matches(tagsExpression, tags)
             } else {
-                feature.addIterationInterceptor(new IMethodInterceptor() {
+                feature.featureMethod.addInterceptor(new IMethodInterceptor() {
                     /*This stores how many times did we match a certain iteration tag.
                      Use this when calculating 'take' limitation for the iteration tag*/
                     Map<IterationTag, Integer> tagExecutions = iterationTags.collectEntries { [(it): 0] }
@@ -78,7 +78,7 @@ class TagExtension extends AbstractGlobalExtension {
                         //find all iteration tags that apply to current iteration name
                         def iteration = invocation.iteration
                         Map<IterationTag, Integer> applicableITags = tagExecutions.findAll { tagEntry ->
-                            iteration.name =~ tagEntry.key.iterationNameRegex() && tagEntry.key.take() > tagEntry.value
+                            iteration.displayName =~ tagEntry.key.iterationNameRegex() && tagEntry.key.take() > tagEntry.value
                         }
                         //compare whether the list of tags matches our tag expression, include top-level tags
                         def matched = matches(tagsExpression, tags + (Set) applicableITags.keySet()*.tags().flatten())
@@ -92,7 +92,7 @@ class TagExtension extends AbstractGlobalExtension {
                             invocation.proceed()
                         } else {
                             throw new TestAbortedException("The test '$iteration.feature.spec.name#" +
-                                    "$iteration.name' does not match the provided tags expression: '$tagsExpression'")
+                                    "$iteration.displayName' does not match the provided tags expression: '$tagsExpression'")
                         }
                     }
                 })
@@ -110,7 +110,7 @@ class TagExtension extends AbstractGlobalExtension {
         def iterationTags = (feature.featureMethod.getAnnotation(IterationTags)?.value()?.toList() ?: [] +
                 feature.featureMethod.getAnnotation(IterationTag)).findAll()
         def applicableTags = iterationTags.findAll {
-            iteration.name =~ it.iterationNameRegex()
+            iteration.displayName =~ it.iterationNameRegex()
         }.collectMany { it.tags().toList() }
         def tagsAnnotations = collectAllTags(feature)
         if (tagsAnnotations) {
