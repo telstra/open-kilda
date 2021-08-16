@@ -94,6 +94,11 @@ class FlowDiversitySpec extends HealthCheckSpecification {
                 !it.find { it.type == "stateAfter" }?.diverseGroupId
             }
         }
+        //except flow3, because after deletion of flow1/flow2 flow3 is no longer in the diversity group
+        verifyAll(northbound.getFlowHistory(flow3.flowId).find { it.action == DELETE_ACTION }.dumps) {
+            !it.find { it.type == "stateBefore" }?.diverseGroupId
+            !it.find { it.type == "stateAfter" }?.diverseGroupId
+        }
 
         cleanup:
         !flowsAreDeleted && [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
