@@ -18,7 +18,8 @@ package org.openkilda.floodlight.kafka;
 import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
-import jakarta.validation.constraints.Min;
+
+import javax.validation.constraints.Min;
 
 /**
  * WARNING! Do not use '.' in option's keys. FL will not collect such option from config.

@@ -30,7 +30,7 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-core'
 
     implementation 'org.hibernate.validator:hibernate-validator'
-    implementation 'org.glassfish:jakarta.el'
+    implementation 'org.glassfish:javax.el'
 
     implementation 'org.spockframework:spock-spring:2.1-groovy-3.0-SNAPSHOT'
     implementation 'org.spockframework:spock-core:2.1-groovy-3.0-SNAPSHOT'

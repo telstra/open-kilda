@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,18 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.config;
+package org.openkilda.messaging.command.yflow;
 
-import com.sabre.oss.conf4j.annotation.Configuration;
-import com.sabre.oss.conf4j.annotation.Key;
+import org.openkilda.messaging.command.CommandData;
 
-import javax.validation.constraints.NotBlank;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-
-@Configuration
-@Key("kafka")
-public interface KafkaConfig {
-    @Key("hosts")
-    @NotBlank
-    String getHosts();
+/**
+ * Represents a dump request for y-flows.
+ */
+@Data
+@EqualsAndHashCode(callSuper = false)
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class YFlowsDumpRequest extends CommandData {
+    private static final long serialVersionUID = 1L;
 }

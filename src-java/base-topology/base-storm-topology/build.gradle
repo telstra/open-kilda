@@ -63,7 +63,7 @@ dependencies {
     api 'com.fasterxml.uuid:java-uuid-generator'
     api 'net.jodah:failsafe'
     api 'org.hibernate.validator:hibernate-validator'
-    runtimeOnly 'org.glassfish:jakarta.el'
+    runtimeOnly 'org.glassfish:javax.el'
 
     implementation 'org.aspectj:aspectjrt'
     implementation 'org.mapstruct:mapstruct'
@@ -88,7 +88,7 @@ dependencies {
     testImplementation 'org.hamcrest:hamcrest-library'
     testImplementation 'org.apache.curator:curator-test'
     testRuntimeOnly 'org.hibernate.validator:hibernate-validator'
-    testRuntimeOnly 'org.glassfish:jakarta.el'
+    testRuntimeOnly 'org.glassfish:javax.el'
     testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
 
     compileOnly 'org.projectlombok:lombok'
