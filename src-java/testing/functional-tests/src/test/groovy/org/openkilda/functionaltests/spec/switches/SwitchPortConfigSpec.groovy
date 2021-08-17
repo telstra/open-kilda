@@ -86,7 +86,7 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([HARDWARE, TOPOLOGY_DEPENDENT])
-    def "Able to bring ISL-free port down/up on an #sw.ofVersion switch(#sw.dpId)"() {
+    def "Able to bring ISL-free port down/up on #sw.hwSwString"() {
         // Not checking OTSDB here, since Kilda won't log into OTSDB for isl-free ports, this is expected.
 
         when: "Bring port down on the switch"

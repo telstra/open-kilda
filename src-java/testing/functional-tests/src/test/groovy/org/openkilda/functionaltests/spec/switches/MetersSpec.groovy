@@ -123,7 +123,7 @@ class MetersSpec extends HealthCheckSpecification {
      */
     @Tidy
     @Tags([HARDWARE, SMOKE_SWITCHES])
-    def "Default meters should express bandwidth in kbps re-calculated from pktps on Centec switch(#sw.dpId)"() {
+    def "Default meters should express bandwidth in kbps re-calculated from pktps on Centec #sw.hwSwString"() {
         expect: "Only the default meters should be present on the switch"
         def meters = northbound.getAllMeters(sw.dpId)
         assert meters.meterEntries.size() == 2
@@ -143,7 +143,7 @@ class MetersSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([HARDWARE, SMOKE_SWITCHES])
-    def "Default meters should express bandwidth in pktps on Noviflow switch(#sw.dpId)"() {
+    def "Default meters should express bandwidth in pktps on Noviflow #sw.hwSwString"() {
         //TODO: Research how to calculate burstSize on OpenVSwitch in this case
         // now burstSize is equal to 4096, rate == 200
         expect: "Only the default meters should be present on the switch"
@@ -160,7 +160,7 @@ class MetersSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([HARDWARE, SMOKE_SWITCHES])
-    def "Default meters should express bandwidth in kbps on Noviflow Wb5164 switch(#sw.dpId)"() {
+    def "Default meters should express bandwidth in kbps on Noviflow Wb5164 #sw.hwSwString"() {
         expect: "Only the default meters should be present on the switch"
         def meters = northbound.getAllMeters(sw.dpId)
         meters.meterEntries*.meterId.sort() == sw.defaultMeters.sort()
