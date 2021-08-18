@@ -114,7 +114,7 @@ public abstract class WorkerBolt extends CoordinatedBolt {
     }
 
     protected void unhandledInput(String key, Tuple input) {
-        log.error("{} drop worker async response. because {} key is not listed in pending response list [{}]",
+        log.info("{} drop worker async response. because {} key is not listed in pending response list [{}]",
                 getComponentId(), key, formatTuplePayload(input));
     }
 

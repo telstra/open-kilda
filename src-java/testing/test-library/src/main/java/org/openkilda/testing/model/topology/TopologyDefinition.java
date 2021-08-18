@@ -39,6 +39,7 @@ import com.google.common.collect.RangeSet;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.Value;
 import lombok.experimental.NonFinal;
 import org.apache.commons.lang3.StringUtils;
@@ -57,6 +58,8 @@ import java.util.stream.IntStream;
 @RequiredArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
 public class TopologyDefinition {
+
+    protected long labId;
 
     @NonNull
     protected List<Switch> switches;
@@ -98,6 +101,14 @@ public class TopologyDefinition {
 
     public void setBfdOffset(Integer bfdOffset) {
         this.bfdOffset = bfdOffset;
+    }
+
+    public void setLabId(long id) {
+        this.labId = id;
+    }
+
+    public long getLabId() {
+        return labId;
     }
 
     /**
@@ -211,6 +222,7 @@ public class TopologyDefinition {
 
         private String name;
         @NonNull
+        @NonFinal
         private SwitchId dpId;
         @NonNull
         private String ofVersion;
@@ -266,6 +278,10 @@ public class TopologyDefinition {
 
         public void setController(String controller) {
             this.controller = controller;
+        }
+
+        public void setDpId(SwitchId switchId) {
+            this.dpId = switchId;
         }
     }
 
@@ -327,12 +343,12 @@ public class TopologyDefinition {
 
         @JsonProperty("server42_mac_address")
         private String server42MacAddress;
-
-        @JsonProperty("server42_vlan")
-        private Integer server42Vlan;
-
         @JsonProperty("server42_isl_rtt")
         private Boolean server42IslRtt;
+        @NonFinal
+        @Setter
+        @JsonProperty("server42_vlan")
+        private Integer server42Vlan;
 
         public SwitchProperties(@JsonProperty("server42_flow_rtt") Boolean server42FlowRtt,
                                 @JsonProperty("server42_port") Integer server42Port,

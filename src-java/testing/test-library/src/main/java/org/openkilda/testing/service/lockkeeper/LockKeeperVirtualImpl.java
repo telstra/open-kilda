@@ -17,12 +17,13 @@ package org.openkilda.testing.service.lockkeeper;
 
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
 
+import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.service.floodlight.FloodlightsHelper;
 import org.openkilda.testing.service.floodlight.model.Floodlight;
 import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode;
-import org.openkilda.testing.service.labservice.LabService;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 import org.openkilda.testing.service.lockkeeper.model.ChangeSwIpRequest;
 import org.openkilda.testing.service.lockkeeper.model.ContainerName;
@@ -40,6 +41,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.context.annotation.Scope;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -56,12 +58,13 @@ import java.util.List;
 @Slf4j
 @Service
 @Profile("virtual")
+@Scope(SCOPE_PROTOTYPE)
 public class LockKeeperVirtualImpl implements LockKeeperService {
 
     public static final String DUMMY_CONTROLLER = "tcp:192.0.2.0:6666";
 
     @Autowired
-    LabService labService;
+    TopologyDefinition topology;
     @Autowired
     private FloodlightsHelper flHelper;
 
@@ -295,6 +298,6 @@ public class LockKeeperVirtualImpl implements LockKeeperService {
     }
 
     private String getCurrentLabUrl() {
-        return "api/" + labService.getLab().getLabId();
+        return "api/" + topology.getLabId();
     }
 }

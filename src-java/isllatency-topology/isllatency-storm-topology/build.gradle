@@ -11,6 +11,7 @@ dependencies {
     implementation project(':base-storm-topology')
     runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
+    implementation project(':isllatency-messaging')
     implementation project(':network-messaging')
     implementation project(':floodlight-api')
     runtimeClasspath project(':kilda-persistence-orientdb')

@@ -1,14 +1,15 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_TURNING_COOKIE
-import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE
 import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE
+import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
@@ -75,11 +76,11 @@ class DefaultRulesSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    def "Able to install default rule on an #sw.ofVersion switch(#sw.dpId, install-action=#data.installRulesAction)"(
+    def "Able to install default rule on an #sw.ofVersion switch[#sw.dpId, install-action=#data.installRulesAction]"(
             Map data, Switch sw) {
         given: "A switch without any rules"
         def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
-        assert defaultRules*.cookie.sort() == sw.defaultCookies.sort()
+        assertThat(defaultRules*.cookie.sort()).containsExactlyInAnyOrder(*sw.defaultCookies.sort())
 
         northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
         Wrappers.wait(RULES_DELETION_TIME) { assert northbound.getSwitchRules(sw.dpId).flowEntries.empty }
@@ -101,7 +102,8 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         cleanup: "Install missing default rules"
         northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
         Wrappers.wait(RULES_INSTALLATION_TIME + discoveryInterval) {
-            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == defaultRules*.cookie.sort()
+            assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray())
+                    .containsExactlyInAnyOrder(*defaultRules*.cookie.sort())
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
 
@@ -387,15 +389,7 @@ switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
                 assumeTrue(false, "No suiting switch found")
 
         and: "Server42 is enabled in feature toggle"
-        def initFeatureToggle = northbound.getFeatureToggles()
-        def featureToggleIsChanged = false
-        if (!initFeatureToggle.server42FlowRtt) {
-            northbound.toggleFeature(initFeatureToggle.jacksonCopy().tap { server42FlowRtt = true })
-            Wrappers.wait(RULES_INSTALLATION_TIME) {
-                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
-            }
-            featureToggleIsChanged = true
-        }
+        assumeTrue(northbound.getFeatureToggles().server42FlowRtt)
 
         when: "Delete the server42 turning rule from the switch"
         def deleteResponse = northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.REMOVE_SERVER_42_TURNING)
@@ -433,9 +427,6 @@ switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert !northbound.getSwitchRules(sw.dpId).flowEntries.findAll { it.cookie == SERVER_42_FLOW_RTT_TURNING_COOKIE }.empty
         }
-
-        cleanup: "Revert the feature toggle to init state"
-        featureToggleIsChanged && northbound.toggleFeature(initFeatureToggle)
     }
 
     @Tidy
@@ -446,12 +437,7 @@ switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
         assumeTrue(sw != null, "No suiting switch found")
 
         and: "Server42 is enabled in feature toggle"
-        def initFeatureToggle = northbound.getFeatureToggles()
-        def featureToggleIsChanged = false
-        if (!initFeatureToggle.server42IslRtt) {
-            northbound.toggleFeature(initFeatureToggle.jacksonCopy().tap { server42IslRtt = true })
-            featureToggleIsChanged = true
-        }
+        assumeTrue(northbound.getFeatureToggles().server42IslRtt)
 
         and: "server42IslRtt is enabled on the switch"
         def originSwProps = northbound.getSwitchProperties(sw.dpId)
@@ -503,7 +489,6 @@ switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
         }
 
         cleanup: "Revert the feature toggle to init state"
-        featureToggleIsChanged && northbound.toggleFeature(initFeatureToggle)
         originSwProps && northbound.updateSwitchProperties(sw.dpId, originSwProps)
     }
 

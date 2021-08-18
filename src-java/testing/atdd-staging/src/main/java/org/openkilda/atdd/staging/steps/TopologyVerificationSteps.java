@@ -44,6 +44,7 @@ import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java8.En;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.util.List;
 import java.util.Set;
@@ -58,7 +59,7 @@ public class TopologyVerificationSteps implements En {
     @Autowired
     private TopologyDefinition topologyDefinition;
 
-    @Autowired
+    @Autowired @Qualifier("northboundServiceImpl")
     private NorthboundService northboundService;
 
     private List<TopologyDefinition.Switch> referenceSwitches;

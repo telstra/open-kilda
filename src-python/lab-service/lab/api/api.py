@@ -66,21 +66,21 @@ class Lab:
         if lab_id == HW_LAB_ID:
             # HW lab doesn't require activation
             self.activated.set()
-        else:
-            name = make_container_name(lab_id)
-            env = {'LAB_ID': lab_id}
-            try:
-                env['API_HOST'] = os.environ['API_HOST']
-            except KeyError:
-                api_host = SELF_CONTAINER.attrs['Config']['Hostname']
-                env['API_HOST'] = '{}:{}'.format(api_host, API_PORT)
 
-            volumes = {
-                '/var/run/docker.sock': {'bind': '/var/run/docker.sock', 'mode': 'rw'},
-                '/lib/modules': {'bind': '/lib/modules', 'mode': 'ro'}}
-            docker.containers.run(LAB_SERVICE_IMAGE, command='service', environment=env, volumes=volumes, name=name,
-                                  privileged=True, detach=True)
-            docker.networks.get(NETWORK_NAME).connect(name, aliases=[name])
+    def run(self):
+        name = make_container_name(self.lab_id)
+        env = {'LAB_ID': self.lab_id}
+        try:
+            env['API_HOST'] = os.environ['API_HOST']
+        except KeyError:
+            api_host = SELF_CONTAINER.attrs['Config']['Hostname']
+            env['API_HOST'] = '{}:{}'.format(api_host, API_PORT)
+        volumes = {
+            '/var/run/docker.sock': {'bind': '/var/run/docker.sock', 'mode': 'rw'},
+            '/lib/modules': {'bind': '/lib/modules', 'mode': 'ro'}}
+        docker.containers.run(LAB_SERVICE_IMAGE, command='service', environment=env, volumes=volumes,
+                              name=name, privileged=True, detach=True)
+        docker.networks.get(NETWORK_NAME).connect(name, aliases=[name])
 
     def destroy(self):
         if self.lab_id != HW_LAB_ID:
@@ -110,7 +110,7 @@ def create_lab():
         lab_id = next(count)
         lab = Lab(lab_id, request.get_json())
         labs[lab_id] = lab
-
+        lab.run()
         lab.activated.wait()
         if lab.error:
             lab.destroy()

@@ -914,8 +914,8 @@ class RecordHandler implements Runnable {
                 if (request.isServer42IslRttEnabled()) {
                     installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
                             SERVER_42_ISL_RTT_TURNING_COOKIE));
-                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            SERVER_42_ISL_RTT_OUTPUT_COOKIE));
+                    installedRules.add(switchManager.installServer42IslRttOutputFlow(dpid,
+                            request.getServer42Port(), request.getServer42Vlan(), request.getServer42MacAddress()));
                     for (Integer port : request.getIslPorts()) {
                         installedRules.add(switchManager.installServer42IslRttInputFlow(dpid, server42Port, port));
                     }

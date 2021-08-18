@@ -26,7 +26,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
     int islUnstableTimeoutSec
 
     def setupSpec() {
-        database.resetCosts()  // reset cost on all links before tests
+        database.resetCosts(topology.isls)  // reset cost on all links before tests
     }
 
     //'ISL with BFD session' case is covered in BfdSpec. Spoiler: it should act the same and don't change cost at all.
@@ -137,7 +137,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToBreak).get().state == DISCOVERED }
 
-        and: "Cost of stable path more preferable than the cost of unstable path"
+        and: "Cost of stable path is more preferable than the cost of unstable path (before penalties)"
         def involvedIslsInUnstablePath = pathHelper.getInvolvedIsls(firstPath)
         def costOfUnstablePath = involvedIslsInUnstablePath.sum {
             northbound.getLink(it).cost ?: 700
@@ -145,17 +145,13 @@ class UnstableIslSpec extends HealthCheckSpecification {
         def involvedIslsInStablePath = pathHelper.getInvolvedIsls(secondPath)
         def costOfStablePath = involvedIslsInStablePath.sum { northbound.getLink(it).cost ?: 700 }
         // result after performing 'if' condition: costOfStablePath - costOfUnstablePath = 1
-        if ((costOfUnstablePath - costOfStablePath) > 0) {
-            def islToUpdate = involvedIslsInStablePath[0]
-            def currentCostOfIsl = northbound.getLink(islToUpdate).cost
-            def newCost = ((costOfUnstablePath - costOfStablePath - 1) + currentCostOfIsl).toString()
-            northbound.updateLinkProps([islUtils.toLinkProps(islToUpdate, ["cost": newCost])])
-        } else {
-            def islToUpdate = involvedIslsInUnstablePath[0]
-            def currentCostOfIsl = northbound.getLink(islToUpdate).cost
-            def newCost = ((costOfStablePath - costOfUnstablePath + 1) + currentCostOfIsl).toString()
-            northbound.updateLinkProps([islUtils.toLinkProps(islToUpdate, ["cost": newCost])])
-        }
+        def islToUpdate = involvedIslsInStablePath[0]
+        def currentCostOfIsl = northbound.getLink(islToUpdate).cost
+        def addition = (costOfUnstablePath - costOfStablePath) > 0 ? costOfUnstablePath - costOfStablePath - 1 :
+                costOfStablePath - costOfUnstablePath + 1
+        def newCost = (addition + currentCostOfIsl).toString()
+        northbound.updateLinkProps([islUtils.toLinkProps(islToUpdate, ["cost": newCost])])
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(islToUpdate).cost == newCost.toInteger() }
 
         when: "Create a flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -185,7 +181,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
         cleanup: "Restore topology, delete the flow and reset costs"
         flow && flowHelperV2.deleteFlow(flow.flowId)
         broughtDownPorts.each { it && antiflap.portUp(it.switchId, it.portNo) }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each {
                 assert it.state != FAILED
@@ -193,6 +189,6 @@ class UnstableIslSpec extends HealthCheckSpecification {
 
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 }

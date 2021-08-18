@@ -35,7 +35,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         }
 
         when: "Make another path more preferable"
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         def prefPath = switchPair.paths.find { it != currentPath }
         switchPair.paths.findAll { it != prefPath }.each { pathHelper.makePathMorePreferable(prefPath, it) }
 
@@ -75,17 +75,13 @@ class MultiRerouteSpec extends HealthCheckSpecification {
             assertions.verify()
         }
 
-        and: "Rest of the flows are hosted on another alternative path"
+        and: "Rest of the flows are hosted on another alternative paths"
         def restFlows = flows.findAll { !flowsOnPrefPath*.flowId.contains(it.flowId) }
-        def exampleFlow = restFlows[0].flowId
-        wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(exampleFlow).status == FlowState.UP }
-        def restFlowsPath = pathHelper.convert(northbound.getFlowPath(exampleFlow))
-        restFlowsPath != prefPath
-        wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET * 2) {
             def assertions = new SoftAssertions()
-            restFlows[1..-1].each { flow ->
-                assertions.checkSucceeds { assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == restFlowsPath }
+            restFlows.each { flow ->
                 assertions.checkSucceeds { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+                assertions.checkSucceeds { assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) != prefPath }
             }
             assertions.verify()
         }
@@ -97,10 +93,10 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         flows.each { it && flowHelperV2.deleteFlow(it.flowId) }
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         wait(WAIT_OFFSET + discoveryInterval) {
             assert northbound.getLink(islToBreak).state == IslChangeType.DISCOVERED
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 }

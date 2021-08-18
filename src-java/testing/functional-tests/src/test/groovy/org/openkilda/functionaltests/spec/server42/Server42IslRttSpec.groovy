@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.server42
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -32,9 +33,13 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Isolated
+import spock.lang.ResourceLock
 import spock.lang.Shared
 
 @Slf4j
+@ResourceLock(S42_TOGGLE)
+@Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
 class Server42IslRttSpec extends HealthCheckSpecification {
     @Shared
     @Value('${opentsdb.metric.prefix}')
@@ -128,7 +133,9 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([TOPOLOGY_DEPENDENT,
+    HARDWARE //Temporarily disable for virtual. wait for real virtual s42
+    ])
     def "ISL RTT stats are available if both endpoints are connected to the same server42 (same pop)"() {
         given: "An active ISL with both switches connected to the same server42 instance"
         def server42switchesDpIds = topology.getActiveServer42Switches()*.dpId
@@ -156,7 +163,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
 
         then: "ISL RTT forward stats are available"
         and: "ISL RTT reverse stats are available"
-        wait(islSyncWaitSeconds, 2) {
+        wait(islSyncWaitSeconds + WAIT_OFFSET, 2) {
             checkIslRttStats(isl, checkpointTime, true)
             checkIslRttStats(isl.reversed, checkpointTime, true)
         }
@@ -273,7 +280,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
                 assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -573,7 +580,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         cleanup:
         isl && blockData && !swIsConnected && switchHelper.reviveSwitch(isl.srcSwitch, blockData, true)
         revertToOrigin(islRttFeatureStartState, initialSwitchRtt)
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy

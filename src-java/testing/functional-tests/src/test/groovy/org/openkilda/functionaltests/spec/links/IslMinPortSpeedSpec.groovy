@@ -57,7 +57,7 @@ class IslMinPortSpeedSpec extends HealthCheckSpecification {
             islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
             northbound.deleteLink(islUtils.toLinkParameters(newIsl))
             Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
-            database.resetCosts()
+            database.resetCosts(topology.isls)
         }
     }
 }

@@ -10,6 +10,7 @@ import org.openkilda.messaging.model.system.FeatureTogglesDto
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Isolated
 import spock.lang.Narrative
 
 @Narrative("""
@@ -20,6 +21,7 @@ creation of new flows via Northbound API. This spec verifies that Feature Toggle
 switch is disconnected and there is no ability to reroute".
 BFD toggle is tested in BfdSpec*/
 @Tags([SMOKE, LOW_PRIORITY])
+@Isolated
 class FeatureTogglesSpec extends HealthCheckSpecification {
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"

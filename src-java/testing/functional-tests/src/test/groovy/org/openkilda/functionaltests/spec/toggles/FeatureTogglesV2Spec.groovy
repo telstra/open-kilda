@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.toggles
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.ResourceLockConstants.DEFAULT_FLOW_ENCAP
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -25,7 +26,9 @@ import org.openkilda.model.FlowEncapsulationType
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
+import spock.lang.Isolated
 import spock.lang.Narrative
+import spock.lang.ResourceLock
 
 @Narrative("""
 Feature Toggles is a special lever that allows to turn on/off certain Kilda features. For example, we can disable
@@ -39,6 +42,7 @@ server42_flow_rtt toggle is tested in Server42FlowRttSpec
 flow_latency_monitoring_reactions toggle is tested in FlowMonitoringSpec
 */
 @Tags(SMOKE)
+@Isolated
 class FeatureTogglesV2Spec extends HealthCheckSpecification {
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"
@@ -131,6 +135,7 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(HARDWARE)
+    @ResourceLock(DEFAULT_FLOW_ENCAP)
     def "Flow encapsulation type is changed while auto rerouting according to 'flows_reroute_using_default_encap_type' \
 feature toggle"() {
         given: "A switch pair which supports 'transit_vlan' and 'vxlan' encapsulation types"
@@ -222,6 +227,7 @@ feature toggle"() {
     @Tidy
     @Ignore("https://github.com/telstra/open-kilda/issues/2955")
     @Tags(HARDWARE)
+    @ResourceLock(DEFAULT_FLOW_ENCAP)
     def "Flow encapsulation type is not changed while syncing/auto rerouting/updating according to \
 'flows_reroute_using_default_encap_type' if switch doesn't support new type of encapsulation"() {
         given: "A switch pair which supports 'transit_vlan' and 'vxlan' encapsulation types"
@@ -387,6 +393,6 @@ feature toggle"() {
         wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 }

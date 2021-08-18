@@ -1,12 +1,14 @@
 package org.openkilda.functionaltests.helpers
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.SINGLE_TABLE_ID
 import static org.openkilda.testing.Constants.TRANSIT_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
@@ -25,6 +27,8 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import com.github.javafaker.Faker
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 import org.springframework.web.client.HttpClientErrorException
 
@@ -35,10 +39,11 @@ import java.text.SimpleDateFormat
  */
 @Component
 @Slf4j
+@Scope(SCOPE_PROTOTYPE)
 class FlowHelper {
     @Autowired
     TopologyDefinition topology
-    @Autowired
+    @Autowired @Qualifier("islandNb")
     NorthboundService northbound
     @Autowired
     Database db
@@ -140,7 +145,10 @@ class FlowHelper {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flowId).status != FlowState.IN_PROGRESS }
         log.debug("Deleting flow '$flowId'")
         def response = northbound.deleteFlow(flowId)
-        Wrappers.wait(WAIT_OFFSET) { assert !northbound.getFlowStatus(flowId) }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert !northbound.getFlowStatus(flowId)
+            assert northbound.getFlowHistory(flowId).find { it.payload.last().action == DELETE_SUCCESS }
+        }
         return response
     }
 
@@ -180,7 +188,7 @@ class FlowHelper {
      * @param endpoint FlowEndpointPayload object to convert
      */
     static FlowEndpointV2 toFlowEndpointV2(FlowEndpointPayload endpoint) {
-        new FlowEndpointV2(endpoint.datapath, endpoint.portNumber, endpoint.vlanId,
+        new FlowEndpointV2(endpoint.datapath, endpoint.portNumber, endpoint.vlanId, (endpoint.innerVlanId ?: 0),
                 toFlowConnectedDevicesV2(endpoint.detectConnectedDevices))
     }
 

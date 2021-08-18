@@ -119,7 +119,7 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         cleanup: "Delete flows and unset maintenance mode"
         [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         northbound.setSwitchMaintenance(sw.dpId, false, false)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tidy
@@ -168,6 +168,6 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
                 assert !it.underMaintenance
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 }

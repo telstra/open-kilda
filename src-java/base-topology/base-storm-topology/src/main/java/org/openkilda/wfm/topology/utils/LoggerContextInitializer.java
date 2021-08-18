@@ -20,7 +20,6 @@ import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.TOPOLOGY_NAME;
 import static org.openkilda.wfm.protocol.BoltToBoltMessage.FIELD_ID_CORRELATION_ID;
 import static org.openkilda.wfm.protocol.JsonMessage.FIELD_ID_JSON;
-import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.wfm.AbstractBolt;
@@ -129,8 +128,8 @@ public class LoggerContextInitializer {
             }
         }
 
-        if (fields.contains(MESSAGE_FIELD)) {
-            Object messageField = input.getValueByField(MESSAGE_FIELD);
+        if (fields.contains(KafkaRecordTranslator.FIELD_ID_PAYLOAD)) {
+            Object messageField = input.getValueByField(KafkaRecordTranslator.FIELD_ID_PAYLOAD);
             if (messageField instanceof Message) {
                 Optional<CommandContext> context = Optional.ofNullable(((Message) messageField).getCorrelationId())
                         .map(String::trim)

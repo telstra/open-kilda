@@ -79,7 +79,7 @@ public class CompleteFlowCreateAction extends FlowProcessingAction<FlowCreateFsm
             flowRepository.updateStatus(flowId, status);
             if (FlowStatus.DEGRADED.equals(status)) {
                 flowRepository.updateStatusInfo(flowId, "An alternative way "
-                        + "(back up strategy or max_latency_tier2 value) of building the path was used.");
+                        + "(back up strategy or max_latency_tier2 value) of building the path was used");
             }
 
             return status;

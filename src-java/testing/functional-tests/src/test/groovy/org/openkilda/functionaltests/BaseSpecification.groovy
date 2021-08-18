@@ -19,9 +19,12 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.otsdb.OtsdbQueryService
 import org.openkilda.testing.tools.IslUtils
+import org.openkilda.testing.tools.TopologyPool
 
+import groovy.util.logging.Slf4j
 import org.spockframework.spring.EnableSharedInjection
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.test.context.ContextConfiguration
 import spock.lang.Shared
@@ -29,11 +32,14 @@ import spock.lang.Specification
 
 @ContextConfiguration(locations = ["classpath:/spring-context.xml"])
 @EnableSharedInjection
+@Slf4j
 class BaseSpecification extends Specification {
 
-    @Autowired @Shared
+    @Shared @Autowired
     TopologyDefinition topology
-    @Autowired @Shared
+    @Shared @Autowired
+    TopologyPool topologyPool
+    @Autowired @Shared @Qualifier("islandNb")
     NorthboundService northbound
     @Autowired @Shared
     FloodlightsHelper flHelper
@@ -55,7 +61,7 @@ class BaseSpecification extends Specification {
     SwitchHelper switchHelper
     @Autowired @Shared
     PortAntiflapHelper antiflap
-    @Autowired @Shared
+    @Autowired @Shared @Qualifier("islandNbV2")
     NorthboundServiceV2 northboundV2
     @Autowired @Shared
     FlowHelperV2 flowHelperV2
@@ -85,9 +91,21 @@ class BaseSpecification extends Specification {
     @Value('${zookeeper.connect_string}') @Shared
     String zkConnectString
 
+    static ThreadLocal<TopologyDefinition> threadLocalTopology = new ThreadLocal<>()
+
+    def setupSpec() {
+        log.info "Booked lab with id ${topology.getLabId().toString()} for spec ${this.class.simpleName}, thread: " +
+                "${Thread.currentThread()}. sw: ${topology.getSwitches()[0].dpId}"
+    }
+
     def setup() {
         //setup with empty body in order to trigger a SETUP invocation, which is intercepted in several extensions
         //this can have implementation if required
+    }
+
+    def cleanupSpec() {
+        threadLocalTopology.set(null)
+        topologyPool.put(topology)
     }
 
     def requireProfiles(String[] profiles) {

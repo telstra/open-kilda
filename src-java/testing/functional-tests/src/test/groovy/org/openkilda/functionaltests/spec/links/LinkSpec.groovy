@@ -128,7 +128,7 @@ class LinkSpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(links, isl.reversed).get().actualState == DISCOVERED
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -227,7 +227,7 @@ class LinkSpec extends HealthCheckSpecification {
                 northbound.getAllLinks().every { it.state == DISCOVERED }
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -281,7 +281,7 @@ class LinkSpec extends HealthCheckSpecification {
                 northbound.getAllLinks().every { it.state == DISCOVERED }
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -404,7 +404,7 @@ class LinkSpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
 
         where:
         [islDescription, isl] << [
@@ -437,7 +437,7 @@ class LinkSpec extends HealthCheckSpecification {
         assert flow2Path == switchPair.paths.first()
 
         and: "Delete link props from all links of alternative paths to allow rerouting flows"
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
         and: "Make the current flows path not preferable"
         switchPair.paths[1..-1].each { pathHelper.makePathMorePreferable(it, switchPair.paths.first()) }
@@ -456,7 +456,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         cleanup: "Delete flows and delete link props"
         [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tidy
@@ -519,7 +519,14 @@ class LinkSpec extends HealthCheckSpecification {
         def links = northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
 
         then: "The corresponding list of links is returned"
-        links.sort() == filterLinks(northbound.getAllLinks(), srcSwId, srcSwPort, dstSwId, dstSwPort).sort()
+        links.each {actualLink ->
+            assert filterLinks(northbound.getAllLinks(), srcSwId, srcSwPort, dstSwId, dstSwPort).find { IslInfoData expectedLink ->
+                actualLink.source.switchId == expectedLink.source.switchId &&
+                        actualLink.source.portNo == expectedLink.source.portNo &&
+                        actualLink.destination.switchId == expectedLink.destination.switchId &&
+                        actualLink.destination.portNo == expectedLink.destination.portNo
+            }, "could not find $actualLink"
+        }
 
         where:
         srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort
@@ -615,7 +622,7 @@ class LinkSpec extends HealthCheckSpecification {
         northbound.updateLinkMaxBandwidth(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort,
                 newMaxBandwidth)
         def links = northbound.getActiveLinks()
-        def linkProps = northbound.getAllLinkProps()
+        def linkProps = northbound.getLinkProps(topology.isls)
 
         then: "Max bandwidth is really updated and available bandwidth is also recalculated"
         [isl, isl.reversed].each {
@@ -643,7 +650,7 @@ class LinkSpec extends HealthCheckSpecification {
         northbound.updateLinkMaxBandwidth(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort,
                 flowMaxBandwidth)
         links = northbound.getActiveLinks()
-        linkProps = northbound.getAllLinkProps()
+        linkProps = northbound.getLinkProps(topology.isls)
 
         then: "Max bandwidth is really updated and available bandwidth is also recalculated"
         [isl, isl.reversed].each {
@@ -659,7 +666,7 @@ class LinkSpec extends HealthCheckSpecification {
         northbound.updateLinkMaxBandwidth(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort,
                 initialMaxBandwidth)
         links = northbound.getActiveLinks()
-        linkProps = northbound.getAllLinkProps()
+        linkProps = northbound.getLinkProps(topology.isls)
 
         then: "Max bandwidth is really updated and available bandwidth is also recalculated"
         [isl, isl.reversed].each {
@@ -673,7 +680,7 @@ class LinkSpec extends HealthCheckSpecification {
         linkProps.each { assert it.props["max_bandwidth"].toLong() == initialMaxBandwidth }
 
         when: "Delete link props"
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         links = northbound.getActiveLinks()
 
         then: "Max bandwidth and available bandwidth are not changed"
@@ -751,7 +758,7 @@ class LinkSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -816,7 +823,7 @@ class LinkSpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -883,7 +890,6 @@ class LinkSpec extends HealthCheckSpecification {
         }
     }
 
-    @Memoized
     Isl getIsl() {
         topology.islsForActiveSwitches.first()
     }

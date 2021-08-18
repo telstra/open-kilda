@@ -169,7 +169,6 @@ class SwitchesSpec extends HealthCheckSpecification {
             assert northboundV2.getFlowStatus(defaultFlow.flowId).status == FlowState.DOWN
             def defaultFlowHistory = northbound.getFlowHistory(defaultFlow.flowId).findAll { it.action == REROUTE_ACTION }
             assert defaultFlowHistory.last().payload.find { it.action == REROUTE_FAIL }
-            assert defaultFlowHistory.find { it.taskId =~ /.+ : retry #1/ }
         }
         def getSwitchFlowsResponse6 = northbound.getSwitchFlows(switchPair.src.dpId)
 
@@ -182,7 +181,7 @@ class SwitchesSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy

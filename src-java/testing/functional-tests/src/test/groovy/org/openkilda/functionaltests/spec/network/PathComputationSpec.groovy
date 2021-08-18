@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.network
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.ResourceLockConstants
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.model.system.KildaConfigurationDto
@@ -11,6 +12,9 @@ import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
+import org.junit.jupiter.api.parallel.ResourceLock
+
+@ResourceLock(ResourceLockConstants.DEFAULT_PATH_COMPUTATION)
 class PathComputationSpec extends HealthCheckSpecification {
 
     @Tidy
@@ -71,7 +75,7 @@ class PathComputationSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
         flow2 && flowHelperV2.deleteFlow(flow2.flowId)
         originalLatencies && originalLatencies.each { isl, latency -> database.updateIslLatency(isl, latency) }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tidy
@@ -105,7 +109,7 @@ class PathComputationSpec extends HealthCheckSpecification {
         cleanup: "Remove the flow, reset latencies and costs"
         flow && flowHelperV2.deleteFlow(flow.flowId)
         originalLatencies && originalLatencies.each { isl, latency -> database.updateIslLatency(isl, latency) }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tidy

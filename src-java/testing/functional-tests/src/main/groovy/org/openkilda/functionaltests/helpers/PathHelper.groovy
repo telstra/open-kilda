@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
+
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath
@@ -13,6 +15,8 @@ import org.openkilda.testing.tools.IslUtils
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
 import java.util.AbstractMap.SimpleEntry
@@ -23,12 +27,13 @@ import java.util.stream.Collectors
  */
 @Component
 @Slf4j
+@Scope(SCOPE_PROTOTYPE)
 class PathHelper {
     static final Integer NOT_PREFERABLE_COST = 99999999
 
     @Autowired
     TopologyDefinition topology
-    @Autowired
+    @Autowired @Qualifier("islandNb")
     NorthboundService northbound
     @Autowired
     IslUtils islUtils

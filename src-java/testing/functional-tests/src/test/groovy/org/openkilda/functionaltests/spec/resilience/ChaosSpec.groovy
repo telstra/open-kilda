@@ -79,7 +79,7 @@ class ChaosSpec extends HealthCheckSpecification {
                 }.empty
             }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     def bothDirectionsHaveSamePath(FlowPathPayload path) {

@@ -35,6 +35,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -768,6 +769,42 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         false           | false         | true          | true
         true            | false         | null          | true
         false           | true          | true          | null
+    }
+
+    @Tidy
+    @Tags(LOW_PRIORITY)
+    @Ignore("https://github.com/telstra/open-kilda/issues/4411")
+    def "Able to update vlanId via partialUpdate in case vlanId==0 and innerVlanId!=0"() {
+        given: "A default flow"
+        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
+        def swPair = topologyHelper.switchPairs.first()
+        def defaultFlow = flowHelperV2.randomFlow(swPair).tap {
+            source.vlanId = 0
+            source.innerVlanId = 0
+        }
+        flowHelperV2.addFlow(defaultFlow)
+
+        when: "Update innerVlanId only via partialUpdate"
+        Integer newSrcInnerVlanId = 234
+        // a flow will be updated as vlan!=0 and innerVlan==0
+        def response = flowHelperV2.partialUpdate(defaultFlow.flowId, new FlowPatchV2().tap {
+            source = new FlowPatchEndpoint().tap {
+                innerVlanId = newSrcInnerVlanId
+            }
+        })
+
+        then: "Partial update response reflects the changes"
+        response.source.vlanId == newSrcInnerVlanId
+        response.source.innerVlanId == 0
+
+        and: "Changes actually took place"
+        with(northboundV2.getFlow(defaultFlow.flowId)) {
+            it.source.vlanId == newSrcInnerVlanId
+            it.source.innerVlanId == defaultFlow.source.vlanId
+        }
+
+        cleanup:
+        defaultFlow && flowHelperV2.deleteFlow(defaultFlow.flowId)
     }
 
     @Shared

@@ -49,7 +49,8 @@ class Greeter(noviflow_pb2_grpc.NoviFlowGrpcServicer):
     def SetConfigLogicalPort(self, request, context):
         port = LogicalPort(logical_port_number=request.logicalportno,
                            name="port_" + str(request.logicalportno),
-                           port_numbers=request.portno)
+                           port_numbers=request.portno,
+                           type=request.logicalporttype)
         self.storage.logical_ports[request.logicalportno] = port
         return noviflow_pb2.CliReply(reply_status=0)
 
@@ -63,6 +64,7 @@ class Greeter(noviflow_pb2_grpc.NoviFlowGrpcServicer):
                     logicalportno=port.logical_port_number,
                     portno=port.port_numbers,
                     name=port.name,
+                    logicalporttype=port.type,
                     reply_status=0)
             else:
                 yield noviflow_pb2.LogicalPort(reply_status=191)
@@ -72,6 +74,7 @@ class Greeter(noviflow_pb2_grpc.NoviFlowGrpcServicer):
                     logicalportno=port.logical_port_number,
                     name=port.name,
                     portno=port.port_numbers,
+                    logicalporttype=port.type,
                     reply_status=0)
 
     def DelConfigLogicalPort(self, request, context):
@@ -144,10 +147,11 @@ class LogServer:
 
 
 class LogicalPort:
-    def __init__(self, logical_port_number, name, port_numbers):
+    def __init__(self, logical_port_number, name, port_numbers, type):
         self.logical_port_number = logical_port_number
         self.name = name
         self.port_numbers = port_numbers
+        self.type = type
 
 
 def serve():

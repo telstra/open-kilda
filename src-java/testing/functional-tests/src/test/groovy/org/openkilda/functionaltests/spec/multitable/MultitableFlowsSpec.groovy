@@ -213,7 +213,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         cleanup: "Revert system to original state"
         !flowsAreDeleted && [flow, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         initSwProps && revertSwitchesToInitState(involvedSwitches, initSwProps)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tidy
@@ -489,7 +489,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         cleanup: "Restore init switch properties and delete the flow"
         flowHelper.deleteFlow(flow.flowId)
         revertSwitchesToInitState(involvedSwitches, initSwProps)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tags([LOW_PRIORITY])
@@ -678,8 +678,8 @@ mode with existing flows and hold flows of different table-mode types"() {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
         revertSwitchesToInitState(involvedSwitches, initSwProps)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
     }
 
     @Tags([LOW_PRIORITY])
@@ -811,8 +811,8 @@ mode with existing flows and hold flows of different table-mode types"() {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
         revertSwitchesToInitState(involvedSwitches, initSwProps)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -1007,8 +1007,8 @@ mode with existing flows and hold flows of different table-mode types"() {
             }
         }
         initSwProps && revertSwitchesToInitState(involvedSwitches, initSwProps)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -1210,7 +1210,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         cleanup: "Revert system to origin state"
         flow && flowHelper.deleteFlow(flow.flowId)
         initSwProps && revertSwitchesToInitState(involvedSwitches, initSwProps)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tidy
@@ -1295,7 +1295,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         cleanup: "Revert the system to origin state"
         flow && !isFlowDeleted && flowHelper.deleteFlow(flow.flowId)
         initSwProps && revertSwitchesToInitState(involvedSwitches, initSwProps)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tags(TOPOLOGY_DEPENDENT)
@@ -1469,7 +1469,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         cleanup:
         revertSwitchesToInitState(mainPathSwitches, initSwProps)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     void checkDefaultRulesOnSwitches(List<Switch> switches) {

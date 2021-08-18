@@ -27,11 +27,9 @@ import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.model.Endpoint;
-import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.isllatency.service.IslLatencyService;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 
 @Slf4j
@@ -68,10 +66,5 @@ public class IslLatencyBolt extends AbstractBolt {
         } else {
             unhandledInput(input);
         }
-    }
-
-    @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(AbstractTopology.fieldMessage);
     }
 }

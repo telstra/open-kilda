@@ -21,7 +21,9 @@ import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.controller.sw.AbstractPort;
 import org.openkilda.wfm.topology.network.controller.sw.LogicalBfdPort;
+import org.openkilda.wfm.topology.network.controller.sw.LogicalLagPort;
 import org.openkilda.wfm.topology.network.controller.sw.PhysicalPort;
+import org.openkilda.wfm.topology.network.controller.sw.UnknownPort;
 
 import org.slf4j.Logger;
 import org.slf4j.event.Level;
@@ -125,6 +127,14 @@ public class NetworkTopologyDashboardLogger extends AbstractDashboardLogger {
 
     public String makePortLabel(LogicalBfdPort port) {
         return "logical-BFD";
+    }
+
+    public String makePortLabel(LogicalLagPort port) {
+        return "logical-LAG";
+    }
+
+    public String makePortLabel(UnknownPort port) {
+        return "unknown";
     }
 
     private void onPortUpDown(Endpoint endpoint, String event) {

@@ -221,7 +221,7 @@ class FlowStatSpec extends HealthCheckSpecification {
 
         and: "Cleanup: revert system to original state"
         flowHelperV2.deleteFlow(flow.flowId)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tidy
@@ -308,7 +308,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -392,7 +392,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy

@@ -162,11 +162,11 @@ class FlowPingSpec extends HealthCheckSpecification {
         cleanup: "Restore rules, costs and remove the flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)
         rulesToRemove && lockKeeper.addFlows(rulesToRemove)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
 
         where:
         data << [

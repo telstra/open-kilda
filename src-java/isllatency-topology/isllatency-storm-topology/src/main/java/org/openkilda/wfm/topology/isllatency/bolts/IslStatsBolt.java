@@ -33,14 +33,15 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.MetricFormatter;
-import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.isllatency.carriers.IslStatsCarrier;
 import org.openkilda.wfm.topology.isllatency.service.IslStatsService;
+import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 import java.util.Collections;
@@ -51,6 +52,8 @@ import java.util.Map;
 @Slf4j
 public class IslStatsBolt extends AbstractBolt implements IslStatsCarrier {
     public static final String LATENCY_METRIC_NAME = "isl.rtt";
+    public static final Fields OUTGOING_STREAM_FIELDS = new Fields(KafkaRecordTranslator.FIELD_ID_PAYLOAD);
+
     private transient IslStatsService islStatsService;
     private final long latencyTimeout;
     private MetricFormatter metricFormatter;
@@ -131,6 +134,6 @@ public class IslStatsBolt extends AbstractBolt implements IslStatsCarrier {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(AbstractTopology.fieldMessage);
+        declarer.declare(OUTGOING_STREAM_FIELDS);
     }
 }

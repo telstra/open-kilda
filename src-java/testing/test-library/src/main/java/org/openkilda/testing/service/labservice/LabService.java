@@ -22,8 +22,6 @@ import java.util.List;
 
 public interface LabService {
 
-    LabInstance getLab();
-
     LabInstance createLab(TopologyDefinition topology);
 
     LabInstance createHwLab(TopologyDefinition topology);
@@ -33,6 +31,4 @@ public interface LabService {
     List<Long> flushLabs();
 
     void deleteLab(LabInstance lab);
-
-    void deleteLab();
 }

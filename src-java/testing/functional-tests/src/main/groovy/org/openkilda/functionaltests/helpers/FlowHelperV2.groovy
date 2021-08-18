@@ -2,8 +2,11 @@ package org.openkilda.functionaltests.helpers
 
 import static FlowHistoryConstants.UPDATE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_MIRROR_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
@@ -27,6 +30,8 @@ import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import com.github.javafaker.Faker
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
 import java.text.SimpleDateFormat
@@ -36,12 +41,13 @@ import java.text.SimpleDateFormat
  */
 @Component
 @Slf4j
+@Scope(SCOPE_PROTOTYPE)
 class FlowHelperV2 {
     @Autowired
     TopologyDefinition topology
-    @Autowired
+    @Autowired @Qualifier("islandNbV2")
     NorthboundServiceV2 northboundV2
-    @Autowired
+    @Autowired @Qualifier("islandNb")
     NorthboundService northbound
 
     def random = new Random()
@@ -101,10 +107,9 @@ class FlowHelperV2 {
      */
     FlowRequestV2 singleSwitchFlow(Switch sw, boolean useTraffgenPorts = true,
             List<FlowRequestV2> existingFlows = []) {
-        def allowedPorts = topology.getAllowedPortsForSwitch(sw)
         Wrappers.retry(3, 0) {
-            def srcEndpoint = getFlowEndpoint(sw, allowedPorts, useTraffgenPorts)
-            def dstEndpoint = getFlowEndpoint(sw, allowedPorts - srcEndpoint.portNumber, useTraffgenPorts)
+            def srcEndpoint = getFlowEndpoint(sw, [], useTraffgenPorts)
+            def dstEndpoint = getFlowEndpoint(sw, [srcEndpoint.portNumber], useTraffgenPorts)
             def newFlow = FlowRequestV2.builder()
                     .flowId(generateFlowId())
                     .source(srcEndpoint)
@@ -122,14 +127,18 @@ class FlowHelperV2 {
         } as FlowRequestV2
     }
 
+    FlowRequestV2 singleSwitchFlow(SwitchPair switchPair, boolean useTraffgenPorts = true,
+                                   List<FlowRequestV2> existingFlows = []) {
+        singleSwitchFlow(switchPair.src, useTraffgenPorts, existingFlows)
+    }
+
     /**
      * Creates a FlowPayload instance with random vlan and flow id suitable for a single-switch flow.
      * The flow will be on the same port.
      */
     FlowRequestV2 singleSwitchSinglePortFlow(Switch sw) {
-        def allowedPorts = topology.getAllowedPortsForSwitch(sw)
-        def srcEndpoint = getFlowEndpoint(sw, allowedPorts)
-        def dstEndpoint = getFlowEndpoint(sw, [srcEndpoint.portNumber])
+        def srcEndpoint = getFlowEndpoint(sw, [])
+        def dstEndpoint = getFlowEndpoint(sw, []).tap { it.portNumber = srcEndpoint.portNumber }
         if (srcEndpoint.vlanId == dstEndpoint.vlanId) { //ensure same vlan is not randomly picked
             dstEndpoint.vlanId--
         }
@@ -148,7 +157,10 @@ class FlowHelperV2 {
     FlowResponseV2 addFlow(FlowRequestV2 flow) {
         log.debug("Adding flow '${flow.flowId}'")
         def response = northboundV2.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == CREATE_SUCCESS
+        }
         return response
     }
 
@@ -166,7 +178,10 @@ class FlowHelperV2 {
         Wrappers.wait(WAIT_OFFSET * 2) { assert northboundV2.getFlowStatus(flowId).status != FlowState.IN_PROGRESS }
         log.debug("Deleting flow '$flowId'")
         def response = northboundV2.deleteFlow(flowId)
-        Wrappers.wait(WAIT_OFFSET) { assert !northboundV2.getFlowStatus(flowId) }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert !northboundV2.getFlowStatus(flowId)
+            assert northbound.getFlowHistory(flowId).find { it.payload.last().action == DELETE_SUCCESS }
+        }
         return response
     }
 
@@ -176,7 +191,10 @@ class FlowHelperV2 {
     FlowResponseV2 updateFlow(String flowId, FlowRequestV2 flow) {
         log.debug("Updating flow '${flowId}'")
         def response = northboundV2.updateFlow(flowId, flow)
-        Wrappers.wait(PATH_INSTALLATION_TIME) { assert northboundV2.getFlowStatus(flowId).status == FlowState.UP }
+        Wrappers.wait(PATH_INSTALLATION_TIME) {
+            assert northboundV2.getFlowStatus(flowId).status == FlowState.UP
+            assert northbound.getFlowHistory(flowId).last().payload.last().action == UPDATE_SUCCESS
+        }
         return response
     }
 
@@ -322,21 +340,21 @@ class FlowHelperV2 {
      * @param useTraffgenPorts whether to try finding a traffgen port
      */
     private FlowEndpointV2 getFlowEndpoint(Switch sw, boolean useTraffgenPorts = true) {
-        getFlowEndpoint(sw, topology.getAllowedPortsForSwitch(sw), useTraffgenPorts)
+        getFlowEndpoint(sw, [], useTraffgenPorts)
     }
 
     /**
      * Returns flow endpoint with randomly chosen vlan.
      *
-     * @param allowedPorts list of ports to randomly choose port from
-     * @param useTraffgenPorts if true, will try to use a port attached to a traffgen. The port must be present
-     * in 'allowedPorts'
+     * @param excludePorts list of ports that should not be picked
+     * @param useTraffgenPorts if true, will try to use a port attached to a traffgen
      */
-    private FlowEndpointV2 getFlowEndpoint(Switch sw, List<Integer> allowedPorts,
+    private FlowEndpointV2 getFlowEndpoint(Switch sw, List<Integer> excludePorts,
             boolean useTraffgenPorts = true) {
-        int port = allowedPorts[random.nextInt(allowedPorts.size())]
+        def ports = topology.getAllowedPortsForSwitch(sw) - excludePorts
+        int port = ports[random.nextInt(ports.size())]
         if (useTraffgenPorts) {
-            List<Integer> tgPorts = sw.traffGens*.switchPort.findAll { allowedPorts.contains(it) }
+            List<Integer> tgPorts = sw.traffGens*.switchPort - excludePorts
             if (tgPorts) {
                 port = tgPorts[0]
             }

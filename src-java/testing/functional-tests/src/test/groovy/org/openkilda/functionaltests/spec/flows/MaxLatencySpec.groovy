@@ -142,7 +142,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
             assert flowInfo.statusDetails.mainPath == "Up"
             assert flowInfo.statusDetails.protectedPath == "degraded"
             assert flowInfo.statusInfo == "An alternative way (back up strategy or max_latency_tier2 value) of" +
-                    " building the path was used."
+                    " building the path was used"
         }
         def path = northbound.getFlowPath(flow.flowId)
         pathHelper.convert(path) == mainPath
@@ -172,7 +172,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
             def flowInfo = northboundV2.getFlow(flow.flowId)
             assert flowInfo.status == FlowState.DEGRADED.toString()
             assert flowInfo.statusInfo == "An alternative way (back up strategy or max_latency_tier2 value) of" +
-                    " building the path was used."
+                    " building the path was used"
             assert northboundV2.getFlowHistoryStatuses(flow.flowId).historyStatuses*.statusBecome == ["DEGRADED"]
         }
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == alternativePath
@@ -255,7 +255,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
             antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
             wait(discoveryInterval + WAIT_OFFSET) { assert islUtils.getIslInfo(islToBreak).get().state == DISCOVERED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -278,7 +278,7 @@ but satisfies max_latency_tier2"
             def flowInfo =  northboundV2.getFlow(flow.flowId)
             assert flowInfo.status == FlowState.DEGRADED.toString()
             assert flowInfo.statusInfo == "An alternative way (back up strategy or max_latency_tier2 value) of" +
-                    " building the path was used."
+                    " building the path was used"
         }
         def path = northbound.getFlowPath(flow.flowId)
         pathHelper.convert(path) == mainPath
@@ -372,7 +372,7 @@ but satisfies max_latency_tier2"
             antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
             wait(WAIT_OFFSET) { assert northbound.getLink(islToBreak).state == IslChangeType.FAILED }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     def setLatencyForPaths(int mainPathLatency, int alternativePathLatency) {
@@ -394,6 +394,6 @@ but satisfies max_latency_tier2"
         wait(getDiscoveryInterval() + WAIT_OFFSET) {
             assert getNorthbound().getActiveLinks().size() == getTopology().islsForActiveSwitches.size() * 2
         }
-        getDatabase().resetCosts()
+        getDatabase().resetCosts(topology.isls)
     }
 }

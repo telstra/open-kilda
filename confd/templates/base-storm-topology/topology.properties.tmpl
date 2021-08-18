@@ -41,7 +41,9 @@ port.up.down.throttling.delay.seconds.warm.up = {{ getv "/kilda_port_up_down_thr
 port.up.down.throttling.delay.seconds.cool.down = {{ getv "/kilda_port_up_down_throttling_delay_seconds_cool_down" }}
 port.antiflap.stats.dumping.interval.seconds = 60
 
+lag.port.offset = {{ getv "/kilda_lag_port_offset" }}
 bfd.port.offset = {{ getv "/kilda_bfd_port_offset" }}
+bfd.port.max.number = {{ getv "/kilda_bfd_port_max_number" }}
 
 zookeeper.connect_string = {{ getv "/kilda_zookeeper_hosts"}}/{{ getv "/kilda_zookeeper_state_root" }}
 zookeeper.reconnect_delay={{ getv "/kilda_zookeeper_reconnect_delay_ms"}}

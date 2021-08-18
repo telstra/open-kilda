@@ -45,6 +45,7 @@ import java.util.TreeMap;
 public final class CoordinatorBolt extends AbstractBolt {
     public static final String ID = "coordinator.bolt";
     public static final String INCOME_STREAM = "coordinator.command";
+    public static final Fields FIELDS_KEY = new Fields(MessageKafkaTranslator.FIELD_ID_KEY);
 
     private Map<String, Callback> callbacks = new HashMap<>();
     private SortedMap<Long, Set<String>> timeouts = new TreeMap<>();
@@ -60,7 +61,7 @@ public final class CoordinatorBolt extends AbstractBolt {
     }
 
     private void handleCommand(Tuple input) {
-        String key = input.getStringByField(MessageKafkaTranslator.KEY_FIELD);
+        String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
         CoordinatorCommand command = (CoordinatorCommand) input.getValueByField(COMMAND_FIELD);
         switch (command) {
             case REQUEST_CALLBACK:
@@ -116,7 +117,7 @@ public final class CoordinatorBolt extends AbstractBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        Fields fields = new Fields(MessageKafkaTranslator.KEY_FIELD, FIELD_ID_CONTEXT);
+        Fields fields = new Fields(MessageKafkaTranslator.FIELD_ID_KEY, FIELD_ID_CONTEXT);
         declarer.declare(true, fields);
     }
 

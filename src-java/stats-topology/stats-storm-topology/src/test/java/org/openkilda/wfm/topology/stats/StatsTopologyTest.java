@@ -22,24 +22,14 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static org.openkilda.model.FlowPathDirection.FORWARD;
 import static org.openkilda.model.FlowPathDirection.REVERSE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.wfm.config.KafkaConfig.STATS_TOPOLOGY_TEST_KAFKA_PORT;
 import static org.openkilda.wfm.config.ZookeeperConfig.STATS_TOPOLOGY_TEST_ZOOKEEPER_PORT;
 
-import org.openkilda.floodlight.api.request.EgressFlowSegmentInstallRequest;
-import org.openkilda.floodlight.api.request.IngressFlowSegmentInstallRequest;
-import org.openkilda.floodlight.api.request.IngressFlowSegmentRemoveRequest;
-import org.openkilda.floodlight.api.request.SpeakerRequest;
-import org.openkilda.floodlight.api.request.TransitFlowSegmentInstallRequest;
-import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.MessageContext;
-import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.flow.BaseFlow;
-import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
-import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
@@ -53,16 +43,16 @@ import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
+import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
 import org.openkilda.messaging.info.stats.SwitchTableStatsData;
 import org.openkilda.messaging.info.stats.TableStatsEntry;
+import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
 import org.openkilda.messaging.model.grpc.PacketInOutStatsDto;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MeterId;
-import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
@@ -70,15 +60,16 @@ import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
+import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -181,19 +172,19 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Before
-    public void setup() throws IOException {
+    public void setup() {
         otsdbConsumer.clear();
 
         // need clear data in CacheBolt
         for (Flow flow : flowRepository.findAll()) {
-            sendRemoveFlowCommand(flow, flow.getForwardPath());
+            flow.getPaths().forEach(this::sendRemoveFlowPathInfo);
         }
 
         persistenceManager.purgeData();
     }
 
     @Test
-    public void portStatsTest() throws Exception {
+    public void portStatsTest() {
         final SwitchId switchId = new SwitchId(1L);
         int portCount = 52;
 
@@ -245,7 +236,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    public void meterConfigStatsTest() throws Exception {
+    public void meterConfigStatsTest() {
         final SwitchId switchId = new SwitchId(1L);
         final List<MeterConfigReply> stats =
                 Collections.singletonList(new MeterConfigReply(2, Arrays.asList(1L, 2L, 3L)));
@@ -261,7 +252,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    public void meterSystemRulesStatsTest() throws IOException {
+    public void meterSystemRulesStatsTest() {
         long meterId = MeterId.createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue();
         MeterStatsEntry meterStats = new MeterStatsEntry(meterId, 400L, 500L);
 
@@ -288,7 +279,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    public void packetInOutStatsTest() throws IOException {
+    public void packetInOutStatsTest() {
         PacketInOutStatsDto data = new PacketInOutStatsDto();
         data.setPacketInTotalPackets(1);
         data.setPacketInTotalPacketsDataplane(2);
@@ -328,10 +319,10 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    public void meterFlowRulesStatsTest() throws IOException {
-        Flow flow = createFlow(SWITCH_ID_1, flowId);
+    public void meterFlowRulesStatsTest() {
+        Flow flow = createOneSwitchFlow(SWITCH_ID_1);
         FlowPath flowPath = flow.getForwardPath();
-        sendInstallOneSwitchFlowCommand(flow, flowPath);
+        sendUpdateFlowPathInfo(flowPath);
 
         MeterStatsEntry meterStats = new MeterStatsEntry(flowPath.getMeterId().getValue(), 500L, 700L);
 
@@ -361,7 +352,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    public void lldpMeterStatsTest() throws IOException {
+    public void lldpMeterStatsTest() {
         long lldpMeterId = MeterId.MIN_FLOW_METER_ID;
 
         MeterStatsEntry meterStats = new MeterStatsEntry(lldpMeterId, 400L, 500L);
@@ -392,9 +383,9 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    public void flowStatsTest() throws Exception {
-        Flow flow = createFlow(SWITCH_ID_1, flowId);
-        sendInstallOneSwitchFlowCommand(flow, flow.getForwardPath());
+    public void flowStatsTest() {
+        Flow flow = createOneSwitchFlow(SWITCH_ID_1);
+        sendUpdateFlowPathInfo(flow.getForwardPath());
 
         FlowStatsEntry flowStats = new FlowStatsEntry((short) 1, MAIN_FORWARD_COOKIE.getValue(), 150L, 300L, 10, 10);
 
@@ -403,14 +394,12 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    public void flowStatsWithProtectedTest() throws Exception {
-        // install 3 rules on switch 1
-        sendInstallIngressCommand(MAIN_FORWARD_COOKIE);
-        sendInstallEgressCommand(MAIN_REVERSE_COOKIE, SWITCH_ID_1, PORT_2);
-        sendInstallEgressCommand(PROTECTED_REVERSE_COOKIE, SWITCH_ID_1, PORT_3);
-        // install 2 transit rules on switch 2
-        sendInstallTransitCommand(MAIN_FORWARD_COOKIE);
-        sendInstallTransitCommand(MAIN_REVERSE_COOKIE);
+    public void flowStatsWithProtectedTest() {
+        Flow flow = createFlowWithProtectedPath();
+        sendUpdateFlowPathInfo(flow.getForwardPath());
+        sendUpdateFlowPathInfo(flow.getReversePath());
+        sendUpdateFlowPathInfo(flow.getProtectedForwardPath());
+        sendUpdateFlowPathInfo(flow.getProtectedReversePath());
 
         FlowStatsEntry mainForwardStats = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 1, 2, 3, 4);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(mainForwardStats)));
@@ -434,24 +423,12 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    public void flowStatsSwapPathTest() throws Exception {
-
-        // install 3 rules on src switch 1
-        sendInstallIngressCommand(MAIN_FORWARD_COOKIE);
-        sendInstallEgressCommand(MAIN_REVERSE_COOKIE, SWITCH_ID_1, PORT_2);
-        sendInstallEgressCommand(PROTECTED_REVERSE_COOKIE, SWITCH_ID_1, PORT_3);
-
-        //install 2 egress rules on dst switch 3
-        sendInstallEgressCommand(MAIN_FORWARD_COOKIE, SWITCH_ID_3, PORT_3);
-        sendInstallEgressCommand(PROTECTED_FORWARD_COOKIE, SWITCH_ID_3, PORT_2);
-
-        // install 2 transit rules on transit switch 2
-        sendInstallTransitCommand(MAIN_FORWARD_COOKIE);
-        sendInstallTransitCommand(MAIN_REVERSE_COOKIE);
-
-        // swap main and protected paths
-        sendInstallIngressCommand(PROTECTED_FORWARD_COOKIE);
-        sendRemoveIngressCommand(MAIN_FORWARD_COOKIE);
+    public void flowStatsSwapPathTest() {
+        Flow flow = createFlowWithProtectedPath();
+        sendUpdateFlowPathInfo(flow.getForwardPath());
+        sendUpdateFlowPathInfo(flow.getReversePath());
+        sendUpdateFlowPathInfo(flow.getProtectedForwardPath());
+        sendUpdateFlowPathInfo(flow.getProtectedReversePath());
 
         // check ingress protected rule on switch 1
         FlowStatsEntry protectedForwardStats = new FlowStatsEntry(1, PROTECTED_FORWARD_COOKIE.getValue(), 1, 2, 3, 4);
@@ -548,7 +525,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     @Test
     @Ignore
-    public void flowLldpStatsTest() throws Exception {
+    public void flowLldpStatsTest() {
         long lldpCookie = 1;
         FlowStatsEntry stats = new FlowStatsEntry((short) 1, lldpCookie, 450, 550L, 10, 10);
 
@@ -578,7 +555,9 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    public void flowAttendantRulesStatsTest() throws IOException {
+    public void flowAttendantRulesStatsTest() {
+        Flow flow = createFlow();
+
         FlowSegmentCookie server42IngressCookie = MAIN_FORWARD_COOKIE
                 .toBuilder().type(CookieType.SERVER_42_FLOW_RTT_INGRESS).build();
 
@@ -592,11 +571,11 @@ public class StatsTopologyTest extends AbstractStormTest {
 
         sendStatsMessage(new FlowStatsData(ingress.getSwitchId(), Collections.singletonList(measure0)));
 
-        sendInstallIngressCommand(MAIN_FORWARD_COOKIE, ingress, SWITCH_ID_3);
+        sendUpdateFlowPathInfo(flow.getForwardPath());
 
         sendStatsMessage(new FlowStatsData(ingress.getSwitchId(), Collections.singletonList(measure1)));
 
-        sendRemoveIngressCommand(MAIN_FORWARD_COOKIE);
+        sendRemoveFlowPathInfo(flow.getForwardPath());
 
         sendStatsMessage(new FlowStatsData(ingress.getSwitchId(), Collections.singletonList(measure2)));
 
@@ -623,7 +602,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    public void systemRulesStatsTest() throws Exception {
+    public void systemRulesStatsTest() {
         FlowStatsEntry systemRuleStats = new FlowStatsEntry((short) 1, VERIFICATION_BROADCAST_RULE_COOKIE, 100L, 200L,
                 10, 10);
 
@@ -649,7 +628,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    public void flowRttTest() throws IOException, InterruptedException {
+    public void flowRttTest() {
         FlowRttStatsData flowRttStatsData = FlowRttStatsData.builder()
                 .flowId(flowId)
                 .direction("forward")
@@ -680,7 +659,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    public void tableStatsTest() throws IOException {
+    public void tableStatsTest() {
         TableStatsEntry entry = TableStatsEntry.builder()
                 .tableId(1)
                 .activeEntries(100)
@@ -715,9 +694,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         });
     }
 
-    private Flow createFlow(SwitchId switchId, String flowId) {
-        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-
+    private Flow createOneSwitchFlow(SwitchId switchId) {
         Switch sw = Switch.builder().switchId(switchId).build();
         switchRepository.add(sw);
 
@@ -728,121 +705,110 @@ public class StatsTopologyTest extends AbstractStormTest {
                 .destSwitch(sw)
                 .destPort(2)
                 .destVlan(5)
-                .cookie(MAIN_FORWARD_COOKIE.getValue())
-                .meterId(456)
-                .transitEncapsulationId(ENCAPSULATION_ID)
+                .unmaskedCookie(MAIN_COOKIE)
+                .forwardMeterId(456)
+                .reverseMeterId(457)
+                .forwardTransitEncapsulationId(ENCAPSULATION_ID)
+                .reverseTransitEncapsulationId(ENCAPSULATION_ID + 1)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build();
 
-        FlowRepository flowRepository = repositoryFactory.createFlowRepository();
         flowRepository.add(flow);
         return flow;
     }
 
-    private void sendStatsMessage(InfoData infoData) throws IOException {
+    private Flow createFlow() {
+        Switch srcSw = Switch.builder().switchId(SWITCH_ID_1).build();
+        switchRepository.add(srcSw);
+        Switch dstSw = Switch.builder().switchId(SWITCH_ID_3).build();
+        switchRepository.add(dstSw);
+
+        Flow flow = new TestFlowBuilder(flowId)
+                .srcSwitch(srcSw)
+                .srcPort(PORT_1)
+                .srcVlan(5)
+                .addTransitionEndpoint(srcSw, PORT_2)
+                .addTransitionEndpoint(dstSw, PORT_1)
+                .unmaskedCookie(MAIN_COOKIE)
+                .forwardMeterId(456)
+                .forwardTransitEncapsulationId(ENCAPSULATION_ID)
+                .reverseMeterId(457)
+                .reverseTransitEncapsulationId(ENCAPSULATION_ID + 1)
+                .destSwitch(dstSw)
+                .destPort(PORT_3)
+                .destVlan(5)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .build();
+        flowRepository.add(flow);
+        return flow;
+    }
+
+    private Flow createFlowWithProtectedPath() {
+        Switch srcSw = Switch.builder().switchId(SWITCH_ID_1).build();
+        switchRepository.add(srcSw);
+        Switch transitSw = Switch.builder().switchId(SWITCH_ID_2).build();
+        switchRepository.add(transitSw);
+        Switch dstSw = Switch.builder().switchId(SWITCH_ID_3).build();
+        switchRepository.add(dstSw);
+
+        Flow flow = new TestFlowBuilder(flowId)
+                .srcSwitch(srcSw)
+                .srcPort(PORT_1)
+                .srcVlan(5)
+                .addTransitionEndpoint(srcSw, PORT_2)
+                .addTransitionEndpoint(transitSw, PORT_1)
+                .addTransitionEndpoint(transitSw, PORT_2)
+                .addTransitionEndpoint(dstSw, PORT_1)
+                .unmaskedCookie(MAIN_COOKIE)
+                .forwardMeterId(456)
+                .forwardTransitEncapsulationId(ENCAPSULATION_ID)
+                .reverseMeterId(457)
+                .reverseTransitEncapsulationId(ENCAPSULATION_ID + 1)
+                .addProtectedTransitionEndpoint(srcSw, PORT_3)
+                .addProtectedTransitionEndpoint(dstSw, PORT_2)
+                .protectedUnmaskedCookie(PROTECTED_COOKIE)
+                .protectedForwardMeterId(458)
+                .protectedForwardTransitEncapsulationId(ENCAPSULATION_ID + 2)
+                .protectedReverseMeterId(459)
+                .protectedReverseTransitEncapsulationId(ENCAPSULATION_ID + 3)
+                .destSwitch(dstSw)
+                .destPort(PORT_3)
+                .destVlan(5)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .build();
+        flowRepository.add(flow);
+        return flow;
+    }
+
+    private void sendStatsMessage(InfoData infoData) {
         InfoMessage infoMessage = new InfoMessage(infoData, timestamp, UUID.randomUUID().toString(),
                 Destination.WFM_STATS, null);
         sendMessage(infoMessage, statsTopologyConfig.getKafkaStatsTopic());
     }
 
-    private void sendRemoveFlowCommand(Flow flow, FlowPath flowPath) throws IOException {
-        RemoveFlow removeFlow = RemoveFlow.builder()
-                .transactionId(TRANSACTION_ID)
-                .flowId(flow.getFlowId())
-                .cookie(flowPath.getCookie().getValue())
-                .switchId(flow.getSrcSwitchId())
-                .meterId(flowPath.getMeterId().getValue())
-                .build();
-        sendFlowCommand(removeFlow);
+    private void sendRemoveFlowPathInfo(FlowPath flowPath) {
+        RemoveFlowPathInfo pathInfo = new RemoveFlowPathInfo(
+                flowPath.getFlowId(), flowPath.getCookie(), flowPath.getMeterId(),
+                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath));
+        InfoMessage infoMessage = new InfoMessage(pathInfo, timestamp, UUID.randomUUID().toString(), null, null);
+        sendMessage(infoMessage, statsTopologyConfig.getFlowStatsNotifyTopic());
     }
 
-    private void sendInstallOneSwitchFlowCommand(Flow flow, FlowPath flowPath) throws IOException {
-        boolean isForward = flow.isForward(flowPath);
-        InstallOneSwitchFlow installOneSwitchFlow = new InstallOneSwitchFlow(
-                TRANSACTION_ID,
-                flow.getFlowId(),
-                flowPath.getCookie().getValue(),
-                flow.getSrcSwitchId(),
-                flow.getSrcPort(),
-                flow.getDestPort(),
-                flow.getSrcVlan(), 0,
-                flow.getDestVlan(), 0,
-                OutputVlanType.PUSH,
-                flow.getBandwidth(),
-                flowPath.getMeterId().getValue(),
-                false,
-                (isForward && flow.getDetectConnectedDevices().isSrcLldp())
-                        || (!isForward && flow.getDetectConnectedDevices().isDstLldp()),
-                false, null
-        );
-        sendFlowCommand(installOneSwitchFlow);
+    private void sendUpdateFlowPathInfo(FlowPath flowPath) {
+        UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
+                flowPath.getFlowId(), flowPath.getCookie(), flowPath.getMeterId(),
+                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath));
+        InfoMessage infoMessage = new InfoMessage(pathInfo, timestamp, UUID.randomUUID().toString(), null, null);
+        sendMessage(infoMessage, statsTopologyConfig.getFlowStatsNotifyTopic());
     }
 
-    private void sendInstallIngressCommand(FlowSegmentCookie cookie) throws IOException {
-        sendInstallIngressCommand(cookie, new FlowEndpoint(SWITCH_ID_1, PORT_1), SWITCH_ID_3);
-    }
-
-    private void sendInstallIngressCommand(FlowSegmentCookie cookie, FlowEndpoint ingress, SwitchId egressSwitchId)
-            throws IOException {
-        IngressFlowSegmentInstallRequest command = IngressFlowSegmentInstallRequest.builder()
-                .commandId(UUID.randomUUID())
-                .messageContext(new MessageContext())
-                .endpoint(ingress)
-                .egressSwitchId(egressSwitchId)
-                .metadata(new FlowSegmentMetadata(flowId, cookie, false))
-                .encapsulation(new FlowTransitEncapsulation(1, FlowEncapsulationType.TRANSIT_VLAN))
-                .build();
-        sendSpeakerCommand(command);
-    }
-
-    private void sendInstallEgressCommand(FlowSegmentCookie cookie, SwitchId switchId, int port) throws IOException {
-        EgressFlowSegmentInstallRequest command = EgressFlowSegmentInstallRequest.builder()
-                .commandId(UUID.randomUUID())
-                .messageContext(new MessageContext())
-                .ingressEndpoint(new FlowEndpoint(SWITCH_ID_3, PORT_3))
-                .endpoint(new FlowEndpoint(switchId, port))
-                .metadata(new FlowSegmentMetadata(flowId, cookie, false))
-                .encapsulation(new FlowTransitEncapsulation(1, FlowEncapsulationType.TRANSIT_VLAN))
-                .build();
-        sendSpeakerCommand(command);
-    }
-
-    private void sendInstallTransitCommand(FlowSegmentCookie cookie) throws IOException {
-        TransitFlowSegmentInstallRequest command = TransitFlowSegmentInstallRequest.builder()
-                .commandId(UUID.randomUUID())
-                .switchId(SWITCH_ID_2)
-                .messageContext(new MessageContext())
-                .ingressIslPort(cookie.getDirection().equals(FORWARD) ? PORT_1 : PORT_2)
-                .egressIslPort(cookie.getDirection().equals(FORWARD) ? PORT_2 : PORT_1)
-                .metadata(new FlowSegmentMetadata(flowId, cookie, false))
-                .encapsulation(new FlowTransitEncapsulation(1, FlowEncapsulationType.TRANSIT_VLAN))
-                .build();
-        sendSpeakerCommand(command);
-    }
-
-    private void sendRemoveIngressCommand(FlowSegmentCookie cookie) throws IOException {
-        IngressFlowSegmentRemoveRequest command = IngressFlowSegmentRemoveRequest.builder()
-                .commandId(UUID.randomUUID())
-                .endpoint(new FlowEndpoint(SWITCH_ID_1, PORT_1))
-                .egressSwitchId(SWITCH_ID_3)
-                .messageContext(new MessageContext())
-                .metadata(new FlowSegmentMetadata(flowId, cookie, false))
-                .encapsulation(new FlowTransitEncapsulation(1, FlowEncapsulationType.TRANSIT_VLAN))
-                .build();
-        sendSpeakerCommand(command);
-    }
-
-    private void sendFlowCommand(BaseFlow flowCommand) throws IOException {
-        CommandMessage commandMessage = new CommandMessage(flowCommand, timestamp, UUID.randomUUID().toString());
-        sendMessage(commandMessage, statsTopologyConfig.getKafkaSpeakerFlowHsTopic());
-    }
-
-    private void sendSpeakerCommand(SpeakerRequest speakerRequest) throws IOException {
-        sendMessage(speakerRequest, statsTopologyConfig.getKafkaSpeakerFlowHsTopic());
-    }
-
-    private void sendMessage(Object object, String topic) throws IOException {
-        String request = objectMapper.writeValueAsString(object);
+    private void sendMessage(Object object, String topic) {
+        String request = null;
+        try {
+            request = objectMapper.writeValueAsString(object);
+        } catch (JsonProcessingException e) {
+            fail("Unexpected error: " + e.getMessage());
+        }
         kProducer.pushMessage(topic, request);
     }
 

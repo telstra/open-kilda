@@ -44,6 +44,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(SMOKE)
+    @Ignore("unstable")
     def "Reroute is not performed while new reroutes are being issued"() {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"
         /* Here we will pick only short flows that consist of 2 switches, so that we can maximize amount of unique
@@ -69,7 +70,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         def untilReroutesBegin = { rerouteTriggersEnd.time + rerouteDelay * 1000 - new Date().time }
 
         then: "The oldest broken flow is still not rerouted before rerouteDelay run out"
-        sleep(untilReroutesBegin() - (long) (rerouteDelay * 1000 * 0.3)) //check after 70% of rerouteDelay has passed
+        sleep(untilReroutesBegin() - (long) (rerouteDelay * 1000 * 0.5)) //check after 50% of rerouteDelay has passed
         northbound.getFlowHistory(flows.first().flowId).last().action == "Flow creating" //reroute didn't start yet
 
         and: "The oldest broken flow is rerouted when the rerouteDelay runs out"
@@ -213,7 +214,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
     }
 
     def cleanup() {
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     /**

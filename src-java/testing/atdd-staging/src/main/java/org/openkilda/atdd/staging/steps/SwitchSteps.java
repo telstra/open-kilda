@@ -33,13 +33,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.junit.Assume;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.util.List;
 
 @Slf4j
 public class SwitchSteps {
 
-    @Autowired
+    @Autowired @Qualifier("northboundServiceImpl")
     private NorthboundService northboundService;
 
     @Autowired

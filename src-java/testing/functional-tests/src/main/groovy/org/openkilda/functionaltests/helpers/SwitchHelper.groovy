@@ -33,6 +33,7 @@ import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOK
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_RULE_COOKIE
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
@@ -63,7 +64,9 @@ import org.openkilda.testing.tools.SoftAssertions
 
 import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
 import java.math.RoundingMode
@@ -80,10 +83,11 @@ import java.math.RoundingMode
  * </pre>
  */
 @Component
+@Scope(SCOPE_PROTOTYPE)
 class SwitchHelper {
-    static NorthboundService northbound
-    static Database database
-    static TopologyDefinition topology
+    static InheritableThreadLocal<NorthboundService> northbound = new InheritableThreadLocal<>()
+    static InheritableThreadLocal<Database> database = new InheritableThreadLocal<>()
+    static InheritableThreadLocal<TopologyDefinition> topology = new InheritableThreadLocal<>()
 
     //below values are manufacturer-specific and override default Kilda values on firmware level
     static NOVIFLOW_BURST_COEFFICIENT = 1.005 // Driven by the Noviflow specification
@@ -106,11 +110,11 @@ class SwitchHelper {
     LockKeeperService lockKeeper
 
     @Autowired
-    SwitchHelper(NorthboundService northbound, Database database,
+    SwitchHelper(@Qualifier("northboundServiceImpl") NorthboundService northbound, Database database,
                  TopologyDefinition topology) {
-        this.northbound = northbound
-        this.database = database
-        this.topology = topology
+        this.northbound.set(northbound)
+        this.database.set(database)
+        this.topology.set(topology)
     }
 
     static String getDescription(Switch sw) {
@@ -123,25 +127,25 @@ class SwitchHelper {
     }
 
     static List<TraffGen> getTraffGens(Switch sw) {
-        topology.activeTraffGens.findAll { it.switchConnected.dpId == sw.dpId }
+        topology.get().activeTraffGens.findAll { it.switchConnected.dpId == sw.dpId }
     }
 
     @Memoized
     static SwitchDto nbFormat(Switch sw) {
-        northbound.getSwitch(sw.dpId)
+        northbound.get().getSwitch(sw.dpId)
     }
 
     @Memoized
     static Set<SwitchFeature> getFeatures(Switch sw) {
-        database.getSwitch(sw.dpId).features
+        database.get().getSwitch(sw.dpId).features
     }
 
     static List<Long> getDefaultCookies(Switch sw) {
-        def swProps = northbound.getSwitchProperties(sw.dpId)
+        def swProps = northbound.get().getSwitchProperties(sw.dpId)
         def multiTableRules = []
         def devicesRules = []
         def server42Rules = []
-        def toggles = northbound.getFeatureToggles()
+        def toggles = northbound.get().getFeatureToggles()
         if (swProps.multiTable) {
             multiTableRules = [MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
                                MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
@@ -150,14 +154,14 @@ class SwitchHelper {
             if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
                 multiTableRules.addAll([LLDP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE])
             }
-            northbound.getLinks(sw.dpId, null, null, null).each {
+            northbound.get().getLinks(sw.dpId, null, null, null).each {
                 if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
                     multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES, it.source.portNo).getValue())
                     multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES, it.source.portNo).getValue())
                 }
                 multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES, it.source.portNo).getValue())
             }
-            northbound.getSwitchFlows(sw.dpId).each {
+            northbound.get().getSwitchFlows(sw.dpId).each {
                 if (it.source.datapath.equals(sw.dpId)) {
                     multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_INGRESS_RULES, it.source.portNumber).getValue())
                     if (swProps.switchLldp || it.source.detectConnectedDevices.lldp) {
@@ -203,7 +207,7 @@ class SwitchHelper {
             devicesRules.add(SERVER_42_ISL_RTT_TURNING_COOKIE)
             devicesRules.add(SERVER_42_ISL_RTT_OUTPUT_COOKIE)
 
-            northbound.getLinks(sw.dpId, null, null, null).each {
+            northbound.get().getLinks(sw.dpId, null, null, null).each {
                 devicesRules.add(new PortColourCookie(CookieType.SERVER_42_ISL_RTT_INPUT, it.source.portNo).getValue())
             }
         }
@@ -229,7 +233,7 @@ class SwitchHelper {
         if (sw.ofVersion == "OF_12") {
             return []
         }
-        def swProps = northbound.getSwitchProperties(sw.dpId)
+        def swProps = northbound.get().getSwitchProperties(sw.dpId)
         List<MeterId> result = []
         result << MeterId.createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE) //2
         result << MeterId.createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE) //3
@@ -280,7 +284,7 @@ class SwitchHelper {
 
     @Memoized
     static String getDescription(SwitchId sw) {
-        northbound.activeSwitches.find { it.switchId == sw }.description
+        northbound.get().activeSwitches.find { it.switchId == sw }.description
     }
 
     /**
@@ -288,10 +292,10 @@ class SwitchHelper {
      * reinstalled according to config
      */
     static SwitchPropertiesDto updateSwitchProperties(Switch sw, SwitchPropertiesDto switchProperties) {
-        def response = northbound.updateSwitchProperties(sw.dpId, switchProperties)
+        def response = northbound.get().updateSwitchProperties(sw.dpId, switchProperties)
         Wrappers.wait(Constants.RULES_INSTALLATION_TIME) {
             def actualHexCookie = []
-            for (long cookie : northbound.getSwitchRules(sw.dpId).flowEntries*.cookie) {
+            for (long cookie : northbound.get().getSwitchRules(sw.dpId).flowEntries*.cookie) {
                 actualHexCookie.add(new Cookie(cookie).toString())
             }
             def expectedHexCookie = []
@@ -300,7 +304,7 @@ class SwitchHelper {
             }
             assertThat sw.toString(), actualHexCookie, containsInAnyOrder(expectedHexCookie.toArray())
 
-            def actualDefaultMetersIds = northbound.getAllMeters(sw.dpId).meterEntries*.meterId.findAll {
+            def actualDefaultMetersIds = northbound.get().getAllMeters(sw.dpId).meterEntries*.meterId.findAll {
                 MeterId.isMeterIdOfDefaultRule((long) it)
             }
             assert actualDefaultMetersIds.sort() == sw.defaultMeters.sort()
@@ -324,7 +328,7 @@ class SwitchHelper {
      */
     def getExpectedBurst(SwitchId sw, long rate) {
         def descr = getDescription(sw).toLowerCase()
-        def hardware = northbound.getSwitch(sw).hardware
+        def hardware = northbound.get().getSwitch(sw).hardware
         if (descr.contains("noviflow") || hardware =~ "WB5164") {
             return (rate * NOVIFLOW_BURST_COEFFICIENT - 1).setScale(0, RoundingMode.CEILING)
         } else if (descr.contains("centec")) {
@@ -461,9 +465,9 @@ class SwitchHelper {
      * Return original switch mode which was active before change.
      */
     static boolean changeMultitable(Switch sw, boolean requiredState) {
-        def originalProps = northbound.getSwitchProperties(sw.dpId)
+        def originalProps = northbound.get().getSwitchProperties(sw.dpId)
         if (originalProps.multiTable != requiredState) {
-            northbound.updateSwitchProperties(sw.dpId, originalProps.jacksonCopy().tap { multiTable = requiredState })
+            northbound.get().updateSwitchProperties(sw.dpId, originalProps.jacksonCopy().tap { multiTable = requiredState })
         }
         return originalProps.multiTable
     }
@@ -478,13 +482,12 @@ class SwitchHelper {
     List<FloodlightResourceAddress> knockoutSwitch(Switch sw, FloodlightConnectMode mode, boolean waitForRelatedLinks) {
         def blockData = lockKeeper.knockoutSwitch(sw, mode)
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
+            assert northbound.get().getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
         }
         if (waitForRelatedLinks) {
-            def swIsls = topology.getRelatedIsls(sw)
-
-            Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-                def allIsls = northbound.getAllLinks()
+            def swIsls = topology.get().getRelatedIsls(sw)
+            Wrappers.wait(discoveryTimeout + WAIT_OFFSET * 2) {
+                def allIsls = northbound.get().getAllLinks()
                 swIsls.each { assert islUtils.getIslInfo(allIsls, it).get().state == IslChangeType.FAILED }
             }
         }
@@ -506,13 +509,13 @@ class SwitchHelper {
     void reviveSwitch(Switch sw, List<FloodlightResourceAddress> flResourceAddress, boolean waitForRelatedLinks) {
         lockKeeper.reviveSwitch(sw, flResourceAddress)
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
+            assert northbound.get().getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
         }
         if (waitForRelatedLinks) {
-            def swIsls = topology.getRelatedIsls(sw)
+            def swIsls = topology.get().getRelatedIsls(sw)
 
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                def allIsls = northbound.getAllLinks()
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET * 2) {
+                def allIsls = northbound.get().getAllLinks()
                 swIsls.each {
                     assert islUtils.getIslInfo(allIsls, it).get().state == IslChangeType.DISCOVERED
                     assert islUtils.getIslInfo(allIsls, it.reversed).get().state == IslChangeType.DISCOVERED
@@ -527,7 +530,7 @@ class SwitchHelper {
 
     @Memoized
     static boolean isVxlanEnabled(SwitchId switchId) {
-        return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
+        return northbound.get().getSwitchProperties(switchId).supportedTransitEncapsulation
                 .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 }

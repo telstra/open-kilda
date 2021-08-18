@@ -25,6 +25,7 @@ import static org.openkilda.model.SwitchFeature.INACCURATE_METER;
 import static org.openkilda.model.SwitchFeature.INACCURATE_SET_VLAN_VID_ACTION;
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_COPY_FIELD;
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_SWAP_FIELD;
+import static org.openkilda.model.SwitchFeature.LAG;
 import static org.openkilda.model.SwitchFeature.LIMITED_BURST_SIZE;
 import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
 import static org.openkilda.model.SwitchFeature.MAX_BURST_COEFFICIENT_LIMITATION;
@@ -155,7 +156,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
                 OFVersion.OF_13, 7);
         discoveryCheck(sw, ImmutableSet.of(
                 BFD, GROUP_PACKET_OUT_CONTROLLER, HALF_SIZE_METADATA, MATCH_UDP_PORT, MAX_BURST_COEFFICIENT_LIMITATION,
-                METERS, MULTI_TABLE, NOVIFLOW_COPY_FIELD, NOVIFLOW_PUSH_POP_VXLAN, NOVIFLOW_SWAP_ETH_SRC_ETH_DST,
+                METERS, MULTI_TABLE, NOVIFLOW_COPY_FIELD, NOVIFLOW_PUSH_POP_VXLAN, NOVIFLOW_SWAP_ETH_SRC_ETH_DST, LAG,
                 PKTPS_FLAG, RESET_COUNTS_FLAG, GROUPS));
     }
 
@@ -171,7 +172,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
                 OFVersion.OF_13, 7);
         discoveryCheck(sw, ImmutableSet.of(
                 BFD, GROUP_PACKET_OUT_CONTROLLER, HALF_SIZE_METADATA, MATCH_UDP_PORT, MAX_BURST_COEFFICIENT_LIMITATION,
-                METERS, MULTI_TABLE, NOVIFLOW_COPY_FIELD, NOVIFLOW_PUSH_POP_VXLAN, NOVIFLOW_SWAP_ETH_SRC_ETH_DST,
+                METERS, MULTI_TABLE, NOVIFLOW_COPY_FIELD, NOVIFLOW_PUSH_POP_VXLAN, NOVIFLOW_SWAP_ETH_SRC_ETH_DST, LAG,
                 PKTPS_FLAG, RESET_COUNTS_FLAG, GROUPS));
     }
 
@@ -187,7 +188,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
                 OFVersion.OF_13, 7);
         discoveryCheck(sw, ImmutableSet.of(
                 BFD, GROUP_PACKET_OUT_CONTROLLER, HALF_SIZE_METADATA, MATCH_UDP_PORT, MAX_BURST_COEFFICIENT_LIMITATION,
-                METERS, MULTI_TABLE, NOVIFLOW_COPY_FIELD, NOVIFLOW_PUSH_POP_VXLAN, NOVIFLOW_SWAP_ETH_SRC_ETH_DST,
+                METERS, MULTI_TABLE, NOVIFLOW_COPY_FIELD, NOVIFLOW_PUSH_POP_VXLAN, NOVIFLOW_SWAP_ETH_SRC_ETH_DST, LAG,
                 PKTPS_FLAG, RESET_COUNTS_FLAG, GROUPS));
     }
 
@@ -200,7 +201,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
                         .build(),
                 OFVersion.OF_13, 7);
         discoveryCheck(sw,
-                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT,
+                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT, LAG,
                         MAX_BURST_COEFFICIENT_LIMITATION, MULTI_TABLE, NOVIFLOW_PUSH_POP_VXLAN, INACCURATE_METER,
                         HALF_SIZE_METADATA, NOVIFLOW_SWAP_ETH_SRC_ETH_DST, GROUPS));
     }
@@ -216,7 +217,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
                         .build(),
                 OFVersion.OF_13, 7);
         discoveryCheck(sw, ImmutableSet.of(
-                GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, INACCURATE_METER, MATCH_UDP_PORT,
+                GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, INACCURATE_METER, MATCH_UDP_PORT, LAG,
                 MULTI_TABLE, NOVIFLOW_PUSH_POP_VXLAN, HALF_SIZE_METADATA, NOVIFLOW_SWAP_ETH_SRC_ETH_DST, GROUPS));
     }
 
@@ -229,7 +230,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
                         .build(),
                 OFVersion.OF_13, 2);
         discoveryCheck(sw,
-                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT,
+                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT, LAG,
                         MAX_BURST_COEFFICIENT_LIMITATION, MULTI_TABLE, NOVIFLOW_PUSH_POP_VXLAN, HALF_SIZE_METADATA,
                         NOVIFLOW_SWAP_ETH_SRC_ETH_DST, GROUPS));
     }

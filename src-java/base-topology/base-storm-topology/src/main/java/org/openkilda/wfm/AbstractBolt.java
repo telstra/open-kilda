@@ -16,6 +16,7 @@
 package org.openkilda.wfm;
 
 import static org.openkilda.wfm.share.zk.ZooKeeperSpout.FIELD_ID_LIFECYCLE_EVENT;
+import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.bluegreen.Signal;
@@ -26,7 +27,6 @@ import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.share.metrics.PushToStreamMeterRegistry;
 import org.openkilda.wfm.share.zk.ZkStreams;
-import org.openkilda.wfm.topology.AbstractTopology;
 
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -36,6 +36,7 @@ import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseRichBolt;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
@@ -49,6 +50,7 @@ import java.util.Map;
 
 public abstract class AbstractBolt extends BaseRichBolt {
     public static final String FIELD_ID_CONTEXT = "context";
+    public static final Fields METER_STREAM_FIELDS = new Fields(FIELD_ID_PAYLOAD);
 
     protected transient Logger log = makeLog();
     protected boolean active = false;
@@ -343,7 +345,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         if (meterOutputStream != null) {
-            declarer.declareStream(meterOutputStream, AbstractTopology.fieldMessage);
+            declarer.declareStream(meterOutputStream, METER_STREAM_FIELDS);
         }
     }
 }

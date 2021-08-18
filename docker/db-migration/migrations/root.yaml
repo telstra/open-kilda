@@ -42,3 +42,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 010-enforce-definite-types-on-history-objects.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 011-add-lag-classes.yaml

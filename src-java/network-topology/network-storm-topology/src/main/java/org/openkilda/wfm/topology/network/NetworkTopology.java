@@ -130,7 +130,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
     private void coordinator(TopologyBuilder topology) {
         declareSpout(topology, new CoordinatorSpout(), CoordinatorSpout.ID);
 
-        Fields keyGrouping = new Fields(MessageKafkaTranslator.KEY_FIELD);
+        Fields keyGrouping = new Fields(MessageKafkaTranslator.FIELD_ID_KEY);
         declareBolt(topology, new CoordinatorBolt(), CoordinatorBolt.ID)
                 .allGrouping(CoordinatorSpout.ID)
                 .fieldsGrouping(BfdWorker.BOLT_ID, CoordinatorBolt.INCOME_STREAM, keyGrouping)
@@ -167,7 +167,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
                 .defaultTimeout((int) speakerIoTimeout)
                 .build();
         SpeakerRulesWorker speakerRulesWorker = new SpeakerRulesWorker(workerConfig);
-        Fields keyGrouping = new Fields(MessageKafkaTranslator.KEY_FIELD);
+        Fields keyGrouping = new Fields(MessageKafkaTranslator.FIELD_ID_KEY);
         declareBolt(topology, speakerRulesWorker, SpeakerRulesWorker.BOLT_ID)
                 .directGrouping(CoordinatorBolt.ID)
                 .fieldsGrouping(workerConfig.getHubComponent(), IslHandler.STREAM_SPEAKER_RULES_ID, keyGrouping)
@@ -176,7 +176,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
     }
 
     private void speakerRouter(TopologyBuilder topology) {
-        Fields keyGrouping = new Fields(MessageKafkaTranslator.KEY_FIELD);
+        Fields keyGrouping = new Fields(MessageKafkaTranslator.FIELD_ID_KEY);
         SpeakerRouter bolt = new SpeakerRouter(ZooKeeperSpout.SPOUT_ID);
         declareBolt(topology, bolt, SpeakerRouter.BOLT_ID)
                 .fieldsGrouping(ComponentId.INPUT_SPEAKER.toString(), keyGrouping)
@@ -219,7 +219,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
     }
 
     private void speakerRulesRouter(TopologyBuilder topology) {
-        Fields keyGrouping = new Fields(MessageKafkaTranslator.KEY_FIELD);
+        Fields keyGrouping = new Fields(MessageKafkaTranslator.FIELD_ID_KEY);
         SpeakerRulesRouter bolt = new SpeakerRulesRouter();
         declareBolt(topology, bolt, SpeakerRulesRouter.BOLT_ID)
                 .fieldsGrouping(ComponentId.INPUT_SPEAKER_RULES.toString(), keyGrouping);
@@ -306,7 +306,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
                 .defaultTimeout((int) speakerIoTimeout)
                 .build();
         BfdWorker bolt = new BfdWorker(workerConfig, persistenceManager);
-        Fields keyGrouping = new Fields(MessageKafkaTranslator.KEY_FIELD);
+        Fields keyGrouping = new Fields(MessageKafkaTranslator.FIELD_ID_KEY);
         declareBolt(topology, bolt, BfdWorker.BOLT_ID)
                 .directGrouping(CoordinatorBolt.ID)
                 .fieldsGrouping(workerConfig.getHubComponent(), BfdHub.STREAM_WORKER_ID, keyGrouping)

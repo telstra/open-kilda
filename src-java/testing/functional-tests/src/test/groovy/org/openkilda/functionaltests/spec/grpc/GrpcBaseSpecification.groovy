@@ -6,7 +6,6 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.ConstantsGrpc.GRPC_STUB_CONTAINER_NAME
 
 import org.openkilda.functionaltests.HealthCheckBaseSpecification
-import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.DockerHelper
 import org.openkilda.messaging.info.event.SwitchChangeType

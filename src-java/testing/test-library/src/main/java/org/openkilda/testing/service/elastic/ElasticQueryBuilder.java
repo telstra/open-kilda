@@ -117,6 +117,7 @@ public class ElasticQueryBuilder {
 
     /**
      * Inserts arbitrary filters into ElasticSearch query.
+     *
      * @param name - field name
      * @param value - field value
      * @return this.

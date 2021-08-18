@@ -37,13 +37,12 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class LabServiceImpl implements LabService, DisposableBean {
+    private static final LabInstance HW_LAB = new LabInstance(0L);
     @Autowired
     @Qualifier("labApiRestTemplate")
     private RestTemplate restTemplate;
     @Value("${spring.profiles.active}")
     private String profile;
-
-    private LabInstance currentLab;
 
     @Override
     public synchronized List<Long> flushLabs() {
@@ -54,26 +53,21 @@ public class LabServiceImpl implements LabService, DisposableBean {
     }
 
     @Override
-    public LabInstance getLab() {
-        return currentLab;
-    }
-
-    @Override
     public LabInstance createLab(TopologyDefinition topology) {
-        log.info("Creating lab with deploying virtual topology");
-        currentLab = restTemplate.exchange("/api", HttpMethod.POST,
+        log.info("Creating virtual lab");
+        LabInstance createdLab = restTemplate.exchange("/api", HttpMethod.POST,
                 new HttpEntity<>(topology, buildJsonHeaders()), LabInstance.class).getBody();
-        return currentLab;
+        log.info("Lab created with id " + createdLab.getLabId().toString());
+        return createdLab;
     }
 
     @Override
     public LabInstance createHwLab(TopologyDefinition topology) {
-        log.info("Creating lab with redirecting to hardware topology");
+        log.info("Redirecting to hardware lab with id " + HW_LAB.getLabId().toString());
         HttpHeaders headers = buildJsonHeaders();
         headers.add("Hw-Env", "HW");
-        currentLab = restTemplate.exchange("/api", HttpMethod.POST,
+        return restTemplate.exchange("/api", HttpMethod.POST,
                 new HttpEntity<>(topology, headers), LabInstance.class).getBody();
-        return currentLab;
     }
 
     @Override
@@ -88,14 +82,6 @@ public class LabServiceImpl implements LabService, DisposableBean {
     public void deleteLab(LabInstance lab) {
         log.info("Deleting topology {}", lab.getLabId());
         restTemplate.delete("/api/" + lab.getLabId());
-        if (lab.getLabId().equals(currentLab.getLabId())) {
-            currentLab = null;
-        }
-    }
-
-    @Override
-    public void deleteLab() {
-        deleteLab(currentLab);
     }
 
     private HttpHeaders buildJsonHeaders() {
@@ -107,7 +93,7 @@ public class LabServiceImpl implements LabService, DisposableBean {
     @Override
     public void destroy() throws Exception {
         if ("hardware".equals(profile)) {
-            deleteLab();
+            deleteLab(HW_LAB);
         }
     }
 }

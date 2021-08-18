@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,9 +15,10 @@
 
 package org.openkilda.messaging.command.grpc;
 
-import org.openkilda.messaging.command.CommandData;
 import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
@@ -28,8 +29,13 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @AllArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class GetPacketInOutStatsRequest extends CommandData {
-
-    private String address;
+public class GetPacketInOutStatsRequest extends GrpcBaseRequest {
     private SwitchId switchId;
+
+    @JsonCreator
+    public GetPacketInOutStatsRequest(@JsonProperty("address") String address,
+                                      @JsonProperty("switch_id") SwitchId switchId) {
+        super(address);
+        this.switchId = switchId;
+    }
 }

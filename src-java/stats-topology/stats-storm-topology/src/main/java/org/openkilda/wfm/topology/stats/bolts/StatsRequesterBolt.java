@@ -15,9 +15,6 @@
 
 package org.openkilda.wfm.topology.stats.bolts;
 
-import static org.openkilda.wfm.topology.stats.StatsStreamType.GRPC_REQUEST;
-import static org.openkilda.wfm.topology.stats.StatsStreamType.STATS_REQUEST;
-
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.grpc.GetPacketInOutStatsRequest;
 import org.openkilda.messaging.command.stats.StatsRequest;
@@ -29,8 +26,8 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
-import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.stats.StatsComponentType;
+import org.openkilda.wfm.topology.stats.StatsTopology.ComponentId;
+import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -42,6 +39,9 @@ import java.util.Optional;
 
 public class StatsRequesterBolt extends AbstractBolt {
     public static final String ZOOKEEPER_STREAM = ZkStreams.ZK.toString();
+    public static final String STATS_REQUEST_STREAM = "STATS_REQUEST";
+    public static final String GRPC_REQUEST_STREAM = "GRPC_REQUEST";
+    public static final Fields STATS_REQUEST_FIELDS = new Fields(KafkaRecordTranslator.FIELD_ID_PAYLOAD);
 
     private transient SwitchRepository switchRepository;
     private transient KildaFeatureTogglesRepository featureTogglesRepository;
@@ -59,17 +59,9 @@ public class StatsRequesterBolt extends AbstractBolt {
     }
 
     @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(STATS_REQUEST.name(), new Fields(AbstractTopology.MESSAGE_FIELD));
-        declarer.declareStream(GRPC_REQUEST.name(), new Fields(AbstractTopology.MESSAGE_FIELD));
-        declarer.declareStream(ZOOKEEPER_STREAM, new Fields(ZooKeeperBolt.FIELD_ID_STATE,
-                ZooKeeperBolt.FIELD_ID_CONTEXT));
-    }
-
-    @Override
     protected void handleInput(Tuple input) {
         if (active) {
-            if (StatsComponentType.TICK_BOLT.name().equals(input.getSourceComponent())) {
+            if (ComponentId.TICK_BOLT.name().equals(input.getSourceComponent())) {
                 sendStatsRequest(input);
             } else {
                 unhandledInput(input);
@@ -81,7 +73,7 @@ public class StatsRequesterBolt extends AbstractBolt {
         CommandMessage statsRequest = new CommandMessage(
                 new StatsRequest(), System.currentTimeMillis(), getCommandContext().getCorrelationId());
         Values values = new Values(statsRequest);
-        emit(STATS_REQUEST.name(), input, values);
+        emit(STATS_REQUEST_STREAM, input, values);
 
         if (featureTogglesRepository.getOrDefault().getCollectGrpcStats()) {
             Collection<Switch> switches = switchRepository.findActive();
@@ -96,7 +88,6 @@ public class StatsRequesterBolt extends AbstractBolt {
     private void emitGrpcStatsRequest(Tuple input, Switch sw) {
         Optional<String> address = Optional.ofNullable(sw.getSocketAddress())
                 .map(IpSocketAddress::getAddress);
-
         if (!address.isPresent()) {
             return;
         }
@@ -107,6 +98,14 @@ public class StatsRequesterBolt extends AbstractBolt {
         CommandMessage grpcRequest = new CommandMessage(
                 packetInOutStatsRequest, System.currentTimeMillis(), correlationId);
 
-        emit(GRPC_REQUEST.name(), input, new Values(grpcRequest));
+        emit(GRPC_REQUEST_STREAM, input, new Values(grpcRequest));
+    }
+
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        declarer.declareStream(STATS_REQUEST_STREAM, STATS_REQUEST_FIELDS);
+        declarer.declareStream(GRPC_REQUEST_STREAM, STATS_REQUEST_FIELDS);
+        declarer.declareStream(ZOOKEEPER_STREAM,
+                new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 }

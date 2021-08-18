@@ -42,6 +42,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.action.HandleNotCreatedFlowA
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.HandleNotDeallocatedResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.InstallIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.InstallNonIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.action.NotifyFlowStatsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnFinishedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnFinishedWithErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedDeleteResponseAction;
@@ -238,6 +239,8 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
         NOTIFY_FLOW_MONITOR(false),
         NOTIFY_FLOW_MONITOR_WITH_ERROR(false),
 
+        NOTIFY_FLOW_STATS(false),
+
         _FAILED(false),
         FINISHED_WITH_ERROR(true);
 
@@ -277,8 +280,6 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
 
-            final InstallIngressRulesAction installIngressRules = new InstallIngressRulesAction(
-                    commandExecutorFsmBuilder, persistenceManager);
             final OnReceivedInstallResponseAction onReceiveInstallResponse = new OnReceivedInstallResponseAction(
                     persistenceManager);
             final RollbackInstalledRulesAction rollbackInstalledRules = new RollbackInstalledRulesAction(
@@ -313,9 +314,8 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
             // skip installation on transit and egress rules for one switch flow
             builder.externalTransition()
                     .from(State.RESOURCES_ALLOCATED)
-                    .to(State.INSTALLING_INGRESS_RULES)
-                    .on(Event.SKIP_NON_INGRESS_RULES_INSTALL)
-                    .perform(installIngressRules);
+                    .to(State.NOTIFY_FLOW_STATS)
+                    .on(Event.SKIP_NON_INGRESS_RULES_INSTALL);
 
             // install and validate transit and egress rules
             builder.externalTransition()
@@ -340,12 +340,20 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
                     .on(Event.RESPONSE_RECEIVED)
                     .perform(new ValidateNonIngressRuleAction(persistenceManager));
 
+            builder.transition()
+                    .from(State.VALIDATING_NON_INGRESS_RULES)
+                    .to(State.NOTIFY_FLOW_STATS)
+                    .on(Event.NEXT);
+
+            builder.onEntry(State.NOTIFY_FLOW_STATS)
+                    .perform(new NotifyFlowStatsAction(persistenceManager, carrier));
+
             // install and validate ingress rules
             builder.transitions()
-                    .from(State.VALIDATING_NON_INGRESS_RULES)
+                    .from(State.NOTIFY_FLOW_STATS)
                     .toAmong(State.INSTALLING_INGRESS_RULES)
                     .onEach(Event.NEXT)
-                    .perform(installIngressRules);
+                    .perform(new InstallIngressRulesAction(commandExecutorFsmBuilder, persistenceManager));
 
             builder.internalTransition()
                     .within(State.INSTALLING_INGRESS_RULES)

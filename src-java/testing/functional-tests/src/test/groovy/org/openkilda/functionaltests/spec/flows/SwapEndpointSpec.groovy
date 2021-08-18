@@ -870,7 +870,7 @@ switches"() {
         cleanup: "Restore topology and delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -878,7 +878,7 @@ switches"() {
             [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
                     .unique().each { northbound.synchronizeSwitch(it, true) }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -959,7 +959,7 @@ switches"() {
         cleanup: "Restore topology and delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -967,7 +967,7 @@ switches"() {
             [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
                     .unique().each { northbound.synchronizeSwitch(it, true) }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -1054,7 +1054,7 @@ switches"() {
         cleanup: "Restore topology and delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -1062,7 +1062,7 @@ switches"() {
             [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
                     .unique().each { northbound.synchronizeSwitch(it, true) }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -1144,7 +1144,7 @@ switches"() {
             [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
                     .unique().each { northbound.synchronizeSwitch(it, true) }
         }
-        database.resetCosts()
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -1357,6 +1357,7 @@ switches"() {
     }
 
     @Tidy
+    @Ignore("https://github.com/telstra/open-kilda/issues/4409")
     def "Able to swap endpoints (#data.description) for two qinq flows with the same source and destination switches"() {
         given: "Two flows with the same source and destination switches"
         flow1.source.innerVlanId = 300
@@ -1413,8 +1414,8 @@ switches"() {
                 destination.innerVlanId = 400
             }
             def flow2 = getSecondFlow(switchPair, switchPair, flow1).tap {
-                source.innerVlanId = 400
-                destination.innerVlanId = 500
+                source.innerVlanId = 500
+                destination.innerVlanId = 600
             }
             [switchPair: switchPair, flow1: flow1, flow2: flow2].tap(iterationData)
         }
