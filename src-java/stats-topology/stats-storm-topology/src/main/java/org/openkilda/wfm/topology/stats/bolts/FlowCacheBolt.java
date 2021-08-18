@@ -53,12 +53,10 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
     public static final Fields STATS_WITH_CACHED_FIELDS =
             new Fields(STATS_FIELD, STATS_CACHED_COOKIE_FIELD, STATS_CACHED_METER_FIELD, FIELD_ID_CONTEXT);
 
-    private final PersistenceManager persistenceManager;
     private transient FlowCacheService flowCacheService;
 
     public FlowCacheBolt(PersistenceManager persistenceManager, String lifeCycleEventSourceComponent) {
-        super(lifeCycleEventSourceComponent);
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager, lifeCycleEventSourceComponent);
     }
 
     @PersistenceContextRequired(requiresNew = true)
