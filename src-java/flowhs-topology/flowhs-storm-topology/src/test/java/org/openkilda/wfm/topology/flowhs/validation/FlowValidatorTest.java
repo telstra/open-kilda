@@ -165,23 +165,6 @@ public class FlowValidatorTest {
         flowValidator.checkForEqualsEndpoints(firstFlow, secondFlow);
     }
 
-    @Test
-    public void shouldNotFailOnCreateSingleTaggedFlowOnWbSeries()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        RequestedFlow flow = RequestedFlow.builder()
-                .flowId("firstFlow")
-                .srcSwitch(SWITCH_ID_1)
-                .srcPort(10)
-                .srcInnerVlan(11)
-                .destSwitch(SWITCH_ID_2)
-                .destPort(12)
-                .destInnerVlan(13)
-                .detectConnectedDevices(new DetectConnectedDevices())
-                .build();
-
-        flowValidator.validateQinQonWB(flow);
-    }
-
     @Test(expected = InvalidFlowException.class)
     public void checkForEncapsulationTypeRequirementNullTypesTest() throws InvalidFlowException {
         SwitchProperties properties = SwitchProperties.builder()
