@@ -79,8 +79,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "Create a flow"
         def flowCreateTime = new Date()
-        //take shorter flowid due to https://github.com/telstra/open-kilda/issues/3720
-        def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.tap(data.flowTap)
         flowHelperV2.addFlow(flow)
 
@@ -154,12 +153,11 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         when: "Create a flow for forward metric"
         def flowCreateTime = new Date()
-        def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
+        def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
 
         and: "Create a reversed flow for backward metric"
         def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed, false, [flow]).tap {
-            flowId = it.flowId.take(25)
             //don't pick same ports as flow1 in order to get expected amount of s42_input rules
             source.portNumber = (topology.getAllowedPortsForSwitch(switchPair.dst) - flow.destination.portNumber)[0]
             destination.portNumber = (topology.getAllowedPortsForSwitch(switchPair.src) - flow.source.portNumber)[0]
@@ -236,13 +234,11 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "Flow for forward metric is created"
         def checkpointTime = new Date()
-        def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
+        def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
 
         and: "Reversed flow for backward metric is created"
-        def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed, false, [flow]).tap {
-            it.flowId = it.flowId.take(25)
-        }
+        def reversedFlow = flowHelperV2.randomFlow(switchPair.reversed, false, [flow])
         flowHelperV2.addFlow(reversedFlow)
 
         expect: "Involved switches pass switch validation"
@@ -375,7 +371,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         when: "Create a flow"
         def checkpointTime = new Date()
-        def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
+        def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
 
         then: "Involved switches pass switch validation"
@@ -447,8 +443,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "A flow on the given switch pair"
         def flowCreateTime = new Date()
-        //take shorter flowid due to https://github.com/telstra/open-kilda/issues/3720
-        def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
+        def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
 
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
@@ -552,9 +547,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "Two flows on the given switch pairs"
         def flowCreateTime = new Date()
-        //take shorter flowid due to https://github.com/telstra/open-kilda/issues/3720
-        def flow1 = flowHelperV2.randomFlow(fl1SwPair).tap { it.flowId = it.flowId.take(25) }
-        def flow2 = flowHelperV2.randomFlow(fl2SwPair).tap { it.flowId = it.flowId.take(25) }
+        def flow1 = flowHelperV2.randomFlow(fl1SwPair)
+        def flow2 = flowHelperV2.randomFlow(fl2SwPair)
         flowHelperV2.addFlow(flow1)
         flowHelperV2.addFlow(flow2)
 
@@ -664,8 +658,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "Create a flow"
         def flowCreateTime = new Date()
-        //take shorter flowid due to https://github.com/telstra/open-kilda/issues/3720
-        def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
+        def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
 
         then: "Stats from server42 only for forward direction are available"
@@ -729,8 +722,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def initialSwitchRtt = [server42Switch, switchPair.dst].collectEntries { [it, changeFlowRttSwitch(it, true)] }
 
         and: "A flow"
-        //take shorter flowid due to https://github.com/telstra/open-kilda/issues/3720
-        def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.tap(data.flowTap)
         flowHelperV2.addFlow(flow)
 
@@ -843,8 +835,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         when: "Create a flow on the given switch pair"
         def flowCreateTime = new Date()
-        //take shorter flowId due to https://github.com/telstra/open-kilda/issues/3720
-        def flow = flowHelperV2.randomFlow(switchPair).tap { it.flowId = it.flowId.take(25) }
+        def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
 
         then: "Flow rtt stats are not available due to incorrect s42 port on the src switch"
