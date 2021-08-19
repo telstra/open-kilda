@@ -90,6 +90,8 @@ class BaseSpecification extends Specification {
     boolean useMultitable
     @Value('${zookeeper.connect_string}') @Shared
     String zkConnectString
+    @Value('${affinity.isl.cost:10000}') @Shared
+    int affinityIslCost
 
     static ThreadLocal<TopologyDefinition> threadLocalTopology = new ThreadLocal<>()
 
