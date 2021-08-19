@@ -743,7 +743,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def flowUpdateTime = new Date()
 
         then: "Check if stats for forward/reverse directions are available"
-        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET, 1) {
             assert !otsdb.query(flowUpdateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "forward",
@@ -973,7 +973,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
     def "getSwPairConnectedToS42ForQinQ"(List<SwitchId> switchIdsConnectedToS42) {
         getTopologyHelper().getSwitchPairs().find { swP ->
-            [swP.dst, swP.src].every { it.dpId in switchIdsConnectedToS42 } && swP.paths.findAll { path ->
+            [swP.dst, swP.src].every { it.dpId in switchIdsConnectedToS42 && !it.wb5164 } && swP.paths.findAll { path ->
                 pathHelper.getInvolvedSwitches(path).every { getNorthbound().getSwitchProperties(it.dpId).multiTable }
             }
         }
