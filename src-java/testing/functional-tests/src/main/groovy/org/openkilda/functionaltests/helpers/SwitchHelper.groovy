@@ -59,6 +59,7 @@ import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress
 import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.IslUtils
 import org.openkilda.testing.tools.SoftAssertions
 
@@ -86,6 +87,7 @@ import java.math.RoundingMode
 @Scope(SCOPE_PROTOTYPE)
 class SwitchHelper {
     static InheritableThreadLocal<NorthboundService> northbound = new InheritableThreadLocal<>()
+    static InheritableThreadLocal<NorthboundServiceV2> northboundV2 = new InheritableThreadLocal<>()
     static InheritableThreadLocal<Database> database = new InheritableThreadLocal<>()
     static InheritableThreadLocal<TopologyDefinition> topology = new InheritableThreadLocal<>()
 
@@ -110,9 +112,11 @@ class SwitchHelper {
     LockKeeperService lockKeeper
 
     @Autowired
-    SwitchHelper(@Qualifier("northboundServiceImpl") NorthboundService northbound, Database database,
-                 TopologyDefinition topology) {
+    SwitchHelper(@Qualifier("northboundServiceImpl") NorthboundService northbound,
+                 @Qualifier("northboundServiceV2Impl") NorthboundServiceV2 northboundV2,
+                 Database database, TopologyDefinition topology) {
         this.northbound.set(northbound)
+        this.northboundV2.set(northboundV2)
         this.database.set(database)
         this.topology.set(topology)
     }
@@ -530,7 +534,17 @@ class SwitchHelper {
 
     @Memoized
     static boolean isVxlanEnabled(SwitchId switchId) {
-        return northbound.get().getSwitchProperties(switchId).supportedTransitEncapsulation
+        return getCachedSwProps(switchId).supportedTransitEncapsulation
                 .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+    }
+
+    @Memoized
+    static List<SwitchPropertiesDto> getCachedAllSwProps() {
+        return northboundV2.get().getAllSwitchProperties().switchProperties
+    }
+
+    @Memoized
+    static SwitchPropertiesDto getCachedSwProps(SwitchId switchId) {
+        return getCachedAllSwProps().find { it.switchId == switchId }
     }
 }

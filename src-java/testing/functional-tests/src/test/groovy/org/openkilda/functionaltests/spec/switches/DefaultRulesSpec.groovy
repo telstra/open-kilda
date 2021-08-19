@@ -154,8 +154,8 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     def "Able to install default multitable rule on an #sw.ofVersion \
 switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) {
         given: "A switch without rules"
-        assumeTrue(northbound.getSwitchProperties(sw.dpId).multiTable,
-"Multi table should be enabled on the switch")
+        assumeTrue(switchHelper.getCachedSwProps(sw.dpId).multiTable,
+                "Multi table should be enabled on the switch")
         def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
         assert defaultRules*.cookie.sort() == sw.defaultCookies.sort()
 
@@ -315,8 +315,7 @@ switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) 
     def "Able to delete default multitable rule from an #sw.ofVersion \
 switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
         when: "Delete rule from the switch"
-        assumeTrue(northbound.getSwitchProperties(sw.dpId).multiTable,
-"Multi table should be enabled on the switch")
+        assumeTrue(switchHelper.getCachedSwProps(sw.dpId).multiTable, "Multi table should be enabled on the switch")
         def defaultRules
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries

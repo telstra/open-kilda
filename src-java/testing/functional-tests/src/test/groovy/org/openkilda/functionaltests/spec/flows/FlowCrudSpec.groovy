@@ -868,11 +868,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     def "System doesn't ignore encapsulationType when flow is created with ignoreBandwidth = true"() {
         given: "Two active switches"
         def swPair = topologyHelper.getNeighboringSwitchPair().find {
-            [it.src, it.dst].any {
-                !northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation.contains(
-                        FlowEncapsulationType.VXLAN.toString().toLowerCase()
-                )
-            }
+            [it.src, it.dst].any { !switchHelper.isVxlanEnabled(it.dpId) }
         }
 
         def srcProps = northbound.getSwitchProperties(swPair.src.dpId)
