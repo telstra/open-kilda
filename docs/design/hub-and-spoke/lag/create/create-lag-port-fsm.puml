@@ -1,0 +1,22 @@
+@startuml
+title LAG port create FSM
+
+[*] --> START
+
+START --> CREATE_LAG_IN_DB : next
+START --> FINISHED_WITH_ERROR : error
+
+CREATE_LAG_IN_DB --> GRPC_COMMAND_SEND : next
+CREATE_LAG_IN_DB --> FINISHED_WITH_ERROR : error
+CREATE_LAG_IN_DB : enter / validate LAG port request, create GRPC commands
+
+GRPC_COMMAND_SEND --> FINISHED : lag_installed
+GRPC_COMMAND_SEND --> FINISHED_WITH_ERROR : error
+GRPC_COMMAND_SEND : enter / send GRPC commands
+
+FINISHED : enter / send-successful-response
+
+FINISHED_WITH_ERROR : enter / [LAG port created in DB] delete created LAG port, send-error-response
+FINISHED_WITH_ERROR : enter / [!LAG port created in DB] send-error-response
+
+@enduml

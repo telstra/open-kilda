@@ -13,25 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.service;
+package org.openkilda.messaging.swmanager.request;
 
-import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
-import org.openkilda.messaging.swmanager.request.CreateLagRequest;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.SwitchId;
 
-public interface CreateLagService {
+import lombok.EqualsAndHashCode;
+import lombok.Value;
 
-    void handleCreateLagRequest(String key, CreateLagRequest request);
+import java.util.List;
 
-    void handleGrpcResponse(String key, CreateLogicalPortResponse response);
-
-    void handleTaskTimeout(String key);
-
-    void handleTaskError(String key, ErrorMessage message);
-
-    void activate();
-
-    boolean deactivate();
-
-    boolean isAllOperationsCompleted();
+@Value
+@EqualsAndHashCode(callSuper = false)
+public class CreateLagPortRequest extends CommandData {
+    SwitchId switchId;
+    List<Integer> portNumbers;
 }
+

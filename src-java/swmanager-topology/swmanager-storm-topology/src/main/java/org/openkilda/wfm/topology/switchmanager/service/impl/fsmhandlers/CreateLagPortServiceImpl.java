@@ -19,20 +19,20 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
-import org.openkilda.messaging.swmanager.request.CreateLagRequest;
+import org.openkilda.messaging.swmanager.request.CreateLagPortRequest;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.switchmanager.error.OperationTimeoutException;
 import org.openkilda.wfm.topology.switchmanager.error.SpeakerFailureException;
-import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm;
-import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagContext;
-import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagEvent;
-import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagState;
-import org.openkilda.wfm.topology.switchmanager.service.CreateLagService;
-import org.openkilda.wfm.topology.switchmanager.service.LagOperationService;
+import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm;
+import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagContext;
+import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagEvent;
+import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagState;
+import org.openkilda.wfm.topology.switchmanager.service.CreateLagPortService;
+import org.openkilda.wfm.topology.switchmanager.service.LagPortOperationService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
-import org.openkilda.wfm.topology.switchmanager.service.impl.LagOperationServiceImpl;
+import org.openkilda.wfm.topology.switchmanager.service.impl.LagPortOperationServiceImpl;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
@@ -41,29 +41,30 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-public class CreateLagServiceImpl implements CreateLagService {
+public class CreateLagPortServiceImpl implements CreateLagPortService {
 
     private final SwitchManagerCarrier carrier;
-    private final LagOperationService lagOperationService;
-    private final Map<String, CreateLagFsm> fsms = new HashMap<>();
-    private final StateMachineBuilder<CreateLagFsm, CreateLagState, CreateLagEvent, CreateLagContext> builder;
-    private final FsmExecutor<CreateLagFsm, CreateLagState, CreateLagEvent, CreateLagContext> fsmExecutor;
+    private final LagPortOperationService lagPortOperationService;
+    private final Map<String, CreateLagPortFsm> fsms = new HashMap<>();
+    private final StateMachineBuilder<CreateLagPortFsm, CreateLagState, CreateLagEvent, CreateLagContext> builder;
+    private final FsmExecutor<CreateLagPortFsm, CreateLagState, CreateLagEvent, CreateLagContext> fsmExecutor;
 
     private boolean active = true;
 
-    public CreateLagServiceImpl(SwitchManagerCarrier carrier, RepositoryFactory repositoryFactory,
-                                TransactionManager transactionManager, int bfdPortOffset, int bfdPortMaxNumber,
-                                int lagPortOffset) {
-        this.lagOperationService = new LagOperationServiceImpl(repositoryFactory, transactionManager, bfdPortOffset,
-                bfdPortMaxNumber, lagPortOffset);
-        this.builder = CreateLagFsm.builder();
+    public CreateLagPortServiceImpl(SwitchManagerCarrier carrier, RepositoryFactory repositoryFactory,
+                                    TransactionManager transactionManager, int bfdPortOffset, int bfdPortMaxNumber,
+                                    int lagPortOffset) {
+        this.lagPortOperationService = new LagPortOperationServiceImpl(repositoryFactory, transactionManager,
+                bfdPortOffset, bfdPortMaxNumber, lagPortOffset);
+        this.builder = CreateLagPortFsm.builder();
         this.fsmExecutor = new FsmExecutor<>(CreateLagEvent.NEXT);
         this.carrier = carrier;
     }
 
     @Override
-    public void handleCreateLagRequest(String key, CreateLagRequest request) {
-        CreateLagFsm fsm = builder.newStateMachine(CreateLagState.START, carrier, key, request, lagOperationService);
+    public void handleCreateLagRequest(String key, CreateLagPortRequest request) {
+        CreateLagPortFsm fsm = builder.newStateMachine(CreateLagState.START, carrier, key, request,
+                lagPortOperationService);
         fsms.put(key, fsm);
 
         fsm.start();
@@ -90,7 +91,7 @@ public class CreateLagServiceImpl implements CreateLagService {
             return;
         }
 
-        CreateLagFsm fsm = fsms.get(key);
+        CreateLagPortFsm fsm = fsms.get(key);
         OperationTimeoutException error = new OperationTimeoutException(
                 format("LAG create operation timeout. Switch %s", fsm.getSwitchId()));
         fireFsmEvent(fsm, CreateLagEvent.ERROR, CreateLagContext.builder().error(error).build());
@@ -126,12 +127,12 @@ public class CreateLagServiceImpl implements CreateLagService {
         log.warn("Create LAG fsm with key {} not found", key);
     }
 
-    private void fireFsmEvent(CreateLagFsm fsm, CreateLagEvent event, CreateLagContext context) {
+    private void fireFsmEvent(CreateLagPortFsm fsm, CreateLagEvent event, CreateLagContext context) {
         fsmExecutor.fire(fsm, event, context);
         removeIfCompleted(fsm);
     }
 
-    private void removeIfCompleted(CreateLagFsm fsm) {
+    private void removeIfCompleted(CreateLagPortFsm fsm) {
         if (fsm.isTerminated()) {
             log.info("Create LAG {} FSM have reached termination state (key={})", fsm.getRequest(), fsm.getKey());
             fsms.remove(fsm.getKey());

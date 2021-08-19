@@ -110,7 +110,7 @@ public class FlowValidator {
 
         //todo remove after noviflow fix
         validateQinQonWB(flow);
-        validateLagPorts(flow);
+        checkFlowForLagPortConflict(flow);
     }
 
     private void validateFlowLoop(RequestedFlow requestedFlow) throws InvalidFlowException {
@@ -590,7 +590,7 @@ public class FlowValidator {
         }
     }
 
-    private void validateLagPorts(RequestedFlow requestedFlow) throws InvalidFlowException {
+    private void checkFlowForLagPortConflict(RequestedFlow requestedFlow) throws InvalidFlowException {
         FlowEndpoint source = RequestedFlowMapper.INSTANCE.mapSource(requestedFlow);
         FlowEndpoint destination = RequestedFlowMapper.INSTANCE.mapDest(requestedFlow);
 

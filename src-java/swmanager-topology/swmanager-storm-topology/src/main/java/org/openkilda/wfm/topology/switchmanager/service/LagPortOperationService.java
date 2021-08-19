@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public interface LagOperationService {
+public interface LagPortOperationService {
     int createLagPort(SwitchId switchId, List<Integer> physicalPortNumbers);
 
     Optional<LagLogicalPort> removeLagPort(SwitchId switchId, int logicalPortNumber);

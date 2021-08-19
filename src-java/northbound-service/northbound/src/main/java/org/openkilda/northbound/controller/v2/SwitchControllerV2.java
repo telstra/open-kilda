@@ -19,8 +19,8 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.controller.BaseController;
-import org.openkilda.northbound.dto.v2.switches.LagDto;
-import org.openkilda.northbound.dto.v2.switches.LagPostDto;
+import org.openkilda.northbound.dto.v2.switches.CreateLagPortDto;
+import org.openkilda.northbound.dto.v2.switches.LagPortDto;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
@@ -191,12 +191,12 @@ public class SwitchControllerV2 extends BaseController {
      *
      * @param switchId the switch
      */
-    @ApiOperation(value = "Create LAG logical port", response = LagDto.class)
+    @ApiOperation(value = "Create LAG logical port", response = LagPortDto.class)
     @PostMapping(value = "/{switch_id}/lags")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<LagDto> createLags(@PathVariable("switch_id") SwitchId switchId,
-                                                @ApiParam(value = "Physical ports which will be grouped")
-                                                @RequestBody LagPostDto lagPostDto) {
-        return switchService.createLag(switchId, lagPostDto);
+    public CompletableFuture<LagPortDto> createLagPort(@PathVariable("switch_id") SwitchId switchId,
+                                                       @ApiParam(value = "Physical ports which will be grouped")
+                                                       @RequestBody CreateLagPortDto createLagPortDto) {
+        return switchService.createLag(switchId, createLagPortDto);
     }
 }

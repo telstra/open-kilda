@@ -13,20 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.switches;
+package org.openkilda.northbound.converter;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import org.openkilda.messaging.swmanager.response.LagPortResponse;
+import org.openkilda.northbound.dto.v2.switches.LagPortDto;
 
-import java.util.List;
+import org.mapstruct.Mapper;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
-public class LagPostDto {
-    private List<Integer> portNumbers;
+@Mapper(componentModel = "spring")
+public interface LagPortMapper {
+    LagPortDto map(LagPortResponse response);
 }

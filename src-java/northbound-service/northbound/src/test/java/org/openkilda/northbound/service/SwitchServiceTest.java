@@ -32,8 +32,8 @@ import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.ConnectedDeviceMapperImpl;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.FlowMapperImpl;
-import org.openkilda.northbound.converter.LagMapper;
-import org.openkilda.northbound.converter.LagMapperImpl;
+import org.openkilda.northbound.converter.LagPortMapper;
+import org.openkilda.northbound.converter.LagPortMapperImpl;
 import org.openkilda.northbound.converter.PortPropertiesMapper;
 import org.openkilda.northbound.converter.PortPropertiesMapperImpl;
 import org.openkilda.northbound.converter.SwitchMapper;
@@ -171,8 +171,8 @@ public class SwitchServiceTest {
         }
 
         @Bean
-        public LagMapper lagMapper() {
-            return new LagMapperImpl();
+        public LagPortMapper lagMapper() {
+            return new LagPortMapperImpl();
         }
     }
 

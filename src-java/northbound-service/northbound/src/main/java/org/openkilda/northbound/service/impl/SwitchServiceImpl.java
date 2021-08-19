@@ -70,14 +70,14 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.messaging.payload.switches.PortPropertiesPayload;
-import org.openkilda.messaging.swmanager.request.CreateLagRequest;
-import org.openkilda.messaging.swmanager.response.LagResponse;
+import org.openkilda.messaging.swmanager.request.CreateLagPortRequest;
+import org.openkilda.messaging.swmanager.response.LagPortResponse;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.FlowMapper;
-import org.openkilda.northbound.converter.LagMapper;
+import org.openkilda.northbound.converter.LagPortMapper;
 import org.openkilda.northbound.converter.PortPropertiesMapper;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.dto.v1.switches.DeleteMeterResult;
@@ -90,8 +90,8 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
-import org.openkilda.northbound.dto.v2.switches.LagDto;
-import org.openkilda.northbound.dto.v2.switches.LagPostDto;
+import org.openkilda.northbound.dto.v2.switches.CreateLagPortDto;
+import org.openkilda.northbound.dto.v2.switches.LagPortDto;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
@@ -127,7 +127,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     private SwitchMapper switchMapper;
 
     @Autowired
-    private LagMapper lagMapper;
+    private LagPortMapper lagPortMapper;
 
     @Autowired
     private ConnectedDeviceMapper connectedDeviceMapper;
@@ -601,15 +601,15 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     }
 
     @Override
-    public CompletableFuture<LagDto> createLag(SwitchId switchId, LagPostDto lagPostDto) {
-        logger.info("Create Link aggregation group on switch {}, ports {}", switchId, lagPostDto.getPortNumbers());
+    public CompletableFuture<LagPortDto> createLag(SwitchId switchId, CreateLagPortDto lagPortDto) {
+        logger.info("Create Link aggregation group on switch {}, ports {}", switchId, lagPortDto.getPortNumbers());
 
-        CreateLagRequest data = new CreateLagRequest(switchId, lagPostDto.getPortNumbers());
+        CreateLagPortRequest data = new CreateLagPortRequest(switchId, lagPortDto.getPortNumbers());
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), RequestCorrelationId.getId());
 
         return messagingChannel.sendAndGet(switchManagerTopic, request)
-                .thenApply(LagResponse.class::cast)
-                .thenApply(lagMapper::map);
+                .thenApply(LagPortResponse.class::cast)
+                .thenApply(lagPortMapper::map);
     }
 
     private Boolean toPortAdminDown(PortStatus status) {

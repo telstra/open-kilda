@@ -1,12 +1,12 @@
-# LAG create with hub and spoke approach
+# LAG port create with hub and spoke approach
 
-## LAG using hub and spoke
+## Create LAG port using hub and spoke
 
-![LAG create design](h&s-create-lag.png "LAG create design")
+![LAG port create design](h&s-create-lag-port.png "LAG port create design")
 
 ## FSM for LAG creation
 Here is an FSM diagram that helps to understand main steps of LAG creation.
-![Create LAG fsm](create-lag-fsm.png "Create LAG fsm")
+![Create LAG fsm](create-lag-port-fsm.png "Create LAG fsm")
 
 ### For more details about hub&spoke and look into examples please follow this [link](https://github.com/telstra/open-kilda/blob/develop/docs/design/hub-and-spoke/v7/README.md)
 

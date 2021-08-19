@@ -13,14 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.converter;
+package org.openkilda.messaging.swmanager.response;
 
-import org.openkilda.messaging.swmanager.response.LagResponse;
-import org.openkilda.northbound.dto.v2.switches.LagDto;
+import org.openkilda.messaging.info.InfoData;
 
-import org.mapstruct.Mapper;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
 
-@Mapper(componentModel = "spring")
-public interface LagMapper {
-    LagDto map(LagResponse response);
+import java.util.List;
+
+@Value
+@EqualsAndHashCode(callSuper = false)
+@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class LagPortResponse extends InfoData {
+    int logicalPortNumber;
+    List<Integer> portNumbers;
 }

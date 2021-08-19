@@ -13,32 +13,31 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.swmanager.request;
+package org.openkilda.messaging.swmanager.response;
 
 import org.openkilda.messaging.StringSerializer;
-import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.model.SwitchId;
+import org.openkilda.messaging.info.InfoMessage;
 
 import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class CreateLagRequestTest {
+public class LagPortResponseTest {
     StringSerializer serializer = new StringSerializer();
 
     @Test
     public void serializeLoop() throws Exception {
-        CreateLagRequest origin = makeRequest();
-        CommandMessage message = new CommandMessage(origin, System.currentTimeMillis(), getClass().getCanonicalName());
+        LagPortResponse origin = makeResponse();
+        InfoMessage message = new InfoMessage(origin, System.currentTimeMillis(), getClass().getCanonicalName());
 
         serializer.serialize(message);
-        CommandMessage reconstructedMessage = (CommandMessage) serializer.deserialize();
-        CreateLagRequest reconstructed = (CreateLagRequest) reconstructedMessage.getData();
+        InfoMessage reconstructedMessage = (InfoMessage) serializer.deserialize();
+        LagPortResponse reconstructed = (LagPortResponse) reconstructedMessage.getData();
 
         Assert.assertEquals(origin, reconstructed);
     }
 
-    public static CreateLagRequest makeRequest() {
-        return new CreateLagRequest(new SwitchId(1), Lists.newArrayList(1, 2, 3));
+    public static LagPortResponse makeResponse() {
+        return new LagPortResponse(1, Lists.newArrayList(1, 2, 3));
     }
 }

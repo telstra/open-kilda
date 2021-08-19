@@ -17,30 +17,30 @@ package org.openkilda.wfm.topology.switchmanager.fsm;
 
 import static java.lang.String.format;
 import static org.openkilda.messaging.model.grpc.LogicalPortType.LAG;
-import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagEvent.ERROR;
-import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagEvent.LAG_INSTALLED;
-import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagEvent.NEXT;
-import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagState.CREATE_LAG_IN_DB;
-import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagState.FINISHED;
-import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagState.FINISHED_WITH_ERROR;
-import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagState.GRPC_COMMAND_SEND;
-import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagState.START;
+import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagEvent.ERROR;
+import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagEvent.LAG_INSTALLED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagEvent.NEXT;
+import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagState.CREATE_LAG_IN_DB;
+import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagState.FINISHED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagState.FINISHED_WITH_ERROR;
+import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagState.GRPC_COMMAND_SEND;
+import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagState.START;
 
 import org.openkilda.messaging.command.grpc.CreateLogicalPortRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.grpc.LogicalPort;
-import org.openkilda.messaging.swmanager.request.CreateLagRequest;
-import org.openkilda.messaging.swmanager.response.LagResponse;
+import org.openkilda.messaging.swmanager.request.CreateLagPortRequest;
+import org.openkilda.messaging.swmanager.response.LagPortResponse;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
 import org.openkilda.wfm.topology.switchmanager.error.InvalidDataException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchManagerException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
-import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagContext;
-import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagEvent;
-import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagFsm.CreateLagState;
-import org.openkilda.wfm.topology.switchmanager.service.LagOperationService;
+import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagContext;
+import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagEvent;
+import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagState;
+import org.openkilda.wfm.topology.switchmanager.service.LagPortOperationService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 
 import lombok.Builder;
@@ -55,42 +55,42 @@ import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 import java.util.ArrayList;
 
 @Slf4j
-public class CreateLagFsm extends AbstractStateMachine<
-        CreateLagFsm, CreateLagState, CreateLagEvent, CreateLagContext> {
+public class CreateLagPortFsm extends AbstractStateMachine<
+        CreateLagPortFsm, CreateLagState, CreateLagEvent, CreateLagContext> {
 
-    private final LagOperationService lagOperationService;
+    private final LagPortOperationService lagPortOperationService;
     @Getter
     private final SwitchId switchId;
     private final String key;
     @Getter
-    private final CreateLagRequest request;
+    private final CreateLagPortRequest request;
     private final SwitchManagerCarrier carrier;
     private CreateLogicalPortRequest grpcRequest;
     private Integer lagLogicalPortNumber;
 
-    public CreateLagFsm(SwitchManagerCarrier carrier, String key, CreateLagRequest request,
-                        LagOperationService lagOperationService) {
+    public CreateLagPortFsm(SwitchManagerCarrier carrier, String key, CreateLagPortRequest request,
+                            LagPortOperationService lagPortOperationService) {
         this.carrier = carrier;
         this.key = key;
         this.request = request;
         this.switchId = request.getSwitchId();
-        this.lagOperationService = lagOperationService;
+        this.lagPortOperationService = lagPortOperationService;
     }
 
     /**
      * FSM builder.
      */
-    public static StateMachineBuilder<CreateLagFsm, CreateLagState, CreateLagEvent, CreateLagContext> builder() {
-        StateMachineBuilder<CreateLagFsm, CreateLagState, CreateLagEvent, CreateLagContext>
+    public static StateMachineBuilder<CreateLagPortFsm, CreateLagState, CreateLagEvent, CreateLagContext> builder() {
+        StateMachineBuilder<CreateLagPortFsm, CreateLagState, CreateLagEvent, CreateLagContext>
                 builder = StateMachineBuilderFactory.create(
-                CreateLagFsm.class,
+                CreateLagPortFsm.class,
                 CreateLagState.class,
                 CreateLagEvent.class,
                 CreateLagContext.class,
                 SwitchManagerCarrier.class,
                 String.class,
-                CreateLagRequest.class,
-                LagOperationService.class);
+                CreateLagPortRequest.class,
+                LagPortOperationService.class);
 
         builder.transition().from(START).to(CREATE_LAG_IN_DB).on(NEXT).callMethod("createLagInDb");
         builder.transition().from(START).to(FINISHED_WITH_ERROR).on(ERROR);
@@ -117,10 +117,10 @@ public class CreateLagFsm extends AbstractStateMachine<
     void createLagInDb(CreateLagState from, CreateLagState to, CreateLagEvent event, CreateLagContext context) {
         log.info("Creating LAG {} on switch {}. Key={}", request, switchId, key);
         try {
-            Switch sw = lagOperationService.getSwitch(switchId);
-            String ipAddress = lagOperationService.getSwitchIpAddress(sw);
-            lagOperationService.validatePhysicalPorts(switchId, request.getPortNumbers(), sw.getFeatures());
-            lagLogicalPortNumber = lagOperationService.createLagPort(switchId, request.getPortNumbers());
+            Switch sw = lagPortOperationService.getSwitch(switchId);
+            String ipAddress = lagPortOperationService.getSwitchIpAddress(sw);
+            lagPortOperationService.validatePhysicalPorts(switchId, request.getPortNumbers(), sw.getFeatures());
+            lagLogicalPortNumber = lagPortOperationService.createLagPort(switchId, request.getPortNumbers());
             grpcRequest = new CreateLogicalPortRequest(ipAddress, request.getPortNumbers(), lagLogicalPortNumber, LAG);
         } catch (InvalidDataException | InconsistentDataException | SwitchNotFoundException e) {
             log.error(format("Enable to create LAG port %s in DB. Error: %s", request, e.getMessage()), e);
@@ -138,7 +138,7 @@ public class CreateLagFsm extends AbstractStateMachine<
     }
 
     void finishedEnter(CreateLagState from, CreateLagState to, CreateLagEvent event, CreateLagContext context) {
-        LagResponse response = new LagResponse(
+        LagPortResponse response = new LagPortResponse(
                 grpcRequest.getLogicalPortNumber(), new ArrayList<>(grpcRequest.getPortNumbers()));
         InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), key);
 
@@ -151,7 +151,7 @@ public class CreateLagFsm extends AbstractStateMachine<
         if (lagLogicalPortNumber != null) {
             // remove created LAG port
             log.info("Removing form DB created LAG port {} on switch {}. Key={}", lagLogicalPortNumber, switchId, key);
-            lagOperationService.removeLagPort(switchId, lagLogicalPortNumber);
+            lagPortOperationService.removeLagPort(switchId, lagLogicalPortNumber);
         }
         SwitchManagerException error = context.getError();
         log.error(format("Unable to create LAG %s on switch %s. Key: %s. Error: %s",

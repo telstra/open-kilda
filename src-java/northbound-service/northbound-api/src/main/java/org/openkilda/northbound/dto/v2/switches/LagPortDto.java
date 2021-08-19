@@ -13,20 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.swmanager.request;
+package org.openkilda.northbound.dto.v2.switches;
 
-import org.openkilda.messaging.command.CommandData;
-import org.openkilda.model.SwitchId;
-
-import lombok.EqualsAndHashCode;
-import lombok.Value;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-@Value
-@EqualsAndHashCode(callSuper = false)
-public class CreateLagRequest extends CommandData {
-    SwitchId switchId;
-    List<Integer> portNumbers;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
+public class LagPortDto {
+    private int logicalPortNumber;
+    private List<Integer> portNumbers;
 }
-

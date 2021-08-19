@@ -1,5 +1,5 @@
 @startuml
-title LAG create
+title LAG port create
 
 actor User
 boundary Northbound as NB
@@ -11,7 +11,7 @@ database DB
 User -> NB : Create LAG
 
 activate NB
-NB -> SwitchManager : CreateLagRequest
+NB -> SwitchManager : CreateLagPortRequest
 activate SwitchManager
 SwitchManager -> SwitchManager : Request validation
 SwitchManager -> DB : Create LAG in DB
@@ -25,9 +25,9 @@ GRPC -> SpeakerWorker : CreateLogicalPortResponse
 activate SpeakerWorker
 SpeakerWorker -> SwitchManager : CreateLogicalPortResponse
 deactivate SpeakerWorker
-SwitchManager ->> NB: LagResponse
+SwitchManager ->> NB: LagPortResponse
 deactivate SwitchManager
-NB -> User: LagDto
+NB -> User: LagPortDto
 deactivate NB
 
 @enduml

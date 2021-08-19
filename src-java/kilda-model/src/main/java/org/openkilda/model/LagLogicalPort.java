@@ -73,8 +73,13 @@ public class LagLogicalPort implements CompositeDataEntity<LagLogicalPortData> {
         data = LagLogicalPortCloner.INSTANCE.deepCopy(entityToClone.getData(), this);
     }
 
-    public LagLogicalPort(@NonNull SwitchId switchId, int logicalPortNumber) {
-        this(switchId, logicalPortNumber, new ArrayList<>());
+    public LagLogicalPort(@NonNull SwitchId switchId, int logicalPortNumber, Collection<Integer> physicalPortNumbers) {
+        this(switchId, logicalPortNumber, new ArrayList<PhysicalPort>());
+        if (physicalPortNumbers != null) {
+            data.setPhysicalPorts(physicalPortNumbers.stream()
+                    .map(port -> new PhysicalPort(switchId, port, this))
+                    .collect(Collectors.toList()));
+        }
     }
 
     @Builder

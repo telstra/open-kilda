@@ -25,7 +25,6 @@ import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Isl;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PathId;
-import org.openkilda.model.PhysicalPort;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
@@ -42,7 +41,7 @@ import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
 import org.openkilda.wfm.topology.switchmanager.error.InvalidDataException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
-import org.openkilda.wfm.topology.switchmanager.service.LagOperationService;
+import org.openkilda.wfm.topology.switchmanager.service.LagPortOperationService;
 
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
@@ -58,7 +57,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class LagOperationServiceImpl implements LagOperationService {
+public class LagPortOperationServiceImpl implements LagPortOperationService {
     private final TransactionManager transactionManager;
     private final SwitchRepository switchRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
@@ -71,8 +70,8 @@ public class LagOperationServiceImpl implements LagOperationService {
     private final int bfdPortMaxNumber;
     private final int lagPortOffset;
 
-    public LagOperationServiceImpl(RepositoryFactory repositoryFactory, TransactionManager transactionManager,
-                                   int bfdPortOffset, int bfdPortMaxNumber, int lagPortOffset) {
+    public LagPortOperationServiceImpl(RepositoryFactory repositoryFactory, TransactionManager transactionManager,
+                                       int bfdPortOffset, int bfdPortMaxNumber, int lagPortOffset) {
         this.transactionManager = transactionManager;
         this.switchRepository = repositoryFactory.createSwitchRepository();
         this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
@@ -89,10 +88,7 @@ public class LagOperationServiceImpl implements LagOperationService {
     @Override
     public int createLagPort(SwitchId switchId, List<Integer> physicalPortNumbers) {
         int lagLogicalPortNumber = LagLogicalPort.generateLogicalPortNumber(physicalPortNumbers, lagPortOffset);
-        LagLogicalPort lagLogicalPort = new LagLogicalPort(switchId, lagLogicalPortNumber);
-        List<PhysicalPort> physicalPorts = physicalPortNumbers.stream()
-                .map(port -> new PhysicalPort(switchId, port, lagLogicalPort)).collect(Collectors.toList());
-        lagLogicalPort.setPhysicalPorts(physicalPorts);
+        LagLogicalPort lagLogicalPort = new LagLogicalPort(switchId, lagLogicalPortNumber, physicalPortNumbers);
 
         lagLogicalPortRepository.add(lagLogicalPort);
         return lagLogicalPortNumber;
@@ -173,7 +169,7 @@ public class LagOperationServiceImpl implements LagOperationService {
             Map<String, List<PathId>> mirrorPathByFLowIdMap = new HashMap<>();
             for (FlowMirrorPath path : mirrorPaths) {
                 String flowId = path.getFlowMirrorPoints().getFlowPath().getFlowId();
-                mirrorPathByFLowIdMap.putIfAbsent(flowId, new ArrayList<>());
+                mirrorPathByFLowIdMap.computeIfAbsent(flowId, ignore -> new ArrayList<>());
                 mirrorPathByFLowIdMap.get(flowId).add(path.getPathId());
             }
 
