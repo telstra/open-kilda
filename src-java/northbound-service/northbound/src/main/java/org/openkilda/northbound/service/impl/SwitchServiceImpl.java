@@ -50,6 +50,7 @@ import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
+import org.openkilda.messaging.nbtopology.request.GetAllSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetPortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchConnectedDevicesRequest;
@@ -93,6 +94,7 @@ import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
+import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -346,7 +348,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<PortDto> configurePort(SwitchId switchId,  int port, PortConfigurationPayload config) {
+    public CompletableFuture<PortDto> configurePort(SwitchId switchId, int port, PortConfigurationPayload config) {
         String correlationId = RequestCorrelationId.getId();
 
         PortConfigurationRequest request = new PortConfigurationRequest(switchId,
@@ -405,7 +407,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
      */
     @Override
     public CompletableFuture<SwitchDto> updateSwitchUnderMaintenance(SwitchId switchId,
-            UnderMaintenanceDto underMaintenanceDto) {
+                                                                     UnderMaintenanceDto underMaintenanceDto) {
 
         String correlationId = RequestCorrelationId.getId();
         logger.debug("Update under maintenance flag for switch request processing");
@@ -468,6 +470,21 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         return messagingChannel.sendAndGet(nbworkerTopic, message)
                 .thenApply(SwitchPropertiesResponse.class::cast)
                 .thenApply(response -> switchMapper.map(response.getSwitchProperties()));
+    }
+
+    @Override
+    public CompletableFuture<SwitchPropertiesDump> dumpSwitchProperties() {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Dump switch properties for the switch: {}");
+        CommandMessage request = new CommandMessage(new GetAllSwitchPropertiesRequest(), System.currentTimeMillis(),
+                correlationId);
+
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
+                .thenApply(messages -> messages.stream()
+                        .map(SwitchPropertiesResponse.class::cast)
+                        .map(r -> switchMapper.map(r.getSwitchProperties()))
+                        .collect(Collectors.toList()))
+                .thenApply(dump -> new SwitchPropertiesDump(dump));
     }
 
     @Override
@@ -577,7 +594,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     private Boolean toPortAdminDown(PortStatus status) {
         if (status == null) {
-            return  null;
+            return null;
         }
 
         boolean adminDownState;

@@ -17,6 +17,7 @@ package org.openkilda.messaging.model;
 
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.model.MacAddress;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -26,6 +27,9 @@ import java.util.Set;
 
 @Data
 public class SwitchPropertiesDto implements Serializable {
+    @JsonProperty("switch_id")
+    private SwitchId switchId;
+
     @JsonProperty("supported_transit_encapsulation")
     private Set<FlowEncapsulationType> supportedTransitEncapsulation;
 
