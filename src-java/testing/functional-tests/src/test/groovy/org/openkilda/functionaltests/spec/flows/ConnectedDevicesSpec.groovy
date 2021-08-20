@@ -67,6 +67,7 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
+    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTags([
             @IterationTag(tags = [SMOKE, SMOKE_SWITCHES], iterationNameRegex = /srcLldp=true and dstLldp=true/),
@@ -128,8 +129,9 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Delete the flow"
+        when: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
+        def flowIsDeleted = true
 
         then: "Delete action removed all rules and meters"
         Wrappers.wait(WAIT_OFFSET) {
@@ -138,6 +140,7 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore initial switch properties"
+        !flowIsDeleted && flowHelper.deleteFlow(flow.id)
         initialSrcProps && restoreSwitchProperties(data.switchPair.src.dpId, initialSrcProps)
         initialDstProps && restoreSwitchProperties(data.switchPair.dst.dpId, initialDstProps)
         srcLldpData && [data.switchPair.src, data.switchPair.dst].each { database.removeConnectedDevices(it.dpId) }
@@ -190,6 +193,7 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         SwitchPair switchPair
     }
 
+    @Tidy
     def "Able to update flow from srcDevices=#oldSrcEnabled, dstDevices=#oldDstEnabled to \
 srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         given: "Switches with turned 'on' multiTable property"
@@ -242,12 +246,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Delete the flow"
-        flowHelper.deleteFlow(updatedFlow.flowId)
-
-        and: "Restore initial switch properties"
-        restoreSwitchProperties(flow.source.datapath, initialSrcProps)
-        restoreSwitchProperties(flow.destination.datapath, initialDstProps)
-        [flow.source.datapath, flow.destination.datapath].each { database.removeConnectedDevices(it) }
+        flow && flowHelper.deleteFlow(flow.id)
+        initialSrcProps && restoreSwitchProperties(flow.source.datapath, initialSrcProps)
+        initialDstProps && restoreSwitchProperties(flow.destination.datapath, initialDstProps)
+        srcLldpData && [flow.source.datapath, flow.destination.datapath].each { database.removeConnectedDevices(it) }
 
         where:
         [oldSrcEnabled, oldDstEnabled, newSrcEnabled, newDstEnabled] << [
@@ -260,6 +262,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         ]
     }
 
+    @Tidy
     /**
      * This is an edge case. Other tests for 'oneSwitch' only test single-switch single-port scenarios
      */
@@ -296,6 +299,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         when: "Remove the flow"
         flowHelper.deleteFlow(flow.id)
+        def flowIsDeleted = true
 
         and: "Try to get connected devices for removed flow"
         northbound.getFlowConnectedDevices(flow.id)
@@ -305,10 +309,12 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         e.statusCode == HttpStatus.NOT_FOUND
 
         cleanup: "Restore initial switch properties"
-        restoreSwitchProperties(sw.dpId, initialProps)
-        database.removeConnectedDevices(sw.dpId)
+        flow && !flowIsDeleted && flowHelper.deleteFlow(flow.id)
+        initialProps && restoreSwitchProperties(sw.dpId, initialProps)
+        lldpData && database.removeConnectedDevices(sw.dpId)
     }
 
+    @Tidy
     def "Able to swap flow paths with connected devices (srcDevices=#srcEnabled, dstDevices=#dstEnabled)"() {
         given: "Switches with turned 'on' multiTable property"
         def flow = getFlowWithConnectedDevices(true, false, srcEnabled, dstEnabled)
@@ -358,13 +364,11 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             }
         }
 
-        cleanup: "Delete the flow"
-        flowHelper.deleteFlow(swappedFlow.flowId)
+        cleanup: "Delete the flow and restore initial switch properties"
+        flow && flowHelper.deleteFlow(flow.id)
         [flow.source.datapath, flow.destination.datapath].each { database.removeConnectedDevices(it) }
-
-        and: "Restore initial switch properties"
-        restoreSwitchProperties(flow.source.datapath, initialSrcProps)
-        restoreSwitchProperties(flow.destination.datapath, initialDstProps)
+        initialSrcProps && restoreSwitchProperties(flow.source.datapath, initialSrcProps)
+        initialDstProps && restoreSwitchProperties(flow.destination.datapath, initialDstProps)
 
         where:
         [srcEnabled, dstEnabled] << [
@@ -412,10 +416,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         cleanup: "Disconnect the device and remove the flow"
         flow && flowHelper.deleteFlow(flow.id)
         device && device.close()
-        database.removeConnectedDevices(flow.source.datapath)
+        lldpData && database.removeConnectedDevices(flow.source.datapath)
 
         and: "Restore initial switch properties"
-        restoreSwitchProperties(flow.source.datapath, initialSrcProps)
+        initialSrcProps && restoreSwitchProperties(flow.source.datapath, initialSrcProps)
     }
 
     @Tidy
@@ -457,10 +461,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         cleanup: "Disconnect the device and remove the flow"
         flow && flowHelper.deleteFlow(flow.id)
         device && device.close()
-        database.removeConnectedDevices(flow.source.datapath)
+        arpData && database.removeConnectedDevices(flow.source.datapath)
 
         and: "Restore initial switch properties"
-        restoreSwitchProperties(flow.source.datapath, initialSrcProps)
+        initialSrcProps && restoreSwitchProperties(flow.source.datapath, initialSrcProps)
     }
 
     @Tidy
@@ -510,10 +514,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         cleanup: "Disconnect the device and remove the flow"
         flow && flowHelper.deleteFlow(flow.id)
         device && device.close()
-        database.removeConnectedDevices(flow.destination.datapath)
+        lldpData1 && database.removeConnectedDevices(flow.destination.datapath)
 
         and: "Restore initial switch properties"
-        restoreSwitchProperties(flow.destination.datapath, initialDstProps)
+        initialDstProps && restoreSwitchProperties(flow.destination.datapath, initialDstProps)
     }
 
     @Tidy
@@ -564,10 +568,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         cleanup: "Disconnect the device and remove the flow"
         flow && flowHelper.deleteFlow(flow.id)
         device && device.close()
-        database.removeConnectedDevices(flow.destination.datapath)
+        arpData1 && database.removeConnectedDevices(flow.destination.datapath)
 
         and: "Restore initial switch properties"
-        restoreSwitchProperties(flow.destination.datapath, initialDstProps)
+        initialDstProps && restoreSwitchProperties(flow.destination.datapath, initialDstProps)
     }
 
     @Tidy
@@ -632,10 +636,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         cleanup: "Remove created flow and device"
         flow && flowHelper.deleteFlow(flow.id)
         device && device.close()
-        database.removeConnectedDevices(sw.dpId)
+        lldpData && database.removeConnectedDevices(sw.dpId)
 
         and: "Restore initial switch properties"
-        restoreSwitchProperties(sw.dpId, initialProps)
+        initialProps && restoreSwitchProperties(sw.dpId, initialProps)
     }
 
     @Tidy
@@ -689,11 +693,12 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Remove created flow and registered devices, revert switch props"
-        flowHelper.deleteFlow(flow.id)
-        database.removeConnectedDevices(sw.dpId)
-        switchHelper.updateSwitchProperties(sw, initialProps)
+        flow && flowHelper.deleteFlow(flow.id)
+        lldpData && database.removeConnectedDevices(sw.dpId)
+        initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
     }
 
+    @Tidy
     @Tags([SMOKE_SWITCHES])
     def "Able to detect devices on free switch port (no flow or isl)"() {
         given: "A switch with devices feature turned on"
@@ -728,10 +733,11 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Turn off devices prop, remove connected devices"
-        switchHelper.updateSwitchProperties(sw, initialProps)
-        database.removeConnectedDevices(sw.dpId)
+        initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
+        lldpData && database.removeConnectedDevices(sw.dpId)
     }
 
+    @Tidy
     def "Able to distinguish devices between default and non-default single-switch flows (#descr)"() {
         given: "A switch with devices feature turned on"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
@@ -878,10 +884,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Turn off devices prop, remove connected devices, remove flow"
-        flowHelper.deleteFlow(flow.id)
-        flowHelper.deleteFlow(defaultFlow.id)
-        database.removeConnectedDevices(sw.dpId)
-        switchHelper.updateSwitchProperties(sw, initialProps)
+        flow && flowHelper.deleteFlow(flow.id)
+        defaultFlow && flowHelper.deleteFlow(defaultFlow.id)
+        lldpData && database.removeConnectedDevices(sw.dpId)
+        initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
 
         where:
         srcDefault | dstDefault
@@ -891,6 +897,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         descr = "default ${getDescr(srcDefault, dstDefault)}"
     }
 
+    @Tidy
     def "System properly detects device vlan in case of #descr"() {
         given: "Switches with turned 'on' multiTable property"
         def flow = getFlowWithConnectedDevices(true, false, true, true).tap {
@@ -965,12 +972,12 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flow && flowHelper.deleteFlow(flow.id)
 
         and: "Restore initial switch properties"
-        restoreSwitchProperties(flow.source.datapath, initialSrcProps)
-        restoreSwitchProperties(flow.destination.datapath, initialDstProps)
-        [flow.source.datapath, flow.destination.datapath].each { database.removeConnectedDevices(it) }
+        initialSrcProps && restoreSwitchProperties(flow.source.datapath, initialSrcProps)
+        initialDstProps && restoreSwitchProperties(flow.destination.datapath, initialDstProps)
+        srcLldpData && [flow.source.datapath, flow.destination.datapath].each { database.removeConnectedDevices(it) }
 
         where:
         srcDefault | dstDefault
@@ -1057,9 +1064,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         cleanup: "Restore switch props"
         flow && flowHelper.deleteFlow(flow.id)
-        SwitchHelper.updateSwitchProperties(sw, initProps)
+        initProps && SwitchHelper.updateSwitchProperties(sw, initProps)
     }
 
+    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTag(tags = [HARDWARE], iterationNameRegex = /VXLAN/)
     def "System detects devices for a qinq(iVlan=#vlanId oVlan=#innerVlanId) flow with lldp and arp enabled on the src switch"() {
@@ -1088,7 +1096,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def initialSrcProps = enableMultiTableIfNeeded(true, swP.src.dpId)
         def initialDstProps = enableMultiTableIfNeeded(false, swP.dst.dpId)
 
-        when: "Create a flow with connected devices"
+        when: "Create a QinQ flow with connected devices"
         flowHelperV2.addFlow(flow)
 
         then: "Flow and src/dst switches are valid"
@@ -1163,6 +1171,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         100    | 200         | FlowEncapsulationType.VXLAN
     }
 
+    @Tidy
     def "System doesn't detect devices only if vlan match with outerVlan of qinq flow"() {
         given: "Two switches connected to traffgen and they support enabled multiTable mode"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
@@ -1217,15 +1226,13 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         northboundV2.getConnectedDevices(flow.source.switchId).ports.empty
         northboundV2.getConnectedDevices(flow.destination.switchId).ports.empty
 
-        and: "Delete the flow"
-
-
-        cleanup: "Restore initial switch properties"
+        cleanup: "Delete the flow and restore initial switch properties"
         flow && flowHelperV2.deleteFlow(flow.flowId)
         initialSrcProps && restoreSwitchProperties(swP.src.dpId, initialSrcProps)
         initialDstProps && restoreSwitchProperties(swP.dst.dpId, initialDstProps)
     }
 
+    @Tidy
     @Tags([SMOKE_SWITCHES])
     def "Able to detect devices on a qinq single-switch different-port flow"() {
         given: "A flow between different ports on the same switch"
@@ -1279,7 +1286,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         cleanup: "Restore initial switch properties"
         flow && flowHelperV2.deleteFlow(flow.flowId)
         initialProps && restoreSwitchProperties(sw.dpId, initialProps)
-        sw && database.removeConnectedDevices(sw.dpId)
+        lldpData && database.removeConnectedDevices(sw.dpId)
 
         where:
         vlanId | innerVlanId | encapsulationType
@@ -1289,6 +1296,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         100    | 200         | FlowEncapsulationType.VXLAN
     }
 
+    @Tidy
     @Tags([SMOKE_SWITCHES])
     def "Able to detect devices when two qinq single-switch different-port flows exist with the same outerVlanId"() {
         given: "Two flows between different ports on the same switch with the same outerVlanId"
@@ -1359,7 +1367,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flow1 && flowHelperV2.deleteFlow(flow1.flowId)
         flow2 && flowHelperV2.deleteFlow(flow2.flowId)
         initialProps && restoreSwitchProperties(sw.dpId, initialProps)
-        sw && database.removeConnectedDevices(sw.dpId)
+        lldpData && database.removeConnectedDevices(sw.dpId)
 
         where:
         commonOuterVlanId | innerVlanIdFlow1 | innerVlanIdFlow2 | encapsulationType
