@@ -18,11 +18,11 @@ If you want to test full functionality then you have to perform the following ma
 class LicenseSpec extends GrpcBaseSpecification {
     @Tidy
     @Tags(HARDWARE)
-    def "Not able to set incorrect license on the #switches.switchId switch"() {
+    def "Not able to set incorrect license on #sw.hwSwString"() {
         when: "Try to set incorrect license key"
         String licenseFileName = "incorrectLicenseFileName.key"
         String incorrectLicense = "incorrect license data"
-        grpc.setLicenseForSwitch(switches.address, new LicenseDto(incorrectLicense, licenseFileName))
+        grpc.setLicenseForSwitch(sw.address, new LicenseDto(incorrectLicense, licenseFileName))
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
@@ -30,6 +30,6 @@ class LicenseSpec extends GrpcBaseSpecification {
         exc.responseBodyAsString.to(MessageError).errorMessage == "Invalid license key."
 
         where:
-        switches << getNoviflowSwitches()
+        sw << getNoviflowSwitches()
     }
 }

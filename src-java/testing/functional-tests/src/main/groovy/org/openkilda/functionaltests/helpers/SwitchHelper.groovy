@@ -48,6 +48,7 @@ import org.openkilda.northbound.dto.v1.switches.MeterInfoDto
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult
+import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -124,6 +125,16 @@ class SwitchHelper {
     @Memoized
     static String getHwSwString(Switch sw) {
         "${sw.nbFormat().hardware} ${sw.nbFormat().software}"
+    }
+
+    @Memoized
+    static String getHwSwString(SwitchDto sw) {
+        "${sw.hardware} ${sw.software}"
+    }
+
+    @Memoized
+    static String getHwSwString(SwitchDtoV2 sw) {
+        "${sw.hardware} ${sw.software}"
     }
 
     static List<TraffGen> getTraffGens(Switch sw) {

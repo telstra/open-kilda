@@ -31,86 +31,86 @@ class LogSpec extends GrpcBaseSpecification {
     Integer defaultRemoteLogServerPort
 
     @Tidy
-    def "Able to enable 'log messages' on the #switches.switchId switch"() {
+    def "Able to enable 'log messages' on the #sw.hwSwString switch"() {
         when: "Try to turn on 'log messages'"
-        def responseAfterTurningOn = grpc.enableLogMessagesOnSwitch(switches.address, new LogMessagesDto(OnOffState.ON))
+        def responseAfterTurningOn = grpc.enableLogMessagesOnSwitch(sw.address, new LogMessagesDto(OnOffState.ON))
 
         then: "The 'log messages' is turned on"
         responseAfterTurningOn.enabled == OnOffState.ON
 
         when: "Try to turn off 'log messages'"
-        def responseAfterTurningOff = grpc.enableLogMessagesOnSwitch(switches.address,
+        def responseAfterTurningOff = grpc.enableLogMessagesOnSwitch(sw.address,
                 new LogMessagesDto(OnOffState.OFF))
 
         then: "The 'log messages' is turned off"
         responseAfterTurningOff.enabled == OnOffState.OFF
 
         cleanup: "Restore default state"
-        grpc.enableLogMessagesOnSwitch(switches.address, new LogMessagesDto(DEFAULT_LOG_MESSAGES_STATE))
+        grpc.enableLogMessagesOnSwitch(sw.address, new LogMessagesDto(DEFAULT_LOG_MESSAGES_STATE))
 
         where:
-        switches << getNoviflowSwitches()
+        sw << getNoviflowSwitches()
     }
 
     @Tidy
-    def "Able to enable 'OF log messages'  on the #switches.switchId switch"() {
+    def "Able to enable 'OF log messages' on #sw.hwSwString"() {
         when: "Try to turn on 'OF log messages'"
-        def responseAfterTurningOn = grpc.enableLogOfErrorsOnSwitch(switches.address,
+        def responseAfterTurningOn = grpc.enableLogOfErrorsOnSwitch(sw.address,
                 new LogOferrorsDto(OnOffState.ON))
 
         then: "The 'OF log messages' is turned on"
         responseAfterTurningOn.enabled == OnOffState.ON
 
         when: "Try to turn off 'OF log messages'"
-        def responseAfterTurningOff = grpc.enableLogOfErrorsOnSwitch(switches.address,
+        def responseAfterTurningOff = grpc.enableLogOfErrorsOnSwitch(sw.address,
                 new LogOferrorsDto(OnOffState.OFF))
 
         then: "The 'OF log messages' is turned off"
         responseAfterTurningOff.enabled == OnOffState.OFF
 
         cleanup: "Restore default state"
-        grpc.enableLogOfErrorsOnSwitch(switches.address, new LogOferrorsDto(DEFAULT_LOG_OF_MESSAGES_STATE))
+        grpc.enableLogOfErrorsOnSwitch(sw.address, new LogOferrorsDto(DEFAULT_LOG_OF_MESSAGES_STATE))
 
         where:
-        switches << getNoviflowSwitches()
+        sw << getNoviflowSwitches()
     }
 
     @Tidy
-    def "Able to manipulate(CRUD) with a remote log server on the #switches.switchId switch"() {
+    def "Able to manipulate(CRUD) with a remote log server on #sw.hwSwString"() {
         when: "Remove current remote log server configuration"
-        def response = grpc.deleteRemoteLogServerForSwitch(switches.address)
+        def response = grpc.deleteRemoteLogServerForSwitch(sw.address)
 
         then: "Current remote log server configuration is deleted"
         response.deleted
 
-        def response1 = grpc.getRemoteLogServerForSwitch(switches.address)
+        def response1 = grpc.getRemoteLogServerForSwitch(sw.address)
         response1.ipAddress == ""
         response1.port == 0
 
         when: "Try to set custom remote log server"
-        def response2 = grpc.setRemoteLogServerForSwitch(switches.address,
+        def response2 = grpc.setRemoteLogServerForSwitch(sw.address,
                 new RemoteLogServerDto(REMOTE_LOG_IP, REMOTE_LOG_PORT))
         assert response2.ipAddress == REMOTE_LOG_IP
         assert response2.port == REMOTE_LOG_PORT
 
         then: "New custom remote log server configuration is set"
-        def response3 = grpc.getRemoteLogServerForSwitch(switches.address)
+        def response3 = grpc.getRemoteLogServerForSwitch(sw.address)
         response3.ipAddress == REMOTE_LOG_IP
         response3.port == REMOTE_LOG_PORT
 
         cleanup: "Restore original configuration"
-        grpc.setRemoteLogServerForSwitch(switches.address,
+        grpc.setRemoteLogServerForSwitch(sw.address,
                 new RemoteLogServerDto(defaultRemoteLogServerIp, defaultRemoteLogServerPort))
 
         where:
-        switches << getNoviflowSwitches()
+        sw << getNoviflowSwitches()
     }
 
     @Tidy
     @Tags(HARDWARE)
     @Ignore("https://github.com/telstra/open-kilda/issues/3972")
     def "Not able to set incorrect remote log server configuration(ip/port): #data.remoteIp/#data.remotePort \
-on the #sw.switchId switch"() {
+on #sw.hwSwString"() {
         when: "Try to set incorrect configuration"
         grpc.setRemoteLogServerForSwitch(sw.address, new RemoteLogServerDto(data.remoteIp, data.remotePort))
 
