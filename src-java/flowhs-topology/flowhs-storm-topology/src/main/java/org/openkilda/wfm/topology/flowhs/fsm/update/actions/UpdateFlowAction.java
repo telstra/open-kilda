@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -69,13 +69,15 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
             stateMachine.setOldTargetPathComputationStrategy(flow.getTargetPathComputationStrategy());
             stateMachine.setOriginalFlow(originalFlow);
 
-            stateMachine.setOriginalFlowGroup(flow.getGroupId());
+            stateMachine.setOriginalDiverseFlowGroup(flow.getDiverseGroupId());
+            stateMachine.setOriginalAffinityFlowGroup(flow.getAffinityGroupId());
 
             // Complete target flow in FSM with values from original flow
             stateMachine.setTargetFlow(updateFlow(flow, targetFlow));
 
             EndpointUpdate endpointUpdate = updateEndpointRulesOnly(originalFlow, targetFlow,
-                    stateMachine.getOriginalFlowGroup(), flow.getGroupId());
+                    stateMachine.getOriginalDiverseFlowGroup(), flow.getDiverseGroupId(),
+                    stateMachine.getOriginalAffinityFlowGroup(), flow.getAffinityGroupId());
             stateMachine.setEndpointUpdate(endpointUpdate);
 
             if (endpointUpdate.isPartialUpdate()) {
@@ -108,13 +110,21 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
     private RequestedFlow updateFlow(Flow flow, RequestedFlow targetFlow) {
         if (targetFlow.getDiverseFlowId() != null) {
             if (targetFlow.getDiverseFlowId().isEmpty()) {
-                flow.setGroupId(null);
+                flow.setDiverseGroupId(null);
             } else {
-                flow.setGroupId(getOrCreateFlowGroupId(targetFlow.getDiverseFlowId()));
+                flow.setDiverseGroupId(getOrCreateDiverseFlowGroupId(targetFlow.getDiverseFlowId()));
             }
         } else if (targetFlow.isAllocateProtectedPath()) {
-            if (flow.getGroupId() == null) {
-                flow.setGroupId(getOrCreateFlowGroupId(flow.getFlowId()));
+            if (flow.getDiverseGroupId() == null) {
+                flow.setDiverseGroupId(getOrCreateDiverseFlowGroupId(flow.getFlowId()));
+            }
+        }
+
+        if (targetFlow.getAffinityFlowId() != null) {
+            if (targetFlow.getAffinityFlowId().isEmpty()) {
+                flow.setAffinityGroupId(null);
+            } else {
+                flow.setAffinityGroupId(getOrCreateAffinityFlowGroupId(targetFlow.getAffinityFlowId()));
             }
         }
 
@@ -179,15 +189,25 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         return targetFlow;
     }
 
-    private String getOrCreateFlowGroupId(String flowId) throws FlowProcessingException {
-        log.debug("Getting flow group for flow with id {}", flowId);
-        return flowRepository.getOrCreateFlowGroupId(flowId)
+    private String getOrCreateDiverseFlowGroupId(String flowId) throws FlowProcessingException {
+        log.debug("Getting flow diverse group for flow with id {}", flowId);
+        return flowRepository.getOrCreateDiverseFlowGroupId(flowId)
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                        format("Flow %s not found", flowId)));
+    }
+
+    private String getOrCreateAffinityFlowGroupId(String flowId) throws FlowProcessingException {
+        log.debug("Getting flow affinity group for flow with id {}", flowId);
+        return flowRepository.getOrCreateAffinityFlowGroupId(flowId)
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Flow %s not found", flowId)));
     }
 
     private FlowUpdateFsm.EndpointUpdate updateEndpointRulesOnly(RequestedFlow originalFlow, RequestedFlow targetFlow,
-                                                                 String originalGroupId, String targetGroupId) {
+                                                                 String originalDiverseGroupId,
+                                                                 String targetDiverseGroupId,
+                                                                 String originalAffinityGroupId,
+                                                                 String targetAffinityGroupId) {
         boolean updateEndpointOnly = originalFlow.getSrcSwitch().equals(targetFlow.getSrcSwitch());
         updateEndpointOnly &= originalFlow.getDestSwitch().equals(targetFlow.getDestSwitch());
 
@@ -202,7 +222,8 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         updateEndpointOnly &= Objects.equal(originalFlow.getPathComputationStrategy(),
                 targetFlow.getPathComputationStrategy());
 
-        updateEndpointOnly &= Objects.equal(originalGroupId, targetGroupId);
+        updateEndpointOnly &= Objects.equal(originalDiverseGroupId, targetDiverseGroupId);
+        updateEndpointOnly &= Objects.equal(originalAffinityGroupId, targetAffinityGroupId);
 
         // TODO(tdurakov): check connected devices as well
         boolean srcEndpointChanged = originalFlow.getSrcPort() != targetFlow.getSrcPort();

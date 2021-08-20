@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -47,11 +47,20 @@ public class OrientDbFlowPathRepository extends FermaFlowPathRepository {
     }
 
     @Override
-    public Collection<PathId> findPathIdsByFlowGroupId(String flowGroupId) {
+    public Collection<PathId> findPathIdsByFlowDiverseGroupId(String flowDiverseGroupId) {
+        return findPathIdsByFlowGroupId(FlowFrame.GROUP_ID_PROPERTY, flowDiverseGroupId);
+    }
+
+    @Override
+    public Collection<PathId> findPathIdsByFlowAffinityGroupId(String flowAffinityGroupId) {
+        return findPathIdsByFlowGroupId(FlowFrame.AFFINITY_GROUP_ID_PROPERTY, flowAffinityGroupId);
+    }
+
+    private Collection<PathId> findPathIdsByFlowGroupId(String groupIdProperty, String flowGroupId) {
         try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
                 format("SELECT %s FROM %s WHERE in('%s').%s = ?",
                         FlowPathFrame.PATH_ID_PROPERTY, FlowPathFrame.FRAME_LABEL,
-                        FlowFrame.OWNS_PATHS_EDGE, FlowFrame.GROUP_ID_PROPERTY), flowGroupId)) {
+                        FlowFrame.OWNS_PATHS_EDGE, groupIdProperty), flowGroupId)) {
             return results.stream()
                     .map(r -> r.getProperty(FlowPathFrame.PATH_ID_PROPERTY))
                     .map(pathId -> PathIdConverter.INSTANCE.toEntityAttribute((String) pathId))

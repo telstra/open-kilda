@@ -44,6 +44,7 @@ public class FlowRequestV2 {
     private Integer priority;
 
     private String diverseFlowId;
+    private String affinityFlowId;
     private boolean pinned;
     private boolean allocateProtectedPath;
     private String encapsulationType;

@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -61,7 +61,8 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
     static final String TEST_FLOW_ID_4 = "test_flow_4";
     static final String TEST_FLOW_ID_5 = "test_flow_5";
     static final String TEST_FLOW_ID_6 = "test_flow_6";
-    static final String TEST_GROUP_ID = "test_group";
+    static final String TEST_DIVERSE_GROUP_ID = "test_diverse_group";
+    static final String TEST_AFFINITY_GROUP_ID = "test_affinity_group";
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
     static final SwitchId TEST_SWITCH_C_ID = new SwitchId(3);
@@ -203,22 +204,44 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldFindFlowByGroupId() {
+    public void shouldFindFlowByDeverseGroupId() {
         Flow flow = createTestFlow(TEST_FLOW_ID, switchA, switchB);
-        flow.setGroupId(TEST_GROUP_ID);
+        flow.setDiverseGroupId(TEST_DIVERSE_GROUP_ID);
 
-        List<Flow> foundFlow = Lists.newArrayList(flowRepository.findByGroupId(TEST_GROUP_ID));
+        List<Flow> foundFlow = Lists.newArrayList(flowRepository.findByDiverseGroupId(TEST_DIVERSE_GROUP_ID));
         assertThat(foundFlow, Matchers.hasSize(1));
         assertEquals(Collections.singletonList(flow), foundFlow);
     }
 
     @Test
-    public void shouldFindFlowsIdByGroupId() {
+    public void shouldFindFlowByAffinityGroupId() {
         Flow flow = createTestFlow(TEST_FLOW_ID, switchA, switchB);
-        flow.setGroupId(TEST_GROUP_ID);
+        flow.setAffinityGroupId(TEST_AFFINITY_GROUP_ID);
 
-        List<String> foundFlowId = Lists.newArrayList(flowRepository.findFlowsIdByGroupId(TEST_GROUP_ID));
+        List<Flow> foundFlow = Lists.newArrayList(flowRepository.findByAffinityGroupId(TEST_AFFINITY_GROUP_ID));
+        assertEquals(1, foundFlow.size());
+        assertEquals(Collections.singletonList(flow), foundFlow);
+    }
+
+    @Test
+    public void shouldFindFlowsIdByDiverseGroupId() {
+        Flow flow = createTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flow.setDiverseGroupId(TEST_DIVERSE_GROUP_ID);
+
+        List<String> foundFlowId
+                = Lists.newArrayList(flowRepository.findFlowsIdByDiverseGroupId(TEST_DIVERSE_GROUP_ID));
         assertThat(foundFlowId, Matchers.hasSize(1));
+        assertEquals(Collections.singletonList(TEST_FLOW_ID), foundFlowId);
+    }
+
+    @Test
+    public void shouldFindFlowsIdByAffinityGroupId() {
+        Flow flow = createTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flow.setAffinityGroupId(TEST_AFFINITY_GROUP_ID);
+
+        List<String> foundFlowId
+                = Lists.newArrayList(flowRepository.findFlowsIdByAffinityGroupId(TEST_AFFINITY_GROUP_ID));
+        assertEquals(1, foundFlowId.size());
         assertEquals(Collections.singletonList(TEST_FLOW_ID), foundFlowId);
     }
 
@@ -467,25 +490,46 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
     @Test
     public void shouldCreateFlowGroupIdForFlow() {
         Flow flow = createTestFlow(TEST_FLOW_ID, switchA, switchB);
-        flow.setGroupId(TEST_GROUP_ID);
+        flow.setDiverseGroupId(TEST_DIVERSE_GROUP_ID);
 
-        Optional<String> groupOptional = flowRepository.getOrCreateFlowGroupId(TEST_FLOW_ID);
+        Optional<String> groupOptional = flowRepository.getOrCreateDiverseFlowGroupId(TEST_FLOW_ID);
 
         assertTrue(groupOptional.isPresent());
         assertNotNull(groupOptional.get());
         assertEquals(groupOptional.get(),
-                flowRepository.findById(TEST_FLOW_ID).get().getGroupId());
+                flowRepository.findById(TEST_FLOW_ID).get().getDiverseGroupId());
     }
 
     @Test
-    public void shouldGetFlowGroupIdForFlow() {
+    public void shouldGetFlowDiverseGroupIdForFlow() {
         Flow flow = createTestFlow(TEST_FLOW_ID, switchA, switchB);
-        flow.setGroupId(TEST_GROUP_ID);
+        flow.setDiverseGroupId(TEST_DIVERSE_GROUP_ID);
 
-        Optional<String> groupOptional = flowRepository.getOrCreateFlowGroupId(TEST_FLOW_ID);
+        Optional<String> groupOptional = flowRepository.getOrCreateDiverseFlowGroupId(TEST_FLOW_ID);
 
         assertTrue(groupOptional.isPresent());
-        assertEquals(TEST_GROUP_ID, groupOptional.get());
+        assertEquals(TEST_DIVERSE_GROUP_ID, groupOptional.get());
+    }
+
+    @Test
+    public void shouldGetFlowAffinityGroupIdForFlow() {
+        Flow flow = createTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flow.setAffinityGroupId(TEST_FLOW_ID_2);
+
+        Optional<String> groupOptional = flowRepository.getOrCreateAffinityFlowGroupId(TEST_FLOW_ID);
+
+        assertTrue(groupOptional.isPresent());
+        assertEquals(TEST_FLOW_ID_2, groupOptional.get());
+    }
+
+    @Test
+    public void shouldCreateFlowAffinityGroupIdForFlow() {
+        createTestFlow(TEST_FLOW_ID, switchA, switchB);
+
+        Optional<String> groupOptional = flowRepository.getOrCreateAffinityFlowGroupId(TEST_FLOW_ID);
+
+        assertTrue(groupOptional.isPresent());
+        assertEquals(TEST_FLOW_ID, groupOptional.get());
     }
 
     @Test

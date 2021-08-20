@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -114,10 +114,19 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
     }
 
     @Override
-    public Collection<PathId> findPathIdsByFlowGroupId(String flowGroupId) {
+    public Collection<PathId> findPathIdsByFlowDiverseGroupId(String flowDiverseGroupId) {
+        return findPathIdsByFlowGroupId(FlowFrame.GROUP_ID_PROPERTY, flowDiverseGroupId);
+    }
+
+    @Override
+    public Collection<PathId> findPathIdsByFlowAffinityGroupId(String flowAffinityGroupId) {
+        return findPathIdsByFlowGroupId(FlowFrame.AFFINITY_GROUP_ID_PROPERTY, flowAffinityGroupId);
+    }
+
+    private Collection<PathId> findPathIdsByFlowGroupId(String groupIdProperty, String flowGroupId) {
         return framedGraph().traverse(g -> g.V()
                 .hasLabel(FlowFrame.FRAME_LABEL)
-                .has(FlowFrame.GROUP_ID_PROPERTY, flowGroupId)
+                .has(groupIdProperty, flowGroupId)
                 .out(FlowFrame.OWNS_PATHS_EDGE)
                 .hasLabel(FlowPathFrame.FRAME_LABEL)
                 .values(FlowPathFrame.PATH_ID_PROPERTY))

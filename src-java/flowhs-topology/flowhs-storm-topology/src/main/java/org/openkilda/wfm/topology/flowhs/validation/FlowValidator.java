@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -99,9 +99,15 @@ public class FlowValidator {
         checkBandwidth(flow);
         checkSwitchesSupportLldpAndArpIfNeeded(flow);
 
-        if (StringUtils.isNotBlank(flow.getDiverseFlowId())) {
+        if (StringUtils.isNotBlank(flow.getDiverseFlowId()) && StringUtils.isNotBlank(flow.getAffinityFlowId())) {
+            throw new InvalidFlowException("Couldn't add flow to diverse and affinity groups at the same time",
+                    ErrorType.PARAMETERS_INVALID);
+        } else if (StringUtils.isNotBlank(flow.getDiverseFlowId())) {
             checkDiverseFlow(flow);
+        } else if (StringUtils.isNotBlank(flow.getAffinityFlowId())) {
+            checkAffinityFlow(flow);
         }
+
         validateFlowLoop(flow);
 
         //todo remove after noviflow fix
@@ -356,6 +362,34 @@ public class FlowValidator {
 
         if (diverseFlow.isOneSwitchFlow()) {
             throw new InvalidFlowException("Couldn't create diverse group with one-switch flow",
+                    ErrorType.PARAMETERS_INVALID);
+        }
+
+        if (StringUtils.isNotBlank(diverseFlow.getAffinityGroupId())) {
+            throw new InvalidFlowException("Couldn't create diverse group with flow in affinity group",
+                    ErrorType.PARAMETERS_INVALID);
+        }
+    }
+
+    @VisibleForTesting
+    void checkAffinityFlow(RequestedFlow targetFlow) throws InvalidFlowException {
+        if (targetFlow.getSrcSwitch().equals(targetFlow.getDestSwitch())) {
+            throw new InvalidFlowException("Couldn't add one-switch flow into affinity group",
+                    ErrorType.PARAMETERS_INVALID);
+        }
+
+        Flow affinityFlow = flowRepository.findById(targetFlow.getAffinityFlowId())
+                .orElseThrow(() ->
+                        new InvalidFlowException(format("Failed to find affinity flow id %s",
+                                targetFlow.getAffinityFlowId()), ErrorType.PARAMETERS_INVALID));
+
+        if (affinityFlow.isOneSwitchFlow()) {
+            throw new InvalidFlowException("Couldn't create affinity group with one-switch flow",
+                    ErrorType.PARAMETERS_INVALID);
+        }
+
+        if (StringUtils.isNotBlank(affinityFlow.getDiverseGroupId())) {
+            throw new InvalidFlowException("Couldn't create affinity group with flow in diverse group",
                     ErrorType.PARAMETERS_INVALID);
         }
     }

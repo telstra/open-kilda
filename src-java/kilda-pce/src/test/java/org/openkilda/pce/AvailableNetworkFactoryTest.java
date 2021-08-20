@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -54,8 +54,7 @@ public class AvailableNetworkFactoryTest {
     public static final SwitchId SWITCH_ID_2 = new SwitchId(2);
     public static final SwitchId SWITCH_ID_3 = new SwitchId(3);
     public static final SwitchId SWITCH_ID_4 = new SwitchId(4);
-    public static final String GROUP_ID = "group_id_1";
-    public static final String FLOW_ID_1 = "flow_id_1";
+    public static final String DIVERSE_GROUP_ID = "group_id_1";
     public static final long AVAILABLE_BANDWIDTH = 1000;
     public static final int SRC_PORT = 30;
     public static final int DEST_PORT = 31;
@@ -114,13 +113,6 @@ public class AvailableNetworkFactoryTest {
         isls.addAll(getBidirectionalIsls(switchA, 1, switchB, 2));
         isls.addAll(getBidirectionalIsls(switchB, 3, switchC, 4));
 
-        final Flow diverseFlow = Flow.builder()
-                .flowId(FLOW_ID_1)
-                .groupId(GROUP_ID)
-                .srcSwitch(switchB)
-                .destSwitch(switchD)
-                .build();
-
         FlowPath forwardPath = FlowPath.builder()
                 .srcSwitch(switchB)
                 .destSwitch(switchD)
@@ -142,7 +134,7 @@ public class AvailableNetworkFactoryTest {
         Flow flow = getFlow(false);
         flow.setSrcSwitch(switchA);
         flow.setDestSwitch(switchC);
-        flow.setGroupId(GROUP_ID);
+        flow.setDiverseGroupId(DIVERSE_GROUP_ID);
         flow.setForwardPathId(new PathId("forward_path_id"));
         flow.setReversePathId(new PathId("reverse_path_id"));
 
@@ -150,7 +142,7 @@ public class AvailableNetworkFactoryTest {
         when(islRepository.findActiveByBandwidthAndEncapsulationType(flow.getBandwidth(), flow.getEncapsulationType()))
                 .thenReturn(isls);
 
-        when(flowPathRepository.findPathIdsByFlowGroupId(GROUP_ID))
+        when(flowPathRepository.findPathIdsByFlowDiverseGroupId(DIVERSE_GROUP_ID))
                 .thenReturn(Lists.newArrayList(FORWARD_PATH_ID, REVERSE_PATH_ID));
 
         AvailableNetwork availableNetwork = availableNetworkFactory.getAvailableNetwork(flow, Collections.emptyList());

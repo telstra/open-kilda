@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -223,7 +223,8 @@ public class InMemoryPathComputer implements PathComputer {
         }
         total += edge.getDiversityGroupUseCounter() * config.getDiversityIslCost()
                 + edge.getDiversityGroupPerPopUseCounter() * config.getDiversityPopIslCost()
-                + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchCost();
+                + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchCost()
+                + edge.getAffinityGroupUseCounter() * config.getAffinityIslCost();
         return new PathWeight(total);
     }
 
@@ -237,7 +238,8 @@ public class InMemoryPathComputer implements PathComputer {
         }
         total += edge.getDiversityGroupUseCounter() * config.getDiversityIslLatency()
                 + edge.getDiversityGroupPerPopUseCounter() * config.getDiversityPopIslCost()
-                + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchLatency();
+                + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchLatency()
+                + edge.getAffinityGroupUseCounter() * config.getAffinityIslLatency();
         return new PathWeight(total);
     }
 
@@ -251,7 +253,8 @@ public class InMemoryPathComputer implements PathComputer {
         }
         total += edge.getDiversityGroupUseCounter() * config.getDiversityIslCost()
                 + edge.getDiversityGroupPerPopUseCounter() * config.getDiversityPopIslCost()
-                + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchCost();
+                + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchCost()
+                + edge.getAffinityGroupUseCounter() * config.getAffinityIslCost();
         return new PathWeight(total, edge.getAvailableBandwidth());
     }
 

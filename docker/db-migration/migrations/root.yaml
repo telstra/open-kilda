@@ -45,3 +45,7 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 011-add-lag-classes.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 012-add-diverse-and-affinity-group-id-to-flow-class.yaml
+

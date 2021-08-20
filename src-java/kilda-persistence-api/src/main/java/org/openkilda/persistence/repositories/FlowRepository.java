@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -36,9 +36,13 @@ public interface FlowRepository extends Repository<Flow> {
 
     Optional<Flow> findById(String flowId);
 
-    Collection<Flow> findByGroupId(String flowGroupId);
+    Collection<Flow> findByDiverseGroupId(String flowDiverseGroupId);
 
-    Collection<String> findFlowsIdByGroupId(String flowGroupId);
+    Collection<Flow> findByAffinityGroupId(String flowAffinityGroupId);
+
+    Collection<String> findFlowsIdByDiverseGroupId(String flowDiverseGroupId);
+
+    Collection<String> findFlowsIdByAffinityGroupId(String flowAffinityGroupId);
 
     Collection<Flow> findWithPeriodicPingsEnabled();
 
@@ -79,7 +83,17 @@ public interface FlowRepository extends Repository<Flow> {
      */
     Collection<Flow> findByFlowFilter(FlowFilter flowFilter);
 
-    Optional<String> getOrCreateFlowGroupId(String flowId);
+    Optional<String> getOrCreateDiverseFlowGroupId(String flowId);
+
+    Optional<String> getDiverseFlowGroupId(String flowId);
+
+    Optional<String> getOrCreateAffinityFlowGroupId(String flowId);
+
+    Optional<String> getAffinityFlowGroupId(String flowId);
+
+    void updateDiverseFlowGroupId(String flowId, String diverseGroupId);
+
+    void updateAffinityFlowGroupId(String flowId, String affinityGroupId);
 
     void updateStatus(String flowId, FlowStatus flowStatus);
 

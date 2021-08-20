@@ -128,7 +128,8 @@ public class HibernateFlowEventDump extends EntityBase implements FlowEventDumpD
         private String reversePath;
         private FlowPathStatus reverseStatus;
 
-        private String groupId;
+        private String diverseGroupId;
+        private String affinityGroupId;
         private Boolean allocateProtectedPath;
         private Boolean pinned;
         private Boolean periodicPings;

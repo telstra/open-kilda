@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -63,7 +63,9 @@ public class FlowDumpPayload {
 
     private String reverseStatus;
 
-    private String groupId;
+    private String diverseGroupId;
+
+    private String affinityGroupId;
 
     private boolean allocateProtectedPath;
 

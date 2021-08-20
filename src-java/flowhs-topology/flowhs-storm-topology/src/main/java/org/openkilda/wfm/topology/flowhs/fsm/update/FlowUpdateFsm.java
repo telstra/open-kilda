@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -89,7 +89,8 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
 
     private FlowStatus originalFlowStatus;
     private String originalFlowStatusInfo;
-    private String originalFlowGroup;
+    private String originalDiverseFlowGroup;
+    private String originalAffinityFlowGroup;
     private RequestedFlow originalFlow;
     private PathComputationStrategy oldTargetPathComputationStrategy;
 

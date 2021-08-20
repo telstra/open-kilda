@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -52,7 +52,8 @@ public class FlowDumpData implements Serializable {
     private String reversePath;
     private FlowPathStatus forwardStatus;
     private FlowPathStatus reverseStatus;
-    private String groupId;
+    private String diverseGroupId;
+    private String affinityGroupId;
     private boolean allocateProtectedPath;
     private boolean pinned;
     private boolean periodicPings;

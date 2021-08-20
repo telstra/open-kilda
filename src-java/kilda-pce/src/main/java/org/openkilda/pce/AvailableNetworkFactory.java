@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.impl.AvailableNetwork;
@@ -81,10 +82,10 @@ public class AvailableNetworkFactory {
             throw new RecoverableException("An error from the database", e);
         }
 
-        if (flow.getGroupId() != null) {
-            log.info("Filling AvailableNetwork diverse weighs for group with id {}", flow.getGroupId());
+        if (flow.getDiverseGroupId() != null) {
+            log.info("Filling AvailableNetwork diverse weights for group with id {}", flow.getDiverseGroupId());
 
-            Collection<PathId> flowPaths = flowPathRepository.findPathIdsByFlowGroupId(flow.getGroupId());
+            Collection<PathId> flowPaths = flowPathRepository.findPathIdsByFlowDiverseGroupId(flow.getDiverseGroupId());
             if (!reusePathsResources.isEmpty()) {
                 flowPaths = flowPaths.stream()
                         .filter(s -> !reusePathsResources.contains(s))
@@ -97,6 +98,20 @@ public class AvailableNetworkFactory {
                                 network.processDiversitySegments(flowPath.getSegments(), flow);
                                 network.processDiversitySegmentsWithPop(flowPath.getSegments());
                             }));
+        }
+
+        // The main flow id is set as the affinity group id.
+        // All flow paths in this group are built along the path of the main flow.
+        // The main flow should not take into account the rest of the flows in this affinity group.
+        if (flow.getAffinityGroupId() != null && !flow.getAffinityGroupId().equals(flow.getFlowId())) {
+            log.info("Filling AvailableNetwork affinity weights for group with id {}", flow.getAffinityGroupId());
+
+            flowPathRepository.findByFlowId(flow.getAffinityGroupId())
+                    .stream()
+                    .filter(flowPath -> !flowPath.isProtected())
+                    .filter(FlowPath::isForward)
+                    .map(FlowPath::getSegments)
+                    .forEach(network::processAffinitySegments);
         }
 
         return network;
