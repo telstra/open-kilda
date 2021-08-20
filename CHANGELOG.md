@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.103.0 (20/08/2021)
+
+### Features:
+-  [#4426](https://github.com/telstra/open-kilda/pull/4426) Bulk dump of switch properties [**northbound**][**storm-topologies**]
+-  [#4401](https://github.com/telstra/open-kilda/pull/4401) Add flow affinity groups [**northbound**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#4434](https://github.com/telstra/open-kilda/pull/4434) Fix TypeError in get_issues_from_pr in changelog-generator.py 
+-  [#4438](https://github.com/telstra/open-kilda/pull/4438) Remove flow monitoring extra logging 
+
+### Improvements:
+-  [#4425](https://github.com/telstra/open-kilda/pull/4425) Improve mysql init script compatibility 
+-  [#4435](https://github.com/telstra/open-kilda/pull/4435) refactor grpc spec [**tests**]
+-  [#4433](https://github.com/telstra/open-kilda/pull/4433) refactor s42Spec according to #4381 (Issue: [#4381](https://github.com/telstra/open-kilda/issues/4381)) [**tests**]
+-  [#4441](https://github.com/telstra/open-kilda/pull/4441) add missed "assumeTrue(useMultitable)" in FlowHistorySpec [**tests**]
+-  [#4412](https://github.com/telstra/open-kilda/pull/4412) refactor qinq/s42 specs according to #4408 (Issue: [#4408](https://github.com/telstra/open-kilda/issues/4408)) [**tests**]
+
+### Other changes:
+-  [#4439](https://github.com/telstra/open-kilda/pull/4439) Add affinity flow spec [**tests**]
+-  [#4442](https://github.com/telstra/open-kilda/pull/4442) Fix IterationTags issue [**tests**]
+-  [#4445](https://github.com/telstra/open-kilda/pull/4445) Fix history calculation and cleanup in AutoRerouteSpec [**tests**]
+-  [#4446](https://github.com/telstra/open-kilda/pull/4446) Remove switch ids from test names, use hwSwString instead [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.102.0...v1.103.0).
+
+### Affected Components:
+nbworker, orientdb, flow-monitor, reroute, flow-hs, nb
+
+---
+
 ## v1.102.0 (13/08/2021)
 
 ### Features:
