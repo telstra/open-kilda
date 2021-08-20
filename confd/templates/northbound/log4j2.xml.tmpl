@@ -12,7 +12,7 @@ Do not change this file, all changes will be lost. Change corresponding template
         <RollingFile name="J1" immediateFlush="false"
                  fileName="{{ getv "/kilda_logging_logfile_path" }}/northbound.log.json"
                  filePattern="{{ getv "/kilda_logging_logfile_path" }}/northbound.log.json.%i.gz">
-           <JsonLayout compact="true" eventEol="true" properties="true">
+           <JsonLayout compact="true" eventEol="true" properties="true" includeTimeMillis="true">
                 <KeyValuePair key="correlation_id" value="${ctx:correlation_id}"/>
                 <KeyValuePair key="blue_green_mode" value="$${env:BLUE_GREEN_MODE}"/>
            </JsonLayout>
@@ -24,7 +24,7 @@ Do not change this file, all changes will be lost. Change corresponding template
 {{- end }}
 {{- if eq (getv "/kilda_logging_logstash") "true" }}
         <Socket name="LOGSTASH" host="{{ getv "/kilda_logging_logstash_host" }}" port="{{ getv "/kilda_logging_port_northbound" }}">
-           <JsonLayout compact="true" eventEol="true" properties="true">
+           <JsonLayout compact="true" eventEol="true" properties="true includeTimeMillis="true"">
                 <KeyValuePair key="correlation_id" value="${ctx:correlation_id}"/>
                 <KeyValuePair key="blue_green_mode" value="$${env:BLUE_GREEN_MODE}"/>
            </JsonLayout>
