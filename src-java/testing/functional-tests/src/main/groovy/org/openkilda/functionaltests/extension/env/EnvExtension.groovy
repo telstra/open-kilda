@@ -44,6 +44,9 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     @Autowired @Qualifier("northboundServiceImpl")
     NorthboundService northbound
 
+    @Autowired @Qualifier("islandNb")
+    NorthboundService islandNorthbound
+
     @Autowired
     LabService labService
 
@@ -116,36 +119,34 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
         Wrappers.wait(WAIT_OFFSET / 2) {
             assert northbound.getAllLinks().empty
         }
-
         log.info("Deleting all switches")
         northbound.getAllSwitches().each { northbound.deleteSwitch(it.switchId, false) }
-        Wrappers.wait(WAIT_OFFSET / 2) {
-            assert northbound.getAllSwitches().empty
-        }
-        List<TopologyDefinition> topologies = [topologyPool.topologies, topology].flatten()
-        topologies.each { //can't do eachParallel, hangs on Jenkins. why?
-            def lab = labService.createLab(it)
-            it.setLabId(lab.labId)
-        }
-        TimeUnit.SECONDS.sleep(5) //container with topology needs some time to fully start, this is async
-        lockKeeper.removeFloodlightAccessRestrictions(floodlights*.region)
+        Wrappers.wait(WAIT_OFFSET / 2) { assert northbound.getAllSwitches().empty }
 
-        //wait until topology is discovered
-        Wrappers.wait(TOPOLOGY_DISCOVERING_TIME) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.DISCOVERED
-            }.size() == topologies.sum { it.islsForActiveSwitches.size() * 2 }
-        }
-        //wait until switches are activated
-        Wrappers.wait(SWITCHES_ACTIVATION_TIME) {
-            assert northbound.getAllSwitches().findAll {
-                it.state == SwitchChangeType.ACTIVATED
-            }.size() == topologies.sum { it.activeSwitches.size() }
-        }
+        List<TopologyDefinition> topologies = [topology, topologyPool.topologies].flatten()
+        def unblocked = false
+        topologies.each { topo ->
+            def lab = labService.createLab(topo) //can't create in parallel, hangs on Jenkins. why?
+            topo.setLabId(lab.labId)
+            TimeUnit.SECONDS.sleep(3) //container with topology needs some time to fully start, this is async
+            !unblocked && lockKeeper.removeFloodlightAccessRestrictions(floodlights*.region)
+            unblocked = true
 
-        //setup server42 configs according to topology description
-        topologies.each { TopologyDefinition topology ->
-            topology.getActiveServer42Switches().each { sw ->
+            //wait until topology is discovered
+            Wrappers.wait(TOPOLOGY_DISCOVERING_TIME) {
+                assert islandNorthbound.getAllLinks().findAll {
+                    it.state == IslChangeType.DISCOVERED
+                }.size() == topo.islsForActiveSwitches.size() * 2
+            }
+            //wait until switches are activated
+            Wrappers.wait(SWITCHES_ACTIVATION_TIME) {
+                assert islandNorthbound.getAllSwitches().findAll {
+                    it.state == SwitchChangeType.ACTIVATED
+                }.size() == topo.activeSwitches.size()
+            }
+
+            //setup server42 configs according to topology description
+            topo.getActiveServer42Switches().each { sw ->
                 northbound.updateSwitchProperties(sw.dpId, northbound.getSwitchProperties(sw.dpId).tap {
                     server42FlowRtt = sw.prop.server42FlowRtt
                     server42MacAddress = sw.prop.server42MacAddress
