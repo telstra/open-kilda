@@ -19,6 +19,7 @@ import click
 import mysql.connector
 import pyorient
 
+from . import model
 from . import orphaned
 from . import pull_mysql
 from . import pull_orient
@@ -37,6 +38,8 @@ def cli():
 @click.option('--orient-db-password', default='')
 @click.option('--time-start', type=click.types.DateTime())
 @click.option('--time-stop', type=click.types.DateTime())
+@click.option('--skip-flow-events', is_flag=True)
+@click.option('--skip-port-events', is_flag=True)
 @click.argument('database')
 @click.argument('stream_out', type=click.types.File(mode='wt', lazy=True))
 def history_pull_orientdb(database, stream_out, **options):
@@ -44,8 +47,9 @@ def history_pull_orientdb(database, stream_out, **options):
         options['orient_db_login'], options['orient_db_password'])
     orient_client = _make_orientdb_client(
         options['orient_db_host'], options['orient_db_port'], database, auth)
+    targets = _make_pull_targets(options)
     time_range = _make_time_range(options['time_start'], options['time_stop'])
-    pull_orient.orient_to_ndjson(orient_client, stream_out, time_range)
+    pull_orient.orient_to_ndjson(orient_client, stream_out, targets, time_range)
 
 
 @cli.command('pull-mysql')
@@ -55,6 +59,8 @@ def history_pull_orientdb(database, stream_out, **options):
 @click.option('--mysql-db-password', default='')
 @click.option('--time-start', type=click.types.DateTime())
 @click.option('--time-stop', type=click.types.DateTime())
+@click.option('--skip-flow-events', is_flag=True)
+@click.option('--skip-port-events', is_flag=True)
 @click.argument('database')
 @click.argument('stream_out', type=click.types.File(mode='wt', lazy=True))
 def history_pull_mysql(database, stream_out, **options):
@@ -62,8 +68,9 @@ def history_pull_mysql(database, stream_out, **options):
         options['mysql_db_login'], options['mysql_db_password'])
     mysql_client = _make_mysql_client(
         options['mysql_db_host'], options['mysql_db_port'], database, auth)
+    targets = _make_pull_targets(options)
     time_range = _make_time_range(options['time_start'], options['time_stop'])
-    pull_mysql.mysql_to_ndjson(mysql_client, stream_out, time_range)
+    pull_mysql.mysql_to_ndjson(mysql_client, stream_out, targets, time_range)
 
 
 @cli.command('push-orientdb')
@@ -116,6 +123,16 @@ def main():
     Entry point defined in setup.py
     """
     cli()
+
+
+def _make_pull_targets(options):
+    targets = set(model.PullTarget)
+    for name, entry in (
+            ('skip_flow_events', model.PullTarget.HISTORY_FLOW_EVENT),
+            ('skip_port_events', model.PullTarget.HISTORY_PORT_EVENT)):
+        if options[name]:
+            targets.remove(entry)
+    return targets
 
 
 def _make_orientdb_client(hostname, port, database, auth):
