@@ -93,6 +93,19 @@ filter {
     }
   }
 
+  if ![timeMillis] {
+     if [instant][epochSecond] {
+       if [instant][nanoOfSecond] {
+         ruby {
+           code => "event.set('timeMillis', (event.get('[instant][epochSecond]').to_i) * 1000 + (event.get('[instant][nanoOfSecond]') / 1000000).to_i)"
+         }
+       } else {
+         ruby {
+          code => "event.set('timeMillis', (event.get('[instant][epochSecond').to_i) * 1000)"
+         }
+       }
+     }
+  }
 }
 output {
 #  file {
