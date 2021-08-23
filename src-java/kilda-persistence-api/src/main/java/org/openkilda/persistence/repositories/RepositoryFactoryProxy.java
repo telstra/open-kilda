@@ -116,6 +116,11 @@ public class RepositoryFactoryProxy implements RepositoryFactory {
     }
 
     @Override
+    public FlowStatsRepository createFlowStatsRepository() {
+        return resolve(FlowStatsRepository.class).createFlowStatsRepository();
+    }
+
+    @Override
     public SwitchConnectedDeviceRepository createSwitchConnectedDeviceRepository() {
         return resolve(SwitchConnectedDeviceRepository.class).createSwitchConnectedDeviceRepository();
     }

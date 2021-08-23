@@ -30,6 +30,7 @@ import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowStats;
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
@@ -37,6 +38,7 @@ import org.openkilda.persistence.dummy.FlowDefaults;
 import org.openkilda.persistence.dummy.PersistenceDummyEntityFactory;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowStatsRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.server42.messaging.FlowDirection;
 import org.openkilda.stubs.ManualClock;
@@ -67,6 +69,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
 
     private PersistenceDummyEntityFactory dummyFactory;
     private FlowRepository flowRepository;
+    private FlowStatsRepository flowStatsRepository;
     private KildaFeatureTogglesRepository featureTogglesRepository;
     private ActionService service;
     private Flow flow;
@@ -82,6 +85,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
         dummyFactory = new PersistenceDummyEntityFactory(persistenceManager, flowDefaults);
 
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        flowStatsRepository = persistenceManager.getRepositoryFactory().createFlowStatsRepository();
         featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
         featureTogglesRepository.add(KildaFeatureToggles.builder().flowLatencyMonitoringReactions(true).build());
 
@@ -112,10 +116,10 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
 
         assertEquals(2, service.fsms.values().size());
         assertTrue(service.fsms.values().stream().allMatch(fsm -> HEALTHY.equals(fsm.getCurrentState())));
-        Flow actual = flowRepository.findById(flow.getFlowId())
+        FlowStats actual = flowStatsRepository.findByFlowId(flow.getFlowId())
                 .orElseThrow(() -> new IllegalStateException("Flow not found"));
-        assertEquals(latency.getNano(), actual.getForwardLatency());
-        assertEquals(latency.minus(NANOSECOND).getNano(), actual.getReverseLatency());
+        assertEquals(latency.getNano(), actual.getForwardLatency().intValue());
+        assertEquals(latency.minus(NANOSECOND).getNano(), actual.getReverseLatency().intValue());
 
         verifyNoMoreInteractions(carrier);
     }
@@ -139,10 +143,10 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
 
         assertEquals(2, service.fsms.values().size());
         assertTrue(service.fsms.values().stream().allMatch(fsm -> TIER_1_FAILED.equals(fsm.getCurrentState())));
-        Flow actual = flowRepository.findById(flow.getFlowId())
+        FlowStats actual = flowStatsRepository.findByFlowId(flow.getFlowId())
                 .orElseThrow(() -> new IllegalStateException("Flow not found"));
-        assertEquals(latency.getNano(), actual.getForwardLatency());
-        assertEquals(latency.minus(NANOSECOND).getNano(), actual.getReverseLatency());
+        assertEquals(latency.getNano(), actual.getForwardLatency().intValue());
+        assertEquals(latency.minus(NANOSECOND).getNano(), actual.getReverseLatency().intValue());
 
         verify(carrier, times(2)).sendFlowRerouteRequest(flow.getFlowId());
         verifyNoMoreInteractions(carrier);
@@ -173,10 +177,10 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
 
         assertEquals(2, service.fsms.values().size());
         assertTrue(service.fsms.values().stream().allMatch(fsm -> TIER_1_FAILED.equals(fsm.getCurrentState())));
-        Flow actual = flowRepository.findById(flow.getFlowId())
+        FlowStats actual = flowStatsRepository.findByFlowId(flow.getFlowId())
                 .orElseThrow(() -> new IllegalStateException("Flow not found"));
-        assertEquals(latency.getNano(), actual.getForwardLatency());
-        assertEquals(latency.minus(NANOSECOND).getNano(), actual.getReverseLatency());
+        assertEquals(latency.getNano(), actual.getForwardLatency().intValue());
+        assertEquals(latency.minus(NANOSECOND).getNano(), actual.getReverseLatency().intValue());
 
         verifyNoMoreInteractions(carrier);
     }
@@ -206,10 +210,10 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
 
         assertEquals(2, service.fsms.values().size());
         assertTrue(service.fsms.values().stream().allMatch(fsm -> TIER_1_FAILED.equals(fsm.getCurrentState())));
-        Flow actual = flowRepository.findById(flow.getFlowId())
+        FlowStats actual = flowStatsRepository.findByFlowId(flow.getFlowId())
                 .orElseThrow(() -> new IllegalStateException("Flow not found"));
-        assertEquals(latency.getNano(), actual.getForwardLatency());
-        assertEquals(latency.minus(NANOSECOND).getNano(), actual.getReverseLatency());
+        assertEquals(latency.getNano(), actual.getForwardLatency().intValue());
+        assertEquals(latency.minus(NANOSECOND).getNano(), actual.getReverseLatency().intValue());
 
         verifyNoMoreInteractions(carrier);
     }
@@ -239,10 +243,10 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
 
         assertEquals(2, service.fsms.values().size());
         assertTrue(service.fsms.values().stream().allMatch(fsm -> TIER_2_FAILED.equals(fsm.getCurrentState())));
-        Flow actual = flowRepository.findById(flow.getFlowId())
+        FlowStats actual = flowStatsRepository.findByFlowId(flow.getFlowId())
                 .orElseThrow(() -> new IllegalStateException("Flow not found"));
-        assertEquals(latency.getNano(), actual.getForwardLatency());
-        assertEquals(latency.minus(NANOSECOND).getNano(), actual.getReverseLatency());
+        assertEquals(latency.getNano(), actual.getForwardLatency().intValue());
+        assertEquals(latency.minus(NANOSECOND).getNano(), actual.getReverseLatency().intValue());
 
         verify(carrier, times(2)).sendFlowRerouteRequest(flow.getFlowId());
         verifyNoMoreInteractions(carrier);
@@ -273,10 +277,10 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
 
         assertEquals(2, service.fsms.values().size());
         assertTrue(service.fsms.values().stream().allMatch(fsm -> TIER_2_FAILED.equals(fsm.getCurrentState())));
-        Flow actual = flowRepository.findById(flow.getFlowId())
+        FlowStats actual = flowStatsRepository.findByFlowId(flow.getFlowId())
                 .orElseThrow(() -> new IllegalStateException("Flow not found"));
-        assertEquals(latency.getNano(), actual.getForwardLatency());
-        assertEquals(latency.minus(NANOSECOND).getNano(), actual.getReverseLatency());
+        assertEquals(latency.getNano(), actual.getForwardLatency().intValue());
+        assertEquals(latency.minus(NANOSECOND).getNano(), actual.getReverseLatency().intValue());
 
         verifyNoMoreInteractions(carrier);
     }
@@ -301,10 +305,10 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
 
         assertEquals(2, service.fsms.values().size());
         assertTrue(service.fsms.values().stream().allMatch(fsm -> HEALTHY.equals(fsm.getCurrentState())));
-        Flow actual = flowRepository.findById(flow.getFlowId())
+        FlowStats actual = flowStatsRepository.findByFlowId(flow.getFlowId())
                 .orElseThrow(() -> new IllegalStateException("Flow not found"));
-        assertEquals(healthy.getNano(), actual.getForwardLatency());
-        assertEquals(healthy.minus(NANOSECOND).getNano(), actual.getReverseLatency());
+        assertEquals(healthy.getNano(), actual.getForwardLatency().intValue());
+        assertEquals(healthy.minus(NANOSECOND).getNano(), actual.getReverseLatency().intValue());
 
         verify(carrier, times(2)).sendFlowSyncRequest(flow.getFlowId());
         verifyNoMoreInteractions(carrier);

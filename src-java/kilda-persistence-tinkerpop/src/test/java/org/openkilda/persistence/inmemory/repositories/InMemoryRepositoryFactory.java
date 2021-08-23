@@ -23,6 +23,7 @@ import org.openkilda.persistence.repositories.ExclusionIdRepository;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowStatsRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
@@ -118,6 +119,11 @@ public class InMemoryRepositoryFactory extends FermaRepositoryFactory {
     @Override
     public SwitchPropertiesRepository createSwitchPropertiesRepository() {
         return new InMemorySwitchPropertiesRepository(implementation);
+    }
+
+    @Override
+    public FlowStatsRepository createFlowStatsRepository() {
+        return new InMemoryFlowStatsRepository(implementation);
     }
 
     @Override
