@@ -13,16 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.converter;
+package org.openkilda.messaging.nbtopology.response;
 
-import org.openkilda.messaging.swmanager.response.LagPortResponse;
-import org.openkilda.northbound.dto.v2.switches.LagPortDto;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Value;
 
-import org.mapstruct.Mapper;
+import java.io.Serializable;
+import java.util.List;
 
-@Mapper(componentModel = "spring")
-public interface LagPortMapper {
-    LagPortDto map(LagPortResponse response);
+@Value
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class LagPortDto implements Serializable {
+    private static final long serialVersionUID = 998335534425508496L;
 
-    LagPortDto map(org.openkilda.messaging.nbtopology.response.LagPortDto response);
+    private int logicalPortNumber;
+    private List<Integer> portNumbers;
 }

@@ -302,4 +302,6 @@ public interface SwitchService {
     CompletableFuture<SwitchConnectionsResponse> getSwitchConnections(SwitchId switchId);
 
     CompletableFuture<LagPortDto> createLag(SwitchId switchId, CreateLagPortDto createLagPortDto);
+
+    CompletableFuture<List<LagPortDto>> getLagPorts(SwitchId switchId);
 }
