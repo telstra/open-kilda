@@ -21,6 +21,7 @@ import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
 import org.openkilda.wfm.topology.switchmanager.error.InvalidDataException;
+import org.openkilda.wfm.topology.switchmanager.error.LagPortNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
 
 import java.util.List;
@@ -38,4 +39,7 @@ public interface LagPortOperationService {
     String getSwitchIpAddress(Switch sw) throws InvalidDataException, InconsistentDataException;
 
     Switch getSwitch(SwitchId switchId) throws SwitchNotFoundException;
+
+    void validateLagBeforeDelete(SwitchId switchId, int logicalPortNumber)
+            throws LagPortNotFoundException, InvalidDataException;
 }

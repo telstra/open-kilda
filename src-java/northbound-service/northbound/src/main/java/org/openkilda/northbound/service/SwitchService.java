@@ -304,4 +304,6 @@ public interface SwitchService {
     CompletableFuture<LagPortDto> createLag(SwitchId switchId, CreateLagPortDto createLagPortDto);
 
     CompletableFuture<List<LagPortDto>> getLagPorts(SwitchId switchId);
+
+    CompletableFuture<LagPortDto> deleteLagPort(SwitchId switchId, Integer logicalPortNumber);
 }

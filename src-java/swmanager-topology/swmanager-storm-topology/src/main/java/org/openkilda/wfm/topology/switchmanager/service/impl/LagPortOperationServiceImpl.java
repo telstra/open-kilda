@@ -40,6 +40,7 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
 import org.openkilda.wfm.topology.switchmanager.error.InvalidDataException;
+import org.openkilda.wfm.topology.switchmanager.error.LagPortNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.service.LagPortOperationService;
 
@@ -195,5 +196,20 @@ public class LagPortOperationServiceImpl implements LagPortOperationService {
     @Override
     public Switch getSwitch(SwitchId switchId) throws SwitchNotFoundException {
         return switchRepository.findById(switchId).orElseThrow(() -> new SwitchNotFoundException(switchId));
+    }
+
+    @Override
+    public void validateLagBeforeDelete(SwitchId switchId, int logicalPortNumber)
+            throws LagPortNotFoundException, InvalidDataException {
+        if (!lagLogicalPortRepository.findBySwitchIdAndPortNumber(switchId, logicalPortNumber).isPresent()) {
+            throw new LagPortNotFoundException(switchId, logicalPortNumber);
+        }
+
+        List<String> flowIds = flowRepository.findByEndpoint(switchId, logicalPortNumber)
+                .stream().map(Flow::getFlowId).collect(Collectors.toList());
+        if (!flowIds.isEmpty()) {
+            throw new InvalidDataException(format("Couldn't delete LAG port '%d' from switch %s because flows '%s' "
+                    + "use it as endpoint", logicalPortNumber, switchId, flowIds));
+        }
     }
 }

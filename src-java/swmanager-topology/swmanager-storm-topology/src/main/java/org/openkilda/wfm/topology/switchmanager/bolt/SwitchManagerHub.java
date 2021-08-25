@@ -31,6 +31,7 @@ import org.openkilda.messaging.info.flow.FlowInstallResponse;
 import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.messaging.info.flow.FlowRemoveResponse;
 import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
+import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterData;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
@@ -45,6 +46,7 @@ import org.openkilda.messaging.info.switches.ModifyGroupResponse;
 import org.openkilda.messaging.info.switches.ModifyMeterResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.swmanager.request.CreateLagPortRequest;
+import org.openkilda.messaging.swmanager.request.DeleteLagPortRequest;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
@@ -56,6 +58,7 @@ import org.openkilda.wfm.topology.switchmanager.StreamType;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 import org.openkilda.wfm.topology.switchmanager.service.CreateLagPortService;
+import org.openkilda.wfm.topology.switchmanager.service.DeleteLagPortService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchRuleService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchSyncService;
@@ -63,6 +66,7 @@ import org.openkilda.wfm.topology.switchmanager.service.SwitchValidateService;
 import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchRuleServiceImpl;
 import org.openkilda.wfm.topology.switchmanager.service.impl.ValidationServiceImpl;
 import org.openkilda.wfm.topology.switchmanager.service.impl.fsmhandlers.CreateLagPortServiceImpl;
+import org.openkilda.wfm.topology.switchmanager.service.impl.fsmhandlers.DeleteLagPortServiceImpl;
 import org.openkilda.wfm.topology.switchmanager.service.impl.fsmhandlers.SwitchSyncServiceImpl;
 import org.openkilda.wfm.topology.switchmanager.service.impl.fsmhandlers.SwitchValidateServiceImpl;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -91,6 +95,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     private transient SwitchSyncService syncService;
     private transient SwitchRuleService switchRuleService;
     private transient CreateLagPortService createLagPortService;
+    private transient DeleteLagPortService deleteLagPortService;
 
     private LifecycleEvent deferredShutdownEvent;
 
@@ -115,6 +120,9 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
         createLagPortService = new CreateLagPortServiceImpl(this, persistenceManager.getRepositoryFactory(),
                 persistenceManager.getTransactionManager(), topologyConfig.getBfdPortOffset(),
                 topologyConfig.getBfdPortMaxNumber(), topologyConfig.getLagPortOffset());
+        deleteLagPortService = new DeleteLagPortServiceImpl(this, persistenceManager.getRepositoryFactory(),
+                persistenceManager.getTransactionManager(), topologyConfig.getBfdPortOffset(),
+                topologyConfig.getBfdPortMaxNumber(), topologyConfig.getLagPortOffset());
     }
 
     @Override
@@ -136,6 +144,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
             switchRuleService.installRules(key, (SwitchRulesInstallRequest) data);
         } else if (data instanceof CreateLagPortRequest) {
             createLagPortService.handleCreateLagRequest(key, (CreateLagPortRequest) data);
+        } else if (data instanceof DeleteLagPortRequest) {
+            deleteLagPortService.handleDeleteLagRequest(key, (DeleteLagPortRequest) data);
         } else {
             log.warn("Receive unexpected CommandMessage for key {}: {}", key, data);
         }
@@ -189,6 +199,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                 switchRuleService.rulesResponse(key, (SwitchRulesResponse) data);
             } else if (data instanceof CreateLogicalPortResponse) {
                 createLagPortService.handleGrpcResponse(key, (CreateLogicalPortResponse) data);
+            } else if (data instanceof DeleteLogicalPortResponse) {
+                deleteLagPortService.handleGrpcResponse(key, (DeleteLogicalPortResponse) data);
             } else {
                 log.warn("Receive unexpected InfoData for key {}: {}", key, data);
             }
@@ -197,6 +209,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
             validateService.handleTaskError(key, (ErrorMessage) message);
             syncService.handleTaskError(key, (ErrorMessage) message);
             createLagPortService.handleTaskError(key, (ErrorMessage) message);
+            deleteLagPortService.handleTaskError(key, (ErrorMessage) message);
         }
     }
 
@@ -206,12 +219,13 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
         validateService.handleTaskTimeout(key);
         syncService.handleTaskTimeout(key);
         createLagPortService.handleTaskTimeout(key);
+        deleteLagPortService.handleTaskTimeout(key);
     }
 
     @Override
     protected boolean deactivate(LifecycleEvent event) {
         if (validateService.deactivate() && syncService.deactivate() && switchRuleService.deactivate()
-                && createLagPortService.deactivate()) {
+                && createLagPortService.deactivate() && deleteLagPortService.deactivate()) {
             return true;
         }
         deferredShutdownEvent = event;
@@ -224,6 +238,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
         syncService.activate();
         switchRuleService.activate();
         createLagPortService.activate();
+        deleteLagPortService.activate();
     }
 
     @Override
@@ -257,7 +272,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
         if (validateService.isAllOperationsCompleted()
                 && syncService.isAllOperationsCompleted()
                 && switchRuleService.isAllOperationsCompleted()
-                && createLagPortService.isAllOperationsCompleted()) {
+                && createLagPortService.isAllOperationsCompleted()
+                && deleteLagPortService.isAllOperationsCompleted()) {
             getOutput().emit(ZOOKEEPER_STREAM_ID, new Values(deferredShutdownEvent, getCommandContext()));
             deferredShutdownEvent = null;
         }

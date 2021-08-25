@@ -1,0 +1,21 @@
+@startuml
+title LAG port delete FSM
+
+[*] --> START
+
+START --> CREATE_GRPC_COMMAND : next
+START --> FINISHED_WITH_ERROR : error
+
+CREATE_GRPC_COMMAND --> REMOVE_LAG_FROM_DB : lag_removed
+CREATE_GRPC_COMMAND --> FINISHED_WITH_ERROR : error
+CREATE_GRPC_COMMAND : enter / validate delete LAG port request, create GRPC command
+
+REMOVE_LAG_FROM_DB --> FINISHED : next
+REMOVE_LAG_FROM_DB --> FINISHED_WITH_ERROR : error
+REMOVE_LAG_FROM_DB : enter / remove LAG port from DB
+
+FINISHED : enter / send-successful-response
+
+FINISHED_WITH_ERROR : enter / send-error-response
+
+@enduml

@@ -1,0 +1,33 @@
+@startuml
+title LAG port delete
+
+actor User
+boundary Northbound as NB
+participant SwitchManager << Hub >>
+participant SpeakerWorker
+participant GRPC
+database DB
+
+User -> NB : Delete LAG
+
+activate NB
+NB -> SwitchManager : DeleteLagPortRequest
+activate SwitchManager
+SwitchManager -> SwitchManager : Request validation
+SwitchManager -> DB : Delete LAG from DB
+DB -> SwitchManager
+SwitchManager -> SpeakerWorker : DeleteLogicalPortRequest
+activate SpeakerWorker
+SpeakerWorker -> GRPC : DeleteLogicalPortRequest
+deactivate SpeakerWorker
+GRPC -> GRPC : Removing LAG\nport from switch
+GRPC -> SpeakerWorker : DeleteLogicalPortResponse
+activate SpeakerWorker
+SpeakerWorker -> SwitchManager : DeleteLogicalPortResponse
+deactivate SpeakerWorker
+SwitchManager ->> NB: LagPortResponse
+deactivate SwitchManager
+NB -> User: LagPortDto
+deactivate NB
+
+@enduml

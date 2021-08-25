@@ -38,6 +38,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -210,5 +211,19 @@ public class SwitchControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<LagPortDto>> getLagPorts(@PathVariable("switch_id") SwitchId switchId) {
         return switchService.getLagPorts(switchId);
+    }
+
+    /**
+     * Delete LAG logical port.
+     *
+     * @param switchId the switch
+     * @param logicalPortNumber the switch
+     */
+    @ApiOperation(value = "Delete LAG logical port", response = LagPortDto.class)
+    @DeleteMapping(value = "/{switch_id}/lags/{logical_port_number}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<LagPortDto> deleteLagPort(@PathVariable("switch_id") SwitchId switchId,
+                                                   @PathVariable("logical_port_number") Integer logicalPortNumber) {
+        return switchService.deleteLagPort(switchId, logicalPortNumber);
     }
 }
