@@ -1,0 +1,80 @@
+@startuml
+title Y-Flow FSM Integration with Flow services
+
+boundary Northbound
+box "Flow HS Topology" #LightGreen
+    participant YFlowCreateHub
+    participant YFlowCreateService
+    participant YFlowCreateFSM
+    participant FlowCreateService
+    participant FlowCreateFSM
+    participant SpeakerWorker
+end box
+
+Northbound -> YFlowCreateHub : YFlowUpdateRequest
+activate YFlowCreateHub
+YFlowCreateHub -> YFlowCreateService : handleRequest(...)
+deactivate YFlowCreateHub
+activate YFlowCreateService
+YFlowCreateService -> YFlowCreateFSM : create an FSM
+deactivate YFlowCreateService
+activate YFlowCreateFSM
+YFlowCreateFSM -> YFlowCreateFSM : Prepare the y-flow
+YFlowCreateFSM -> FlowCreateService : Initiate the flow creation
+deactivate YFlowCreateFSM
+activate FlowCreateService
+FlowCreateService -> FlowCreateFSM : create an FSM
+deactivate FlowCreateService
+activate FlowCreateFSM
+FlowCreateFSM -> FlowCreateFSM : prepare the flow
+FlowCreateFSM -> YFlowCreateService : notify on passed validation
+activate YFlowCreateService
+YFlowCreateHub <- YFlowCreateService : sendNorthboundResponse(...)
+deactivate YFlowCreateService
+activate YFlowCreateHub
+Northbound <- YFlowCreateHub : Y-flow creation is in progress
+deactivate YFlowCreateHub
+
+YFlowCreateHub <- FlowCreateFSM : sendSpeakerRequest(...)
+deactivate FlowCreateFSM
+activate YFlowCreateHub
+YFlowCreateHub -> SpeakerWorker : send rules command
+deactivate YFlowCreateHub
+
+YFlowCreateHub <- SpeakerWorker : onWorkerResponse(...)
+activate YFlowCreateHub
+YFlowCreateHub -> FlowCreateService : handleAsyncResponse(...)
+deactivate YFlowCreateHub
+activate FlowCreateService
+FlowCreateService -> FlowCreateFSM : forward the response
+deactivate FlowCreateService
+activate FlowCreateFSM
+FlowCreateFSM -> FlowCreateFSM : complete the flow creation
+
+FlowCreateFSM -> YFlowCreateService : notify on completed flow creation
+deactivate FlowCreateFSM
+activate YFlowCreateService
+YFlowCreateService -> YFlowCreateFSM : resume the y-flow creation
+deactivate YFlowCreateService
+activate YFlowCreateFSM
+
+YFlowCreateHub <- YFlowCreateFSM : sendSpeakerRequest(...)
+deactivate YFlowCreateFSM
+activate YFlowCreateHub
+YFlowCreateHub -> SpeakerWorker : send rules command
+deactivate YFlowCreateHub
+
+YFlowCreateHub <- SpeakerWorker : onWorkerResponse(...)
+activate YFlowCreateHub
+YFlowCreateHub -> YFlowCreateService : handleAsyncResponse(...)
+deactivate YFlowCreateHub
+activate YFlowCreateService
+YFlowCreateService -> YFlowCreateFSM : forward the response
+deactivate YFlowCreateService
+activate YFlowCreateFSM
+
+YFlowCreateFSM -> YFlowCreateFSM : complete the y-flow creation
+
+deactivate YFlowCreateFSM
+
+@enduml
