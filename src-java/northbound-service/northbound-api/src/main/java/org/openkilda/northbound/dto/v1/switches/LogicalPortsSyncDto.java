@@ -15,7 +15,6 @@
 
 package org.openkilda.northbound.dto.v1.switches;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
@@ -28,11 +27,11 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class LogicalPortInfoDto {
-    private Integer logicalPortNumber;
-    private String type;
-    private List<Integer> physicalPorts;
-    private LogicalPortMisconfiguredInfoDto actual;
-    private LogicalPortMisconfiguredInfoDto expected;
+public class LogicalPortsSyncDto {
+    private List<LogicalPortInfoDto> missing;
+    private List<LogicalPortInfoDto> misconfigured;
+    private List<LogicalPortInfoDto> proper;
+    private List<LogicalPortInfoDto> excess;
+    private List<LogicalPortInfoDto> installed;
+    private List<LogicalPortInfoDto> removed;
 }

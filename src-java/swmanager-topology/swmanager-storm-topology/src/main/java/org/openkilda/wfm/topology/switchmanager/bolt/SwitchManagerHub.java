@@ -202,8 +202,10 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                 switchRuleService.rulesResponse(key, (SwitchRulesResponse) data);
             } else if (data instanceof CreateLogicalPortResponse) {
                 createLagPortService.handleGrpcResponse(key, (CreateLogicalPortResponse) data);
+                syncService.handleCreateLogicalPortResponse(key);
             } else if (data instanceof DeleteLogicalPortResponse) {
                 deleteLagPortService.handleGrpcResponse(key, (DeleteLogicalPortResponse) data);
+                syncService.handleDeleteLogicalPortResponse(key);
             } else {
                 log.warn("Receive unexpected InfoData for key {}: {}", key, data);
             }

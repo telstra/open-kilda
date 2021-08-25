@@ -30,11 +30,14 @@ import org.openkilda.messaging.command.flow.ModifyFlowMeterForSwitchManagerReque
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.ReinstallServer42FlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.messaging.command.grpc.CreateLogicalPortRequest;
+import org.openkilda.messaging.command.grpc.DeleteLogicalPortRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowMatchField;
+import org.openkilda.messaging.info.switches.LogicalPortInfoEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -42,11 +45,13 @@ import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.GroupId;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.MirrorConfig.MirrorConfigData;
 import org.openkilda.model.MirrorGroup;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.Cookie;
@@ -60,10 +65,13 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.service.FlowCommandFactory;
+import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
+import org.openkilda.wfm.topology.switchmanager.mappers.LogicalPortMapper;
 import org.openkilda.wfm.topology.switchmanager.model.GroupInstallContext;
 import org.openkilda.wfm.topology.switchmanager.service.CommandBuilder;
 
@@ -94,12 +102,14 @@ public class CommandBuilderImpl implements CommandBuilder {
     private final MirrorGroupRepository mirrorGroupRepository;
     private final FlowCommandFactory flowCommandFactory = new FlowCommandFactory();
     private final FlowResourcesManager flowResourcesManager;
+    private final SwitchRepository switchRepository;
 
     public CommandBuilderImpl(PersistenceManager persistenceManager, FlowResourcesConfig flowResourcesConfig) {
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
         this.mirrorGroupRepository = persistenceManager.getRepositoryFactory().createMirrorGroupRepository();
+        this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
     }
 
@@ -454,6 +464,36 @@ public class CommandBuilderImpl implements CommandBuilder {
                 });
 
         return groupInstallContexts;
+    }
+
+    @Override
+    public List<CreateLogicalPortRequest> buildLogicalPortInstallCommands(
+            SwitchId switchId, List<LogicalPortInfoEntry> missingLogicalPorts) {
+        String ipAddress = getSwitchIpAddress(switchId);
+
+        List<CreateLogicalPortRequest> requests = new ArrayList<>();
+        for (LogicalPortInfoEntry port : missingLogicalPorts) {
+            requests.add(new CreateLogicalPortRequest(
+                    ipAddress, port.getPhysicalPorts(), port.getLogicalPortNumber(),
+                    LogicalPortMapper.INSTANCE.map(port.getType())));
+        }
+        return requests;
+    }
+
+    @Override
+    public List<DeleteLogicalPortRequest> buildLogicalPortDeleteCommands(
+            SwitchId switchId, List<Integer> excessLogicalPorts) {
+        String ipAddress = getSwitchIpAddress(switchId);
+
+        return excessLogicalPorts.stream()
+                .map(port -> new DeleteLogicalPortRequest(ipAddress, port))
+                .collect(Collectors.toList());
+    }
+
+    private String getSwitchIpAddress(SwitchId switchId) {
+        Switch sw = switchRepository.findById(switchId).orElseThrow(() -> new SwitchNotFoundException(switchId));
+        return Optional.ofNullable(sw.getSocketAddress()).map(IpSocketAddress::getAddress).orElseThrow(
+                () -> new IllegalStateException(format("Unable to get IP address of switch %s", switchId)));
     }
 
     @VisibleForTesting

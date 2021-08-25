@@ -22,6 +22,8 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchS
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.GROUPS_INSTALLED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.GROUPS_MODIFIED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.GROUPS_REMOVED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.LOGICAL_PORT_INSTALLED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.LOGICAL_PORT_REMOVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.METERS_REMOVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.MISCONFIGURED_METERS_MODIFIED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.MISCONFIGURED_RULES_REINSTALLED;
@@ -32,6 +34,7 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchS
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_EXCESS_METERS;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_EXCESS_RULES;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_GROUP_MIRROR_CONFIGS;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_LOGICAL_PORTS_COMMANDS;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_MISCONFIGURED_METERS;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_MISCONFIGURED_RULES;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_MISSING_RULES;
@@ -39,6 +42,7 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchS
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.FINISHED_WITH_ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.GROUPS_COMMANDS_SEND;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.INITIALIZED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.LOGICAL_PORTS_COMMANDS_SEND;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.METERS_COMMANDS_SEND;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.RULES_COMMANDS_SEND;
 
@@ -48,6 +52,8 @@ import org.openkilda.messaging.command.flow.ModifyDefaultMeterForSwitchManagerRe
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
+import org.openkilda.messaging.command.grpc.CreateLogicalPortRequest;
+import org.openkilda.messaging.command.grpc.DeleteLogicalPortRequest;
 import org.openkilda.messaging.command.switches.DeleteGroupRequest;
 import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.InstallGroupRequest;
@@ -61,6 +67,8 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.messaging.info.switches.GroupInfoEntry;
 import org.openkilda.messaging.info.switches.GroupSyncEntry;
+import org.openkilda.messaging.info.switches.LogicalPortInfoEntry;
+import org.openkilda.messaging.info.switches.LogicalPortsSyncEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MetersSyncEntry;
 import org.openkilda.messaging.info.switches.RulesSyncEntry;
@@ -75,6 +83,7 @@ import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEven
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState;
 import org.openkilda.wfm.topology.switchmanager.model.GroupInstallContext;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
+import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
@@ -87,6 +96,7 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -105,7 +115,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     private final ValidationResult validationResult;
     private List<Long> installedRulesCookies;
     private List<Long> removedFlowRulesCookies;
-    private List<Long> removedDefaultRulesCookies = new ArrayList<>();
+    private final List<Long> removedDefaultRulesCookies = new ArrayList<>();
 
     private List<BaseFlow> missingRules = emptyList();
     private List<ReinstallDefaultFlowForSwitchManagerRequest> misconfiguredRules = emptyList();
@@ -115,6 +125,8 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     private List<GroupInstallContext> missingGroups = emptyList();
     private List<GroupInstallContext> misconfiguredGroups = emptyList();
     private List<Integer> excessGroups = emptyList();
+    private List<CreateLogicalPortRequest> missingLogicalPorts = emptyList();
+    private List<DeleteLogicalPortRequest> excessLogicalPorts = emptyList();
 
     private int missingRulesPendingResponsesCount = 0;
     private int excessRulesPendingResponsesCount = 0;
@@ -124,6 +136,8 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     private int missingGroupsPendingResponsesCount = 0;
     private int misconfiguredGroupsPendingResponsesCount = 0;
     private int excessGroupsPendingResponsesCount = 0;
+    private int missingLogicalPortsPendingResponsesCount = 0;
+    private int excessLogicalPortsPendingResponsesCount = 0;
 
     public SwitchSyncFsm(SwitchManagerCarrier carrier, String key, CommandBuilder commandBuilder,
                          SwitchValidateRequest request, ValidationResult validationResult) {
@@ -183,7 +197,23 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         builder.externalTransition().from(COMPUTE_GROUP_MIRROR_CONFIGS).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(COMPUTE_GROUP_MIRROR_CONFIGS).to(GROUPS_COMMANDS_SEND).on(NEXT)
+        builder.externalTransition().from(COMPUTE_GROUP_MIRROR_CONFIGS).to(COMPUTE_LOGICAL_PORTS_COMMANDS).on(NEXT)
+                .callMethod("computeLogicalPortsCommands");
+        builder.externalTransition().from(COMPUTE_LOGICAL_PORTS_COMMANDS).to(FINISHED_WITH_ERROR).on(ERROR)
+                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
+
+        builder.externalTransition().from(COMPUTE_LOGICAL_PORTS_COMMANDS).to(LOGICAL_PORTS_COMMANDS_SEND).on(NEXT)
+                .callMethod("sendLogicalPortsCommandsCommands");
+        builder.internalTransition().within(LOGICAL_PORTS_COMMANDS_SEND).on(LOGICAL_PORT_INSTALLED)
+                .callMethod("logicalPortInstalled");
+        builder.internalTransition().within(LOGICAL_PORTS_COMMANDS_SEND).on(LOGICAL_PORT_REMOVED)
+                .callMethod("logicalPortRemoved");
+        builder.externalTransition().from(LOGICAL_PORTS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(TIMEOUT)
+                .callMethod(COMMANDS_PROCESSING_FAILED_BY_TIMEOUT_METHOD_NAME);
+        builder.externalTransition().from(LOGICAL_PORTS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(ERROR)
+                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
+
+        builder.externalTransition().from(LOGICAL_PORTS_COMMANDS_SEND).to(GROUPS_COMMANDS_SEND).on(NEXT)
                 .callMethod("sendGroupsCommands");
         builder.internalTransition().within(GROUPS_COMMANDS_SEND).on(GROUPS_INSTALLED).callMethod("groupsInstalled");
         builder.internalTransition().within(GROUPS_COMMANDS_SEND).on(GROUPS_MODIFIED).callMethod("groupsModified");
@@ -444,6 +474,81 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         continueIfMetersCommandsDone();
     }
 
+    protected void computeLogicalPortsCommands(SwitchSyncState from, SwitchSyncState to,
+                                               SwitchSyncEvent event, Object context) {
+        List<LogicalPortInfoEntry> missingPorts = Optional.ofNullable(validationResult)
+                .map(ValidationResult::getValidateLogicalPortsResult)
+                .map(ValidateLogicalPortsResult::getMissingLogicalPorts)
+                .orElse(emptyList());
+        if (!missingPorts.isEmpty()) {
+            log.info("Compute logical port commands to install logical ports (switch={}, key={})", switchId, key);
+            try {
+                missingLogicalPorts = commandBuilder.buildLogicalPortInstallCommands(switchId, missingPorts);
+            } catch (Exception e) {
+                sendException(e);
+            }
+        }
+
+        List<Integer> excessPortNumbers = Optional.ofNullable(validationResult)
+                .map(ValidationResult::getValidateLogicalPortsResult)
+                .map(ValidateLogicalPortsResult::getExcessLogicalPorts)
+                .orElse(emptyList())
+                .stream()
+                .map(LogicalPortInfoEntry::getLogicalPortNumber)
+                .collect(Collectors.toList());
+        if (request.isRemoveExcess() && !excessPortNumbers.isEmpty()) {
+            log.info("Compute logical port commands to remove logical ports (switch={}, key={})", switchId, key);
+            try {
+                excessLogicalPorts = commandBuilder.buildLogicalPortDeleteCommands(switchId, excessPortNumbers);
+            } catch (Exception e) {
+                sendException(e);
+            }
+        }
+    }
+
+    protected void sendLogicalPortsCommandsCommands(SwitchSyncState from, SwitchSyncState to,
+                                               SwitchSyncEvent event, Object context) {
+        if (missingLogicalPorts.isEmpty() && excessLogicalPorts.isEmpty()) {
+            log.info("Nothing to do with logical ports (switch={}, key={})", switchId, key);
+            fire(NEXT);
+        }
+
+        if (!missingLogicalPorts.isEmpty()) {
+            log.info("Request to install logical ports has been sent (switch={}, key={})", switchId, key);
+            missingLogicalPortsPendingResponsesCount = missingLogicalPorts.size();
+
+            for (CreateLogicalPortRequest createRequest : missingLogicalPorts) {
+                carrier.sendCommandToSpeaker(key, createRequest);
+            }
+        }
+
+        if (!excessLogicalPorts.isEmpty()) {
+            log.info("Request to remove logical ports has been sent (switch={}, key={})", switchId, key);
+            excessLogicalPortsPendingResponsesCount = excessLogicalPorts.size();
+
+            for (DeleteLogicalPortRequest deleteRequest : excessLogicalPorts) {
+                carrier.sendCommandToSpeaker(key, deleteRequest);
+            }
+        }
+
+        continueIfLogicalPortsSynchronized();
+    }
+
+    protected void logicalPortInstalled(SwitchSyncState from, SwitchSyncState to,
+                                        SwitchSyncEvent event, Object context) {
+        log.info("Logical port installed (switch={}, key={})", switchId, key);
+        missingLogicalPortsPendingResponsesCount--;
+        continueIfLogicalPortsSynchronized();
+
+    }
+
+    protected void logicalPortRemoved(SwitchSyncState from, SwitchSyncState to,
+                                      SwitchSyncEvent event, Object context) {
+        log.info("Logical port removed (switch={}, key={})", switchId, key);
+        excessLogicalPortsPendingResponsesCount--;
+        continueIfLogicalPortsSynchronized();
+    }
+
     protected void computeGroupMirrorConfigs(SwitchSyncState from, SwitchSyncState to,
                                              SwitchSyncEvent event, Object context) {
 
@@ -561,6 +666,12 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         }
     }
 
+    private void continueIfLogicalPortsSynchronized() {
+        if (missingLogicalPortsPendingResponsesCount == 0 && excessLogicalPortsPendingResponsesCount == 0) {
+            fire(NEXT);
+        }
+    }
+
     protected void commandsProcessingFailedByTimeout(SwitchSyncState from, SwitchSyncState to,
                                                      SwitchSyncEvent event, Object context) {
         ErrorData errorData = new ErrorData(ErrorType.OPERATION_TIMED_OUT, "Commands processing failed by timeout",
@@ -576,6 +687,8 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         ValidateRulesResult validateRulesResult = validationResult.getValidateRulesResult();
         ValidateMetersResult validateMetersResult = validationResult.getValidateMetersResult();
         ValidateGroupsResult validateGroupsResult = validationResult.getValidateGroupsResult();
+        ValidateLogicalPortsResult validateLogicalPortsResult = Optional.ofNullable(
+                validationResult.getValidateLogicalPortsResult()).orElse(ValidateLogicalPortsResult.newEmpty());
 
         RulesSyncEntry rulesEntry = new RulesSyncEntry(
                 new ArrayList<>(validateRulesResult.getMissingRules()),
@@ -611,7 +724,17 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                 .removed(mapToGroupEntryList(excessGroups, validateGroupsResult.getExcessGroups()))
                 .build();
 
-        SwitchSyncResponse response = new SwitchSyncResponse(switchId, rulesEntry, metersEntry, groupEntry);
+        LogicalPortsSyncEntry logicalPortsEntry = LogicalPortsSyncEntry.builder()
+                .proper(validateLogicalPortsResult.getProperLogicalPorts())
+                .misconfigured(validateLogicalPortsResult.getMisconfiguredLogicalPorts())
+                .excess(validateLogicalPortsResult.getExcessLogicalPorts())
+                .missing(validateLogicalPortsResult.getMissingLogicalPorts())
+                .installed(validateLogicalPortsResult.getMissingLogicalPorts())
+                .removed(validateLogicalPortsResult.getExcessLogicalPorts())
+                .build();
+
+        SwitchSyncResponse response = new SwitchSyncResponse(switchId, rulesEntry, metersEntry, groupEntry,
+                logicalPortsEntry);
         InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), key);
 
         carrier.cancelTimeoutCallback(key);
@@ -651,9 +774,11 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         COMPUTE_EXCESS_METERS,
         COMPUTE_MISCONFIGURED_METERS,
         COMPUTE_GROUP_MIRROR_CONFIGS,
+        COMPUTE_LOGICAL_PORTS_COMMANDS,
         RULES_COMMANDS_SEND,
         METERS_COMMANDS_SEND,
         GROUPS_COMMANDS_SEND,
+        LOGICAL_PORTS_COMMANDS_SEND,
         FINISHED_WITH_ERROR,
         FINISHED
     }
@@ -669,6 +794,8 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         GROUPS_INSTALLED,
         GROUPS_MODIFIED,
         GROUPS_REMOVED,
+        LOGICAL_PORT_INSTALLED,
+        LOGICAL_PORT_REMOVED,
         TIMEOUT,
         ERROR
     }

@@ -21,6 +21,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.switches.GroupSyncEntry;
+import org.openkilda.messaging.info.switches.LogicalPortsSyncEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MetersSyncEntry;
 import org.openkilda.messaging.info.switches.RulesSyncEntry;
@@ -86,7 +87,7 @@ public class SwitchServiceTest {
                 singletonList(properRule), singletonList(excessRule), singletonList(missingRule),
                 singletonList(excessRule));
         SwitchSyncResponse rules = new SwitchSyncResponse(switchId, rulesSyncEntry, MetersSyncEntry.builder().build(),
-                GroupSyncEntry.builder().build());
+                GroupSyncEntry.builder().build(), LogicalPortsSyncEntry.builder().build());
         messageExchanger.mockResponse(correlationId, rules);
 
         RulesSyncResult result = switchService.syncRules(switchId).get();
@@ -112,7 +113,7 @@ public class SwitchServiceTest {
                 singletonList(excessRule));
         InfoData validationResult = new SwitchSyncResponse(switchId, rulesEntry,
                 MetersSyncEntry.builder().proper(singletonList(getMeterInfo(properRule))).build(),
-                GroupSyncEntry.builder().build());
+                GroupSyncEntry.builder().build(), LogicalPortsSyncEntry.builder().build());
         messageExchanger.mockResponse(correlationId, validationResult);
 
         SwitchSyncResult result = switchService.syncSwitch(switchId, true).get();

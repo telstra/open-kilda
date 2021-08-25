@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.switchmanager.mappers;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.openkilda.wfm.topology.switchmanager.mappers.LogicalPortMapper.INSTANCE;
 
 import org.openkilda.messaging.info.switches.LogicalPortInfoEntry;
 import org.openkilda.messaging.model.grpc.LogicalPort;
@@ -38,7 +39,7 @@ public class LogicalPortMapperTest {
         LagLogicalPort lagLogicalPort = new LagLogicalPort(SWITCH_ID, LAG_PORT,
                 Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2));
 
-        LogicalPortInfoEntry port = LogicalPortMapper.INSTANCE.map(lagLogicalPort);
+        LogicalPortInfoEntry port = INSTANCE.map(lagLogicalPort);
         assertEquals(LAG_PORT, port.getLogicalPortNumber().intValue());
         assertEquals(2, port.getPhysicalPorts().size());
         assertEquals(PHYSICAL_PORT_1, port.getPhysicalPorts().get(0).intValue());
@@ -56,12 +57,28 @@ public class LogicalPortMapperTest {
                 .name("some")
                 .build();
 
-        LogicalPortInfoEntry port = LogicalPortMapper.INSTANCE.map(logicalPort);
+        LogicalPortInfoEntry port = INSTANCE.map(logicalPort);
         assertEquals(LAG_PORT, port.getLogicalPortNumber().intValue());
         assertEquals(2, port.getPhysicalPorts().size());
         assertEquals(PHYSICAL_PORT_1, port.getPhysicalPorts().get(0).intValue());
         assertEquals(PHYSICAL_PORT_2, port.getPhysicalPorts().get(1).intValue());
         assertNull(port.getExpected());
         assertNull(port.getActual());
+    }
+
+    @Test
+    public void mapGrpcLogicalPortType() {
+        assertEquals(org.openkilda.messaging.info.switches.LogicalPortType.LAG, INSTANCE.map(LogicalPortType.LAG));
+        assertEquals(org.openkilda.messaging.info.switches.LogicalPortType.BFD, INSTANCE.map(LogicalPortType.BFD));
+        assertEquals(org.openkilda.messaging.info.switches.LogicalPortType.RESERVED,
+                INSTANCE.map(LogicalPortType.RESERVED));
+    }
+
+    @Test
+    public void mapMessagingLogicalPortType() {
+        assertEquals(LogicalPortType.LAG, INSTANCE.map(org.openkilda.messaging.info.switches.LogicalPortType.LAG));
+        assertEquals(LogicalPortType.BFD, INSTANCE.map(org.openkilda.messaging.info.switches.LogicalPortType.BFD));
+        assertEquals(LogicalPortType.RESERVED,
+                INSTANCE.map(org.openkilda.messaging.info.switches.LogicalPortType.RESERVED));
     }
 }
