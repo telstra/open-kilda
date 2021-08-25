@@ -16,6 +16,8 @@
 ARG base_image=liquibase/liquibase:4.4
 FROM ${base_image}
 
+RUN lpm add mysql --global
+
 USER root
 
 ENV KILDA_MYSQL_USER="kilda"
