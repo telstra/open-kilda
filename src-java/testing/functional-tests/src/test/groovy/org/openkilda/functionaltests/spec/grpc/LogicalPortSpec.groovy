@@ -22,7 +22,7 @@ NOTE: The GRPC implementation supports the LAG type only and it is set by defaul
 class LogicalPortSpec extends GrpcBaseSpecification {
 
     @Tidy
-    def "Able to create/read/delete logicalport on the #switches.switchId switch"() {
+    def "Able to create/read/delete logicalport on the #sw.hwSwString switch"() {
         when: "Create logical port"
         def switchPort
         if (profile == "virtual") {
