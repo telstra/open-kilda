@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -60,6 +60,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(source = "destVlan", target = "destVlan")
     @Mapping(source = "encapsulationType", target = "flowEncapsulationType")
     @Mapping(target = "diverseFlowId", ignore = true)
+    @Mapping(target = "affinityFlowId", ignore = true)
     @Mapping(target = "loopSwitchId", source = "loopSwitchId")
     public abstract RequestedFlow toRequestedFlow(Flow flow);
 
@@ -77,6 +78,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "pinned", ignore = true)
     @Mapping(target = "allocateProtectedPath", ignore = true)
     @Mapping(target = "diverseFlowId", ignore = true)
+    @Mapping(target = "affinityFlowId", ignore = true)
     @Mapping(target = "description", ignore = true)
     @Mapping(target = "bandwidth", ignore = true)
     @Mapping(target = "ignoreBandwidth", ignore = true)
@@ -105,7 +107,8 @@ public abstract class RequestedFlowMapper {
     @Mapping(source = "destPort", target = "destPort")
     @Mapping(source = "destVlan", target = "destVlan")
     @Mapping(source = "flowEncapsulationType", target = "encapsulationType")
-    @Mapping(target = "groupId", ignore = true)
+    @Mapping(target = "diverseGroupId", ignore = true)
+    @Mapping(target = "affinityGroupId", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "statusInfo", ignore = true)
     @Mapping(target = "targetPathComputationStrategy", ignore = true)
@@ -185,6 +188,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "loopSwitchId", source = "loopSwitchId")
     @Mapping(target = "transitEncapsulationId", ignore = true)
     @Mapping(target = "diverseFlowId", ignore = true)
+    @Mapping(target = "affinityFlowId", ignore = true)
     @Mapping(target = "type", ignore = true)
     @Mapping(target = "bulkUpdateFlowIds", ignore = true)
     @Mapping(target = "doNotRevert", ignore = true)

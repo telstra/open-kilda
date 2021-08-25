@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import lombok.ToString;
 @AllArgsConstructor
 @Builder(toBuilder = true)
 @EqualsAndHashCode(of = {"srcSwitch", "destSwitch", "srcPort", "destPort"})
-@ToString(exclude = {"diversityGroupUseCounter", "diversityGroupPerPopUseCounter"})
+@ToString(exclude = {"diversityGroupUseCounter", "diversityGroupPerPopUseCounter", "affinityGroupUseCounter"})
 public class Edge {
     @NonNull
     private Node srcSwitch;
@@ -43,9 +43,14 @@ public class Edge {
 
     private int diversityGroupUseCounter;
     private int diversityGroupPerPopUseCounter;
+    private int affinityGroupUseCounter;
 
     public void increaseDiversityGroupUseCounter() {
         diversityGroupUseCounter++;
+    }
+
+    public void increaseAffinityGroupUseCounter() {
+        affinityGroupUseCounter++;
     }
 
     public void increaseDiversityGroupPerPopUseCounter() {

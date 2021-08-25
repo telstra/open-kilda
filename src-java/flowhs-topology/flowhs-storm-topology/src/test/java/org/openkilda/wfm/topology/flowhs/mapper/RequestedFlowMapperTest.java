@@ -46,6 +46,7 @@ public class RequestedFlowMapperTest {
     public static final int DST_INNER_VLAN = 6;
     public static final Integer PRIORITY = 5;
     public static final String DIVERSE_FLOW_ID = "flow_2";
+    public static final String AFFINITY_FLOW_ID = "flow_3";
     public static final String DESCRIPTION = "description";
     public static final int BANDWIDTH = 1000;
     public static final Long MAX_LATENCY = 200L;
@@ -62,6 +63,7 @@ public class RequestedFlowMapperTest {
             .destination(desctinationEndpoint)
             .priority(PRIORITY)
             .diverseFlowId(DIVERSE_FLOW_ID)
+            .affinityFlowId(AFFINITY_FLOW_ID)
             .description(DESCRIPTION)
             .bandwidth(BANDWIDTH)
             .maxLatency(MAX_LATENCY)
@@ -179,7 +181,8 @@ public class RequestedFlowMapperTest {
         assertNull(result.getProtectedForwardPathId());
         assertNull(result.getProtectedReversePathId());
 
-        assertNull(result.getGroupId());
+        assertNull(result.getDiverseGroupId());
+        assertNull(result.getAffinityGroupId());
 
         assertEquals(BANDWIDTH, result.getBandwidth());
         assertTrue(result.isIgnoreBandwidth());

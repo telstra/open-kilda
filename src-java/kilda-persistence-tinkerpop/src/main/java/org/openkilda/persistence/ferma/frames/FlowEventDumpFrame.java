@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -186,12 +186,27 @@ public abstract class FlowEventDumpFrame extends KildaBaseVertexFrame implements
     public abstract void setReverseMeterId(MeterId reverseMeterId);
 
     @Override
-    @Property("group_id")
-    public abstract String getGroupId();
+    public String getDiverseGroupId() {
+        String diverseGroupId = getProperty("group_id");
+        if (diverseGroupId == null) {
+            diverseGroupId = getProperty("diverse_group_id");
+        }
+        return diverseGroupId;
+    }
 
     @Override
-    @Property("group_id")
-    public abstract void setGroupId(String groupId);
+    public void setDiverseGroupId(String diverseGroupId) {
+        setProperty("group_id", diverseGroupId);
+        setProperty("diverse_group_id", diverseGroupId);
+    }
+
+    @Override
+    @Property("affinity_group_id")
+    public abstract String getAffinityGroupId();
+
+    @Override
+    @Property("affinity_group_id")
+    public abstract void setAffinityGroupId(String affinityGroupId);
 
     @Override
     @Property("forward_path")

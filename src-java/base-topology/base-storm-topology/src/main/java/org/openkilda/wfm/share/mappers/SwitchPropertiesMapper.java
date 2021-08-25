@@ -30,6 +30,7 @@ public interface SwitchPropertiesMapper {
 
     SwitchPropertiesMapper INSTANCE = Mappers.getMapper(SwitchPropertiesMapper.class);
 
+    @Mapping(target = "switchId", source = "switchProperties.switchId")
     SwitchPropertiesDto map(SwitchProperties switchProperties);
 
     @Mapping(target = "switchObj", ignore = true)

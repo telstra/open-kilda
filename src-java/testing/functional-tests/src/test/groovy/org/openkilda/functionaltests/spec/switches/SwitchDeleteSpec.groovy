@@ -89,7 +89,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         cleanup: "Activate the switch back and reset costs"
         lockKeeper.reviveSwitch(sw, blockData)
         swIsls.each { antiflap.portUp(sw.dpId, it.srcPort) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET * 2) {
             def links = northbound.getAllLinks()
             swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }

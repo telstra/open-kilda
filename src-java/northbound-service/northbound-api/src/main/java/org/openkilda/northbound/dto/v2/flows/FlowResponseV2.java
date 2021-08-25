@@ -53,6 +53,7 @@ public class FlowResponseV2 {
     private Integer priority;
 
     private Set<String> diverseWith;
+    private String affinityWith;
     private boolean pinned;
     private boolean allocateProtectedPath;
     private String encapsulationType;

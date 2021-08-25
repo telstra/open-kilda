@@ -13,36 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.flows;
+package org.openkilda.northbound.dto.v2.switches;
+
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Builder;
+import lombok.Value;
 
-@Data
-@NoArgsConstructor
+import java.util.List;
+
+@Value
 @AllArgsConstructor
+@Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class FlowPatchV2 {
-    private FlowPatchEndpoint source;
-    private FlowPatchEndpoint destination;
-
-    private Long maximumBandwidth;
-    private Boolean ignoreBandwidth;
-    private Boolean strictBandwidth;
-    private Boolean periodicPings;
-    private String description;
-    private Long maxLatency;
-    private Long maxLatencyTier2;
-    private Integer priority;
-
-    private String diverseFlowId;
-    private String affinityFlowId;
-    private Boolean pinned;
-    private Boolean allocateProtectedPath;
-    private String encapsulationType;
-    private String pathComputationStrategy;
-    private String targetPathComputationStrategy;
+public class SwitchPropertiesDump {
+    List<SwitchPropertiesDto> switchProperties;
 }

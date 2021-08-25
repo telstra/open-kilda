@@ -12,9 +12,9 @@ import spock.lang.Ignore
 class GrpcCommonSpec extends GrpcBaseSpecification {
 
     @Tidy
-    def "Able to get switch status on the #switches.switchId switch"() {
+    def "Able to get switch status on the #sw.hwSwString switch"() {
         when: "Get switch status"
-        def response = grpc.getSwitchStatus(switches.address)
+        def response = grpc.getSwitchStatus(sw.address)
 
         then: "Response is not null and needed fields are returned"
         response.serialNumber
@@ -27,7 +27,7 @@ class GrpcCommonSpec extends GrpcBaseSpecification {
         response.cpuPercentage != null
 
         where:
-        switches << getNoviflowSwitches()
+        sw << getNoviflowSwitches()
     }
 
     @Tidy

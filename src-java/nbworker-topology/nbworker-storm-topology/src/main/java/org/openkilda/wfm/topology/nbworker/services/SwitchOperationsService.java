@@ -23,6 +23,7 @@ import org.openkilda.messaging.model.SwitchPatch;
 import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchConnectionsResponse;
+import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
@@ -132,7 +133,7 @@ public class SwitchOperationsService {
     /**
      * Update the "Under maintenance" flag for the switch.
      *
-     * @param switchId switch id.
+     * @param switchId         switch id.
      * @param underMaintenance "Under maintenance" flag.
      * @return updated switch.
      * @throws SwitchNotFoundException if there is no switch with this switch id.
@@ -177,8 +178,8 @@ public class SwitchOperationsService {
      * Delete switch.
      *
      * @param switchId ID of switch to be deleted
-     * @param force if True all switch relationships will be deleted too.
-     *              If False switch will be deleted only if it has no relations.
+     * @param force    if True all switch relationships will be deleted too.
+     *                 If False switch will be deleted only if it has no relations.
      * @return True if switch was deleted, False otherwise
      * @throws SwitchNotFoundException if switch is not found
      */
@@ -207,7 +208,7 @@ public class SwitchOperationsService {
     /**
      * Check that switch is not in 'Active' state.
      *
-     * @throws SwitchNotFoundException if there is no such switch.
+     * @throws SwitchNotFoundException     if there is no such switch.
      * @throws IllegalSwitchStateException if switch is in 'Active' state
      */
     public void checkSwitchIsDeactivated(SwitchId switchId)
@@ -285,7 +286,6 @@ public class SwitchOperationsService {
      * Get switch properties.
      *
      * @param switchId target switch id
-     *
      * @throws SwitchPropertiesNotFoundException if switch properties is not found by switch id
      */
     public SwitchPropertiesDto getSwitchProperties(SwitchId switchId) {
@@ -295,12 +295,23 @@ public class SwitchOperationsService {
     }
 
     /**
+     * Get all switch properties.
+     *
+     * @throws SwitchPropertiesNotFoundException if switch properties is not found by switch id
+     */
+    public List<SwitchPropertiesResponse> getSwitchProperties() {
+        Collection<SwitchProperties> result = switchPropertiesRepository.findAll();
+
+        return result.stream().map(SwitchPropertiesMapper.INSTANCE::map)
+                .map(x -> new SwitchPropertiesResponse(x)).collect(Collectors.toList());
+    }
+
+    /**
      * Update switch properties.
      *
-     * @param switchId target switch id
+     * @param switchId            target switch id
      * @param switchPropertiesDto switch properties
-     *
-     * @throws IllegalSwitchPropertiesException if switch properties are incorrect
+     * @throws IllegalSwitchPropertiesException  if switch properties are incorrect
      * @throws SwitchPropertiesNotFoundException if switch properties is not found by switch id
      */
     public SwitchPropertiesDto updateSwitchProperties(SwitchId switchId, SwitchPropertiesDto switchPropertiesDto) {
@@ -467,7 +478,7 @@ public class SwitchOperationsService {
      * Get port properties.
      *
      * @param switchId target switch id
-     * @param port port number
+     * @param port     port number
      */
     public PortProperties getPortProperties(SwitchId switchId, int port) throws SwitchNotFoundException {
         return portPropertiesRepository.getBySwitchIdAndPort(switchId, port)

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -165,7 +165,35 @@ public class AvailableNetwork {
                 continue;
             }
         }
+    }
 
+    /**
+     * Adds affinity weights into {@link AvailableNetwork} based on passed path segments and configuration.
+     */
+    public void processAffinitySegments(List<PathSegment> segments) {
+        Set<Edge> pathEdges = new HashSet<>();
+        for (PathSegment segment : segments) {
+            Node srcNode = getSwitch(segment.getSrcSwitchId());
+            Node dstNode = getSwitch(segment.getDestSwitchId());
 
+            if (srcNode == null || dstNode == null) {
+                log.debug("Affinity segment {} doesn't present in AvailableNetwork", segment);
+                continue;
+            }
+
+            Edge segmentEdge = Edge.builder()
+                    .srcSwitch(srcNode)
+                    .srcPort(segment.getSrcPort())
+                    .destSwitch(dstNode)
+                    .destPort(segment.getDestPort())
+                    .build();
+            pathEdges.add(segmentEdge);
+            Edge reverseSegmentEdge = segmentEdge.swap();
+            pathEdges.add(reverseSegmentEdge);
+        }
+
+        edges.stream()
+                .filter(edge -> !pathEdges.contains(edge))
+                .forEach(Edge::increaseAffinityGroupUseCounter);
     }
 }

@@ -28,11 +28,11 @@ class OpenTsdbSpec extends HealthCheckSpecification {
     String metricPrefix
 
     @Tidy
-    @Unroll("Stats are being logged for metric:#metric, tags:#tags")
+    @Unroll("Stats are being logged for metric:#metric")
     @Tags([TOPOLOGY_DEPENDENT, SMOKE])
     def "Basic stats are being logged"(metric, tags) {
         expect: "At least 1 result in the past 5 minutes"
-        otsdb.query(5.minutes.ago, metric, tags).dps.size() > 0
+        assert otsdb.query(5.minutes.ago, metric, tags).dps.size() > 0, "tags: $tags"
 
         where:
         [metric, tags] << (
@@ -63,31 +63,32 @@ class OpenTsdbSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll("GRPC stats are being logged for metric:#metric, tags:#tags")
+    @Unroll("GRPC stats are being logged for metric:#metric, sw:#sw.hwSwString")
     @Tags([HARDWARE])
-    def "GRPC stats are being logged"(metric, tags) {
+    def "GRPC stats are being logged"() {
         assumeTrue(northbound.getFeatureToggles().collectGrpcStats,
 "This test is skipped because 'collectGrpcStats' is disabled")
         expect: "At least 1 result in the past 15 minutes"
-        otsdb.query(15.minutes.ago, metricPrefix + metric, tags).dps.size() > 0
+        assert otsdb.query(15.minutes.ago, metricPrefix + metric, tags).dps.size() > 0, "sw: $sw.dpId"
 
         where:
-        [metric, tags] << (
+        [metric, sw] << (
                 [["switch.packet-in.total-packets", "switch.packet-in.total-packets.dataplane",
                   "switch.packet-in.no-match.packets", "switch.packet-in.apply-action.packets",
                   "switch.packet-in.apply-action.packets", "switch.packet-in.invalid-ttl.packets",
                   "switch.packet-in.action-set.packets", "switch.packet-in.group.packets",
                   "switch.packet-in.packet-out.packets", "switch.packet-out.total-packets.dataplane",
                   "switch.packet-out.total-packets.host", "switch.packet-out.eth0-interface-up"],
-                 noviflowSwitches.collect { [switchid: it.switchId.toOtsdFormat()] }].combinations()
+                 noviflowSwitches].combinations()
         )
+        tags = [switchid: sw.dpId.toOtsdFormat()]
     }
 
     def getUniqueSwitches() {
-        topology.activeSwitches.unique { it.ofVersion }
+        topology.activeSwitches.unique { it.hwSwString }
     }
 
     def getNoviflowSwitches() {
-        northbound.activeSwitches.findAll { it.manufacturer == "NoviFlow Inc" }.unique { [it.hardware, it.software] }
+        topology.activeSwitches.findAll { it.noviflow }.unique { it.hwSwString }
     }
 }

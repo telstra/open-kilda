@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -42,7 +42,6 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.IslRepository.IslEndpoints;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
-import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.FlowAlreadyExistException;
 import org.openkilda.wfm.error.FlowNotFoundException;
@@ -86,7 +85,6 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
     protected final int pathAllocationRetriesLimit;
     protected final int pathAllocationRetryDelay;
     private final FlowResourcesManager resourcesManager;
-    private final SwitchRepository switchRepository;
     private final IslRepository islRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
 
@@ -102,7 +100,6 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         this.pathAllocationRetriesLimit = pathAllocationRetriesLimit;
         this.pathAllocationRetryDelay = pathAllocationRetryDelay;
         this.resourcesManager = resourcesManager;
-        this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
         KildaConfigurationRepository kildaConfigurationRepository = persistenceManager.getRepositoryFactory()
@@ -167,8 +164,10 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
             transactionManager.doInTransaction(() -> {
                 Flow flow = RequestedFlowMapper.INSTANCE.toFlow(targetFlow);
                 flow.setStatus(FlowStatus.IN_PROGRESS);
-                getFlowGroupFromContext(targetFlow.getDiverseFlowId())
-                        .ifPresent(flow::setGroupId);
+                getFlowDiverseGroupFromContext(targetFlow.getDiverseFlowId())
+                        .ifPresent(flow::setDiverseGroupId);
+                getFlowAffinityGroupFromContext(targetFlow.getAffinityFlowId())
+                        .ifPresent(flow::setAffinityGroupId);
                 flowRepository.add(flow);
             });
         } catch (ConstraintViolationException e) {
@@ -176,11 +175,20 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         }
     }
 
-    private Optional<String> getFlowGroupFromContext(String diverseFlowId) throws FlowNotFoundException {
+    private Optional<String> getFlowDiverseGroupFromContext(String diverseFlowId) throws FlowNotFoundException {
         if (StringUtils.isNotBlank(diverseFlowId)) {
-            return flowRepository.getOrCreateFlowGroupId(diverseFlowId)
+            return flowRepository.getOrCreateDiverseFlowGroupId(diverseFlowId)
                     .map(Optional::of)
                     .orElseThrow(() -> new FlowNotFoundException(diverseFlowId));
+        }
+        return Optional.empty();
+    }
+
+    private Optional<String> getFlowAffinityGroupFromContext(String affinityFlowId) throws FlowNotFoundException {
+        if (StringUtils.isNotBlank(affinityFlowId)) {
+            return flowRepository.getOrCreateAffinityFlowGroupId(affinityFlowId)
+                    .map(Optional::of)
+                    .orElseThrow(() -> new FlowNotFoundException(affinityFlowId));
         }
         return Optional.empty();
     }
@@ -276,7 +284,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         if (!tmpFlow.isAllocateProtectedPath()) {
             return;
         }
-        tmpFlow.setGroupId(flowRepository.getOrCreateFlowGroupId(flowId)
+        tmpFlow.setDiverseGroupId(flowRepository.getOrCreateDiverseFlowGroupId(flowId)
                 .orElseThrow(() -> new FlowNotFoundException(flowId)));
         GetPathsResult protectedPath = pathComputer.getPath(tmpFlow);
         stateMachine.setBackUpProtectedPathComputationWayUsed(protectedPath.isBackUpPathComputationWayUsed());

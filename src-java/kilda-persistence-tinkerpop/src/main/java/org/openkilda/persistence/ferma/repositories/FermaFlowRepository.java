@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -105,20 +105,38 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
     }
 
     @Override
-    public Collection<Flow> findByGroupId(String flowGroupId) {
+    public Collection<Flow> findByDiverseGroupId(String flowDiverseGroupId) {
+        return findByGroupId(FlowFrame.GROUP_ID_PROPERTY, flowDiverseGroupId);
+    }
+
+    @Override
+    public Collection<Flow> findByAffinityGroupId(String flowAffinityGroupId) {
+        return findByGroupId(FlowFrame.AFFINITY_GROUP_ID_PROPERTY, flowAffinityGroupId);
+    }
+
+    private Collection<Flow> findByGroupId(String groupIdProperty, String flowGroupId) {
         return framedGraph().traverse(g -> g.V()
-                .hasLabel(FlowFrame.FRAME_LABEL)
-                .has(FlowFrame.GROUP_ID_PROPERTY, flowGroupId))
+                        .hasLabel(FlowFrame.FRAME_LABEL)
+                        .has(groupIdProperty, flowGroupId))
                 .toListExplicit(FlowFrame.class).stream()
                 .map(Flow::new)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public Collection<String> findFlowsIdByGroupId(String flowGroupId) {
+    public Collection<String> findFlowsIdByDiverseGroupId(String flowDiverseGroupId) {
+        return findFlowsIdByGroupId(FlowFrame.GROUP_ID_PROPERTY, flowDiverseGroupId);
+    }
+
+    @Override
+    public Collection<String> findFlowsIdByAffinityGroupId(String flowAffinityGroupId) {
+        return findFlowsIdByGroupId(FlowFrame.AFFINITY_GROUP_ID_PROPERTY, flowAffinityGroupId);
+    }
+
+    private Collection<String> findFlowsIdByGroupId(String groupIdProperty, String flowGroupId) {
         return framedGraph().traverse(g -> g.V()
                 .hasLabel(FlowFrame.FRAME_LABEL)
-                .has(FlowFrame.GROUP_ID_PROPERTY, flowGroupId)
+                .has(groupIdProperty, flowGroupId)
                 .values(FlowFrame.FLOW_ID_PROPERTY))
                 .getRawTraversal().toStream()
                 .map(i -> (String) i)
@@ -388,15 +406,65 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
     }
 
     @Override
-    public Optional<String> getOrCreateFlowGroupId(String flowId) {
+    public Optional<String> getOrCreateDiverseFlowGroupId(String flowId) {
         return transactionManager.doInTransaction(() -> findById(flowId)
                 .map(diverseFlow -> {
-                    if (diverseFlow.getGroupId() == null) {
+                    if (diverseFlow.getDiverseGroupId() == null) {
                         String groupId = UUID.randomUUID().toString();
-                        diverseFlow.setGroupId(groupId);
+                        diverseFlow.setDiverseGroupId(groupId);
                     }
-                    return diverseFlow.getGroupId();
+                    return diverseFlow.getDiverseGroupId();
                 }));
+    }
+
+    @Override
+    public Optional<String> getDiverseFlowGroupId(String flowId) {
+        return transactionManager.doInTransaction(() -> findById(flowId)
+                .map(Flow::getDiverseGroupId));
+    }
+
+    @Override
+    public Optional<String> getOrCreateAffinityFlowGroupId(String flowId) {
+        return transactionManager.doInTransaction(() -> findById(flowId)
+                .map(affinityFlow -> {
+                    if (affinityFlow.getAffinityGroupId() == null) {
+                        // The flow id is used as an affinity group id in order to understand
+                        // which flow it is necessary to use to build paths in this group.
+                        affinityFlow.setAffinityGroupId(flowId);
+                    }
+                    return affinityFlow.getAffinityGroupId();
+                }));
+    }
+
+    @Override
+    public Optional<String> getAffinityFlowGroupId(String flowId) {
+        return transactionManager.doInTransaction(() -> findById(flowId)
+                .map(Flow::getAffinityGroupId));
+    }
+
+    @Override
+    public void updateDiverseFlowGroupId(@NonNull String flowId, String diverseGroupId) {
+        transactionManager.doInTransaction(() ->
+                framedGraph().traverse(g -> g.V()
+                                .hasLabel(FlowFrame.FRAME_LABEL)
+                                .has(FlowFrame.FLOW_ID_PROPERTY, flowId))
+                        .toListExplicit(FlowFrame.class)
+                        .forEach(flowFrame -> {
+                            flowFrame.setDiverseGroupId(diverseGroupId);
+                        }));
+    }
+
+    @Override
+    public void updateAffinityFlowGroupId(@NonNull String flowId, String affinityGroupId) {
+        transactionManager.doInTransaction(() ->
+                framedGraph().traverse(g -> g.V()
+                                .hasLabel(FlowFrame.FRAME_LABEL)
+                                .has(FlowFrame.FLOW_ID_PROPERTY, flowId))
+                        .toListExplicit(FlowFrame.class)
+                        .forEach(flowFrame -> {
+                            flowFrame.setAffinityGroupId(affinityGroupId);
+                        }));
+
     }
 
     @Override

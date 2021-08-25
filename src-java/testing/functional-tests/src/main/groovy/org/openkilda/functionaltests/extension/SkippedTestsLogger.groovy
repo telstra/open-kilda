@@ -35,8 +35,9 @@ class SkippedTestsLogger extends AbstractGlobalExtension {
             try {
                 invocation.proceed()
             } catch (TestAbortedException t) {
-                log.warn("Aborted test: ${invocation.feature.spec.name}#${invocation.iteration.name}\n" +
-                        "Reason: ${t.message}")
+                def testName = invocation.feature ? invocation.feature.spec.name + "#" +
+                        invocation.iteration.displayName : invocation.sharedInstance.class.simpleName
+                log.warn("Aborted test: $testName\nReason: ${t.message}")
                 throw t
             }
         }

@@ -984,6 +984,32 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
+    @Tags(HARDWARE)
+    def "Unable to create a qinq flow on a WB switch"() {
+        given: "Two switches with enabled multi table mode"
+        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
+            [it.src, it.dst].every { northbound.getSwitchProperties(it.dpId).multiTable } &&
+                    [it.src, it.dst].any { it.wb5164 }
+        } ?: assumeTrue(false, "Not able to find required switches")
+
+        when: "Create a QinQ flow"
+        def flow = flowHelperV2.randomFlow(swP)
+        flow.source.innerVlanId = 234
+        flow.destination.innerVlanId = 432
+        flowHelperV2.addFlow(flow)
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.statusCode == HttpStatus.BAD_REQUEST
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not create flow"
+        errorDetails.errorDescription.contains("QinQ feature is temporary disabled for WB-series switch")
+
+        cleanup: "Revert system to original state"
+        !exc && northboundV2.deleteFlow(flow.flowId)
+    }
+
     @Memoized
     List<SwitchPair> getUniqueSwitchPairs(List<SwitchPair> suitablePairs = topologyHelper.getSwitchPairs(true)) {
         def unpickedUniqueSwitches = topology.activeSwitches.collect { it.hwSwString }.unique(false)

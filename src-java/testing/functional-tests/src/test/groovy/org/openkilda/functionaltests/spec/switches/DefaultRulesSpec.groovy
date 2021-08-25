@@ -34,7 +34,7 @@ import spock.lang.Unroll
 
 class DefaultRulesSpec extends HealthCheckSpecification {
     @Tidy
-    @Unroll("Default rules are installed on an #sw.ofVersion switch(#sw.dpId)")
+    @Unroll("Default rules are installed on #sw.hwSwString")
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Default rules are installed on switches"() {
         expect: "Default rules are installed on the switch"
@@ -76,7 +76,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    def "Able to install default rule on an #sw.ofVersion switch[#sw.dpId, install-action=#data.installRulesAction]"(
+    def "Able to install default rule on #sw.hwSwString [install-action=#data.installRulesAction]"(
             Map data, Switch sw) {
         given: "A switch without any rules"
         def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
@@ -151,8 +151,8 @@ class DefaultRulesSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    def "Able to install default multitable rule on an #sw.ofVersion \
-switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) {
+    def "Able to install default multitable rule on #sw.hwSwString [install-action=#data.installRulesAction]"(
+            Map data, Switch sw) {
         given: "A switch without rules"
         assumeTrue(northbound.getSwitchProperties(sw.dpId).multiTable,
 "Multi table should be enabled on the switch")
@@ -212,7 +212,7 @@ switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) 
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
-    def "Able to install default rules on an #sw.ofVersion switch(#sw.dpId, install-action=INSTALL_DEFAULTS)"() {
+    def "Able to install default rules on #sw.hwSwString [install-action=INSTALL_DEFAULTS]"() {
         given: "A switch without any rules"
         def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
         assert defaultRules*.cookie.sort() == sw.defaultCookies.sort()
@@ -247,7 +247,7 @@ switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) 
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
-    def "Able to delete default rule from an #sw.ofVersion switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(
+    def "Able to delete default rule from #sw.hwSwString[delete-action=#data.deleteRulesAction]"(
             Map data, Switch sw) {
         when: "Delete rules from the switch"
         def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
@@ -312,8 +312,7 @@ switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) 
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    def "Able to delete default multitable rule from an #sw.ofVersion \
-switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
+    def "Able to delete default multitable rule from #sw.hwSwString [delete-action=#data.deleteRulesAction]"(Map data, Switch sw) {
         when: "Delete rule from the switch"
         assumeTrue(northbound.getSwitchProperties(sw.dpId).multiTable,
 "Multi table should be enabled on the switch")

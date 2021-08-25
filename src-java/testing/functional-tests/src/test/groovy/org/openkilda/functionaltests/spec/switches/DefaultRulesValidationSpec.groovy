@@ -31,7 +31,7 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
     @Tidy
     @Tags(SMOKE)
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /single-table/)
-    def "Switch and rule validation can properly detect default rules to 'proper' section (#sw.name #propsDescr)"(
+    def "Switch and rule validation can properly detect default rules to 'proper' section (#sw.hwSwString #propsDescr)"(
             Map swProps, Switch sw, String propsDescr) {
         given: "Clean switch without customer flows and with the given switchProps"
         def originalProps = northbound.getSwitchProperties(sw.dpId)
@@ -80,7 +80,7 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
                         switchLldp: true,
                         switchArp: true
                     ]
-                ], getTopology().getActiveSwitches().unique { activeSw -> activeSw.description }
+                ], getTopology().getActiveSwitches().unique { activeSw -> activeSw.hwSwString }
                 ].combinations().findAll { Map swProp, Switch _sw ->
                     //filter out combinations where we pick non-multitable switch and do multitable switch props
                     !(swProp.multiTable && !_sw.features.contains(SwitchFeature.MULTI_TABLE))

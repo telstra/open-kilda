@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -53,7 +53,8 @@ public class RevertFlowAction extends FlowProcessingAction<FlowUpdateFsm, State,
     }
 
     private void revertFlow(Flow flow, FlowUpdateFsm stateMachine) {
-        flow.setGroupId(stateMachine.getOriginalFlowGroup());
+        flow.setDiverseGroupId(stateMachine.getOriginalDiverseFlowGroup());
+        flow.setAffinityGroupId(stateMachine.getOriginalAffinityFlowGroup());
 
         RequestedFlow originalFlow = stateMachine.getOriginalFlow();
 

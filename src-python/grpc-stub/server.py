@@ -48,7 +48,7 @@ class Greeter(noviflow_pb2_grpc.NoviFlowGrpcServicer):
 
     def SetConfigLogicalPort(self, request, context):
         port = LogicalPort(logical_port_number=request.logicalportno,
-                           name="port_" + str(request.logicalportno),
+                           name="novi_lport" + str(request.logicalportno),
                            port_numbers=request.portno,
                            type=request.logicalporttype)
         self.storage.logical_ports[request.logicalportno] = port

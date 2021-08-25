@@ -1,0 +1,57 @@
+@startuml
+title Affinity flows
+
+participant NB
+participant FlowHSTopology
+participant PathComputer
+participant AvailableNetwork
+database OrientDB
+
+activate FlowHSTopology
+NB -> FlowHSTopology : create affinity flow
+
+FlowHSTopology -> OrientDB : get affinity flow by id
+OrientDB --> FlowHSTopology : Flow instance
+alt flow affinity group property is not defined
+   FlowHSTopology -> OrientDB : save affinity flow id as affinity group id
+end
+
+FlowHSTopology -> PathComputer : get path with flow affinity group id
+activate PathComputer
+
+PathComputer -> AvailableNetwork : getAvailableNetwork\nwith flow affinity group id
+activate AvailableNetwork
+
+group Build AvailableNetwork
+    AvailableNetwork -> OrientDB: get active links
+    OrientDB--> AvailableNetwork
+    AvailableNetwork -> AvailableNetwork : create network from retrieved links
+
+    group Fill network affinity weights
+        AvailableNetwork -> OrientDB : get flow segments for main flow in the affinity group
+        OrientDB--> AvailableNetwork : path segments
+
+        AvailableNetwork -> AvailableNetwork: fill affinity weights using\naffinity flow segments
+    end
+    AvailableNetwork --> PathComputer : AvailableNetwork
+    deactivate AvailableNetwork
+end
+
+group Find path
+    PathComputer -> PathComputer : PathFinder.findPathInNetwork
+    PathComputer --> FlowHSTopology : computed path
+    deactivate PathComputer
+end
+
+alt path found
+    FlowHSTopology -> OrientDB : create new flow with affinity group id
+
+    FlowHSTopology --> NB : flow create operation response
+
+else path not found
+   FlowHSTopology --> NB: creation error
+end
+
+deactivate FlowHSTopology
+
+@enduml

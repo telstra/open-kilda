@@ -8,6 +8,7 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_COMPLETE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
+import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -435,7 +436,8 @@ class AutoRerouteSpec extends HealthCheckSpecification {
             assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
         }
         wait(WAIT_OFFSET) {
-            def prevHistorySize = northbound.getFlowHistory(flow.flowId).size()
+            def prevHistorySize = northbound.getFlowHistory(flow.flowId)
+                    .findAll { !(it.details =~ /Reason: ISL .* status become ACTIVE/) }.size()
             Wrappers.timedLoop(4) {
                 //history size should no longer change for the flow, all retries should give up
                 def newHistorySize = northbound.getFlowHistory(flow.flowId)
@@ -451,19 +453,20 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }.each {
             antiflap.portUp(it.switchId, it.portNo)
         }
+        def broughtDownPortsUp = true
 
         then: "The flow goes to 'Up' status"
         and: "The flow was rerouted"
         //rtretiak: TODO: why such a long wait required(it is indeed required)? investigate
         wait(rerouteDelay + discoveryInterval + WAIT_OFFSET * 3) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == REROUTE_SUCCESS
+            timedLoop(3) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+            assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
         }
-        PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
 
         cleanup: "Bring port involved in the original path up and delete the flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        flowPath && antiflap.portUp(flowPath.first().switchId, flowPath.first().portNo)
+        !broughtDownPortsUp && broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
+        flowPath && broughtDownPortsUp && antiflap.portUp(flowPath.first().switchId, flowPath.first().portNo)
         wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }

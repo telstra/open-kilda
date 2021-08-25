@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -239,7 +239,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
 
         Flow flow = Flow.builder()
                 .flowId("new-flow")
-                .groupId("diverse")
+                .diverseGroupId("diverse")
                 .bandwidth(10)
                 .srcSwitch(getSwitchById("00:0A"))
                 .destSwitch(getSwitchById("00:0D"))
@@ -262,7 +262,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
 
         Flow flow = Flow.builder()
                 .flowId("new-flow")
-                .groupId("diverse")
+                .diverseGroupId("diverse")
                 .bandwidth(10)
                 .srcSwitch(getSwitchById("00:0A"))
                 .srcPort(10)
@@ -296,5 +296,20 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
 
         GetPathsResult path2 = pathComputer.getPath(flow, flow.getPathIds());
         assertEquals(diversePath, path2);
+    }
+
+    @Test
+    public void shouldFindAffinityPathOnDiamond() throws Exception {
+        shouldFindAffinityPathOnDiamond(PathComputationStrategy.COST);
+    }
+
+    @Test
+    public void affinityPathShouldSplitAsCloseAsPossibleToDestination() throws Exception {
+        affinityPathShouldSplitAsCloseAsPossibleToDestination(PathComputationStrategy.COST);
+    }
+
+    @Test
+    public void affinityPathShouldPreferIslsUsedByMainPath() throws Exception {
+        affinityPathShouldPreferIslsUsedByMainPath(PathComputationStrategy.COST);
     }
 }

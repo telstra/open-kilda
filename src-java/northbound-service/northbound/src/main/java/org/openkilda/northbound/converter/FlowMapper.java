@@ -134,6 +134,7 @@ public abstract class FlowMapper {
     @Mapping(target = "bandwidth", ignore = true)
     @Mapping(target = "allocateProtectedPath", ignore = true)
     @Mapping(target = "diverseFlowId", ignore = true)
+    @Mapping(target = "affinityFlowId", ignore = true)
     @Mapping(target = "pathComputationStrategy", ignore = true)
     @Mapping(target = "pinned", ignore = true)
     @Mapping(target = "ignoreBandwidth", ignore = true)
@@ -189,6 +190,7 @@ public abstract class FlowMapper {
     @Mapping(target = "bulkUpdateFlowIds", ignore = true)
     @Mapping(target = "doNotRevert", ignore = true)
     @Mapping(target = "diverseFlowId", ignore = true)
+    @Mapping(target = "affinityFlowId", ignore = true)
     @Mapping(target = "maxLatency",
             expression = "java(payload.getMaxLatency() != null ? payload.getMaxLatency() * 1000000L : null)")
     @Mapping(target = "maxLatencyTier2", ignore = true)
