@@ -36,13 +36,10 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 public class FlowStateCacheBolt extends AbstractBolt {
-    private PersistenceManager persistenceManager;
-
     private transient FlowStateCacheService flowStateCacheService;
 
     public FlowStateCacheBolt(PersistenceManager persistenceManager, String lifeCycleEventSourceComponent) {
-        super(lifeCycleEventSourceComponent);
-        this.persistenceManager = persistenceManager;
+        super(persistenceManager, lifeCycleEventSourceComponent);
     }
 
     @PersistenceContextRequired(requiresNew = true)
