@@ -34,6 +34,11 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         def initSwitchProperties = northbound.getSwitchProperties(sw.dpId)
         assert initSwitchProperties.multiTable != null
         assert !initSwitchProperties.supportedTransitEncapsulation.empty
+        //make sure that two endpoints have the same info
+        with(northboundV2.getAllSwitchProperties().switchProperties.find { it.switchId == sw.dpId }){
+            multiTable == initSwitchProperties.multiTable
+            supportedTransitEncapsulation.sort() == initSwitchProperties.supportedTransitEncapsulation.sort()
+        }
 
         when: "Update switch properties"
         SwitchPropertiesDto switchProperties = new SwitchPropertiesDto()
@@ -54,6 +59,12 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         with(northbound.getSwitchProperties(sw.dpId)) {
             it.multiTable == newMultiTable
             it.supportedTransitEncapsulation.sort() == newTransitEncapsulation
+        }
+
+        and: "Changes are shown in getAllSwitchProperties response"
+        with(northboundV2.getAllSwitchProperties().switchProperties.find { it.switchId == sw.dpId }){
+            multiTable == newMultiTable
+            supportedTransitEncapsulation.sort() == newTransitEncapsulation
         }
 
         cleanup: "Restore init switch properties on the switch"

@@ -140,11 +140,7 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
 feature toggle"() {
         given: "A switch pair which supports 'transit_vlan' and 'vxlan' encapsulation types"
         def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every {
-                northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation.contains(
-                        FlowEncapsulationType.VXLAN.toString().toLowerCase()
-                )
-            } && it.paths.size() >= 2
+            [it.src, it.dst].every { switchHelper.isVxlanEnabled(it.dpId) } && it.paths.size() >= 2
         }
         assumeTrue(swPair as boolean, "Unable to find required switches in topology")
 
@@ -233,11 +229,7 @@ feature toggle"() {
         given: "A switch pair which supports 'transit_vlan' and 'vxlan' encapsulation types"
         and: "The 'vxlan' encapsulation type is disable in swProps on the src switch"
         def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every {
-                northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation.contains(
-                        FlowEncapsulationType.VXLAN.toString().toLowerCase()
-                )
-            } && it.paths.size() >= 2
+            [it.src, it.dst].every { switchHelper.isVxlanEnabled(it.dpId) } && it.paths.size() >= 2
         }
         assumeTrue(swPair as boolean, "Unable to find required switches in topology")
         def initSrcSwProps = northbound.getSwitchProperties(swPair.src.dpId)

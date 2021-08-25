@@ -146,10 +146,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
     @Tags([HARDWARE])
     def "Excess vxlanRules/meters are synced from a new switch before connecting to the controller"() {
         given: "A switch with excess rules/meters and not connected to the controller"
-        def sw = topology.getActiveSwitches().find {
-            northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation.contains(
-                    FlowEncapsulationType.VXLAN.toString().toLowerCase())
-        }
+        def sw = topology.getActiveSwitches().find { switchHelper.isVxlanEnabled(it.dpId) }
 
         def producer = new KafkaProducer(producerProps)
         //pick a meter id which is not yet used on src switch
