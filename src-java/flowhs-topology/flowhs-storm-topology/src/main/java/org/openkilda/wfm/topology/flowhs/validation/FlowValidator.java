@@ -25,6 +25,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
+import org.openkilda.model.PhysicalPort;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
@@ -33,6 +34,7 @@ import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
@@ -64,6 +66,7 @@ public class FlowValidator {
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final FlowMirrorPointsRepository flowMirrorPointsRepository;
     private final FlowMirrorPathRepository flowMirrorPathRepository;
+    private final PhysicalPortRepository physicalPortRepository;
 
     public FlowValidator(PersistenceManager persistenceManager) {
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
@@ -72,6 +75,7 @@ public class FlowValidator {
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
         this.flowMirrorPointsRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPointsRepository();
         this.flowMirrorPathRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPathRepository();
+        this.physicalPortRepository = persistenceManager.getRepositoryFactory().createPhysicalPortRepository();
     }
 
     /**
@@ -112,6 +116,7 @@ public class FlowValidator {
 
         //todo remove after noviflow fix
         validateQinQonWB(flow);
+        checkFlowForLagPortConflict(flow);
     }
 
     private void validateFlowLoop(RequestedFlow requestedFlow) throws InvalidFlowException {
@@ -614,6 +619,22 @@ public class FlowValidator {
                     destSwitch.getOfDescriptionHardware())) {
                 String message = format("QinQ feature is temporary disabled for WB-series switch '%s'",
                         destSwitch.getSwitchId());
+                throw new InvalidFlowException(message, ErrorType.PARAMETERS_INVALID);
+            }
+        }
+    }
+
+    private void checkFlowForLagPortConflict(RequestedFlow requestedFlow) throws InvalidFlowException {
+        FlowEndpoint source = RequestedFlowMapper.INSTANCE.mapSource(requestedFlow);
+        FlowEndpoint destination = RequestedFlowMapper.INSTANCE.mapDest(requestedFlow);
+
+        for (FlowEndpoint endpoint : new FlowEndpoint[]{source, destination}) {
+            Optional<PhysicalPort> physicalPort = physicalPortRepository.findBySwitchIdAndPortNumber(
+                    endpoint.getSwitchId(), endpoint.getPortNumber());
+            if (physicalPort.isPresent()) {
+                String message = format("Port %d on switch %s is used as part of LAG port %d",
+                        endpoint.getPortNumber(), endpoint.getSwitchId(),
+                        physicalPort.get().getLagLogicalPort().getLogicalPortNumber());
                 throw new InvalidFlowException(message, ErrorType.PARAMETERS_INVALID);
             }
         }

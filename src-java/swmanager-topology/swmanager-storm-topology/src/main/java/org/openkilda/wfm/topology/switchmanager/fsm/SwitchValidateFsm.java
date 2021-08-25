@@ -310,7 +310,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         log.error("Switch {} (key: {}) validation filed - {}", getSwitchId(), key, error.getMessage());
 
         carrier.cancelTimeoutCallback(key);
-        carrier.errorResponse(key, error.getError(), error.getMessage());
+        carrier.errorResponse(key, error.getError(), error.getMessage(), "Error in switch validation");
     }
 
     // -- private/service methods --

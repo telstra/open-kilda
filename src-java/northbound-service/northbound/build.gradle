@@ -14,6 +14,7 @@ dependencies {
     implementation project(':northbound-api')
     implementation project(':flowhs-messaging')
     implementation project(':nbworker-messaging')
+    implementation project(':swmanager-messaging')
     implementation project(':ping-messaging')
     implementation project(':floodlight-api')
     implementation project(':kilda-persistence-api')

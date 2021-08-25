@@ -22,8 +22,10 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
+import org.openkilda.model.PhysicalPort;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
+import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -47,6 +49,7 @@ public class ValidateRequestAction
     private final FlowValidator flowValidator;
     private final FlowOperationsDashboardLogger dashboardLogger;
     private final FlowMirrorPathRepository flowMirrorPathRepository;
+    private final PhysicalPortRepository physicalPortRepository;
 
     public ValidateRequestAction(PersistenceManager persistenceManager,
                                  FlowOperationsDashboardLogger dashboardLogger) {
@@ -54,6 +57,7 @@ public class ValidateRequestAction
         this.flowValidator = new FlowValidator(persistenceManager);
         this.dashboardLogger = dashboardLogger;
         this.flowMirrorPathRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPathRepository();
+        this.physicalPortRepository = persistenceManager.getRepositoryFactory().createPhysicalPortRepository();
     }
 
     @Override
@@ -98,6 +102,16 @@ public class ValidateRequestAction
         if (flowMirrorPathRepository.exists(mirrorPathId)) {
             throw new FlowProcessingException(ErrorType.ALREADY_EXISTS,
                     format("Flow mirror point %s already exists", mirrorPathId));
+        }
+
+        Optional<PhysicalPort> physicalPort = physicalPortRepository.findBySwitchIdAndPortNumber(
+                mirrorPoint.getSinkEndpoint().getSwitchId(), mirrorPoint.getSinkEndpoint().getPortNumber());
+        if (physicalPort.isPresent()) {
+            throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+                    format("Invalid sink port %d on switch %s. This port is part of LAG %d. Please delete LAG port "
+                                    + "or choose another sink port.",
+                            mirrorPoint.getSinkEndpoint().getPortNumber(), mirrorPoint.getSinkEndpoint().getSwitchId(),
+                            physicalPort.get().getLagLogicalPort().getLogicalPortNumber()));
         }
 
         try {

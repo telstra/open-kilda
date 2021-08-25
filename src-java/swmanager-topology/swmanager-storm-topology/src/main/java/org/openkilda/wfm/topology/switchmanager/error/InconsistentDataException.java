@@ -19,6 +19,10 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.SwitchId;
 
 public class InconsistentDataException extends SwitchManagerException {
+    public InconsistentDataException(String message) {
+        super(ErrorType.UNPROCESSABLE_REQUEST, message);
+    }
+
     public InconsistentDataException(SwitchId switchId, String details) {
         super(ErrorType.UNPROCESSABLE_REQUEST, makeMessage(switchId, details));
     }

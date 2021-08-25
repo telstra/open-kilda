@@ -21,7 +21,9 @@ import org.openkilda.wfm.error.PipelineException;
 
 public interface SpeakerCommandCarrier {
 
-    void sendCommand(String key, CommandMessage command) throws PipelineException;
+    void sendFloodlightCommand(String key, CommandMessage command) throws PipelineException;
+
+    void sendGrpcCommand(String key, CommandMessage command) throws PipelineException;
 
     void sendResponse(String key, Message response) throws PipelineException;
 }

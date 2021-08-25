@@ -46,6 +46,7 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
     private static final String WORKER_SPOUT = "worker.spout";
     private static final String NB_KAFKA_BOLT = "nb.bolt";
     private static final String SPEAKER_KAFKA_BOLT = "speaker.bolt";
+    private static final String GRPC_SPEAKER_KAFKA_BOLT = "grpc.speaker.bolt";
     private static final String METRICS_BOLT = "metrics.bolt";
 
     private static final Fields FIELDS_KEY = new Fields(MessageKafkaTranslator.FIELD_ID_KEY);
@@ -95,7 +96,8 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
                 .workerSpoutComponent(WORKER_SPOUT)
                 .defaultTimeout((int) TimeUnit.SECONDS.toMillis(topologyConfig.getOperationTimeout()))
                 .build();
-        declareKafkaSpout(builder, topologyConfig.getKafkaSwitchManagerTopic(), WORKER_SPOUT);
+        declareKafkaSpout(builder, Lists.newArrayList(topologyConfig.getKafkaSwitchManagerTopic(),
+                topologyConfig.getGrpcResponseTopic()), WORKER_SPOUT);
         declareBolt(builder, new SpeakerWorkerBolt(speakerWorkerConfig),
                 SpeakerWorkerBolt.ID)
                 .fieldsGrouping(WORKER_SPOUT, FIELDS_KEY)
@@ -107,6 +109,9 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
 
         declareBolt(builder, buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic()), SPEAKER_KAFKA_BOLT)
                 .shuffleGrouping(SpeakerWorkerBolt.ID, StreamType.TO_FLOODLIGHT.toString());
+
+        declareBolt(builder, buildKafkaBolt(topologyConfig.getGrpcSpeakerTopic()), GRPC_SPEAKER_KAFKA_BOLT)
+                .shuffleGrouping(SpeakerWorkerBolt.ID, StreamType.TO_GRPC.toString());
 
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
                 getZookeeperConfig(),

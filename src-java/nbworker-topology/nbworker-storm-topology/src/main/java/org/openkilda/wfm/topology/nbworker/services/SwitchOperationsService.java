@@ -31,6 +31,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.IslStatus;
+import org.openkilda.model.PhysicalPort;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchConnect;
@@ -44,6 +45,7 @@ import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchConnectRepository;
@@ -86,6 +88,7 @@ public class SwitchOperationsService {
     private IslRepository islRepository;
     private FlowRepository flowRepository;
     private FlowPathRepository flowPathRepository;
+    private PhysicalPortRepository physicalPortRepository;
 
     public SwitchOperationsService(
             RepositoryFactory repositoryFactory, TransactionManager transactionManager,
@@ -103,6 +106,7 @@ public class SwitchOperationsService {
         this.switchConnectedDeviceRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
         this.flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
         this.flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
+        this.physicalPortRepository = repositoryFactory.createPhysicalPortRepository();
         this.carrier = carrier;
     }
 
@@ -417,6 +421,18 @@ public class SwitchOperationsService {
                                 + "Please disable detecting of connected devices via ARP for each flow before set "
                                 + "'multiTable' property to 'false'",
                                 switchId, String.join(", ", flowsWithEnabledArp)));
+            }
+        }
+
+        if (updatedSwitchProperties.getServer42Port() != null) {
+            Optional<PhysicalPort> physicalPort = physicalPortRepository.findBySwitchIdAndPortNumber(
+                    switchId, updatedSwitchProperties.getServer42Port());
+            if (physicalPort.isPresent()) {
+                throw new IllegalSwitchPropertiesException(
+                        format("Illegal server42 port '%d' on switch %s. This port is part of LAG '%d'. Please "
+                                        + "delete LAG port or choose another server42 port.",
+                                updatedSwitchProperties.getServer42Port(), switchId,
+                                physicalPort.get().getLagLogicalPort().getLogicalPortNumber()));
             }
         }
 
