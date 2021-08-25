@@ -294,6 +294,11 @@ def endpoint_do_report(idnr):
         'status': entity.proc.returncode}
 
 
+@bottle.error(500)
+def error_handler_500(error):
+    return json.dumps({"status": "error", "message": str(error.exception), "traceback": str(error.traceback)})
+
+
 def endpoint_response(payload):
     return format_response(payload, 'endpoint', 'endpoints')
 
