@@ -1,0 +1,82 @@
+@startuml
+
+title Y-Flow Domain Model
+
+class YFlow {
+    y_flow_id
+
+    status : FlowStatus
+
+    shared_switch : Switch
+    shared_port
+
+    maximum_bandwidth
+    path_computation_strategy : PathComputationStrategy
+    encapsulation_type : FlowEncapsulationType
+    max_latency
+    max_latency_tier2
+    ignore_bandwidth
+    periodic_pings
+    pinned
+    priority
+    strict_bandwidth
+    description
+
+    y_point : Switch
+
+    __
+    subFlows(): Flow[]
+
+    __
+    unique constraint on y_flow_id
+}
+
+class YSubFlow {
+    y_flow_id
+
+    sub_flow_id
+
+    shared_endpoint: EndpointEncapsulation
+    endpoint: Endpoint
+
+    __
+    yFlow(): YFlow
+}
+
+class EndpointEncapsulation {
+    vlan_id
+    inner_vlan_id
+}
+
+class Endpoint {
+    switch : Switch
+    port_number
+    vlan_id
+    inner_vlan_id
+}
+
+class Switch {
+    id : SwitchId
+}
+
+class Flow {
+    flow_id
+
+    ...
+}
+
+class FlowMeter {
+    meter_id
+    switch_id
+    flow_id
+    path_id = null
+}
+
+YFlow --> Switch : by shared_switch\n and y_point
+YFlow <-- FlowMeter : by \nflow_id == y_flow_id
+YSubFlow --> EndpointEncapsulation : by shared_endpoint
+YSubFlow --> Endpoint : by endpoint
+YSubFlow --> YFlow : by y_flow_id
+YSubFlow --> Flow : by sub_flow_id
+
+@enduml

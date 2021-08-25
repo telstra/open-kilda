@@ -1,0 +1,97 @@
+@startuml
+title Reroute y-flow
+
+boundary Northbound
+box "Reroute Topology" #LightBlue
+    participant RerouteBolt
+    participant FlowRerouteQueueBolt
+end box
+
+box "Flow HS Topology" #LightGreen
+    participant YFlowRerouteHub
+    participant PathComputer
+    participant FlowRerouteService as "FlowRerouteService + FSM"
+    participant FlowResourcesManager
+    participant RuleManager
+    participant SpeakerWorker
+end box
+database OrientDB
+
+Northbound -> RerouteBolt : YFlowRerouteRequest
+RerouteBolt -> FlowRerouteQueueBolt
+FlowRerouteQueueBolt -> YFlowRerouteHub : YFlowRerouteRequest
+
+activate YFlowRerouteHub
+YFlowRerouteHub -> OrientDB : Update y-flow status to lock it
+alt Y-flow is already locked
+    RerouteBolt <- YFlowRerouteHub : Y-flow reroute error
+end
+
+YFlowRerouteHub -> YFlowRerouteHub: Define reroute order for sub-flows
+
+RerouteBolt <- YFlowRerouteHub : Y-flow reroute is in progress
+
+loop for each sub-flows
+    ==Reroute sub-flow==
+    YFlowRerouteHub -> FlowRerouteService : Initiate the flow reroute
+    deactivate YFlowRerouteHub
+    activate FlowRerouteService
+    YFlowRerouteHub <- FlowRerouteService : Callback: validation passed, path is found, resources are allocated
+
+    ==Sub-flow installation==
+    FlowRerouteService -> SpeakerWorker : Send install/validate rules command
+    deactivate FlowRerouteService
+    FlowRerouteService <- SpeakerWorker
+    activate FlowRerouteService
+
+    FlowRerouteService -> OrientDB : Update sub-flow entity & ISLs available bandwidth
+
+    FlowRerouteService -> SpeakerWorker : Send remove old rules command
+    deactivate FlowRerouteService
+    FlowRerouteService <- SpeakerWorker
+    activate FlowRerouteService
+
+    FlowRerouteService -> FlowResourcesManager : Deallocate resources for old sub-flow paths
+
+    YFlowRerouteHub <- FlowRerouteService : Callback: reroute completed
+    deactivate FlowRerouteService
+    activate YFlowRerouteHub
+    alt Flow reroute failed or timeout
+        YFlowRerouteHub <- YFlowRerouteHub : Set sub-flow status to DOWN
+    end
+
+    ==Y-point update==
+    YFlowRerouteHub -> PathComputer : Calculate the y-point
+    activate PathComputer
+    YFlowRerouteHub <- PathComputer
+    deactivate PathComputer
+
+    YFlowRerouteHub -> FlowResourcesManager : Allocate the new y-point meter
+    activate FlowResourcesManager
+    YFlowRerouteHub <- FlowResourcesManager
+    deactivate FlowResourcesManager
+
+    YFlowRerouteHub -> OrientDB : Save y-flow entities
+
+    YFlowRerouteHub -> SpeakerWorker : Send install/validate the new y-point meter
+    deactivate YFlowRerouteHub
+    YFlowRerouteHub <- SpeakerWorker
+    activate YFlowRerouteHub
+
+    YFlowRerouteHub -> SpeakerWorker : Send remove the old y-point meter
+    deactivate YFlowRerouteHub
+    YFlowRerouteHub <- SpeakerWorker
+    activate YFlowRerouteHub
+
+    YFlowRerouteHub -> FlowResourcesManager : Deallocate the old y-point meter
+    activate FlowResourcesManager
+    YFlowRerouteHub <- FlowResourcesManager
+    deactivate FlowResourcesManager
+end
+
+== Completing ==
+YFlowRerouteHub -> OrientDB : Update y-flow status
+
+deactivate YFlowRerouteHub
+
+@enduml
