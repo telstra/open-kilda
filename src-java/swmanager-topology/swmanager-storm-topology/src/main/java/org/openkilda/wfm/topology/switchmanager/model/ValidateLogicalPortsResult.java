@@ -13,23 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.switches;
+package org.openkilda.wfm.topology.switchmanager.model;
 
-import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.switches.LogicalPortInfoEntry;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.Builder;
-import lombok.EqualsAndHashCode;
 import lombok.Value;
 
+import java.util.List;
+
 @Value
-@Builder
-@EqualsAndHashCode(callSuper = false)
-@JsonNaming(value = SnakeCaseStrategy.class)
-public class SwitchValidationResponse extends InfoData {
-    RulesValidationEntry rules;
-    MetersValidationEntry meters;
-    GroupsValidationEntry groups;
-    LogicalPortsValidationEntry logicalPorts;
+public class ValidateLogicalPortsResult {
+    List<LogicalPortInfoEntry> properLogicalPorts;
+    List<LogicalPortInfoEntry> missingLogicalPorts;
+    List<LogicalPortInfoEntry> excessLogicalPorts;
+    List<LogicalPortInfoEntry> misconfiguredLogicalPorts;
 }

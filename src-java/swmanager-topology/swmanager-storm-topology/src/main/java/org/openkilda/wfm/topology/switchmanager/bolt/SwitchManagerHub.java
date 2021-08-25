@@ -32,6 +32,7 @@ import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.messaging.info.flow.FlowRemoveResponse;
 import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
+import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterData;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
@@ -177,6 +178,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                         (SwitchExpectedDefaultMeterEntries) data);
             } else if (data instanceof SwitchGroupEntries) {
                 validateService.handleGroupEntriesResponse(key, (SwitchGroupEntries) data);
+            } else if (data instanceof DumpLogicalPortsResponse) {
+                validateService.handleLogicalPortResponse(key, (DumpLogicalPortsResponse) data);
             } else if (data instanceof SwitchMeterData) {
                 handleMetersResponse(key, (SwitchMeterData) data);
             } else if (data instanceof FlowInstallResponse) {

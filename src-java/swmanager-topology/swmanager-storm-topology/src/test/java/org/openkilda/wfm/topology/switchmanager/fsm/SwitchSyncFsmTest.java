@@ -25,6 +25,7 @@ import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
+import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
@@ -47,6 +48,8 @@ public class SwitchSyncFsmTest {
             newArrayList(), newArrayList(), newArrayList(), newArrayList());
     private static final ValidateRulesResult EMPTY_VALIDATE_RULES_RESULT = new ValidateRulesResult(
             newHashSet(), newHashSet(), newHashSet(), newHashSet());
+    private static final ValidateLogicalPortsResult EMPTY_LOGICAL_PORTS_RESULT = new ValidateLogicalPortsResult(
+            newArrayList(), newArrayList(), newArrayList(), newArrayList());
 
     @Test
     public void getModifyDefaultMetersWithMissingRulesTest() {
@@ -62,7 +65,7 @@ public class SwitchSyncFsmTest {
                 newArrayList(), misconfiguredMeters, newArrayList(), newArrayList());
 
         ValidationResult validationResult = new ValidationResult(new ArrayList<>(), true,
-                validateRulesResult, validateMetersResult, EMPTY_VALIDATE_GROUPS_RESULT);
+                validateRulesResult, validateMetersResult, EMPTY_VALIDATE_GROUPS_RESULT, EMPTY_LOGICAL_PORTS_RESULT);
 
         SwitchSyncFsm fsm = new SwitchSyncFsm(null, null, null,
                 new SwitchValidateRequest(SWITCH_ID, true, true, true), validationResult);
@@ -81,7 +84,8 @@ public class SwitchSyncFsmTest {
                 newArrayList(), misconfiguredMeters, newArrayList(), newArrayList());
 
         ValidationResult validationResult = new ValidationResult(new ArrayList<>(), true,
-                EMPTY_VALIDATE_RULES_RESULT, validateMetersResult, EMPTY_VALIDATE_GROUPS_RESULT);
+                EMPTY_VALIDATE_RULES_RESULT, validateMetersResult, EMPTY_VALIDATE_GROUPS_RESULT,
+                EMPTY_LOGICAL_PORTS_RESULT);
 
         SwitchSyncFsm fsm = new SwitchSyncFsm(null, null, null,
                 new SwitchValidateRequest(SWITCH_ID, true, true, true), validationResult);

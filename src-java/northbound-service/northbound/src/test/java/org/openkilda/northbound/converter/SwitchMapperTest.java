@@ -15,25 +15,44 @@
 
 package org.openkilda.northbound.converter;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
+import static org.openkilda.messaging.info.switches.LogicalPortType.BFD;
+import static org.openkilda.messaging.info.switches.LogicalPortType.LAG;
 
+import org.openkilda.messaging.info.switches.LogicalPortInfoEntry;
+import org.openkilda.messaging.info.switches.LogicalPortMisconfiguredInfoEntry;
+import org.openkilda.messaging.info.switches.LogicalPortsValidationEntry;
 import org.openkilda.messaging.model.SwitchPatch;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.northbound.dto.v1.switches.LogicalPortInfoDto;
+import org.openkilda.northbound.dto.v1.switches.LogicalPortsValidationDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchLocationDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 
-import com.google.common.collect.Lists;
 import org.junit.Test;
 import org.mapstruct.factory.Mappers;
 
+import java.util.Arrays;
+
 public class SwitchMapperTest {
+    public static final int LOGICAL_PORT_NUMBER_1 = 1;
+    public static final int LOGICAL_PORT_NUMBER_2 = 2;
+    public static final int LOGICAL_PORT_NUMBER_3 = 3;
+    public static final int LOGICAL_PORT_NUMBER_4 = 4;
+    public static final int PHYSICAL_PORT_1 = 1;
+    public static final int PHYSICAL_PORT_2 = 2;
+    public static final int PHYSICAL_PORT_3 = 3;
+    public static final int PHYSICAL_PORT_4 = 4;
+    public static final int PHYSICAL_PORT_5 = 5;
+    public static final int PHYSICAL_PORT_6 = 6;
     private SwitchMapper switchMapper = Mappers.getMapper(SwitchMapper.class);
 
     @Test
@@ -45,7 +64,7 @@ public class SwitchMapperTest {
         properties.setServer42FlowRtt(true);
         properties.setServer42Port(42);
         properties.setServer42MacAddress("42:42:42:42:42:42");
-        properties.setSupportedTransitEncapsulation(Lists.newArrayList(
+        properties.setSupportedTransitEncapsulation(newArrayList(
                 FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase()));
 
         org.openkilda.messaging.model.SwitchPropertiesDto messagingProperties = switchMapper.map(properties);
@@ -59,7 +78,7 @@ public class SwitchMapperTest {
         properties.setServer42FlowRtt(false);
         properties.setServer42Port(null);
         properties.setServer42MacAddress(null);
-        properties.setSupportedTransitEncapsulation(Lists.newArrayList(
+        properties.setSupportedTransitEncapsulation(newArrayList(
                 FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase()));
 
         org.openkilda.messaging.model.SwitchPropertiesDto messagingProperties = switchMapper.map(properties);
@@ -129,6 +148,69 @@ public class SwitchMapperTest {
         assertEquals(switchPatchDto.getLocation().getStreet(), switchPatch.getLocation().getStreet());
         assertEquals(switchPatchDto.getLocation().getCity(), switchPatch.getLocation().getCity());
         assertEquals(switchPatchDto.getLocation().getCountry(), switchPatch.getLocation().getCountry());
+    }
+
+    @Test
+    public void testToLogicalPortsValidationDto() {
+        LogicalPortInfoEntry missing = LogicalPortInfoEntry.builder()
+                .logicalPortNumber(LOGICAL_PORT_NUMBER_1)
+                .type(LAG)
+                .physicalPorts(newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2))
+                .build();
+        LogicalPortInfoEntry excess = LogicalPortInfoEntry.builder()
+                .logicalPortNumber(LOGICAL_PORT_NUMBER_2)
+                .type(LAG)
+                .physicalPorts(newArrayList(PHYSICAL_PORT_3))
+                .build();
+        LogicalPortInfoEntry misconfigured = LogicalPortInfoEntry.builder()
+                .logicalPortNumber(LOGICAL_PORT_NUMBER_3)
+                .type(BFD)
+                .physicalPorts(newArrayList(PHYSICAL_PORT_4))
+                .actual(new LogicalPortMisconfiguredInfoEntry(BFD, newArrayList(PHYSICAL_PORT_4)))
+                .expected(new LogicalPortMisconfiguredInfoEntry(LAG, newArrayList(
+                        PHYSICAL_PORT_4, PHYSICAL_PORT_5)))
+                .build();
+        LogicalPortInfoEntry proper = LogicalPortInfoEntry.builder()
+                .logicalPortNumber(LOGICAL_PORT_NUMBER_4)
+                .type(LAG)
+                .physicalPorts(newArrayList(PHYSICAL_PORT_6))
+                .build();
+
+        LogicalPortsValidationEntry validationEntry = LogicalPortsValidationEntry.builder()
+                .missing(newArrayList(missing))
+                .misconfigured(newArrayList(misconfigured))
+                .proper(newArrayList(proper))
+                .excess(newArrayList(excess))
+                .build();
+
+        LogicalPortsValidationDto validationDto = switchMapper.toLogicalPortsValidationDto(validationEntry);
+        assertEquals(1, validationDto.getProper().size());
+        assertEquals(1, validationDto.getMissing().size());
+        assertEquals(1, validationDto.getMisconfigured().size());
+        assertEquals(1, validationDto.getExcess().size());
+
+        assertEqualsLogicalPortInfoDto(validationDto.getMissing().get(0), LOGICAL_PORT_NUMBER_1, LAG.toString(),
+                PHYSICAL_PORT_1, PHYSICAL_PORT_2);
+        assertEqualsLogicalPortInfoDto(validationDto.getExcess().get(0), LOGICAL_PORT_NUMBER_2, LAG.toString(),
+                PHYSICAL_PORT_3);
+        assertEqualsLogicalPortInfoDto(validationDto.getMisconfigured().get(0), LOGICAL_PORT_NUMBER_3, BFD.toString(),
+                PHYSICAL_PORT_4);
+        assertEqualsLogicalPortInfoDto(validationDto.getProper().get(0), LOGICAL_PORT_NUMBER_4, LAG.toString(),
+                PHYSICAL_PORT_6);
+
+        assertEquals(BFD.toString(), validationDto.getMisconfigured().get(0).getActual().getType());
+        assertEquals(newArrayList(PHYSICAL_PORT_4),
+                validationDto.getMisconfigured().get(0).getActual().getPhysicalPorts());
+        assertEquals(LAG.toString(), validationDto.getMisconfigured().get(0).getExpected().getType());
+        assertEquals(newArrayList(PHYSICAL_PORT_4, PHYSICAL_PORT_5),
+                validationDto.getMisconfigured().get(0).getExpected().getPhysicalPorts());
+    }
+
+    private void assertEqualsLogicalPortInfoDto(LogicalPortInfoDto port, int logicalPortNumber, String type,
+                                            Integer... physicalPorts) {
+        assertEquals(logicalPortNumber, port.getLogicalPortNumber().intValue());
+        assertEquals(type, port.getType());
+        assertEquals(Arrays.asList(physicalPorts), port.getPhysicalPorts());
     }
 
     private Switch getSwitch() {

@@ -13,6 +13,7 @@ COLLECT_DATA : rules-received / save-response, fire ready if all responses recei
 COLLECT_DATA : expected-default-rules-received / save-response, fire ready if all responses received
 COLLECT_DATA : groups-received / save-response, fire ready if all responses received
 COLLECT_DATA : meters-received / save-response, fire ready if all responses received
+COLLECT_DATA : logical-ports-received / save-response, fire ready if all responses received
 COLLECT_DATA : expected-default-meters-received / save-response, fire ready if all responses received
 COLLECT_DATA : meters-unsupported / save-response, fire ready if all responses received
 

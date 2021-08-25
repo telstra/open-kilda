@@ -16,11 +16,13 @@
 package org.openkilda.wfm.topology.switchmanager.mappers;
 
 import org.openkilda.messaging.info.switches.GroupsValidationEntry;
+import org.openkilda.messaging.info.switches.LogicalPortsValidationEntry;
 import org.openkilda.messaging.info.switches.MetersValidationEntry;
 import org.openkilda.messaging.info.switches.RulesValidationEntry;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.wfm.topology.switchmanager.model.SwitchValidationContext;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
+import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 
@@ -50,6 +52,9 @@ public abstract class ValidationMapper {
         if (validationContext.getValidateGroupsResult() != null) {
             response.groups(mapReport(validationContext.getValidateGroupsResult()));
         }
+        if (validationContext.getValidateLogicalPortResult() != null) {
+            response.logicalPorts(mapReport(validationContext.getValidateLogicalPortResult()));
+        }
 
         return response.build();
     }
@@ -71,4 +76,10 @@ public abstract class ValidationMapper {
     @Mapping(source = "properGroups", target = "proper")
     @Mapping(source = "excessGroups", target = "excess")
     public abstract GroupsValidationEntry mapReport(ValidateGroupsResult report);
+
+    @Mapping(source = "missingLogicalPorts", target = "missing")
+    @Mapping(source = "misconfiguredLogicalPorts", target = "misconfigured")
+    @Mapping(source = "properLogicalPorts", target = "proper")
+    @Mapping(source = "excessLogicalPorts", target = "excess")
+    public abstract LogicalPortsValidationEntry mapReport(ValidateLogicalPortsResult report);
 }

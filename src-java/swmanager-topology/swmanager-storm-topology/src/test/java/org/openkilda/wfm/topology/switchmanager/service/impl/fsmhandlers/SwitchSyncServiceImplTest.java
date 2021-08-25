@@ -54,6 +54,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
+import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
@@ -328,7 +329,8 @@ public class SwitchSyncServiceImplTest {
         ValidationResult tempResult = makeValidationResult();
         service.handleSwitchSync(KEY, request, new ValidationResult(
                 tempResult.getFlowEntries(), false, tempResult.getValidateRulesResult(), null,
-                new ValidateGroupsResult(emptyList(), emptyList(), emptyList(), emptyList())));
+                new ValidateGroupsResult(emptyList(), emptyList(), emptyList(), emptyList()),
+                new ValidateLogicalPortsResult(emptyList(), emptyList(), emptyList(), emptyList())));
 
         verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
         verify(carrier).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
@@ -350,7 +352,8 @@ public class SwitchSyncServiceImplTest {
                 new ValidateRulesResult(newHashSet(missingRules), newHashSet(flowEntry.getCookie()),
                         newHashSet(excessRules), newHashSet(misconfiguredRules)),
                 new ValidateMetersResult(emptyList(), emptyList(), emptyList(), excessMeters),
-                new ValidateGroupsResult(emptyList(), emptyList(), emptyList(), emptyList()));
+                new ValidateGroupsResult(emptyList(), emptyList(), emptyList(), emptyList()),
+                new ValidateLogicalPortsResult(emptyList(), emptyList(), emptyList(), emptyList()));
     }
 
     private ErrorMessage getErrorMessage() {
