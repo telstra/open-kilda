@@ -46,13 +46,14 @@ changeSet:
 
 To start DB update by hands you need to build migration container
 ```shell script
-docker-compose build db_migration
+docker-compose build db_mysql_migration
 ```
 
 And execute following command (for DB on some foreign host):
 ```shell script
 docker run \
   --volume=/etc/resolv.conf:/etc/resolv.conf --rm --network=host \
+  -e INSTALL_MYSQL=true \
   open-kilda_db_mysql_migration:latest \
   --username="kilda" \
   --password="password" \
@@ -64,6 +65,7 @@ For rollback changes up to some specific tag, execute command
 ```shell script
 docker run \
   --volume=/etc/resolv.conf:/etc/resolv.conf --rm --network=host \
+  -e INSTALL_MYSQL=true \
   open-kilda_db_mysql_migration:latest \
   --username="kilda" \
   --password="password" \
