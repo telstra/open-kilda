@@ -39,6 +39,7 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.openkilda.testing.tools.TraffgenStats
 
 import groovy.transform.Memoized
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
@@ -48,6 +49,7 @@ import spock.lang.Unroll
 
 import javax.inject.Provider
 
+@Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-traffic-mirroring")
 class MirrorEndpointsSpec extends HealthCheckSpecification {
 
