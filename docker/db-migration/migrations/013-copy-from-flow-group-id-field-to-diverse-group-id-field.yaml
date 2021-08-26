@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: dpoltavets
+      changes:
+        - tagDatabase:
+            tag: 013-copy-from-flow-group-id-field-to-diverse-group-id-field
+
+  - changeSet:
+      id: copy_from_flow_group_id_field_to_diverse_group_id_field
+      author: dpoltavets
+      changes:
+        - sql: "UPDATE flow SET diverse_group_id = group_id"
+        - sql: "UPDATE flow_dump SET diverse_group_id = group_id"
+        - sql: "UPDATE flow REMOVE group_id"
+        - sql: "UPDATE flow_dump REMOVE group_id"
+      rollback:
+        - sql: "UPDATE flow SET group_id = diverse_group_id"
+        - sql: "UPDATE flow_dump SET group_id = diverse_group_id"
+        - sql: "UPDATE flow REMOVE diverse_group_id"
+        - sql: "UPDATE flow_dump REMOVE diverse_group_id"

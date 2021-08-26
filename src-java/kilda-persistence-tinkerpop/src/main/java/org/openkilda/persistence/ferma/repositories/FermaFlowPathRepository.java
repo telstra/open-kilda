@@ -105,7 +105,7 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
     public Collection<FlowPath> findByFlowGroupId(String flowGroupId) {
         return framedGraph().traverse(g -> g.V()
                 .hasLabel(FlowFrame.FRAME_LABEL)
-                .has(FlowFrame.GROUP_ID_PROPERTY, flowGroupId)
+                .has(FlowFrame.DIVERSE_GROUP_ID_PROPERTY, flowGroupId)
                 .out(FlowFrame.OWNS_PATHS_EDGE)
                 .hasLabel(FlowPathFrame.FRAME_LABEL))
                 .toListExplicit(FlowPathFrame.class).stream()
@@ -115,7 +115,7 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
 
     @Override
     public Collection<PathId> findPathIdsByFlowDiverseGroupId(String flowDiverseGroupId) {
-        return findPathIdsByFlowGroupId(FlowFrame.GROUP_ID_PROPERTY, flowDiverseGroupId);
+        return findPathIdsByFlowGroupId(FlowFrame.DIVERSE_GROUP_ID_PROPERTY, flowDiverseGroupId);
     }
 
     @Override

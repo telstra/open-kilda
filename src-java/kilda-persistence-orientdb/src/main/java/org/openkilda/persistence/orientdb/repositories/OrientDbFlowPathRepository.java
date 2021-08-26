@@ -48,7 +48,7 @@ public class OrientDbFlowPathRepository extends FermaFlowPathRepository {
 
     @Override
     public Collection<PathId> findPathIdsByFlowDiverseGroupId(String flowDiverseGroupId) {
-        return findPathIdsByFlowGroupId(FlowFrame.GROUP_ID_PROPERTY, flowDiverseGroupId);
+        return findPathIdsByFlowGroupId(FlowFrame.DIVERSE_GROUP_ID_PROPERTY, flowDiverseGroupId);
     }
 
     @Override

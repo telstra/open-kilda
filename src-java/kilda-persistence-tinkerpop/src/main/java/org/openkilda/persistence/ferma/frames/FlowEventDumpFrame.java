@@ -186,19 +186,12 @@ public abstract class FlowEventDumpFrame extends KildaBaseVertexFrame implements
     public abstract void setReverseMeterId(MeterId reverseMeterId);
 
     @Override
-    public String getDiverseGroupId() {
-        String diverseGroupId = getProperty("group_id");
-        if (diverseGroupId == null) {
-            diverseGroupId = getProperty("diverse_group_id");
-        }
-        return diverseGroupId;
-    }
+    @Property("diverse_group_id")
+    public abstract String getDiverseGroupId();
 
     @Override
-    public void setDiverseGroupId(String diverseGroupId) {
-        setProperty("group_id", diverseGroupId);
-        setProperty("diverse_group_id", diverseGroupId);
-    }
+    @Property("diverse_group_id")
+    public abstract void setDiverseGroupId(String diverseGroupId);
 
     @Override
     @Property("affinity_group_id")
