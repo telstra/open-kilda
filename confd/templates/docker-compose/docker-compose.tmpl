@@ -141,7 +141,7 @@ services:
       default:
         aliases:
           - mysql.pendev
-    mem_limit: ${MYSQL_MEM_LIMIT:-256741824}
+    mem_limit: ${MYSQL_MEM_LIMIT:-1073741824}
 
   db_migration:
     container_name: db_migration
