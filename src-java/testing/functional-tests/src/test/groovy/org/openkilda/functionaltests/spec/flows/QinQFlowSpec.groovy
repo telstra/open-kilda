@@ -33,6 +33,7 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import groovy.transform.Memoized
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
@@ -40,6 +41,7 @@ import spock.lang.Shared
 
 import javax.inject.Provider
 
+@Slf4j
 class QinQFlowSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
@@ -53,6 +55,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
     def "System allows to manipulate with QinQ flow\
 [srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.hwSwString()]#trafficDisclaimer"() {
+        assumeFalse((swPair.src.wb5164 || swPair.dst.wb5164), "Forbid QinQ flows for WB-series switches #4408")
         assumeFalse(!trafficDisclaimer && (swPair.src.wb5164 || swPair.dst.wb5164),
                 "https://github.com/telstra/open-kilda/issues/4407")
         when: "Create a QinQ flow"
@@ -326,7 +329,11 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])
     def "System doesn't allow to create a QinQ flow when a switch supports multi table mode but it is disabled"() {
         given: "A switch pair with disabled multi table mode at least on the one switch"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs()[0]
+        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
+            //"Forbid QinQ flows for WB-series switches #4408"
+            [it.src, it.dst].every { !it.wb5164 }
+        }
+
         def initSrcSwProps = northbound.getSwitchProperties(swP.src.dpId)
         SwitchHelper.updateSwitchProperties(swP.src, initSrcSwProps.jacksonCopy().tap {
             it.multiTable = false
@@ -854,8 +861,13 @@ class QinQFlowSpec extends HealthCheckSpecification {
         [srcVlanId, srcInnerVlanId, dstVlanId, dstInnerVlanId, swPair] << [
                 [[10, 20, 30, 40],
                  [10, 20, 0, 0]],
-                getUniqueSwitchPairs({ SwitchPair switchPair -> switchPair.paths.find {
-                    pathHelper.getInvolvedSwitches(it).every { switchHelper.isVxlanEnabled(it.dpId) }}})
+                //Forbid QinQ flows for WB-series switches #4408
+                getUniqueSwitchPairs(topologyHelper.getSwitchPairs().findAll { SwitchPair swP ->
+                    def allTraffGenSwitchIds = getTopology().getActiveTraffGens()*.switchConnected*.dpId
+                    [swP.src, swP.dst].every { !it.wb5164 && it.dpId in allTraffGenSwitchIds } &&
+                            swP.paths.find {
+                        pathHelper.getInvolvedSwitches(it).every { switchHelper.isVxlanEnabled(it.dpId) }
+                    }})
         ].combinations().collect { it.flatten() }
         trafficDisclaimer = swPair.src.traffGens && swPair.dst.traffGens ? "" : " !WARN: No traffic check!"
     }

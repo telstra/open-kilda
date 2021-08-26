@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -27,7 +28,6 @@ import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchFeature
-import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
@@ -38,7 +38,6 @@ import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
-import groovy.transform.Memoized
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -66,6 +65,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     ])
     def "System allows to create/update encapsulation type for a flow\
 [#data.encapsulationCreate.toString() -> #data.encapsulationUpdate.toString(), #swPair.hwSwString()]"(Map data, SwitchPair swPair) {
+        assumeFalse((swPair.src.wb5164 || swPair.dst.wb5164), "Forbid QinQ flows for WB-series switches #4408")
         when: "Create a flow with #encapsulationCreate.toString() encapsulation type"
         def flow = flowHelperV2.randomFlow(swPair)
         flow.encapsulationType = data.encapsulationCreate
@@ -361,7 +361,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
         given: "Two active VXLAN supported switches connected to traffgen"
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.findAll {
-            switchHelper.isVxlanEnabled(it.dpId)
+            !it.wb5164 && switchHelper.isVxlanEnabled(it.dpId) //Forbid QinQ flows for WB-series switches #4408
         }*.dpId ?: assumeTrue(false,
 "Should be at least two active traffgens connected to VXLAN supported switches")
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
