@@ -47,6 +47,8 @@ class HardwareEnvCleanupExtension extends EnvCleanupExtension {
             unsetSwitchMaintenance(activeSwitches)
             removeFlowRules(activeSwitches)
             removeExcessMeters(activeSwitches)
+            deleteLagPorts(activeSwitches)
+
 
             log.info("Configure 'multiTable' mode according to the 'kilda.properties' file")
             northbound.getAllSwitches().findAll { it.state == SwitchChangeType.ACTIVATED }.each { sw ->
