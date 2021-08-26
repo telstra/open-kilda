@@ -1236,11 +1236,12 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
     List<SwitchPair> getUniqueVxlanSwitchPairs(boolean needTraffgens) {
         getUniqueSwitchPairs({ SwitchPair swP ->
+            def wbCheck = [swP.src, swP.dst].every { !it.wb5164 } //ignore due to issue with vxlan(checksum)
             def vxlanCheck = swP.paths.find {
                 pathHelper.getInvolvedSwitches(it).every { switchHelper.isVxlanEnabled(it.dpId) }
             }
             def tgCheck = needTraffgens ? swP.src.traffGens && swP.dst.traffGens : true
-            vxlanCheck && tgCheck
+            vxlanCheck && tgCheck && wbCheck
         })
     }
 
