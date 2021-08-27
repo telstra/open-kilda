@@ -30,6 +30,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload
+import org.openkilda.northbound.dto.v2.switches.CreateLagPortDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.time.TimeCategory
@@ -892,6 +893,58 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         switchPair && changeFlowRttSwitch(switchPair.src, initialFlowRttSw)
         swPropIsWrong && northbound.updateSwitchProperties(switchPair.src.dpId, originalSrcSwPros)
         !swIsValid && northbound.synchronizeSwitch(switchPair.src.dpId, true)
+    }
+
+
+    @Tidy
+    @Tags(HARDWARE)
+    def "Rtt statistic is available for a flow on a LAG port"() {
+        given: "Two active switches, both have server42 connected"
+        def server42SwIds = topology.getActiveServer42Switches()*.dpId
+        def switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
+            [it.src, it.dst].every { it.dpId in server42SwIds}
+        }
+        assumeTrue(switchPair != null, "Was not able to find switches with needed connection")
+
+        and: "server42FlowRtt toggle is set to true"
+        def flowRttFeatureStartState = changeFlowRttToggle(true)
+
+        and: "server42FlowRtt is enabled on src/dst switches"
+        def initialSrcSwS42Props = northbound.getSwitchProperties(switchPair.src.dpId).server42FlowRtt
+        def initialDstSwS42Props = northbound.getSwitchProperties(switchPair.dst.dpId).server42FlowRtt
+        changeFlowRttSwitch(switchPair.src, true)
+        changeFlowRttSwitch(switchPair.dst, true)
+
+        when: "Create a LAG port on the src switch"
+        def portsForLag = topology.getAllowedPortsForSwitch(switchPair.src)[-2, -1]
+        def payload = new CreateLagPortDto(portNumbers: portsForLag)
+        def lagPort = northboundV2.createLagLogicalPort(switchPair.src.dpId, payload).logicalPortNumber
+
+        and: "Create a flow"
+        def flowCreateTime = new Date()
+        def flow = flowHelperV2.randomFlow(switchPair).tap {
+            it.source.portNumber = lagPort
+        }
+        flowHelperV2.addFlow(flow)
+
+        then: "Stats from server42 for forward/reverse directions are available"
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+            otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "forward",
+                     origin   : "server42"]).dps.isEmpty()
+            otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "reverse",
+                     origin   : "server42"]).dps.isEmpty()
+        }
+
+        cleanup: "Revert system to original state"
+        lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        flowRttFeatureStartState && changeFlowRttToggle(flowRttFeatureStartState)
+        initialSrcSwS42Props && changeFlowRttSwitch(switchPair.src, initialSrcSwS42Props)
+        initialDstSwS42Props && changeFlowRttSwitch(switchPair.dst, initialSrcSwS42Props)
     }
 
     def changeFlowRttSwitch(Switch sw, boolean requiredState) {
