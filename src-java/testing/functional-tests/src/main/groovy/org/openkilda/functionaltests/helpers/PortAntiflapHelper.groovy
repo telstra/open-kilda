@@ -34,7 +34,9 @@ class PortAntiflapHelper {
         def swPort = new Tuple2(swId, portNo)
         def lastEvent = history.get(swPort)
         if (lastEvent) {
-            waitPortIsStable(swId, portNo, lastEvent)
+            Wrappers.silent { //Don't fail hard on this check. In rare cases we may miss the history entry
+                waitPortIsStable(swId, portNo, lastEvent)
+            }
             history.remove(swPort)
         }
         northbound.portUp(swId, portNo)

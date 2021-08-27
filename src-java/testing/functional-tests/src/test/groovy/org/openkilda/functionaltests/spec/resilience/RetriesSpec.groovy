@@ -156,11 +156,11 @@ and at least 1 path must remain safe"
             }
         }
         broughtDownIsls = otherIsls.unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
-        broughtDownIsls.every { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
+        broughtDownIsls.every { northbound.portDown(it.srcSwitch.dpId, it.srcPort) }
         wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
                 it.state == IslChangeType.FAILED
-            }.size() == otherIsls.size() * 2
+            }.size() == broughtDownIsls.size() * 2
         }
 
         and: "A protected flow"
@@ -243,8 +243,8 @@ and at least 1 path must remain safe"
             switchHelper.reviveSwitch(swToManipulate, blockData)
             northbound.synchronizeSwitch(swToManipulate.dpId, true)
         }
-        broughtDownIsls.every { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
-        wait(discoveryInterval + WAIT_OFFSET) {
+        broughtDownIsls.every { northbound.portUp(it.srcSwitch.dpId, it.srcPort) }
+        wait(discoveryInterval + WAIT_OFFSET + antiflapCooldown) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
         database.resetCosts(topology.isls)

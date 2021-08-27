@@ -674,7 +674,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "Stats from flow monitoring feature for reverse direction only are available"
-        Wrappers.wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET, 1) {
+        Wrappers.wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET * 2, 1) {
             def flMonitoringReverseData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "reverse",
@@ -691,7 +691,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         changeFlowRttSwitch(switchPair.src, false)
 
         then: "Stats from flow monitoring feature for forward direction are available"
-        Wrappers.wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET, 1) {
+        Wrappers.wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET * 2, 1) {
             otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "forward",
