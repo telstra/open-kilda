@@ -15,6 +15,10 @@ floodlight.alive.interval=2
 orientdb.url = remote:localhost:2424,localhost:2425,localhost:2426/kilda
 orientdb.user = kilda
 orientdb.password = kilda
+hibernate.user = kilda
+hibernate.password = kilda
+hibernate.url = jdbc:mysql://localhost:8101/kilda
+persistence.implementation = orientdb-sql-mixture1
 
 elasticsearch.endpoint=http://localhost:9200
 elasticsearch.username=kilda

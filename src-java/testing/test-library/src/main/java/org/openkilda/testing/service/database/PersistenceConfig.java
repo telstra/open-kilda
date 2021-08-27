@@ -15,6 +15,7 @@
 
 package org.openkilda.testing.service.database;
 
+import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -24,25 +25,26 @@ import org.openkilda.persistence.tx.TransactionManager;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PropertiesLoaderUtils;
 
+import java.io.IOException;
 import java.util.Properties;
 
 @Configuration
 public class PersistenceConfig {
     @Bean
-    public PersistenceManager persistenceManager(
-            @Value("${orientdb.url}") String orientdbUrl,
-            @Value("${orientdb.user}") String orientdbUser,
-            @Value("${orientdb.password}") String orientdbPassword) {
-        Properties configProps = new Properties();
-        configProps.setProperty("orientdb.url", orientdbUrl);
-        configProps.setProperty("orientdb.user", orientdbUser);
-        configProps.setProperty("orientdb.password", orientdbPassword);
-
-        PropertiesBasedConfigurationProvider configurationProvider =
-                new PropertiesBasedConfigurationProvider(configProps);
-
+    public PersistenceManager persistenceManager(ConfigurationProvider configurationProvider) {
         return PersistenceProvider.loadAndMakeDefault(configurationProvider);
+    }
+
+    @Bean
+    public ConfigurationProvider configurationProvider(
+            @Value("${kilda.config.file:kilda.properties}") String fileLocation) throws IOException {
+        Resource resource = new FileSystemResource(fileLocation);
+        Properties props = PropertiesLoaderUtils.loadProperties(resource);
+        return new PropertiesBasedConfigurationProvider(props);
     }
 
     @Bean
