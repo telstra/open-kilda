@@ -1,5 +1,43 @@
 # Changelog
 
+## v1.104.0 (31/08/2021)
+
+### Features:
+-  [#4417](https://github.com/telstra/open-kilda/pull/4417) LAG: Added LAG creation [**storm-topologies**]
+-  [#4421](https://github.com/telstra/open-kilda/pull/4421) LAG: get LAGs API [**storm-topologies**]
+-  [#4422](https://github.com/telstra/open-kilda/pull/4422) LAG: Added delete API [**storm-topologies**]
+-  [#4429](https://github.com/telstra/open-kilda/pull/4429) tests for the LAG feature [**tests**]
+-  [#4436](https://github.com/telstra/open-kilda/pull/4436) LAG: Validate [**storm-topologies**]
+-  [#4443](https://github.com/telstra/open-kilda/pull/4443) LAG: sync [**storm-topologies**]
+
+### Bug Fixes:
+-  [#4431](https://github.com/telstra/open-kilda/pull/4431) Fix default values issue in history migration tool
+-  [#4459](https://github.com/telstra/open-kilda/pull/4459) Fix rebase issue in FlowStateCacheBolt
+-  [#4460](https://github.com/telstra/open-kilda/pull/4460) Fix mysql migration README
+-  [#4462](https://github.com/telstra/open-kilda/pull/4462) Fix mysql startup issues
+
+### Improvements:
+-  [#4430](https://github.com/telstra/open-kilda/pull/4430) Add mysql schema migration toolset [**storm-topologies**]
+-  [#4450](https://github.com/telstra/open-kilda/pull/4450) Test/dump sw props [**tests**]
+-  [#4452](https://github.com/telstra/open-kilda/pull/4452) add/improve "cleanup" in ConnectedDevicesSpec [**tests**]
+-  [#4453](https://github.com/telstra/open-kilda/pull/4453) ignore wb switches in vxlanSpec due to issue with checksum [**tests**]
+-  [#4458](https://github.com/telstra/open-kilda/pull/4458) fix(LogicalPortSpec) after rebase [**tests**]
+-  [#4463](https://github.com/telstra/open-kilda/pull/4463) Test/ignore wb in mirror spec [**tests**]
+-  [#4404](https://github.com/telstra/open-kilda/pull/4404) Use diverse group id property in the flow frame instead of group id property (Issue: [#4401](https://github.com/telstra/open-kilda/issues/4401))
+
+### Other changes:
+-  [#4386](https://github.com/telstra/open-kilda/pull/4386) Adjust func tests to work with mysql history [**tests**]
+-  [#4451](https://github.com/telstra/open-kilda/pull/4451) Make traffgen display tracebacks on 500 errors [**tests**]
+-  [#4457](https://github.com/telstra/open-kilda/pull/4457) Tests: verify virtual topology deployment one by one [**tests**]
+-  [#4461](https://github.com/telstra/open-kilda/pull/4461) Tests: make antiflap helper more forgiving to missing history [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.103.0...v1.104.0).
+
+### Affected Components:
+swmanager, orientdb, flow-hs, network, nbworker, flow-monitor
+
+---
+
 ## v1.103.0 (20/08/2021)
 
 ### Features:
