@@ -34,7 +34,16 @@ SELF_CONTAINER_ID = os.environ.get("SELF_CONTAINER_ID")
 if SELF_CONTAINER_ID:
     SELF_CONTAINER = docker.containers.get(SELF_CONTAINER_ID)
     LAB_SERVICE_IMAGE = os.environ.get("LAB_SERVICE_IMAGE", SELF_CONTAINER.image.tags[0])
-    NETWORK_NAME = list(SELF_CONTAINER.attrs['NetworkSettings']['Networks'].keys())[0]
+    PROJECT_NAME = SELF_CONTAINER.attrs['Config']['Labels'].get('com.docker.compose.project', '')
+    SELF_CONTAINER.attrs['NetworkSettings']['Networks'].get('{}_default'.format(PROJECT_NAME))
+    NETWORK_NAME = "{}_default".format(PROJECT_NAME) if PROJECT_NAME else 'default'
+    if NETWORK_NAME not in SELF_CONTAINER.attrs['NetworkSettings']['Networks']:
+        logger.error('Default network with name {} not found', NETWORK_NAME)
+
+    NETWORK_LAB_NAME = os.environ.get("LAB_NET")
+    if NETWORK_LAB_NAME is not None and PROJECT_NAME:
+        NETWORK_LAB_NAME = "{}_{}".format(PROJECT_NAME, NETWORK_LAB_NAME)
+
 else:
     logger.warning("Seems like lab-api isn't running inside container. "
                    "It's required to create virtual topologies properly")
@@ -75,12 +84,16 @@ class Lab:
         except KeyError:
             api_host = SELF_CONTAINER.attrs['Config']['Hostname']
             env['API_HOST'] = '{}:{}'.format(api_host, API_PORT)
+        if NETWORK_LAB_NAME is not None:
+            env['NETWORK_LAB_NAME'] = NETWORK_LAB_NAME
         volumes = {
             '/var/run/docker.sock': {'bind': '/var/run/docker.sock', 'mode': 'rw'},
             '/lib/modules': {'bind': '/lib/modules', 'mode': 'ro'}}
         docker.containers.run(LAB_SERVICE_IMAGE, command='service', environment=env, volumes=volumes,
                               name=name, privileged=True, detach=True)
         docker.networks.get(NETWORK_NAME).connect(name, aliases=[name])
+        if NETWORK_LAB_NAME is not None:
+            docker.networks.get(NETWORK_LAB_NAME).connect(name, aliases=[name])
 
     def destroy(self):
         if self.lab_id != HW_LAB_ID:

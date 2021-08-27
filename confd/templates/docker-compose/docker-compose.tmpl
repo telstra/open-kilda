@@ -39,6 +39,10 @@ services:
         aliases:
         - lab-api.pendev
     mem_limit: ${LAB_API_MEM_LIMIT:-256741824}
+{{if not (exists "/no_server42_server")}}
+    environment:
+      LAB_NET: server42_to_lab
+{{end}}
 
   odb1:
     container_name: odb1
@@ -736,6 +740,7 @@ services:
         aliases:
          - server42-server.pendev
     mem_limit: ${S42SS_MEM_LIMIT:-1073741824}
+
 {{end}}
 {{if not (exists "/no_server42_server")}}
   server42-server:
@@ -756,11 +761,15 @@ services:
       - /sys/kernel/mm/hugepages:/sys/kernel/mm/hugepages
       - /sys/devices/system/node:/sys/devices/system/node
       - /dev:/dev
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       default:
         aliases:
          - server42-server.pendev
+      server42_to_lab:
     mem_limit: ${S42SS_MEM_LIMIT:-1073741824}
+    environment:
+      LAB_NET: server42_to_lab
 {{end}}
 {{if not (exists "/no_server42_storm_stub")}}
   server42-storm-stub:
@@ -785,6 +794,11 @@ services:
         aliases:
          - server42-storm-stub.pendev
     mem_limit: ${S42STS_MEM_LIMIT:-1073741824}
+{{end}}
+
+{{if not (exists "/no_server42_server")}}
+networks:
+  server42_to_lab:
 {{end}}
 
 volumes:

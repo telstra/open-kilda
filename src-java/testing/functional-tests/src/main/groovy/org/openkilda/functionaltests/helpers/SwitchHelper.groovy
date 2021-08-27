@@ -195,7 +195,8 @@ class SwitchHelper {
             }
         }
         if (toggles.server42FlowRtt) {
-            if (sw.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST)) {
+            if (sw.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST) ||
+                    sw.features.contains(SwitchFeature.KILDA_OVS_SWAP_FIELD)) {
                 server42Rules << SERVER_42_FLOW_RTT_TURNING_COOKIE
             }
         }

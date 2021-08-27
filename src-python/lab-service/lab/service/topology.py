@@ -17,11 +17,26 @@ from service.cmd import vsctl, ofctl, run_cmd, daemon_start
 from urllib.parse import urlparse
 import socket
 import logging
+import docker
+import os
+import netifaces
 
 logger = logging.getLogger()
 
 A_SW_DEF = {'name': 'aswitch', 'dp_id': '00:00:00:00:00:00:00:00', 'status': 'active'}
 A_SW_NAME = A_SW_DEF['name']
+
+
+NETWORK_LAB_NAME = os.environ.get("NETWORK_LAB_NAME")
+NETWORK_LAB_IFACE = None
+if NETWORK_LAB_NAME is not None:
+    docker_client = docker.from_env()
+    self_container = docker_client.containers.get(os.environ.get('HOSTNAME'))
+    network_lab_iface_mac = self_container.attrs['NetworkSettings']['Networks'][NETWORK_LAB_NAME]['MacAddress']
+    for iface in netifaces.interfaces():
+        ifaddr = netifaces.ifaddresses(iface)
+        if ifaddr[netifaces.AF_LINK][0]['addr'] == network_lab_iface_mac:
+            NETWORK_LAB_IFACE = iface
 
 
 def pname(sw, port):
@@ -76,6 +91,7 @@ class Switch:
     def create_with_ports(cls, sw_def):
         sw = Switch.create(sw_def)
         sw.define_ports(range(1, sw_def['max_port'] + 1))
+        sw.define_server42_port(sw_def)
         return sw
 
     def destroy(self):
@@ -94,6 +110,19 @@ class Switch:
         if bandwidth:
             cmd.append('set interface {} ingress_policing_rate={}'.format(p_name, bandwidth))
         self.vscmd.extend(cmd)
+
+    def define_server42_port(self, sw_def):
+        prop = sw_def.get('prop', None)
+        if prop is not None and prop.get('server42_flow_rtt', False) \
+                and NETWORK_LAB_IFACE is not None:
+            prop = sw_def['prop']
+            port = prop['server42_port']
+            vlan = prop['server42_vlan']
+            self.vscmd.extend(
+                ['add-port {} {}.{}'.format(self.name, NETWORK_LAB_IFACE, vlan),
+                 'set interface {}.{} ofport={}'.format(NETWORK_LAB_IFACE, vlan, port)])
+            run_cmd(f'ip link add link {NETWORK_LAB_IFACE} name {NETWORK_LAB_IFACE}.{vlan} type vlan id {vlan}')
+            run_cmd(f'ip link set up {NETWORK_LAB_IFACE}.{vlan}')
 
     def dump_flows(self):
         return ofctl(["dump-flows {sw} -O {of_ver}".format(sw=self.name, of_ver=self.of_ver)])[0]
