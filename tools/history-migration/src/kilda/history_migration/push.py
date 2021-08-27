@@ -107,6 +107,20 @@ class _MysqlEntityHandler(_EntityHandler):
     def _handle(self, entity):
         raise NotImplementedError
 
+    @staticmethod
+    def _make_insert_query(table_name, payload):
+        fields = []
+        params = []
+        for name, entry in payload.items():
+            if entry is None:
+                continue
+            fields.append(name)
+            params.append(entry)
+        q = 'INSERT INTO {table} ({fields}) VALUES ({values})'.format(
+            table=table_name, fields=', '.join(fields),
+            values=', '.join(('%s',) * len(fields)))
+        return q, params
+
 
 class _FlowEventMysqlEntityHandler(_MysqlEntityHandler):
     def __init__(self, client, output):
@@ -119,19 +133,17 @@ class _FlowEventMysqlEntityHandler(_MysqlEntityHandler):
             'details': flow_event.details
         }
         _filter_out_dict_none_values(unstructured)
-        args = (
-            flow_event.event_time,
-            flow_event.flow_id,
-            flow_event.event_id,
-            self._new_event_id_unique_key(flow_event.event_id),
-            flow_event.event_name,
-            json.dumps(unstructured),
-            flow_event.time_create, flow_event.time_modify)
-        cursor.execute(
-            'INSERT INTO flow_event '
-            '(event_time, flow_id, task_id, task_id_unique_key, `action`, '
-            'unstructured, time_create, time_modify) '
-            'VALUES (%s, %s, %s, %s, %s, %s, %s, %s)', params=args)
+        q, params = self._make_insert_query('flow_event', {
+            'event_time': flow_event.event_time,
+            'flow_id': flow_event.flow_id,
+            'task_id': flow_event.event_id,
+            'task_id_unique_key': self._new_event_id_unique_key(
+                flow_event.event_id),
+            '`action`': flow_event.event_name,
+            'unstructured': json.dumps(unstructured),
+            'time_create': flow_event.time_create,
+            'time_modify': flow_event.time_modify})
+        cursor.execute(q, params=params)
 
         record_id = cursor.lastrowid
         for entry in flow_event.actions:
@@ -141,16 +153,14 @@ class _FlowEventMysqlEntityHandler(_MysqlEntityHandler):
 
     def _handle_action(self, record_id, action):
         cursor = self._client.cursor()
-        args = (
-            record_id,
-            action.action_time, action.action_name,
-            action.details,
-            action.time_create, action.time_modify)
-        cursor.execute(
-            'INSERT INTO flow_event_action '
-            '(flow_event_id, event_time, `action`, details, time_create, '
-            'time_modify) '
-            'VALUES (%s, %s, %s, %s, %s, %s)', params=args)
+        q, params = self._make_insert_query('flow_event_action', {
+            'flow_event_id': record_id,
+            'event_time': action.action_time,
+            '`action`': action.action_name,
+            'details': action.details,
+            'time_create': action.time_create,
+            'time_modify': action.time_modify})
+        cursor.execute(q, params=params)
 
     def _handle_dump(self, record_id, entry):
         cursor = self._client.cursor()
@@ -190,15 +200,13 @@ class _FlowEventMysqlEntityHandler(_MysqlEntityHandler):
             'forward_status', 'reverse_status', 'encapsulation_type',
             'path_computation_strategy')
 
-        args = (
-            record_id,
-            entry.kind, json.dumps(unstructured),
-            entry.time_create, entry.time_modify)
-        cursor.execute(
-            'INSERT INTO flow_event_dump '
-            '(flow_event_id, kind, unstructured, time_create, time_modify) '
-            'VALUES (%s, %s, %s, %s, %s)',
-            params=args)
+        q, params = self._make_insert_query('flow_event_dump', {
+            'flow_event_id': record_id,
+            'kind': entry.kind,
+            'unstructured': json.dumps(unstructured),
+            'time_create': entry.time_create,
+            'time_modify': entry.time_modify})
+        cursor.execute(q, params=params)
 
     @staticmethod
     def _new_event_id_unique_key(value):
@@ -217,18 +225,16 @@ class _PortEventMysqlEntityHandler(_MysqlEntityHandler):
             'up_events_count': port_event.up_count,
             'down_events_count': port_event.down_count}
         _filter_out_dict_none_values(unstructured)
-        args = (
-            port_event.event_id,
-            port_event.event_time,
-            port_event.switch_id, port_event.port_number,
-            port_event.event_kind,
-            json.dumps(unstructured),
-            port_event.time_create, port_event.time_modify)
-        cursor.execute(
-            'INSERT INTO port_event '
-            '(id, event_time, switch_id, port_number, `event`, unstructured, '
-            'time_create, time_modify) '
-            'VALUES (%s, %s, %s, %s, %s, %s, %s, %s)', params=args)
+        q, params = self._make_insert_query('port_event', {
+            'id': port_event.event_id,
+            'event_time': port_event.event_time,
+            'switch_id': port_event.switch_id,
+            'port_number': port_event.port_number,
+            '`event`': port_event.event_kind,
+            'unstructured': json.dumps(unstructured),
+            'time_create': port_event.time_create,
+            'time_modify': port_event.time_modify})
+        cursor.execute(q, params=params)
 
 
 class _OrientDbEntityHandler(_EntityHandler):
