@@ -27,8 +27,12 @@ import org.openkilda.messaging.info.rule.GroupBucket;
 import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.info.switches.GroupInfoEntry;
 import org.openkilda.messaging.info.switches.GroupInfoEntry.BucketEntry;
+import org.openkilda.messaging.info.switches.LogicalPortInfoEntry;
+import org.openkilda.messaging.info.switches.LogicalPortMisconfiguredInfoEntry;
+import org.openkilda.messaging.info.switches.LogicalPortType;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
+import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowMirrorPath;
@@ -52,6 +56,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
+import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -61,9 +66,11 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
+import org.openkilda.wfm.topology.switchmanager.mappers.LogicalPortMapper;
 import org.openkilda.wfm.topology.switchmanager.mappers.MeterEntryMapper;
 import org.openkilda.wfm.topology.switchmanager.model.SimpleMeterEntry;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
+import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
@@ -80,6 +87,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
@@ -96,6 +104,7 @@ public class ValidationServiceImpl implements ValidationService {
     private final MirrorGroupRepository mirrorGroupRepository;
     private final FlowMirrorPointsRepository flowMirrorPointsRepository;
     private final FlowResourcesManager flowResourcesManager;
+    private final LagLogicalPortRepository lagLogicalPortRepository;
     private final long flowMeterMinBurstSizeInKbits;
     private final double flowMeterBurstCoefficient;
 
@@ -109,6 +118,7 @@ public class ValidationServiceImpl implements ValidationService {
         this.flowMeterMinBurstSizeInKbits = topologyConfig.getFlowMeterMinBurstSizeInKbits();
         this.flowMeterBurstCoefficient = topologyConfig.getFlowMeterBurstCoefficient();
         this.flowMirrorPointsRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPointsRepository();
+        this.lagLogicalPortRepository = persistenceManager.getRepositoryFactory().createLagLogicalPortRepository();
         this.flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
     }
 
@@ -200,6 +210,54 @@ public class ValidationServiceImpl implements ValidationService {
                 ImmutableList.copyOf(misconfiguredGroups));
     }
 
+    @Override
+    public ValidateLogicalPortsResult validateLogicalPorts(SwitchId switchId, List<LogicalPort> presentLogicalPorts) {
+        Map<Integer, LogicalPortInfoEntry> expectedPorts = lagLogicalPortRepository.findBySwitchId(switchId).stream()
+                .map(LogicalPortMapper.INSTANCE::map)
+                .collect(Collectors.toMap(LogicalPortInfoEntry::getLogicalPortNumber, Function.identity()));
+
+        Map<Integer, LogicalPortInfoEntry> actualPorts = presentLogicalPorts.stream()
+                .map(LogicalPortMapper.INSTANCE::map)
+                .collect(Collectors.toMap(LogicalPortInfoEntry::getLogicalPortNumber, Function.identity()));
+
+        List<LogicalPortInfoEntry> properPorts = new ArrayList<>();
+        List<LogicalPortInfoEntry> missingPorts = new ArrayList<>();
+        List<LogicalPortInfoEntry> excessPorts = new ArrayList<>();
+        List<LogicalPortInfoEntry> misconfiguredPorts = new ArrayList<>();
+
+        for (Entry<Integer, LogicalPortInfoEntry> entry : expectedPorts.entrySet()) {
+            int portNumber = entry.getKey();
+            LogicalPortInfoEntry expected = entry.getValue();
+
+            if (actualPorts.containsKey(portNumber)) {
+                LogicalPortInfoEntry actual = actualPorts.get(portNumber);
+                if (actual.equals(expected)) {
+                    properPorts.add(actual);
+                } else {
+                    misconfiguredPorts.add(calculateMisconfiguredLogicalPort(expected, actual));
+                }
+            } else {
+                missingPorts.add(expected);
+            }
+        }
+
+        for (Entry<Integer, LogicalPortInfoEntry> entry : actualPorts.entrySet()) {
+            if (LogicalPortType.BFD.equals(entry.getValue().getType())) {
+                // At this moment we do not validate BFD ports, so Kilda wouldn't include BFD ports into excess list
+                continue;
+            }
+            if (!expectedPorts.containsKey(entry.getKey())) {
+                excessPorts.add(entry.getValue());
+            }
+        }
+
+        return new ValidateLogicalPortsResult(
+                ImmutableList.copyOf(properPorts),
+                ImmutableList.copyOf(missingPorts),
+                ImmutableList.copyOf(excessPorts),
+                ImmutableList.copyOf(misconfiguredPorts));
+    }
+
     private Set<GroupInfoEntry> calculateMisconfiguredGroups(Set<GroupInfoEntry> expected, Set<GroupInfoEntry> actual) {
         Set<GroupInfoEntry> misconfiguredGroups = new HashSet<>();
 
@@ -225,6 +283,30 @@ public class ValidationServiceImpl implements ValidationService {
         }
 
         return misconfiguredGroups;
+    }
+
+    private LogicalPortInfoEntry calculateMisconfiguredLogicalPort(
+            LogicalPortInfoEntry expectedPort, LogicalPortInfoEntry actualPort) {
+        LogicalPortMisconfiguredInfoEntry expected = new LogicalPortMisconfiguredInfoEntry();
+        LogicalPortMisconfiguredInfoEntry actual = new LogicalPortMisconfiguredInfoEntry();
+
+        if (!Objects.equals(expectedPort.getType(), actualPort.getType())) {
+            expected.setType(expectedPort.getType());
+            actual.setType(actualPort.getType());
+        }
+
+        if (!Objects.equals(expectedPort.getPhysicalPorts(), actualPort.getPhysicalPorts())) {
+            expected.setPhysicalPorts(expectedPort.getPhysicalPorts());
+            actual.setPhysicalPorts(actualPort.getPhysicalPorts());
+        }
+
+        return LogicalPortInfoEntry.builder()
+                .logicalPortNumber(actualPort.getLogicalPortNumber())
+                .type(actualPort.getType())
+                .physicalPorts(actualPort.getPhysicalPorts())
+                .expected(expected)
+                .actual(actual)
+                .build();
     }
 
     private GroupInfoEntry buildGroupInfoEntryFromDatabase(SwitchId switchId, GroupId groupId) {

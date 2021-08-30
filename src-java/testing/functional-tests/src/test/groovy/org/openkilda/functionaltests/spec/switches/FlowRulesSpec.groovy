@@ -173,8 +173,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /delete-action=DROP_ALL\)/)
     def "Able to delete rules from a switch with multi table mode (delete-action=#data.deleteRulesAction)"() {
         given: "A switch with some flow rules installed"
-        assumeTrue(northbound.getSwitchProperties(srcSwitch.dpId).multiTable,
-"Multi table should be enabled on the src switch")
+        assumeTrue(switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable,
+                "Multi table should be enabled on the src switch")
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flowHelperV2.addFlow(flow)
 

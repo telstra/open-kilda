@@ -141,7 +141,7 @@ services:
       default:
         aliases:
           - mysql.pendev
-    mem_limit: ${MYSQL_MEM_LIMIT:-256741824}
+    mem_limit: ${MYSQL_MEM_LIMIT:-1073741824}
 
   db_migration:
     container_name: db_migration
@@ -158,6 +158,31 @@ services:
 {{end}}
     healthcheck:
       test: ["CMD-SHELL", "test -f /kilda/flag/migration.ok || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 600s
+
+  db_mysql_migration:
+    container_name: db_mysql_migration
+    image: "kilda/db_mysql_migration:${TAG:-latest}"
+    build:
+      context: docker/db-mysql-migration
+      dockerfile: Dockerfile
+      args:
+        base_image: "liquibase/liquibase:${LIQUIBASE_TAG:-4.4}"
+    command: /kilda/migrate-develop.sh
+    volumes:
+      - ./docker/db-mysql-migration/migrations:/liquibase/changelog
+    environment:
+      KILDA_MYSQL_USER: "{{ getv "/kilda_hibernate_user" }}"
+      KILDA_MYSQL_PASSWORD: "{{ getv "/kilda_hibernate_password" }}"
+      KILDA_MYSQL_JDBC_URL: "{{ getv "/kilda_hibernate_url" }}"
+    depends_on:
+      mysql_db:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "test -f /kilda/flag/migration.ok || exit 1" ]
       interval: 5s
       timeout: 5s
       retries: 3
@@ -231,6 +256,8 @@ services:
       storm-supervisor:
         condition: service_healthy
       db_migration:
+        condition: service_healthy
+      db_mysql_migration:
         condition: service_healthy
     environment:
       - WFM_TOPOLOGIES_MODE
@@ -498,6 +525,8 @@ services:
 {{if not (exists "/no_logstash")}}      logstash:
         condition: service_healthy
 {{end}}      db_migration:
+        condition: service_healthy
+      db_mysql_migration:
         condition: service_healthy
     networks:
       default:

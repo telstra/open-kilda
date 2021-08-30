@@ -34,6 +34,7 @@ import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.switches.GroupSyncEntry;
+import org.openkilda.messaging.info.switches.LogicalPortsSyncEntry;
 import org.openkilda.messaging.info.switches.MetersSyncEntry;
 import org.openkilda.messaging.info.switches.RulesSyncEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
@@ -729,7 +730,7 @@ public class NetworkSwitchServiceTest {
         GroupSyncEntry groupSyncEntry = new GroupSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(),
                 emptyList(), emptyList(), emptyList());
         SwitchSyncResponse response = new SwitchSyncResponse(alphaDatapath, rulesSyncEntry, metersSyncEntry,
-                groupSyncEntry);
+                groupSyncEntry, LogicalPortsSyncEntry.builder().build());
 
         // for a randomly generated key in SwitchFsm
         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
@@ -845,7 +846,7 @@ public class NetworkSwitchServiceTest {
         GroupSyncEntry groupSyncEntry = new GroupSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(),
                 emptyList(), emptyList(), emptyList());
         SwitchSyncResponse response = new SwitchSyncResponse(alphaDatapath, rulesSyncEntry, metersSyncEntry,
-                groupSyncEntry);
+                groupSyncEntry, LogicalPortsSyncEntry.builder().build());
 
 
         verify(carrier, times(SYNC_ATTEMPTS)).sendSwitchSynchronizeRequest(captor.capture(), eq(alphaDatapath));
@@ -883,7 +884,8 @@ public class NetworkSwitchServiceTest {
                 new RulesSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
         GroupSyncEntry groupSyncEntry = new GroupSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(),
                 emptyList(), emptyList(), emptyList());
-        SwitchSyncResponse response = new SwitchSyncResponse(alphaDatapath, rulesSyncEntry, null, groupSyncEntry);
+        SwitchSyncResponse response = new SwitchSyncResponse(alphaDatapath, rulesSyncEntry, null, groupSyncEntry,
+                LogicalPortsSyncEntry.builder().build());
         service.switchManagerResponse(response, captor.getValue());
 
         verifyNewSwitchAfterSwitchSync(ports);
@@ -1040,6 +1042,7 @@ public class NetworkSwitchServiceTest {
                 new MetersSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
         GroupSyncEntry groupSyncEntry = new GroupSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(),
                 emptyList(), emptyList(), emptyList());
-        return new SwitchSyncResponse(switchId, rulesSyncEntry, metersSyncEntry, groupSyncEntry);
+        return new SwitchSyncResponse(switchId, rulesSyncEntry, metersSyncEntry, groupSyncEntry,
+                LogicalPortsSyncEntry.builder().build());
     }
 }

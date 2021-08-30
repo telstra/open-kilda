@@ -40,14 +40,25 @@ public class SpeakerWorkerService {
     }
 
     /**
-     * Sends command to speaker.
+     * Sends command to Floodlight speaker.
      * @param key unique operation's key.
      * @param command command to be executed.
      */
-    public void sendCommand(String key, CommandData command) throws PipelineException {
-        log.debug("Got a request from hub bolt {}", command);
+    public void sendFloodlightCommand(String key, CommandData command) throws PipelineException {
+        log.debug("Got Floodlight request from hub bolt {}", command);
         keyToRequest.put(key, command);
-        carrier.sendCommand(key, new CommandMessage(command, System.currentTimeMillis(), key));
+        carrier.sendFloodlightCommand(key, new CommandMessage(command, System.currentTimeMillis(), key));
+    }
+
+    /**
+     * Sends command to GRPC speaker.
+     * @param key unique operation's key.
+     * @param command command to be executed.
+     */
+    public void sendGrpcCommand(String key, CommandData command) throws PipelineException {
+        log.debug("Got GRPC request from hub bolt {}", command);
+        keyToRequest.put(key, command);
+        carrier.sendGrpcCommand(key, new CommandMessage(command, System.currentTimeMillis(), key));
     }
 
     /**

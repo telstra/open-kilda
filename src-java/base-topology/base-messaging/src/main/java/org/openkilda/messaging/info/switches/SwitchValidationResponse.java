@@ -31,4 +31,5 @@ public class SwitchValidationResponse extends InfoData {
     RulesValidationEntry rules;
     MetersValidationEntry meters;
     GroupsValidationEntry groups;
+    LogicalPortsValidationEntry logicalPorts;
 }

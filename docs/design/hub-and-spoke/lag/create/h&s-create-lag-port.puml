@@ -1,0 +1,33 @@
+@startuml
+title LAG port create
+
+actor User
+boundary Northbound as NB
+participant SwitchManager << Hub >>
+participant SpeakerWorker
+participant GRPC
+database DB
+
+User -> NB : Create LAG
+
+activate NB
+NB -> SwitchManager : CreateLagPortRequest
+activate SwitchManager
+SwitchManager -> SwitchManager : Request validation
+SwitchManager -> DB : Create LAG in DB
+DB -> SwitchManager
+SwitchManager -> SpeakerWorker : CreateLogicalPortRequest
+activate SpeakerWorker
+SpeakerWorker -> GRPC : CreateLogicalPortRequest
+deactivate SpeakerWorker
+GRPC -> GRPC : Creating LAG\nport on switch
+GRPC -> SpeakerWorker : CreateLogicalPortResponse
+activate SpeakerWorker
+SpeakerWorker -> SwitchManager : CreateLogicalPortResponse
+deactivate SpeakerWorker
+SwitchManager ->> NB: LagPortResponse
+deactivate SwitchManager
+NB -> User: LagPortDto
+deactivate NB
+
+@enduml

@@ -31,6 +31,8 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.IslStatus;
+import org.openkilda.model.LagLogicalPort;
+import org.openkilda.model.PhysicalPort;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchConnect;
@@ -44,6 +46,8 @@ import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.LagLogicalPortRepository;
+import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchConnectRepository;
@@ -79,6 +83,7 @@ public class SwitchOperationsService {
     private SwitchConnectRepository switchConnectRepository;
     private PortPropertiesRepository portPropertiesRepository;
     private SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
+    private LagLogicalPortRepository lagLogicalPortRepository;
     private FlowMirrorPointsRepository flowMirrorPointsRepository;
     private FlowMirrorPathRepository flowMirrorPathRepository;
     private TransactionManager transactionManager;
@@ -86,6 +91,7 @@ public class SwitchOperationsService {
     private IslRepository islRepository;
     private FlowRepository flowRepository;
     private FlowPathRepository flowPathRepository;
+    private PhysicalPortRepository physicalPortRepository;
 
     public SwitchOperationsService(
             RepositoryFactory repositoryFactory, TransactionManager transactionManager,
@@ -101,8 +107,10 @@ public class SwitchOperationsService {
         this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.switchConnectRepository = repositoryFactory.createSwitchConnectRepository();
         this.switchConnectedDeviceRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
+        this.lagLogicalPortRepository = repositoryFactory.createLagLogicalPortRepository();
         this.flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
         this.flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
+        this.physicalPortRepository = repositoryFactory.createPhysicalPortRepository();
         this.carrier = carrier;
     }
 
@@ -420,6 +428,18 @@ public class SwitchOperationsService {
             }
         }
 
+        if (updatedSwitchProperties.getServer42Port() != null) {
+            Optional<PhysicalPort> physicalPort = physicalPortRepository.findBySwitchIdAndPortNumber(
+                    switchId, updatedSwitchProperties.getServer42Port());
+            if (physicalPort.isPresent()) {
+                throw new IllegalSwitchPropertiesException(
+                        format("Illegal server42 port '%d' on switch %s. This port is part of LAG '%d'. Please "
+                                        + "delete LAG port or choose another server42 port.",
+                                updatedSwitchProperties.getServer42Port(), switchId,
+                                physicalPort.get().getLagLogicalPort().getLogicalPortNumber()));
+            }
+        }
+
         if (updatedSwitchProperties.isServer42FlowRtt()) {
             String errorMessage = "Illegal switch properties combination for switch %s. To enable property "
                     + "'server42_flow_rtt' you need to specify valid property '%s'";
@@ -502,6 +522,20 @@ public class SwitchOperationsService {
             }
 
             return switchConnectedDeviceRepository.findBySwitchId(switchId);
+        });
+    }
+
+    /**
+     * Get switch LAG ports.
+     *
+     * @param switchId target switch id
+     */
+    public Collection<LagLogicalPort> getSwitchLagPorts(SwitchId switchId) throws SwitchNotFoundException {
+        return transactionManager.doInTransaction(() -> {
+            if (!switchRepository.exists(switchId)) {
+                throw new SwitchNotFoundException(switchId);
+            }
+            return lagLogicalPortRepository.findBySwitchId(switchId);
         });
     }
 

@@ -20,6 +20,8 @@ import org.openkilda.messaging.info.switches.GroupInfoEntry;
 import org.openkilda.messaging.info.switches.GroupInfoEntry.BucketEntry;
 import org.openkilda.messaging.info.switches.GroupSyncEntry;
 import org.openkilda.messaging.info.switches.GroupsValidationEntry;
+import org.openkilda.messaging.info.switches.LogicalPortsSyncEntry;
+import org.openkilda.messaging.info.switches.LogicalPortsValidationEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
 import org.openkilda.messaging.info.switches.MetersSyncEntry;
@@ -41,6 +43,8 @@ import org.openkilda.northbound.dto.v1.switches.GroupInfoDto;
 import org.openkilda.northbound.dto.v1.switches.GroupInfoDto.BucketDto;
 import org.openkilda.northbound.dto.v1.switches.GroupsSyncDto;
 import org.openkilda.northbound.dto.v1.switches.GroupsValidationDto;
+import org.openkilda.northbound.dto.v1.switches.LogicalPortsSyncDto;
+import org.openkilda.northbound.dto.v1.switches.LogicalPortsValidationDto;
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto;
 import org.openkilda.northbound.dto.v1.switches.MeterMisconfiguredInfoDto;
 import org.openkilda.northbound.dto.v1.switches.MetersSyncDto;
@@ -129,6 +133,8 @@ public abstract class SwitchMapper {
 
     public abstract GroupsSyncDto toGroupsSyncDto(GroupSyncEntry data);
 
+    public abstract LogicalPortsSyncDto toLogicalPortsSyncDto(LogicalPortsSyncEntry data);
+
     @Mapping(target = "rules.missingHex", ignore = true)
     @Mapping(target = "rules.misconfiguredHex", ignore = true)
     @Mapping(target = "rules.properHex", ignore = true)
@@ -150,6 +156,8 @@ public abstract class SwitchMapper {
     public abstract RulesValidationDto toRulesValidationDto(RulesValidationEntry data);
 
     public abstract MetersValidationDto toMetersValidationDto(MetersValidationEntry data);
+
+    public abstract LogicalPortsValidationDto toLogicalPortsValidationDto(LogicalPortsValidationEntry data);
 
     public abstract MeterInfoDto toMeterInfoDto(MeterInfoEntry data);
 

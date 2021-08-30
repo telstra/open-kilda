@@ -32,4 +32,5 @@ public class SwitchValidationResult {
     private RulesValidationDto rules;
     private MetersValidationDto meters;
     private GroupsValidationDto groups;
+    private LogicalPortsValidationDto logicalPorts;
 }

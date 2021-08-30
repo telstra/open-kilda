@@ -29,12 +29,17 @@ import static org.mockito.Mockito.when;
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.switches.LogicalPortInfoEntry;
+import org.openkilda.messaging.info.switches.LogicalPortMisconfiguredInfoEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
+import org.openkilda.messaging.model.grpc.LogicalPort;
+import org.openkilda.messaging.model.grpc.LogicalPortType;
 import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.KildaFeatureToggles;
+import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
@@ -44,12 +49,15 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
+import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
+import org.openkilda.wfm.topology.switchmanager.mappers.LogicalPortMapper;
+import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
@@ -61,6 +69,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -81,8 +90,18 @@ public class ValidationServiceImplTest {
             .switchId(SWITCH_ID_B)
             .description("Nicira, Inc. OF_13 2.5.5")
             .build();
-    private static DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices(
-            true, true, true, true, false, false, false, false);
+    public static final int LOGICAL_PORT_NUMBER_1 = 2001;
+    public static final int LOGICAL_PORT_NUMBER_2 = 2003;
+    public static final int LOGICAL_PORT_NUMBER_3 = 2005;
+    public static final int LOGICAL_PORT_NUMBER_4 = 2006;
+    public static final int LOGICAL_PORT_NUMBER_5 = 2007;
+    public static final int PHYSICAL_PORT_1 = 1;
+    public static final int PHYSICAL_PORT_2 = 2;
+    public static final int PHYSICAL_PORT_3 = 3;
+    public static final int PHYSICAL_PORT_4 = 4;
+    public static final int PHYSICAL_PORT_5 = 5;
+    public static final int PHYSICAL_PORT_6 = 6;
+    public static final int PHYSICAL_PORT_7 = 7;
     private static SwitchManagerTopologyConfig topologyConfig;
     private static FlowResourcesConfig flowResourcesConfig;
 
@@ -329,6 +348,46 @@ public class ValidationServiceImplTest {
         assertTrue(response.getExcessMeters().isEmpty());
     }
 
+    @Test
+    public void validateLogicalPorts() {
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
+                flowResourcesConfig);
+
+        LogicalPort proper = buildLogicalPort(LOGICAL_PORT_NUMBER_1, PHYSICAL_PORT_1, PHYSICAL_PORT_2);
+        LogicalPort misconfigured = buildLogicalPort(LOGICAL_PORT_NUMBER_2, LogicalPortType.BFD, PHYSICAL_PORT_3);
+        LogicalPort excess = buildLogicalPort(LOGICAL_PORT_NUMBER_4, PHYSICAL_PORT_6);
+        LogicalPort bfdExcess = buildLogicalPort(LOGICAL_PORT_NUMBER_5, LogicalPortType.BFD, PHYSICAL_PORT_7);
+
+        ValidateLogicalPortsResult result = validationService.validateLogicalPorts(SWITCH_ID_A, Lists.newArrayList(
+                proper, misconfigured, excess, bfdExcess));
+        assertEquals(1, result.getProperLogicalPorts().size());
+        assertEquals(1, result.getExcessLogicalPorts().size()); // bfdExcess port shouldn't be in this list
+        assertEquals(1, result.getMissingLogicalPorts().size());
+        assertEquals(1, result.getMisconfiguredLogicalPorts().size());
+
+        assertEquals(LogicalPortMapper.INSTANCE.map(proper), result.getProperLogicalPorts().get(0));
+        assertEquals(LogicalPortMapper.INSTANCE.map(excess), result.getExcessLogicalPorts().get(0));
+
+        LogicalPortInfoEntry missing = LogicalPortInfoEntry.builder()
+                .type(org.openkilda.messaging.info.switches.LogicalPortType.LAG)
+                .logicalPortNumber(LOGICAL_PORT_NUMBER_3)
+                .physicalPorts(Lists.newArrayList(PHYSICAL_PORT_5, PHYSICAL_PORT_6))
+                .build();
+        assertEquals(missing, result.getMissingLogicalPorts().get(0));
+
+        LogicalPortInfoEntry misconfiguredEntry = LogicalPortInfoEntry.builder()
+                .type(org.openkilda.messaging.info.switches.LogicalPortType.BFD)
+                .logicalPortNumber(LOGICAL_PORT_NUMBER_2)
+                .physicalPorts(Lists.newArrayList(PHYSICAL_PORT_3))
+                .actual(new LogicalPortMisconfiguredInfoEntry(
+                        org.openkilda.messaging.info.switches.LogicalPortType.BFD, Lists.newArrayList(PHYSICAL_PORT_3)))
+                .expected(new LogicalPortMisconfiguredInfoEntry(
+                        org.openkilda.messaging.info.switches.LogicalPortType.LAG,
+                        Lists.newArrayList(PHYSICAL_PORT_3, PHYSICAL_PORT_4)))
+                .build();
+        assertEquals(misconfiguredEntry, result.getMisconfiguredLogicalPorts().get(0));
+    }
+
     private void assertMeter(MeterInfoEntry meterInfoEntry, MeterEntry expected) {
         assertMeter(meterInfoEntry, expected.getMeterId(), expected.getRate(), expected.getBurstSize(),
                 expected.getFlags());
@@ -351,6 +410,19 @@ public class ValidationServiceImplTest {
                 .build();
     }
 
+    private static LogicalPort buildLogicalPort(int lagPort, Integer... physicalPorts) {
+        return buildLogicalPort(lagPort, LogicalPortType.LAG, physicalPorts);
+    }
+
+    private static LogicalPort buildLogicalPort(int lagPort, LogicalPortType type, Integer... physicalPorts) {
+        return LogicalPort.builder()
+                .type(type)
+                .name("port_" + lagPort)
+                .logicalPortNumber(lagPort)
+                .portNumbers(Arrays.asList(physicalPorts))
+                .build();
+    }
+
     private PersistenceManagerBuilder persistenceManager() {
         return new PersistenceManagerBuilder();
     }
@@ -360,6 +432,7 @@ public class ValidationServiceImplTest {
         private SwitchRepository switchRepository = mock(SwitchRepository.class);
         private SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
         private KildaFeatureTogglesRepository featureTogglesRepository = mock(KildaFeatureTogglesRepository.class);
+        private LagLogicalPortRepository lagLogicalPortRepository = mock(LagLogicalPortRepository.class);
 
         private long[] segmentsCookies = new long[0];
         private long[] ingressCookies = new long[0];
@@ -497,6 +570,17 @@ public class ValidationServiceImplTest {
             KildaFeatureToggles featureToggles = KildaFeatureToggles.builder().server42FlowRtt(true).build();
             when(featureTogglesRepository.getOrDefault()).thenReturn(featureToggles);
             when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
+
+            LagLogicalPort lagLogicalPortA = new LagLogicalPort(SWITCH_ID_A, LOGICAL_PORT_NUMBER_1,
+                    Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2));
+            LagLogicalPort lagLogicalPortB = new LagLogicalPort(SWITCH_ID_A, LOGICAL_PORT_NUMBER_2,
+                    Lists.newArrayList(PHYSICAL_PORT_3, PHYSICAL_PORT_4));
+            LagLogicalPort lagLogicalPortC = new LagLogicalPort(SWITCH_ID_A, LOGICAL_PORT_NUMBER_3,
+                    Lists.newArrayList(PHYSICAL_PORT_5, PHYSICAL_PORT_6));
+
+            when(lagLogicalPortRepository.findBySwitchId(SWITCH_ID_A)).thenReturn(Lists.newArrayList(
+                    lagLogicalPortA, lagLogicalPortB, lagLogicalPortC));
+            when(repositoryFactory.createLagLogicalPortRepository()).thenReturn(lagLogicalPortRepository);
 
             PersistenceManager persistenceManager = mock(PersistenceManager.class);
             when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);

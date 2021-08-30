@@ -19,6 +19,10 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.SwitchId;
 
 public class OperationTimeoutException extends SwitchManagerException {
+    public OperationTimeoutException(String message) {
+        super(ErrorType.OPERATION_TIMED_OUT, message);
+    }
+
     public OperationTimeoutException(SwitchId switchId) {
         super(ErrorType.OPERATION_TIMED_OUT, makeMessage(switchId));
     }

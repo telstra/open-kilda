@@ -18,8 +18,10 @@ package org.openkilda.wfm.topology.switchmanager.service;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.GroupEntry;
+import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
+import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 
@@ -30,6 +32,8 @@ public interface ValidationService {
                                       List<FlowEntry> expectedDefaultRules);
 
     ValidateGroupsResult validateGroups(SwitchId switchId, List<GroupEntry> presentGroups);
+
+    ValidateLogicalPortsResult validateLogicalPorts(SwitchId switchId, List<LogicalPort> presentLogicalPorts);
 
     ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters,
                                         List<MeterEntry> expectedDefaultMeters);

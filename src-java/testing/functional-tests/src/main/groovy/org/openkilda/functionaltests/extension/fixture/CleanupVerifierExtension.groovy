@@ -83,7 +83,7 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
         context.autowireCapableBeanFactory.autowireBean(this)
         assert northboundV2.getAllFlows().empty
         withPool {
-            topology.switches.eachParallel { Switch sw ->
+            topology.activeSwitches.eachParallel { Switch sw ->
                 def validation = northbound.validateSwitch(sw.dpId)
                 validation.verifyRuleSectionsAreEmpty(sw.dpId)
                 validation.verifyMeterSectionsAreEmpty(sw.dpId)

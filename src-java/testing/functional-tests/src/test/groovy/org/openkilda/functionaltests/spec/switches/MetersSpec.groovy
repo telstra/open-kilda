@@ -222,7 +222,7 @@ on a #switchType switch"() {
         newMeterEntries.every { it.flags.sort().equals(["KBPS", "BURST", "STATS"].sort()) }
 
         and: "All new meters rate should be equal to flow's rate"
-        newMeterEntries*.rate.every { it == flow.maximumBandwidth }
+        newMeterEntries*.rate.each { verifyRateSizeOnWb5164(it, flow.maximumBandwidth) }
 
         and: "Switch validation shows no discrepancies in meters"
         def metersValidation = northbound.validateSwitch(sw.dpId).meters

@@ -48,6 +48,14 @@ public interface SwitchManagerTopologyConfig  extends AbstractTopologyConfig {
         return getKafkaTopics().getSpeakerTopic();
     }
 
+    default String getGrpcSpeakerTopic() {
+        return getKafkaTopics().getGrpcSpeakerTopic();
+    }
+
+    default String getGrpcResponseTopic() {
+        return getKafkaTopics().getGrpcResponseTopic();
+    }
+
     @Key("burst.coefficient")
     @Default("1.05")
     @Description("This coefficient is used to calculate burst size for flow meters. "
@@ -72,4 +80,16 @@ public interface SwitchManagerTopologyConfig  extends AbstractTopologyConfig {
     @Default("20")
     @Description("The timeout for performing validate and synchronize operations")
     int getProcessTimeout();
+
+    @Key("lag.port.offset")
+    @Default("2000")
+    int getLagPortOffset();
+
+    @Key("bfd.port.offset")
+    @Default("1000")
+    int getBfdPortOffset();
+
+    @Key("bfd.port.max.number")
+    @Default("1999")
+    int getBfdPortMaxNumber();
 }

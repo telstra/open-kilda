@@ -30,6 +30,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.GroupId;
+import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.MirrorDirection;
 import org.openkilda.model.MirrorGroup;
@@ -45,6 +46,7 @@ import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -54,9 +56,11 @@ import org.openkilda.wfm.error.IllegalSwitchPropertiesException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.model.Endpoint;
 
+import com.google.common.collect.Lists;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
@@ -70,6 +74,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     private static MirrorGroupRepository mirrorGroupRepository;
     private static FlowMirrorPointsRepository flowMirrorPointsRepository;
     private static FlowMirrorPathRepository flowMirrorPathRepository;
+    private static LagLogicalPortRepository lagLogicalPortRepository;
 
     private static final String TEST_FLOW_ID_1 = "test_flow_1";
     private static final int TEST_FLOW_SRC_PORT = 13;
@@ -79,6 +84,9 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     private static final Integer SERVER_42_PORT_2 = 2;
     private static final Integer SERVER_42_VLAN_1 = 3;
     private static final Integer SERVER_42_VLAN_2 = 4;
+    private static final int LAG_LOGICAL_PORT = 5;
+    private static final int PHYSICAL_PORT_1 = 6;
+    private static final int PHYSICAL_PORT_2 = 7;
     private static final MacAddress SERVER_42_MAC_ADDRESS_1 = new MacAddress("42:42:42:42:42:42");
     private static final MacAddress SERVER_42_MAC_ADDRESS_2 = new MacAddress("45:45:45:45:45:45");
 
@@ -92,6 +100,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         mirrorGroupRepository = repositoryFactory.createMirrorGroupRepository();
         flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
         flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
+        lagLogicalPortRepository = repositoryFactory.createLagLogicalPortRepository();
 
         SwitchOperationsServiceCarrier carrier = new SwitchOperationsServiceCarrier() {
             @Override
@@ -563,6 +572,28 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
         Switch updatedSwitch = switchRepository.findById(TEST_SWITCH_ID).get();
         assertNull(updatedSwitch.getPop());
+    }
+
+    @Test
+    public void shouldReturnLagPorts() throws SwitchNotFoundException {
+        Switch sw = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
+        switchRepository.add(sw);
+
+        LagLogicalPort lagLogicalPort = new LagLogicalPort(TEST_SWITCH_ID, LAG_LOGICAL_PORT,
+                Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2));
+        lagLogicalPortRepository.add(lagLogicalPort);
+
+        Collection<LagLogicalPort> ports = switchOperationsService.getSwitchLagPorts(TEST_SWITCH_ID);
+
+        assertEquals(1, ports.size());
+        assertEquals(LAG_LOGICAL_PORT, ports.iterator().next().getLogicalPortNumber());
+        assertEquals(PHYSICAL_PORT_1, ports.iterator().next().getPhysicalPorts().get(0).getPortNumber());
+        assertEquals(PHYSICAL_PORT_2, ports.iterator().next().getPhysicalPorts().get(1).getPortNumber());
+    }
+
+    @Test(expected = SwitchNotFoundException.class)
+    public void shouldThrowExceptionDuringGettingLagPorts() throws SwitchNotFoundException {
+        switchOperationsService.getSwitchLagPorts(TEST_SWITCH_ID);
     }
 
     private void runInvalidServer42PropsTest(SwitchPropertiesDto invalidProperties) {

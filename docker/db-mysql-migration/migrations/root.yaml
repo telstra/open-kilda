@@ -1,0 +1,5 @@
+---
+databaseChangeLog:
+  - include:
+      relativeToChangelogFile: true
+      file: 000-create-history-tables.yaml

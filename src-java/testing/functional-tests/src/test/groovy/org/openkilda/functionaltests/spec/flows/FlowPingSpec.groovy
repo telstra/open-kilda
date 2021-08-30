@@ -257,9 +257,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
             swP.paths.findAll { path ->
                 pathHelper.getInvolvedSwitches(path).every {
-                    northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation.contains(
-                            FlowEncapsulationType.VXLAN.toString().toLowerCase()
-                    )
+                    switchHelper.isVxlanEnabled(it.dpId)
                 }
             }.size() >= 1
         } ?: assumeTrue(false, "Unable to find required switches in topology")

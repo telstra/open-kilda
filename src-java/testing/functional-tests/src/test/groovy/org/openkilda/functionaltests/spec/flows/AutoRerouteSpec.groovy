@@ -29,16 +29,13 @@ import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.messaging.payload.history.FlowHistoryEntry
-import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchFeature
-import org.openkilda.model.SwitchId
 import org.openkilda.model.SwitchStatus
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 
-import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
@@ -393,8 +390,9 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         then: "The flow becomes 'Up'"
         wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert northbound.getFlowHistory(flow.flowId).last().payload
-                .find { it.action == "The flow status was reverted to UP" }
+            assert northbound.getFlowHistory(flow.flowId).last().payload.find {
+                it.action == "The flow status was reverted to UP" || it.action == REROUTE_SUCCESS
+            }
         }
 
         cleanup: "Restore topology to the original state, remove the flow"

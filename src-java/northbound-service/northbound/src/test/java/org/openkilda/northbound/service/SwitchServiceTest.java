@@ -21,6 +21,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.switches.GroupSyncEntry;
+import org.openkilda.messaging.info.switches.LogicalPortsSyncEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MetersSyncEntry;
 import org.openkilda.messaging.info.switches.RulesSyncEntry;
@@ -32,6 +33,8 @@ import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.ConnectedDeviceMapperImpl;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.FlowMapperImpl;
+import org.openkilda.northbound.converter.LagPortMapper;
+import org.openkilda.northbound.converter.LagPortMapperImpl;
 import org.openkilda.northbound.converter.PortPropertiesMapper;
 import org.openkilda.northbound.converter.PortPropertiesMapperImpl;
 import org.openkilda.northbound.converter.SwitchMapper;
@@ -84,7 +87,7 @@ public class SwitchServiceTest {
                 singletonList(properRule), singletonList(excessRule), singletonList(missingRule),
                 singletonList(excessRule));
         SwitchSyncResponse rules = new SwitchSyncResponse(switchId, rulesSyncEntry, MetersSyncEntry.builder().build(),
-                GroupSyncEntry.builder().build());
+                GroupSyncEntry.builder().build(), LogicalPortsSyncEntry.builder().build());
         messageExchanger.mockResponse(correlationId, rules);
 
         RulesSyncResult result = switchService.syncRules(switchId).get();
@@ -110,7 +113,7 @@ public class SwitchServiceTest {
                 singletonList(excessRule));
         InfoData validationResult = new SwitchSyncResponse(switchId, rulesEntry,
                 MetersSyncEntry.builder().proper(singletonList(getMeterInfo(properRule))).build(),
-                GroupSyncEntry.builder().build());
+                GroupSyncEntry.builder().build(), LogicalPortsSyncEntry.builder().build());
         messageExchanger.mockResponse(correlationId, validationResult);
 
         SwitchSyncResult result = switchService.syncSwitch(switchId, true).get();
@@ -166,6 +169,11 @@ public class SwitchServiceTest {
         @Bean
         public FlowMapper flowMapper() {
             return new FlowMapperImpl();
+        }
+
+        @Bean
+        public LagPortMapper lagMapper() {
+            return new LagPortMapperImpl();
         }
     }
 

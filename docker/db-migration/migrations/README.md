@@ -3,7 +3,7 @@
 ## Migration sets:
 * `initial-access-management.yaml` - create required roles and users, executed from `root` user, applied only on dev 
   environment.
-* `prehixtory.yaml` - migration steps already applied to the prod DB on the moment when this migration toolset created, 
+* `prehistory.yaml` - migration steps already applied to the prod DB on the moment when this migration toolset created, 
   applied to the dev environment 
 * `root.yaml` - main migration set, applied on all environments.
 

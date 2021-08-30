@@ -1,0 +1,270 @@
+---
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: surabujin
+      changes:
+        - tagDatabase:
+            tag: 000-create-history-tables
+
+  - changeSet:
+      id: 01-create-flow_event-table
+      author: surabujin
+      changes:
+        - createTable:
+            tableName: flow_event
+            columns:
+              - column:
+                  name: id
+                  type: INT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: flow_id
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: task_id
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: task_id_unique_key
+                  type: CHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: action
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: unstructured
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: time_create
+                  type: DATETIME(3)
+                  defaultValueComputed: now(3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: time_modify
+                  type: DATETIME(3)
+              - column:
+                  name: event_time
+                  type: DATETIME(3)
+        - modifySql:
+            dbms: mysql
+            append:
+              value: engine innodb charset=UTF8
+
+  - changeSet:
+      id: 02-create-flow_event-table-indexes
+      author: surabujin
+      changes:
+        - createIndex:
+            tableName: flow_event
+            indexName: ix_event_time
+            columns:
+              - column:
+                  name: event_time
+        - createIndex:
+            tableName: flow_event
+            indexName: ix_flow_id
+            columns:
+              - column:
+                  name: flow_id(64)
+        - createIndex:
+            tableName: flow_event
+            indexName: ix_task_id
+            unique: true
+            columns:
+              - column:
+                  name: task_id_unique_key(100)
+
+  - changeSet:
+      id: 03-create-flow_event_action-table
+      author: surabujin
+      changes:
+        - createTable:
+            tableName: flow_event_action
+            columns:
+              - column:
+                  name: id
+                  type: INT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: flow_event_id
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: action
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  type: TEXT
+              - column:
+                  name: time_create
+                  type: DATETIME(3)
+                  defaultValueComputed: now(3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: time_modify
+                  type: DATETIME(3)
+              - column:
+                  name: event_time
+                  type: DATETIME(3)
+        - modifySql:
+            dbms: mysql
+            append:
+              value: engine innodb charset=UTF8
+
+  - changeSet:
+      id: 04-create-flow_event_action-table-indexes
+      author: surabujin
+      changes:
+        - createIndex:
+            tableName: flow_event_action
+            indexName: ix_flow_event_id
+            columns:
+              - column:
+                  name: flow_event_id
+        - addForeignKeyConstraint:
+            constraintName: fk_flow_event_action_2_flow_event
+            baseTableName: flow_event_action
+            baseColumnNames: flow_event_id
+            onUpdate: CASCADE
+            onDelete: RESTRICT
+            referencedTableName: flow_event
+            referencedColumnNames: id
+
+  - changeSet:
+      id: 05-create-flow_event_dump-table
+      author: surabujin
+      changes:
+        - createTable:
+            tableName: flow_event_dump
+            columns:
+              - column:
+                  name: id
+                  type: INT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: flow_event_id
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: kind
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: unstructured
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: time_create
+                  type: DATETIME(3)
+                  defaultValueComputed: now(3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: time_modify
+                  type: DATETIME(3)
+        - modifySql:
+            dbms: mysql
+            append:
+              value: engine innodb charset=UTF8
+
+  - changeSet:
+      id: 06-create-flow_event_dump-table-indexes
+      author: surabujin
+      changes:
+        - createIndex:
+            tableName: flow_event_dump
+            indexName: ix_flow_event_id
+            columns:
+              - column:
+                  name: flow_event_id
+        - addForeignKeyConstraint:
+            constraintName: fk_flow_event_dump_2_flow_event
+            baseTableName: flow_event_dump
+            baseColumnNames: flow_event_id
+            onUpdate: CASCADE
+            onDelete: RESTRICT
+            referencedTableName: flow_event
+            referencedColumnNames: id
+
+  - changeSet:
+      id: 07-create-port_event-table
+      author: surabujin
+      changes:
+        - createTable:
+            tableName: port_event
+            columns:
+              - column:
+                  name: id
+                  type: char(36)
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: switch_id
+                  type: char(23)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: port_number
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: unstructured
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: time_create
+                  type: DATETIME(3)
+                  defaultValueComputed: now(3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: time_modify
+                  type: DATETIME(3)
+              - column:
+                  name: event_time
+                  type: DATETIME(3)
+        - modifySql:
+            dbms: mysql
+            append:
+              value: engine innodb charset=UTF8
+
+  - changeSet:
+      id: 08-create-port_event-table-indexes
+      author: surabujin
+      changes:
+        - createIndex:
+            tableName: port_event
+            indexName: ix_event_time
+            columns:
+              - column:
+                  name: event_time

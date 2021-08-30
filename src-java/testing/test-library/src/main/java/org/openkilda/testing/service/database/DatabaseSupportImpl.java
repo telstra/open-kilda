@@ -19,6 +19,7 @@ import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 import static org.openkilda.testing.Constants.DEFAULT_COST;
 
+import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.Flow;
@@ -34,15 +35,20 @@ import org.openkilda.model.history.FlowEvent;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.ferma.frames.IslFrame;
 import org.openkilda.persistence.ferma.frames.SwitchFrame;
-import org.openkilda.persistence.ferma.repositories.FermaRepositoryFactory;
+import org.openkilda.persistence.orientdb.OrientDbPersistenceManager;
+import org.openkilda.persistence.orientdb.ThreadLocalPersistenceContextManagerSupplier;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
+import org.openkilda.persistence.spi.PersistenceManagerSupplier;
+import org.openkilda.persistence.tx.FlatTransactionLayout;
+import org.openkilda.persistence.tx.TransactionArea;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
@@ -67,7 +73,8 @@ public class DatabaseSupportImpl implements Database {
     private static final int DEFAULT_DEPTH = 7;
 
     private final TransactionManager transactionManager;
-    private final FermaRepositoryFactory repositoryFactory;
+    private final TransactionManager historyTransactionManager;
+    private final OrientDbPersistenceManager orientPersistanceManager;
     private final IslRepository islRepository;
     private final SwitchRepository switchRepository;
     private final FlowRepository flowRepository;
@@ -77,9 +84,10 @@ public class DatabaseSupportImpl implements Database {
     private final SwitchConnectedDeviceRepository switchDevicesRepository;
     private final FlowEventRepository flowEventRepository;
 
-    public DatabaseSupportImpl(PersistenceManager persistenceManager) {
+    public DatabaseSupportImpl(PersistenceManager persistenceManager, ConfigurationProvider configurationProvider) {
         this.transactionManager = persistenceManager.getTransactionManager();
-        repositoryFactory = (FermaRepositoryFactory) persistenceManager.getRepositoryFactory();
+        historyTransactionManager = persistenceManager.getTransactionManager(TransactionArea.HISTORY);
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         islRepository = repositoryFactory.createIslRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
         flowRepository = repositoryFactory.createFlowRepository();
@@ -88,6 +96,13 @@ public class DatabaseSupportImpl implements Database {
         switchDevicesRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
         flowEventRepository = repositoryFactory.createFlowEventRepository();
         flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
+
+        PersistenceManagerSupplier managerSupplier = new PersistenceManagerSupplier();
+        ThreadLocalPersistenceContextManagerSupplier contextManagerSupplier =
+                new ThreadLocalPersistenceContextManagerSupplier(managerSupplier);
+        managerSupplier.define(persistenceManager);
+        orientPersistanceManager = new OrientDbPersistenceManager(configurationProvider, contextManagerSupplier,
+                new FlatTransactionLayout());
     }
 
     /**
@@ -296,7 +311,7 @@ public class DatabaseSupportImpl implements Database {
     @SuppressWarnings("unchecked")
     public List<PathInfoData> getPaths(SwitchId src, SwitchId dst) {
         return transactionManager.doInTransaction(() -> {
-            FramedGraph framedGraph = repositoryFactory.getGraphFactory().getGraph();
+            FramedGraph framedGraph = orientPersistanceManager.getGraphFactory().getGraph();
             GraphTraversal<?, ?> rawTraversal = framedGraph.traverse(input -> input
                     .V().hasLabel(SwitchFrame.FRAME_LABEL).has(SwitchFrame.SWITCH_ID_PROPERTY, src.toString())
                     .repeat(__.outE(IslFrame.FRAME_LABEL).has(IslFrame.STATUS_PROPERTY, "active")
@@ -418,7 +433,7 @@ public class DatabaseSupportImpl implements Database {
 
     @Override
     public void addFlowEvent(FlowEvent event) {
-        transactionManager.doInTransaction(() -> {
+        historyTransactionManager.doInTransaction(() -> {
             flowEventRepository.add(event);
         });
     }
@@ -455,7 +470,7 @@ public class DatabaseSupportImpl implements Database {
     @Override
     public List<Object> dumpAllNodes() {
         return transactionManager.doInTransaction(() ->
-                repositoryFactory.getGraphFactory().getGraph()
+                orientPersistanceManager.getGraphFactory().getGraph()
                         .traverse(g -> g.V()).getRawTraversal().toStream()
                         .map(v -> DetachedFactory.detach(v, true))
                         .collect(toList()));
@@ -464,7 +479,7 @@ public class DatabaseSupportImpl implements Database {
     @Override
     public List<Object> dumpAllRelations() {
         return transactionManager.doInTransaction(() ->
-                repositoryFactory.getGraphFactory().getGraph()
+                orientPersistanceManager.getGraphFactory().getGraph()
                         .traverse(g -> g.V().inE()).getRawTraversal().toStream()
                         .map(e -> DetachedFactory.detach(e, true))
                         .collect(toList()));

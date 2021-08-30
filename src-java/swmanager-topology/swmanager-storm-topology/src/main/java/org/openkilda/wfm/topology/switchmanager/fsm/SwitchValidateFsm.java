@@ -15,10 +15,12 @@
 
 package org.openkilda.wfm.topology.switchmanager.fsm;
 
+import static org.openkilda.model.SwitchFeature.LAG;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.EXPECTED_DEFAULT_METERS_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.EXPECTED_DEFAULT_RULES_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.GROUPS_RECEIVED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.LOGICAL_PORTS_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.METERS_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.METERS_UNSUPPORTED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.NEXT;
@@ -29,6 +31,7 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.Swi
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState.VALIDATE;
 
 import org.openkilda.adapter.FlowSideAdapter;
+import org.openkilda.messaging.command.grpc.DumpLogicalPortsRequest;
 import org.openkilda.messaging.command.switches.DumpGroupsForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
@@ -40,11 +43,14 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
+import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Isl;
 import org.openkilda.model.KildaFeatureToggles;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -63,6 +69,7 @@ import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchVali
 import org.openkilda.wfm.topology.switchmanager.mappers.ValidationMapper;
 import org.openkilda.wfm.topology.switchmanager.model.SwitchValidationContext;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
+import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
@@ -79,6 +86,7 @@ import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Slf4j
@@ -149,6 +157,8 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         builder.internalTransition().within(SwitchValidateState.COLLECT_DATA)
                 .on(GROUPS_RECEIVED).callMethod("groupsReceived");
         builder.internalTransition().within(SwitchValidateState.COLLECT_DATA)
+                .on(LOGICAL_PORTS_RECEIVED).callMethod("logicalPortsReceived");
+        builder.internalTransition().within(SwitchValidateState.COLLECT_DATA)
                 .on(METERS_RECEIVED).callMethod("metersReceived");
         builder.internalTransition().within(SwitchValidateState.COLLECT_DATA)
                 .on(EXPECTED_DEFAULT_METERS_RECEIVED).callMethod("expectedDefaultMetersReceived");
@@ -187,7 +197,8 @@ public class SwitchValidateFsm extends AbstractStateMachine<
             log.info("The switch validate process for {} has been started (key={})", switchId, key);
 
             // FIXME(surabujin): not reliable check - corresponding error from speaker is much more better
-            if (!switchRepository.exists(switchId)) {
+            Optional<Switch> sw = switchRepository.findById(switchId);
+            if (!sw.isPresent()) {
                 throw new SwitchNotFoundException(switchId);
             }
 
@@ -202,6 +213,16 @@ public class SwitchValidateFsm extends AbstractStateMachine<
             requestExpectedServiceOfFlows(switchProperties, isMultiTable, isSwitchLldp, isSwitchArp);
 
             requestSwitchOfGroups();
+
+            if (sw.get().getFeatures().contains(LAG)) {
+                // at this moment Kilda validated only LAG logical ports
+                Optional<String> ipAddress = sw.map(Switch::getSocketAddress).map(IpSocketAddress::getAddress);
+                if (ipAddress.isPresent()) {
+                    requestLogicalPorts(ipAddress.get());
+                } else {
+                    log.warn("Unable to get IP address of switch {} to get LAGs", switchId);
+                }
+            }
 
             if (request.isProcessMeters()) {
                 requestSwitchMeters();
@@ -232,6 +253,17 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                 .actualGroupEntries(context.getGroupEntries())
                 .build();
         pendingRequests.remove(ExternalResources.ACTUAL_OF_GROUPS);
+
+        fireReadyIfAllResourcesReceived();
+    }
+
+    protected void logicalPortsReceived(SwitchValidateState from, SwitchValidateState to,
+                                        SwitchValidateEvent event, SwitchValidateContext context) {
+        log.info("Switch logical ports received (switch={}, key={})", getSwitchId(), key);
+        validationContext = validationContext.toBuilder()
+                .actualLogicalPortEntries(context.getLogicalPortEntries())
+                .build();
+        pendingRequests.remove(ExternalResources.ACTUAL_LOGICAL_PORTS);
 
         fireReadyIfAllResourcesReceived();
     }
@@ -284,6 +316,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         validateRules();
         validateMeters();
         validateGroups();
+        validateLogicalPorts();
     }
 
     protected void finishedEnter(SwitchValidateState from, SwitchValidateState to,
@@ -292,7 +325,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
             ValidationResult results = new ValidationResult(
                     validationContext.getActualOfFlows(), validationContext.getMetersValidationReport() != null,
                     validationContext.getOfFlowsValidationReport(), validationContext.getMetersValidationReport(),
-                    validationContext.getValidateGroupsResult());
+                    validationContext.getValidateGroupsResult(), validationContext.getValidateLogicalPortResult());
             carrier.runSwitchSync(key, request, results);
         } else {
             SwitchValidationResponse response = ValidationMapper.INSTANCE.toSwitchResponse(validationContext);
@@ -310,7 +343,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         log.error("Switch {} (key: {}) validation filed - {}", getSwitchId(), key, error.getMessage());
 
         carrier.cancelTimeoutCallback(key);
-        carrier.errorResponse(key, error.getError(), error.getMessage());
+        carrier.errorResponse(key, error.getError(), error.getMessage(), "Error in switch validation");
     }
 
     // -- private/service methods --
@@ -394,6 +427,14 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         pendingRequests.add(ExternalResources.ACTUAL_OF_GROUPS);
     }
 
+    private void requestLogicalPorts(String ipAddress) {
+        SwitchId switchId = getSwitchId();
+        log.info("Sending request to get switch logical ports. IP {} (switch={}, key={})", ipAddress, switchId, key);
+
+        carrier.sendCommandToSpeaker(key, new DumpLogicalPortsRequest(ipAddress));
+        pendingRequests.add(ExternalResources.ACTUAL_LOGICAL_PORTS);
+    }
+
     private void requestSwitchMeters() {
         SwitchId switchId = getSwitchId();
         log.info("Sending requests to get switch meters (switch={}, key={})", switchId, key);
@@ -439,6 +480,18 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                 getSwitchId(), validationContext.getActualGroupEntries());
         validationContext = validationContext.toBuilder()
                 .validateGroupsResult(results)
+                .build();
+    }
+
+    protected void validateLogicalPorts() {
+        if (validationContext.getActualLogicalPortEntries() == null) {
+            return;
+        }
+        log.info("Validate logical ports (switch={}, key={})", getSwitchId(), key);
+        ValidateLogicalPortsResult results = validationService.validateLogicalPorts(
+                getSwitchId(), validationContext.getActualLogicalPortEntries());
+        validationContext = validationContext.toBuilder()
+                .validateLogicalPortResult(results)
                 .build();
     }
 
@@ -488,6 +541,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         RULES_RECEIVED,
         METERS_RECEIVED,
         GROUPS_RECEIVED,
+        LOGICAL_PORTS_RECEIVED,
         EXPECTED_DEFAULT_RULES_RECEIVED,
         EXPECTED_DEFAULT_METERS_RECEIVED,
         METERS_UNSUPPORTED,
@@ -498,6 +552,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         ACTUAL_OF_FLOWS,
         ACTUAL_METERS,
         ACTUAL_OF_GROUPS,
+        ACTUAL_LOGICAL_PORTS,
         EXPECTED_SERVICE_OF_FLOWS,
         EXPECTED_SERVICE_METERS
     }
@@ -508,6 +563,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         List<FlowEntry> flowEntries;
         List<MeterEntry> meterEntries;
         List<GroupEntry> groupEntries;
+        List<LogicalPort> logicalPortEntries;
         SwitchManagerException error;
     }
 }

@@ -33,6 +33,8 @@ import org.openkilda.northbound.dto.v1.links.PathDto;
 import org.openkilda.northbound.dto.v1.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.v1.switches.GroupsSyncDto;
 import org.openkilda.northbound.dto.v1.switches.GroupsValidationDto;
+import org.openkilda.northbound.dto.v1.switches.LogicalPortsSyncDto;
+import org.openkilda.northbound.dto.v1.switches.LogicalPortsValidationDto;
 import org.openkilda.northbound.dto.v1.switches.MetersSyncDto;
 import org.openkilda.northbound.dto.v1.switches.MetersValidationDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncDto;
@@ -146,7 +148,9 @@ public class JsonSerializationTest {
                 emptyList());
         GroupsSyncDto groups = new GroupsSyncDto(emptyList(), emptyList(), emptyList(), emptyList(),
                 emptyList(), emptyList(), emptyList());
-        SwitchSyncResult dto = new SwitchSyncResult(rules, meters, groups);
+        LogicalPortsSyncDto logicalPorts = new LogicalPortsSyncDto(emptyList(), emptyList(), emptyList(), emptyList(),
+                emptyList(), emptyList());
+        SwitchSyncResult dto = new SwitchSyncResult(rules, meters, groups, logicalPorts);
         assertEquals(dto, pass(dto, SwitchSyncResult.class));
     }
 
@@ -156,7 +160,9 @@ public class JsonSerializationTest {
                 singletonList(2L), singletonList(3L));
         MetersValidationDto meters = new MetersValidationDto(emptyList(), emptyList(), emptyList(), emptyList());
         GroupsValidationDto groups = new GroupsValidationDto(emptyList(), emptyList(), emptyList(), emptyList());
-        SwitchValidationResult dto = new SwitchValidationResult(rules, meters, groups);
+        LogicalPortsValidationDto logicalPorts = new LogicalPortsValidationDto(
+                emptyList(), emptyList(), emptyList(), emptyList());
+        SwitchValidationResult dto = new SwitchValidationResult(rules, meters, groups, logicalPorts);
         assertEquals(dto, pass(dto, SwitchValidationResult.class));
     }
 

@@ -39,6 +39,7 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.openkilda.testing.tools.TraffgenStats
 
 import groovy.transform.Memoized
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
@@ -48,6 +49,7 @@ import spock.lang.Unroll
 
 import javax.inject.Provider
 
+@Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-traffic-mirroring")
 class MirrorEndpointsSpec extends HealthCheckSpecification {
 
@@ -1236,11 +1238,12 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
     List<SwitchPair> getUniqueVxlanSwitchPairs(boolean needTraffgens) {
         getUniqueSwitchPairs({ SwitchPair swP ->
+            def wbCheck = [swP.src, swP.dst].every { !it.wb5164 } //ignore due to issue with vxlan(checksum)
             def vxlanCheck = swP.paths.find {
                 pathHelper.getInvolvedSwitches(it).every { switchHelper.isVxlanEnabled(it.dpId) }
             }
             def tgCheck = needTraffgens ? swP.src.traffGens && swP.dst.traffGens : true
-            vxlanCheck && tgCheck
+            vxlanCheck && tgCheck && wbCheck
         })
     }
 

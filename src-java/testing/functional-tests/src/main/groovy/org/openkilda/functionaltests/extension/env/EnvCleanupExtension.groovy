@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.extension.env
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 
 import org.openkilda.functionaltests.exception.IslNotFoundException
@@ -15,6 +16,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.IslUtils
 
 import groovy.util.logging.Slf4j
@@ -31,6 +33,9 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
 
     @Autowired @Qualifier("islandNb")
     NorthboundService northbound
+
+    @Autowired @Qualifier("islandNbV2")
+    NorthboundServiceV2 northboundV2
 
     @Autowired
     Database database
@@ -163,7 +168,7 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
     def deleteInactiveIsls(List<IslInfoData> allLinks) {
         def inactiveLinks = allLinks.findAll { it.state != IslChangeType.DISCOVERED }
 
-        if(inactiveLinks) {
+        if (inactiveLinks) {
             log.info("Removing inactive ISLs: $inactiveLinks")
             inactiveLinks.unique { [it.source, it.destination].sort() }.each {
                 northbound.deleteLink(new LinkParametersDto(it.source.switchId.toString(), it.source.portNo,
@@ -174,10 +179,21 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
 
     def deleteInactiveSwitches(List<SwitchDto> allSwitches) {
         def inactiveSwitches = allSwitches.findAll { it.state == SwitchChangeType.DEACTIVATED }
-        if(inactiveSwitches) {
+        if (inactiveSwitches) {
             log.info("Removing inactive switches: $inactiveSwitches")
             inactiveSwitches.each {
                 northbound.deleteSwitch(it.switchId, false)
+            }
+        }
+    }
+
+    def deleteLagPorts(List<SwitchDto> switches) {
+        log.info("Remove LAG ports from all switches")
+        withPool {
+            switches.eachParallel { SwitchDto sw ->
+                northboundV2.getLagLogicalPort(sw.switchId).each {
+                    northboundV2.deleteLagLogicalPort(sw.switchId, it.logicalPortNumber)
+                }
             }
         }
     }

@@ -35,4 +35,5 @@ public class SwitchSyncResponse extends InfoData {
     RulesSyncEntry rules;
     MetersSyncEntry meters;
     GroupSyncEntry groups;
+    LogicalPortsSyncEntry logicalPorts;
 }

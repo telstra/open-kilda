@@ -34,7 +34,9 @@ class PortAntiflapHelper {
         def swPort = new Tuple2(swId, portNo)
         def lastEvent = history.get(swPort)
         if (lastEvent) {
-            waitPortIsStable(swId, portNo, lastEvent)
+            Wrappers.silent { //Don't fail hard on this check. In rare cases we may miss the history entry
+                waitPortIsStable(swId, portNo, lastEvent)
+            }
             history.remove(swPort)
         }
         northbound.portUp(swId, portNo)
@@ -53,7 +55,7 @@ class PortAntiflapHelper {
     void waitPortIsStable(SwitchId swId, int portNo, Long since = 0) {
         // '* 2' it takes more time on a hardware env for link via 'a-switch'
         Wrappers.wait(antiflapCooldown + WAIT_OFFSET * 2) {
-            def history = northboundV2.getPortHistory(swId, portNo, since, Long.MAX_VALUE)
+            def history = northboundV2.getPortHistory(swId, portNo, since, null)
 
             if (!history.empty) {
                 def antiflapEvents = history.collect { PortHistoryEvent.valueOf(it.event) }.findAll {

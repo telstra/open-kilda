@@ -26,6 +26,7 @@ kilda_storm_numbus_hosts: "nimbus.pendev"
 kilda_hibernate_user: kilda
 kilda_hibernate_password: kilda
 kilda_hibernate_url: jdbc:mysql://mysql.pendev:3306/kilda
+kilda_hibernate_url_tests: jdbc:mysql://localhost:8101/kilda
 
 kilda_gui_port: 1010
 kilda_gui_db_dialect: org.hibernate.dialect.DerbyTenSevenDialect
