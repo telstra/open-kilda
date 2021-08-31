@@ -35,8 +35,8 @@ A flow with LATENCY strategy:
      Both flows are build via the path with 11 latency, but the status is different: flow_1 - degraded, flow_2-up)
     - flowPathLatency <= max_latency - flow is in UP state after creating
     - flowPathLatency > max_latency - flow is in DEGRADED state after creating
-    - max_latency_tier2 > max_latency - it is wrong, but the system allows it. In this case the system will consider
-    that max_latency_tier2 = max_latency and inform us via kibana by warning message
+    - max_latency_tier2 < max_latency - it is wrong, but the system allows it. In this case the system will consider
+    that max_latency_tier2 = max_latency and inform us via kibana by warning message:
     log.warn("Bad flow params found: maxLatencyTier2 ({}) should be greater than maxLatency ({}). "
     + "Put maxLatencyTier2 = maxLatency during path calculation.", flow.getMaxLatencyTier2(), flow.getMaxLatency());
 """)
