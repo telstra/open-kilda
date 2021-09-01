@@ -39,12 +39,7 @@ class CheckLoggingSpec extends HealthCheckSpecification {
         when: "Retrieve Floodlight logs for last 5 minutes"
         def result = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.FLOODLIGHT)
                 .setLevel("INFO").setTimeRange(300).build())
-
-        if (profile == "virtual") { //due to different version of kibana
-            assert result?.hits?.total > 0: "No logs could be found for Floodlight"
-        } else {
-            assert result?.hits?.total.value > 0: "No logs could be found for Floodlight"
-        }
+        assert result?.hits?.total?.value > 0: "No logs could be found for Floodlight"
 
         then: "There should be discovery messages"
         result.hits.hits.any { hit -> hit.source.message.toLowerCase().contains(discoveryMsg) }
