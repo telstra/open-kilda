@@ -59,7 +59,7 @@ class Wrappers {
      *          - False or throw if check is unsuccessful
      * @return True if wait was successful, throws WaitTimeoutException otherwise
      */
-    static boolean wait(double timeout, double retryInterval = 0.5, Closure closure) {
+    static boolean wait(double timeout, double retryInterval = 2, Closure closure) {
         long endTime = System.currentTimeMillis() + (long) (timeout * 1000)
         long sleepTime = (long) (retryInterval * 1000)
         Throwable thrown = null
