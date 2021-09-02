@@ -82,4 +82,11 @@ public class PathWeight implements Comparable<PathWeight> {
             return Integer.compare(firstSize, secondSize);
         }
     }
+
+    @Override
+    public String toString() {
+        return "PathWeight{"
+                + "params="
+                + params + '}';
+    }
 }
