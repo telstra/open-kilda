@@ -12,6 +12,8 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
+import enum
+
 
 class _EntityBase:
     def __init__(self, time_create=None, time_modify=None):
@@ -113,6 +115,11 @@ class PortEvent(_EntityBase):
 class TypeTag:
     def __init__(self, tag):
         self.tag = tag
+
+
+class PullTarget(enum.Enum):
+    HISTORY_FLOW_EVENT = enum.auto()
+    HISTORY_PORT_EVENT = enum.auto()
 
 
 FLOW_EVENT_TAG = TypeTag('flow-event')
