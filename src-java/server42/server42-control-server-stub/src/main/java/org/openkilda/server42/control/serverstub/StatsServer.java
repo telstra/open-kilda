@@ -47,6 +47,7 @@ public class StatsServer extends Thread {
         String flowId;
         Boolean direction;
         Long baseLatency;
+        long flowHashCode;
     }
 
     @Value
@@ -135,15 +136,23 @@ public class StatsServer extends Thread {
      */
     public synchronized void addFlow(Flow flow) {
 
+        FlowKey flowKey = FlowKey.fromFlow(flow);
+
+        if (flows.containsKey(flowKey) && flows.get(flowKey).getFlowHashCode() == flow.getHashCode()) {
+            log.info("skip add flow {} hash {}", flow.getFlowId(), flow.getHashCode());
+            return;
+        }
+
         long generatedLatency = MIN_BASE_LATENCY + (long) (Math.random() * (MAX_BASE_LATENCY - MIN_BASE_LATENCY));
 
         FlowStats flowStats = FlowStats.builder()
                 .flowId(flow.getFlowId())
                 .direction(flow.getDirection())
                 .baseLatency(generatedLatency)
+                .flowHashCode(flow.getHashCode())
                 .build();
 
-        flows.put(FlowKey.fromFlow(flow), flowStats);
+        flows.put(flowKey, flowStats);
     }
 
     public synchronized void removeFlow(FlowKey flowKey) {
