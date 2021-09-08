@@ -10,12 +10,11 @@ databaseChangeLog:
       id: remove_flow_group_id_field
       author: dpoltavets
       changes:
-        - sql: "DROP INDEX flow.group_id"
         - sql: "UPDATE flow REMOVE group_id"
-        - sql: "DROP PROPERTY flow.group_id"
-        - sql: "DROP INDEX flow_dump.group_id"
+        - sql: "DROP INDEX flow.group_id IF EXISTS"
+        - sql: "DROP PROPERTY flow.group_id IF EXISTS"
         - sql: "UPDATE flow_dump REMOVE group_id"
-        - sql: "DROP PROPERTY flow_dump.group_id"
+        - sql: "DROP PROPERTY flow_dump.group_id IF EXISTS"
       rollback:
         - sql: "CREATE PROPERTY flow.group_id IF NOT EXISTS STRING"
         - sql: "CREATE INDEX flow.group_id NOTUNIQUE_HASH_INDEX"
