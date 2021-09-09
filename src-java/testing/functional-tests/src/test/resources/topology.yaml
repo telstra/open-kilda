@@ -21,7 +21,7 @@ switches:
     prop:
       server42_flow_rtt: true
       server42_port: 11
-      server42_mac_address: 00:00:00:00:01:02
+      server42_mac_address: 02:70:63:61:70:00
       server42_vlan: 1002
       server42_isl_rtt: false
 
@@ -37,7 +37,7 @@ switches:
     prop:
       server42_flow_rtt: true
       server42_port: 11
-      server42_mac_address: 00:00:00:00:01:03
+      server42_mac_address: 02:70:63:61:70:00
       server42_vlan: 1003
 
   - name: ofsw4
@@ -72,7 +72,7 @@ switches:
     prop:
       server42_flow_rtt: false
       server42_port: 11
-      server42_mac_address: 00:00:00:00:01:03
+      server42_mac_address: 02:70:63:61:70:00
       server42_vlan: 1003
       server42_isl_rtt: false
 

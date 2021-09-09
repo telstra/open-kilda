@@ -24,12 +24,20 @@ sudo ./pipework br_kilda_int  -i eth1 server42-stats   10.0.77.3/24
 `sudo tcpdump -elnXXi br_kilda_test`
 
 # local loop inside container
+
+- shutdown container `docker-compose stop server42-server`
+- up container with bash `docker-compose run --use-aliases server42-server bash`
+
+- setup veth pair
 `ip link add eth42 type veth peer name eth24
 ip link set eth24 up
 ip link set eth42 up`
 
-# run
+- run server42
 `./server42 -c 0x1f --vdev=net_pcap0,iface=eth42 --vdev=net_pcap1,iface=eth24 --no-huge -- --debug`
+
+Also, you can run local_loop.sh for doing that.
 
 # status
 `watch -d -n 1 cat /tmp/server42-status.txt`
+

@@ -10,6 +10,8 @@ RUN ./build.sh
 
 WORKDIR /root/cmake-build-release/
 
-COPY ./docker_entrypoint.sh /root/cmake-build-release/
+COPY ./local_loop.sh /root/cmake-build-release/
 
-CMD ["./docker_entrypoint.sh"]
+COPY ./docker_entrypoint.py /root/cmake-build-release/
+
+CMD ["./docker_entrypoint.py"]

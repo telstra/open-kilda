@@ -25,12 +25,14 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.MAC_ADDRESS_S
 import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_FORWARD_UDP_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_REVERSE_UDP_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_TURNING_PRIORITY;
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_SWAP_FIELD;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_TURNING_COOKIE;
 
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.factory.SwitchFlowTuple;
 import org.openkilda.floodlight.switchmanager.factory.generator.SwitchFlowGenerator;
+import org.openkilda.model.SwitchFeature;
 
 import com.google.common.collect.ImmutableList;
 import lombok.Builder;
@@ -48,6 +50,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
 
 import java.util.List;
+import java.util.Set;
 
 @Builder
 public class Server42FlowRttTurningFlowGenerator implements SwitchFlowGenerator {
@@ -56,7 +59,11 @@ public class Server42FlowRttTurningFlowGenerator implements SwitchFlowGenerator 
 
     @Override
     public SwitchFlowTuple generateFlow(IOFSwitch sw) {
-        if (!featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_SWAP_ETH_SRC_ETH_DST)) {
+
+        Set<SwitchFeature> switchFeatures = featureDetectorService.detectSwitch(sw);
+
+        if (!switchFeatures.contains(NOVIFLOW_SWAP_ETH_SRC_ETH_DST)
+                && !switchFeatures.contains(KILDA_OVS_SWAP_FIELD)) {
             return SwitchFlowTuple.getEmpty();
         }
 
@@ -64,7 +71,7 @@ public class Server42FlowRttTurningFlowGenerator implements SwitchFlowGenerator 
         Match match = buildMatch(sw.getId(), ofFactory);
         List<OFAction> actions = ImmutableList.of(
                 actionSetUdpSrcAction(ofFactory, TransportPort.of(SERVER_42_FLOW_RTT_REVERSE_UDP_PORT)),
-                buildSwapAction(ofFactory),
+                buildSwapAction(switchFeatures, ofFactory),
                 actionSetOutputPort(ofFactory, OFPort.IN_PORT));
 
         OFFlowMod flowMod = prepareFlowModBuilder(
@@ -87,9 +94,19 @@ public class Server42FlowRttTurningFlowGenerator implements SwitchFlowGenerator 
                 .build();
     }
 
-    private static OFAction buildSwapAction(OFFactory factory) {
+    private static OFAction buildSwapAction(Set<SwitchFeature> switchFeatures, OFFactory factory) {
         OFOxms oxms = factory.oxms();
-        return factory.actions().buildNoviflowSwapField()
+
+        if (switchFeatures.contains(NOVIFLOW_SWAP_ETH_SRC_ETH_DST)) {
+            return factory.actions().buildNoviflowSwapField()
+                    .setNBits(MAC_ADDRESS_SIZE_IN_BITS)
+                    .setSrcOffset(0)
+                    .setDstOffset(0)
+                    .setOxmSrcHeader(oxms.buildEthSrc().getTypeLen())
+                    .setOxmDstHeader(oxms.buildEthDst().getTypeLen())
+                    .build();
+        }
+        return factory.actions().buildKildaSwapField()
                 .setNBits(MAC_ADDRESS_SIZE_IN_BITS)
                 .setSrcOffset(0)
                 .setDstOffset(0)
