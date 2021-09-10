@@ -30,6 +30,8 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Scope
 
+import java.util.concurrent.TimeUnit
+
 @Configuration
 @Slf4j
 class TopologyConfig {
@@ -58,7 +60,12 @@ class TopologyConfig {
     @Bean
     @Scope("specThread")
     TopologyDefinition getTopologyDefinition(TopologyPool topologyPool) throws IOException {
-        return topologyPool.take()
+        def timeout = 30
+        def topo = topologyPool.poll(timeout, TimeUnit.MINUTES)
+        if (!topo) {
+            throw new RuntimeException("Unable to take a free island from pool for $timeout minutes. Aborting.")
+        }
+        return topo
     }
 
     /**
