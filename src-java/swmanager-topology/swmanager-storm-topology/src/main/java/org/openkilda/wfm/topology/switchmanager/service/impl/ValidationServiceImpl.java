@@ -75,10 +75,12 @@ import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 
 import java.util.ArrayList;
@@ -285,7 +287,8 @@ public class ValidationServiceImpl implements ValidationService {
         return misconfiguredGroups;
     }
 
-    private LogicalPortInfoEntry calculateMisconfiguredLogicalPort(
+    @VisibleForTesting
+    LogicalPortInfoEntry calculateMisconfiguredLogicalPort(
             LogicalPortInfoEntry expectedPort, LogicalPortInfoEntry actualPort) {
         LogicalPortMisconfiguredInfoEntry expected = new LogicalPortMisconfiguredInfoEntry();
         LogicalPortMisconfiguredInfoEntry actual = new LogicalPortMisconfiguredInfoEntry();
@@ -295,7 +298,8 @@ public class ValidationServiceImpl implements ValidationService {
             actual.setType(actualPort.getType());
         }
 
-        if (!Objects.equals(expectedPort.getPhysicalPorts(), actualPort.getPhysicalPorts())) {
+        // compare, ignoring order
+        if (!CollectionUtils.isEqualCollection(expectedPort.getPhysicalPorts(), actualPort.getPhysicalPorts())) {
             expected.setPhysicalPorts(expectedPort.getPhysicalPorts());
             actual.setPhysicalPorts(actualPort.getPhysicalPorts());
         }
