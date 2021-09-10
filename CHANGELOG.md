@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.105.0 (14/09/2021)
+
+### Features:
+-  [#4470](https://github.com/telstra/open-kilda/pull/4470) [Server42] Connection to Test lab (Issue: [#4468](https://github.com/telstra/open-kilda/issues/4468)) [**tests**]
+
+### Bug Fixes:
+-  [#4283](https://github.com/telstra/open-kilda/pull/4283) Server 42: fix server stub update based on flow hash
+-  [#4473](https://github.com/telstra/open-kilda/pull/4473) Added "IF EXIST" into migration 14
+-  [#4475](https://github.com/telstra/open-kilda/pull/4475) Compare LAG physical ports ignoring order [**storm-topologies**]
+
+### Improvements:
+-  [#4385](https://github.com/telstra/open-kilda/pull/4385) Add Rule Manager design [**docs**]
+-  [#4456](https://github.com/telstra/open-kilda/pull/4456) Ability exclude specific objects from history dump
+-  [#4465](https://github.com/telstra/open-kilda/pull/4465) [func-test] improve HardwareEnvCleanupExtension [**tests**]
+-  [#4466](https://github.com/telstra/open-kilda/pull/4466) fix cleanup in "Rtt statistic is available for a flow on a LAG port" [**tests**]
+-  [#4467](https://github.com/telstra/open-kilda/pull/4467) fix 'narrative' in MaxLatencySpec [**tests**]
+-  [#4468](https://github.com/telstra/open-kilda/pull/4468) Server42 to Test lab connection documentation [**docs**]
+-  [#4405](https://github.com/telstra/open-kilda/pull/4405) Remove flow group id field (Issue: [#4404](https://github.com/telstra/open-kilda/issues/4404))
+-  [#4472](https://github.com/telstra/open-kilda/pull/4472) Changed log level of unknown GRPC responces in Network topology. [**storm-topologies**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.104.0...v1.105.0).
+
+### Affected Components:
+server42, orientdb, swmanager, network
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
 ## v1.104.0 (31/08/2021)
 
 ### Features:
