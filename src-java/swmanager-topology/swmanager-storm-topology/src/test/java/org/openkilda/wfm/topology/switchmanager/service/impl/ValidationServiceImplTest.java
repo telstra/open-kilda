@@ -71,6 +71,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -354,7 +355,7 @@ public class ValidationServiceImplTest {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
                 flowResourcesConfig);
 
-        LogicalPort proper = buildLogicalPort(LOGICAL_PORT_NUMBER_1, PHYSICAL_PORT_1, PHYSICAL_PORT_2);
+        LogicalPort proper = buildLogicalPort(LOGICAL_PORT_NUMBER_1, PHYSICAL_PORT_2, PHYSICAL_PORT_1);
         LogicalPort misconfigured = buildLogicalPort(LOGICAL_PORT_NUMBER_2, LogicalPortType.BFD, PHYSICAL_PORT_3);
         LogicalPort excess = buildLogicalPort(LOGICAL_PORT_NUMBER_4, PHYSICAL_PORT_6);
         LogicalPort bfdExcess = buildLogicalPort(LOGICAL_PORT_NUMBER_5, LogicalPortType.BFD, PHYSICAL_PORT_7);
@@ -366,8 +367,8 @@ public class ValidationServiceImplTest {
         assertEquals(1, result.getMissingLogicalPorts().size());
         assertEquals(1, result.getMisconfiguredLogicalPorts().size());
 
-        assertEquals(LogicalPortMapper.INSTANCE.map(proper), result.getProperLogicalPorts().get(0));
-        assertEquals(LogicalPortMapper.INSTANCE.map(excess), result.getExcessLogicalPorts().get(0));
+        assertEqualLogicalPort(proper, result.getProperLogicalPorts().get(0));
+        assertEqualLogicalPort(excess, result.getExcessLogicalPorts().get(0));
 
         LogicalPortInfoEntry missing = LogicalPortInfoEntry.builder()
                 .type(org.openkilda.messaging.info.switches.LogicalPortType.LAG)
@@ -387,6 +388,13 @@ public class ValidationServiceImplTest {
                         Lists.newArrayList(PHYSICAL_PORT_3, PHYSICAL_PORT_4)))
                 .build();
         assertEquals(misconfiguredEntry, result.getMisconfiguredLogicalPorts().get(0));
+    }
+
+    private void assertEqualLogicalPort(LogicalPort expected, LogicalPortInfoEntry actual) {
+        LogicalPortInfoEntry expectedPortInfo = LogicalPortMapper.INSTANCE.map(expected);
+        Collections.sort(expectedPortInfo.getPhysicalPorts());
+        Collections.sort(actual.getPhysicalPorts());
+        assertEquals(expectedPortInfo, actual);
     }
 
     @Test
