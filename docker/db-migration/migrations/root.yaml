@@ -51,3 +51,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 013-copy-from-flow-group-id-field-to-diverse-group-id-field.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 014-remove-flow-group-id-field.yaml

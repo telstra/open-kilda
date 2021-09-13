@@ -20,12 +20,14 @@ from . import pull
 from . import tools
 
 
-def orient_to_ndjson(orient_client, stream_out, time_range):
+def orient_to_ndjson(orient_client, stream_out, targets, time_range):
     writer = ndjson.writer(stream_out)
     with pull.PullStatsOutput('Pull orient DB') as output:
-        _pull_flow_events(orient_client, time_range, writer, output)
+        if model.PullTarget.HISTORY_FLOW_EVENT in targets:
+            _pull_flow_events(orient_client, time_range, writer, output)
         output.flush()
-        _pull_port_events(orient_client, time_range, writer, output)
+        if model.PullTarget.HISTORY_PORT_EVENT in targets:
+            _pull_port_events(orient_client, time_range, writer, output)
 
 
 def _pull_flow_events(client, time_range, writer, output):

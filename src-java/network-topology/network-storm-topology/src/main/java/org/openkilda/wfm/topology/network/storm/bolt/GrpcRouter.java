@@ -75,7 +75,7 @@ public class GrpcRouter extends AbstractBolt {
             emit(STREAM_BFD_WORKER_ID, input, makeBfdWorkerTuple(
                     key, new BfdWorkerLogicalPortDeleteResponse((DeleteLogicalPortResponse) payload)));
         } else {
-            log.warn("Ignore GRPC message {}: {}", payload.getClass().getName(), payload);
+            log.debug("Ignore GRPC message {}: {}", payload.getClass().getName(), payload);
         }
     }
 

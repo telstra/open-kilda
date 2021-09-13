@@ -20,6 +20,7 @@ import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -386,6 +387,29 @@ public class ValidationServiceImplTest {
                         Lists.newArrayList(PHYSICAL_PORT_3, PHYSICAL_PORT_4)))
                 .build();
         assertEquals(misconfiguredEntry, result.getMisconfiguredLogicalPorts().get(0));
+    }
+
+    @Test
+    public void calculateMisconfiguredLogicalPortDifferentPortOrderTest() {
+        ValidationServiceImpl validationService = new ValidationServiceImpl(persistenceManager().build(),
+                topologyConfig, flowResourcesConfig);
+
+        LogicalPortInfoEntry actual = LogicalPortInfoEntry.builder()
+                .type(org.openkilda.messaging.info.switches.LogicalPortType.LAG)
+                .logicalPortNumber(LOGICAL_PORT_NUMBER_1)
+                .physicalPorts(Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2, PHYSICAL_PORT_3))
+                .build();
+
+        LogicalPortInfoEntry expected = LogicalPortInfoEntry.builder()
+                .type(org.openkilda.messaging.info.switches.LogicalPortType.LAG)
+                .logicalPortNumber(LOGICAL_PORT_NUMBER_1)
+                .physicalPorts(Lists.newArrayList(PHYSICAL_PORT_3, PHYSICAL_PORT_2, PHYSICAL_PORT_1))
+                .build();
+
+        LogicalPortInfoEntry difference = validationService.calculateMisconfiguredLogicalPort(expected, actual);
+        // physical ports are equal. Only order is different. So port difference must be null
+        assertNull(difference.getActual().getPhysicalPorts());
+        assertNull(difference.getExpected().getPhysicalPorts());
     }
 
     private void assertMeter(MeterInfoEntry meterInfoEntry, MeterEntry expected) {

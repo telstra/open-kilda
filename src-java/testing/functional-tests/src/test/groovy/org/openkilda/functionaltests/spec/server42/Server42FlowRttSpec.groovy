@@ -940,8 +940,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Revert system to original state"
-        lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
         flow && flowHelperV2.deleteFlow(flow.flowId)
+        lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
         flowRttFeatureStartState && changeFlowRttToggle(flowRttFeatureStartState)
         initialSrcSwS42Props && changeFlowRttSwitch(switchPair.src, initialSrcSwS42Props)
         initialDstSwS42Props && changeFlowRttSwitch(switchPair.dst, initialSrcSwS42Props)

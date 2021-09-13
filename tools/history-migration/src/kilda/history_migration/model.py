@@ -12,6 +12,8 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
+import enum
+
 
 class _EntityBase:
     def __init__(self, time_create=None, time_modify=None):
@@ -54,7 +56,7 @@ class FlowEventDump(_EntityBase):
             a_to_z_path, a_to_z_status,
             z_to_a_path, z_to_a_status,
             pinned=False, periodic_ping=False,
-            group_id=None, loop_switch=None,
+            diverse_group_id=None, affinity_group_id=None, loop_switch=None,
             a_to_z_meter_id=None, z_to_a_meter_id=None, **kwargs):
         super().__init__(**kwargs)
         self.kind = kind
@@ -88,7 +90,8 @@ class FlowEventDump(_EntityBase):
         self.pinned = pinned
         self.periodic_ping = periodic_ping
 
-        self.group_id = group_id
+        self.diverse_group_id = diverse_group_id
+        self.affinity_group_id = affinity_group_id
         self.loop_switch = loop_switch
 
         self.a_to_z_meter_id = a_to_z_meter_id
@@ -112,6 +115,11 @@ class PortEvent(_EntityBase):
 class TypeTag:
     def __init__(self, tag):
         self.tag = tag
+
+
+class PullTarget(enum.Enum):
+    HISTORY_FLOW_EVENT = enum.auto()
+    HISTORY_PORT_EVENT = enum.auto()
 
 
 FLOW_EVENT_TAG = TypeTag('flow-event')

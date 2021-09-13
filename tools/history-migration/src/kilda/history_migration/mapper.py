@@ -179,7 +179,8 @@ def _flow_event_dump_to_dump(dump):
         'pinned': dump.pinned,
         'periodic_ping': dump.periodic_ping,
 
-        'group_id': dump.group_id,
+        'diverse_group_id': dump.diverse_group_id,
+        'affinity_group_id': dump.affinity_group_id,
         'loop_switch': dump.loop_switch,
 
         'a_to_z_meter_id': dump.a_to_z_meter_id,
@@ -227,8 +228,9 @@ def _flow_event_dump_of_orient(orient_entry):
     kwargs = _get_generic_orient_fields(orient_entry)
     kwargs.update(_get_optional_attrs(
         orient_entry,
-        'pinned', 'periodic_ping', 'group_id', loop_switch='loop_switch_id',
-        a_to_z_meter_id='forward_meter_id', z_to_a_meter_id='reverse_meter_id'))
+        'pinned', 'periodic_ping', 'diverse_group_id', 'affinity_group_id',
+        loop_switch='loop_switch_id', a_to_z_meter_id='forward_meter_id',
+        z_to_a_meter_id='reverse_meter_id'))
     return model.FlowEventDump(
         kind, flow_id, bandwidth, max_latency, ignore_bandwidth,
         allocate_protected_path, encapsulation_type, path_computation_strategy,
@@ -268,9 +270,9 @@ def _flow_event_dump_of_mysql(mysql_row):
 
     kwargs = _get_generic_mysql_fields(mysql_row)
     kwargs.update(_get_optional_keys(
-        unstructured, 'pinned', 'group_id', 'loop_switch',
-        periodic_ping='periodic_pings', a_to_z_meter_id='forward_meter_id',
-        z_to_a_meter_id='reverse_meter_id'))
+        unstructured, 'pinned', 'diverse_group_id', 'affinity_group_id',
+        'loop_switch', periodic_ping='periodic_pings',
+        a_to_z_meter_id='forward_meter_id', z_to_a_meter_id='reverse_meter_id'))
     return model.FlowEventDump(
         kind, flow_id, bandwidth, max_latency, ignore_bandwidth,
         allocate_protected_path, encapsulation_type, path_computation_strategy,
@@ -289,8 +291,8 @@ def _flow_event_dump_of_dump(dump_entry):
         a_end_switch, a_end_port, a_end_vlan, a_end_inner_vlan,
         z_end_switch, z_end_port, z_end_vlan, z_end_inner_vlan,
         a_to_z_meter_id, a_to_z_path, a_to_z_status, z_to_a_meter_id,
-        z_to_a_path, z_to_a_status, pinned, periodic_ping, group_id,
-        loop_switch, time_create, time_modify
+        z_to_a_path, z_to_a_status, pinned, periodic_ping, diverse_group_id,
+        affinity_group_id, loop_switch, time_create, time_modify
     ) = _extract_dict_values(
         source, 'kind', 'flow_id', 'bandwidth', 'max_latency',
         'ignore_bandwidth', 'allocate_protected_path',
@@ -299,8 +301,8 @@ def _flow_event_dump_of_dump(dump_entry):
         'a_end_inner_vlan', 'z_end_switch', 'z_end_port', 'z_end_vlan',
         'z_end_inner_vlan', 'a_to_z_meter_id', 'a_to_z_path', 'a_to_z_status',
         'z_to_a_meter_id', 'z_to_a_path', 'z_to_a_status', 'pinned',
-        'periodic_ping', 'group_id', 'loop_switch', 'time_create',
-        'time_modify',
+        'periodic_ping', 'diverse_group_id', 'affinity_group_id', 'loop_switch',
+        'time_create', 'time_modify',
         allow_extra=False)
 
     time_create = datetime_of_string(time_create)
@@ -314,7 +316,9 @@ def _flow_event_dump_of_dump(dump_entry):
         z_end_vlan, z_end_inner_vlan, a_to_z_path, a_to_z_status,
         z_to_a_path, z_to_a_status,
         pinned=pinned, periodic_ping=periodic_ping,
-        group_id=group_id, loop_switch=loop_switch, a_to_z_meter_id=a_to_z_meter_id, z_to_a_meter_id=z_to_a_meter_id, time_create=time_create,
+        diverse_group_id=diverse_group_id, affinity_group_id=affinity_group_id,
+        loop_switch=loop_switch, a_to_z_meter_id=a_to_z_meter_id,
+        z_to_a_meter_id=z_to_a_meter_id, time_create=time_create,
         time_modify=time_modify)
 
 
