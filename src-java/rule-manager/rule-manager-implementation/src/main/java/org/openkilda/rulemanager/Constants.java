@@ -17,7 +17,8 @@ package org.openkilda.rulemanager;
 
 public final class Constants {
     public static final int VXLAN_UDP_DST = 4789;
-
+    public static final int STUB_VXLAN_UDP_SRC = 4500;
+    public static final int ARP_VXLAN_UDP_SRC = 4501;
 
     public static final class Priority {
         public static final int MINIMAL_POSITIVE_PRIORITY = 1;
