@@ -64,7 +64,7 @@ public class InputArpRuleGenerator implements RuleGenerator {
     }
 
     private SpeakerCommandData buildArpInputCustomerFlowCommand(Switch sw, FlowEndpoint endpoint) {
-        RoutingMetadata metadata = RoutingMetadata.builder().arpFlag(true).build();
+        RoutingMetadata metadata = RoutingMetadata.builder().arpFlag(true).build(sw.getFeatures());
 
         FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
                 .switchId(endpoint.getSwitchId())

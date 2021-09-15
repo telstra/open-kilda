@@ -54,7 +54,8 @@ public final class ProtoConstants {
 
         public enum SpecialPortType {
             IN_PORT,
-            CONTROLLER
+            CONTROLLER,
+            LOCAL
         }
 
     }

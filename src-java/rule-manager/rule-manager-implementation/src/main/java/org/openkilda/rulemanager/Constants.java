@@ -25,6 +25,8 @@ public final class Constants {
     public static final IPv4Address VXLAN_SRC_IPV4_ADDRESS = new IPv4Address("127.0.0.1");
     public static final IPv4Address VXLAN_DST_IPV4_ADDRESS = new IPv4Address("127.0.0.2");
     public static final int NOVIFLOW_TIMESTAMP_SIZE_IN_BITS = 64;
+    public static final int STUB_VXLAN_UDP_SRC = 4500;
+    public static final int ARP_VXLAN_UDP_SRC = 4501;
 
     public static final class Priority {
         public static final int MINIMAL_POSITIVE_PRIORITY = 1;

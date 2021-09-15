@@ -90,7 +90,7 @@ public class InputLldpRuleGeneratorTest {
                 FieldMatch.builder().field(Field.ETH_TYPE).value(EthType.LLDP).build());
         assertEqualsMatch(expectedMatch, flowCommandData.getMatch());
 
-        RoutingMetadata metadata = RoutingMetadata.builder().lldpFlag(true).build();
+        RoutingMetadata metadata = RoutingMetadata.builder().lldpFlag(true).build(SW.getFeatures());
         Instructions expectedInstructions = Instructions.builder()
                 .writeMetadata(new OfMetadata(metadata.getValue(), metadata.getMask()))
                 .goToTable(OfTable.PRE_INGRESS)

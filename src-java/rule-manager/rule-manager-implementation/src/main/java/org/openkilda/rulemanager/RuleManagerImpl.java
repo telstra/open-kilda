@@ -18,8 +18,10 @@ package org.openkilda.rulemanager;
 import static java.util.stream.Collectors.toList;
 import static org.openkilda.adapter.FlowSideAdapter.makeIngressAdapter;
 import static org.openkilda.model.cookie.Cookie.DROP_RULE_COOKIE;
+import static org.openkilda.model.cookie.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_INGRESS_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE;
+import static org.openkilda.model.cookie.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE;
 
 import org.openkilda.adapter.FlowSideAdapter;
@@ -143,8 +145,27 @@ public class RuleManagerImpl implements RuleManager {
                     new Cookie(MULTITABLE_TRANSIT_DROP_COOKIE), OfTable.TRANSIT));
             generators.add(serviceRulesFactory.getTableDefaultRuleGenerator(
                     new Cookie(MULTITABLE_POST_INGRESS_DROP_COOKIE), OfTable.POST_INGRESS));
+            generators.add(serviceRulesFactory.getTablePassThroughDefaultRuleGenerator(
+                    new Cookie(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE), OfTable.TRANSIT, OfTable.EGRESS));
+            generators.add(serviceRulesFactory.getTablePassThroughDefaultRuleGenerator(
+                    new Cookie(MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE), OfTable.INGRESS, OfTable.PRE_INGRESS));
+            generators.add(serviceRulesFactory.getLldpPostIngressRuleGenerator());
+            generators.add(serviceRulesFactory.getLldpPostIngressVxlanRuleGenerator());
+            generators.add(serviceRulesFactory.getLldpPostIngressOneSwitchRuleGenerator());
+            generators.add(serviceRulesFactory.getArpPostIngressRuleGenerator());
+            generators.add(serviceRulesFactory.getArpPostIngressVxlanRuleGenerator());
+            generators.add(serviceRulesFactory.getArpPostIngressOneSwitchRuleGenerator());
 
-            // TODO: add other rules
+            if (switchProperties.isSwitchLldp()) {
+                generators.add(serviceRulesFactory.getLldpTransitRuleGenerator());
+                generators.add(serviceRulesFactory.getLldpInputPreDropRuleGenerator());
+                generators.add(serviceRulesFactory.getLldpIngressRuleGenerator());
+            }
+            if (switchProperties.isSwitchArp()) {
+                generators.add(serviceRulesFactory.getArpTransitRuleGenerator());
+                generators.add(serviceRulesFactory.getArpInputPreDropRuleGenerator());
+                generators.add(serviceRulesFactory.getArpIngressRuleGenerator());
+            }
         }
 
         return generators;
