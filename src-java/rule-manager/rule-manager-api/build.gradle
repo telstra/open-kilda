@@ -1,0 +1,23 @@
+plugins {
+    id 'java-library'
+}
+
+description = 'Kilda Rule Manager API'
+dependencies {
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    implementation project(':base-messaging')
+    implementation project(':kilda-model')
+
+    implementation 'com.google.guava:guava'
+    implementation 'org.apache.commons:commons-lang3'
+
+    compileOnly 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+}
