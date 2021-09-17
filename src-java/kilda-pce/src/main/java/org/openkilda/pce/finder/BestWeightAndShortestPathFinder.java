@@ -351,6 +351,7 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
 
         while (!toVisit.isEmpty()) {
             SearchNode current = toVisit.pop();
+            log.debug("Going to visit node {} with weight {}.", current.dstSw, current.getParentWeight().toLong());
 
             // Determine if this node is the destination node.
             if (current.dstSw.equals(end)) {
@@ -362,6 +363,7 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                     bestPath = current;
                 }
                 // We found dest, no need to keep processing
+                log.debug("Found destination using {} with path {}", current.dstSw, current.parentPath);
                 continue;
             }
 
@@ -373,13 +375,14 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
 
             // Stop processing entirely if we've gone too far, or over bestWeight
             if (current.allowedDepth <= 0 || current.parentWeight.compareTo(bestWeight) > 0) {
+                log.debug("Skip node {} processing", current.dstSw);
                 continue;
             }
 
             // Either this is the first time, or this one has less weight .. either way, this node should
             // be the one in the visited list
             visited.put(current.dstSw, current);
-
+            log.debug("Save new path to node {} and process it's outgoing links", current.dstSw);
 
             // At this stage .. haven't found END, haven't gone too deep, and we are not over weight.
             // So, add the outbound isls.
@@ -420,9 +423,11 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
 
         while (!toVisit.isEmpty()) {
             SearchNode current = toVisit.pop();
+            log.debug("Going to visit node {} with weight {}.", current.dstSw, current.getParentWeight().toLong());
 
             // Leave if the path contains this node
             if (current.containsSwitch(current.dstSw.getSwitchId())) {
+                log.debug("Skip node {} already in the path", current.dstSw);
                 continue;
             }
 
@@ -439,6 +444,7 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                     desiredPath = current;
                 }
                 // We found dest, no need to keep processing
+                log.debug("Found destination using {} with path {}", current.dstSw, current.parentPath);
                 continue;
             }
 
@@ -449,18 +455,24 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
 
             // Otherwise, if we've been here before, see if this path is better
             SearchNode prior = visited.get(current.dstSw);
-            if (prior != null && shiftedCurrentWeight >= Math.abs(maxWeight - prior.parentWeight.toLong())) {
+            // Use non-greedy way to save visited nodes to fix issue mentioned in docs/design/pce/max-latency-issue
+            if (prior != null && shiftedCurrentWeight < Math.abs(maxWeight - prior.parentWeight.toLong())) {
+                log.debug("Skip node {} processing", current.dstSw);
                 continue;
             }
 
             // Either this is the first time, or this one has less weight .. either way, this node should
             // be the one in the visited list
             visited.put(current.dstSw, current);
+            log.debug("Save new path to node {} and process it's outgoing links", current.dstSw);
 
             // At this stage .. haven't found END, haven't gone too deep, and we are not over weight.
             // So, add the outbound isls.
             current.dstSw.getOutgoingLinks().stream()
-                    .sorted(Comparator.comparing(edge -> edge.getDestSwitch().getSwitchId()))
+                    // should firstly process edges with big weights to guarantee they will not be skipped.
+                    // See unit test shouldUseSlowLinkInsidePath.
+                    .sorted(Comparator.comparing(weightFunction).reversed()
+                            .thenComparing(edge -> edge.getDestSwitch().getSwitchId()))
                     .forEach(edge -> toVisit.add(current.addNode(edge)));
         }
 
