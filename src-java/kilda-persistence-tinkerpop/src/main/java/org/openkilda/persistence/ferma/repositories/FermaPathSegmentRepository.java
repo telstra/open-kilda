@@ -22,12 +22,11 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.PathSegment.PathSegmentData;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.PathSegmentFrame;
 import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.persistence.tx.TransactionRequired;
 
 import java.util.Comparator;
@@ -42,9 +41,9 @@ public class FermaPathSegmentRepository extends FermaGenericRepository<PathSegme
         implements PathSegmentRepository {
     protected final IslRepository islRepository;
 
-    protected FermaPathSegmentRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager,
-                                         IslRepository islRepository) {
-        super(graphFactory, transactionManager);
+    protected FermaPathSegmentRepository(
+            FermaPersistentImplementation implementation, IslRepository islRepository) {
+        super(implementation);
         this.islRepository = islRepository;
     }
 

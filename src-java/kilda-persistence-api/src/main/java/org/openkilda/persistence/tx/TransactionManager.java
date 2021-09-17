@@ -15,6 +15,9 @@
 
 package org.openkilda.persistence.tx;
 
+import org.openkilda.persistence.PersistenceImplementation;
+import org.openkilda.persistence.context.PersistenceContext;
+import org.openkilda.persistence.context.PersistenceContextManager;
 import org.openkilda.persistence.context.PersistenceContextRequired;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
@@ -27,9 +30,6 @@ import net.jodah.failsafe.RetryPolicy;
 
 import java.io.Serializable;
 import java.time.temporal.ChronoUnit;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
@@ -37,18 +37,15 @@ import java.util.concurrent.Callable;
  */
 @Slf4j
 public class TransactionManager implements Serializable {
-    private static final ThreadLocal<Transaction> GLOBALS = new ThreadLocal<>();
+    private final PersistenceImplementation implementation;
 
-    private final TransactionAdapterFactory adapterFactory;
-    private final TransactionLayout layout;
     private final int transactionRetriesLimit;
     private final int transactionRetriesMaxDelay;
 
     public TransactionManager(
-            TransactionLayout layout, TransactionAdapterFactory adapterFactory,
-            int transactionRetriesLimit, int transactionRetriesMaxDelay) {
-        this.layout = layout;
-        this.adapterFactory = adapterFactory;
+            PersistenceImplementation implementation, int transactionRetriesLimit, int transactionRetriesMaxDelay) {
+        this.implementation = implementation;
+
         this.transactionRetriesLimit = transactionRetriesLimit;
         this.transactionRetriesMaxDelay = transactionRetriesMaxDelay;
     }
@@ -129,8 +126,8 @@ public class TransactionManager implements Serializable {
     }
 
     public boolean isTxOpen() {
-        Transaction adapters = GLOBALS.get();
-        return adapters != null && adapters.size() > 0;
+        PersistenceContext context = PersistenceContextManager.INSTANCE.getContextCreateIfMissing();
+        return context.isTxOpen();
     }
 
     @SneakyThrows
@@ -145,50 +142,61 @@ public class TransactionManager implements Serializable {
 
     @PersistenceContextRequired
     protected <T> T execute(Callable<T> action) throws Exception {
-        TransactionAdapter adapter = adapterFactory.produce(layout);
+        ImplementationTransactionAdapter<?> implementationTransactionAdapter = implementation.newTransactionAdapter();
 
-        Transaction transaction = initAdapters(adapter);
-        transaction.activate(adapter);
+        Transaction transaction = fillContext(implementationTransactionAdapter);
+        try {
+            transaction.activate(implementationTransactionAdapter);
+        } catch (Exception e) {
+            clearContext();
+            throw e;
+        }
+
         try {
             T result = action.call();
             transaction.markSuccess();
             return result;
         } catch (Exception ex) {
-            log.debug("Failed transaction in {} area in {}", adapter.getArea(), Thread.currentThread().getName(), ex);
+            log.debug("Failed transaction in {} area in {}",
+                    implementationTransactionAdapter.getImplementationType(), Thread.currentThread().getName(), ex);
             transaction.markFail();
             throw ex;
         } finally {
-            close(transaction, adapter);
+            close(transaction, implementationTransactionAdapter);
         }
     }
 
     /**
-     * Close all active transaction/adapters/areas if it is root adapter.
+     * Close all active transaction if effective transaction is root transaction.
      */
-    private void close(Transaction transaction, TransactionAdapter current) throws Exception {
+    private void close(Transaction transaction, ImplementationTransactionAdapter<?> implementationTransactionAdapter)
+            throws Exception {
         String threadName = Thread.currentThread().getName();
-        if (! transaction.canClose(current)) {
-            log.debug("Do not close transaction into {}, because it is nested transaction block", threadName);
-            return;
-        }
-
-        log.debug("Going to close all active transactions in {}", threadName);
+        boolean canClear = true;
         try {
-            transaction.close();
+            canClear = transaction.closeIfRoot(implementationTransactionAdapter);
         } finally {
-            log.debug("Remove global transaction tracking in {}", threadName);
-            GLOBALS.remove();
+            if (canClear) {
+                log.debug("Remove global transaction tracking in {}", threadName);
+                clearContext();
+            } else {
+                log.debug("Do not close transaction into {}, because it is nested transaction block", threadName);
+            }
         }
     }
 
-    private Transaction initAdapters(TransactionAdapter current) {
-        Transaction adapters = GLOBALS.get();
-        if (adapters == null) {
-            adapters = new Transaction(current);
+    private Transaction fillContext(ImplementationTransactionAdapter<?> effective) {
+        PersistenceContext context = PersistenceContextManager.INSTANCE.getContextCreateIfMissing();
+        return context.setTransactionIfClear(() -> {
             log.debug("Install global transaction tracking in {}", Thread.currentThread().getName());
-            GLOBALS.set(adapters);
-        }
-        return adapters;
+            return new Transaction(effective);
+        });
+    }
+
+    private void clearContext() {
+        log.debug("Remove global transaction tracking in {}", Thread.currentThread().getName());
+        PersistenceContext context = PersistenceContextManager.INSTANCE.getContextCreateIfMissing();
+        context.clearTransaction();
     }
 
     private <T, E extends Throwable> Callable<T> callableOf(TransactionCallback<T, E> action) {
@@ -200,71 +208,5 @@ public class TransactionManager implements Serializable {
             action.doInTransaction();
             return null;
         };
-    }
-
-    private static final class Transaction {
-        private final TransactionAdapter root;
-
-        private boolean success = false;
-        private boolean fail = false;
-
-        private final Set<TransactionArea> openAreas = new HashSet<>();
-        private final LinkedList<TransactionAdapter> adapters = new LinkedList<>();
-
-        private Transaction(TransactionAdapter root) {
-            this.root = root;
-        }
-
-        public void activate(TransactionAdapter adapter) throws Exception {
-            TransactionArea area = adapter.getArea();
-            if (openAreas.add(area)) {
-                log.debug(
-                        "Going to open transaction for {} area in {}, using adapter {}",
-                        area, Thread.currentThread().getName(), adapter);
-
-                try {
-                    adapter.open();
-                    adapters.addFirst(adapter);  // the later it is open, the earlier it is closed
-                } catch (Exception e) {
-                    openAreas.remove(area);
-                    throw e;
-                }
-            }
-        }
-
-        public void close() throws Exception {
-            boolean canCommit = !fail && success;
-            String closeAction = canCommit ? "commit" : "rollback";
-            // TODO(surabujin): deny ability to open multiple transaction areas
-            for (TransactionAdapter entry : adapters) {
-                log.debug(
-                        "Going to {} transaction for {} area in {}, using adapter {}",
-                        closeAction, entry.getArea(), Thread.currentThread().getName(), entry);
-                if (canCommit) {
-                    entry.commit();
-                } else {
-                    entry.rollback();
-                }
-            }
-
-            adapters.clear();
-            openAreas.clear();
-        }
-
-        public void markSuccess() {
-            success = true;
-        }
-
-        public void markFail() {
-            fail = true;
-        }
-
-        public int size() {
-            return openAreas.size();
-        }
-
-        public boolean canClose(TransactionAdapter current) {
-            return root == current;
-        }
     }
 }

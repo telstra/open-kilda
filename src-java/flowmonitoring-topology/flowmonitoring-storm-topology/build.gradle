@@ -19,7 +19,7 @@ dependencies {
     runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     runtimeClasspath project(':kilda-persistence-orientdb')
-    runtimeClasspath project(':kilda-persistence-mixture')
+    runtimeClasspath project(':kilda-persistence-hibernate')
     testImplementation project(path: ':kilda-persistence-api', configuration: 'testArtifacts')
     aspect project(':kilda-persistence-api')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')

@@ -19,12 +19,11 @@ import org.openkilda.model.BfdSession;
 import org.openkilda.model.BfdSession.BfdSessionData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.BfdSessionFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
@@ -39,8 +38,8 @@ import java.util.stream.Collectors;
  */
 public class FermaBfdSessionRepository extends FermaGenericRepository<BfdSession, BfdSessionData, BfdSessionFrame>
         implements BfdSessionRepository {
-    public FermaBfdSessionRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaBfdSessionRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

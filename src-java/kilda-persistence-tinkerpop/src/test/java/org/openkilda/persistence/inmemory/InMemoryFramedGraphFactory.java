@@ -20,10 +20,12 @@ import org.openkilda.persistence.ferma.FramedGraphFactory;
 
 import com.syncleus.ferma.DelegatingFramedGraph;
 import com.syncleus.ferma.typeresolvers.UntypedTypeResolver;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.tinkerpop.gremlin.tinkergraph.structure.TinkerGraph;
 
 import java.io.Serializable;
 
+@Slf4j
 public class InMemoryFramedGraphFactory implements FramedGraphFactory<DelegatingFramedGraph<?>>, Serializable {
     private transient volatile DelegatingFramedGraph<? extends TinkerGraph> framedGraph;
 
@@ -35,6 +37,7 @@ public class InMemoryFramedGraphFactory implements FramedGraphFactory<Delegating
         if (framedGraph == null) {
             synchronized (this) {
                 if (framedGraph == null) {
+                    log.debug("Creating in-memory framed graph");
                     framedGraph = new DelegatingFramedGraph<>(TinkerGraph.open(),
                             new AnnotationFrameFactoryWithConverterSupport(), new UntypedTypeResolver());
                 }

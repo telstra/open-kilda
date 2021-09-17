@@ -26,12 +26,10 @@ import static org.mockito.Mockito.when;
 
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.bluegreen.Signal;
-import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.zk.ZooKeeperSpout;
@@ -94,8 +92,7 @@ public class ControllerToSpeakerProxyBoltTest {
 
     @BeforeClass
     public static void initPersistenceManager() {
-        PersistenceProvider.makeDefault(
-                new InMemoryGraphPersistenceManager(new PropertiesBasedConfigurationProvider()));
+        InMemoryGraphPersistenceManager.newInstance().install();
     }
 
     @Before

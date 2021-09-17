@@ -15,7 +15,10 @@
 
 package org.openkilda.persistence;
 
+import org.openkilda.config.converter.EnumLowerCaseConverter;
+
 import com.sabre.oss.conf4j.annotation.Configuration;
+import com.sabre.oss.conf4j.annotation.Converter;
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
@@ -24,9 +27,18 @@ import java.io.Serializable;
 @Configuration
 @Key("persistence")
 public interface PersistenceConfig extends Serializable {
-    @Key("implementation")
+    @Key("implementation.default")
     @Default("orientdb")
-    String getImplementationName();
+    @Converter(EnumLowerCaseConverter.class)
+    PersistenceImplementationType getDefaultImplementationName();
+
+    @Key("implementation.area.common")
+    @Converter(EnumLowerCaseConverter.class)
+    PersistenceImplementationType getCommonAreaImplementationName();
+
+    @Key("implementation.area.history")
+    @Converter(EnumLowerCaseConverter.class)
+    PersistenceImplementationType getHistoryAreaImplementationName();
 
     @Key("transaction.retries.limit")
     @Default("5")

@@ -17,19 +17,18 @@ package org.openkilda.persistence.inmemory.repositories;
 
 import org.openkilda.model.BfdSession.BfdSessionData;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.BfdSessionFrame;
 import org.openkilda.persistence.ferma.repositories.FermaBfdSessionRepository;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceImplementation;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 /**
  * In-memory implementation of {@link BfdSessionRepository}.
  * Built on top of Tinkerpop / Ferma implementation.
  */
 public class InMemoryBfdSessionRepository extends FermaBfdSessionRepository {
-    InMemoryBfdSessionRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    InMemoryBfdSessionRepository(InMemoryGraphPersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override

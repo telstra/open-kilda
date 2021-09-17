@@ -19,13 +19,12 @@ import org.openkilda.model.ApplicationRule;
 import org.openkilda.model.ApplicationRule.ApplicationRuleData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.ExclusionCookie;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.ApplicationRuleFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.converters.ExclusionCookieConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.ApplicationRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import java.util.Collection;
 import java.util.List;
@@ -37,8 +36,8 @@ import java.util.stream.Collectors;
  */
 public class FermaApplicationRepository extends FermaGenericRepository<ApplicationRule, ApplicationRuleData,
         ApplicationRuleFrame> implements ApplicationRepository {
-    public FermaApplicationRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaApplicationRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

@@ -17,7 +17,7 @@ dependencies {
     implementation project(':grpc-api')
     implementation project(':blue-green')
     runtimeClasspath project(':kilda-persistence-orientdb')
-    runtimeClasspath project(':kilda-persistence-mixture')
+    runtimeClasspath project(':kilda-persistence-hibernate')
     aspect project(':kilda-persistence-api')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
 

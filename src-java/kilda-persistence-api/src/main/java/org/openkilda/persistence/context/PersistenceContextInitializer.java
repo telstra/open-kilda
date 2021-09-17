@@ -15,9 +15,6 @@
 
 package org.openkilda.persistence.context;
 
-import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.spi.PersistenceManagerSupplier;
-
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -35,13 +32,15 @@ public class PersistenceContextInitializer {
     @Around("@annotation(persistenceContextRequired)")
     public Object aroundAdvice(ProceedingJoinPoint joinPoint,
                                PersistenceContextRequired persistenceContextRequired) throws Throwable {
-        PersistenceManager persistenceManager = PersistenceManagerSupplier.DEFAULT.get();
-        PersistenceContextManager persistenceContextManager = persistenceManager.getPersistenceContextManager();
-        boolean isNewContext = !persistenceContextManager.isContextInitialized()
-                || persistenceContextRequired.requiresNew();
+        PersistenceContextManager contextManager = PersistenceContextManager.INSTANCE;
 
-        if (isNewContext) {
-            persistenceContextManager.initContext();
+        boolean isNewContext = true;
+        if (persistenceContextRequired.requiresNew()) {
+            contextManager.replace();
+        } else if (! contextManager.isInitialized()) {
+            contextManager.getContextCreateIfMissing();
+        } else {
+            isNewContext = false;
         }
 
         boolean handlingException = false;
@@ -52,14 +51,14 @@ public class PersistenceContextInitializer {
             throw e;
         } finally {
             if (isNewContext) {
-                close(persistenceContextManager, handlingException);
+                close(contextManager, handlingException);
             }
         }
     }
 
     private void close(PersistenceContextManager manager, boolean handlingException) throws Throwable {
         try {
-            manager.closeContext();
+            manager.close();
         } catch (Throwable e) {
             if (!handlingException) {
                 throw e;

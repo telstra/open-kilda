@@ -31,7 +31,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
-import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
@@ -203,7 +202,8 @@ public class NetworkIslServiceTest {
     @Test
     @Ignore("incomplete")
     public void initialUp() {
-        persistenceManager = new InMemoryGraphPersistenceManager(new PropertiesBasedConfigurationProvider());
+        persistenceManager = InMemoryGraphPersistenceManager.newInstance();
+        persistenceManager.install();
 
         emulateEmptyPersistentDb();
 

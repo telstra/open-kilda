@@ -18,14 +18,13 @@ package org.openkilda.persistence.ferma.repositories;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.LagLogicalPort.LagLogicalPortData;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.LagLogicalPortFrame;
 import org.openkilda.persistence.ferma.frames.PhysicalPortFrame;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -43,10 +42,9 @@ public class FermaLagLogicalPortRepository
         implements LagLogicalPortRepository {
     protected final PhysicalPortRepository physicalPortRepository;
 
-    public FermaLagLogicalPortRepository(FramedGraphFactory<?> graphFactory,
-                                         PhysicalPortRepository physicalPortRepository,
-                                         TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaLagLogicalPortRepository(
+            FermaPersistentImplementation implementation, PhysicalPortRepository physicalPortRepository) {
+        super(implementation);
         this.physicalPortRepository = physicalPortRepository;
     }
 

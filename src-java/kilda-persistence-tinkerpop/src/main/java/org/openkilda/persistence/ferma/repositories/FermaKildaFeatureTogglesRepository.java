@@ -17,11 +17,10 @@ package org.openkilda.persistence.ferma.repositories;
 
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.KildaFeatureToggles.KildaFeatureTogglesData;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.KildaFeatureTogglesFrame;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,9 +31,8 @@ import java.util.Optional;
 public class FermaKildaFeatureTogglesRepository
         extends FermaGenericRepository<KildaFeatureToggles, KildaFeatureTogglesData, KildaFeatureTogglesFrame>
         implements KildaFeatureTogglesRepository {
-    public FermaKildaFeatureTogglesRepository(FramedGraphFactory<?> graphFactory,
-                                              TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaKildaFeatureTogglesRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

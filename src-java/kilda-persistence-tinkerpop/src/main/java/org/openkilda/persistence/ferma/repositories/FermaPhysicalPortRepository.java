@@ -18,12 +18,11 @@ package org.openkilda.persistence.ferma.repositories;
 import org.openkilda.model.PhysicalPort;
 import org.openkilda.model.PhysicalPort.PhysicalPortData;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.PhysicalPortFrame;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import java.util.Collection;
 import java.util.List;
@@ -37,8 +36,8 @@ import java.util.stream.Collectors;
 public class FermaPhysicalPortRepository
         extends FermaGenericRepository<PhysicalPort, PhysicalPortData, PhysicalPortFrame>
         implements PhysicalPortRepository {
-    FermaPhysicalPortRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    FermaPhysicalPortRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

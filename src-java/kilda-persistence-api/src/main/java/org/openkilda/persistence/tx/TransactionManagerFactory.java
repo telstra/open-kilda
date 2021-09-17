@@ -15,8 +15,10 @@
 
 package org.openkilda.persistence.tx;
 
+import org.openkilda.persistence.repositories.Repository;
+
 import java.io.Serializable;
 
 public interface TransactionManagerFactory extends Serializable {
-    TransactionManager produce(TransactionArea area);
+    TransactionManager produce(Repository<?> first, Repository<?>... extra);
 }

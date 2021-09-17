@@ -17,12 +17,11 @@ package org.openkilda.persistence.inmemory.repositories;
 
 import org.openkilda.model.PortProperties.PortPropertiesData;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.PortPropertiesFrame;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.ferma.repositories.FermaPortPropertiesRepository;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceImplementation;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,8 +31,8 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class InMemoryPortPropertiesRepository extends FermaPortPropertiesRepository {
-    InMemoryPortPropertiesRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    InMemoryPortPropertiesRepository(InMemoryGraphPersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override

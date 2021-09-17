@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.network.service;
 
-import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
@@ -24,6 +23,7 @@ import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 
@@ -46,7 +46,7 @@ import java.util.Set;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkIntegrationTest {
-    private static InMemoryGraphPersistenceManager persistenceManager;
+    private static PersistenceManager persistenceManager;
 
     @ClassRule
     public static TemporaryFolder fsData = new TemporaryFolder();
@@ -84,7 +84,8 @@ public class NetworkIntegrationTest {
 
     @BeforeClass
     public static void setUpOnce() {
-        persistenceManager = new InMemoryGraphPersistenceManager(new PropertiesBasedConfigurationProvider());
+        persistenceManager = InMemoryGraphPersistenceManager.newInstance();
+        persistenceManager.install();
     }
 
     @Before

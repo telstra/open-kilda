@@ -18,12 +18,11 @@ package org.openkilda.persistence.inmemory.repositories;
 import org.openkilda.model.Isl.IslData;
 import org.openkilda.model.IslConfig;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.IslFrame;
 import org.openkilda.persistence.ferma.repositories.FermaFlowPathRepository;
 import org.openkilda.persistence.ferma.repositories.FermaIslRepository;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceImplementation;
 import org.openkilda.persistence.repositories.IslRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,10 +32,10 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class InMemoryIslRepository extends FermaIslRepository {
-    public InMemoryIslRepository(FramedGraphFactory<?> graphFactory,
-                                 TransactionManager transactionManager, FermaFlowPathRepository fermaFlowPathRepository,
-                                 IslConfig islConfig) {
-        super(graphFactory, transactionManager, fermaFlowPathRepository, islConfig);
+    public InMemoryIslRepository(
+            InMemoryGraphPersistenceImplementation implementation, FermaFlowPathRepository fermaFlowPathRepository,
+            IslConfig islConfig) {
+        super(implementation, fermaFlowPathRepository, islConfig);
     }
 
     @Override

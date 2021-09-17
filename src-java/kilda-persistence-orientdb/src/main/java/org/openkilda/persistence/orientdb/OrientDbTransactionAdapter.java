@@ -19,17 +19,14 @@ import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.persistence.ferma.FermaTransactionAdapter;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
-import org.openkilda.persistence.tx.TransactionArea;
 
 import com.orientechnologies.common.concur.ONeedRetryException;
 import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.storage.ORecordDuplicatedException;
-import com.syncleus.ferma.DelegatingFramedGraph;
 
-public class OrientDbTransactionAdapter extends FermaTransactionAdapter {
-    public OrientDbTransactionAdapter(TransactionArea area, FramedGraphFactory<DelegatingFramedGraph<?>> graphFactory) {
-        super(area, graphFactory);
+public class OrientDbTransactionAdapter extends FermaTransactionAdapter<OrientDbPersistenceImplementation> {
+    public OrientDbTransactionAdapter(OrientDbPersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override

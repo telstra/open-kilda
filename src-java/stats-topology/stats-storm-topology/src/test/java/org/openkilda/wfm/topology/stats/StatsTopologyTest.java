@@ -61,10 +61,8 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
@@ -141,11 +139,10 @@ public class StatsTopologyTest extends AbstractStormTest {
         LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
         launchEnvironment.setupOverlay(configOverlay);
 
-        MultiPrefixConfigurationProvider configurationProvider = launchEnvironment.getConfigurationProvider();
-        persistenceManager = new InMemoryGraphPersistenceManager(configurationProvider);
-        PersistenceProvider.setupLoadOverlay(persistenceManager);
+        persistenceManager = InMemoryGraphPersistenceManager.newInstance();
+        persistenceManager.install();
 
-        StatsTopology statsTopology = new StatsTopology(launchEnvironment);
+        StatsTopology statsTopology = new StatsTopology(launchEnvironment, persistenceManager);
         statsTopologyConfig = statsTopology.getConfig();
 
         StormTopology stormTopology = statsTopology.createTopology();
@@ -180,7 +177,7 @@ public class StatsTopologyTest extends AbstractStormTest {
             flow.getPaths().forEach(this::sendRemoveFlowPathInfo);
         }
 
-        persistenceManager.purgeData();
+        persistenceManager.getInMemoryImplementation().purgeData();
     }
 
     @Test

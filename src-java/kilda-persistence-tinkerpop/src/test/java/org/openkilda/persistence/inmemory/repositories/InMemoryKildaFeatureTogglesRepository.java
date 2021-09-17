@@ -17,19 +17,18 @@ package org.openkilda.persistence.inmemory.repositories;
 
 import org.openkilda.model.KildaFeatureToggles.KildaFeatureTogglesData;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.KildaFeatureTogglesFrame;
 import org.openkilda.persistence.ferma.repositories.FermaKildaFeatureTogglesRepository;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceImplementation;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 /**
  * In-memory implementation of {@link KildaFeatureTogglesRepository}.
  * Built on top of Tinkerpop / Ferma implementation.
  */
 public class InMemoryKildaFeatureTogglesRepository extends FermaKildaFeatureTogglesRepository {
-    InMemoryKildaFeatureTogglesRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    InMemoryKildaFeatureTogglesRepository(InMemoryGraphPersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override

@@ -33,13 +33,12 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.context.PersistenceContextRequired;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
 import org.openkilda.wfm.topology.isllatency.model.IslKey;
@@ -94,12 +93,11 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
 
         LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
         launchEnvironment.setupOverlay(configOverlay);
-        MultiPrefixConfigurationProvider configurationProvider = launchEnvironment.getConfigurationProvider();
 
-        persistenceManager = new InMemoryGraphPersistenceManager(configurationProvider);
-        PersistenceProvider.setupLoadOverlay(persistenceManager);
+        persistenceManager = InMemoryGraphPersistenceManager.newInstance();
+        persistenceManager.install();
 
-        IslLatencyTopology islLatencyTopology = new IslLatencyTopology(launchEnvironment);
+        IslLatencyTopology islLatencyTopology = new IslLatencyTopology(launchEnvironment, persistenceManager);
         islLatencyTopologyConfig = islLatencyTopology.getConfig();
 
         StormTopology stormTopology = islLatencyTopology.createTopology();
@@ -122,7 +120,6 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
         otsdbConsumer.wakeup();
         otsdbConsumer.join();
 
-        PersistenceProvider.removeLoadOverlay();
         AbstractStormTest.stopZooKafkaAndStorm();
     }
 
@@ -130,7 +127,7 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
     public void setup() {
         otsdbConsumer.clear();
 
-        persistenceManager.purgeData();
+        persistenceManager.getInMemoryImplementation().purgeData();
 
         Switch firstSwitch = createSwitch(SWITCH_ID_1);
         Switch secondSwitch = createSwitch(SWITCH_ID_2);
@@ -223,6 +220,7 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
         return sw;
     }
 
+    @PersistenceContextRequired
     private void createIsl(Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort, int latency) {
         Isl isl = Isl.builder()
                 .srcSwitch(srcSwitch)

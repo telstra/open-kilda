@@ -19,13 +19,12 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.history.PortEvent;
 import org.openkilda.model.history.PortEvent.PortEventCloner;
 import org.openkilda.model.history.PortEvent.PortEventData;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.PortEventFrame;
 import org.openkilda.persistence.ferma.frames.converters.InstantLongConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.history.PortEventRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.process.traversal.Order;
 import org.apache.tinkerpop.gremlin.process.traversal.P;
@@ -42,8 +41,8 @@ import java.util.stream.Collectors;
  */
 public class FermaPortEventRepository extends FermaGenericRepository<PortEvent, PortEventData, PortEventFrame>
         implements PortEventRepository {
-    FermaPortEventRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    FermaPortEventRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

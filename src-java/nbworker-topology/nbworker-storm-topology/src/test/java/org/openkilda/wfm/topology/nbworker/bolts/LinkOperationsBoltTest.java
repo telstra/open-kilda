@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.when;
 
-import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.model.LinkPropsDto;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
@@ -27,7 +26,6 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.persistence.spi.PersistenceProvider;
 
 import org.apache.storm.task.TopologyContext;
 import org.junit.Before;
@@ -56,14 +54,13 @@ public class LinkOperationsBoltTest {
 
     @BeforeClass
     public static void initPersistenceManager() {
-        PropertiesBasedConfigurationProvider configurationProvider = new PropertiesBasedConfigurationProvider();
-        persistenceManager = new InMemoryGraphPersistenceManager(configurationProvider);
-        PersistenceProvider.makeDefault(persistenceManager);
+        persistenceManager = InMemoryGraphPersistenceManager.newInstance();
+        persistenceManager.install();
     }
 
     @Before
     public void setUp() throws Exception {
-        persistenceManager.purgeData();
+        persistenceManager.getInMemoryImplementation().purgeData();
 
         when(topologyContext.getThisTaskId()).thenReturn(1);
     }

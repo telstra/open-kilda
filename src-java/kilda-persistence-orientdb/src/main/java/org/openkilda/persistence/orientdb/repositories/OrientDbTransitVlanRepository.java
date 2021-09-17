@@ -19,9 +19,8 @@ import static java.lang.String.format;
 
 import org.openkilda.persistence.ferma.frames.TransitVlanFrame;
 import org.openkilda.persistence.ferma.repositories.FermaTransitVlanRepository;
-import org.openkilda.persistence.orientdb.OrientDbGraphFactory;
+import org.openkilda.persistence.orientdb.OrientDbPersistenceImplementation;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResult;
 import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResultSet;
@@ -33,16 +32,16 @@ import java.util.Optional;
  * OrientDB implementation of {@link TransitVlanRepository}.
  */
 public class OrientDbTransitVlanRepository extends FermaTransitVlanRepository {
-    private final OrientDbGraphFactory orientDbGraphFactory;
+    private final GraphSupplier graphSupplier;
 
-    OrientDbTransitVlanRepository(OrientDbGraphFactory orientDbGraphFactory, TransactionManager transactionManager) {
-        super(orientDbGraphFactory, transactionManager);
-        this.orientDbGraphFactory = orientDbGraphFactory;
+    OrientDbTransitVlanRepository(OrientDbPersistenceImplementation implementation, GraphSupplier graphSupplier) {
+        super(implementation);
+        this.graphSupplier = graphSupplier;
     }
 
     @Override
     public boolean exists(int transitVlan) {
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 format("SELECT @rid FROM %s WHERE %s = ? LIMIT 1",
                         TransitVlanFrame.FRAME_LABEL, TransitVlanFrame.VLAN_PROPERTY), transitVlan)) {
             return results.iterator().hasNext();
@@ -51,7 +50,7 @@ public class OrientDbTransitVlanRepository extends FermaTransitVlanRepository {
 
     @Override
     public Optional<Integer> findFirstUnassignedVlan(int lowestTransitVlan, int highestTransitVlan) {
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 format("SELECT FROM (SELECT difference(unionAll($init_vlan, $next_to_vlans).vlan, "
                                 + "$vlans.vlan) as vlan "
                                 + "LET $init_vlan = (SELECT %s as vlan), "

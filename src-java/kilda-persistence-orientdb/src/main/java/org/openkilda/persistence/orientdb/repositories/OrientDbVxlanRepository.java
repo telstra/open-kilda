@@ -19,9 +19,8 @@ import static java.lang.String.format;
 
 import org.openkilda.persistence.ferma.frames.VxlanFrame;
 import org.openkilda.persistence.ferma.repositories.FermaVxlanRepository;
-import org.openkilda.persistence.orientdb.OrientDbGraphFactory;
+import org.openkilda.persistence.orientdb.OrientDbPersistenceImplementation;
 import org.openkilda.persistence.repositories.VxlanRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResult;
 import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResultSet;
@@ -33,16 +32,16 @@ import java.util.Optional;
  * OrientDB implementation of {@link VxlanRepository}.
  */
 public class OrientDbVxlanRepository extends FermaVxlanRepository {
-    private final OrientDbGraphFactory orientDbGraphFactory;
+    private final GraphSupplier graphSupplier;
 
-    OrientDbVxlanRepository(OrientDbGraphFactory orientDbGraphFactory, TransactionManager transactionManager) {
-        super(orientDbGraphFactory, transactionManager);
-        this.orientDbGraphFactory = orientDbGraphFactory;
+    OrientDbVxlanRepository(OrientDbPersistenceImplementation implementation, GraphSupplier graphSupplier) {
+        super(implementation);
+        this.graphSupplier = graphSupplier;
     }
 
     @Override
     public boolean exists(int vxlan) {
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 format("SELECT @rid FROM %s WHERE %s = ? LIMIT 1",
                         VxlanFrame.FRAME_LABEL, VxlanFrame.VNI_PROPERTY), vxlan)) {
             return results.iterator().hasNext();
@@ -51,7 +50,7 @@ public class OrientDbVxlanRepository extends FermaVxlanRepository {
 
     @Override
     public Optional<Integer> findFirstUnassignedVxlan(int lowestVxlan, int highestVxlan) {
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 format("SELECT FROM (SELECT difference(unionAll($init_vni, $next_to_vnis).vni, "
                                 + "$vnis.vni) as vni "
                                 + "LET $init_vni = (SELECT %s as vni), "

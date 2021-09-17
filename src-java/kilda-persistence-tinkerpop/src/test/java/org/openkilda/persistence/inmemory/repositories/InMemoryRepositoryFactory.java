@@ -16,14 +16,12 @@
 package org.openkilda.persistence.inmemory.repositories;
 
 import org.openkilda.persistence.NetworkConfig;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
-import org.openkilda.persistence.ferma.repositories.FermaFlowPathRepository;
 import org.openkilda.persistence.ferma.repositories.FermaRepositoryFactory;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceImplementation;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
 import org.openkilda.persistence.repositories.ExclusionIdRepository;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
-import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
@@ -37,127 +35,103 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.VxlanRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
-import org.openkilda.persistence.tx.TransactionArea;
-import org.openkilda.persistence.tx.TransactionManager;
-import org.openkilda.persistence.tx.TransactionManagerFactory;
 
 /**
  * In-memory implementation of {@link RepositoryFactory}.
  * Built on top of Tinkerpop / Ferma implementation.
  */
 public class InMemoryRepositoryFactory extends FermaRepositoryFactory {
-    public InMemoryRepositoryFactory(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager,
-                                     NetworkConfig networkConfig) {
-        super(graphFactory, new DummyTransactionManagerFactory(transactionManager), networkConfig);
+    private final InMemoryGraphPersistenceImplementation implementation;
+
+    public InMemoryRepositoryFactory(
+            InMemoryGraphPersistenceImplementation implementation, NetworkConfig networkConfig) {
+        super(implementation, networkConfig);
+        this.implementation = implementation;
     }
 
     @Override
     public FlowCookieRepository createFlowCookieRepository() {
-        return new InMemoryFlowCookieRepository(
-                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
+        return new InMemoryFlowCookieRepository(implementation);
     }
 
     @Override
     public FlowMeterRepository createFlowMeterRepository() {
-        return new InMemoryFlowMeterRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
+        return new InMemoryFlowMeterRepository(implementation);
     }
 
     @Override
-    public FlowPathRepository createFlowPathRepository() {
-        return new InMemoryFlowPathRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
+    public InMemoryFlowPathRepository createFlowPathRepository() {
+        return new InMemoryFlowPathRepository(implementation);
     }
 
     @Override
     public FlowRepository createFlowRepository() {
-        return new InMemoryFlowRepository(graphFactory, createFlowPathRepository(),
-                transactionManagerFactory.produce(TransactionArea.COMMON));
+        return new InMemoryFlowRepository(implementation, createFlowPathRepository());
     }
 
     @Override
     public IslRepository createIslRepository() {
-        return new InMemoryIslRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON),
-                (FermaFlowPathRepository) createFlowPathRepository(), islConfig);
+        return new InMemoryIslRepository(
+                implementation, createFlowPathRepository(), islConfig);
     }
 
     @Override
     public LinkPropsRepository createLinkPropsRepository() {
-        return new InMemoryLinkPropsRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
+        return new InMemoryLinkPropsRepository(implementation);
     }
 
     @Override
     public SwitchRepository createSwitchRepository() {
-        return new InMemorySwitchRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
+        return new InMemorySwitchRepository(implementation);
     }
 
     @Override
     public TransitVlanRepository createTransitVlanRepository() {
-        return new InMemoryTransitVlanRepository(
-                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
+        return new InMemoryTransitVlanRepository(implementation);
     }
 
     @Override
     public VxlanRepository createVxlanRepository() {
-        return new InMemoryVxlanRepository(graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
+        return new InMemoryVxlanRepository(implementation);
     }
 
     @Override
     public KildaFeatureTogglesRepository createFeatureTogglesRepository() {
-        return new InMemoryKildaFeatureTogglesRepository(
-                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
+        return new InMemoryKildaFeatureTogglesRepository(implementation);
     }
 
     @Override
     public FlowEventRepository createFlowEventRepository() {
-        return new InMemoryFlowEventRepository(
-                graphFactory, transactionManagerFactory.produce(TransactionArea.HISTORY));
+        return new InMemoryFlowEventRepository(implementation);
     }
 
     @Override
     public BfdSessionRepository createBfdSessionRepository() {
-        return new InMemoryBfdSessionRepository(
-                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
+        return new InMemoryBfdSessionRepository(implementation);
     }
 
     @Override
     public KildaConfigurationRepository createKildaConfigurationRepository() {
-        return new InMemoryKildaConfigurationRepository(
-                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
+        return new InMemoryKildaConfigurationRepository(implementation);
     }
 
     @Override
     public SwitchPropertiesRepository createSwitchPropertiesRepository() {
-        return new InMemorySwitchPropertiesRepository(
-                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
+        return new InMemorySwitchPropertiesRepository(implementation);
     }
 
     @Override
     public PortPropertiesRepository createPortPropertiesRepository() {
-        return new InMemoryPortPropertiesRepository(
-                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
+        return new InMemoryPortPropertiesRepository(implementation);
     }
 
     @Override
     public ExclusionIdRepository createExclusionIdRepository() {
-        return new InMemoryExclusionIdRepository(
-                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
+        return new InMemoryExclusionIdRepository(implementation);
     }
 
     @Override
     public MirrorGroupRepository createMirrorGroupRepository() {
-        return new InMemoryMirrorGroupRepository(
-                graphFactory, transactionManagerFactory.produce(TransactionArea.COMMON));
-    }
-
-    private static class DummyTransactionManagerFactory implements TransactionManagerFactory {
-        private final TransactionManager delegate;
-
-        public DummyTransactionManagerFactory(TransactionManager delegate) {
-            this.delegate = delegate;
-        }
-
-        @Override
-        public TransactionManager produce(TransactionArea area) {
-            return delegate;
-        }
+        return new InMemoryMirrorGroupRepository(implementation);
     }
 }

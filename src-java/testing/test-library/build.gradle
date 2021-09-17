@@ -27,7 +27,7 @@ dependencies {
         exclude group: 'org.codehaus.groovy', module: 'groovy-jsr223'
         exclude group: 'org.codehaus.groovy', module: 'groovy-sql'
     }
-    implementation project(':kilda-persistence-mixture')
+    implementation project(':kilda-persistence-hibernate')
 
     api 'org.springframework:spring-beans'
     api 'org.springframework:spring-context'

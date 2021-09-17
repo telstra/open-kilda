@@ -36,7 +36,6 @@ import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.TICK_BO
 
 import org.openkilda.messaging.Message;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.share.zk.ZooKeeperSpout;
@@ -54,6 +53,7 @@ import org.openkilda.wfm.topology.stats.bolts.metrics.PortMetricGenBolt;
 import org.openkilda.wfm.topology.stats.bolts.metrics.SystemRuleMetricGenBolt;
 import org.openkilda.wfm.topology.stats.bolts.metrics.TableStatsMetricGenBolt;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
@@ -62,8 +62,19 @@ import org.apache.storm.topology.TopologyBuilder;
 public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
     public static final String STATS_FIELD = "stats";
 
+    private final PersistenceManager persistenceManager;
+
     public StatsTopology(LaunchEnvironment env) {
+        this(env, null);
+    }
+
+    @VisibleForTesting
+    StatsTopology(LaunchEnvironment env, PersistenceManager persistenceManager) {
         super(env, "stats-topology", StatsTopologyConfig.class);
+        if (persistenceManager == null) {
+            persistenceManager = new PersistenceManager(configurationProvider);
+        }
+        this.persistenceManager = persistenceManager;
     }
 
     @Override
@@ -72,7 +83,6 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
 
         zooKeeperSpout(tb);
 
-        PersistenceManager persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
         statsRequesterBolts(tb, persistenceManager);
 
         incomingOfStatsSpoutAndRouterBolt(tb);

@@ -27,7 +27,6 @@ import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
 import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.persistence.repositories.history.PortEventRepository;
-import org.openkilda.persistence.tx.TransactionArea;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.history.model.PortEventData;
@@ -48,13 +47,14 @@ public class HistoryService {
     private final FlowEventDumpRepository flowEventDumpRepository;
 
     public HistoryService(PersistenceManager persistenceManager) {
-        transactionManager = persistenceManager.getTransactionManager(TransactionArea.HISTORY);
-
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowEventRepository = repositoryFactory.createFlowEventRepository();
         portEventRepository = repositoryFactory.createPortEventRepository();
         flowEventActionRepository = repositoryFactory.createFlowEventActionRepository();
         flowEventDumpRepository = repositoryFactory.createFlowEventDumpRepository();
+
+        transactionManager = persistenceManager.getTransactionManager(
+                flowEventRepository, portEventRepository, flowEventActionRepository, flowEventDumpRepository);
     }
 
     /**

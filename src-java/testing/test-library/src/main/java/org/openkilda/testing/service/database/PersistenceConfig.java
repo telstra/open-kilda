@@ -19,7 +19,6 @@ import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.persistence.tx.TransactionManager;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -36,7 +35,9 @@ import java.util.Properties;
 public class PersistenceConfig {
     @Bean
     public PersistenceManager persistenceManager(ConfigurationProvider configurationProvider) {
-        return PersistenceProvider.loadAndMakeDefault(configurationProvider);
+        PersistenceManager manager = new PersistenceManager(configurationProvider);
+        manager.install();
+        return manager;
     }
 
     @Bean

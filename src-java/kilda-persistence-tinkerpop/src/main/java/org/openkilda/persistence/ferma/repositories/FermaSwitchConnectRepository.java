@@ -21,14 +21,13 @@ import org.openkilda.model.SwitchConnect;
 import org.openkilda.model.SwitchConnect.SwitchConnectCloner;
 import org.openkilda.model.SwitchConnect.SwitchConnectData;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.KildaBaseEdgeFrame;
 import org.openkilda.persistence.ferma.frames.SpeakerFrame;
 import org.openkilda.persistence.ferma.frames.SwitchConnectFrame;
 import org.openkilda.persistence.ferma.frames.SwitchFrame;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.SwitchConnectRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import lombok.NonNull;
 
@@ -40,8 +39,8 @@ public class FermaSwitchConnectRepository
         extends FermaGenericRepository<SwitchConnect, SwitchConnectData, SwitchConnectFrame>
         implements SwitchConnectRepository {
 
-    public FermaSwitchConnectRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaSwitchConnectRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override
