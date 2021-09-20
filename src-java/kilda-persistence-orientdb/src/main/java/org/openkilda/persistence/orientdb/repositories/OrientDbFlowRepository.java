@@ -19,10 +19,9 @@ import static java.lang.String.format;
 
 import org.openkilda.persistence.ferma.frames.FlowFrame;
 import org.openkilda.persistence.ferma.repositories.FermaFlowRepository;
-import org.openkilda.persistence.orientdb.OrientDbGraphFactory;
+import org.openkilda.persistence.orientdb.OrientDbPersistenceImplementation;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResultSet;
@@ -32,17 +31,18 @@ import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResultSet;
  */
 @Slf4j
 public class OrientDbFlowRepository extends FermaFlowRepository {
-    private final OrientDbGraphFactory orientDbGraphFactory;
+    private final GraphSupplier graphSupplier;
 
-    OrientDbFlowRepository(OrientDbGraphFactory orientDbGraphFactory, FlowPathRepository fermaFlowPathRepository,
-                           TransactionManager transactionManager) {
-        super(orientDbGraphFactory, fermaFlowPathRepository, transactionManager);
-        this.orientDbGraphFactory = orientDbGraphFactory;
+    OrientDbFlowRepository(
+            OrientDbPersistenceImplementation implementation, GraphSupplier graphSupplier,
+            FlowPathRepository fermaFlowPathRepository) {
+        super(implementation, fermaFlowPathRepository);
+        this.graphSupplier = graphSupplier;
     }
 
     @Override
     public boolean exists(String flowId) {
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 format("SELECT @rid FROM %s WHERE %s = ? LIMIT 1",
                         FlowFrame.FRAME_LABEL, FlowFrame.FLOW_ID_PROPERTY), flowId)) {
             return results.iterator().hasNext();

@@ -15,15 +15,70 @@
 
 package org.openkilda.persistence.context;
 
+import org.openkilda.persistence.PersistenceManager;
+
+import lombok.Getter;
+
 /**
  * A manager of persistence context. This can be used to check the context initialization, close the context, etc.
  */
-public interface PersistenceContextManager {
-    void initContext();
+public final class PersistenceContextManager {
+    public static PersistenceContextManager INSTANCE = new PersistenceContextManager(null);
 
-    boolean isContextInitialized();
+    private final ThreadLocal<PersistenceContext> globals = new ThreadLocal<>();
 
-    void closeContext();
+    @Getter
+    private final PersistenceManager persistenceManager;
 
-    boolean isTxOpen();
+    public static void install(PersistenceManager persistenceManager) {
+        INSTANCE = new PersistenceContextManager(persistenceManager);
+    }
+
+    private PersistenceContextManager(PersistenceManager persistenceManager) {
+        this.persistenceManager = persistenceManager;
+    }
+
+    /**
+     * Replace existing persistence context with a new one. Existing context will be correctly closed.
+     */
+    public PersistenceContext replace() {
+        PersistenceContext current = globals.get();
+        if (current != null) {
+            current.close();
+        }
+        PersistenceContext change = new PersistenceContext(persistenceManager);
+        globals.set(change);
+        return change;
+    }
+
+    /**
+     * Get current persistence context, create new if these are no context now.
+     */
+    public PersistenceContext getContextCreateIfMissing() {
+        PersistenceContext entry = globals.get();
+        if (entry == null) {
+            entry = new PersistenceContext(persistenceManager);
+            globals.set(entry);
+        }
+        return entry;
+    }
+
+    /**
+     * Close persistence context.
+     */
+    public void close() {
+        PersistenceContext entry = globals.get();
+        if (entry == null) {
+            return;
+        }
+        try {
+            entry.close();
+        } finally {
+            globals.remove();
+        }
+    }
+
+    public boolean isInitialized() {
+        return globals.get() != null;
+    }
 }

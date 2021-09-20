@@ -17,19 +17,18 @@ package org.openkilda.persistence.inmemory.repositories;
 
 import org.openkilda.model.KildaConfiguration.KildaConfigurationData;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.KildaConfigurationFrame;
 import org.openkilda.persistence.ferma.repositories.FermaKildaConfigurationRepository;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceImplementation;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 /**
  * In-memory implementation of {@link KildaConfigurationRepository}.
  * Built on top of Tinkerpop / Ferma implementation.
  */
 public class InMemoryKildaConfigurationRepository extends FermaKildaConfigurationRepository {
-    InMemoryKildaConfigurationRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    InMemoryKildaConfigurationRepository(InMemoryGraphPersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override

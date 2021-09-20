@@ -15,7 +15,7 @@ dependencies {
     implementation project(':network-messaging')
     implementation project(':floodlight-api')
     runtimeClasspath project(':kilda-persistence-orientdb')
-    runtimeClasspath project(':kilda-persistence-mixture')
+    runtimeClasspath project(':kilda-persistence-hibernate')
     aspect project(':kilda-persistence-api')
     testImplementation project(path: ':kilda-persistence-api', configuration: 'testArtifacts')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')

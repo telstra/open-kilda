@@ -23,7 +23,6 @@ import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.IslDataSplitterBolt.ISL_KEY_FIELD;
 
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
@@ -69,7 +68,7 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
         flowSplitterBolt(tb);
         tickBolt(tb);
 
-        PersistenceManager persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
+        PersistenceManager persistenceManager = new PersistenceManager(configurationProvider);
 
         flowStateCacheBolt(tb, persistenceManager);
         flowCacheBolt(tb, persistenceManager);

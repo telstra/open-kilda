@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.network;
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.messaging.Message;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.kafka.MessageSerializer;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
@@ -71,7 +70,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
     public NetworkTopology(LaunchEnvironment env) {
         super(env, "network-topology", NetworkTopologyConfig.class);
 
-        persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
+        persistenceManager = new PersistenceManager(configurationProvider);
         options = new NetworkOptions(getConfig());
         kafkaTopics = getConfig().getKafkaTopics();
     }

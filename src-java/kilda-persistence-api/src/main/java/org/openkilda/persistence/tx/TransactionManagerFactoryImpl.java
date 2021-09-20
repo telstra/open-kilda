@@ -16,6 +16,7 @@
 package org.openkilda.persistence.tx;
 
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.Repository;
 
 public class TransactionManagerFactoryImpl implements TransactionManagerFactory {
     private final PersistenceManager persistenceManager;
@@ -25,7 +26,7 @@ public class TransactionManagerFactoryImpl implements TransactionManagerFactory 
     }
 
     @Override
-    public TransactionManager produce(TransactionArea area) {
-        return persistenceManager.getTransactionManager(area);
+    public TransactionManager produce(Repository<?> first, Repository<?>... extra) {
+        return persistenceManager.getTransactionManager(first, extra);
     }
 }

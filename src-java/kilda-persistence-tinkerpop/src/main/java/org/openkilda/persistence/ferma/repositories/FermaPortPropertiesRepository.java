@@ -18,12 +18,11 @@ package org.openkilda.persistence.ferma.repositories;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.PortProperties.PortPropertiesData;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.PortPropertiesFrame;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,8 +38,8 @@ import java.util.stream.Collectors;
 public class FermaPortPropertiesRepository
         extends FermaGenericRepository<PortProperties, PortPropertiesData, PortPropertiesFrame>
         implements PortPropertiesRepository {
-    public FermaPortPropertiesRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaPortPropertiesRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

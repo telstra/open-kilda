@@ -29,7 +29,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.IslFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseEdgeFrame;
 import org.openkilda.persistence.ferma.frames.PathSegmentFrame;
@@ -41,7 +41,6 @@ import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchStatusConverter;
 import org.openkilda.persistence.repositories.IslRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import com.syncleus.ferma.FramedGraph;
 import lombok.extern.slf4j.Slf4j;
@@ -69,10 +68,10 @@ public class FermaIslRepository extends FermaGenericRepository<Isl, IslData, Isl
     protected final FermaFlowPathRepository flowPathRepository;
     protected final IslConfig islConfig;
 
-    public FermaIslRepository(FramedGraphFactory<?> graphFactory,
-                              TransactionManager transactionManager, FermaFlowPathRepository flowPathRepository,
-                              IslConfig islConfig) {
-        super(graphFactory, transactionManager);
+    public FermaIslRepository(
+            FermaPersistentImplementation implementation, FermaFlowPathRepository flowPathRepository,
+            IslConfig islConfig) {
+        super(implementation);
         this.flowPathRepository = flowPathRepository;
         this.islConfig = islConfig;
     }

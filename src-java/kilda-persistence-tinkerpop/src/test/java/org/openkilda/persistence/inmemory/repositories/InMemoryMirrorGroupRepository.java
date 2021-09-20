@@ -17,19 +17,18 @@ package org.openkilda.persistence.inmemory.repositories;
 
 import org.openkilda.model.MirrorGroup.MirrorGroupData;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.MirrorGroupFrame;
 import org.openkilda.persistence.ferma.repositories.FermaMirrorGroupRepository;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceImplementation;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 /**
  * In-memory implementation of {@link MirrorGroupRepository}.
  * Built on top of Tinkerpop / Ferma implementation.
  */
 public class InMemoryMirrorGroupRepository extends FermaMirrorGroupRepository {
-    public InMemoryMirrorGroupRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public InMemoryMirrorGroupRepository(InMemoryGraphPersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override

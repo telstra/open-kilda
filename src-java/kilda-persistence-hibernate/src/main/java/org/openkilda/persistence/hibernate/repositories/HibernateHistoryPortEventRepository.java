@@ -18,17 +18,14 @@ package org.openkilda.persistence.hibernate.repositories;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.history.PortEvent;
 import org.openkilda.model.history.PortEvent.PortEventData;
+import org.openkilda.persistence.hibernate.HibernatePersistenceImplementation;
 import org.openkilda.persistence.hibernate.entities.history.HibernatePortEvent;
 import org.openkilda.persistence.hibernate.entities.history.HibernatePortEvent_;
 import org.openkilda.persistence.repositories.history.PortEventRepository;
-import org.openkilda.persistence.tx.TransactionManager;
-
-import org.hibernate.SessionFactory;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
@@ -38,15 +35,14 @@ import javax.persistence.criteria.Root;
 public class HibernateHistoryPortEventRepository
         extends HibernateGenericRepository<PortEvent, PortEventData, HibernatePortEvent>
         implements PortEventRepository {
-    public HibernateHistoryPortEventRepository(
-            TransactionManager transactionManager, Supplier<SessionFactory> factorySupplier) {
-        super(transactionManager, factorySupplier);
+    public HibernateHistoryPortEventRepository(HibernatePersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override
     public List<PortEvent> findBySwitchIdAndPortNumber(
             SwitchId switchId, int portNumber, Instant start, Instant end) {
-        return transactionManager.doInTransaction(
+        return getTransactionManager().doInTransaction(
                 () -> findEntityBySwitchIdAndPortNumber(switchId, portNumber, start, end).stream()
                         .map(PortEvent::new)
                         .collect(Collectors.toList()));

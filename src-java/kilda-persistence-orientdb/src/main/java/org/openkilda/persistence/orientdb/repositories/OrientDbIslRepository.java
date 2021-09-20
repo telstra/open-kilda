@@ -35,9 +35,8 @@ import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchStatusConverter;
 import org.openkilda.persistence.ferma.repositories.FermaFlowPathRepository;
 import org.openkilda.persistence.ferma.repositories.FermaIslRepository;
-import org.openkilda.persistence.orientdb.OrientDbGraphFactory;
+import org.openkilda.persistence.orientdb.OrientDbPersistenceImplementation;
 import org.openkilda.persistence.repositories.IslRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tinkerpop.gremlin.orientdb.OrientGraph;
@@ -99,19 +98,19 @@ public class OrientDbIslRepository extends FermaIslRepository {
                     SwitchPropertiesFrame.SUPPORTED_TRANSIT_ENCAPSULATION_PROPERTY,
                     SwitchFrame.FRAME_LABEL, SwitchFrame.STATUS_PROPERTY);
 
-    private final OrientDbGraphFactory orientDbGraphFactory;
+    private final GraphSupplier graphSupplier;
 
-    public OrientDbIslRepository(OrientDbGraphFactory orientDbGraphFactory,
-                                 TransactionManager transactionManager, FermaFlowPathRepository flowPathRepository,
-                                 IslConfig islConfig) {
-        super(orientDbGraphFactory, transactionManager, flowPathRepository, islConfig);
-        this.orientDbGraphFactory = orientDbGraphFactory;
+    public OrientDbIslRepository(
+            OrientDbPersistenceImplementation implementation, GraphSupplier graphSupplier,
+            FermaFlowPathRepository flowPathRepository, IslConfig islConfig) {
+        super(implementation, flowPathRepository, islConfig);
+        this.graphSupplier = graphSupplier;
     }
 
     @Override
     public boolean existsByEndpoint(SwitchId switchId, int port) {
         String switchIdAsStr = SwitchIdConverter.INSTANCE.toGraphProperty(switchId);
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 format("SELECT @rid FROM %s WHERE (%s = ? AND %s = ?) OR (%s = ? AND %s = ?) LIMIT 1",
                         IslFrame.FRAME_LABEL, IslFrame.SRC_SWITCH_ID_PROPERTY, IslFrame.SRC_PORT_PROPERTY,
                         IslFrame.DST_SWITCH_ID_PROPERTY, IslFrame.DST_PORT_PROPERTY),
@@ -125,8 +124,9 @@ public class OrientDbIslRepository extends FermaIslRepository {
             PathId pathId, long requiredBandwidth, FlowEncapsulationType flowEncapsulationType) {
         Map<String, String> switches = findActiveSwitchesAndPopByEncapsulationType(flowEncapsulationType);
 
+        OrientGraph orientGraph = graphSupplier.get();
         Map<IslEndpoints, Long> segments = new HashMap<>();
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = orientGraph.querySql(
                 QUERY_FETCH_SEGMENTS_BY_PATH,
                 PathIdConverter.INSTANCE.toGraphProperty(pathId))) {
             results.forEach(gs -> {
@@ -141,7 +141,6 @@ public class OrientDbIslRepository extends FermaIslRepository {
         }
 
         String islStatusAsStr = IslStatusConverter.INSTANCE.toGraphProperty(IslStatus.ACTIVE);
-        OrientGraph orientGraph = orientDbGraphFactory.getOrientGraph();
 
         List<IslImmutableView> isls = new ArrayList<>(segments.size());
         segments.keySet().forEach(endpoint -> {
@@ -162,7 +161,7 @@ public class OrientDbIslRepository extends FermaIslRepository {
         Map<String, String> switches = findActiveSwitchesAndPop();
 
         List<IslImmutableView> isls = new ArrayList<>();
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 QUERY_FETCH_ISLS_BY_STATUS,
                 IslStatusConverter.INSTANCE.toGraphProperty(IslStatus.ACTIVE))) {
             results.forEach(gs -> {
@@ -181,7 +180,7 @@ public class OrientDbIslRepository extends FermaIslRepository {
         Map<String, String> switches = findActiveSwitchesAndPopByEncapsulationType(flowEncapsulationType);
 
         List<IslImmutableView> isls = new ArrayList<>();
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 QUERY_FETCH_ISLS_BY_STATUS,
                 IslStatusConverter.INSTANCE.toGraphProperty(IslStatus.ACTIVE))) {
             results.forEach(gs -> {
@@ -203,7 +202,7 @@ public class OrientDbIslRepository extends FermaIslRepository {
         String islStatusAsStr = IslStatusConverter.INSTANCE.toGraphProperty(IslStatus.ACTIVE);
 
         Map<IslEndpoints, IslImmutableView> isls = new HashMap<>();
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 QUERY_FETCH_ISLS_BY_STATUS_AND_BANDWIDTH,
                 islStatusAsStr, requiredBandwidth)) {
             results.forEach(gs -> {
@@ -239,7 +238,7 @@ public class OrientDbIslRepository extends FermaIslRepository {
         String switchStatusAsStr = SwitchStatusConverter.INSTANCE.toGraphProperty(SwitchStatus.ACTIVE);
 
         Map<String, String> switches = new HashMap<>();
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 QUERY_FETCH_SWITCHES_BY_STATUS,
                 switchStatusAsStr)) {
             results.forEach(gs ->
@@ -255,7 +254,7 @@ public class OrientDbIslRepository extends FermaIslRepository {
         String flowEncapType = FlowEncapsulationTypeConverter.INSTANCE.toGraphProperty(flowEncapsulationType);
 
         Map<String, String> switches = new HashMap<>();
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 QUERY_FETCH_SWITCHES_BY_STATUS_AND_ENCAPSULATION,
                 switchStatusAsStr, flowEncapType)) {
             results.forEach(gs ->

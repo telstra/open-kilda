@@ -86,6 +86,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -216,10 +217,12 @@ public class ValidationServiceImpl implements ValidationService {
     public ValidateLogicalPortsResult validateLogicalPorts(SwitchId switchId, List<LogicalPort> presentLogicalPorts) {
         Map<Integer, LogicalPortInfoEntry> expectedPorts = lagLogicalPortRepository.findBySwitchId(switchId).stream()
                 .map(LogicalPortMapper.INSTANCE::map)
+                .peek(port -> Collections.sort(port.getPhysicalPorts()))
                 .collect(Collectors.toMap(LogicalPortInfoEntry::getLogicalPortNumber, Function.identity()));
 
         Map<Integer, LogicalPortInfoEntry> actualPorts = presentLogicalPorts.stream()
                 .map(LogicalPortMapper.INSTANCE::map)
+                .peek(port -> Collections.sort(port.getPhysicalPorts()))
                 .collect(Collectors.toMap(LogicalPortInfoEntry::getLogicalPortNumber, Function.identity()));
 
         List<LogicalPortInfoEntry> properPorts = new ArrayList<>();

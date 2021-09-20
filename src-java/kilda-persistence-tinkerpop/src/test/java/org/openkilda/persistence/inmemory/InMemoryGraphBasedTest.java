@@ -21,37 +21,47 @@ import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.persistence.PersistenceImplementationType;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.persistence.tx.TransactionManager;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.mockito.Mockito;
 
+import java.util.Properties;
+
 public abstract class InMemoryGraphBasedTest {
     protected static ConfigurationProvider configurationProvider;
-    protected static InMemoryGraphPersistenceManager inMemoryPersistenceProvider;
+    protected static InMemoryGraphPersistenceManager inMemoryGraphPersistenceManager;
+    protected static InMemoryGraphPersistenceImplementation inMemoryGraphPersistenceImplementation;
     protected static PersistenceManager persistenceManager;
     protected static TransactionManager transactionManager;
     protected static RepositoryFactory repositoryFactory;
 
     @BeforeClass
     public static void initPersistenceManager() {
-        configurationProvider = new PropertiesBasedConfigurationProvider();
-        inMemoryPersistenceProvider = new InMemoryGraphPersistenceManager(configurationProvider);
-        PersistenceProvider.makeDefault(inMemoryPersistenceProvider);
+        Properties properties = new Properties();
+        properties.put("persistence.implementation.default", PersistenceImplementationType.IN_MEMORY_GRAPH.name());
+        configurationProvider = new PropertiesBasedConfigurationProvider(properties);
+        inMemoryGraphPersistenceImplementation = new InMemoryGraphPersistenceImplementation(configurationProvider);
+        InMemoryGraphPersistenceImplementation persistenceImplementation = Mockito.spy(
+                inMemoryGraphPersistenceImplementation);
+        repositoryFactory = Mockito.spy(inMemoryGraphPersistenceImplementation.getRepositoryFactory());
+        Mockito.when(persistenceImplementation.getRepositoryFactory()).thenReturn(repositoryFactory);
 
-        persistenceManager = Mockito.spy(inMemoryPersistenceProvider);
-        transactionManager = persistenceManager.getTransactionManager();
-        repositoryFactory = Mockito.spy(persistenceManager.getRepositoryFactory());
-        Mockito.when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        inMemoryGraphPersistenceManager = new InMemoryGraphPersistenceManager(
+                configurationProvider, PersistenceImplementationType.IN_MEMORY_GRAPH, persistenceImplementation);
+        inMemoryGraphPersistenceManager.install();
+
+        persistenceManager = Mockito.spy(inMemoryGraphPersistenceManager);
+        transactionManager = inMemoryGraphPersistenceManager.getTransactionManager();
     }
 
     @Before
     public void cleanTinkerGraph() {
-        inMemoryPersistenceProvider.purgeData();
+        inMemoryGraphPersistenceImplementation.purgeData();
     }
 
     protected Switch createTestSwitch(long switchId) {

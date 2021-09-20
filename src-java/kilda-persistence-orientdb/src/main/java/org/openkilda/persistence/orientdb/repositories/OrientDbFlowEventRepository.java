@@ -19,9 +19,8 @@ import static java.lang.String.format;
 
 import org.openkilda.persistence.ferma.frames.FlowEventFrame;
 import org.openkilda.persistence.ferma.repositories.FermaFlowEventRepository;
-import org.openkilda.persistence.orientdb.OrientDbGraphFactory;
+import org.openkilda.persistence.orientdb.OrientDbPersistenceImplementation;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResultSet;
 
@@ -29,16 +28,16 @@ import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResultSet;
  * OrientDB implementation of {@link FlowEventRepository}.
  */
 public class OrientDbFlowEventRepository extends FermaFlowEventRepository {
-    private final OrientDbGraphFactory orientDbGraphFactory;
+    private final GraphSupplier graphSupplier;
 
-    OrientDbFlowEventRepository(OrientDbGraphFactory orientDbGraphFactory, TransactionManager transactionManager) {
-        super(orientDbGraphFactory, transactionManager);
-        this.orientDbGraphFactory = orientDbGraphFactory;
+    OrientDbFlowEventRepository(OrientDbPersistenceImplementation implementation, GraphSupplier graphSupplier) {
+        super(implementation);
+        this.graphSupplier = graphSupplier;
     }
 
     @Override
     public boolean existsByTaskId(String taskId) {
-        try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().querySql(
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
                 format("SELECT @rid FROM %s WHERE %s = ? LIMIT 1",
                         FlowEventFrame.FRAME_LABEL, FlowEventFrame.TASK_ID_PROPERTY), taskId)) {
             return results.iterator().hasNext();

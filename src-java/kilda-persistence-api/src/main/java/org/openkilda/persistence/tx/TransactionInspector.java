@@ -15,10 +15,8 @@
 
 package org.openkilda.persistence.tx;
 
-import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.context.PersistenceContextManager;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.spi.PersistenceManagerSupplier;
 
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -37,9 +35,11 @@ public class TransactionInspector {
     @Around("@annotation(transactionRequired)")
     public Object aroundAdvice(ProceedingJoinPoint joinPoint,
                                TransactionRequired transactionRequired) throws Throwable {
-        PersistenceManager persistenceManager = PersistenceManagerSupplier.DEFAULT.get();
-        PersistenceContextManager persistenceContextManager = persistenceManager.getPersistenceContextManager();
-        if (!persistenceContextManager.isContextInitialized() || !persistenceContextManager.isTxOpen()) {
+        boolean isTxOpen = false;
+        if (PersistenceContextManager.INSTANCE.isInitialized()) {
+            isTxOpen = PersistenceContextManager.INSTANCE.getContextCreateIfMissing().isTxOpen();
+        }
+        if (! isTxOpen) {
             throw new PersistenceException("A transactional method was invoked outside a transaction.");
         }
 

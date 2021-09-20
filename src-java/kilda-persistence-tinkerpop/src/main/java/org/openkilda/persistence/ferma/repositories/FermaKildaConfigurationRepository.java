@@ -17,11 +17,10 @@ package org.openkilda.persistence.ferma.repositories;
 
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.KildaConfiguration.KildaConfigurationData;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.KildaConfigurationFrame;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,9 +31,8 @@ import java.util.Optional;
 public class FermaKildaConfigurationRepository
         extends FermaGenericRepository<KildaConfiguration, KildaConfigurationData, KildaConfigurationFrame>
         implements KildaConfigurationRepository {
-    public FermaKildaConfigurationRepository(FramedGraphFactory<?> graphFactory,
-                                             TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaKildaConfigurationRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

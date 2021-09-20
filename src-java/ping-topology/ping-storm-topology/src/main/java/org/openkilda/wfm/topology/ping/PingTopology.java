@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.ping;
 
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
@@ -138,7 +137,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
     }
 
     private void flowFetcher(TopologyBuilder topology) {
-        PersistenceManager persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
+        PersistenceManager persistenceManager = new PersistenceManager(configurationProvider);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
 
         FlowFetcher bolt = new FlowFetcher(persistenceManager, flowResourcesConfig,

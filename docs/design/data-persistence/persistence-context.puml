@@ -17,9 +17,10 @@ end box
 box "Persistence Layer" #LightGreen
 	participant PersistenceContextInitializer
 	participant PersistenceContextManager
+	participant PersistenceContext
+	participant PersistenceImplementation
 	participant SwitchRepository
 	participant "DB connection /\nsession" as DB
-	participant "DB connection /\nsession factory" as DBFactory
 end box
 
 == Persistence Context for the tuple processing ==
@@ -31,7 +32,11 @@ xyzBolt -> PersistenceContextInitializer : Intercept the annotated method
 activate PersistenceContextInitializer
 PersistenceContextInitializer -> PersistenceContextManager : Init a context
 activate PersistenceContextManager
+PersistenceContextManager -> PersistenceContext : Produce new context instance
 deactivate PersistenceContextManager
+activate PersistenceContext
+PersistenceContext -> PersistenceContextInitializer : New instance
+deactivate PersistenceContext
 deactivate PersistenceContextInitializer
 
 xyzBolt -> xyzService
@@ -39,20 +44,26 @@ activate xyzService
 xyzService -> SwitchRepository : Get Switch entity
 activate SwitchRepository
 
-SwitchRepository -> DBFactory : Get DB connection
-activate DBFactory
-PersistenceContextManager <- DBFactory : Get the current context
+SwitchRepository -> PersistenceContextManager : Query current context
 activate PersistenceContextManager
-PersistenceContextManager -> DBFactory
+PersistenceContextManager -> PersistenceContext : Query current context
 deactivate PersistenceContextManager
+
+activate PersistenceContext
+PersistenceContext -> SwitchRepository : Current context
+deactivate PersistenceContext
+
+SwitchRepository -> PersistenceImplementation : query DB connection
+activate PersistenceImplementation
 create DB
-DBFactory -> DB : Open a new\nDB connection\nfor the context\nif not open yet
-PersistenceContextManager <- DBFactory : Bound the connection\nto the current context
-activate PersistenceContextManager
-PersistenceContextManager -> DBFactory
-deactivate PersistenceContextManager
-SwitchRepository <- DBFactory
-deactivate DBFactory
+PersistenceImplementation -> DB : Open a new\nDB connection\nfor the context\nif not open yet
+DB -> PersistenceImplementation : DB connection instance
+PersistenceImplementation -> PersistenceContext : DB connection instance
+activate PersistenceContext
+PersistenceContext -> PersistenceContext : Bound the connection\nto the current context
+deactivate PersistenceContext
+PersistenceImplementation -> SwitchRepository : DB connection
+deactivate PersistenceImplementation
 
 SwitchRepository -> DB : Read an entity
 activate DB
@@ -72,17 +83,27 @@ xyzBolt -> PersistenceContextInitializer : After the annotated method is execute
 activate PersistenceContextInitializer
 PersistenceContextInitializer -> PersistenceContextManager : Close the context
 activate PersistenceContextManager
-PersistenceContextManager -> PersistenceContextManager : Get the bound connection\nfrom the current context
-PersistenceContextManager -> DB : Close the connection
+PersistenceContextManager -> PersistenceContext : Context close request
+activate PersistenceContext
+
+loop for all activate persistence implementations
+PersistenceContext -> PersistenceImplementation : Context close notification
+activate PersistenceImplementation
+PersistenceImplementation -> DB : Close DB connection
 activate DB
 DB -> DB : Propagate the changes
-PersistenceContextManager <- DB
+PersistenceImplementation <- DB
 destroy DB
+PersistenceImplementation -> PersistenceContext : done
+deactivate PersistenceImplementation
+end loop
+
+PersistenceContext -> PersistenceContextManager
+deactivate PersistenceContext
 PersistenceContextInitializer <- PersistenceContextManager
 deactivate PersistenceContextManager
 xyzBolt <- PersistenceContextInitializer
 deactivate PersistenceContextInitializer
 
 deactivate xyzBolt
-
 @enduml

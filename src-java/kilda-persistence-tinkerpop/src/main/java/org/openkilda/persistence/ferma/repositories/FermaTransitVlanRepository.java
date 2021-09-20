@@ -20,12 +20,11 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.model.TransitVlan.TransitVlanData;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.TransitVlanFrame;
 import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
@@ -41,8 +40,8 @@ import java.util.stream.Collectors;
  */
 public class FermaTransitVlanRepository extends FermaGenericRepository<TransitVlan, TransitVlanData, TransitVlanFrame>
         implements TransitVlanRepository {
-    public FermaTransitVlanRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaTransitVlanRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

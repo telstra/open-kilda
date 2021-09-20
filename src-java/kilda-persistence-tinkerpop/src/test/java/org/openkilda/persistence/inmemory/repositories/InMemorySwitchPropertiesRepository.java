@@ -17,19 +17,18 @@ package org.openkilda.persistence.inmemory.repositories;
 
 import org.openkilda.model.SwitchProperties.SwitchPropertiesData;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.SwitchPropertiesFrame;
 import org.openkilda.persistence.ferma.repositories.FermaSwitchPropertiesRepository;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceImplementation;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 /**
  * In-memory implementation of {@link SwitchPropertiesRepository}.
  * Built on top of Tinkerpop / Ferma implementation.
  */
 public class InMemorySwitchPropertiesRepository extends FermaSwitchPropertiesRepository {
-    InMemorySwitchPropertiesRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    InMemorySwitchPropertiesRepository(InMemoryGraphPersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override

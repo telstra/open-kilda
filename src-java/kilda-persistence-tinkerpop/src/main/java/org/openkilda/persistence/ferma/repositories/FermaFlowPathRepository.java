@@ -25,7 +25,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowFrame;
 import org.openkilda.persistence.ferma.frames.FlowPathFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
@@ -55,8 +55,8 @@ import java.util.stream.Collectors;
  */
 public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, FlowPathData, FlowPathFrame>
         implements FlowPathRepository {
-    public FermaFlowPathRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaFlowPathRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override
@@ -312,7 +312,7 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
 
     @Override
     public void updateStatus(PathId pathId, FlowPathStatus pathStatus) {
-        transactionManager.doInTransaction(() ->
+        getTransactionManager().doInTransaction(() ->
                 framedGraph().traverse(g -> g.V()
                         .hasLabel(FlowPathFrame.FRAME_LABEL)
                         .has(FlowPathFrame.PATH_ID_PROPERTY, PathIdConverter.INSTANCE.toGraphProperty(pathId)))
@@ -348,6 +348,7 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
 
     @Override
     public Optional<FlowPath> remove(PathId pathId) {
+        TransactionManager transactionManager = getTransactionManager();
         if (transactionManager.isTxOpen()) {
             // This implementation removes dependant entities (segments) in a separate transactions,
             // so the path entity may require to be reloaded in a case of failed transaction.

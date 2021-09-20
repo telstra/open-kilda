@@ -17,12 +17,11 @@ package org.openkilda.persistence.inmemory.repositories;
 
 import org.openkilda.model.Flow.FlowData;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.FlowFrame;
 import org.openkilda.persistence.ferma.repositories.FermaFlowRepository;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceImplementation;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,10 +31,9 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class InMemoryFlowRepository extends FermaFlowRepository {
-    public InMemoryFlowRepository(FramedGraphFactory<?> graphFactory,
-                                  FlowPathRepository flowPathRepository,
-                                  TransactionManager transactionManager) {
-        super(graphFactory, flowPathRepository, transactionManager);
+    public InMemoryFlowRepository(
+            InMemoryGraphPersistenceImplementation implementation, FlowPathRepository flowPathRepository) {
+        super(implementation, flowPathRepository);
     }
 
     @Override

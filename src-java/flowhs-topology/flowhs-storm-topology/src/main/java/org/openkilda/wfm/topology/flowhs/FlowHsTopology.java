@@ -38,7 +38,6 @@ import static org.openkilda.wfm.topology.flowhs.bolts.RouterBolt.FLOW_ID_FIELD;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.kafka.AbstractMessageSerializer;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
@@ -90,7 +89,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         inputSpout(tb);
         inputRouter(tb);
 
-        PersistenceManager persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
+        PersistenceManager persistenceManager = new PersistenceManager(configurationProvider);
 
         flowCreateHub(tb, persistenceManager);
         flowUpdateHub(tb, persistenceManager);

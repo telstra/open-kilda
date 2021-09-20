@@ -49,22 +49,12 @@ import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
 import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.persistence.repositories.history.PortEventRepository;
-import org.openkilda.persistence.tx.TransactionArea;
-import org.openkilda.persistence.tx.TransactionManagerFactory;
-
-import org.hibernate.SessionFactory;
-
-import java.util.function.Supplier;
 
 public class HibernateRepositoryFactory implements RepositoryFactory {
-    private final Supplier<SessionFactory> factorySupplier;
+    private final HibernatePersistenceImplementation implementation;
 
-    private final TransactionManagerFactory transactionManagerFactory;
-
-    public HibernateRepositoryFactory(
-            Supplier<SessionFactory> factorySupplier, TransactionManagerFactory transactionManagerFactory) {
-        this.factorySupplier = factorySupplier;
-        this.transactionManagerFactory = transactionManagerFactory;
+    public HibernateRepositoryFactory(HibernatePersistenceImplementation implementation) {
+        this.implementation = implementation;
     }
 
     @Override
@@ -129,14 +119,12 @@ public class HibernateRepositoryFactory implements RepositoryFactory {
 
     @Override
     public FlowEventActionRepository createFlowEventActionRepository() {
-        return new HibernateHistoryFlowEventActionRepository(
-                transactionManagerFactory.produce(TransactionArea.HISTORY), factorySupplier, makeFlowEventRepository());
+        return new HibernateHistoryFlowEventActionRepository(implementation, makeFlowEventRepository());
     }
 
     @Override
     public FlowEventDumpRepository createFlowEventDumpRepository() {
-        return new HibernateHistoryFlowEventDumpRepository(
-                transactionManagerFactory.produce(TransactionArea.HISTORY), factorySupplier, makeFlowEventRepository());
+        return new HibernateHistoryFlowEventDumpRepository(implementation, makeFlowEventRepository());
     }
 
     @Override
@@ -161,8 +149,7 @@ public class HibernateRepositoryFactory implements RepositoryFactory {
 
     @Override
     public PortEventRepository createPortEventRepository() {
-        return new HibernateHistoryPortEventRepository(
-                transactionManagerFactory.produce(TransactionArea.HISTORY), factorySupplier);
+        return new HibernateHistoryPortEventRepository(implementation);
     }
 
     @Override
@@ -216,7 +203,6 @@ public class HibernateRepositoryFactory implements RepositoryFactory {
     }
 
     private HibernateHistoryFlowEventRepository makeFlowEventRepository() {
-        return new HibernateHistoryFlowEventRepository(
-                transactionManagerFactory.produce(TransactionArea.HISTORY), factorySupplier);
+        return new HibernateHistoryFlowEventRepository(implementation);
     }
 }

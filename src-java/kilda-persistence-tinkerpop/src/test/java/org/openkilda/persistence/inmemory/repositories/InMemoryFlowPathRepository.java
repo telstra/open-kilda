@@ -17,19 +17,18 @@ package org.openkilda.persistence.inmemory.repositories;
 
 import org.openkilda.model.FlowPath.FlowPathData;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.FlowPathFrame;
 import org.openkilda.persistence.ferma.repositories.FermaFlowPathRepository;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceImplementation;
 import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 /**
  * In-memory implementation of {@link FlowPathRepository}.
  * Built on top of Tinkerpop / Ferma implementation.
  */
 public class InMemoryFlowPathRepository extends FermaFlowPathRepository {
-    public InMemoryFlowPathRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public InMemoryFlowPathRepository(InMemoryGraphPersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override

@@ -15,21 +15,20 @@
 
 package org.openkilda.persistence.ferma;
 
+import org.openkilda.persistence.context.PersistenceContext;
+import org.openkilda.persistence.context.PersistenceContextManager;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.tx.TransactionAdapter;
-import org.openkilda.persistence.tx.TransactionArea;
+import org.openkilda.persistence.tx.ImplementationTransactionAdapter;
 
 import com.syncleus.ferma.DelegatingFramedGraph;
 import com.syncleus.ferma.WrappedTransaction;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class FermaTransactionAdapter extends TransactionAdapter {
-    private final FramedGraphFactory<DelegatingFramedGraph<?>> graphFactory;
-
-    public FermaTransactionAdapter(TransactionArea area, FramedGraphFactory<DelegatingFramedGraph<?>> graphFactory) {
-        super(area);
-        this.graphFactory = graphFactory;
+public class FermaTransactionAdapter<T extends FermaPersistentImplementation>
+        extends ImplementationTransactionAdapter<T> {
+    public FermaTransactionAdapter(T implementation) {
+        super(implementation);
     }
 
     @Override
@@ -42,7 +41,7 @@ public class FermaTransactionAdapter extends TransactionAdapter {
             throw wrapException(e);
         }
 
-        DelegatingFramedGraph<?> graph = graphFactory.getGraph();
+        DelegatingFramedGraph<?> graph = getContextExtension().getGraphCreateIfMissing();
         WrappedTransaction transaction = graph.tx();
         if (transaction.isOpen()) {
             throw new PersistenceException("Attempt to reopen transaction: " + transaction);
@@ -63,7 +62,7 @@ public class FermaTransactionAdapter extends TransactionAdapter {
     }
 
     private void closeForeignTransactionIfExist() throws Exception {
-        DelegatingFramedGraph<?> graph = graphFactory.getGraph();
+        DelegatingFramedGraph<?> graph = getContextExtension().getGraphCreateIfMissing();
         WrappedTransaction currentTx = graph.tx();
         if (currentTx.isOpen()) {
             log.debug("Closing an existing underlying transaction {} on graph {}", currentTx, graph);
@@ -72,7 +71,7 @@ public class FermaTransactionAdapter extends TransactionAdapter {
     }
 
     private void commitOrRollback(boolean isSuccess) throws Exception {
-        commitOrRollback(graphFactory.getGraph().tx(), isSuccess);
+        commitOrRollback(getContextExtension().getGraphCreateIfMissing().tx(), isSuccess);
     }
 
     private void commitOrRollback(WrappedTransaction transaction, boolean isSuccess) throws Exception {
@@ -80,10 +79,10 @@ public class FermaTransactionAdapter extends TransactionAdapter {
 
         if (! transaction.isOpen()) {
             throw new IllegalStateException(String.format(
-                    "Attempt to %s not opened transaction (%s)", action, getArea()));
+                    "Attempt to %s not opened transaction (%s)", action, getImplementationType()));
         }
 
-        log.debug("Performing {} to the transaction ({})", action, getArea());
+        log.debug("Performing {} to the transaction ({})", action, getImplementationType());
         try {
             if (isSuccess) {
                 transaction.commit();
@@ -93,5 +92,10 @@ public class FermaTransactionAdapter extends TransactionAdapter {
         } catch (Exception ex) {
             throw wrapException(ex);
         }
+    }
+
+    private FermaContextExtension getContextExtension() {
+        PersistenceContext context = PersistenceContextManager.INSTANCE.getContextCreateIfMissing();
+        return getImplementation().getContextExtension(context);
     }
 }

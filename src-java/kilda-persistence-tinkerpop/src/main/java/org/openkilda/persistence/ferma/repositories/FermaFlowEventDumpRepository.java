@@ -18,11 +18,10 @@ package org.openkilda.persistence.ferma.repositories;
 import org.openkilda.model.history.FlowEventDump;
 import org.openkilda.model.history.FlowEventDump.FlowEventDumpCloner;
 import org.openkilda.model.history.FlowEventDump.FlowEventDumpData;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowEventDumpFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 /**
  * Ferma (Tinkerpop) implementation of {@link FlowEventDumpRepository}.
@@ -30,8 +29,8 @@ import org.openkilda.persistence.tx.TransactionManager;
 public class FermaFlowEventDumpRepository
         extends FermaGenericRepository<FlowEventDump, FlowEventDumpData, FlowEventDumpFrame>
         implements FlowEventDumpRepository {
-    FermaFlowEventDumpRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    FermaFlowEventDumpRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

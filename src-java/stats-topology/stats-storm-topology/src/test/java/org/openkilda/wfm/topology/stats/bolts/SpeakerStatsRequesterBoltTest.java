@@ -43,7 +43,6 @@ import org.openkilda.persistence.context.PersistenceContextManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 
@@ -67,8 +66,6 @@ public class SpeakerStatsRequesterBoltTest {
     @Mock
     private PersistenceManager persistenceManager;
     @Mock
-    private PersistenceContextManager persistenceContextManager;
-    @Mock
     private RepositoryFactory repositoryFactory;
     @Mock
     private KildaFeatureTogglesRepository featureTogglesRepository;
@@ -89,7 +86,6 @@ public class SpeakerStatsRequesterBoltTest {
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
-        when(persistenceManager.getPersistenceContextManager()).thenReturn(persistenceContextManager);
         when(input.getSourceComponent()).thenReturn(TICK_BOLT.name());
         when(input.getFields()).thenReturn(new Fields());
         when(input.getValueByField(FIELD_ID_CONTEXT)).thenReturn("123");
@@ -98,7 +94,7 @@ public class SpeakerStatsRequesterBoltTest {
                 .thenReturn(LifecycleEvent.builder().signal(Signal.START).build());
         when(startTuple.getFields()).thenReturn(new Fields());
 
-        PersistenceProvider.makeDefault(persistenceManager);
+        PersistenceContextManager.install(persistenceManager);
     }
 
     @Test

@@ -19,12 +19,11 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.Vxlan;
 import org.openkilda.model.Vxlan.VxlanData;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.VxlanFrame;
 import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
 import org.openkilda.persistence.repositories.VxlanRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
@@ -40,8 +39,8 @@ import java.util.stream.Collectors;
  */
 public class FermaVxlanRepository extends FermaGenericRepository<Vxlan, VxlanData, VxlanFrame>
         implements VxlanRepository {
-    public FermaVxlanRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaVxlanRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

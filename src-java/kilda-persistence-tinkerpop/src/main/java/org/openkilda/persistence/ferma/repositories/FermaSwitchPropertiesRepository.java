@@ -18,12 +18,11 @@ package org.openkilda.persistence.ferma.repositories;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchProperties.SwitchPropertiesData;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.SwitchPropertiesFrame;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import java.util.Collection;
 import java.util.List;
@@ -36,8 +35,8 @@ import java.util.stream.Collectors;
 public class FermaSwitchPropertiesRepository
         extends FermaGenericRepository<SwitchProperties, SwitchPropertiesData, SwitchPropertiesFrame>
         implements SwitchPropertiesRepository {
-    public FermaSwitchPropertiesRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaSwitchPropertiesRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

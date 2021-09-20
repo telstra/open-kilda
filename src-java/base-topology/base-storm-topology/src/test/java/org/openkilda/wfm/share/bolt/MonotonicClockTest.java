@@ -21,9 +21,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.stubs.ManualClock;
 
 import org.apache.storm.Constants;
@@ -56,8 +54,7 @@ public class MonotonicClockTest {
 
     @BeforeClass
     public static void initPersistenceManager() {
-        PersistenceProvider.makeDefault(
-                new InMemoryGraphPersistenceManager(new PropertiesBasedConfigurationProvider()));
+        InMemoryGraphPersistenceManager.newInstance().install();
     }
 
     @Test

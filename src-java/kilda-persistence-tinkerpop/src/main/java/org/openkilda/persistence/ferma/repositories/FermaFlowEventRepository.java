@@ -20,12 +20,11 @@ import org.openkilda.model.history.FlowEvent.FlowEventData;
 import org.openkilda.model.history.FlowEventAction;
 import org.openkilda.model.history.FlowStatusView;
 import org.openkilda.persistence.exceptions.PersistenceException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
+import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowEventFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.converters.InstantLongConverter;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import org.apache.tinkerpop.gremlin.process.traversal.Order;
 import org.apache.tinkerpop.gremlin.process.traversal.P;
@@ -44,8 +43,8 @@ import java.util.stream.Collectors;
  */
 public class FermaFlowEventRepository extends FermaGenericRepository<FlowEvent, FlowEventData, FlowEventFrame>
         implements FlowEventRepository {
-    public FermaFlowEventRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public FermaFlowEventRepository(FermaPersistentImplementation implementation) {
+        super(implementation);
     }
 
     @Override

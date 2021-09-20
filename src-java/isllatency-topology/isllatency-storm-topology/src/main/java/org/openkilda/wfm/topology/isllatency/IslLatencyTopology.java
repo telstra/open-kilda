@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.isllatency;
 
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
@@ -30,6 +29,7 @@ import org.openkilda.wfm.topology.isllatency.bolts.OneWayLatencyManipulationBolt
 import org.openkilda.wfm.topology.isllatency.bolts.RouterBolt;
 import org.openkilda.wfm.topology.isllatency.model.StreamType;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.topology.TopologyBuilder;
@@ -55,8 +55,19 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
     public static final String CACHE_DATA_FIELD = "cache_data";
     public static final Fields ISL_GROUPING_FIELDS = new Fields(ISL_GROUPING_FIELD);
 
+    private final PersistenceManager persistenceManager;
+
     public IslLatencyTopology(LaunchEnvironment env) {
+        this(env, null);
+    }
+
+    @VisibleForTesting
+    IslLatencyTopology(LaunchEnvironment env, PersistenceManager persistenceManager) {
         super(env, "isllatency-topology", IslLatencyTopologyConfig.class);
+        if (persistenceManager == null) {
+            persistenceManager = new PersistenceManager(configurationProvider);
+        }
+        this.persistenceManager = persistenceManager;
     }
 
     /**
@@ -71,8 +82,6 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
         createSpouts(builder);
 
         createIslStatusUpdateBolt(builder);
-
-        PersistenceManager persistenceManager = PersistenceProvider.loadAndMakeDefault(configurationProvider);
 
         createCacheBolt(builder, persistenceManager);
         createLatencyBolt(builder, persistenceManager);

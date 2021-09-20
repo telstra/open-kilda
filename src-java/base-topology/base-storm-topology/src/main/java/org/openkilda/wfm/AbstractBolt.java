@@ -22,7 +22,6 @@ import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.bluegreen.Signal;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.context.PersistenceContextRequired;
-import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.share.metrics.PushToStreamMeterRegistry;
@@ -242,7 +241,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
         this.componentId = String.format("%s:%d", context.getThisComponentId(), this.taskId);
 
         if (persistenceManager != null) {
-            PersistenceProvider.makeDefault(persistenceManager);
+            persistenceManager.install();
         }
 
         initMeterRegistry();

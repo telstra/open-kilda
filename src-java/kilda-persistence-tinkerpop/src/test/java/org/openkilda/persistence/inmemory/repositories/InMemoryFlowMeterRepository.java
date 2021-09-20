@@ -17,19 +17,18 @@ package org.openkilda.persistence.inmemory.repositories;
 
 import org.openkilda.model.FlowMeter.FlowMeterData;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
-import org.openkilda.persistence.ferma.FramedGraphFactory;
 import org.openkilda.persistence.ferma.frames.FlowMeterFrame;
 import org.openkilda.persistence.ferma.repositories.FermaFlowMeterRepository;
+import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceImplementation;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 /**
  * In-memory implementation of {@link FlowMeterRepository}.
  * Built on top of Tinkerpop / Ferma implementation.
  */
 public class InMemoryFlowMeterRepository extends FermaFlowMeterRepository {
-    public InMemoryFlowMeterRepository(FramedGraphFactory<?> graphFactory, TransactionManager transactionManager) {
-        super(graphFactory, transactionManager);
+    public InMemoryFlowMeterRepository(InMemoryGraphPersistenceImplementation implementation) {
+        super(implementation);
     }
 
     @Override

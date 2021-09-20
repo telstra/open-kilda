@@ -23,13 +23,13 @@ import org.openkilda.persistence.ferma.frames.PathSegmentFrame;
 import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.ferma.repositories.FermaPathSegmentRepository;
-import org.openkilda.persistence.orientdb.OrientDbGraphFactory;
+import org.openkilda.persistence.orientdb.OrientDbPersistenceImplementation;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tinkerpop.gremlin.orientdb.OrientGraph;
 import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResult;
 import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResultSet;
 
@@ -42,12 +42,13 @@ import java.util.Optional;
  */
 @Slf4j
 public class OrientDbPathSegmentRepository extends FermaPathSegmentRepository {
-    private final OrientDbGraphFactory orientDbGraphFactory;
+    private final GraphSupplier graphSupplier;
 
-    public OrientDbPathSegmentRepository(OrientDbGraphFactory orientDbGraphFactory,
-                                         TransactionManager transactionManager, IslRepository islRepository) {
-        super(orientDbGraphFactory, transactionManager, islRepository);
-        this.orientDbGraphFactory = orientDbGraphFactory;
+    public OrientDbPathSegmentRepository(
+            OrientDbPersistenceImplementation implementation, GraphSupplier graphSupplier,
+            IslRepository islRepository) {
+        super(implementation, islRepository);
+        this.graphSupplier = graphSupplier;
     }
 
     @Override
@@ -66,8 +67,9 @@ public class OrientDbPathSegmentRepository extends FermaPathSegmentRepository {
                 .put("latency", segment.getLatency())
                 .build();
 
+        OrientGraph orientGraph = graphSupplier.get();
         if (segment.isIgnoreBandwidth()) {
-            try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().executeSql(
+            try (OGremlinResultSet results = orientGraph.executeSql(
                     format("INSERT INTO %s(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
                                     + "VALUES (:path_id,:src_sw,:src_port,:dst_sw,:dst_port,:src_mt,:dst_mt,"
                                     + ":ignore_bw,:bw,:seq_id,:latency,false)",
@@ -88,7 +90,7 @@ public class OrientDbPathSegmentRepository extends FermaPathSegmentRepository {
                 return Optional.empty();
             }
         } else {
-            try (OGremlinResultSet results = orientDbGraphFactory.getOrientGraph().execute("sql",
+            try (OGremlinResultSet results = orientGraph.execute("sql",
                     format("INSERT INTO %s(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
                                     + "VALUES (:path_id,:src_sw,:src_port,:dst_sw,:dst_port,:src_mt,:dst_mt,"
                                     + ":ignore_bw,:bw,:seq_id,:latency,false);"
