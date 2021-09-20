@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.105.1 (20/09/2021)
+
+### Bug Fixes:
+-  [#4480](https://github.com/telstra/open-kilda/pull/4480) Sort physical ports in LAG before validation (Issue: [#4479](https://github.com/telstra/open-kilda/issues/4479)) [**storm-topologies**]
+-  [#4481](https://github.com/telstra/open-kilda/pull/4481) Revert no_gui parameter (Issue: [#4430](https://github.com/telstra/open-kilda/issues/4430)) [**configuration**]
+-  [#4474](https://github.com/telstra/open-kilda/pull/4474) Fix max latency issue 
+
+### Improvements:
+-  [#4400](https://github.com/telstra/open-kilda/pull/4400) Improve persistence layer implementation [**storm-topologies**]
+-  [#4476](https://github.com/telstra/open-kilda/pull/4476) delete duplicate text in server42-to-lab/README [**docs**][**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.105.0...v1.105.1).
+
+### Affected Components:
+ping, flow-hs, nbworker, reroute, swmanager, network, flow-monitor
+
+---
+
 ## v1.105.0 (14/09/2021)
 
 ### Features:
