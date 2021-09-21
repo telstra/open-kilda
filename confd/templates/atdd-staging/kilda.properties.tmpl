@@ -25,7 +25,9 @@ orientdb.password={{ getv "/kilda_orientdb_password" }}
 hibernate.user = {{ getv "/kilda_hibernate_user" }}
 hibernate.password = {{ getv "/kilda_hibernate_password" }}
 hibernate.url = {{ getv "/kilda_hibernate_url_tests" }}
-persistence.implementation = {{ getv "/kilda_persistence_implementation" }}
+
+persistence.implementation.default = {{ getv "/kilda_persistence_default_implementation" }}
+persistence.implementation.area.history = {{ getv "/kilda_persistence_history_implementation" }}
 
 elasticsearch.endpoint={{ getv "/kilda_logging_elasticsearch_proto" }}://{{ getv "/kilda_logging_elasticsearch_hosts" }}
 elasticsearch.username={{ getv "/kilda_logging_elasticsearch_user" }}
