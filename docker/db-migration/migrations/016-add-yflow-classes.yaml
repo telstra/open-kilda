@@ -1,0 +1,29 @@
+---
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: siakovenko
+      changes:
+        - tagDatabase:
+            tag: 016-add-yflow-classes
+  - changeSet:
+      id: yflow_class
+      author: siakovenko
+      changes:
+        - sql: "CREATE CLASS yflow IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY yflow.yflow_id IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX yflow.yflow_id UNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DROP CLASS yflow"
+  - changeSet:
+      id: y_subflow_class
+      author: siakovenko
+      changes:
+        - sql: "CREATE CLASS y_subflow IF NOT EXISTS EXTENDS E"
+        - sql: "CREATE PROPERTY y_subflow.yflow_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY y_subflow.subflow_id IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX y_subflow.yflow_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX y_subflow.subflow_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX y_subflow_unique on y_subflow (yflow_id, subflow_id) UNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DROP CLASS y_subflow"

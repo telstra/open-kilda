@@ -33,5 +33,5 @@ import lombok.EqualsAndHashCode;
 public class YFlowReadRequest extends CommandData {
     private static final long serialVersionUID = 1L;
 
-    String flowId;
+    String yFlowId;
 }

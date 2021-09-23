@@ -31,7 +31,9 @@ import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 public class FlowDeleteService {
@@ -43,6 +45,7 @@ public class FlowDeleteService {
             = new FsmExecutor<>(Event.NEXT);
 
     private final FlowDeleteHubCarrier carrier;
+    private final Set<FlowDeleteEventListener> eventListeners = new HashSet<>();
     private final FlowEventRepository flowEventRepository;
 
     private boolean active;
@@ -63,7 +66,15 @@ public class FlowDeleteService {
      * @param flowId the flow to delete.
      */
     public void handleRequest(String key, CommandContext commandContext, String flowId) {
-        log.debug("Handling flow delete request with key {} and flow ID: {}", key, flowId);
+        startFlowDeletion(key, commandContext, flowId, true);
+    }
+
+    /**
+     * Start flow deletion for the provided flow.
+     */
+    public void startFlowDeletion(String key, CommandContext commandContext, String flowId,
+                                  boolean allowNorthboundResponse) {
+        log.debug("Handling flow deletion request with key {} and flow ID: {}", key, flowId);
 
         if (fsms.containsKey(key)) {
             log.error("Attempt to create a FSM with key {}, while there's another active FSM with the same key.", key);
@@ -72,11 +83,12 @@ public class FlowDeleteService {
 
         String eventKey = commandContext.getCorrelationId();
         if (flowEventRepository.existsByTaskId(eventKey)) {
-            log.error("Attempt to reuse key %s, but there's a history record(s) for it.", eventKey);
+            log.error("Attempt to reuse key {}, but there's a history record(s) for it.", eventKey);
             return;
         }
 
-        FlowDeleteFsm fsm = fsmFactory.newInstance(commandContext, flowId);
+        FlowDeleteFsm fsm = fsmFactory.newInstance(commandContext, flowId, allowNorthboundResponse,
+                eventListeners);
         fsms.put(key, fsm);
 
         fsmExecutor.fire(fsm, Event.NEXT, FlowDeleteContext.builder().build());
@@ -156,5 +168,9 @@ public class FlowDeleteService {
      */
     public void activate() {
         active = true;
+    }
+
+    public void addEventListener(FlowDeleteEventListener eventListener) {
+        eventListeners.add(eventListener);
     }
 }

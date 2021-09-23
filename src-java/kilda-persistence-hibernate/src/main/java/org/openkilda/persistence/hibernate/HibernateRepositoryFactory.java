@@ -46,6 +46,7 @@ import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.VxlanRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
 import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
@@ -195,6 +196,11 @@ public class HibernateRepositoryFactory implements RepositoryFactory {
 
     @Override
     public FlowMirrorPathRepository createFlowMirrorPathRepository() {
+        throw new IllegalStateException("Repository not implemented on hibernate layer");
+    }
+
+    @Override
+    public YFlowRepository createYFlowRepository() {
         throw new IllegalStateException("Repository not implemented on hibernate layer");
     }
 

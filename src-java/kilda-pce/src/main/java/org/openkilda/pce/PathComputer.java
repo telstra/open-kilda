@@ -17,6 +17,7 @@ package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
@@ -69,4 +70,12 @@ public interface PathComputer {
                          FlowEncapsulationType flowEncapsulationType, PathComputationStrategy pathComputationStrategy,
                          Duration maxLatency, Duration maxLatencyTier2)
             throws RecoverableException, UnroutableFlowException;
+
+    /**
+     * Finds the Y-point from the provided flow paths.
+     */
+    default SwitchId getIntersectionPoint(SwitchId sharedSwitchId, FlowPath... flowPaths) {
+        //TODO: implement
+        return flowPaths[0].getSegments().get(1).getSrcSwitchId();
+    }
 }

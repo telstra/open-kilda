@@ -83,4 +83,6 @@ public interface RepositoryFactory {
     LagLogicalPortRepository createLagLogicalPortRepository();
 
     PhysicalPortRepository createPhysicalPortRepository();
+
+    YFlowRepository createYFlowRepository();
 }

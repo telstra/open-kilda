@@ -34,7 +34,9 @@ import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 public class FlowCreateService {
@@ -43,6 +45,7 @@ public class FlowCreateService {
 
     private final FlowCreateFsm.Factory fsmFactory;
     private final FlowCreateHubCarrier carrier;
+    private final Set<FlowCreateEventListener> eventListeners = new HashSet<>();
     private final FlowEventRepository flowEventRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
     private boolean active;
@@ -62,17 +65,27 @@ public class FlowCreateService {
                 .pathAllocationRetryDelay(pathAllocationRetryDelay)
                 .speakerCommandRetriesLimit(speakerCommandRetriesLimit)
                 .build();
-        fsmFactory = FlowCreateFsm.factory(persistenceManager, carrier, fsmConfig, flowResourcesManager, pathComputer);
+        fsmFactory = FlowCreateFsm.factory(persistenceManager, carrier, fsmConfig, flowResourcesManager,
+                pathComputer);
     }
 
     /**
      * Handles request for flow creation.
      *
-     * @param key     command identifier.
+     * @param key command identifier.
      * @param request request data.
      */
     public void handleRequest(String key, CommandContext commandContext, FlowRequest request) {
-        log.debug("Handling flow create request with key {} and flow ID: {}", key, request.getFlowId());
+        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
+        startFlowCreation(key, commandContext, requestedFlow, true);
+    }
+
+    /**
+     * Start flow creation for the provided information.
+     */
+    public void startFlowCreation(String key, CommandContext commandContext, RequestedFlow requestedFlow,
+                                  boolean allowNorthboundResponse) {
+        log.debug("Handling flow create request with key {} and flow ID: {}", key, requestedFlow.getFlowId());
 
         if (fsms.containsKey(key)) {
             log.error("Attempt to create a FSM with key {}, while there's another active FSM with the same key.", key);
@@ -85,10 +98,10 @@ public class FlowCreateService {
             return;
         }
 
-        FlowCreateFsm fsm = fsmFactory.produce(request.getFlowId(), commandContext);
+        FlowCreateFsm fsm = fsmFactory.produce(requestedFlow.getFlowId(), commandContext, allowNorthboundResponse,
+                eventListeners);
         fsms.put(key, fsm);
 
-        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
         if (requestedFlow.getFlowEncapsulationType() == null) {
             requestedFlow.setFlowEncapsulationType(
                     kildaConfigurationRepository.getOrDefault().getFlowEncapsulationType());
@@ -179,5 +192,9 @@ public class FlowCreateService {
      */
     public void activate() {
         active = true;
+    }
+
+    public void addEventListener(FlowCreateEventListener eventListener) {
+        eventListeners.add(eventListener);
     }
 }

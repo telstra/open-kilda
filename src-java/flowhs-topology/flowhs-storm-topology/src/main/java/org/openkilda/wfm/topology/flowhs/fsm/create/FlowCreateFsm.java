@@ -53,6 +53,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.action.RollbackInstalledRule
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.ValidateIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.ValidateNonIngressRuleAction;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
+import org.openkilda.wfm.topology.flowhs.service.FlowCreateEventListener;
 import org.openkilda.wfm.topology.flowhs.service.FlowCreateHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 
@@ -68,6 +69,7 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -82,6 +84,8 @@ import java.util.concurrent.TimeUnit;
 public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Event, FlowCreateContext> {
 
     private final FlowCreateHubCarrier carrier;
+    private final boolean allowNorthboundResponse;
+    private final Collection<FlowCreateEventListener> eventListeners;
 
     private RequestedFlow targetFlow;
     private final String flowId;
@@ -108,11 +112,14 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
 
     private String errorReason;
 
-    private FlowCreateFsm(String flowId, CommandContext commandContext, FlowCreateHubCarrier carrier, Config config) {
+    private FlowCreateFsm(String flowId, CommandContext commandContext, FlowCreateHubCarrier carrier, Config config,
+                          boolean allowNorthboundResponse, Collection<FlowCreateEventListener> eventListeners) {
         super(commandContext);
         this.flowId = flowId;
         this.carrier = carrier;
         this.remainRetries = config.getFlowCreationRetriesLimit();
+        this.allowNorthboundResponse = allowNorthboundResponse;
+        this.eventListeners = eventListeners;
     }
 
     public boolean isPendingCommand(UUID commandId) {
@@ -183,7 +190,9 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
 
     @Override
     public void sendNorthboundResponse(Message message) {
-        carrier.sendNorthboundResponse(message);
+        if (allowNorthboundResponse) {
+            carrier.sendNorthboundResponse(message);
+        }
     }
 
     private void resetState() {
@@ -271,7 +280,8 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
                 FlowResourcesManager resourcesManager, PathComputer pathComputer) {
             this.builder = StateMachineBuilderFactory.create(
                     FlowCreateFsm.class, State.class, Event.class, FlowCreateContext.class,
-                    String.class, CommandContext.class, FlowCreateHubCarrier.class, Config.class);
+                    String.class, CommandContext.class, FlowCreateHubCarrier.class, Config.class,
+                    boolean.class, Collection.class);
             this.carrier = carrier;
             this.config = config;
 
@@ -490,8 +500,27 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public FlowCreateFsm produce(String flowId, CommandContext commandContext) {
-            FlowCreateFsm fsm = builder.newStateMachine(State.INITIALIZED, flowId, commandContext, carrier, config);
+        public FlowCreateFsm produce(String flowId, CommandContext commandContext, boolean allowNorthboundResponse,
+                                     Collection<FlowCreateEventListener> eventListeners) {
+            FlowCreateFsm fsm = builder.newStateMachine(State.INITIALIZED, flowId, commandContext, carrier, config,
+                    allowNorthboundResponse, eventListeners);
+
+            if (eventListeners != null && !eventListeners.isEmpty()) {
+                fsm.addTransitionCompleteListener(event -> {
+                    switch (event.getTargetState()) {
+                        case FINISHED:
+                            eventListeners.forEach(listener -> listener.onCompleted(flowId));
+                            break;
+                        case FINISHED_WITH_ERROR:
+                            eventListeners.forEach(listener -> listener.onFailed(flowId, fsm.getErrorReason(),
+                                    ErrorType.INTERNAL_ERROR));
+                            break;
+                        default:
+                            // ignore
+                    }
+                });
+            }
+
             MeterRegistryHolder.getRegistry().ifPresent(registry -> {
                 Sample sample = LongTaskTimer.builder("fsm.active_execution")
                         .register(registry)

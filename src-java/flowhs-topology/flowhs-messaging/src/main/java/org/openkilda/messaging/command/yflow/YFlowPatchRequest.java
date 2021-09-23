@@ -21,6 +21,7 @@ import org.openkilda.model.FlowEndpoint;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -30,12 +31,13 @@ import java.util.List;
  * Represents a patch request for y-flow.
  */
 @Data
+@Builder
 @EqualsAndHashCode(callSuper = false)
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class YFlowPatchRequest extends CommandData {
     private static final long serialVersionUID = 1L;
 
-    String flowId;
+    String yFlowId;
     FlowEndpoint sharedEndpoint;
     Long maximumBandwidth;
     String pathComputationStrategy;

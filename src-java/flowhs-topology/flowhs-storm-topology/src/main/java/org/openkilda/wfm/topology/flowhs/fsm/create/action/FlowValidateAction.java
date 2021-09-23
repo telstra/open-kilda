@@ -96,4 +96,14 @@ public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, 
     protected String getGenericErrorMessage() {
         return "Could not create flow";
     }
+
+    @Override
+    protected void handleError(FlowCreateFsm stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        super.handleError(stateMachine, ex, errorType, logTraceback);
+
+        // Notify about failed allocation.
+        stateMachine.getEventListeners().forEach(listener ->
+                listener.onFailed(stateMachine.getFlowId(), stateMachine.getErrorReason(), errorType));
+
+    }
 }

@@ -64,7 +64,7 @@ public abstract class NbTrackableAction<T extends NbTrackableFsm<T, S, E, C>, S,
      */
     protected abstract String getGenericErrorMessage();
 
-    private void handleError(T stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+    protected void handleError(T stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
         String errorMessage = format("%s failed: %s", getClass().getSimpleName(), ex.getMessage());
         if (logTraceback) {
             stateMachine.saveErrorToHistory(errorMessage, ex);

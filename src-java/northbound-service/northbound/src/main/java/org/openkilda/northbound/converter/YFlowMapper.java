@@ -17,6 +17,7 @@ package org.openkilda.northbound.converter;
 
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.SubFlowPathDto;
+import org.openkilda.messaging.command.yflow.SubFlowSharedEndpointEncapsulation;
 import org.openkilda.messaging.command.yflow.SubFlowsResponse;
 import org.openkilda.messaging.command.yflow.YFlowDto;
 import org.openkilda.messaging.command.yflow.YFlowPatchRequest;
@@ -50,6 +51,8 @@ import org.mapstruct.Mapping;
         imports = {FlowEndpointPayload.class, FlowEndpointV2.class})
 public abstract class YFlowMapper {
 
+    @Mapping(target = "yFlowId", source = "YFlowId")
+    @Mapping(target = "yPoint", source = "YPoint")
     public abstract YFlow toYFlow(YFlowDto flow);
 
     public abstract SubFlow toYFlow(SubFlowDto flow);
@@ -77,16 +80,13 @@ public abstract class YFlowMapper {
     public abstract FlowPathV2.PathNodeV2 toPathNodeV2(PathNode pathNode);
 
     @Mapping(target = "type", constant = "CREATE")
-    @Mapping(target = "flowId", ignore = true)
-    @Mapping(target = "timestamp", ignore = true)
+    @Mapping(target = "yFlowId", ignore = true)
     public abstract YFlowRequest toYFlowCreateRequest(YFlowCreatePayload source);
 
     @Mapping(target = "type", constant = "UPDATE")
-    @Mapping(target = "timestamp", ignore = true)
-    public abstract YFlowRequest toYFlowUpdateRequest(String flowId, YFlowUpdatePayload source);
+    public abstract YFlowRequest toYFlowUpdateRequest(String yFlowId, YFlowUpdatePayload source);
 
-    @Mapping(target = "timestamp", ignore = true)
-    public abstract YFlowPatchRequest toYFlowPatchRequest(String flowId, YFlowPatchPayload source);
+    public abstract YFlowPatchRequest toYFlowPatchRequest(String yFlowId, YFlowPatchPayload source);
 
     @Mapping(target = "flowId", ignore = true)
     @Mapping(target = "status", ignore = true)
@@ -105,12 +105,7 @@ public abstract class YFlowMapper {
     @Mapping(target = "trackArpConnectedDevices", ignore = true)
     public abstract FlowEndpoint toFlowEndpoint(YFlowSharedEndpoint endpoint);
 
-    @Mapping(target = "outerVlanId", source = "vlanId")
-    @Mapping(target = "switchId", ignore = true)
-    @Mapping(target = "portNumber", ignore = true)
-    @Mapping(target = "trackLldpConnectedDevices", ignore = true)
-    @Mapping(target = "trackArpConnectedDevices", ignore = true)
-    public abstract FlowEndpoint toFlowEndpoint(YFlowSharedEndpointEncapsulation endpoint);
+    public abstract SubFlowSharedEndpointEncapsulation toFlowEndpoint(YFlowSharedEndpointEncapsulation endpoint);
 
     public abstract SubFlowsDump toSubFlowsDump(SubFlowsResponse source);
 

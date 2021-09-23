@@ -30,7 +30,7 @@ import java.util.List;
 public class YFlowDto implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    String flowId;
+    String yFlowId;
     String status;
     FlowEndpoint sharedEndpoint;
     long maximumBandwidth;
@@ -44,7 +44,7 @@ public class YFlowDto implements Serializable {
     Integer priority;
     boolean strictBandwidth;
     String description;
-    SwitchId ypoint;
+    SwitchId yPoint;
     List<SubFlowDto> subFlows;
     String timeCreate;
     String timeUpdate;

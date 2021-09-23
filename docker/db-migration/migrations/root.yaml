@@ -57,3 +57,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 015-add-flow-stats-class.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 016-add-yflow-classes.yaml

@@ -19,6 +19,7 @@ import org.openkilda.messaging.info.InfoData;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -26,10 +27,11 @@ import lombok.EqualsAndHashCode;
  * Represents a general response for y-flow.
  */
 @Data
+@Builder
 @EqualsAndHashCode(callSuper = false)
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class YFlowResponse extends InfoData {
     private static final long serialVersionUID = 1L;
 
-    YFlowDto flow;
+    YFlowDto yFlow;
 }

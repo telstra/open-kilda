@@ -32,7 +32,7 @@ import java.util.List;
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class YFlow {
     @JsonProperty("y_flow_id")
-    String flowId;
+    String yFlowId;
     String status;
 
     YFlowSharedEndpoint sharedEndpoint;
@@ -50,7 +50,7 @@ public class YFlow {
     String description;
 
     @JsonProperty("y_point")
-    SwitchId ypoint;
+    SwitchId yPoint;
 
     List<SubFlow> subFlows;
 

@@ -96,12 +96,7 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
 
     @Override
     public Optional<Flow> findById(String flowId) {
-        List<? extends FlowFrame> flowFrames = framedGraph().traverse(g -> g.V()
-                .hasLabel(FlowFrame.FRAME_LABEL)
-                .has(FlowFrame.FLOW_ID_PROPERTY, flowId))
-                .toListExplicit(FlowFrame.class);
-        return flowFrames.isEmpty() ? Optional.empty() : Optional.of(flowFrames.get(0))
-                .map(Flow::new);
+        return FlowFrame.load(framedGraph(), flowId).map(Flow::new);
     }
 
     @Override

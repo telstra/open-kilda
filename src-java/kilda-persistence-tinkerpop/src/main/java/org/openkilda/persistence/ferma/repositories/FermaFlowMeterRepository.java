@@ -67,6 +67,20 @@ public class FermaFlowMeterRepository extends FermaGenericRepository<FlowMeter, 
     }
 
     @Override
+    public Optional<FlowMeter> findById(SwitchId switchId, MeterId meterId) {
+        String switchIdAsStr = SwitchIdConverter.INSTANCE.toGraphProperty(switchId);
+        Long meterIdAsLong = MeterIdConverter.INSTANCE.toGraphProperty(meterId);
+
+        List<? extends FlowMeterFrame> flowMeterFrames = framedGraph().traverse(g -> g.V()
+                        .hasLabel(FlowMeterFrame.FRAME_LABEL)
+                        .has(FlowMeterFrame.METER_ID_PROPERTY, meterIdAsLong)
+                        .has(FlowMeterFrame.SWITCH_PROPERTY, switchIdAsStr))
+                .toListExplicit(FlowMeterFrame.class);
+        return flowMeterFrames.isEmpty() ? Optional.empty() : Optional.of(flowMeterFrames.get(0))
+                .map(FlowMeter::new);
+    }
+
+    @Override
     public boolean exists(SwitchId switchId, MeterId meterId) {
         String switchIdAsStr = SwitchIdConverter.INSTANCE.toGraphProperty(switchId);
         Long meterIdAsLong = MeterIdConverter.INSTANCE.toGraphProperty(meterId);

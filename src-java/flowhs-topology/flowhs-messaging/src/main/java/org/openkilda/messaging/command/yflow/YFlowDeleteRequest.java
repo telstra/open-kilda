@@ -33,5 +33,5 @@ import lombok.EqualsAndHashCode;
 public class YFlowDeleteRequest extends CommandData {
     private static final long serialVersionUID = 1L;
 
-    String flowId;
+    String yFlowId;
 }

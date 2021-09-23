@@ -46,6 +46,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.RemoveFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.RemoveRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.RevertFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.ValidateFlowAction;
+import org.openkilda.wfm.topology.flowhs.service.FlowDeleteEventListener;
 import org.openkilda.wfm.topology.flowhs.service.FlowDeleteHubCarrier;
 
 import io.micrometer.core.instrument.LongTaskTimer;
@@ -70,6 +71,7 @@ import java.util.concurrent.TimeUnit;
 public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Event, FlowDeleteContext> {
 
     private final FlowDeleteHubCarrier carrier;
+    private final boolean allowNorthboundResponse;
     private final String flowId;
 
     @Setter
@@ -92,10 +94,12 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
 
     private String errorReason;
 
-    public FlowDeleteFsm(CommandContext commandContext, FlowDeleteHubCarrier carrier, String flowId) {
+    public FlowDeleteFsm(CommandContext commandContext, FlowDeleteHubCarrier carrier, String flowId,
+                         boolean allowNorthboundResponse) {
         super(commandContext);
         this.carrier = carrier;
         this.flowId = flowId;
+        this.allowNorthboundResponse = allowNorthboundResponse;
     }
 
     @Override
@@ -147,7 +151,9 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
 
     @Override
     public void sendNorthboundResponse(Message message) {
-        carrier.sendNorthboundResponse(message);
+        if (allowNorthboundResponse) {
+            carrier.sendNorthboundResponse(message);
+        }
     }
 
     @Override
@@ -168,12 +174,12 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
         private final FlowDeleteHubCarrier carrier;
 
         public Factory(FlowDeleteHubCarrier carrier, PersistenceManager persistenceManager,
-                       FlowResourcesManager resourcesManager,
-                       int speakerCommandRetriesLimit) {
+                       FlowResourcesManager resourcesManager, int speakerCommandRetriesLimit) {
             this.carrier = carrier;
 
             builder = StateMachineBuilderFactory.create(FlowDeleteFsm.class, State.class, Event.class,
-                    FlowDeleteContext.class, CommandContext.class, FlowDeleteHubCarrier.class, String.class);
+                    FlowDeleteContext.class, CommandContext.class, FlowDeleteHubCarrier.class, String.class,
+                    boolean.class);
 
             final FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
             final ReportErrorAction<FlowDeleteFsm, State, Event, FlowDeleteContext>
@@ -255,8 +261,26 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public FlowDeleteFsm newInstance(CommandContext commandContext, String flowId) {
-            FlowDeleteFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
+        public FlowDeleteFsm newInstance(CommandContext commandContext, String flowId, boolean allowNorthboundResponse,
+                                         Collection<FlowDeleteEventListener> eventListeners) {
+            FlowDeleteFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
+                    allowNorthboundResponse);
+
+            if (eventListeners != null && !eventListeners.isEmpty()) {
+                fsm.addTransitionCompleteListener(event -> {
+                    switch (event.getTargetState()) {
+                        case FINISHED:
+                            eventListeners.forEach(listener -> listener.onCompleted(flowId));
+                            break;
+                        case FINISHED_WITH_ERROR:
+                            eventListeners.forEach(listener -> listener.onFailed(flowId, fsm.getErrorReason()));
+                            break;
+                        default:
+                            // ignore
+                    }
+                });
+            }
+
             MeterRegistryHolder.getRegistry().ifPresent(registry -> {
                 Sample sample = LongTaskTimer.builder("fsm.active_execution")
                         .register(registry)

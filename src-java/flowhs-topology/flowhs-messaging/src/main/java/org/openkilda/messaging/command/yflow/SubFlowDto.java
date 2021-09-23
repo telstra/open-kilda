@@ -19,18 +19,21 @@ import org.openkilda.model.FlowEndpoint;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Builder;
 import lombok.Data;
 
 import java.io.Serializable;
 
 @Data
+@Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class SubFlowDto implements Serializable {
     private static final long serialVersionUID = 1L;
 
     String flowId;
     FlowEndpoint endpoint;
-    FlowEndpoint sharedEndpoint;
+    SubFlowSharedEndpointEncapsulation sharedEndpoint;
+
     String status;
     String description;
 

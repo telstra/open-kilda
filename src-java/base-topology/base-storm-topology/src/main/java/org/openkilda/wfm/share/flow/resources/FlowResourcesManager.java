@@ -237,4 +237,23 @@ public class FlowResourcesManager {
         log.debug("Deallocate cookie: {}.", unmaskedCookie);
         cookiePool.deallocate(unmaskedCookie);
     }
+
+    /**
+     * Try to allocate meter which is bound to a flow only.
+     * The method doesn't initialize a transaction. So it requires external transaction to cover allocation failures.
+     */
+    public MeterId allocateMeter(String flowId, SwitchId switchId) throws ResourceAllocationException {
+        try {
+            return meterPool.allocate(switchId, flowId, null);
+        } catch (ConstraintViolationException | ResourceNotAvailableException ex) {
+            throw new ResourceAllocationException("Unable to allocate meter", ex);
+        }
+    }
+
+    /**
+     * Deallocates a meter.
+     */
+    public void deallocateMeter(SwitchId switchId, MeterId meterId) {
+        meterPool.deallocate(switchId, meterId);
+    }
 }

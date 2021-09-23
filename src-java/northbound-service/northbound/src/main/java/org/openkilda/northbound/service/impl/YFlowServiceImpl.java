@@ -85,7 +85,7 @@ public class YFlowServiceImpl implements YFlowService {
         CommandMessage command = new CommandMessage(flowRequest, System.currentTimeMillis(), correlationId);
         return messagingChannel.sendAndGet(flowHsTopic, command)
                 .thenApply(YFlowResponse.class::cast)
-                .thenApply(YFlowResponse::getFlow)
+                .thenApply(YFlowResponse::getYFlow)
                 .thenApply(flowMapper::toYFlow);
     }
 
@@ -98,7 +98,7 @@ public class YFlowServiceImpl implements YFlowService {
         return messagingChannel.sendAndGetChunked(flowHsTopic, request)
                 .thenApply(result -> result.stream()
                         .map(YFlowResponse.class::cast)
-                        .map(YFlowResponse::getFlow)
+                        .map(YFlowResponse::getYFlow)
                         .map(flowMapper::toYFlow)
                         .collect(Collectors.toList()))
                 .thenApply(YFlowDump::new);
@@ -112,7 +112,7 @@ public class YFlowServiceImpl implements YFlowService {
                 RequestCorrelationId.getId());
         return messagingChannel.sendAndGet(flowHsTopic, request)
                 .thenApply(YFlowResponse.class::cast)
-                .thenApply(YFlowResponse::getFlow)
+                .thenApply(YFlowResponse::getYFlow)
                 .thenApply(flowMapper::toYFlow);
     }
 
@@ -143,7 +143,7 @@ public class YFlowServiceImpl implements YFlowService {
         CommandMessage command = new CommandMessage(flowRequest, System.currentTimeMillis(), correlationId);
         return messagingChannel.sendAndGet(flowHsTopic, command)
                 .thenApply(YFlowResponse.class::cast)
-                .thenApply(YFlowResponse::getFlow)
+                .thenApply(YFlowResponse::getYFlow)
                 .thenApply(flowMapper::toYFlow);
     }
 
@@ -163,7 +163,7 @@ public class YFlowServiceImpl implements YFlowService {
         CommandMessage request = new CommandMessage(flowPatchRequest, System.currentTimeMillis(), correlationId);
         return messagingChannel.sendAndGet(flowHsTopic, request)
                 .thenApply(YFlowResponse.class::cast)
-                .thenApply(YFlowResponse::getFlow)
+                .thenApply(YFlowResponse::getYFlow)
                 .thenApply(flowMapper::toYFlow);
     }
 
@@ -174,7 +174,7 @@ public class YFlowServiceImpl implements YFlowService {
                 RequestCorrelationId.getId());
         return messagingChannel.sendAndGet(flowHsTopic, command)
                 .thenApply(YFlowResponse.class::cast)
-                .thenApply(YFlowResponse::getFlow)
+                .thenApply(YFlowResponse::getYFlow)
                 .thenApply(flowMapper::toYFlow);
     }
 

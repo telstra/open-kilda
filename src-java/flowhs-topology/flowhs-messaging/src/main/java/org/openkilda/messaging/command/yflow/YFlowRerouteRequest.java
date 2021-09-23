@@ -36,14 +36,14 @@ import java.util.Set;
 public class YFlowRerouteRequest extends CommandData {
     private static final long serialVersionUID = 1L;
 
-    String flowId;
+    String yFlowId;
     Set<IslEndpoint> affectedIsl;
     boolean force;
     String reason;
     boolean ignoreBandwidth;
 
     public YFlowRerouteRequest(String flowId, String reason) {
-        this.flowId = flowId;
+        this.yFlowId = flowId;
         this.reason = reason;
     }
 }
