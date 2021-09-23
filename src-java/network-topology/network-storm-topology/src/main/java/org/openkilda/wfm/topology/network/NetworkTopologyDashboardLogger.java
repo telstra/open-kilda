@@ -71,6 +71,14 @@ public class NetworkTopologyDashboardLogger extends AbstractDashboardLogger {
         onPortUpDown(endpoint, "DOWN");
     }
 
+    public void onRawPortUp(Endpoint endpoint) {
+        onRawPortUpDown(endpoint, "UP");
+    }
+
+    public void onRawPortDown(Endpoint endpoint) {
+        onRawPortUpDown(endpoint, "DOWN");
+    }
+
     public void onPortFlappingStart(Endpoint endpoint) {
         onPortFlappingStartStop(endpoint, "start");
     }
@@ -142,6 +150,15 @@ public class NetworkTopologyDashboardLogger extends AbstractDashboardLogger {
         populateEvent(context, event);
         String message = String.format("Port status event: switch_id=%s, port_id=%d, state=%s",
                                        endpoint.getDatapath().toString(), endpoint.getPortNumber(), event);
+        invokeLogger(Level.INFO, message, context);
+    }
+
+    private void onRawPortUpDown(Endpoint endpoint, String event) {
+        Map<String, String> context = makeContextTemplate("raw-port");
+        populateCommonPortContext(context, endpoint);
+        String message = String.format(
+                "Port status event (before anti-flap filter): switch_id=%s, port_id=%d, state=%s",
+                endpoint.getDatapath().toString(), endpoint.getPortNumber(), event);
         invokeLogger(Level.INFO, message, context);
     }
 
