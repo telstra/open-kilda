@@ -38,7 +38,7 @@ import spock.lang.ResourceLock
 import spock.lang.Shared
 
 @Slf4j
-@ResourceLock(S42_TOGGLE)
+@Tags([TOPOLOGY_DEPENDENT])
 @Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
 class Server42IslRttSpec extends HealthCheckSpecification {
     @Shared
@@ -133,10 +133,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([TOPOLOGY_DEPENDENT,
-    HARDWARE //Temporarily disable for virtual. wait for real virtual s42
-    ])
-    def "ISL RTT stats are available if both endpoints are connected to the same server42 (same pop)"() {
+    def "ISL RTT stats are available if both endpoints are connected to the same server42, same pop"() {
         given: "An active ISL with both switches connected to the same server42 instance"
         def server42switchesDpIds = topology.getActiveServer42Switches()*.dpId
         def isl = topology.islsForActiveSwitches.find {
@@ -284,7 +281,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([HARDWARE])
     def "No ISL RTT stats in both directions in case link is UP in forward direction only"() {
         given: "An active a-switch ISL with both switches having server42 and with broken reverse direction"
         def server42switchesDpIds = topology.getActiveServer42Switches()*.dpId
@@ -514,7 +510,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([HARDWARE])
     def "ISL Rtt stats are available in case link is RTL and a switch is disconnected"() {
         given: "An active RTL ISL with both switches having server42"
         def server42switchIds = topology.getActiveServer42Switches()*.dpId
@@ -584,7 +579,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([HARDWARE])
     def "System is able to detect and sync missing ISL Rtt rules"() {
         given: "An active ISL with both switches having server42"
         def server42switchesDpIds = topology.getActiveServer42Switches()*.dpId

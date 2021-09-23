@@ -46,12 +46,9 @@ import java.util.concurrent.TimeUnit
 
 @Use(TimeCategory)
 @Narrative("Verify that statistic is collected from server42 Rtt")
-/* On local environment these tests will use stubs without sending real rtt packets across the network.
-see server42-control-server-stub.
-Note that on hardware env it is very important for switch to have correct time, since data in otsdb it posted using
+/* Note that on hardware env it is very important for switch to have correct time, since data in otsdb it posted using
 switch timestamps, thus we may see no stats in otsdb if time on switch is incorrect
  */
-@ResourceLock(S42_TOGGLE)
 @Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
 class Server42FlowRttSpec extends HealthCheckSpecification {
     @Shared
@@ -430,7 +427,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(HARDWARE) //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
     def "Able to synchronize a flow (install missing server42 rules)"() {
         given: "A switch pair connected to server42"
         def server42switches = topology.getActiveServer42Switches();
@@ -680,7 +676,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                     [flowid   : flow.flowId,
                      direction: "reverse",
                      origin   : "flow-monitoring"]).dps
-            def statsSince = new Date(System.currentTimeMillis() - (int) (flowSlaCheckIntervalSeconds * 1.2 * 1000))
+            def statsSince = new Date(System.currentTimeMillis() - (int)(flowSlaCheckIntervalSeconds * 1.2 * 1000))
             def flMonitoringForwardData = otsdb.query(statsSince, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "forward",
@@ -707,7 +703,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(HARDWARE) //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
     def "Flow rtt stats are still available after updating a #data.flowDescription flow"() {
         given: "Two active switches, connected to the server42"
         def server42switches = topology.getActiveServer42Switches()
@@ -795,7 +790,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
     @Tidy
     @Ignore("https://github.com/telstra/open-kilda/issues/3814")
-    @Tags(HARDWARE) //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
     def "Flow rtt stats are available after updating switch properties related to server42"(){
         given: "Two active switches, src has server42 connected with incorrect config in swProps"
         def server42switches = topology.getActiveServer42Switches()
