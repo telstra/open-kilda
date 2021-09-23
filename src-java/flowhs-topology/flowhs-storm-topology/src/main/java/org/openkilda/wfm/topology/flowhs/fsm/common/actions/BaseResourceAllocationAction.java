@@ -82,7 +82,7 @@ import java.util.function.Supplier;
  * A base for action classes that allocate resources for flow paths.
  */
 @Slf4j
-public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm<T, S, E, C>, S, E, C> extends
+public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm<T, S, E, C, ?>, S, E, C> extends
         NbTrackableAction<T, S, E, C> {
     private final int pathAllocationRetriesLimit;
     private final int pathAllocationRetryDelay;

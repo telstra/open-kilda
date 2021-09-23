@@ -35,6 +35,8 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
+import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 
 import org.hamcrest.Matchers;
 import org.junit.Assert;
@@ -62,7 +64,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldFailDeleteFlowIfNoFlowFound() {
+    public void shouldFailDeleteFlowIfNoFlowFound() throws DuplicateKeyException {
         String flowId = "dummy-flow";
 
         // make sure flow is missing
@@ -76,7 +78,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldFailDeleteFlowOnLockedFlow() {
+    public void shouldFailDeleteFlowOnLockedFlow() throws DuplicateKeyException {
         Flow flow = makeFlow();
         setupFlowRepositorySpy().findById(flow.getFlowId())
                 .ifPresent(foundFlow -> foundFlow.setStatus(FlowStatus.IN_PROGRESS));
@@ -89,7 +91,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldCompleteDeleteOnLockedSwitches() {
+    public void shouldCompleteDeleteOnLockedSwitches() throws DuplicateKeyException, UnknownKeyException {
         String flowId = makeFlow().getFlowId();
 
         FlowDeleteService service = makeService();
@@ -106,16 +108,17 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldCompleteDeleteOnUnsuccessfulSpeakerResponse() {
+    public void shouldCompleteDeleteOnUnsuccessfulSpeakerResponse() throws DuplicateKeyException, UnknownKeyException {
         testSpeakerErrorResponse(makeFlow().getFlowId(), ErrorCode.UNKNOWN);
     }
 
     @Test
-    public void shouldCompleteDeleteOnTimeoutSpeakerResponse() {
+    public void shouldCompleteDeleteOnTimeoutSpeakerResponse() throws DuplicateKeyException, UnknownKeyException {
         testSpeakerErrorResponse(makeFlow().getFlowId(), ErrorCode.OPERATION_TIMED_OUT);
     }
 
-    private void testSpeakerErrorResponse(String flowId, ErrorCode errorCode) {
+    private void testSpeakerErrorResponse(String flowId, ErrorCode errorCode)
+            throws UnknownKeyException, DuplicateKeyException {
         FlowDeleteService service = makeService();
         service.handleRequest(dummyRequestKey, commandContext, flowId);
 
@@ -140,7 +143,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldFailDeleteOnTimeoutDuringRuleRemoval() {
+    public void shouldFailDeleteOnTimeoutDuringRuleRemoval() throws UnknownKeyException, DuplicateKeyException {
         String flowId = makeFlow().getFlowId();
 
         FlowDeleteService service = makeService();
@@ -176,7 +179,8 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldCompleteDeleteOnErrorDuringCompletingFlowPathRemoval() {
+    public void shouldCompleteDeleteOnErrorDuringCompletingFlowPathRemoval()
+            throws DuplicateKeyException, UnknownKeyException {
         Flow target = makeFlow();
         FlowPath forwardPath = target.getForwardPath();
         Assert.assertNotNull(forwardPath);
@@ -200,7 +204,8 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldCompleteDeleteOnErrorDuringResourceDeallocation() {
+    public void shouldCompleteDeleteOnErrorDuringResourceDeallocation()
+            throws DuplicateKeyException, UnknownKeyException {
         Flow target = makeFlow();
         FlowPath forwardPath = target.getForwardPath();
         Assert.assertNotNull(forwardPath);
@@ -225,7 +230,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldCompleteDeleteOnErrorDuringRemovingFlow() {
+    public void shouldCompleteDeleteOnErrorDuringRemovingFlow() throws DuplicateKeyException, UnknownKeyException {
         Flow target = makeFlow();
 
         FlowRepository repository = setupFlowRepositorySpy();
@@ -250,7 +255,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldSuccessfullyDeleteFlow() {
+    public void shouldSuccessfullyDeleteFlow() throws DuplicateKeyException, UnknownKeyException {
         Flow target = makeFlow();
 
         FlowDeleteService service = makeService();
@@ -282,7 +287,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
         // TODO(surabujin): maybe we should make more deep scanning for flow related resources and nested objects
     }
 
-    private void produceSpeakerResponses(FlowDeleteService service) {
+    private void produceSpeakerResponses(FlowDeleteService service) throws UnknownKeyException {
         FlowSegmentRequest request;
         while ((request = requests.poll()) != null) {
             service.handleAsyncResponse(dummyRequestKey, SpeakerFlowSegmentResponse.builder()

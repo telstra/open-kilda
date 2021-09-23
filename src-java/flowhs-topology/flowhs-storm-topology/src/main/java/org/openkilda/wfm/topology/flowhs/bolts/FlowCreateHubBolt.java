@@ -51,6 +51,8 @@ import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
+import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowCreateHubCarrier;
@@ -113,12 +115,15 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
         service.activate();
     }
 
-
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
         currentKey = pullKey(input);
         FlowRequest payload = pullValue(input, FIELD_ID_PAYLOAD, FlowRequest.class);
-        service.handleRequest(currentKey, pullContext(input), payload);
+        try {
+            service.handleRequest(currentKey, getCommandContext(), payload);
+        } catch (DuplicateKeyException e) {
+            log.error("Failed to handle a request with key {}. {}", currentKey, e.getMessage());
+        }
     }
 
     @Override
@@ -126,13 +131,21 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
         String operationKey = pullKey(input);
         currentKey = KeyProvider.getParentKey(operationKey);
         SpeakerFlowSegmentResponse flowResponse = pullValue(input, FIELD_ID_PAYLOAD, SpeakerFlowSegmentResponse.class);
-        service.handleAsyncResponse(currentKey, flowResponse);
+        try {
+            service.handleAsyncResponse(currentKey, flowResponse);
+        } catch (UnknownKeyException e) {
+            log.warn("Received a response with unknown key {}.", currentKey);
+        }
     }
 
     @Override
     public void onTimeout(String key, Tuple tuple) {
         currentKey = key;
-        service.handleTimeout(key);
+        try {
+            service.handleTimeout(key);
+        } catch (UnknownKeyException e) {
+            log.warn("Failed to handle a timeout event for unknown key {}.", currentKey);
+        }
     }
 
     @Override

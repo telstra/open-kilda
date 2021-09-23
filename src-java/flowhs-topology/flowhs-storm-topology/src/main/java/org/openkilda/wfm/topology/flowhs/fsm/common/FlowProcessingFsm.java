@@ -16,11 +16,12 @@
 package org.openkilda.wfm.topology.flowhs.fsm.common;
 
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
 import org.squirrelframework.foundation.fsm.StateMachine;
 
-public abstract class FlowProcessingFsm<T extends StateMachine<T, S, E, C>, S, E, C>
-        extends WithHistorySupportFsm<T, S, E, C> {
+public abstract class FlowProcessingFsm<T extends StateMachine<T, S, E, C>, S, E, C, R extends FlowGenericCarrier>
+        extends WithHistorySupportFsm<T, S, E, C, R> {
 
     public FlowProcessingFsm(CommandContext commandContext) {
         super(commandContext);

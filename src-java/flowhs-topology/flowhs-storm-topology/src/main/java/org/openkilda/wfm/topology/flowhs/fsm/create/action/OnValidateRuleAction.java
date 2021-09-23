@@ -22,6 +22,7 @@ import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -51,7 +52,7 @@ abstract class OnValidateRuleAction extends OnReceivedResponseAction {
     protected void onComplete(FlowCreateFsm stateMachine, FlowCreateContext context) {
         if (stateMachine.getFailedCommands().isEmpty()) {
             log.debug("Rules ({}) have been validated for flow {}", getRuleType(), stateMachine.getFlowId());
-            stateMachine.fireNext(context);
+            stateMachine.fire(Event.RULES_VALIDATED);
         } else {
             String errorMessage = format(
                     "Found missing rules (%s) or received error response(s) on validation commands", getRuleType());

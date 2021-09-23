@@ -37,6 +37,8 @@ import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -108,7 +110,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         verifyFlowPathStatus(result.getProtectedReversePath(), FlowPathStatus.ACTIVE, "protected-reverse");
     }
 
-    private Flow testHappyPath(FlowRequest flowRequest, String key) {
+    private Flow testHappyPath(FlowRequest flowRequest, String key) throws DuplicateKeyException {
         FlowCreateService service = makeService();
         service.handleRequest(key, new CommandContext(), flowRequest);
 
@@ -120,10 +122,14 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
 
         FlowSegmentRequest request;
         while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
-                service.handleAsyncResponse(key, buildResponseOnVerifyRequest(request));
-            } else {
-                handleResponse(service, key, request);
+            try {
+                if (request.isVerifyRequest()) {
+                    service.handleAsyncResponse(key, buildResponseOnVerifyRequest(request));
+                } else {
+                    handleResponse(service, key, request);
+                }
+            } catch (UnknownKeyException ex) {
+                // skip
             }
         }
 
@@ -156,18 +162,22 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         int installCommands = 0;
         int deleteCommands = 0;
         while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
-                service.handleAsyncResponse(key, buildResponseOnVerifyRequest(request));
-            } else if (request.isInstallRequest()) {
-                installCommands++;
-                if (requests.size() > 1) {
+            try {
+                if (request.isVerifyRequest()) {
+                    service.handleAsyncResponse(key, buildResponseOnVerifyRequest(request));
+                } else if (request.isInstallRequest()) {
+                    installCommands++;
+                    if (requests.size() > 1) {
+                        handleResponse(service, key, request);
+                    } else {
+                        handleErrorResponse(service, key, request, ErrorCode.UNKNOWN);
+                    }
+                } else if (request.isRemoveRequest()) {
+                    deleteCommands++;
                     handleResponse(service, key, request);
-                } else {
-                    handleErrorResponse(service, key, request, ErrorCode.UNKNOWN);
                 }
-            } else if (request.isRemoveRequest()) {
-                deleteCommands++;
-                handleResponse(service, key, request);
+            } catch (UnknownKeyException ex) {
+                // skip
             }
         }
 
@@ -201,18 +211,22 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         int installCommands = 0;
         int deleteCommands = 0;
         while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
-                service.handleAsyncResponse(key, buildResponseOnVerifyRequest(request));
-            } else if (request.isInstallRequest()) {
-                installCommands++;
-                if (requests.size() > 1 || request instanceof EgressFlowSegmentInstallRequest) {
+            try {
+                if (request.isVerifyRequest()) {
+                    service.handleAsyncResponse(key, buildResponseOnVerifyRequest(request));
+                } else if (request.isInstallRequest()) {
+                    installCommands++;
+                    if (requests.size() > 1 || request instanceof EgressFlowSegmentInstallRequest) {
+                        handleResponse(service, key, request);
+                    } else {
+                        handleErrorResponse(service, key, request, ErrorCode.UNKNOWN);
+                    }
+                } else if (request.isRemoveRequest()) {
+                    deleteCommands++;
                     handleResponse(service, key, request);
-                } else {
-                    handleErrorResponse(service, key, request, ErrorCode.UNKNOWN);
                 }
-            } else if (request.isRemoveRequest()) {
-                deleteCommands++;
-                handleResponse(service, key, request);
+            } catch (UnknownKeyException ex) {
+                // skip
             }
         }
 
@@ -284,21 +298,25 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
             UUID commandId = request.getCommandId();
             seenCounter.put(commandId, seenCounter.getOrDefault(commandId, 0) + 1);
             Integer remaining = remainingRetries.getOrDefault(commandId, retriesLimit);
-            if (failRequest.isInstance(request) && remaining > 0) {
-                producedErrors.add(commandId);
-                remainingRetries.put(commandId, remaining - 1);
+            try {
+                if (failRequest.isInstance(request) && remaining > 0) {
+                    producedErrors.add(commandId);
+                    remainingRetries.put(commandId, remaining - 1);
 
-                handleErrorResponse(service, key, request, error);
-            } else if (request.isVerifyRequest()) {
-                service.handleAsyncResponse(key, buildResponseOnVerifyRequest(request));
-            } else {
-                handleResponse(service, key, request);
+                    handleErrorResponse(service, key, request, error);
+                } else if (request.isVerifyRequest()) {
+                    service.handleAsyncResponse(key, buildResponseOnVerifyRequest(request));
+                } else {
+                    handleResponse(service, key, request);
+                }
+            } catch (UnknownKeyException ex) {
+                // skip
             }
         }
 
         Assert.assertFalse(producedErrors.isEmpty());
         for (Map.Entry<UUID, Integer> entry : seenCounter.entrySet()) {
-            if (! producedErrors.contains(entry.getKey())) {
+            if (!producedErrors.contains(entry.getKey())) {
                 continue;
             }
 
@@ -345,21 +363,26 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
             UUID commandId = request.getCommandId();
             Integer remaining = remainingRetries.getOrDefault(commandId, retriesLimit + 1);
             Assert.assertTrue(0 < remaining);
-            if (request instanceof EgressFlowSegmentInstallRequest) {
-                remainingRetries.put(commandId, remaining - 1);
+            try {
+                if (request instanceof EgressFlowSegmentInstallRequest) {
+                    remainingRetries.put(commandId, remaining - 1);
 
-                handleErrorResponse(service, key, request, ErrorCode.SWITCH_UNAVAILABLE);
-            } else if (request.isVerifyRequest()) {
-                service.handleAsyncResponse(key, buildResponseOnVerifyRequest(request));
-            } else {
-                handleResponse(service, key, request);
+                    handleErrorResponse(service, key, request, ErrorCode.SWITCH_UNAVAILABLE);
+                } else if (request.isVerifyRequest()) {
+                    service.handleAsyncResponse(key, buildResponseOnVerifyRequest(request));
+                } else {
+                    handleResponse(service, key, request);
+                }
+            } catch (UnknownKeyException ex) {
+                // skip
             }
         }
 
         verifyFlowStatus(flowRequest.getFlowId(), FlowStatus.DOWN);
     }
 
-    private void handleResponse(FlowCreateService service, String key, FlowSegmentRequest request) {
+    private void handleResponse(FlowCreateService service, String key, FlowSegmentRequest request)
+            throws UnknownKeyException {
         service.handleAsyncResponse(key, SpeakerFlowSegmentResponse.builder()
                 .messageContext(request.getMessageContext())
                 .metadata(request.getMetadata())
@@ -369,8 +392,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
                 .build());
     }
 
-    private void handleErrorResponse(
-            FlowCreateService service, String key, FlowSegmentRequest request, ErrorCode errorCode) {
+    private void handleErrorResponse(FlowCreateService service, String key, FlowSegmentRequest request,
+                                     ErrorCode errorCode) throws UnknownKeyException {
         service.handleAsyncResponse(key, FlowErrorResponse.errorBuilder()
                 .messageContext(request.getMessageContext())
                 .metadata(request.getMetadata())

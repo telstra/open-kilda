@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.messaging.Message;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
@@ -41,6 +40,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions.Validate
 import org.openkilda.wfm.topology.flowhs.service.FlowMirrorPointDeleteHubCarrier;
 
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
@@ -53,10 +53,9 @@ import java.util.UUID;
 @Getter
 @Setter
 @Slf4j
-public final class FlowMirrorPointDeleteFsm
-        extends NbTrackableFsm<FlowMirrorPointDeleteFsm, State, Event, FlowMirrorPointDeleteContext> {
+public final class FlowMirrorPointDeleteFsm extends NbTrackableFsm<FlowMirrorPointDeleteFsm, State, Event,
+        FlowMirrorPointDeleteContext, FlowMirrorPointDeleteHubCarrier> {
 
-    private final FlowMirrorPointDeleteHubCarrier carrier;
     private final String flowId;
 
     private FlowStatus flowStatus;
@@ -75,10 +74,9 @@ public final class FlowMirrorPointDeleteFsm
 
     private String errorReason;
 
-    public FlowMirrorPointDeleteFsm(CommandContext commandContext, FlowMirrorPointDeleteHubCarrier carrier,
+    public FlowMirrorPointDeleteFsm(CommandContext commandContext, @NonNull FlowMirrorPointDeleteHubCarrier carrier,
                                     String flowId) {
-        super(commandContext);
-        this.carrier = carrier;
+        super(commandContext, carrier);
         this.flowId = flowId;
     }
 
@@ -103,11 +101,6 @@ public final class FlowMirrorPointDeleteFsm
         } else {
             this.errorReason = errorReason;
         }
-    }
-
-    @Override
-    public void sendNorthboundResponse(Message message) {
-        carrier.sendNorthboundResponse(message);
     }
 
     @Override

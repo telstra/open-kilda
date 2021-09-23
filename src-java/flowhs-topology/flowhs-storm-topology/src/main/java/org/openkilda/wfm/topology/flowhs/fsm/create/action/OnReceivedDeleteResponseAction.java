@@ -20,7 +20,9 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -41,6 +43,17 @@ public class OnReceivedDeleteResponseAction extends OnReceivedInstallResponseAct
             stateMachine.saveErrorToHistory("Failed to delete rule",
                     format("Failed to delete the rule: commandId %s, switch %s. Error: %s",
                             errorResponse.getCommandId(), errorResponse.getSwitchId(), errorResponse));
+        }
+    }
+
+    @Override
+    protected void onComplete(FlowCreateFsm stateMachine, FlowCreateContext context) {
+        if (stateMachine.getFailedCommands().isEmpty()) {
+            log.debug("Received responses for all pending commands of the flow {} ({})",
+                    stateMachine.getFlowId(), stateMachine.getCurrentState());
+            stateMachine.fire(Event.RULES_REMOVED);
+        } else {
+            super.onComplete(stateMachine, context);
         }
     }
 }

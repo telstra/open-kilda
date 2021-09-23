@@ -138,6 +138,10 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
             } else {
                 stateMachine.fireNext(context);
             }
+
+            // Notify about successful allocation.
+            stateMachine.notifyEventListeners(listener -> listener.onResourcesAllocated(flowId));
+
             return Optional.of(buildResponseMessage(resultFlow, stateMachine.getCommandContext()));
         } catch (UnroutableFlowException | RecoverableException e) {
             throw new FlowProcessingException(ErrorType.NOT_FOUND,
@@ -384,5 +388,13 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
             detectConnectedDevices.dstSwitchArp(destSwitchProps.isSwitchArp());
         }
         flow.setDetectConnectedDevices(detectConnectedDevices.build());
+    }
+
+    @Override
+    protected void handleError(FlowCreateFsm stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        super.handleError(stateMachine, ex, errorType, logTraceback);
+
+        // Notify about failed allocation.
+        stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
     }
 }
