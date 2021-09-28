@@ -1,7 +1,7 @@
 # 'make' will build docker images and try to run it.
 default: update-props build-stable up-test-mode
 
-UPDATE_PROPS := confd -onetime -confdir ./confd/ -backend file -file ./confd/vars/main.yaml -file ./confd/vars/docker-compose.yaml -sync-only
+UPDATE_PROPS := confd -onetime -confdir ./confd/ -backend file -file ./confd/vars/main.yaml -file ./confd/vars/docker-compose.yaml -file ./confd/vars/test-vars.yaml -sync-only
 
 generated.mk update-props update-props-blue:
 	$(UPDATE_PROPS) -file ./confd/vars/blue-mode.yaml
