@@ -303,7 +303,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(links, isl.reversed).get().state == FAILED
             assert islUtils.getIslInfo(links, isl.reversed).get().actualState == FAILED
         }
-        def checkpointTime = new Date()
         def islRvIsBroken = true
 
         when: "server42IslRtt feature toggle is set to true"
@@ -315,6 +314,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         }
 
         then: "No ISL RTT stats in both directions because reverse direction is broken"
+        def checkpointTime = new Date()
         timedLoop(statsWaitSeconds) {
             checkIslRttStats(isl, checkpointTime, false)
             checkIslRttStats(isl.reversed, checkpointTime, false)
