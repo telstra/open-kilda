@@ -22,8 +22,10 @@ import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.AvailableNetworkFactory;
@@ -39,16 +41,20 @@ import org.openkilda.pce.model.FindPathResult;
 import org.openkilda.pce.model.PathWeight;
 import org.openkilda.pce.model.WeightFunction;
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -297,5 +303,65 @@ public class InMemoryPathComputer implements PathComputer {
                 .destPort(edge.getDestPort())
                 .latency(edge.getLatency())
                 .build();
+    }
+
+    @Override
+    public SwitchId getIntersectionPoint(SwitchId sharedSwitchId, FlowPath... flowPaths) {
+        List<LinkedList<SwitchId>> paths = convertFlowPathsToSwitchLists(sharedSwitchId, flowPaths);
+
+        Set<SwitchId> ypointCandidates = new HashSet<>();
+        SwitchId ypoint = null;
+        SwitchId tmpPoint = sharedSwitchId;
+
+        while (tmpPoint != null) {
+            tmpPoint = null;
+            ypointCandidates.clear();
+
+            for (LinkedList<SwitchId> path : paths) {
+                if (!path.isEmpty()) {
+                    ypointCandidates.add(path.poll());
+                }
+            }
+
+            if (ypointCandidates.size() < 2) {
+                tmpPoint = ypointCandidates.stream().findAny().orElse(null);
+            }
+
+            if (tmpPoint != null) {
+                ypoint = tmpPoint;
+            }
+        }
+
+        return ypoint;
+    }
+
+    @VisibleForTesting
+    List<LinkedList<SwitchId>> convertFlowPathsToSwitchLists(SwitchId sharedSwitchId, FlowPath... flowPaths) {
+        List<LinkedList<SwitchId>> paths = new ArrayList<>();
+
+        for (FlowPath flowPath : flowPaths) {
+            List<PathSegment> pathSegments = flowPath.getSegments();
+            if (pathSegments == null || pathSegments.isEmpty()) {
+                throw new IllegalArgumentException(format("The path '%s' has no path segments", flowPath.getPathId()));
+            }
+
+            LinkedList<SwitchId> path = new LinkedList<>();
+            path.add(pathSegments.get(0).getSrcSwitchId());
+            for (PathSegment pathSegment : pathSegments) {
+                path.add(pathSegment.getDestSwitchId());
+            }
+
+            if (sharedSwitchId.equals(path.getLast())) {
+                Collections.reverse(path);
+            } else if (!sharedSwitchId.equals(path.getFirst())) {
+                throw new IllegalArgumentException(
+                        format("Shared switch '%s' is not an endpoint switch for path '%s'",
+                                sharedSwitchId, flowPath.getPathId()));
+            }
+
+            paths.add(path);
+        }
+
+        return paths;
     }
 }
