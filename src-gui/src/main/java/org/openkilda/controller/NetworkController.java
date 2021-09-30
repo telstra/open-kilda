@@ -51,6 +51,8 @@ public class NetworkController extends BaseController {
      *
      * @param srcSwitch the src switch
      * @param dstSwitch the dst switch
+     * @param strategy to use by path computer
+     * @param maxLatency for the strategy
      * @return the network paths
      */
     @RequestMapping(value = "/paths", method = RequestMethod.GET)
@@ -59,7 +61,11 @@ public class NetworkController extends BaseController {
     public @ResponseBody NetworkPathInfo getNetworkPathDetail(@RequestParam(value = "src_switch", required = true) 
                                                               final String srcSwitch, 
                                                               @RequestParam(value = "dst_switch", required = true) 
-                                                              final String dstSwitch) {
-        return networkService.getPaths(srcSwitch, dstSwitch);
+                                                              final String dstSwitch,
+                                                              @RequestParam(value = "strategy", required = true)
+                                                              final String strategy,
+                                                              @RequestParam(value = "max_latency", required = true)
+                                                              final int maxLatency) {
+        return networkService.getPaths(srcSwitch, dstSwitch, strategy, maxLatency);
     }
 }

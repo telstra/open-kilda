@@ -36,9 +36,9 @@ export class SwitchService {
     return this.httpClient.get<any[]>(`${environment.apiEndPoint}/stats/switchports/${switchId}/${startDate}/${endDate}/${downSample}?_=${timestamp}`); 
 }
 
-getNetworkPath(source_switch,target_switch){
+getNetworkPath(source_switch,target_switch, strategy, max_latency){
   let timestamp = new Date().getTime();
-  return this.httpClient.get<any>(`${environment.apiEndPoint}/network/paths?src_switch=${source_switch}&dst_switch=${target_switch}&_=${timestamp}`); 
+  return this.httpClient.get<any>(`${environment.apiEndPoint}/network/paths?src_switch=${source_switch}&dst_switch=${target_switch}&strategy=${strategy}&max_latency=${max_latency}&_=${timestamp}`);
 }
 
   

@@ -40,9 +40,12 @@ public class NetworkService {
      *
      * @param srcSwitch the src switch
      * @param dstSwitch the dst switch
+     * @param strategy to use by path computer
+     * @param maxLatency to be used by strategy
      * @return the network paths
      */
-    public NetworkPathInfo getPaths(final String srcSwitch, final String dstSwitch) {
-        return networkIntegrationService.getPaths(srcSwitch, dstSwitch);
+    public NetworkPathInfo getPaths(final String srcSwitch, final String dstSwitch, final String strategy,
+                                    final int maxLatency) {
+        return networkIntegrationService.getPaths(srcSwitch, dstSwitch, strategy, maxLatency);
     }
 }
