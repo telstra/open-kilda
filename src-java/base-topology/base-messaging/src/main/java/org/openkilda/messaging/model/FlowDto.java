@@ -197,10 +197,10 @@ public class FlowDto implements Serializable {
     private List<MirrorPointStatusDto> mirrorPointStatuses;
 
     @JsonProperty("forward_latency")
-    private long forwardLatency;
+    private Long forwardLatency;
 
     @JsonProperty("reverse_latency")
-    private long reverseLatency;
+    private Long reverseLatency;
 
     public FlowDto() {
     }
@@ -281,8 +281,8 @@ public class FlowDto implements Serializable {
                    @JsonProperty("affinity_with") String affinityWith,
                    @JsonProperty("loop_switch_id") SwitchId loopSwitchId,
                    @JsonProperty("mirror_point_statuses") List<MirrorPointStatusDto> mirrorPointStatuses,
-                   @JsonProperty("forward_latency") long forwardLatency,
-                   @JsonProperty("reverse_latency") long reverseLatency) {
+                   @JsonProperty("forward_latency") Long forwardLatency,
+                   @JsonProperty("reverse_latency") Long reverseLatency) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
@@ -361,7 +361,7 @@ public class FlowDto implements Serializable {
                 sourceVlan,
                 destinationVlan, 0, 0,
                 null, 0, null, null, null, null, null, null, pinned, null, detectConnectedDevices, null, null, null,
-                null, null, null, 0, 0);
+                null, null, null, null, null);
     }
 
     public FlowDto(FlowPayload input) {
@@ -396,7 +396,7 @@ public class FlowDto implements Serializable {
                         input.getDestination().getDetectConnectedDevices().isArp()),
                 input.getPathComputationStrategy() != null ? PathComputationStrategy.valueOf(
                         input.getPathComputationStrategy().toUpperCase()) : null, null, null,
-                null, null, null, 0L, 0L);
+                null, null, null, null, null);
     }
 
     @JsonIgnore

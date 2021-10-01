@@ -33,6 +33,7 @@ import org.openkilda.persistence.ferma.frames.converters.PathComputationStrategy
 import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 
+import com.syncleus.ferma.FramedGraph;
 import com.syncleus.ferma.VertexFrame;
 import com.syncleus.ferma.annotations.Property;
 import lombok.extern.slf4j.Slf4j;
@@ -75,8 +76,6 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     public static final String SRC_ARP_PROPERTY = "detect_src_arp_connected_devices";
     public static final String DST_ARP_PROPERTY = "detect_dst_arp_connected_devices";
     public static final String LOOP_SWITCH_ID_PROPERTY = "loop_switch_id";
-    public static final String FORWARD_LATENCY_PROPERTY = "forward_latency";
-    public static final String REVERSE_LATENCY_PROPERTY = "reverse_latency";
 
     private Switch srcSwitch;
     private Switch destSwitch;
@@ -370,22 +369,6 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     public abstract void setLoopSwitchId(SwitchId loopSwitchId);
 
     @Override
-    @Property(FORWARD_LATENCY_PROPERTY)
-    public abstract long getForwardLatency();
-
-    @Override
-    @Property(FORWARD_LATENCY_PROPERTY)
-    public abstract void setForwardLatency(long forwardLatency);
-
-    @Override
-    @Property(REVERSE_LATENCY_PROPERTY)
-    public abstract long getReverseLatency();
-
-    @Override
-    @Property(REVERSE_LATENCY_PROPERTY)
-    public abstract void setReverseLatency(long reverseLatency);
-
-    @Override
     public Switch getSrcSwitch() {
         if (srcSwitch == null) {
             List<? extends SwitchFrame> switchFrames = traverse(v -> v.out(SOURCE_EDGE)
@@ -532,5 +515,13 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
             // force to reload
             this.pathIds = Collections.unmodifiableSet(this.paths.keySet());
         }
+    }
+
+    public static Optional<FlowFrame> load(FramedGraph graph, String flowId) {
+        List<? extends FlowFrame> flowFrames = graph.traverse(input -> input.V()
+                        .hasLabel(FRAME_LABEL)
+                        .has(FLOW_ID_PROPERTY, flowId))
+                .toListExplicit(FlowFrame.class);
+        return flowFrames.isEmpty() ? Optional.empty() : Optional.of(flowFrames.get(0));
     }
 }

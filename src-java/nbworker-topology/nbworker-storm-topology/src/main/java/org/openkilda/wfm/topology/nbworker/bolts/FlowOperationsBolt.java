@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.nbworker.bolts;
 
 import static java.lang.String.format;
+import static java.util.stream.Collectors.toMap;
 import static org.openkilda.model.ConnectedDeviceType.ARP;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
 
@@ -46,6 +47,7 @@ import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.nbtopology.response.TypedConnectedDevicesDto;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowStats;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
@@ -70,7 +72,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class FlowOperationsBolt extends PersistenceOperationsBolt {
@@ -246,9 +250,10 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
     private List<FlowResponse> processFlowReadRequest(FlowReadRequest readRequest) {
         try {
             String flowId = readRequest.getFlowId();
-            Flow f = flowOperationsService.getFlow(flowId);
-            FlowDto dto = FlowMapper.INSTANCE.map(f, flowOperationsService.getDiverseFlowsId(f),
-                    flowOperationsService.getFlowMirrorPaths(f));
+            Flow flow = flowOperationsService.getFlow(flowId);
+            FlowStats flowStats = flowOperationsService.getFlowStats(flowId);
+            FlowDto dto = FlowMapper.INSTANCE.map(flow, flowOperationsService.getDiverseFlowsId(flow),
+                    flowOperationsService.getFlowMirrorPaths(flow), flowStats);
             FlowResponse response = new FlowResponse(dto);
             return Collections.singletonList(response);
         } catch (FlowNotFoundException e) {
@@ -263,9 +268,12 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
     @TimedExecution("flow_dump")
     private List<FlowResponse> processFlowsDumpRequest(FlowsDumpRequest request) {
         try {
+            Map<String, FlowStats> flowStats = flowOperationsService.getFlowStats()
+                    .stream().collect(toMap(FlowStats::getFlowId, Function.identity()));
             return flowOperationsService.getAllFlows(request).stream()
                     .map(f -> FlowMapper.INSTANCE.map(f, flowOperationsService.getDiverseFlowsId(f),
-                            flowOperationsService.getFlowMirrorPaths(f)))
+                            flowOperationsService.getFlowMirrorPaths(f),
+                            flowStats.getOrDefault(f.getFlowId(), FlowStats.EMPTY)))
                     .map(FlowResponse::new)
                     .collect(Collectors.toList());
         } catch (Exception e) {

@@ -26,6 +26,7 @@ import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowStatsRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
@@ -150,6 +151,11 @@ public class FermaRepositoryFactory implements RepositoryFactory {
     @Override
     public SwitchPropertiesRepository createSwitchPropertiesRepository() {
         return new FermaSwitchPropertiesRepository(implementation);
+    }
+
+    @Override
+    public FlowStatsRepository createFlowStatsRepository() {
+        return new FermaFlowStatsRepository(implementation);
     }
 
     @Override

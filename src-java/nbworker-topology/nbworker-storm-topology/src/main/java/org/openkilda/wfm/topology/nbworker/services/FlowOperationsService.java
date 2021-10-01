@@ -37,6 +37,7 @@ import org.openkilda.model.FlowFilter;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowStats;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchConnectedDevice;
@@ -44,6 +45,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowStatsRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
@@ -91,6 +93,7 @@ public class FlowOperationsService {
     private IslRepository islRepository;
     private SwitchRepository switchRepository;
     private FlowRepository flowRepository;
+    private FlowStatsRepository flowStatsRepository;
     private FlowPathRepository flowPathRepository;
     private SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
 
@@ -98,6 +101,7 @@ public class FlowOperationsService {
         this.islRepository = repositoryFactory.createIslRepository();
         this.switchRepository = repositoryFactory.createSwitchRepository();
         this.flowRepository = repositoryFactory.createFlowRepository();
+        this.flowStatsRepository = repositoryFactory.createFlowStatsRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.switchConnectedDeviceRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
         this.transactionManager = transactionManager;
@@ -120,6 +124,23 @@ public class FlowOperationsService {
         Optional<Flow> found = transactionManager.doInTransaction(getReadOperationRetryPolicy(),
                 () -> flowRepository.findById(flowId));
         return found.orElseThrow(() -> new FlowNotFoundException(flowId));
+    }
+
+    /**
+     * Return flow stats by flow id.
+     */
+    public FlowStats getFlowStats(String flowId) {
+        Optional<FlowStats> found = transactionManager.doInTransaction(getReadOperationRetryPolicy(),
+                () -> flowStatsRepository.findByFlowId(flowId));
+        return found.orElse(FlowStats.EMPTY);
+    }
+
+    /**
+     * Return all flow properties.
+     */
+    public Collection<FlowStats> getFlowStats() {
+        return transactionManager.doInTransaction(getReadOperationRetryPolicy(),
+                () -> flowStatsRepository.findAll());
     }
 
     /**
