@@ -25,7 +25,7 @@ import static org.openkilda.wfm.topology.flowmonitoring.fsm.FlowLatencyMonitorin
 import static org.openkilda.wfm.topology.flowmonitoring.fsm.FlowLatencyMonitoringFsm.State.TIER_2_FAILED;
 import static org.openkilda.wfm.topology.flowmonitoring.fsm.FlowLatencyMonitoringFsm.State.UNSTABLE;
 
-import org.openkilda.messaging.info.flow.UpdateFlowInfo;
+import org.openkilda.messaging.info.flow.UpdateFlowCommand;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
@@ -50,7 +50,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.time.Duration;
-import java.util.Collections;
+import java.util.Arrays;
 
 @RunWith(MockitoJUnitRunner.class)
 public class ActionServiceTest extends InMemoryGraphBasedTest {
@@ -316,19 +316,33 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
         service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.REVERSE, NANOSECOND);
 
         FlowPathDto path = FlowPathDto.builder()
-                .forwardPath(Collections.singletonList(new PathNodePayload(SRC_SWITCH, 1, 1)))
-                .reversePath(Collections.emptyList())
+                .forwardPath(Arrays.asList(new PathNodePayload(SRC_SWITCH, 1, 2),
+                        new PathNodePayload(DST_SWITCH, 3, 4)))
+                .reversePath(Arrays.asList(new PathNodePayload(DST_SWITCH, 4, 3),
+                                new PathNodePayload(SRC_SWITCH, 2, 1)))
                 .build();
         long maxLatency = flow.getMaxLatency() / 2;
         long maxLatencyTier2 = flow.getMaxLatencyTier2() / 2;
-        UpdateFlowInfo info = new UpdateFlowInfo(flow.getFlowId(), path, maxLatency, maxLatencyTier2);
+        UpdateFlowCommand info = new UpdateFlowCommand(flow.getFlowId(), path, maxLatency, maxLatencyTier2);
         service.updateFlowInfo(info);
 
-        assertEquals(1, service.fsms.values().size());
+        assertEquals(2, service.fsms.values().size());
         FlowLatencyMonitoringFsm fsm = service.fsms.values().stream().findAny()
                 .orElseThrow(() -> new IllegalStateException("Fsm not found"));
         assertEquals(maxLatency, fsm.getMaxLatency());
         assertEquals(maxLatencyTier2, fsm.getMaxLatencyTier2());
+
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void shouldRemoveFlowInfo() {
+        service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.FORWARD, NANOSECOND);
+        service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.REVERSE, NANOSECOND);
+
+        service.removeFlowInfo(flow.getFlowId());
+
+        assertTrue(service.fsms.values().isEmpty());
 
         verifyNoMoreInteractions(carrier);
     }

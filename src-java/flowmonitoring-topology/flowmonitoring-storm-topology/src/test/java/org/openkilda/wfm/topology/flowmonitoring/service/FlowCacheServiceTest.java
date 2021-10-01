@@ -20,7 +20,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.IslStatus.ACTIVE;
 
-import org.openkilda.messaging.info.flow.UpdateFlowInfo;
+import org.openkilda.messaging.info.flow.UpdateFlowCommand;
 import org.openkilda.messaging.info.stats.FlowRttStatsData;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
@@ -109,9 +109,8 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
     @Test
     public void shouldRemoveFlowFromCache() {
         Flow flow = createFlow();
-        UpdateFlowInfo updateFlowInfo = new UpdateFlowInfo(flow.getFlowId(), FlowPathDto.builder().build(), null, null);
         service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
-        service.updateFlowInfo(updateFlowInfo);
+        service.removeFlowInfo(flow.getFlowId());
 
         service.processFlowLatencyCheck(flow.getFlowId());
 
@@ -126,7 +125,7 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
 
         Long maxLatency = 100L;
         Long maxLatencyTier2 = 200L;
-        UpdateFlowInfo updateFlowInfo = new UpdateFlowInfo(flow.getFlowId(), FlowPathDto.builder()
+        UpdateFlowCommand updateFlowCommand = new UpdateFlowCommand(flow.getFlowId(), FlowPathDto.builder()
                 .id(flow.getFlowId())
                 .forwardPath(Arrays.asList(new PathNodePayload(SRC_SWITCH, IN_PORT, ISL_SRC_PORT_2),
                         new PathNodePayload(DST_SWITCH, ISL_DST_PORT_2, OUT_PORT)))
@@ -134,7 +133,7 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
                         new PathNodePayload(SRC_SWITCH, ISL_SRC_PORT_2, IN_PORT)))
                 .build(), maxLatency, maxLatencyTier2);
 
-        service.updateFlowInfo(updateFlowInfo);
+        service.updateFlowInfo(updateFlowCommand);
         service.processFlowLatencyCheck(flow.getFlowId());
 
         List<Link> expectedForwardPath = getLinks(SRC_SWITCH, ISL_SRC_PORT_2, DST_SWITCH, ISL_DST_PORT_2);

@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowmonitoring.mapper;
 
-import org.openkilda.messaging.info.flow.UpdateFlowInfo;
+import org.openkilda.messaging.info.flow.UpdateFlowCommand;
 import org.openkilda.messaging.info.stats.FlowRttStatsData;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
@@ -44,7 +44,7 @@ public interface FlowMapper {
 
     @Mapping(target = "forwardPath", source = "info.flowPath.forwardPath")
     @Mapping(target = "reversePath", source = "info.flowPath.reversePath")
-    FlowState toFlowState(UpdateFlowInfo info);
+    FlowState toFlowState(UpdateFlowCommand info);
 
     /**
      * Convert flow path representation.

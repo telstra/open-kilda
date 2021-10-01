@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowmonitoring;
 
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ACTION_STREAM_ID;
+import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_REMOVE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ISL_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.STATS_STREAM_ID;
@@ -124,6 +125,7 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
         FlowStateCacheBolt flowStateCacheBolt = new FlowStateCacheBolt(persistenceManager, ZooKeeperSpout.SPOUT_ID);
         declareBolt(topologyBuilder, flowStateCacheBolt, ComponentId.FLOW_STATE_CACHE_BOLT.name())
                 .allGrouping(ComponentId.FLOW_SPLITTER_BOLT.name(), FLOW_UPDATE_STREAM_ID.name())
+                .allGrouping(ComponentId.FLOW_SPLITTER_BOLT.name(), FLOW_REMOVE_STREAM_ID.name())
                 .allGrouping(ComponentId.TICK_BOLT.name())
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
@@ -134,6 +136,7 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
                 Duration.ofSeconds(getConfig().getFlowRttStatsExpirationSeconds()), getConfig().getMetricPrefix());
         declareBolt(topologyBuilder, flowCacheBolt, ComponentId.FLOW_CACHE_BOLT.name())
                 .fieldsGrouping(ComponentId.FLOW_STATE_CACHE_BOLT.name(), FLOW_UPDATE_STREAM_ID.name(), FLOW_ID_FIELDS)
+                .fieldsGrouping(ComponentId.FLOW_STATE_CACHE_BOLT.name(), FLOW_REMOVE_STREAM_ID.name(), FLOW_ID_FIELDS)
                 .fieldsGrouping(ComponentId.FLOW_STATE_CACHE_BOLT.name(), FLOW_ID_FIELDS)
                 .fieldsGrouping(ComponentId.FLOW_SPLITTER_BOLT.name(), FLOW_ID_FIELDS)
                 .fieldsGrouping(ComponentId.ISL_CACHE_BOLT.name(), FLOW_ID_FIELDS)
@@ -157,6 +160,7 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
                 ComponentId.ACTION_BOLT.name())
                 .fieldsGrouping(ComponentId.FLOW_CACHE_BOLT.name(), ACTION_STREAM_ID.name(), FLOW_ID_FIELDS)
                 .fieldsGrouping(ComponentId.FLOW_CACHE_BOLT.name(), FLOW_UPDATE_STREAM_ID.name(), FLOW_ID_FIELDS)
+                .fieldsGrouping(ComponentId.FLOW_CACHE_BOLT.name(), FLOW_REMOVE_STREAM_ID.name(), FLOW_ID_FIELDS)
                 .allGrouping(ComponentId.TICK_BOLT.name())
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
@@ -238,6 +242,7 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
         ACTION_STREAM_ID,
         STATS_STREAM_ID,
         FLOW_UPDATE_STREAM_ID,
+        FLOW_REMOVE_STREAM_ID,
         ISL_UPDATE_STREAM_ID
     }
 
