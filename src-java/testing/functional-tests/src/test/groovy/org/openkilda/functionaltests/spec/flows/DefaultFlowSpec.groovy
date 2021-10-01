@@ -55,7 +55,6 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         def bandwidth = 100
         def vlanFlow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         vlanFlow.maximumBandwidth = bandwidth
-        vlanFlow.allocateProtectedPath = true
         flowHelperV2.addFlow(vlanFlow)
 
         and: "Create a default flow with the same srcSwitch and different dstSwitch"
@@ -63,7 +62,6 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         defaultFlow.maximumBandwidth = bandwidth
         defaultFlow.source.vlanId = 0
         defaultFlow.destination.vlanId = 0
-        defaultFlow.allocateProtectedPath = true
         flowHelperV2.addFlow(defaultFlow)
 
         and: "Create a QinQ flow with the same src and dst switch"
@@ -73,7 +71,6 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         qinqFlow.destination.vlanId = vlanFlow.destination.vlanId
         qinqFlow.source.innerVlanId = vlanFlow.destination.vlanId
         qinqFlow.destination.innerVlanId = vlanFlow.source.vlanId
-        qinqFlow.allocateProtectedPath = true
         flowHelperV2.addFlow(qinqFlow)
 
         then: "System allows traffic on the vlan flow"

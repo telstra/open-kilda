@@ -464,6 +464,17 @@ public class TopologyDefinition {
                 .findFirst().orElseThrow(() -> new RuntimeException("Switch has no traffgen"));
     }
 
+    /**
+     * Get active traffgen for certain switch.
+     */
+    @JsonIgnore
+    public TraffGen getActiveTraffGen(SwitchId swId) {
+        return traffGens.stream()
+                .filter(TraffGen::isActive)
+                .filter(traffGen -> traffGen.getSwitchConnected().getDpId().equals(swId))
+                .findFirst().orElseThrow(() -> new RuntimeException("Switch has no traffgen"));
+    }
+
     @Value
     @NonFinal
     @JsonNaming(SnakeCaseStrategy.class)

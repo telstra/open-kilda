@@ -349,8 +349,8 @@ misconfigured"
         and: "Remove created meter on the srcSwitch"
         def forwardCookies = getCookiesWithMeter(srcSwitch.dpId)
         def reverseCookies = getCookiesWithMeter(dstSwitch.dpId)
-        def sharedCookieOnSrcSw = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.find {
-            new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
+        def sharedCookieOnSrcSw = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+            new Cookie(it.cookie).getType() in [CookieType.SHARED_OF_FLOW, CookieType.SERVER_42_FLOW_RTT_INGRESS]
         }?.cookie
         def untouchedCookiesOnSrcSw = northbound.getSwitchProperties(srcSwitch.dpId).multiTable ?
             (reverseCookies + sharedCookieOnSrcSw).sort() : reverseCookies
@@ -447,11 +447,11 @@ misconfigured"
         northbound.deleteSwitchRules(srcSwitch.dpId, ingressCookie)
 
         then: "Ingress rule is moved into the 'missing' section on the srcSwitch"
-        def sharedCookieOnSrcSw = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.find {
-            new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
+        def sharedCookieOnSrcSw = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+            new Cookie(it.cookie).getType() in [CookieType.SHARED_OF_FLOW, CookieType.SERVER_42_FLOW_RTT_INGRESS]
         }?.cookie
         def untouchedCookies = northbound.getSwitchProperties(srcSwitch.dpId).multiTable ?
-            [egressCookie, sharedCookieOnSrcSw].sort() : [egressCookie]
+                ([egressCookie] + sharedCookieOnSrcSw).sort() : [egressCookie]
         verifyAll(northbound.validateSwitch(srcSwitch.dpId)) {
             it.rules.missing == [ingressCookie]
             it.rules.proper.findAll {
