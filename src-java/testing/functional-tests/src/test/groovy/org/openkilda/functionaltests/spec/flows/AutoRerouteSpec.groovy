@@ -941,9 +941,13 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
             //check that system doesn't retry to reroute the firstFlow (its src is down, no need to retry)
             assert !firstFlowHistory.find { it.taskId =~ /.+ : retry #1/ }
             def secondFlowHistory = northbound.getFlowHistory(secondFlow.flowId).findAll { it.action == REROUTE_ACTION }
-            /*there should be original reroute + 3 retries. We are not checking the 'retry #' messages directly,
+            /*there should be original reroute + 3 retries or original reroute + 2 retries
+            (sometimes the system does not try to retry reroute for linkDown event,
+            because the system gets 'ISL timeout' event for other ISLs)
+            We are not checking the 'retry #' messages directly,
             since system may have their reasons changed to 'isl timeout' during reroute merge*/
-            assert secondFlowHistory.size() == 4
+            assert secondFlowHistory.size() == 4 ||
+                    (secondFlowHistory.size() == 3 && secondFlowHistory.last().taskId.contains("ignore_bw true"))
             withPool {
                 [firstFlow.flowId, secondFlow.flowId].eachParallel { String flowId ->
                     assert PathHelper.convert(northbound.getFlowPath(flowId)) == flowPathMap[flowId]
