@@ -24,7 +24,8 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
-@See("https://github.com/telstra/open-kilda/blob/develop/docs/design/pce/design.md")
+@See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/pce/design.md",
+        "https://github.com/telstra/open-kilda/blob/develop/docs/design/pce/max-latency-issue/README.md"])
 @Narrative("""
 A flow with LATENCY strategy:
     - system tries to find the path with best latency, mL/mlT2 is not used during finding a path
@@ -39,6 +40,10 @@ A flow with LATENCY strategy:
     that max_latency_tier2 = max_latency and inform us via kibana by warning message:
     log.warn("Bad flow params found: maxLatencyTier2 ({}) should be greater than maxLatency ({}). "
     + "Put maxLatencyTier2 = maxLatency during path calculation.", flow.getMaxLatencyTier2(), flow.getMaxLatency());
+
+    Special cases(covered by unit tests('MaxLatencyPathComputationStrategyBaseTest.java')):
+    - flow with MAX_LATENCY strategy and 'max-latency' set to 0 should pick path with least latency.
+    - flow with MAX_LATENCY strategy and 'max-latency' being unset(null) should pick path with least latency.
 """)
 class MaxLatencySpec extends HealthCheckSpecification {
     @Shared
