@@ -52,10 +52,10 @@ class StormHeavyLoadSpec extends HealthCheckSpecification {
                 def sw = isl.srcSwitch.dpId
                 producers.eachParallel {
                     it.send(new ProducerRecord(topoDiscoTopic, sw.toString(),
-                            buildMessage(new PortInfoData(sw, isl.srcPort, null, PortChangeType.DOWN)).toJson()))
+                            buildMessage(new PortInfoData(sw, isl.srcPort, null, PortChangeType.DOWN)).toJson())).get()
                     sleep(1)
                     it.send(new ProducerRecord(topoDiscoTopic, sw.toString(),
-                            buildMessage(new PortInfoData(sw, isl.srcPort, null, PortChangeType.UP)).toJson()))
+                            buildMessage(new PortInfoData(sw, isl.srcPort, null, PortChangeType.UP)).toJson())).get()
                 }
             }
         }
