@@ -164,7 +164,7 @@ public abstract class IConstants {
                 + "/bandwidth?src_switch={src_switch}&src_port={src_port}&"
                 + "dst_switch={dst_switch}&dst_port={dst_port}";
         public static final String GET_NETWORK_PATH = VERSION_ONE + "/network/paths?src_switch={src_switch}"
-                + "&dst_switch={dst_switch}";
+                + "&dst_switch={dst_switch}&path_computation_strategy={strategy}&max_latency={max_latency}";
         public static final String DELETE_SWITCH = GET_SWITCHES + "/{switch_id}?force={force}";
         public static final String UPDATE_LINK_BFD_FLAG = GET_LINKS + "/enable-bfd";
         public static final String GET_FLOW_HISTORY = GET_FLOW + "/{flow_id}/history";
