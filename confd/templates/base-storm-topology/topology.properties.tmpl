@@ -48,7 +48,8 @@ bfd.port.max.number = {{ getv "/kilda_bfd_port_max_number" }}
 zookeeper.connect_string = {{ getv "/kilda_zookeeper_hosts"}}/{{ getv "/kilda_zookeeper_state_root" }}
 zookeeper.reconnect_delay={{ getv "/kilda_zookeeper_reconnect_delay_ms"}}
 
-persistence.implementation = {{ getv "/kilda_persistence_implementation" }}
+persistence.implementation.default = {{ getv "/kilda_persistence_default_implementation" }}
+persistence.implementation.area.history = {{ getv "/kilda_persistence_history_implementation" }}
 
 opentsdb.hosts = http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
 opentsdb.timeout = {{ getv "/kilda_opentsdb_timeout" }}

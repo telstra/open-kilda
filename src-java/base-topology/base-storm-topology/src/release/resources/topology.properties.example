@@ -45,6 +45,9 @@ bfd.port.offset = 1000
 bfd.port.max.number = 1999
 lag.port.offset = 2000
 
+persistence.implementation.default = orientdb
+persistence.implementation.area.history = orientdb
+
 opentsdb.hosts = http://opentsdb.pendev:4242
 opentsdb.timeout = 30
 opentsdb.batch.size = 50
