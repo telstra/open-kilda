@@ -1,8 +1,7 @@
 ---
 # defaults file for templates
 kilda_environment_naming_prefix: ""
-kilda_environment_role: "devel"
-kilda_test_profile: "virtual"
+kilda_environment_role: "local"
 
 kilda_orientdb_hosts: "odb1.pendev,odb2.pendev,odb3.pendev"
 kilda_orientdb_hosts_single: "odb1.pendev"
@@ -23,10 +22,9 @@ kilda_opentsdb_hosts: "opentsdb.pendev"
 kilda_opentsdb_port: "4242"
 kilda_storm_numbus_hosts: "nimbus.pendev"
 
+kilda_hibernate_url: jdbc:mysql://mysql.pendev:3306/kilda
 kilda_hibernate_user: kilda
 kilda_hibernate_password: kilda
-kilda_hibernate_url: jdbc:mysql://mysql.pendev:3306/kilda
-kilda_hibernate_url_tests: jdbc:mysql://localhost:8101/kilda
 
 kilda_gui_port: 1010
 kilda_gui_db_dialect: org.hibernate.dialect.DerbyTenSevenDialect
@@ -43,11 +41,7 @@ kilda_floodlight_endpoint: "http://127.0.0.1"
 kilda_floodlight_rest_port: "8081"
 kilda_floodlight_username: "kilda"
 kilda_floodlight_password: "kilda"
-kilda_floodlight_openflows: "tcp:floodlight_1.pendev:6653,tcp:floodlight_2.pendev:6653,tcp:floodlight_stats.pendev:6653"
-kilda_floodlight_endpoints: "http://localhost:8081,http://localhost:8281,http://localhost:8082"
-kilda_floodlight_containers: "floodlight_1,floodlight_2,floodlight_stats"
-kilda_floodlight_regions: "1,2,1.stats"
-kilda_floodlight_modes: "rw,rw,ro"
+
 kilda_floodlight_command_processor_deferred_requests_limit: 64
 kilda_floodlight_flow_meter_burst_coefficient: 1.05
 kilda_floodlight_consumer_executors: 20
@@ -63,11 +57,8 @@ kilda_floodlight_ovs_meters_enabled: true
 kilda_grpc_speaker_kafka_listener_threads: 1
 kilda_grpc_speaker_kafka_session_timeout: 30000
 
-kilda_lockkeeper_port: "5001"
 kilda_northbound_endpoint: "http://northbound.pendev"
 kilda_northbound_rest_port: "8080"
-kilda_lab_api_endpoint: "http://127.0.0.1"
-kilda_lab_api_port: "8288"
 
 kilda_northbound_username: "kilda"
 kilda_northbound_password: "kilda"
@@ -156,8 +147,6 @@ kilda_logging_port_server42_control: 5007
 kilda_logging_port_server42_stats: 5004
 kilda_logging_port_server42_control_server_stub: 5008
 kilda_logging_port_server42_control_storm_stub: 5009
-kilda_logging_port_tests: 5006
-
 
 kilda_grpc_endpoint: "http://grpc-speaker.pendev"
 kilda_grpc_rest_port: "8091"
@@ -184,7 +173,6 @@ kilda_storm_flow_monitoring_parallelism: 2
 kilda_storm_disruptor_wait_timeout: 1000
 kilda_storm_disruptor_batch_timeout: 10
 kilda_storm_spout_wait_sleep_timeout: 100
-
 
 kilda_server42_control_http_port: 9002
 kilda_server42_control_switch_to_vlan_1000: "1000=00:00:d7:61:46:7b:46:69,00:00:1b:45:18:d6:71:5a,00:00:e3:7d:94:02:9b:f0"
