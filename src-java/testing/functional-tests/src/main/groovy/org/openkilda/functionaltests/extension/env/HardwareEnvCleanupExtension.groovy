@@ -40,7 +40,7 @@ class HardwareEnvCleanupExtension extends EnvCleanupExtension {
             resetBandwidth(links)
 
             //a-switch rules
-            resetAswRules()
+//            resetAswRules()
 
             //now switches
             def activeSwitches = northbound.getAllSwitches().findAll { it.state == SwitchChangeType.ACTIVATED }
@@ -50,7 +50,7 @@ class HardwareEnvCleanupExtension extends EnvCleanupExtension {
             deleteLagPorts(activeSwitches)
 
 
-            log.info("Configure 'multiTable/s42/islRtt' props according to the 'kilda.properties' file")
+            log.info("Configure 'multiTable' props according to the 'kilda.properties' file")
             northbound.getAllSwitches().findAll { it.state == SwitchChangeType.ACTIVATED }.each { sw ->
                 if (database.getSwitch(sw.switchId).features.contains(SwitchFeature.MULTI_TABLE)) {
                     def s42Config = topology.activeSwitches.find { it.dpId == sw.switchId }.prop
@@ -68,14 +68,14 @@ class HardwareEnvCleanupExtension extends EnvCleanupExtension {
                             it.switchArp = false
                         }
                     }
-                    northbound.updateSwitchProperties(sw.switchId, payload.tap {
-                        it.server42FlowRtt = s42Config.server42FlowRtt
-                        it.server42Port = s42Config.server42Port
-                        it.server42MacAddress = s42Config.server42MacAddress
-                        it.server42Vlan = s42Config.server42Vlan
-                        it.server42IslRtt = (s42Config.server42IslRtt == null ?
-                                "AUTO" : (s42Config.server42IslRtt ? "ENABLED" : "DISABLED"))
-                    })
+//                    northbound.updateSwitchProperties(sw.switchId, payload.tap {
+//                        it.server42FlowRtt = s42Config.server42FlowRtt
+//                        it.server42Port = s42Config.server42Port
+//                        it.server42MacAddress = s42Config.server42MacAddress
+//                        it.server42Vlan = s42Config.server42Vlan
+//                        it.server42IslRtt = (s42Config.server42IslRtt == null ?
+//                                "AUTO" : (s42Config.server42IslRtt ? "ENABLED" : "DISABLED"))
+//                    })
                 }
             }
         }
