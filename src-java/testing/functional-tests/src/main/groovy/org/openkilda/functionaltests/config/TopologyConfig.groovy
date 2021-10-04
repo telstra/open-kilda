@@ -58,7 +58,9 @@ class TopologyConfig {
     @Bean
     @Scope("specThread")
     TopologyDefinition getTopologyDefinition(TopologyPool topologyPool) throws IOException {
-        return topologyPool.take()
+        def topo = topologyPool.take()
+        topo.setParentPool(topologyPool)
+        return topo
     }
 
     /**
