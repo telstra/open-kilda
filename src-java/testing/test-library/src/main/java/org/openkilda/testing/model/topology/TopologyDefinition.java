@@ -22,6 +22,7 @@ import static java.util.stream.Collectors.toSet;
 
 import org.openkilda.model.SwitchId;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
+import org.openkilda.testing.tools.TopologyPool;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
@@ -73,6 +74,10 @@ public class TopologyDefinition {
 
     protected Integer bfdOffset;
 
+    @Setter
+    @JsonIgnore
+    private TopologyPool parentPool;
+
     /**
      * Creates TopologyDefinition instance.
      */
@@ -109,6 +114,17 @@ public class TopologyDefinition {
 
     public long getLabId() {
         return labId;
+    }
+
+    /**
+     * Return this topology to its parentPool.
+     * Throws if pull is not set.
+     */
+    public boolean returnToPool() {
+        if (parentPool == null) {
+            throw new RuntimeException("Parent pool is not available. Aborting thread.");
+        }
+        return parentPool.offer(this);
     }
 
     /**
