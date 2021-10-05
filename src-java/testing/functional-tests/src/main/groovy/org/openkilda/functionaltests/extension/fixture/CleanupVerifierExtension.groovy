@@ -1,10 +1,12 @@
-package org.openkilda.functionaltests.listeners
+package org.openkilda.functionaltests.extension.fixture
 
 import static groovyx.gpars.GParsPool.withPool
-
+import org.openkilda.functionaltests.extension.spring.ContextAwareGlobalExtension
 import org.openkilda.model.IslStatus
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
@@ -12,7 +14,11 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.SoftAssertions
 
-import org.spockframework.runtime.model.IterationInfo
+import groovy.util.logging.Slf4j
+import org.spockframework.runtime.AbstractRunListener
+import org.spockframework.runtime.extension.IMethodInterceptor
+import org.spockframework.runtime.extension.IMethodInvocation
+import org.spockframework.runtime.model.MethodKind
 import org.spockframework.runtime.model.SpecInfo
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
@@ -20,13 +26,14 @@ import org.springframework.beans.factory.annotation.Value
 
 /**
  * Performs certain checks after every spec/feature, tries to verify that environment is left clean.
- * This listener is meant to help to ensure that tests have 'good' cleanups. Note that is does not guarantee a
+ * This extension is meant to help to ensure that tests have 'good' cleanups. Note that is does not guarantee a
  * fully clean env and is just another reassurance. Analyzing all aspects of the clean environment is very
  * difficult and developer should still take full responsibility for cleanup-ing all the changed resources.
  * This is turned off by default during CI builds and its main purpose is to be used during local debug. Can be switched
  * on/off by setting `cleanup.verifier` property
  */
-class CleanupVerifierListener extends AbstractSpringListener {
+@Slf4j
+class CleanupVerifierExtension extends ContextAwareGlobalExtension {
     @Value('${cleanup.verifier}')
     boolean enabled
 
@@ -44,16 +51,31 @@ class CleanupVerifierListener extends AbstractSpringListener {
     boolean useMultitable
 
     @Override
-    void afterIteration(IterationInfo iteration) {
-        if (enabled && iteration.feature.spec.cleanupSpecMethods.empty) {
-            runVerifications()
+    void delayedVisitSpec(SpecInfo spec) {
+        if (!enabled) {
+            return
         }
-    }
-
-    @Override
-    void afterSpec(SpecInfo spec) {
-        if (enabled && !spec.cleanupSpecMethods.empty) {
-            runVerifications()
+        def hasCleanupSpec = spec.getAllFixtureMethods().find { it.kind == MethodKind.CLEANUP_SPEC }
+        if (hasCleanupSpec) { //run verifier only after the whole spec
+            spec.addListener(new AbstractRunListener() {
+                @Override
+                void afterSpec(SpecInfo runningSpec) {
+                    log.debug("Running cleanup verifier for '$runningSpec.name'")
+                    runVerifications()
+                }
+            })
+        } else { //run verifier after each feature
+            spec.features.each {
+                //push cleanup interceptor to the start of the list, so that it's run AFTER TestFixture interceptor
+                it.interceptors.push(new IMethodInterceptor() {
+                    @Override
+                    void intercept(IMethodInvocation invocation) throws Throwable {
+                        invocation.proceed()
+                        log.debug("Running cleanup verifier for '$invocation.feature.name'")
+                        runVerifications()
+                    }
+                })
+            }
         }
     }
 

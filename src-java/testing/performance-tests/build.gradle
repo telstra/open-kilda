@@ -3,12 +3,6 @@ plugins {
 }
 
 description = 'Performance-Tests'
-
-repositories {
-    mavenCentral()
-    maven { url "https://oss.sonatype.org/content/repositories/snapshots" }
-}
-
 dependencies {
     implementation(platform('org.springframework:spring-framework-bom:5.2.13.RELEASE'))
 
@@ -28,9 +22,9 @@ dependencies {
 
     implementation 'org.hibernate.validator:hibernate-validator'
     implementation 'org.glassfish:jakarta.el'
-    
-    implementation 'org.spockframework:spock-spring:2.1-groovy-3.0-SNAPSHOT'
-    implementation 'org.spockframework:spock-core:2.1-groovy-3.0-SNAPSHOT'
+
+    implementation 'org.spockframework:spock-spring:2.0-M5-groovy-3.0'
+    implementation 'org.spockframework:spock-core:2.0-M5-groovy-3.0'
     implementation 'net.jodah:failsafe'
 }
 
