@@ -127,12 +127,11 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
          * recheck the flowLatency 'kilda_flow_sla_check_interval_seconds';
          * and then reroute the flow.
          */
-        Wrappers.benchmark("testReroute") {
-            wait(flowSlaCheckIntervalSeconds * 2 + flowLatencySlaTimeoutSeconds + WAIT_OFFSET) {
-                def history = northbound.getFlowHistory(flow.flowId).last()
-                assert history.details == "Reason: Flow latency become unhealthy" &&
-                        (history.payload.last().action in [REROUTE_SUCCESS,REROUTE_FAIL]) //just check 'reroute'
-            }
+        wait(flowSlaCheckIntervalSeconds * 2 + flowLatencySlaTimeoutSeconds + WAIT_OFFSET) {
+            def history = northbound.getFlowHistory(flow.flowId).last()
+            //"Reason: Flow latency become unhealthy" or ""Reason: Flow latency become healthy""
+            assert history.details.contains("healthy") &&
+                    (history.payload.last().action in [REROUTE_SUCCESS,REROUTE_FAIL]) //just check 'reroute'
         }
 
         cleanup:
