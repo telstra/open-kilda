@@ -48,6 +48,7 @@ class HardwareEnvCleanupExtension extends EnvCleanupExtension {
             removeFlowRules(activeSwitches)
             removeExcessMeters(activeSwitches)
             deleteLagPorts(activeSwitches)
+            syncSwitch((activeSwitches))
 
 
             log.info("Configure 'multiTable' props according to the 'kilda.properties' file")

@@ -133,6 +133,13 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
         }
     }
 
+    def syncSwitch(List<SwitchDto> switches) {
+        log.info("Synchronize all switches")
+        switches.each {
+            northbound.synchronizeSwitch(it.switchId, true)
+        }
+    }
+
     def removeExcessMeters(List<SwitchDto> switches) {
         log.info("Remove excess meters from switches")
         switches.each { sw ->
