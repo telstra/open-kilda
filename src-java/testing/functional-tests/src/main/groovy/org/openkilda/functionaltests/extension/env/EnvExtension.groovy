@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.extension.env
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.testing.Constants.SWITCHES_ACTIVATION_TIME
 import static org.openkilda.testing.Constants.TOPOLOGY_DISCOVERING_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET

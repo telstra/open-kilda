@@ -6,4 +6,4 @@ org.openkilda.functionaltests.extension.env.EnvExtension
 org.openkilda.functionaltests.extension.env.VirtualEnvCleanupExtension
 org.openkilda.functionaltests.extension.TestDataLoggingExtension
 org.openkilda.functionaltests.extension.failfast.FailFastExtension
-org.openkilda.functionaltests.listeners.RegisterListenersExtension
+org.openkilda.functionaltests.extension.fixture.CleanupVerifierExtension

@@ -21,8 +21,11 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse
+import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.SoftAssertions
 
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import spock.lang.Ignore
 import spock.lang.Isolated
 import spock.lang.Narrative

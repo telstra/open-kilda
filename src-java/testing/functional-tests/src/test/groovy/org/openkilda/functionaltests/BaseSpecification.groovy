@@ -106,6 +106,8 @@ class BaseSpecification extends Specification {
     }
 
     def cleanupSpec() {
+        threadLocalTopology.set(null)
+        topologyPool.put(topology)
     }
 
     def requireProfiles(String[] profiles) {
