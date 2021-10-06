@@ -26,6 +26,7 @@ dependencies {
     implementation 'org.apache.commons:commons-collections4'
     implementation 'com.auth0:java-jwt:3.2.0'
     implementation 'org.bouncycastle:bcprov-jdk15on:1.68'
+    implementation 'org.apache.maven:maven-artifact:3.6.0'
 
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'

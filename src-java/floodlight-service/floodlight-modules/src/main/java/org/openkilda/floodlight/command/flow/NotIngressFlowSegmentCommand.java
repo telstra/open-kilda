@@ -16,6 +16,8 @@
 package org.openkilda.floodlight.command.flow;
 
 import static org.openkilda.floodlight.switchmanager.SwitchManager.VXLAN_UDP_DST;
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 
 import org.openkilda.floodlight.error.NotImplementedEncapsulationException;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
@@ -34,6 +36,7 @@ import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
+import org.projectfloodlight.openflow.types.U32;
 
 import java.util.UUID;
 
@@ -80,6 +83,14 @@ public abstract class NotIngressFlowSegmentCommand extends FlowSegmentCommand {
         match.setExact(MatchField.ETH_TYPE, EthType.IPv4);
         match.setExact(MatchField.IP_PROTO, IpProtocol.UDP);
         match.setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST));
-        OfAdapter.INSTANCE.matchVxLanVni(of, match, encapsulation.getId());
+        if (getSwitchFeatures().contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+            OfAdapter.INSTANCE.matchVxLanVni(of, match, encapsulation.getId());
+        } else if (getSwitchFeatures().contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
+            match.setExact(MatchField.KILDA_VXLAN_VNI, U32.of(encapsulation.getId()));
+        } else {
+            throw new UnsupportedOperationException(String.format("Switch %s must support one of following features: "
+                    + "[%s, %s] to match VXLAN packets", switchId,
+                    NOVIFLOW_PUSH_POP_VXLAN, KILDA_OVS_PUSH_POP_MATCH_VXLAN));
+        }
     }
 }

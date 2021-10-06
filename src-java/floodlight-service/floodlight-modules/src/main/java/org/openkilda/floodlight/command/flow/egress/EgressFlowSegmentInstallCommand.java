@@ -15,6 +15,9 @@
 
 package org.openkilda.floodlight.command.flow.egress;
 
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
+
 import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.error.NotImplementedEncapsulationException;
@@ -119,7 +122,15 @@ public class EgressFlowSegmentInstallCommand extends EgressFlowSegmentCommand {
 
     private List<OFAction> makeVxLanTransformActions(OFFactory of) {
         List<OFAction> actions = new ArrayList<>();
-        actions.add(of.actions().noviflowPopVxlanTunnel());
+        if (getSwitchFeatures().contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+            actions.add(of.actions().noviflowPopVxlanTunnel());
+        } else if (getSwitchFeatures().contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
+            actions.add(of.actions().kildaPopVxlanField());
+        } else {
+            throw new UnsupportedOperationException(String.format("Switch %s must support on of next features: "
+                    + "[%s, %s] for VXLAN encapsulation.",
+                    switchId, NOVIFLOW_PUSH_POP_VXLAN, KILDA_OVS_PUSH_POP_MATCH_VXLAN));
+        }
         // All ingress vlan tags have been removed on ingress side
         actions.addAll(OfAdapter.INSTANCE.makeVlanReplaceActions(
                 of, Collections.emptyList(), endpoint.getVlanStack()));
