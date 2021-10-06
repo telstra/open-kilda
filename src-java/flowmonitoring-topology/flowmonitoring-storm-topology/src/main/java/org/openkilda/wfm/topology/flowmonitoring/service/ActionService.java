@@ -24,6 +24,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStats;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowStatsRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
@@ -145,25 +146,29 @@ public class ActionService implements FlowSlaMonitoringCarrier {
 
     @Override
     public void saveFlowLatency(String flowId, String direction, long latency) {
-        transactionManager.doInTransaction(() -> {
-            FlowStats flowStats = flowStatsRepository.findByFlowId(flowId).orElse(null);
-            if (flowStats == null) {
-                Optional<Flow> flow = flowRepository.findById(flowId);
-                if (flow.isPresent()) {
-                    FlowStats toCreate = new FlowStats(flow.get(), null, null);
-                    flowStatsRepository.add(toCreate);
-                    flowStats = toCreate;
-                } else {
-                    throw new IllegalStateException(
-                            format("Can't save latency for flow '%s'. Flow not found.", flowId));
+        try {
+            transactionManager.doInTransaction(() -> {
+                FlowStats flowStats = flowStatsRepository.findByFlowId(flowId).orElse(null);
+                if (flowStats == null) {
+                    Optional<Flow> flow = flowRepository.findById(flowId);
+                    if (flow.isPresent()) {
+                        FlowStats toCreate = new FlowStats(flow.get(), null, null);
+                        flowStatsRepository.add(toCreate);
+                        flowStats = toCreate;
+                    } else {
+                        log.warn("Can't save latency for flow '{}'. Flow not found.", flowId);
+                        return;
+                    }
                 }
-            }
-            if (FORWARD.name().toLowerCase().equals(direction)) {
-                flowStats.setForwardLatency(latency);
-            } else {
-                flowStats.setReverseLatency(latency);
-            }
-        });
+                if (FORWARD.name().toLowerCase().equals(direction)) {
+                    flowStats.setForwardLatency(latency);
+                } else {
+                    flowStats.setReverseLatency(latency);
+                }
+            });
+        } catch (PersistenceException e) {
+            log.error("Can't save latency for flow '{}'.", flowId, e);
+        }
     }
 
     @Override

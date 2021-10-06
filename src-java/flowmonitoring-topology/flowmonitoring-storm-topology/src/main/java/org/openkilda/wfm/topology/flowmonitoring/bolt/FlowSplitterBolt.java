@@ -51,8 +51,8 @@ public class FlowSplitterBolt extends AbstractBolt {
                 emit(input, new Values(flowRttStatsData.getFlowId(), flowRttStatsData, getCommandContext()));
             } else {
                 unhandledInput(input);
-                return;
             }
+            return;
         }
 
         if (message instanceof CommandMessage) {
