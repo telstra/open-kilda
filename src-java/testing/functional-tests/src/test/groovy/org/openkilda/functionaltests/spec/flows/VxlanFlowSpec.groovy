@@ -7,6 +7,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -455,6 +456,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                 if(involvedSwitches.size() > 2) {
                     vxlanSw = involvedSwitches.find {
                         it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
+                                || it.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)
                     }
                     return vxlanSw
                 }
@@ -464,7 +466,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
             //2 switches for src/dst + 1 transit sw with vxlan. Need at least one more
             def enoughSwitches = it.paths.collectMany { pathHelper.getInvolvedSwitches(it) }.unique().size() > 3
             return vxlanPath && enoughSwitches &&
-                    [it.src, it.dst].every { it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) }
+                    [it.src, it.dst].every { it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
+                            || it.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN) }
         }
         assumeTrue(switchPair as boolean, "Wasn't able to find enough VXLAN-enabled switches")
         def initVxlanSwProps = northbound.getSwitchProperties(vxlanSw.dpId)

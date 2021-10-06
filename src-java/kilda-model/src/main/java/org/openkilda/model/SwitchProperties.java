@@ -37,6 +37,7 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
@@ -113,7 +114,7 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
     public void setSupportedTransitEncapsulation(Set<FlowEncapsulationType> supportedTransitEncapsulation) {
         if (supportedTransitEncapsulation != null
                 && supportedTransitEncapsulation.contains(FlowEncapsulationType.VXLAN)) {
-            validateProp(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN);
+            validatePropAny(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN, SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN);
         }
         data.setSupportedTransitEncapsulation(supportedTransitEncapsulation);
     }
@@ -138,6 +139,22 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
             throw new IllegalArgumentException(message);
         }
         return true;
+    }
+
+    /**
+     * Checks if switch features contains any of specified features.
+     *
+     * @throws IllegalArgumentException if all features are missed in switch features collection.
+     */
+    public void validatePropAny(SwitchFeature... features) {
+        for (SwitchFeature feature : features) {
+            if (supportsFeature(feature)) {
+                return;
+            }
+        }
+        String message = String.format("Switch %s must support at least one of the next features: %s",
+                getSwitchId(), Arrays.toString(features));
+        throw new IllegalArgumentException(message);
     }
 
     private boolean supportsFeature(SwitchFeature feature) {

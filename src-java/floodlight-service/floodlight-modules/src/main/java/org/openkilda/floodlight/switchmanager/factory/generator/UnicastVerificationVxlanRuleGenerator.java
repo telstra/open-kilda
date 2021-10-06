@@ -23,6 +23,7 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.INPUT_TABLE_I
 import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_UDP_SRC;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.VERIFICATION_RULE_VXLAN_PRIORITY;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 
@@ -30,6 +31,7 @@ import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.SwitchManagerConfig;
 import org.openkilda.floodlight.switchmanager.factory.SwitchFlowTuple;
+import org.openkilda.model.SwitchFeature;
 
 import lombok.Builder;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -48,6 +50,7 @@ import org.projectfloodlight.openflow.types.TransportPort;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class UnicastVerificationVxlanRuleGenerator extends MeteredFlowGenerator {
 
@@ -63,7 +66,8 @@ public class UnicastVerificationVxlanRuleGenerator extends MeteredFlowGenerator 
     @Override
     public SwitchFlowTuple generateFlow(IOFSwitch sw) {
         // should be replaced with fair feature detection based on ActionId's during handshake
-        if (!featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+        Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
+        if (!features.contains(NOVIFLOW_PUSH_POP_VXLAN) && !features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
             return SwitchFlowTuple.getEmpty();
         }
 
@@ -75,7 +79,7 @@ public class UnicastVerificationVxlanRuleGenerator extends MeteredFlowGenerator 
                 config.getSystemMeterBurstSizeInPackets(), config.getDiscoPacketSize());
         OFInstructionMeter ofInstructionMeter = buildMeterInstruction(meterId, sw, actionList);
 
-        OFFlowMod flowMod = buildUnicastVerificationRuleVxlan(sw, cookie, ofInstructionMeter, actionList);
+        OFFlowMod flowMod = buildUnicastVerificationRuleVxlan(sw, features, cookie, ofInstructionMeter, actionList);
 
         return SwitchFlowTuple.builder()
                 .sw(sw)
@@ -91,10 +95,14 @@ public class UnicastVerificationVxlanRuleGenerator extends MeteredFlowGenerator 
                 config.getSystemMeterBurstSizeInPackets(), config.getDiscoPacketSize());
     }
 
-    private OFFlowMod buildUnicastVerificationRuleVxlan(IOFSwitch sw, long cookie, OFInstructionMeter meter,
-                                                        ArrayList<OFAction> actionList) {
+    private OFFlowMod buildUnicastVerificationRuleVxlan(IOFSwitch sw, Set<SwitchFeature> features, long cookie,
+                                                        OFInstructionMeter meter, ArrayList<OFAction> actionList) {
         OFFactory ofFactory = sw.getOFFactory();
-        actionList.add(ofFactory.actions().noviflowPopVxlanTunnel());
+        if (features.contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+            actionList.add(ofFactory.actions().noviflowPopVxlanTunnel());
+        } else {
+            actionList.add(ofFactory.actions().kildaPopVxlanField());
+        }
         actionList.add(actionSendToController(sw.getOFFactory()));
 
         MacAddress macAddress = convertDpIdToMac(sw.getId());

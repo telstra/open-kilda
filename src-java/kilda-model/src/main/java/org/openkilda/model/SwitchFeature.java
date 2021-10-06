@@ -34,5 +34,6 @@ public enum SwitchFeature {
     GROUPS,
     KILDA_OVS_COPY_FIELD,
     KILDA_OVS_SWAP_FIELD,
+    KILDA_OVS_PUSH_POP_MATCH_VXLAN,
     LAG
 }

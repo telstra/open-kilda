@@ -24,6 +24,7 @@ import static org.openkilda.model.SwitchFeature.HALF_SIZE_METADATA;
 import static org.openkilda.model.SwitchFeature.INACCURATE_METER;
 import static org.openkilda.model.SwitchFeature.INACCURATE_SET_VLAN_VID_ACTION;
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_COPY_FIELD;
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_SWAP_FIELD;
 import static org.openkilda.model.SwitchFeature.LAG;
 import static org.openkilda.model.SwitchFeature.LIMITED_BURST_SIZE;
@@ -95,11 +96,24 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     }
 
     @Test
+    public void testKildaOvsVxlan() {
+        IOFSwitch sw = makeSwitchMock(SwitchDescription.builder()
+                        .setManufacturerDescription("Nicira, Inc.")
+                        .setHardwareDescription("Open vSwitch")
+                        .setSoftwareDescription("2.15.1.1-kilda")
+                        .build(),
+                OFVersion.OF_13, 255);
+        discoveryCheck(sw, ImmutableSet.of(
+                GROUP_PACKET_OUT_CONTROLLER, MATCH_UDP_PORT, MULTI_TABLE, PKTPS_FLAG, RESET_COUNTS_FLAG, GROUPS,
+                KILDA_OVS_COPY_FIELD, KILDA_OVS_SWAP_FIELD, KILDA_OVS_PUSH_POP_MATCH_VXLAN));
+    }
+
+    @Test
     public void testKildaOvs() {
         IOFSwitch sw = makeSwitchMock(SwitchDescription.builder()
                         .setManufacturerDescription("Nicira, Inc.")
                         .setHardwareDescription("Open vSwitch")
-                        .setSoftwareDescription("2.15.0-kilda")
+                        .setSoftwareDescription("2.15.1-kilda")
                         .build(),
                 OFVersion.OF_13, 255);
         discoveryCheck(sw, ImmutableSet.of(
@@ -112,7 +126,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
         IOFSwitch sw = makeSwitchMock(SwitchDescription.builder()
                         .setManufacturerDescription("Nicira, Inc.")
                         .setHardwareDescription("Open vSwitch")
-                        .setSoftwareDescription("2.15.0-kilda")
+                        .setSoftwareDescription("2.15.1-kilda")
                         .build(),
                 OFVersion.OF_15, 255);
         discoveryCheck(sw, ImmutableSet.of(

@@ -29,6 +29,7 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.NOVIFLOW_TIME
 import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_REVERSE_UDP_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.VXLAN_UDP_DST;
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE;
@@ -78,14 +79,15 @@ public class Server42FlowRttOutputVxlanFlowGenerator implements SwitchFlowGenera
     @Override
     public SwitchFlowTuple generateFlow(IOFSwitch sw) {
         Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
-        if (!features.contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+        if (!features.contains(NOVIFLOW_PUSH_POP_VXLAN) && !features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
             return SwitchFlowTuple.getEmpty();
         }
 
         OFFactory ofFactory = sw.getOFFactory();
 
         List<OFAction> actions = new ArrayList<>();
-        actions.add(buildPopVxlanAction(ofFactory));
+
+        actions.add(buildPopVxlanAction(ofFactory, features));
         if (server42Vlan > 0) {
             actions.add(actionPushVlan(ofFactory, EthType.VLAN_FRAME.getValue()));
             actions.add(actionReplaceVlan(ofFactory, server42Vlan));
@@ -135,7 +137,11 @@ public class Server42FlowRttOutputVxlanFlowGenerator implements SwitchFlowGenera
                 .build();
     }
 
-    private static OFAction buildPopVxlanAction(OFFactory factory) {
-        return factory.actions().noviflowPopVxlanTunnel();
+    private static OFAction buildPopVxlanAction(OFFactory factory, Set<SwitchFeature> features) {
+        if (features.contains(NOVIFLOW_COPY_FIELD)) {
+            return factory.actions().noviflowPopVxlanTunnel();
+        } else {
+            return factory.actions().kildaPopVxlanField();
+        }
     }
 }
