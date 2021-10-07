@@ -165,6 +165,8 @@ Constraints:
 |`0x2000_0000_000X_XXXX`|`INGRESS_REVERSE`|Receives Customer packets, push transit encapsulation if needed and sends to port. Path direction - reverse, XXX - path unmasked cookie|
 |`0x4008_0000_000X_XXXX`|`FLOW_LOOP_FORWARD`|Makes flow loop for forward direction (sends all customer traffic back to IN_PORT). XXX - path unmasked cookie|
 |`0x2008_0000_000X_XXXX`|`FLOW_LOOP_REVERSE`|Makes flow loop for reverse direction (sends all customer traffic back to IN_PORT). XXX - path unmasked cookie|
+|`0x4004_0000_000X_XXXX`|`FLOW_MIRROR_FORWARD`|Mirrors forward flow traffic to specific endpoint. XXX - path unmasked cookie|
+|`0x2004_0000_000X_XXXX`|`FLOW_MIRROR_REVERSE`|Mirrors reverse flow traffic to specific endpoint. XXX - path unmasked cookie|
 |`0x40B0_0000_000X_XXXX`|`EXCLUSION_FLOW_FORWARD`|Filter packets by 5-tuple to not mirror it. Forward direction. XXX - exlusion ID|
 |`0x20B0_0000_000X_XXXX`|`EXCLUSION_FLOW_REVERSE`|Filter packets by 5-tuple to not mirror it. Reverse direction. XXX - exlusion ID|
 |`0x40C0_0000_000X_XXXX`|`SERVER_42_FLOW_RTT_INGRESS_FORWARD`|Receives server42 flow RTT packet from SERVER_42_FLOW_RTT_INPUT, push transit encapsulation and sends to ISL port. (It's a copy of regular flow INGRESS_FORWARD rule but with matching by server42 input port). XXX - path unmasked cookie|
