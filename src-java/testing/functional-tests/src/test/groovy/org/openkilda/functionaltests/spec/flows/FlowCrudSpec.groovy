@@ -107,7 +107,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def beforeTraffic = new Date()
         def trafficApplicable = true
         try {
-            def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 1000, 3)
+            def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 1000, 10)
             withPool {
                 [exam.forward, exam.reverse].eachParallel { direction ->
                     def resources = traffExam.startExam(direction)
