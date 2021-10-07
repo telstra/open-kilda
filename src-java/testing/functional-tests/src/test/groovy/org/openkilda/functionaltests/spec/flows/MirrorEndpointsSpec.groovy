@@ -41,6 +41,7 @@ import org.openkilda.testing.tools.TraffgenStats
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.See
@@ -52,6 +53,10 @@ import javax.inject.Provider
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-traffic-mirroring")
 class MirrorEndpointsSpec extends HealthCheckSpecification {
+
+    @Shared
+    @Value('${opentsdb.metric.prefix}')
+    String metricPrefix
 
     @Autowired
     @Shared
@@ -127,6 +132,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         when: "Traffic briefly runs through the flow"
+        def genTrafficTime = new Date()
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = mirrorTg ? new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId]) : null
         def rxPacketsBefore = mirrorPortStats?.get()?.rxPackets
@@ -143,6 +149,13 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         and: "Original flow rule counter is not increased"
         flowRule.packetCount == findFlowRule(getFlowRules(swPair.src.dpId), mirrorDirection).packetCount
+
+        //https://github.com/telstra/open-kilda/issues/4517
+//        and: "System collects stat for mirror cookie in otsdb"
+//        Wrappers.wait(statsRouterRequestInterval) {
+//            def tags = [flowid: flow.flowId, cookie: mirrorRule.cookie]
+//            assert otsdb.query(genTrafficTime, metricPrefix + "flow.raw.bytes", tags).dps.size() > 0
+//        }
 
         and: "Traffic is also received at the mirror point (check only if second tg available)"
         if (mirrorTg) {
