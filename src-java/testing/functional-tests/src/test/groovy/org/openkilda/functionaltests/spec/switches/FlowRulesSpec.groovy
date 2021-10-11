@@ -30,7 +30,6 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
@@ -39,10 +38,8 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
-import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -65,13 +62,22 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Shared
     int flowRulesCount = 2
     @Shared
+    Boolean s42IsEnabledOnSrcSw
+    @Shared
     // multiTableFlowRule is an extra rule which is created after creating a flow
     int multiTableFlowRulesCount = 1
     @Shared
     int sharedRulesCount = 1
+    @Shared
+    int s42FlowRttIngressForwardCount = 1
+    @Shared
+    int s42FlowRttInput = 1
+    @Shared
+    int s42QinqOuterVlanCount = 1
 
     def setupSpec() {
         (srcSwitch, dstSwitch) = topology.getActiveSwitches()[0..1]
+        s42IsEnabledOnSrcSw = switchHelper.getCachedSwProps(srcSwitch.dpId).server42FlowRtt
         srcSwDefaultRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries
         dstSwDefaultRules = northbound.getSwitchRules(dstSwitch.dpId).flowEntries
     }
@@ -110,7 +116,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /delete-action=DROP_ALL\)/)
     def "Able to delete rules from a single-table mode switch (delete-action=#data.deleteRulesAction)"() {
         given: "A switch with some flow rules installed"
-        assumeTrue(!northbound.getSwitchProperties(srcSwitch.dpId).multiTable,
+        assumeTrue(!switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable,
 "Multi table should be disabled on the src switch")
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flowHelperV2.addFlow(flow)
@@ -138,22 +144,24 @@ class FlowRulesSpec extends HealthCheckSpecification {
         data << [
                 [// Drop all rules in single-table mode
                  deleteRulesAction: DeleteRulesAction.DROP_ALL,
-                 rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount,
+                 rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount +
+                         (s42IsEnabledOnSrcSw ? s42FlowRttIngressForwardCount : 0),
                  getExpectedRules : { sw, defaultRules -> [] }
                 ],
                 [// Drop all rules, add back in the base default rules in single-table mode
                  deleteRulesAction: DeleteRulesAction.DROP_ALL_ADD_DEFAULTS,
-                 rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount,
+                 rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount +
+                         (s42IsEnabledOnSrcSw ? s42FlowRttIngressForwardCount : 0),
                  getExpectedRules : { sw, defaultRules -> defaultRules }
                 ],
                 [// Don't drop the default rules, but do drop everything else
                  deleteRulesAction: DeleteRulesAction.IGNORE_DEFAULTS,
-                 rulesDeleted     : flowRulesCount,
+                 rulesDeleted     : flowRulesCount + (s42IsEnabledOnSrcSw ? s42FlowRttIngressForwardCount : 0),
                  getExpectedRules : { sw, defaultRules -> defaultRules }
                 ],
                 [// Drop all non-base rules (ie IGNORE), and add base rules back (eg overwrite)
                  deleteRulesAction: DeleteRulesAction.OVERWRITE_DEFAULTS,
-                 rulesDeleted     : flowRulesCount,
+                 rulesDeleted     : flowRulesCount + (s42IsEnabledOnSrcSw ? s42FlowRttIngressForwardCount : 0),
                  getExpectedRules : { sw, defaultRules -> defaultRules }
                 ],
                 [// Drop all default rules in single-table mode
@@ -170,7 +178,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Ignore("fix ASAP, make this test to work with s42 enabled")
     @Tags([SMOKE])
     @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /delete-action=DROP_ALL\)/)
     def "Able to delete rules from a switch with multi table mode (delete-action=#data.deleteRulesAction)"() {
@@ -182,20 +189,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         when: "Delete rules from the switch"
         def expectedRules = data.getExpectedRules(srcSwitch, srcSwDefaultRules)
-        def extraIngressFlowRule
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            extraIngressFlowRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - expectedRules).findAll {
-                Cookie.isIngressRulePassThrough(it.cookie)
-            }
-            assert extraIngressFlowRule.size() == multiTableFlowRulesCount
-        }
-
-        if (data.deleteRulesAction in [DeleteRulesAction.DROP_ALL_ADD_DEFAULTS,
-                                       DeleteRulesAction.IGNORE_DEFAULTS,
-                                       DeleteRulesAction.REMOVE_ADD_DEFAULTS,
-                                       DeleteRulesAction.OVERWRITE_DEFAULTS]) {
-            expectedRules = (expectedRules + extraIngressFlowRule)
-        }
         def deletedRules = northbound.deleteSwitchRules(srcSwitch.dpId, data.deleteRulesAction)
 
         then: "The corresponding rules are really deleted"
@@ -217,33 +210,63 @@ class FlowRulesSpec extends HealthCheckSpecification {
         data << [
                 [// Drop all rules
                  deleteRulesAction: DeleteRulesAction.DROP_ALL,
-                 rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount + multiTableFlowRulesCount + sharedRulesCount,
+                 rulesDeleted: srcSwDefaultRules.size() + flowRulesCount + multiTableFlowRulesCount +
+                         sharedRulesCount + (s42IsEnabledOnSrcSw ? s42FlowRttInput + s42QinqOuterVlanCount +
+                         s42FlowRttIngressForwardCount : 0),
                  getExpectedRules : { sw, defaultRules -> [] }
                 ],
                 [// Drop all rules, add back in the base default rules
                  deleteRulesAction: DeleteRulesAction.DROP_ALL_ADD_DEFAULTS,
-                 rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount + multiTableFlowRulesCount + sharedRulesCount,
-                 getExpectedRules : { sw, defaultRules -> defaultRules }
+                 rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount + multiTableFlowRulesCount +
+                         sharedRulesCount + (s42IsEnabledOnSrcSw ? s42FlowRttInput + s42QinqOuterVlanCount +
+                         s42FlowRttIngressForwardCount : 0),
+                 getExpectedRules : { sw, defaultRules ->
+                     def noDefaultSwRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries - defaultRules
+                     defaultRules + noDefaultSwRules.findAll { Cookie.isIngressRulePassThrough(it.cookie) } +
+                         (s42IsEnabledOnSrcSw ? noDefaultSwRules.findAll {
+                             new Cookie(it.cookie).getType() == CookieType.SERVER_42_FLOW_RTT_INPUT } : [])
+                 }
                 ],
                 [// Don't drop the default rules, but do drop everything else
                  deleteRulesAction: DeleteRulesAction.IGNORE_DEFAULTS,
-                 rulesDeleted     : flowRulesCount + sharedRulesCount,
-                 getExpectedRules : { sw, defaultRules -> defaultRules }
+                 rulesDeleted     : flowRulesCount + sharedRulesCount +
+                         (s42IsEnabledOnSrcSw ? s42QinqOuterVlanCount + s42FlowRttIngressForwardCount : 0),
+                 getExpectedRules : { sw, defaultRules ->
+                     def noDefaultSwRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries - defaultRules
+                     defaultRules + noDefaultSwRules.findAll { Cookie.isIngressRulePassThrough(it.cookie) } +
+                         (s42IsEnabledOnSrcSw ? noDefaultSwRules.findAll {
+                             new Cookie(it.cookie).getType() == CookieType.SERVER_42_FLOW_RTT_INPUT } : [])
+                 }
                 ],
                 [// Drop all non-base rules (ie IGNORE), and add base rules back (eg overwrite)
                  deleteRulesAction: DeleteRulesAction.OVERWRITE_DEFAULTS,
-                 rulesDeleted     : flowRulesCount + sharedRulesCount,
-                 getExpectedRules : { sw, defaultRules -> defaultRules }
+                 rulesDeleted     : flowRulesCount + sharedRulesCount +
+                         (s42IsEnabledOnSrcSw ? s42QinqOuterVlanCount + s42FlowRttIngressForwardCount : 0),
+                 getExpectedRules : { sw, defaultRules ->
+                     def noDefaultSwRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries - defaultRules
+                     defaultRules + noDefaultSwRules.findAll { Cookie.isIngressRulePassThrough(it.cookie) } +
+                         (s42IsEnabledOnSrcSw ? northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+                             new Cookie(it.cookie).getType() == CookieType.SERVER_42_FLOW_RTT_INPUT } : [])
+                 }
                 ],
                 [// Drop all default rules
                  deleteRulesAction: DeleteRulesAction.REMOVE_DEFAULTS,
-                 rulesDeleted     : srcSwDefaultRules.size() + multiTableFlowRulesCount,
-                 getExpectedRules : { sw, defaultRules -> getFlowRules(sw) }
+                 rulesDeleted     : srcSwDefaultRules.size() + multiTableFlowRulesCount +
+                         (s42IsEnabledOnSrcSw ? s42FlowRttInput : 0),
+                 getExpectedRules : { sw, defaultRules -> getFlowRules(sw) -
+                         (s42IsEnabledOnSrcSw ? northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+                             new Cookie(it.cookie).getType() == CookieType.SERVER_42_FLOW_RTT_INPUT } : [])
+                 }
                 ],
                 [// Drop the default, add them back
                  deleteRulesAction: DeleteRulesAction.REMOVE_ADD_DEFAULTS,
-                 rulesDeleted     : srcSwDefaultRules.size() + multiTableFlowRulesCount,
-                 getExpectedRules : { sw, defaultRules -> defaultRules + getFlowRules(sw) }
+                 rulesDeleted     : srcSwDefaultRules.size() + multiTableFlowRulesCount +
+                         (s42IsEnabledOnSrcSw ? s42FlowRttInput : 0),
+                 getExpectedRules : { sw, defaultRules -> defaultRules + getFlowRules(sw) +
+                         northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+                             Cookie.isIngressRulePassThrough(it.cookie)
+                         }
+                 }
                 ]
         ]
     }
@@ -336,6 +359,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         given: "A switch with some flow rules installed"
         flowHelperV2.addFlow(flow)
         def cookiesBefore = northbound.getSwitchRules(data.switch.dpId).flowEntries*.cookie.sort()
+        def s42IsEnabled = switchHelper.getCachedSwProps(data.switch.dpId).server42FlowRtt
 
         when: "Delete switch rules by #data.description"
         def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan,
@@ -343,8 +367,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         then: "The requested rules are really deleted"
         def amountOfDeletedRules = data.removedRules
-        if (data.description == "inVlan") {
-            amountOfDeletedRules += (northbound.getSwitchProperties(data.switch.dpId).server42FlowRtt ? 1 : 0)
+        if (s42IsEnabled && data.description == "inVlan") {
+            amountOfDeletedRules +=  s42FlowRttIngressForwardCount
         }
         deletedRules.size() == amountOfDeletedRules
         Wrappers.wait(RULES_DELETION_TIME) {
