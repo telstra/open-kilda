@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.flowmonitoring.service;
 
 import static org.openkilda.server42.messaging.FlowDirection.FORWARD;
 
-import org.openkilda.messaging.info.flow.UpdateFlowInfo;
+import org.openkilda.messaging.info.flow.UpdateFlowCommand;
 import org.openkilda.messaging.info.stats.FlowRttStatsData;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
@@ -85,13 +85,15 @@ public class FlowCacheService {
     /**
      * Update flow info.
      */
-    public void updateFlowInfo(UpdateFlowInfo info) {
-        if (info.getFlowPath().getForwardPath() == null
-                || info.getFlowPath().getForwardPath().isEmpty()) {
-            flowStates.remove(info.getFlowId());
-        } else {
-            flowStates.put(info.getFlowId(), FlowMapper.INSTANCE.toFlowState(info));
-        }
+    public void updateFlowInfo(UpdateFlowCommand info) {
+        flowStates.put(info.getFlowId(), FlowMapper.INSTANCE.toFlowState(info));
+    }
+
+    /**
+     * Remove flow info.
+     */
+    public void removeFlowInfo(String flowId) {
+        flowStates.remove(flowId);
     }
 
     /**

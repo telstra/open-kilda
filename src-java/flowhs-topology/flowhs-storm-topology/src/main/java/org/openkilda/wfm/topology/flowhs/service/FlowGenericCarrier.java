@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.info.flow.UpdateFlowInfo;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
 import org.openkilda.model.SwitchId;
@@ -66,7 +66,7 @@ public interface FlowGenericCarrier {
      * Sends UpdateFlowInfo to flow-monitoring topology.
      * @param flowInfo message to send
      */
-    default void sendNotifyFlowMonitor(UpdateFlowInfo flowInfo) {}
+    default void sendNotifyFlowMonitor(CommandData flowInfo) {}
 
     /**
      * Sends UpdateFlowInfo to stats topology.

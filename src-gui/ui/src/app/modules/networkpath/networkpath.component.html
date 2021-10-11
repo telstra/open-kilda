@@ -1,84 +1,107 @@
 <div class="network_path_div">
-  <form [formGroup]="networkpathForm" id="networkpathForm" #roleform="ngForm">
-    <div class="row form-group clearfix">
-      <div class="col-sm-6">
-        <div class="row">
-          <label class='col-sm-3 col-form-label'>Source Switch:</label>
-          <div class='col-sm-6'>
-            <ng-select
-            formControlName="source_switch"
-             [items]="switchList"
-             bindLabel="name"
-             bindValue="switch_id"
-             labelForId="switch_id"
-             placeholder="Select Switch"
-             clearAllText="Clear"
-             [clearable]="f.source_switch.value">               
-             </ng-select>
-             <div *ngIf="submitted && f.source_switch.errors" class="invalid-feedback">
-              <div *ngIf="f.source_switch.errors.required">Please select source switch</div>
+    <form [formGroup]="networkpathForm" id="networkpathForm" #roleform="ngForm">
+        <div class="row form-group clearfix">
+            <div class="col-sm-4">
+                <div class="row">
+                    <label class='col-sm-4 col-form-label'>Source Switch:</label>
+                    <div class='col-sm-8'>
+                        <ng-select
+                                formControlName="source_switch"
+                                [items]="switchList"
+                                bindLabel="name"
+                                bindValue="switch_id"
+                                labelForId="switch_id"
+                                placeholder="Select Switch"
+                                clearAllText="Clear"
+                                [clearable]="f.source_switch.value">
+                        </ng-select>
+                        <div *ngIf="submitted && f.source_switch.errors" class="invalid-feedback">
+                            <div *ngIf="f.source_switch.errors.required">Please select source switch</div>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-sm-6">
-        <div class="row">
-          <label class='col-sm-3 col-form-label'>Destination Switch:</label>
-          <div class='col-sm-6'>
-            <ng-select
-            formControlName="target_switch"
-             [items]="switchList"
-             bindLabel="name"
-             bindValue="switch_id"
-             labelForId="switch_id"
-             placeholder="Select Switch"
-             clearAllText="Clear"
-             [clearable]="f.target_switch.value">
-             </ng-select>
-             <div *ngIf="submitted && f.target_switch.errors" class="invalid-feedback">
-              <div *ngIf="f.target_switch.errors.required">Please select destination switch</div>
+            <div class="col-sm-4">
+                <div class="row">
+                    <label class='col-sm-4 col-form-label'>Destination Switch:</label>
+                    <div class='col-sm-8'>
+                        <ng-select
+                                formControlName="target_switch"
+                                [items]="switchList"
+                                bindLabel="name"
+                                bindValue="switch_id"
+                                labelForId="switch_id"
+                                placeholder="Select Switch"
+                                clearAllText="Clear"
+                                [clearable]="f.target_switch.value">
+                        </ng-select>
+                        <div *ngIf="submitted && f.target_switch.errors" class="invalid-feedback">
+                            <div *ngIf="f.target_switch.errors.required">Please select destination switch</div>
+                        </div>
+
+                    </div>
+                </div>
             </div>
-  
-          </div>
-          <div class="col-sm-3">
-            <span class="btn kilda_btn" (click)="getNetworkPath()" style="margin-right:65px;">Go</span>
-          </div>
+            <div class="col-sm-4">
+                <div class="row">
+                    <label class='col-sm-2 col-form-label'>Strategy:</label>
+                    <div class='col-sm-5'>
+                        <ng-select
+                                formControlName="strategy"
+                                [items]="strategyList"
+                                bindLabel="name"
+                                bindValue="strategy_id"
+                                placeholder="Select Strategy"
+                                clearAllText="Clear"
+                                [clearable]="f.strategy.value">
+                        </ng-select>
+                        <div *ngIf="submitted && f.strategy.errors" class="invalid-feedback">
+                            <div *ngIf="f.strategy.errors.required">Please select strategy</div>
+                        </div>
+
+                    </div>
+                    <div *ngIf="f.strategy.value == 'MAX_LATENCY'" class='col-sm-3'>
+                        <input formControlName="max_latency"  type="text" class="form-control" placeholder="Max Latency" aria-label="Enter Max Latency" aria-describedby="basic-addon2">
+                    </div>
+                    <div class="col-sm-2">
+                        <span class="btn kilda_btn" (click)="getNetworkPath()" style="margin-right:65px;">Go</span>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  </form>
+    </form>
 </div>
 <div *ngIf="networkPaths && networkPaths.length" class="col-md-12 mt-5" style="border-top:1px solid #ccc;">
-  <div class="row">
-    <div class="col-md-4">
-        <table class="table network-path-tbl mt-5" >
-            <thead>
-              <th>Bandwidth(Mbps) <i style="cursor:pointer;" (click)="sortNetworkData('bandwidth');" class="fa fa-fw fa-sort"></i> </th>
-              <th>Latency(ns) <i style="cursor:pointer;"  (click)="sortNetworkData('latency');"  class="fa fa-fw fa-sort"></i></th>
-              <th>Nodes <i style="cursor:pointer;"  (click)="sortNetworkData('nodes');"  class="fa fa-fw fa-sort"></i></th>
-            </thead>
-          </table>
-          <table  class="table network-path-tbl" style="margin-top:-18px;">
-              <tbody>
-                  <tr (click)="viewPath(i,pathData.nodes)" [ngClass]= "{'activerow':activeRowIndex == i}" *ngFor="let pathData of networkPaths; let i = index;">
-                     <td>{{pathData.bandwidth / 1000}}</td>
+    <div class="row">
+        <div class="col-md-4">
+            <table class="table network-path-tbl mt-5" >
+                <thead>
+                <th>Bandwidth(Mbps) <i style="cursor:pointer;" (click)="sortNetworkData('bandwidth');" class="fa fa-fw fa-sort"></i> </th>
+                <th>Latency(ns) <i style="cursor:pointer;"  (click)="sortNetworkData('latency');"  class="fa fa-fw fa-sort"></i></th>
+                <th>Nodes <i style="cursor:pointer;"  (click)="sortNetworkData('nodes');"  class="fa fa-fw fa-sort"></i></th>
+                </thead>
+            </table>
+            <table  class="table network-path-tbl" style="margin-top:-18px;">
+                <tbody>
+                <tr (click)="viewPath(i,pathData.nodes)" [ngClass]= "{'activerow':activeRowIndex == i}" *ngFor="let pathData of networkPaths; let i = index;">
+                    <td>{{pathData.bandwidth / 1000}}</td>
                     <td>{{pathData.latency}}</td>
                     <td>{{pathData.nodes.length}}</td>
-                    </tr>
-          </tbody>
-          </table>
-    </div>
-    <div class="col-md-8" style="border-left:1px solid #ccc; min-height:350px; ">
-      <div class="main-list" style="float:right; margin-top:10px;" *ngIf="loadZoomIcon">
-          <a  class="custom-icon-path cursor-pointer" (click)="zoomFn(-1)"><i class="fa fa-search-minus"></i></a>
-           <a  class="custom-icon-path cursor-pointer" (click)="zoomFn(1)"><i class="fa fa-search-plus"></i></a>
+                </tr>
+                </tbody>
+            </table>
         </div>
-      <div id="networkpathGraphWrapper" class="pathGraph">
-        <div class="path-graph-component-loader" [hidden] ="!pathLoader"></div>
-        <div class="path-graph-wrapper" [hidden]="!loadpathGraph"></div>
-        <svg id="svgForwardPath"></svg>
-      </div>
+        <div class="col-md-8" style="border-left:1px solid #ccc; min-height:350px; ">
+            <div class="main-list" style="float:right; margin-top:10px;" *ngIf="loadZoomIcon">
+                <a  class="custom-icon-path cursor-pointer" (click)="zoomFn(-1)"><i class="fa fa-search-minus"></i></a>
+                <a  class="custom-icon-path cursor-pointer" (click)="zoomFn(1)"><i class="fa fa-search-plus"></i></a>
+            </div>
+            <div id="networkpathGraphWrapper" class="pathGraph">
+                <div class="path-graph-component-loader" [hidden] ="!pathLoader"></div>
+                <div class="path-graph-wrapper" [hidden]="!loadpathGraph"></div>
+                <svg id="svgForwardPath"></svg>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 

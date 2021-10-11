@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.105.2 (07/10/2021)
+
+### Bug Fixes:
+-  [#4513](https://github.com/telstra/open-kilda/pull/4513) Fix flow monitoring issues
+-  [#4455](https://github.com/telstra/open-kilda/pull/4455) Fix updating last-updated flow property when updating path latencies (Issue: [#4354](https://github.com/telstra/open-kilda/issues/4354)) [**storm-topologies**]
+-  [#4489](https://github.com/telstra/open-kilda/pull/4489) Fix persistence layer configuration
+-  [#4440](https://github.com/telstra/open-kilda/pull/4440) Remove one switch flows from flow monitoring
+
+### Improvements:
+-  [#4514](https://github.com/telstra/open-kilda/pull/4514) fix path to traffexam in README [**docs**]
+-  [#4482](https://github.com/telstra/open-kilda/pull/4482) Test/max latency issue [**tests**]
+-  [#4495](https://github.com/telstra/open-kilda/pull/4495) fix checkHistory in AutoRerouteIsolatedSpec [**tests**]
+-  [#4498](https://github.com/telstra/open-kilda/pull/4498) Strategy selector for available paths [**gui**]
+
+### Other changes:
+-  [#4494](https://github.com/telstra/open-kilda/pull/4494) tests: Properly wait for result when sending to kafka [**tests**]
+-  [#4496](https://github.com/telstra/open-kilda/pull/4496) Adjust tests configs for local env [**configuration**][**tests**]
+-  [#4497](https://github.com/telstra/open-kilda/pull/4497) Fix instabilities in some s42 tests [**tests**]
+-  [#4503](https://github.com/telstra/open-kilda/pull/4503) Added default values for test props [**configuration**][**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.105.1...v1.105.2).
+
+### Affected Components:
+nbworker, gui, flow-hs, flow-monitor, orientdb
+
+---
+
 ## v1.105.1 (20/09/2021)
 
 ### Bug Fixes:

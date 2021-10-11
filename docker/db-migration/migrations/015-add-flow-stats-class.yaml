@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: rozdy
+      changes:
+        - tagDatabase:
+            tag: 015-add-flow-stats-class
+
+  - changeSet:
+      id: add_flow_properties
+      author: rozdy
+      changes:
+        - sql: "CREATE CLASS flow_stats IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY flow_stats.flow_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_stats.forward_latency IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY flow_stats.reverse_latency IF NOT EXISTS LONG"
+      rollback:
+        - sql: "DROP CLASS flow_stats IF EXISTS"

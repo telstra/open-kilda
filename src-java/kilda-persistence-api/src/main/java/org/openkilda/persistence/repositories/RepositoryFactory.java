@@ -58,6 +58,8 @@ public interface RepositoryFactory {
 
     SwitchPropertiesRepository createSwitchPropertiesRepository();
 
+    FlowStatsRepository createFlowStatsRepository();
+
     SwitchConnectedDeviceRepository createSwitchConnectedDeviceRepository();
 
     PortEventRepository createPortEventRepository();

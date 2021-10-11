@@ -675,15 +675,16 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "Stats from flow monitoring feature for reverse direction only are available"
-        Wrappers.wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET * 2, 1) {
+        Wrappers.wait(flowSlaCheckIntervalSeconds * 3, 1) {
             def flMonitoringReverseData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "reverse",
                      origin   : "flow-monitoring"]).dps
-            def flMonitoringForwardData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-            [flowid   : flow.flowId,
-             direction: "forward",
-             origin   : "flow-monitoring"]).dps
+            def statsSince = new Date(System.currentTimeMillis() - (int) (flowSlaCheckIntervalSeconds * 1.2 * 1000))
+            def flMonitoringForwardData = otsdb.query(statsSince, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "forward",
+                     origin   : "flow-monitoring"]).dps
             assert flMonitoringReverseData.size() >= 1
             assert flMonitoringForwardData.isEmpty()
         }

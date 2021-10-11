@@ -107,17 +107,17 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 1L, sw.dpId, 1, 2, 1,
                         FlowEncapsulationType.TRANSIT_VLAN, 1, 0,
-                        OutputVlanType.REPLACE, false, new FlowEndpoint(sw.dpId, 17), null)).toJson()))
+                        OutputVlanType.REPLACE, false, new FlowEndpoint(sw.dpId, 17), null)).toJson())).get()
 
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 new InstallTransitFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 2L, sw.dpId, 3, 4, 1,
-                        FlowEncapsulationType.TRANSIT_VLAN, false)).toJson()))
+                        FlowEncapsulationType.TRANSIT_VLAN, false)).toJson())).get()
 
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 1, 0, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, 300, excessMeterId,
-                        sw.dpId, false, false, false, null)).toJson()))
+                        sw.dpId, false, false, false, null)).toJson())).get()
         producer.flush()
 
         Wrappers.wait(WAIT_OFFSET) {
@@ -155,17 +155,17 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 1L, sw.dpId, 1, 2, 1,
                         FlowEncapsulationType.VXLAN, 1, 0,
-                        OutputVlanType.REPLACE, false, new FlowEndpoint(sw.dpId, 17), null)).toJson()))
+                        OutputVlanType.REPLACE, false, new FlowEndpoint(sw.dpId, 17), null)).toJson())).get()
 
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 new InstallTransitFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 2L, sw.dpId, 3, 4, 1,
-                        FlowEncapsulationType.VXLAN, false)).toJson()))
+                        FlowEncapsulationType.VXLAN, false)).toJson())).get()
 
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 1, 0, 1,
                         FlowEncapsulationType.VXLAN,
                         OutputVlanType.REPLACE, 300, excessMeterId,
-                        sw.dpId, false, false, false, null)).toJson()))
+                        sw.dpId, false, false, false, null)).toJson())).get()
         producer.flush()
 
         Wrappers.wait(WAIT_OFFSET) {

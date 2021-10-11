@@ -59,9 +59,9 @@ public class NetworkIntegrationService {
      *
      * @return the paths
      */
-    public NetworkPathInfo getPaths(String srcSwitch, String dstSwitch) {
+    public NetworkPathInfo getPaths(String srcSwitch, String dstSwitch, String strategy, int maxLatency) {
 
-        NetworkPathInfo networkPath = getNetworkPath(srcSwitch, dstSwitch);
+        NetworkPathInfo networkPath = getNetworkPath(srcSwitch, dstSwitch, strategy, maxLatency);
         if (networkPath != null) {
             List<Path> pathList = networkPath.getPaths();
             pathList.forEach(path -> {
@@ -80,11 +80,13 @@ public class NetworkIntegrationService {
      *
      * @return the network path
      */
-    public NetworkPathInfo getNetworkPath(final String srcSwitch, final String dstSwitch) {
+    public NetworkPathInfo getNetworkPath(final String srcSwitch, final String dstSwitch, final String strategy,
+                                          final int maxLatency) {
         try {
             HttpResponse response = restClientManager.invoke(
                      applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_NETWORK_PATH
-                            .replace("{src_switch}", srcSwitch).replace("{dst_switch}", dstSwitch),
+                            .replace("{src_switch}", srcSwitch).replace("{dst_switch}", dstSwitch)
+                            .replace("{strategy}", strategy).replace("{max_latency}", Integer.toString(maxLatency)),
                      HttpMethod.GET, "", "application/json", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponse(response, NetworkPathInfo.class);

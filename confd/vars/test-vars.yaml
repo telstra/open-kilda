@@ -1,0 +1,35 @@
+---
+kilda_test_profile: "virtual"
+
+kilda_tests_orientdb_hosts: "localhost"
+kilda_tests_orientdb_hosts_single: "localhost"
+
+kilda_tests_kafka_hosts: "localhost:9092"
+kilda_tests_zookeeper_hosts: "localhost"
+
+kilda_tests_opentsdb_hosts: "localhost"
+kilda_tests_opentsdb_port: "4242"
+
+kilda_tests_hibernate_url: jdbc:mysql://localhost:8101/kilda
+
+kilda_floodlight_openflows: "tcp:floodlight_1.pendev:6653,tcp:floodlight_2.pendev:6653,tcp:floodlight_stats.pendev:6653"
+kilda_floodlight_endpoints: "http://localhost:8081,http://localhost:8281,http://localhost:8082"
+kilda_floodlight_containers: "floodlight_1,floodlight_2,floodlight_stats"
+kilda_floodlight_regions: "1,2,1.stats"
+kilda_floodlight_modes: "rw,rw,ro"
+kilda_lockkeeper_port: "5001"
+
+kilda_lab_api_endpoint: "http://localhost"
+kilda_lab_api_port: "8288"
+
+kilda_tests_northbound_endpoint: "http://localhost"
+kilda_tests_northbound_rest_port: "8080"
+
+kilda_tests_logging_logstash_host: "localhost"
+kilda_tests_logging_elasticsearch_proto: "http"
+kilda_tests_logging_elasticsearch_hosts: "localhost:9200"
+kilda_logging_port_tests: 5006
+
+kilda_tests_grpc_endpoint: "http://localhost"
+kilda_tests_grpc_rest_port: "8091"
+

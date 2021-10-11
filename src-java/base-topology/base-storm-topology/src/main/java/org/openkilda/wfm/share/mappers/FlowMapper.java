@@ -26,6 +26,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.FlowStats;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.MeterId;
@@ -75,15 +76,27 @@ public abstract class FlowMapper {
     @Mapping(target = "diverseWith", ignore = true)
     @Mapping(source = "affinityGroupId", target = "affinityWith")
     @Mapping(target = "mirrorPointStatuses", ignore = true)
+    @Mapping(target = "forwardLatency", ignore = true)
+    @Mapping(target = "reverseLatency", ignore = true)
     public abstract FlowDto map(Flow flow);
 
     /**
-     * Convert {@link Flow} to {@link FlowDto} with diverse flow ids.
+     * Convert {@link Flow} to {@link FlowDto} with diverse flow ids and mirror paths.
      */
     public FlowDto map(Flow flow, Set<String> diverseWith, List<FlowMirrorPath> flowMirrorPaths) {
+        return map(flow, diverseWith, flowMirrorPaths, FlowStats.EMPTY);
+    }
+
+    /**
+     * Convert {@link Flow} to {@link FlowDto} with diverse flow ids, mirror paths and flow properties.
+     */
+    public FlowDto map(Flow flow, Set<String> diverseWith, List<FlowMirrorPath> flowMirrorPaths,
+                       FlowStats flowStats) {
         FlowDto flowDto = map(flow);
         flowDto.setDiverseWith(diverseWith);
         flowDto.setMirrorPointStatuses(map(flowMirrorPaths));
+        flowDto.setForwardLatency(flowStats.getForwardLatency());
+        flowDto.setReverseLatency(flowStats.getReverseLatency());
         return flowDto;
     }
 

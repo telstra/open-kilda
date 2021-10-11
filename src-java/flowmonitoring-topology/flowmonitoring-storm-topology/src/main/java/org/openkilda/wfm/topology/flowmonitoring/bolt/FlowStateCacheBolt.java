@@ -15,12 +15,13 @@
 
 package org.openkilda.wfm.topology.flowmonitoring.bolt;
 
+import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_REMOVE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_ID_FIELD;
-import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowSplitterBolt.INFO_DATA_FIELD;
+import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowSplitterBolt.COMMAND_DATA_FIELD;
 
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.flow.UpdateFlowInfo;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.info.flow.UpdateFlowCommand;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.context.PersistenceContextRequired;
 import org.openkilda.wfm.AbstractBolt;
@@ -56,12 +57,22 @@ public class FlowStateCacheBolt extends AbstractBolt {
                 return;
             }
 
-            InfoData payload = pullValue(input, INFO_DATA_FIELD, InfoData.class);
-            if (payload instanceof UpdateFlowInfo) {
-                UpdateFlowInfo updateFlowInfo = (UpdateFlowInfo) payload;
-                flowStateCacheService.updateFlow(updateFlowInfo);
-                emit(FLOW_UPDATE_STREAM_ID.name(), input, new Values(updateFlowInfo.getFlowId(), updateFlowInfo,
-                        getCommandContext()));
+            if (FLOW_UPDATE_STREAM_ID.name().equals(input.getSourceStreamId())) {
+                CommandData payload = pullValue(input, COMMAND_DATA_FIELD, CommandData.class);
+                if (payload instanceof UpdateFlowCommand) {
+                    UpdateFlowCommand updateFlowCommand = (UpdateFlowCommand) payload;
+                    flowStateCacheService.updateFlow(updateFlowCommand);
+                    emit(FLOW_UPDATE_STREAM_ID.name(), input, new Values(updateFlowCommand.getFlowId(),
+                            updateFlowCommand, getCommandContext()));
+                } else {
+                    unhandledInput(input);
+                }
+                return;
+            }
+            if (FLOW_REMOVE_STREAM_ID.name().equals(input.getSourceStreamId())) {
+                String flowId = pullValue(input, FLOW_ID_FIELD, String.class);
+                flowStateCacheService.removeFlow(flowId);
+                emit(FLOW_REMOVE_STREAM_ID.name(), input, new Values(flowId, getCommandContext()));
             } else {
                 unhandledInput(input);
             }
@@ -71,8 +82,9 @@ public class FlowStateCacheBolt extends AbstractBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields(FLOW_ID_FIELD, FIELD_ID_CONTEXT));
-        declarer.declareStream(FLOW_UPDATE_STREAM_ID.name(), new Fields(FLOW_ID_FIELD, INFO_DATA_FIELD,
+        declarer.declareStream(FLOW_UPDATE_STREAM_ID.name(), new Fields(FLOW_ID_FIELD, COMMAND_DATA_FIELD,
                 FIELD_ID_CONTEXT));
+        declarer.declareStream(FLOW_REMOVE_STREAM_ID.name(), new Fields(FLOW_ID_FIELD, FIELD_ID_CONTEXT));
         declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
                 ZooKeeperBolt.FIELD_ID_CONTEXT));
     }

@@ -15,7 +15,7 @@
 
 package org.openkilda.messaging.info.flow;
 
-import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.model.FlowPathDto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -26,32 +26,32 @@ import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 /**
- * Represents update flow info.
+ * Represents update flow in monitoring command.
  */
 @Value
 @EqualsAndHashCode(callSuper = false)
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class UpdateFlowInfo extends InfoData {
+public class UpdateFlowCommand extends CommandData {
     private static final long serialVersionUID = 1L;
 
     @JsonProperty("flow_id")
-    protected String flowId;
+    String flowId;
 
     @JsonProperty("flow_path")
-    protected FlowPathDto flowPath;
+    FlowPathDto flowPath;
 
     @JsonProperty("max_latency")
-    protected Long maxLatency;
+    Long maxLatency;
 
     @JsonProperty("max_latency_tier_2")
-    protected Long maxLatencyTier2;
+    Long maxLatencyTier2;
 
     @JsonCreator
-    public UpdateFlowInfo(@JsonProperty("flow_id") String flowId,
-                          @JsonProperty("flow_path") FlowPathDto flowPath,
-                          @JsonProperty("max_latency") Long maxLatency,
-                          @JsonProperty("max_latency_tier_2") Long maxLatencyTier2) {
+    public UpdateFlowCommand(@JsonProperty("flow_id") String flowId,
+                             @JsonProperty("flow_path") FlowPathDto flowPath,
+                             @JsonProperty("max_latency") Long maxLatency,
+                             @JsonProperty("max_latency_tier_2") Long maxLatencyTier2) {
         this.flowId = flowId;
         this.flowPath = flowPath;
         this.maxLatency = maxLatency;

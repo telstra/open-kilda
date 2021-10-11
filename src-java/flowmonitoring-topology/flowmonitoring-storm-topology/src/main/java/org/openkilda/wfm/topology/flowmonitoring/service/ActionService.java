@@ -19,11 +19,14 @@ import static java.lang.String.format;
 import static org.openkilda.server42.messaging.FlowDirection.FORWARD;
 import static org.openkilda.server42.messaging.FlowDirection.REVERSE;
 
-import org.openkilda.messaging.info.flow.UpdateFlowInfo;
+import org.openkilda.messaging.info.flow.UpdateFlowCommand;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowStats;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowStatsRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.server42.messaging.FlowDirection;
@@ -54,6 +57,7 @@ public class ActionService implements FlowSlaMonitoringCarrier {
 
     private FlowOperationsCarrier carrier;
     private FlowRepository flowRepository;
+    private FlowStatsRepository flowStatsRepository;
     private KildaFeatureTogglesRepository featureTogglesRepository;
     private TransactionManager transactionManager;
     private FlowLatencyMonitoringFsmFactory fsmFactory;
@@ -68,6 +72,7 @@ public class ActionService implements FlowSlaMonitoringCarrier {
                          Clock clock, Duration timeout, float threshold) {
         this.carrier = carrier;
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        flowStatsRepository = persistenceManager.getRepositoryFactory().createFlowStatsRepository();
         featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
         transactionManager = persistenceManager.getTransactionManager();
         fsmFactory = FlowLatencyMonitoringFsm.factory(clock, timeout, threshold);
@@ -78,22 +83,20 @@ public class ActionService implements FlowSlaMonitoringCarrier {
     /**
      * Update flow info.
      */
-    public void updateFlowInfo(UpdateFlowInfo flowInfo) {
+    public void updateFlowInfo(UpdateFlowCommand flowInfo) {
         String flowId = flowInfo.getFlowId();
-        if (flowInfo.getFlowPath().getForwardPath() == null
-                || flowInfo.getFlowPath().getForwardPath().isEmpty()) {
-            fsms.remove(getFsmKey(flowId, FORWARD));
-        } else {
-            fsms.put(getFsmKey(flowId, FORWARD), fsmFactory.produce(flowId, FORWARD.name().toLowerCase(),
-                    flowInfo.getMaxLatency(), flowInfo.getMaxLatencyTier2()));
-        }
-        if (flowInfo.getFlowPath().getReversePath() == null
-                || flowInfo.getFlowPath().getReversePath().isEmpty()) {
-            fsms.remove(getFsmKey(flowId, REVERSE));
-        } else {
-            fsms.put(getFsmKey(flowId, REVERSE), fsmFactory.produce(flowId, REVERSE.name().toLowerCase(),
-                    flowInfo.getMaxLatency(), flowInfo.getMaxLatencyTier2()));
-        }
+        fsms.put(getFsmKey(flowId, FORWARD), fsmFactory.produce(flowId, FORWARD.name().toLowerCase(),
+                flowInfo.getMaxLatency(), flowInfo.getMaxLatencyTier2()));
+        fsms.put(getFsmKey(flowId, REVERSE), fsmFactory.produce(flowId, REVERSE.name().toLowerCase(),
+                flowInfo.getMaxLatency(), flowInfo.getMaxLatencyTier2()));
+    }
+
+    /**
+     * Remove flow info.
+     */
+    public void removeFlowInfo(String flowId) {
+        fsms.remove(getFsmKey(flowId, FORWARD));
+        fsms.remove(getFsmKey(flowId, REVERSE));
     }
 
     /**
@@ -143,18 +146,29 @@ public class ActionService implements FlowSlaMonitoringCarrier {
 
     @Override
     public void saveFlowLatency(String flowId, String direction, long latency) {
-        transactionManager.doInTransaction(() -> {
-            Optional<Flow> flow = flowRepository.findById(flowId);
-            if (flow.isPresent()) {
-                if (FORWARD.name().toLowerCase().equals(direction)) {
-                    flow.get().setForwardLatency(latency);
-                } else {
-                    flow.get().setReverseLatency(latency);
+        try {
+            transactionManager.doInTransaction(() -> {
+                FlowStats flowStats = flowStatsRepository.findByFlowId(flowId).orElse(null);
+                if (flowStats == null) {
+                    Optional<Flow> flow = flowRepository.findById(flowId);
+                    if (flow.isPresent()) {
+                        FlowStats toCreate = new FlowStats(flow.get(), null, null);
+                        flowStatsRepository.add(toCreate);
+                        flowStats = toCreate;
+                    } else {
+                        log.warn("Can't save latency for flow '{}'. Flow not found.", flowId);
+                        return;
+                    }
                 }
-            } else {
-                log.warn("Can't save latency for flow '{}'. Flow not found.", flowId);
-            }
-        });
+                if (FORWARD.name().toLowerCase().equals(direction)) {
+                    flowStats.setForwardLatency(latency);
+                } else {
+                    flowStats.setReverseLatency(latency);
+                }
+            });
+        } catch (PersistenceException e) {
+            log.error("Can't save latency for flow '{}'.", flowId, e);
+        }
     }
 
     @Override

@@ -588,14 +588,6 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
         SwitchId getLoopSwitchId();
 
         void setLoopSwitchId(SwitchId loopSwitchId);
-
-        long getForwardLatency();
-
-        void setForwardLatency(long forwardLatency);
-
-        long getReverseLatency();
-
-        void setReverseLatency(long reverseLatency);
     }
 
     /**
@@ -642,8 +634,6 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
         PathComputationStrategy pathComputationStrategy;
         PathComputationStrategy targetPathComputationStrategy;
         SwitchId loopSwitchId;
-        long forwardLatency;
-        long reverseLatency;
         @ToString.Exclude
         @EqualsAndHashCode.Exclude
         final Set<FlowPath> paths = new HashSet<>();

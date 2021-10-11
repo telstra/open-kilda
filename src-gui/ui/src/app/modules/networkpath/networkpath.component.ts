@@ -19,6 +19,12 @@ import { MessageObj } from 'src/app/common/constants/constants';
 export class NetworkpathComponent implements OnInit {
   networkpathForm: FormGroup;
   switchList:any=[];
+  strategyList =[
+      { strategy_id: 'COST', name: 'Cost'},
+      { strategy_id: 'LATENCY', name: 'Latency'},
+      { strategy_id: 'MAX_LATENCY', name: 'Max Latency'},
+      { strategy_id: 'COST_AND_AVAILABLE_BANDWIDTH', name: 'Cost and Available Bandwidth'},
+    ];
   sortFlag:any={ bandwidth:false,latency:false,nodes:false};
   activeRowIndex = null;
   activePathData = null;
@@ -97,6 +103,8 @@ export class NetworkpathComponent implements OnInit {
     this.networkpathForm = this.formBuilder.group({
       source_switch: ['',Validators.required],
       target_switch: ['',Validators.required],
+      strategy: ['', Validators.required],
+      max_latency: [0],
     });
   }
 
@@ -154,7 +162,8 @@ export class NetworkpathComponent implements OnInit {
     }
     this.loaderService.show(MessageObj.fetching_network_paths);
     self.networkPaths = [];
-    this.switchService.getNetworkPath(this.networkpathForm.controls['source_switch'].value,this.networkpathForm.controls['target_switch'].value).subscribe(function(paths){
+    this.switchService.getNetworkPath(this.networkpathForm.controls['source_switch'].value,this.networkpathForm.controls['target_switch'].value,
+        this.networkpathForm.controls['strategy'].value, this.networkpathForm.controls['max_latency'].value).subscribe(function(paths){
       self.submitted = false; 
       self.networkPaths = paths.paths.filter(function(d){
          return d.nodes.length;

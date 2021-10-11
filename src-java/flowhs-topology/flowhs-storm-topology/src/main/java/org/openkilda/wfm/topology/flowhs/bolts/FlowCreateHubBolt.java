@@ -29,11 +29,11 @@ import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.flow.UpdateFlowInfo;
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputer;
@@ -184,12 +184,12 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
     }
 
     @Override
-    public void sendNotifyFlowMonitor(UpdateFlowInfo flowInfo) {
+    public void sendNotifyFlowMonitor(CommandData flowCommand) {
         String correlationId = getCommandContext().getCorrelationId();
-        Message message = new InfoMessage(flowInfo, System.currentTimeMillis(), correlationId);
+        Message message = new CommandMessage(flowCommand, System.currentTimeMillis(), correlationId);
 
         emitWithContext(HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name(), getCurrentTuple(),
-                new Values(flowInfo.getFlowId(), message));
+                new Values(correlationId, message));
     }
 
     @Override

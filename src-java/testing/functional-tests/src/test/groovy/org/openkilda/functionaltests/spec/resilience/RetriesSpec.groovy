@@ -453,9 +453,14 @@ and at least 1 path must remain safe"
         def isl = pathHelper.getInvolvedIsls(path).find { !otherIsls.contains(it) }
         def portDown = antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
 
-        then: "After 4 reroute attempts flows goes Down" //reroute + 3 retries
+        then: "After 4 reroute attempts flows goes Down"
         wait(WAIT_OFFSET * 4) { //some long wait here, multiple retry attempts
-            assert northbound.getFlowHistory(flow.flowId).count { it.action == REROUTE_ACTION } == 4
+            /*there should be original reroute + 3 retries or original reroute + 2 retries
+            (sometimes the system does not try to retry reroute for linkDown event,
+            because the system gets 'ISL timeout' event for other ISLs)*/
+            def flowHistoryReroute = northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }
+            assert flowHistoryReroute.size() == 4 ||
+                    (flowHistoryReroute.size() == 3 && flowHistoryReroute.last().taskId.contains("ignore_bw true"))
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
         }
 

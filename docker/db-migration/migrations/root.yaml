@@ -54,3 +54,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 014-remove-flow-group-id-field.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 015-add-flow-stats-class.yaml

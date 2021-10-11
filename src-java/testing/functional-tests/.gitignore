@@ -3,3 +3,4 @@
 /topology*.yaml
 /kilda*.properties
 .surefire-*
+/src/test/resources/log4j2.xml
