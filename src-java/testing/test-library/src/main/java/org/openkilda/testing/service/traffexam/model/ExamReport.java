@@ -15,6 +15,8 @@
 
 package org.openkilda.testing.service.traffexam.model;
 
+import static sun.misc.Version.println;
+
 import lombok.Value;
 import lombok.experimental.NonFinal;
 import org.springframework.util.StringUtils;
@@ -55,6 +57,20 @@ public class ExamReport {
     }
 
     public boolean hasTraffic() {
+        System.out.println("===report===========");
+        System.out.println("===getBytes===========");
+        System.out.println(producerReport.getBytes());
+        System.out.println("===getBitsPerSecond===========");
+        System.out.println(producerReport.getBitsPerSecond());
+        System.out.println("===getPackets===========");
+        System.out.println(producerReport.getPackets());
+        System.out.println("===getError===========");
+        System.out.println(producerReport.getError());
+        System.out.println("===getLostPackets===========");
+        System.out.println(producerReport.getLostPackets());
+        System.out.println("===getLostPercent===========");
+        System.out.println(producerReport.getLostPercent());
+        System.out.println("=^^^=report============");
         return 0 < producerReport.getBytes();
     }
 

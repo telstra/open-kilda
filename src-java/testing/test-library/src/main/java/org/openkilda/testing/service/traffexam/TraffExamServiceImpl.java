@@ -218,6 +218,8 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
             }
             producer = assignEndpoint(exam.getSource(), producer);
             supplied.add(producer);
+            System.out.println("===supplied===========");
+            System.out.println(supplied);
 
             resources = new ExamResources(subnet, producer, consumer);
         } catch (Inet4ValueException e) {
