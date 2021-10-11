@@ -48,6 +48,7 @@ public abstract class FlowStatsFrame extends KildaBaseVertexFrame implements Flo
                         getId(), getFlowId(), flowId));
             }
         }
+
         return flowObj;
     }
 
