@@ -76,7 +76,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     @IterationTags([
             @IterationTag(tags = [SMOKE], iterationNameRegex = /vlan /),
             @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex =
-                    /random vlans|no vlans|single-switch flow with vlans/),
+                    /random vlans|single-switch flow with vlans/),
             @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /and vlan only on/)
     ])
     @Unroll("Valid #data.description has traffic and no rule discrepancies \
