@@ -31,7 +31,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class SubFlowsResponse extends InfoData {
     private static final long serialVersionUID = 1L;
 

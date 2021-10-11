@@ -62,6 +62,24 @@ public abstract class FlowPathMapper {
     }
 
     /**
+     * Convert path's {@link PathSegment} to {@link PathInfoData}.
+     */
+    public PathInfoData map(List<PathSegment> pathSegments) {
+        PathInfoData result = new PathInfoData();
+        int seqId = 0;
+        List<PathNode> nodes = new ArrayList<>();
+        for (PathSegment pathSegment : pathSegments) {
+            nodes.add(new PathNode(pathSegment.getSrcSwitchId(), pathSegment.getSrcPort(),
+                    seqId++, pathSegment.getLatency()));
+            nodes.add(new PathNode(pathSegment.getDestSwitchId(), pathSegment.getDestPort(),
+                    seqId++));
+        }
+
+        result.setPath(nodes);
+        return result;
+    }
+
+    /**
      * Convert {@link FlowPath} to {@link PathNodePayload}.
      */
     public List<PathNodePayload> mapToPathNodes(FlowPath flowPath) {

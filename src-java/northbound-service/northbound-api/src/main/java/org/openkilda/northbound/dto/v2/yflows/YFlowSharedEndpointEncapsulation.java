@@ -24,7 +24,7 @@ import lombok.Data;
 @Data
 @Builder
 @AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class YFlowSharedEndpointEncapsulation {
     int vlanId;
     int innerVlanId;

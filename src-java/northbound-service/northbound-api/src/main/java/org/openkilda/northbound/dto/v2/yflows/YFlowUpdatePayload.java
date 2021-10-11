@@ -28,7 +28,7 @@ import javax.validation.constraints.PositiveOrZero;
 @Data
 @Builder
 @AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class YFlowUpdatePayload {
     YFlowSharedEndpoint sharedEndpoint;
 

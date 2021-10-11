@@ -34,7 +34,7 @@ import java.util.List;
 @Data
 @Builder
 @EqualsAndHashCode(callSuper = false)
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class YFlowRequest extends CommandData {
     private static final long serialVersionUID = 1L;
 
