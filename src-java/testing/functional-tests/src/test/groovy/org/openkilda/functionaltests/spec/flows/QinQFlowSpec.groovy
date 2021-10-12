@@ -91,9 +91,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "The flow allows traffic (if applicable)"
         def traffExam = traffExamProvider.get()
-        def examQinQFlow = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(qinqFlow), 1000, 5)
+        def examQinQFlow
         if(!trafficDisclaimer) {
+            examQinQFlow = new FlowTrafficExamBuilder(topology, traffExam)
+                    .buildBidirectionalExam(flowHelperV2.toV1(qinqFlow), 1000, 5)
             withPool {
                 [examQinQFlow.forward, examQinQFlow.reverse].eachParallel { direction ->
                     def resources = traffExam.startExam(direction)
@@ -730,9 +731,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "The flow allows traffic (if applicable)"
         def traffExam = traffExamProvider.get()
-        def examQinQFlow = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(qinqFlow), 1000, 5)
+        def examQinQFlow
         if(!trafficDisclaimer) {
+            examQinQFlow = new FlowTrafficExamBuilder(topology, traffExam)
+                    .buildBidirectionalExam(flowHelperV2.toV1(qinqFlow), 1000, 5)
             withPool {
                 [examQinQFlow.forward, examQinQFlow.reverse].eachParallel { direction ->
                     def resources = traffExam.startExam(direction)

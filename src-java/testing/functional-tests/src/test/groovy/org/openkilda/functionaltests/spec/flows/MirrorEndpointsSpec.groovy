@@ -85,9 +85,11 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         }
 
         and: "Flow history reports a successful mirror creation"
-        with(northbound.getFlowHistory(flow.flowId).last()) {
-            action == FlowHistoryConstants.CREATE_MIRROR_ACTION
-            it.payload.last().action == FlowHistoryConstants.CREATE_MIRROR_SUCCESS
+        Wrappers.wait(WAIT_OFFSET) {
+            with(northbound.getFlowHistory(flow.flowId).last()) {
+                action == FlowHistoryConstants.CREATE_MIRROR_ACTION
+                it.payload.last().action == FlowHistoryConstants.CREATE_MIRROR_SUCCESS
+            }
         }
 
         and: "Mirror endpoint is visible in 'get flows', 'get single flow' and 'get mirror endpoint' APIs"
