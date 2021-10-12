@@ -22,7 +22,7 @@ export class NetworkpathComponent implements OnInit {
   strategyList =[
       { strategy_id: 'COST', name: 'Cost'},
       { strategy_id: 'LATENCY', name: 'Latency'},
-      { strategy_id: 'MAX_LATENCY', name: 'Max Latency'},
+      { strategy_id: 'MAX_LATENCY', name: 'Max Latency(ms)'},
       { strategy_id: 'COST_AND_AVAILABLE_BANDWIDTH', name: 'Cost and Available Bandwidth'},
     ];
   sortFlag:any={ bandwidth:false,latency:false,nodes:false};
