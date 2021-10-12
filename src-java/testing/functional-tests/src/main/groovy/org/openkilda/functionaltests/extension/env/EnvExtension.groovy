@@ -6,11 +6,14 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.extension.spring.SpringContextListener
 import org.openkilda.functionaltests.extension.spring.SpringContextNotifier
+import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.model.system.KildaConfigurationDto
+import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.floodlight.model.Floodlight
@@ -33,6 +36,8 @@ import java.util.concurrent.TimeUnit
  */
 @Slf4j
 class EnvExtension extends AbstractGlobalExtension implements SpringContextListener {
+    @Autowired //init for getting swFeatures (sw.features)
+    SwitchHelper switchHelper
 
     @Autowired
     TopologyPool topologyPool
@@ -142,6 +147,18 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
                 assert islandNorthbound.getAllSwitches().findAll {
                     it.state == SwitchChangeType.ACTIVATED
                 }.size() == topo.activeSwitches.size()
+            }
+
+            //add 'vxlan' encapsuation as supported in case switch supports it
+            topo.getActiveSwitches().each { sw ->
+                def supportedEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
+                if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
+                        || sw.features.contains(SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
+                    supportedEncapsulation << FlowEncapsulationType.VXLAN.toString()
+                }
+                northbound.updateSwitchProperties(sw.dpId, northbound.getSwitchProperties(sw.dpId).tap {
+                    supportedTransitEncapsulation = supportedEncapsulation
+                })
             }
 
             //setup server42 configs according to topology description
