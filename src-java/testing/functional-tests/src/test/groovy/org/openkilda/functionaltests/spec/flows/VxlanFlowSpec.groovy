@@ -3,7 +3,6 @@ package org.openkilda.functionaltests.spec.flows
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -58,7 +57,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     Provider<TraffExamService> traffExamProvider
 
     @Tidy
-    @Tags(HARDWARE)
     @IterationTags([
             @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /TRANSIT_VLAN -> VXLAN/)
     ])
@@ -203,7 +201,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(HARDWARE)
     def "Able to CRUD a pinned flow with 'VXLAN' encapsulation"() {
         when: "Create a flow"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
@@ -236,7 +233,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(HARDWARE)
     def "Able to CRUD a vxlan flow with protected path"() {
         given: "Two active VXLAN supported switches with two available path at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
@@ -355,7 +351,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([HARDWARE, SMOKE_SWITCHES])
+    @Tags([SMOKE_SWITCHES])
     def "System allows tagged traffic via default flow(0<->0) with 'VXLAN' encapsulation"() {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
         given: "Two active VXLAN supported switches connected to traffgen"
@@ -517,7 +513,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(HARDWARE)
     def "System allows to create/update encapsulation type for a one-switch flow\
 (#encapsulationCreate.toString() -> #encapsulationUpdate.toString())"() {
         when: "Try to create a one-switch flow"
