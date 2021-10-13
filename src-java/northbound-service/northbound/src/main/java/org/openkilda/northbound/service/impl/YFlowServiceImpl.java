@@ -19,7 +19,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.yflow.SubFlowsReadRequest;
 import org.openkilda.messaging.command.yflow.SubFlowsResponse;
 import org.openkilda.messaging.command.yflow.YFlowDeleteRequest;
-import org.openkilda.messaging.command.yflow.YFlowPatchRequest;
+import org.openkilda.messaging.command.yflow.YFlowPartialUpdateRequest;
 import org.openkilda.messaging.command.yflow.YFlowPathsReadRequest;
 import org.openkilda.messaging.command.yflow.YFlowPathsResponse;
 import org.openkilda.messaging.command.yflow.YFlowReadRequest;
@@ -152,15 +152,16 @@ public class YFlowServiceImpl implements YFlowService {
         log.debug("Processing y-flow patch: {}", flowId);
         String correlationId = RequestCorrelationId.getId();
 
-        YFlowPatchRequest flowPatchRequest;
+        YFlowPartialUpdateRequest yFlowPartialUpdateRequest;
         try {
-            flowPatchRequest = flowMapper.toYFlowPatchRequest(flowId, patchPayload);
+            yFlowPartialUpdateRequest = flowMapper.toYFlowPatchRequest(flowId, patchPayload);
         } catch (IllegalArgumentException e) {
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the flow patch request");
         }
 
-        CommandMessage request = new CommandMessage(flowPatchRequest, System.currentTimeMillis(), correlationId);
+        CommandMessage request = new CommandMessage(yFlowPartialUpdateRequest,
+                System.currentTimeMillis(), correlationId);
         return messagingChannel.sendAndGet(flowHsTopic, request)
                 .thenApply(YFlowResponse.class::cast)
                 .thenApply(YFlowResponse::getYFlow)

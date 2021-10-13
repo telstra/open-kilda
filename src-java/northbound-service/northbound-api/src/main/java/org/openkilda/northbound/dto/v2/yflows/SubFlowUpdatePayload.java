@@ -29,6 +29,7 @@ import lombok.Data;
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
 public class SubFlowUpdatePayload {
+    String flowId;
     @JsonIgnoreProperties("detect_connected_devices")
     FlowEndpointV2 endpoint;
     YFlowSharedEndpointEncapsulation sharedEndpoint;

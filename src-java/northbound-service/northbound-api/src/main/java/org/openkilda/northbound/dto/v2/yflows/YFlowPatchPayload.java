@@ -29,7 +29,7 @@ import javax.validation.constraints.PositiveOrZero;
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
 public class YFlowPatchPayload {
-    YFlowSharedEndpoint sharedEndpoint;
+    YFlowPatchSharedEndpoint sharedEndpoint;
 
     @PositiveOrZero(message = "maximumBandwidth can't be negative")
     Long maximumBandwidth;
@@ -45,6 +45,7 @@ public class YFlowPatchPayload {
     Integer priority;
     Boolean strictBandwidth;
     String description;
+    Boolean allocateProtectedPath;
 
-    List<SubFlowUpdatePayload> subFlows;
+    List<SubFlowPatchPayload> subFlows;
 }

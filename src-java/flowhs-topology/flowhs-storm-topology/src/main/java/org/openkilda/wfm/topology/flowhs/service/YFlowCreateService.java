@@ -35,8 +35,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.Event;
 
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
-import com.fasterxml.uuid.impl.UUIDUtil;
-import com.google.common.io.BaseEncoding;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -253,11 +251,5 @@ public class YFlowCreateService extends YFlowProcessingService<YFlowCreateFsm, E
                 carrier.sendInactive();
             }
         }
-    }
-
-    private String generateFlowId(String prefix) {
-        byte[] uuidAsBytes = UUIDUtil.asByteArray(flowIdGenerator.generate());
-        String uuidAsBase32 = BaseEncoding.base32().omitPadding().lowerCase().encode(uuidAsBytes);
-        return prefix + uuidAsBase32;
     }
 }

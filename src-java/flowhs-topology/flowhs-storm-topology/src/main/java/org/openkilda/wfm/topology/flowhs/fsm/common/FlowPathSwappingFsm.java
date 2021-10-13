@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.common;
 
+import static java.util.Collections.emptyList;
+
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
@@ -24,6 +26,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -41,7 +44,8 @@ import java.util.UUID;
 @Setter
 @Slf4j
 public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C, R>, S, E, C,
-        R extends FlowGenericCarrier> extends NbTrackableFsm<T, S, E, C, R> {
+        R extends FlowGenericCarrier, L extends FlowProcessingEventListener>
+        extends FlowProcessingWithEventSupportFsm<T, S, E, C, R, L> {
 
     protected final String flowId;
     protected String sharedBandwidthGroupId;
@@ -81,12 +85,12 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C, R
     protected boolean periodicPingsEnabled;
 
     public FlowPathSwappingFsm(CommandContext commandContext, @NonNull R carrier, String flowId) {
-        this(commandContext, carrier, flowId, true);
+        this(commandContext, carrier, flowId, true, emptyList());
     }
 
     public FlowPathSwappingFsm(CommandContext commandContext, @NonNull R carrier, String flowId,
-                               boolean allowNorthboundResponse) {
-        super(commandContext, carrier, allowNorthboundResponse);
+                               boolean allowNorthboundResponse, Collection<L> eventListeners) {
+        super(commandContext, carrier, allowNorthboundResponse, eventListeners);
         this.flowId = flowId;
     }
 

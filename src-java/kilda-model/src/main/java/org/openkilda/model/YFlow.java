@@ -42,6 +42,7 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -164,6 +165,8 @@ public class YFlow implements CompositeDataEntity<YFlowData> {
         void setSubFlows(Set<YSubFlow> subFlows);
 
         void addSubFlow(YSubFlow subFlow);
+
+        void updateSubFlow(YSubFlow subFlow);
 
         boolean isAllocateProtectedPath();
 
@@ -319,6 +322,19 @@ public class YFlow implements CompositeDataEntity<YFlowData> {
                 subFlow.setYFlow(yFlow);
                 subFlows.add(subFlow);
             }
+        }
+
+        @Override
+        public void updateSubFlow(YSubFlow subFlow) {
+            List<YSubFlow> foundSubFlows = subFlows.stream()
+                    .filter(n -> n == subFlow || n.getSubFlowId().equals(subFlow.getSubFlowId()))
+                    .collect(Collectors.toList());
+            for (YSubFlow foundSubFlow : foundSubFlows) {
+                subFlows.remove(foundSubFlow);
+            }
+
+            subFlow.setYFlow(yFlow);
+            subFlows.add(subFlow);
         }
     }
 

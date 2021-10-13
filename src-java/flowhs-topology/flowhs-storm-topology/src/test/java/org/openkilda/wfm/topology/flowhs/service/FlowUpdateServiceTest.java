@@ -58,6 +58,8 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
+import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 
 import com.google.common.collect.Sets;
 import org.junit.Assert;
@@ -92,7 +94,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldFailUpdateFlowIfNoPathAvailable() throws RecoverableException, UnroutableFlowException {
+    public void shouldFailUpdateFlowIfNoPathAvailable()
+            throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
         Flow origin = makeFlow();
         when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), anyCollection()))
                 .thenThrow(new UnroutableFlowException(injectedErrorMessage));
@@ -109,7 +112,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldFailUpdateFlowIfRecoverableException() throws RecoverableException, UnroutableFlowException {
+    public void shouldFailUpdateFlowIfRecoverableException()
+            throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
         Flow origin = makeFlow();
         when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), anyCollection()))
                 .thenThrow(new RecoverableException(injectedErrorMessage));
@@ -126,7 +130,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
 
     @Test
     public void shouldFailUpdateFlowIfMultipleOverprovisionBandwidth()
-            throws RecoverableException, UnroutableFlowException {
+            throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -145,7 +149,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
 
     @Test
     public void shouldFailUpdateFlowIfNoResourcesAvailable()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
+            throws RecoverableException, UnroutableFlowException, ResourceAllocationException, DuplicateKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -165,7 +169,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
 
     @Test
     public void shouldFailUpdateFlowOnResourcesAllocationConstraint()
-            throws RecoverableException, UnroutableFlowException {
+            throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -179,7 +183,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         testExpectedFailure(request, origin, ErrorType.INTERNAL_ERROR);
     }
 
-    private Flow testExpectedFailure(FlowRequest request, Flow origin, ErrorType expectedError) {
+    private Flow testExpectedFailure(FlowRequest request, Flow origin, ErrorType expectedError)
+            throws DuplicateKeyException {
         makeService().handleUpdateRequest(dummyRequestKey, commandContext, request);
 
         verifyNoSpeakerInteraction(carrier);
@@ -192,7 +197,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldFailUpdateOnUnsuccessfulInstallation() throws RecoverableException, UnroutableFlowException {
+    public void shouldFailUpdateOnUnsuccessfulInstallation()
+            throws RecoverableException, UnroutableFlowException, DuplicateKeyException, UnknownKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -233,7 +239,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldFailUpdateOnTimeoutDuringInstallation() throws RecoverableException, UnroutableFlowException {
+    public void shouldFailUpdateOnTimeoutDuringInstallation()
+            throws RecoverableException, UnroutableFlowException, DuplicateKeyException, UnknownKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -267,7 +274,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldFailUpdateOnUnsuccessfulValidation() throws RecoverableException, UnroutableFlowException {
+    public void shouldFailUpdateOnUnsuccessfulValidation()
+            throws RecoverableException, UnroutableFlowException, DuplicateKeyException, UnknownKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -308,7 +316,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldFailUpdateOnTimeoutDuringValidation() throws RecoverableException, UnroutableFlowException {
+    public void shouldFailUpdateOnTimeoutDuringValidation()
+            throws RecoverableException, UnroutableFlowException, DuplicateKeyException, UnknownKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -343,7 +352,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
 
     @Ignore("FIXME: need to replace mocking of updateStatus with another approach")
     @Test
-    public void shouldFailUpdateOnSwapPathsError() throws RecoverableException, UnroutableFlowException {
+    public void shouldFailUpdateOnSwapPathsError()
+            throws RecoverableException, UnroutableFlowException, DuplicateKeyException, UnknownKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -383,7 +393,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
 
     @Test
     public void shouldFailUpdateOnErrorDuringCompletingFlowPathInstallation()
-            throws RecoverableException, UnroutableFlowException {
+            throws RecoverableException, UnroutableFlowException, DuplicateKeyException, UnknownKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -428,7 +438,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
 
     @Test
     public void shouldCompleteUpdateOnErrorDuringCompletingFlowPathRemoval()
-            throws RecoverableException, UnroutableFlowException {
+            throws RecoverableException, UnroutableFlowException, DuplicateKeyException, UnknownKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -468,7 +478,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
 
     @Test
     public void shouldCompleteUpdateOnErrorDuringResourceDeallocation()
-            throws RecoverableException, UnroutableFlowException {
+            throws RecoverableException, UnroutableFlowException, DuplicateKeyException, UnknownKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -509,7 +519,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldSuccessfullyUpdateFlow() throws RecoverableException, UnroutableFlowException {
+    public void shouldSuccessfullyUpdateFlow()
+            throws RecoverableException, UnroutableFlowException, DuplicateKeyException, UnknownKeyException {
         Flow origin = makeFlow();
         origin.setStatus(FlowStatus.DOWN); // TODO(surabujin): why for we forcing initial DOWN state here?
         transactionManager.doInTransaction(() ->
@@ -525,7 +536,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
 
     @Test
     public void shouldSuccessfullyUpdateFlowOnSameEndpoints()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
+            throws RecoverableException, UnroutableFlowException, DuplicateKeyException, UnknownKeyException {
         Flow origin = makeFlow();
         origin.setStatus(FlowStatus.DOWN); // TODO(surabujin): why for we forcing initial DOWN state here?
         transactionManager.doInTransaction(() ->
@@ -541,7 +552,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldSuccessfullyUpdateFlowCreateFlowLoop() {
+    public void shouldSuccessfullyUpdateFlowCreateFlowLoop() throws DuplicateKeyException, UnknownKeyException {
         Flow origin = makeFlow();
         CreateFlowLoopRequest request = new CreateFlowLoopRequest(origin.getFlowId(), origin.getSrcSwitchId());
 
@@ -579,7 +590,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldSendCorrectErrorWhenCreateFlowLoopOnLoopedFlow() {
+    public void shouldSendCorrectErrorWhenCreateFlowLoopOnLoopedFlow() throws DuplicateKeyException {
         Flow origin = makeFlow();
         transactionManager.doInTransaction(() -> {
             Flow flow = repositoryFactory.createFlowRepository().findById(origin.getFlowId()).get();
@@ -594,7 +605,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldSuccessfullyUpdateFlowDeleteFlowLoop() {
+    public void shouldSuccessfullyUpdateFlowDeleteFlowLoop() throws DuplicateKeyException, UnknownKeyException {
         Flow origin = makeFlow();
         transactionManager.doInTransaction(() -> {
             Flow flow = repositoryFactory.createFlowRepository().findById(origin.getFlowId()).get();
@@ -634,7 +645,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldFailUpdateYSubFlow() throws UnroutableFlowException, RecoverableException {
+    public void shouldFailUpdateYSubFlow() throws UnroutableFlowException, RecoverableException, DuplicateKeyException {
         Flow origin = makeFlow();
         createTestYFlowForSubFlow(origin);
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
@@ -647,7 +658,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldFailCreateLoopOnYSubFlow() {
+    public void shouldFailCreateLoopOnYSubFlow() throws DuplicateKeyException {
         Flow origin = makeFlow();
         createTestYFlowForSubFlow(origin);
 
@@ -660,7 +671,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldFailDeleteLoopOnYSubFlow() {
+    public void shouldFailDeleteLoopOnYSubFlow() throws DuplicateKeyException {
         Flow origin = makeFlow();
         createTestYFlowForSubFlow(origin);
 
@@ -672,7 +683,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         verifyNorthboundErrorResponse(carrier, ErrorType.REQUEST_INVALID);
     }
 
-    private void testExpectedSuccess(FlowRequest request, Flow origin) {
+    private void testExpectedSuccess(FlowRequest request, Flow origin)
+            throws DuplicateKeyException, UnknownKeyException {
         FlowUpdateService service = makeService();
         service.handleUpdateRequest(dummyRequestKey, commandContext, request);
 

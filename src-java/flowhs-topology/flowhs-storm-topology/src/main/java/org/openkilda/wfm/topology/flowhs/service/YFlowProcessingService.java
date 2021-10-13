@@ -20,6 +20,10 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithEventSupportFsm;
 
+import com.fasterxml.uuid.Generators;
+import com.fasterxml.uuid.NoArgGenerator;
+import com.fasterxml.uuid.impl.UUIDUtil;
+import com.google.common.io.BaseEncoding;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
@@ -32,6 +36,8 @@ public abstract class YFlowProcessingService
                 R extends FlowGenericCarrier>
         extends FlowProcessingWithEventSupportService<T, E, C, R, YFlowEventListener> {
     private final Map<String, String> subFlowToYFlowMap = new HashMap<>();
+
+    private final NoArgGenerator flowIdGenerator = Generators.timeBasedGenerator();
 
     public YFlowProcessingService(FsmExecutor<T, ?, E, C> fsmExecutor, R carrier,
                                   PersistenceManager persistenceManager) {
@@ -66,5 +72,11 @@ public abstract class YFlowProcessingService
                 subFlowToYFlowMap.remove(subFlowId);
             }
         };
+    }
+
+    protected String generateFlowId(String prefix) {
+        byte[] uuidAsBytes = UUIDUtil.asByteArray(flowIdGenerator.generate());
+        String uuidAsBase32 = BaseEncoding.base32().omitPadding().lowerCase().encode(uuidAsBytes);
+        return prefix + uuidAsBase32;
     }
 }

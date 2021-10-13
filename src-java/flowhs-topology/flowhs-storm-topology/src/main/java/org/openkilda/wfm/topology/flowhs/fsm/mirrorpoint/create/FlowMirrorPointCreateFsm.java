@@ -43,6 +43,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.RevertFl
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.ValidateRequestAction;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlowMirrorPoint;
 import org.openkilda.wfm.topology.flowhs.service.FlowMirrorPointCreateHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -59,7 +60,7 @@ import java.util.UUID;
 @Setter
 @Slf4j
 public final class FlowMirrorPointCreateFsm extends FlowPathSwappingFsm<FlowMirrorPointCreateFsm, State, Event,
-        FlowMirrorPointCreateContext, FlowMirrorPointCreateHubCarrier> {
+        FlowMirrorPointCreateContext, FlowMirrorPointCreateHubCarrier, FlowProcessingEventListener> {
 
     private RequestedFlowMirrorPoint requestedFlowMirrorPoint;
 

@@ -57,6 +57,8 @@ import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
+import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowUpdateHubCarrier;
@@ -124,17 +126,21 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     protected void onRequest(Tuple input) throws PipelineException {
         currentKey = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
         Object payload = input.getValueByField(FIELD_ID_PAYLOAD);
-        if (payload instanceof FlowRequest) {
-            FlowRequest flowRequest = (FlowRequest) payload;
-            service.handleUpdateRequest(currentKey, pullContext(input), flowRequest);
-        } else if (payload instanceof CreateFlowLoopRequest) {
-            CreateFlowLoopRequest flowLoopRequest = (CreateFlowLoopRequest) payload;
-            service.handleCreateFlowLoopRequest(currentKey, pullContext(input), flowLoopRequest);
-        } else if (payload instanceof DeleteFlowLoopRequest) {
-            DeleteFlowLoopRequest flowLoopRequest = (DeleteFlowLoopRequest) payload;
-            service.handleDeleteFlowLoopRequest(currentKey, pullContext(input), flowLoopRequest);
-        } else {
-            unhandledInput(input);
+        try {
+            if (payload instanceof FlowRequest) {
+                FlowRequest flowRequest = (FlowRequest) payload;
+                service.handleUpdateRequest(currentKey, pullContext(input), flowRequest);
+            } else if (payload instanceof CreateFlowLoopRequest) {
+                CreateFlowLoopRequest flowLoopRequest = (CreateFlowLoopRequest) payload;
+                service.handleCreateFlowLoopRequest(currentKey, pullContext(input), flowLoopRequest);
+            } else if (payload instanceof DeleteFlowLoopRequest) {
+                DeleteFlowLoopRequest flowLoopRequest = (DeleteFlowLoopRequest) payload;
+                service.handleDeleteFlowLoopRequest(currentKey, pullContext(input), flowLoopRequest);
+            } else {
+                unhandledInput(input);
+            }
+        } catch (DuplicateKeyException e) {
+            log.error("Failed to handle a request with key {}. {}", currentKey, e.getMessage());
         }
     }
 
@@ -143,13 +149,21 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
         String operationKey = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
         currentKey = KeyProvider.getParentKey(operationKey);
         SpeakerFlowSegmentResponse flowResponse = (SpeakerFlowSegmentResponse) input.getValueByField(FIELD_ID_PAYLOAD);
-        service.handleAsyncResponse(currentKey, flowResponse);
+        try {
+            service.handleAsyncResponse(currentKey, flowResponse);
+        } catch (UnknownKeyException e) {
+            log.warn("Received a response with unknown key {}.", currentKey);
+        }
     }
 
     @Override
     public void onTimeout(String key, Tuple tuple) {
         currentKey = key;
-        service.handleTimeout(key);
+        try {
+            service.handleTimeout(key);
+        } catch (UnknownKeyException e) {
+            log.warn("Failed to handle a timeout event for unknown key {}.", currentKey);
+        }
     }
 
     @Override

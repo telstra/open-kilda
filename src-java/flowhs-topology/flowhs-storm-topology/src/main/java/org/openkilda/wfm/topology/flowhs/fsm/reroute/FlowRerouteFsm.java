@@ -70,6 +70,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.ValidateNonIngressR
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.error.SetInstallRuleErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.error.SetValidateRuleErrorAction;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
+import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 
 import io.micrometer.core.instrument.LongTaskTimer;
@@ -88,7 +89,7 @@ import java.util.concurrent.TimeUnit;
 @Setter
 @Slf4j
 public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, State, Event, FlowRerouteContext,
-        FlowRerouteHubCarrier> {
+        FlowRerouteHubCarrier, FlowProcessingEventListener> {
     private boolean recreateIfSamePath;
     private boolean reroutePrimary;
     private boolean rerouteProtected;
