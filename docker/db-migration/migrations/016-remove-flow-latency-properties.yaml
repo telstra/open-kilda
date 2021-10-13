@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: rozdy
+      changes:
+        - tagDatabase:
+            tag: 016-remove-flow-latency-properties
+
+  - changeSet:
+      id: remove_flow_properties
+      author: rozdy
+      changes:
+        - sql: "UPDATE flow REMOVE forward_latency"
+        - sql: "UPDATE flow REMOVE reverse_latency"
+        - sql: "DROP PROPERTY flow.forward_latency IF EXISTS"
+        - sql: "DROP PROPERTY flow.reverse_latency IF EXISTS"
+      rollback:
+        - sql: "CREATE PROPERTY flow.forward_latency IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY flow.reverse_latency IF NOT EXISTS LONG"
