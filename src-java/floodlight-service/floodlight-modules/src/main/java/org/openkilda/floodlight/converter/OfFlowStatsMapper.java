@@ -148,8 +148,7 @@ public abstract class OfFlowStatsMapper {
                         .map(Objects::toString).orElse(null))
                 .udpSrc(Optional.ofNullable(match.get(MatchField.UDP_SRC))
                         .map(Objects::toString).orElse(null))
-                .tunnelId(Optional.ofNullable(match.get(MatchField.TUNNEL_ID))
-                        .map(Objects::toString).orElse(null))
+                .tunnelId(getTunnelId(match))
                 .metadataValue(Optional.ofNullable(match.getMasked(MatchField.METADATA))
                         .map(Masked::getValue)
                         .map(Objects::toString).orElse(null))
@@ -157,6 +156,15 @@ public abstract class OfFlowStatsMapper {
                         .map(Masked::getMask)
                         .map(Objects::toString).orElse(null))
                 .build();
+    }
+
+    private String getTunnelId(final Match match) {
+        if (match.get(MatchField.TUNNEL_ID) != null) {
+            return match.get(MatchField.TUNNEL_ID).toString();
+        } else if (match.get(MatchField.KILDA_VXLAN_VNI) != null) {
+            return match.get(MatchField.KILDA_VXLAN_VNI).toString();
+        }
+        return null;
     }
 
     /**

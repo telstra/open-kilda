@@ -100,7 +100,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
         IOFSwitch sw = makeSwitchMock(SwitchDescription.builder()
                         .setManufacturerDescription("Nicira, Inc.")
                         .setHardwareDescription("Open vSwitch")
-                        .setSoftwareDescription("2.15.1.1-kilda")
+                        .setSoftwareDescription("2.15.1.3-kilda")
                         .build(),
                 OFVersion.OF_13, 255);
         discoveryCheck(sw, ImmutableSet.of(

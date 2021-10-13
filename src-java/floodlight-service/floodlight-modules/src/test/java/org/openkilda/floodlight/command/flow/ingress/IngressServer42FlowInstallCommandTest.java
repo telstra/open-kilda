@@ -100,7 +100,8 @@ public class IngressServer42FlowInstallCommandTest {
             FlowPathDirection.FORWARD, 10).toBuilder()
             .type(CookieType.SERVER_42_FLOW_RTT_INGRESS)
             .build();
-    public static final HashSet<SwitchFeature> FEATURES = Sets.newHashSet(SwitchFeature.HALF_SIZE_METADATA);
+    public static final HashSet<SwitchFeature> FEATURES = Sets.newHashSet(SwitchFeature.HALF_SIZE_METADATA,
+            SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN);
 
     @Test
     public void server42IngressFlowDoubleTagMultiTableVlan() throws Exception {
@@ -185,10 +186,9 @@ public class IngressServer42FlowInstallCommandTest {
         assertMetadata(mod, VLAN_1, CUSTOMER_PORT);
 
         List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
-        assertEquals(3, applyActions.size());
-        assertPushVlanAction(applyActions.get(0));
-        assertPushVxlanAction(applyActions.get(1));
-        assertOutputAction(applyActions.get(2));
+        assertEquals(2, applyActions.size());
+        assertPushVxlanAction(applyActions.get(0));
+        assertOutputAction(applyActions.get(1));
     }
 
     @Test
@@ -202,10 +202,9 @@ public class IngressServer42FlowInstallCommandTest {
         assertMetadata(mod, 0, CUSTOMER_PORT);
 
         List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
-        assertEquals(3, applyActions.size());
-        assertPushVlanAction(applyActions.get(0));
-        assertPushVxlanAction(applyActions.get(1));
-        assertOutputAction(applyActions.get(2));
+        assertEquals(2, applyActions.size());
+        assertPushVxlanAction(applyActions.get(0));
+        assertOutputAction(applyActions.get(1));
     }
 
     @Test
@@ -272,10 +271,9 @@ public class IngressServer42FlowInstallCommandTest {
         assertNull(mod.getMatch().get(MatchField.VLAN_VID));
 
         List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
-        assertEquals(3, applyActions.size());
-        assertPushVlanAction(applyActions.get(0));
-        assertPushVxlanAction(applyActions.get(1));
-        assertOutputAction(applyActions.get(2));
+        assertEquals(2, applyActions.size());
+        assertPushVxlanAction(applyActions.get(0));
+        assertOutputAction(applyActions.get(1));
     }
 
     private void assertMetadata(OFFlowMod mod, int expectedOuterVlan, int expectedPort) {

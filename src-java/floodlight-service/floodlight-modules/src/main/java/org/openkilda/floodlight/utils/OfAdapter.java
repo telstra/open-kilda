@@ -24,6 +24,7 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActionKildaPushVxlanField;
 import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowPushVxlanTunnel;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
@@ -42,6 +43,8 @@ import java.util.List;
 
 public final class OfAdapter {
     public static final OfAdapter INSTANCE = new OfAdapter();
+    public static final IPv4Address VXLAN_IP_V4_SRC = IPv4Address.of("127.0.0.1");
+    public static final IPv4Address VXLAN_IP_V4_DST = IPv4Address.of("127.0.0.2");
 
     /**
      * Create series of actions required to reTAG one set of vlan tags to another.
@@ -150,19 +153,34 @@ public final class OfAdapter {
     }
 
     /**
-     * Create push VxLAN action.
+     * Create noviflow push VxLAN action.
      */
-    public OFActionNoviflowPushVxlanTunnel makePushVxlanAction(OFFactory of, int vni,
-                                                               MacAddress ethSrc, MacAddress ethDst, int udpSrcPort) {
+    public OFActionNoviflowPushVxlanTunnel makeNoviflowPushVxlanAction(
+            OFFactory of, int vni, MacAddress ethSrc, MacAddress ethDst, int udpSrcPort) {
         return of.actions().buildNoviflowPushVxlanTunnel()
                 .setVni(vni)
                 .setEthSrc(ethSrc)
                 .setEthDst(ethDst)
                 .setUdpSrc(udpSrcPort)
-                .setIpv4Src(IPv4Address.of("127.0.0.1"))
-                .setIpv4Dst(IPv4Address.of("127.0.0.2"))
+                .setIpv4Src(VXLAN_IP_V4_SRC)
+                .setIpv4Dst(VXLAN_IP_V4_DST)
                 // Set to 0x01 indicating tunnel data is present (i.e. we are passing l2 and l3 headers in this action)
                 .setFlags((short) 0x01)
+                .build();
+    }
+
+    /**
+     * Create Kilda OVS push VxLAN action.
+     */
+    public OFActionKildaPushVxlanField makeOvsPushVxlanAction(
+            OFFactory of, int vni, MacAddress ethSrc, MacAddress ethDst, int udpSrcPort) {
+        return of.actions().buildKildaPushVxlanField()
+                .setVni(vni)
+                .setEthSrc(ethSrc)
+                .setEthDst(ethDst)
+                .setUdpSrc(udpSrcPort)
+                .setIpv4Src(VXLAN_IP_V4_SRC)
+                .setIpv4Dst(VXLAN_IP_V4_DST)
                 .build();
     }
 

@@ -23,7 +23,7 @@ import org.apache.maven.artifact.versioning.ComparableVersion;
 import java.util.Optional;
 
 public class KildaOvsPushPopMatchVxlanFeature extends KildaOvsFeature {
-    public static final ComparableVersion KILDA_VXLAN_MIN_VERSION = new ComparableVersion("2.15.1.1-kilda");
+    public static final ComparableVersion KILDA_VXLAN_MIN_VERSION = new ComparableVersion("2.15.1.3-kilda");
 
     @Override
     public Optional<SwitchFeature> discover(IOFSwitch sw) {

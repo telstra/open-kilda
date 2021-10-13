@@ -48,8 +48,8 @@ public class KildaOvsPushPopMatchVxlanFeatureTest {
                 .discover(makeSwitchMock("Nicira, Inc.", "2.15.1.1-kilda", "Open vSwitch", OF_15)));
 
         Optional<SwitchFeature> optional = Optional.of(KILDA_OVS_PUSH_POP_MATCH_VXLAN);
-        assertEquals(optional, FEATURE.discover(makeSwitchMock("2.15.1.1-kilda")));
-        assertEquals(optional, FEATURE.discover(makeSwitchMock("2.15.1.2-kilda")));
+        assertEquals(optional, FEATURE.discover(makeSwitchMock("2.15.1.3-kilda")));
+        assertEquals(optional, FEATURE.discover(makeSwitchMock("2.15.1.4-kilda")));
         assertEquals(optional, FEATURE.discover(makeSwitchMock("2.15.2-kilda")));
         assertEquals(optional, FEATURE.discover(makeSwitchMock("3.0.0-kilda")));
     }

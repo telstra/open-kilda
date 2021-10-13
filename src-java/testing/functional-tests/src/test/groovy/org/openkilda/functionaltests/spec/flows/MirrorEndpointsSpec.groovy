@@ -1,7 +1,11 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.model.FlowTransitEncapsulation
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -68,6 +72,10 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         given: "A flow"
         assumeTrue(swPair as boolean, "Unable to find a switch pair")
         def flow = flowHelperV2.randomFlow(swPair).tap { maximumBandwidth = 100000 }
+        if (profile == 'virtual') {
+            // ovs switch doesn't support mirroring for the vxlan flows
+            flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
+        }
         flowHelperV2.addFlow(flow)
 
         when: "Create a mirror point on src switch, pointing to a different port, random vlan"
@@ -269,7 +277,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([TOPOLOGY_DEPENDENT])
+    // ovs switch doesn't support mirroring for the vxlan flows
+    @Tags([TOPOLOGY_DEPENDENT, HARDWARE])
     def "Can create mirror point on a VXLAN flow [#swPair.src.hwSwString, #mirrorDirection]#trafficDisclaimer"() {
         given: "A VXLAN flow"
         assumeTrue(swPair as boolean, "Unable to find required vxlan-enabled switches with traffgens")
@@ -320,6 +329,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     @Tidy
     def "Flow with mirror point can survive flow sync, #data.encap, #mirrorDirection"() {
         given: "A flow with given encapsulation type and mirror point"
+        // ovs switch doesn't support mirroring for the vxlan flows
+        assumeFalse("virtual" == profile && data.encap == FlowEncapsulationType.VXLAN)
         assumeTrue(swPair as boolean, "Unable to find enough switches for a $data.encap flow")
         def flow = flowHelperV2.randomFlow(swPair).tap { encapsulationType = data.encap }
         flowHelperV2.addFlow(flow)
