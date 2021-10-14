@@ -160,4 +160,20 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Key("flow.delete.mirror.point.speaker.command.retries")
     @Default("3")
     int getDeleteMirrorPointSpeakerCommandRetries();
+
+    @Key("y_flow.create.speaker.command.retries")
+    @Default("3")
+    int getYFlowCreateSpeakerCommandRetriesLimit();
+
+    @Key("y_flow.create.speaker.timeout.seconds")
+    @Default("10")
+    int getYFlowCreateSpeakerTimeoutSeconds();
+
+    @Key("y_flow.delete.speaker.command.retries")
+    @Default("3")
+    int getYFlowDeleteSpeakerCommandRetriesLimit();
+
+    @Key("y_flow.delete.speaker.timeout.seconds")
+    @Default("10")
+    int getYFlowDeleteSpeakerTimeoutSeconds();
 }

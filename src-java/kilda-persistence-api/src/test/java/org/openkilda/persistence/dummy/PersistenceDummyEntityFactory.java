@@ -190,6 +190,35 @@ public class PersistenceDummyEntityFactory {
         });
     }
 
+    /**
+     * Create {@link Flow} object with protected paths.
+     */
+    public Flow makeFlowWithProtectedPath(FlowEndpoint source, FlowEndpoint dest,
+                                          List<IslDirectionalReference> pathHint,
+                                          List<IslDirectionalReference> protectedPathHint) {
+        Flow flow = flowDefaults.fill(Flow.builder())
+                .flowId(idProvider.provideFlowId())
+                .srcSwitch(fetchOrCreateSwitch(source.getSwitchId()))
+                .srcPort(source.getPortNumber())
+                .srcVlan(source.getOuterVlanId())
+                .destSwitch(fetchOrCreateSwitch(dest.getSwitchId()))
+                .destPort(dest.getPortNumber())
+                .destVlan(dest.getOuterVlanId())
+                .allocateProtectedPath(true)
+                .build();
+        return txManager.doInTransaction(() -> {
+            makeFlowPathPair(flow, source, dest, protectedPathHint, Collections.singletonList("protected"));
+            // Push recently created paths as protected
+            flow.setProtectedForwardPath(flow.getForwardPath());
+            flow.setProtectedReversePath(flow.getReversePath());
+            makeFlowPathPair(flow, source, dest, pathHint);
+            flowRepository.add(flow);
+            allocateFlowBandwidth(flow);
+            flowRepository.detach(flow);
+            return flow;
+        });
+    }
+
     private void makeFlowPathPair(
             Flow flow, FlowEndpoint source, FlowEndpoint dest, List<IslDirectionalReference> forwardTrace) {
         makeFlowPathPair(flow, source, dest, forwardTrace, Collections.emptyList());

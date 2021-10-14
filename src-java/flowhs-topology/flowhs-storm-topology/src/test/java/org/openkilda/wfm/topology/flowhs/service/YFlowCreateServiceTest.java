@@ -84,7 +84,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
         processRequestAndSpeakerCommands(request);
         // then
         verifyNorthboundSuccessResponse(yFlowCreateHubCarrier, YFlowResponse.class);
-        verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
+        verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.UP);
     }
 
     @Test
@@ -103,7 +103,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
         processRequestAndSpeakerCommands(request);
         // then
         verifyNorthboundSuccessResponse(yFlowCreateHubCarrier, YFlowResponse.class);
-        verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
+        verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.UP);
     }
 
     @Test
@@ -183,7 +183,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
 
         // when
         service.handleRequest(request.getYFlowId(), new CommandContext(), request);
-        verifyYFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
+        verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
         // and
         handleSpeakerCommandsAndFailInstall(service, request.getYFlowId(), "test_successful_yflow");
 
@@ -209,7 +209,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
 
         // when
         service.handleRequest(request.getYFlowId(), new CommandContext(), request);
-        verifyYFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
+        verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
         // and
         handleSpeakerCommandsAndTimeoutInstall(service, request.getYFlowId(), "test_successful_yflow");
 
@@ -235,7 +235,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
 
         // when
         service.handleRequest(request.getYFlowId(), new CommandContext(), request);
-        verifyYFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
+        verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
         // and
         handleSpeakerCommandsAndFailVerify(service, request.getYFlowId(), "test_successful_yflow");
 
@@ -261,7 +261,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
 
         // when
         service.handleRequest(request.getYFlowId(), new CommandContext(), request);
-        verifyYFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
+        verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
         // and
         handleSpeakerCommandsAndTimeoutVerify(service, request.getYFlowId(), "test_successful_yflow");
 
@@ -276,7 +276,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
         YFlowCreateService service = makeYFlowCreateService(0);
         service.handleRequest(yFlowRequest.getYFlowId(), new CommandContext(), yFlowRequest);
 
-        verifyYFlowStatus(yFlowRequest.getYFlowId(), FlowStatus.IN_PROGRESS);
+        verifyYFlowAndSubFlowStatus(yFlowRequest.getYFlowId(), FlowStatus.IN_PROGRESS);
 
         handleSpeakerCommands(speakerRequest -> {
             SpeakerFlowSegmentResponse commandResponse = buildSuccessfulSpeakerResponse(speakerRequest);
