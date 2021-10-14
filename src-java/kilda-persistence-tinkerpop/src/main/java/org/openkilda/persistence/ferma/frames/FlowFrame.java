@@ -518,7 +518,7 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     }
 
     public static Optional<FlowFrame> load(FramedGraph graph, String flowId) {
-        List<? extends FlowFrame> flowFrames = graph.traverse(input -> input.V()
+        List<? extends FlowFrame> flowFrames = graph.traverse(g -> g.V()
                         .hasLabel(FRAME_LABEL)
                         .has(FLOW_ID_PROPERTY, flowId))
                 .toListExplicit(FlowFrame.class);
