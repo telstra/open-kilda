@@ -38,10 +38,15 @@ import org.openkilda.northbound.dto.v2.switches.SwitchLocationDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 
 import org.junit.Test;
-import org.mapstruct.factory.Mappers;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.Arrays;
 
+@RunWith(SpringRunner.class)
 public class SwitchMapperTest {
     public static final int LOGICAL_PORT_NUMBER_1 = 1;
     public static final int LOGICAL_PORT_NUMBER_2 = 2;
@@ -53,7 +58,9 @@ public class SwitchMapperTest {
     public static final int PHYSICAL_PORT_4 = 4;
     public static final int PHYSICAL_PORT_5 = 5;
     public static final int PHYSICAL_PORT_6 = 6;
-    private SwitchMapper switchMapper = Mappers.getMapper(SwitchMapper.class);
+
+    @Autowired
+    private SwitchMapper switchMapper;
 
     @Test
     public void testSwitchPropertiesDto() {
@@ -233,5 +240,11 @@ public class SwitchMapperTest {
                 .city("Paris")
                 .country("France")
                 .build();
+    }
+
+    @TestConfiguration
+    @ComponentScan({"org.openkilda.northbound.converter"})
+    static class Config {
+        // nothing to define here
     }
 }

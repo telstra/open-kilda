@@ -28,8 +28,13 @@ import org.openkilda.northbound.dto.v1.links.LinkStatus;
 import org.openkilda.northbound.dto.v1.links.PathDto;
 
 import org.junit.Test;
-import org.mapstruct.factory.Mappers;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.test.context.junit4.SpringRunner;
 
+@RunWith(SpringRunner.class)
 public class LinkMapperTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId(1);
     private static final SwitchId SWITCH_ID_2 = new SwitchId(2);
@@ -46,7 +51,8 @@ public class LinkMapperTest {
     public static final String BFD_SESSION_STATUS = "UP";
     public static final long PACKET_ID = 10L;
 
-    private final LinkMapper linkMapper = Mappers.getMapper(LinkMapper.class);
+    @Autowired
+    private LinkMapper linkMapper;
 
     @Test
     public void testMapResponse() {
@@ -95,5 +101,11 @@ public class LinkMapperTest {
     private void assertPathNode(PathNode expected, PathDto actual) {
         assertEquals(expected.getSwitchId().toString(), actual.getSwitchId());
         assertEquals(expected.getPortNo(), actual.getPortNo());
+    }
+
+    @TestConfiguration
+    @ComponentScan({"org.openkilda.northbound.converter"})
+    static class Config {
+        // nothing to define here
     }
 }
