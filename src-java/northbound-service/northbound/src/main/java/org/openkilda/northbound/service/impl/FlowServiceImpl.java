@@ -41,6 +41,7 @@ import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.SwapFlowResponse;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPatch;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
@@ -108,6 +109,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -217,9 +219,7 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<FlowResponsePayload> getFlow(final String id) {
         logger.debug("Get flow request for flow {}", id);
-
         return getFlowResponse(id, RequestCorrelationId.getId())
-                .thenApply(FlowResponse::getPayload)
                 .thenApply(flowMapper::toFlowResponseOutput);
     }
 
@@ -343,15 +343,8 @@ public class FlowServiceImpl implements FlowService {
     public CompletableFuture<List<FlowResponsePayload>> getAllFlows() {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Get flows request processing");
-        FlowsDumpRequest data = new FlowsDumpRequest();
-        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
-
-        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
-                .thenApply(result -> result.stream()
-                        .map(FlowResponse.class::cast)
-                        .map(FlowResponse::getPayload)
-                        .map(flowMapper::toFlowResponseOutput)
-                        .collect(Collectors.toList()));
+        return handleGetAllFlowsRequest(
+                new FlowsDumpRequest(), correlationId, flowMapper::toFlowResponseOutput);
     }
 
     /**
@@ -361,6 +354,7 @@ public class FlowServiceImpl implements FlowService {
     public CompletableFuture<List<FlowResponseV2>> getAllFlowsV2(String status) {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Get flows request processing");
+
         FlowsDumpRequest data;
         try {
             data = new FlowsDumpRequest(status);
@@ -370,13 +364,7 @@ public class FlowServiceImpl implements FlowService {
                     e.getMessage(), "Can not parse arguments of the flow dump request");
         }
 
-        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
-        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
-                .thenApply(result -> result.stream()
-                        .map(FlowResponse.class::cast)
-                        .map(FlowResponse::getPayload)
-                        .map(flowMapper::toFlowResponseV2)
-                        .collect(Collectors.toList()));
+        return handleGetAllFlowsRequest(data, correlationId, flowMapper::toFlowResponseV2);
     }
 
     /**
@@ -457,7 +445,6 @@ public class FlowServiceImpl implements FlowService {
     public CompletableFuture<FlowIdStatusPayload> statusFlow(final String id) {
         logger.debug("Flow status request for flow: {}", id);
         return getFlowResponse(id, RequestCorrelationId.getId())
-                .thenApply(FlowResponse::getPayload)
                 .thenApply(flowMapper::toFlowIdStatusPayload);
     }
 
@@ -549,12 +536,13 @@ public class FlowServiceImpl implements FlowService {
      *
      * @return the bidirectional flow.
      */
-    private CompletableFuture<FlowResponse> getFlowResponse(String flowId, String correlationId) {
+    private CompletableFuture<FlowDto> getFlowResponse(String flowId, String correlationId) {
         FlowReadRequest data = new FlowReadRequest(flowId);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
 
         return messagingChannel.sendAndGet(nbworkerTopic, request)
-                .thenApply(FlowResponse.class::cast);
+                .thenApply(FlowResponse.class::cast)
+                .thenApply(FlowResponse::getPayload);
     }
 
     /**
@@ -840,5 +828,17 @@ public class FlowServiceImpl implements FlowService {
         return messagingChannel.sendAndGet(nbworkerTopic, command)
                 .thenApply(FlowMirrorPointsDumpResponse.class::cast)
                 .thenApply(flowMapper::toFlowMirrorPointsResponseV2);
+    }
+
+    private <T> CompletableFuture<List<T>> handleGetAllFlowsRequest(
+            FlowsDumpRequest payload, String correlationId, Function<FlowDto, T> encoder) {
+        CommandMessage request = new CommandMessage(
+                payload, System.currentTimeMillis(), correlationId, Destination.WFM);
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
+                .thenApply(result -> result.stream()
+                        .map(FlowResponse.class::cast)
+                        .map(FlowResponse::getPayload)
+                        .map(encoder)
+                        .collect(Collectors.toList()));
     }
 }

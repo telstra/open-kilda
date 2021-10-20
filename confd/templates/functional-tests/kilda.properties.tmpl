@@ -11,7 +11,7 @@ opentsdb.endpoint=http://{{ getv "/kilda_tests_opentsdb_hosts" "n/a" }}:{{ getv 
 grpc.endpoint={{ getv "/kilda_tests_grpc_endpoint" "n/a" }}:{{ getv "/kilda_tests_grpc_rest_port" "n/a" }}
 {{else}}
 northbound.endpoint={{ getv "/kilda_northbound_endpoint" }}:{{ getv "/kilda_northbound_rest_port" }}
-orientdb.url=remote:{{ getv "/kilda_orientdb_hosts_single" }}/{{ getv "/kilda_orientdb_database" }}
+orientdb.url=remote:{{ getv "/kilda_orientdb_hosts" }}/{{ getv "/kilda_orientdb_database" }}
 hibernate.url = {{ getv "/kilda_hibernate_url" }}
 elasticsearch.endpoint={{ getv "/kilda_logging_elasticsearch_proto" }}://{{ getv "/kilda_logging_elasticsearch_hosts" }}
 zookeeper.connect_string = {{ getv "/kilda_zookeeper_hosts"}}/{{ getv "/kilda_zookeeper_state_root" }}

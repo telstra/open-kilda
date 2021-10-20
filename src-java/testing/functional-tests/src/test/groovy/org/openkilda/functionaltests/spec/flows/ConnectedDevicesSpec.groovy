@@ -109,7 +109,7 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         def dstArpData = ArpData.buildRandom()
         [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
             endpoint, lldpData, arpData ->
-                new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath), [endpoint.vlanId]).withCloseable {
+                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.datapath), [endpoint.vlanId]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
                 }
@@ -225,7 +225,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def tgService = traffExamProvider.get()
         [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
             endpoint, lldpData, arpData ->
-                new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath), [endpoint.vlanId]).withCloseable {
+                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.datapath), [endpoint.vlanId]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
                 }
@@ -280,7 +280,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         when: "Device connects to src endpoint and send lldp and arp packets"
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
-        new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(sw.dpId), [flow.source.vlanId]).withCloseable {
+        new ConnectedDevice(traffExamProvider.get(), topology.getActiveTraffGen(sw.dpId), [flow.source.vlanId]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
         }
@@ -1079,7 +1079,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find two active traffgens")
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
             [it.src, it.dst].every { sw ->
-                sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
+                //4407
+                !sw.wb5164 && sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
             }
         } ?: assumeTrue(false, "No suiting switches found")
 
@@ -1114,7 +1115,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def dstArpData = ArpData.buildRandom()
         [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
             endpoint, lldpData, arpData ->
-                new ConnectedDevice(tgService, topology.getTraffGen(endpoint.switchId),
+                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId),
                         [endpoint.vlanId, endpoint.innerVlanId]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
@@ -1178,7 +1179,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find two active traffgens")
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
             [it.src, it.dst].every { sw ->
-                sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
+                //4407
+                !sw.wb5164 && sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
             }
         } ?: assumeTrue(false, "No suiting switches found")
 
@@ -1205,7 +1207,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def dstArpData = ArpData.buildRandom()
         [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
             endpoint, lldpData, arpData ->
-                new ConnectedDevice(tgService, topology.getTraffGen(endpoint.switchId), [outerVlan]).withCloseable {
+                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId), [outerVlan]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
                 }
@@ -1237,7 +1239,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "Able to detect devices on a qinq single-switch different-port flow"() {
         given: "A flow between different ports on the same switch"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def sw = topology.activeTraffGens*.switchConnected.first()
+        def sw = topology.activeTraffGens*.switchConnected.find { !it.wb5164 } //4407
+        assumeTrue(sw.asBoolean(), "Wasn't able to find switch connected to traffGen")
         def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
 
         def flow = flowHelperV2.singleSwitchFlow(sw)
@@ -1251,7 +1254,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         when: "Device connects to src endpoint and send lldp and arp packets"
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
-        new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(sw.dpId),
+        new ConnectedDevice(traffExamProvider.get(), topology.getActiveTraffGen(sw.dpId),
                 [flow.source.vlanId, flow.source.innerVlanId]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
@@ -1301,7 +1304,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "Able to detect devices when two qinq single-switch different-port flows exist with the same outerVlanId"() {
         given: "Two flows between different ports on the same switch with the same outerVlanId"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def sw = topology.activeTraffGens*.switchConnected.first()
+        def sw = topology.activeTraffGens*.switchConnected.find { !it.wb5164 } //4407
+        assumeTrue(sw.asBoolean(), "Wasn't able to find switch connected to traffGen")
         def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
 
         def flow1 = flowHelperV2.singleSwitchFlow(sw, true)
@@ -1323,7 +1327,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         when: "Device connects to src endpoint and send lldp and arp packets for flow1 only"
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
-        new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(sw.dpId),
+        new ConnectedDevice(traffExamProvider.get(), topology.getActiveTraffGen(sw.dpId),
                 [flow1.source.vlanId, flow1.source.innerVlanId]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)

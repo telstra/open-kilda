@@ -62,6 +62,7 @@ public class FlowResponseV2 {
     private SwitchId loopSwitchId;
     private long forwardPathLatencyNs;
     private long reversePathLatencyNs;
+    private String latencyLastModifiedTime;
 
     private String created;
     private String lastUpdated;

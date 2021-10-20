@@ -930,11 +930,11 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Stats from server42 for forward/reverse directions are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+            assert !otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "forward",
                      origin   : "server42"]).dps.isEmpty()
-            otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+            assert !otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "reverse",
                      origin   : "server42"]).dps.isEmpty()

@@ -58,6 +58,9 @@ public class FlowResponsePayload extends FlowPayload {
     @JsonProperty("reverse-latency")
     private long reverseLatency;
 
+    @JsonProperty("latency-last-modified-time")
+    private String latencyLastModifiedTime;
+
     /**
      * Instance constructor.
      *
@@ -72,8 +75,8 @@ public class FlowResponsePayload extends FlowPayload {
      * @param created                   flow created timestamp
      * @param lastUpdated               flow last updated timestamp
      * @param status                    flow status
-     * @param statusInfo                flow status info
      * @param flowStatusDetails         flow status details
+     * @param statusInfo                flow status info
      * @param maxLatency                max latency
      * @param priority                  flow priority
      * @param diverseWith               diverse with flows id
@@ -84,6 +87,7 @@ public class FlowResponsePayload extends FlowPayload {
      * @param loopSwitchId              looped switch id
      * @param forwardLatency            forward path latency nanoseconds
      * @param reverseLatency            reverse path latency nanoseconds
+     * @param latencyLastModifiedTime   latency last modified time
      */
     @Builder(builderMethodName = "flowResponsePayloadBuilder")
     @JsonCreator
@@ -109,7 +113,8 @@ public class FlowResponsePayload extends FlowPayload {
                                @JsonProperty("target-path-computation-strategy") String targetPathComputationStrategy,
                                @JsonProperty("loop-switch-id") SwitchId loopSwitchId,
                                @JsonProperty("forward-latency") long forwardLatency,
-                               @JsonProperty("reverse-latency") long reverseLatency) {
+                               @JsonProperty("reverse-latency") long reverseLatency,
+                               @JsonProperty("latency-last-modified-time") String latencyLastModifiedTime) {
         super(id, source, destination, maximumBandwidth, ignoreBandwidth, periodicPings, allocateProtectedPath,
                 description, created, lastUpdated, status, maxLatency, priority, pinned, encapsulationType,
                 pathComputationStrategy);
@@ -120,5 +125,6 @@ public class FlowResponsePayload extends FlowPayload {
         this.loopSwitchId = loopSwitchId;
         this.forwardLatency = forwardLatency;
         this.reverseLatency = reverseLatency;
+        this.latencyLastModifiedTime = latencyLastModifiedTime;
     }
 }

@@ -78,6 +78,7 @@ public abstract class FlowMapper {
     @Mapping(target = "mirrorPointStatuses", ignore = true)
     @Mapping(target = "forwardLatency", ignore = true)
     @Mapping(target = "reverseLatency", ignore = true)
+    @Mapping(target = "latencyLastModifiedTime", ignore = true)
     public abstract FlowDto map(Flow flow);
 
     /**
@@ -97,6 +98,7 @@ public abstract class FlowMapper {
         flowDto.setMirrorPointStatuses(map(flowMirrorPaths));
         flowDto.setForwardLatency(flowStats.getForwardLatency());
         flowDto.setReverseLatency(flowStats.getReverseLatency());
+        flowDto.setLatencyLastModifiedTime(flowStats.getTimeModify());
         return flowDto;
     }
 

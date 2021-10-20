@@ -46,8 +46,9 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
      * that's why '0.5' is used. */
     @Shared
     def flowLatencySlaThresholdPercent = 0.5 //kilda_flow_latency_sla_threshold_percent: 0.05
-    @Shared
-    def flowSlaCheckIntervalSeconds = 10 //kilda_flow_sla_check_interval_seconds: 10
+    @Shared //kilda_flow_sla_check_interval_seconds: 60
+    @Value('${flow.sla.check.interval.seconds}')
+    Integer flowSlaCheckIntervalSeconds
     @Shared
     def flowLatencySlaTimeoutSeconds = 30 //kilda_flow_latency_sla_timeout_seconds: 30
 
@@ -126,12 +127,11 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
          * recheck the flowLatency 'kilda_flow_sla_check_interval_seconds';
          * and then reroute the flow.
          */
-        Wrappers.benchmark("testReroute") {
-            wait(flowSlaCheckIntervalSeconds * 2 + flowLatencySlaTimeoutSeconds + WAIT_OFFSET) {
-                def history = northbound.getFlowHistory(flow.flowId).last()
-                assert history.details == "Reason: Flow latency become unhealthy" &&
-                        (history.payload.last().action in [REROUTE_SUCCESS,REROUTE_FAIL]) //just check 'reroute'
-            }
+        wait(flowSlaCheckIntervalSeconds * 2 + flowLatencySlaTimeoutSeconds + WAIT_OFFSET) {
+            def history = northbound.getFlowHistory(flow.flowId).last()
+            //"Reason: Flow latency become unhealthy" or ""Reason: Flow latency become healthy""
+            assert history.details.contains("healthy") &&
+                    (history.payload.last().action in [REROUTE_SUCCESS,REROUTE_FAIL]) //just check 'reroute'
         }
 
         cleanup:
