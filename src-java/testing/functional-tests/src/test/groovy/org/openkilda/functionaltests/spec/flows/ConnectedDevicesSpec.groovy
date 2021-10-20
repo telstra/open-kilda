@@ -36,6 +36,8 @@ import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.ConnectedDeviceDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
+import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDeviceDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -87,7 +89,7 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         def initialDstProps = enableMultiTableIfNeeded(data.dstEnabled, data.switchPair.dst.dpId)
 
         when: "Create a flow with connected devices"
-        verifyAll(flowHelper.addFlow(flow)) {
+        verifyAll(flowHelperV2.addFlow(flow)) {
             source.detectConnectedDevices.lldp == flow.source.detectConnectedDevices.lldp
             source.detectConnectedDevices.arp == flow.source.detectConnectedDevices.arp
             destination.detectConnectedDevices.lldp == flow.destination.detectConnectedDevices.lldp
@@ -95,7 +97,7 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         }
 
         then: "Flow and src/dst switches are valid"
-        def createdFlow = database.getFlow(flow.id)
+        def createdFlow = database.getFlow(flow.flowId)
         validateFlowAndSwitches(createdFlow)
 
         and: "LLDP meters must be installed"
@@ -109,7 +111,7 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         def dstArpData = ArpData.buildRandom()
         [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
             endpoint, lldpData, arpData ->
-                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.datapath), [endpoint.vlanId]).withCloseable {
+                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId), [endpoint.vlanId]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
                 }
@@ -117,7 +119,7 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
 
         then: "Getting connecting devices shows corresponding devices on each endpoint if enabled"
         Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
-            verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
+            verifyAll(northbound.getFlowConnectedDevices(flow.flowId)) {
                 it.source.lldp.size() == (data.srcEnabled ? 1 : 0)
                 it.destination.lldp.size() == (data.dstEnabled ? 1 : 0)
                 it.source.arp.size() == (data.srcEnabled ? 1 : 0)
@@ -130,17 +132,17 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
         def flowIsDeleted = true
 
         then: "Delete action removed all rules and meters"
         Wrappers.wait(WAIT_OFFSET) {
-            validateSwitchHasNoFlowRulesAndMeters(flow.source.datapath)
-            validateSwitchHasNoFlowRulesAndMeters(flow.destination.datapath)
+            validateSwitchHasNoFlowRulesAndMeters(flow.source.switchId)
+            validateSwitchHasNoFlowRulesAndMeters(flow.destination.switchId)
         }
 
         cleanup: "Restore initial switch properties"
-        !flowIsDeleted && flowHelper.deleteFlow(flow.id)
+        !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
         initialSrcProps && restoreSwitchProperties(data.switchPair.src.dpId, initialSrcProps)
         initialDstProps && restoreSwitchProperties(data.switchPair.dst.dpId, initialDstProps)
         srcLldpData && [data.switchPair.src, data.switchPair.dst].each { database.removeConnectedDevices(it.dpId) }
@@ -198,19 +200,19 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
 srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         given: "Switches with turned 'on' multiTable property"
         def flow = getFlowWithConnectedDevices(true, false, oldSrcEnabled, oldDstEnabled)
-        def initialSrcProps = enableMultiTableIfNeeded(oldSrcEnabled || newSrcEnabled, flow.source.datapath)
-        def initialDstProps = enableMultiTableIfNeeded(oldDstEnabled || newDstEnabled, flow.destination.datapath)
+        def initialSrcProps = enableMultiTableIfNeeded(oldSrcEnabled || newSrcEnabled, flow.source.switchId)
+        def initialDstProps = enableMultiTableIfNeeded(oldDstEnabled || newDstEnabled, flow.destination.switchId)
 
         and: "Created flow with enabled or disabled connected devices"
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         when: "Update the flow with connected devices"
-        flow.source.detectConnectedDevices = new DetectConnectedDevicesPayload(newSrcEnabled, newSrcEnabled)
-        flow.destination.detectConnectedDevices = new DetectConnectedDevicesPayload(newDstEnabled, newDstEnabled)
-        flowHelper.updateFlow(flow.id, flow)
+        flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(newSrcEnabled, newSrcEnabled)
+        flow.destination.detectConnectedDevices = new DetectConnectedDevicesV2(newDstEnabled, newDstEnabled)
+        flowHelperV2.updateFlow(flow.flowId, flow)
 
         then: "Flow and src/dst switches are valid"
-        def updatedFlow = database.getFlow(flow.id)
+        def updatedFlow = database.getFlow(flow.flowId)
         validateFlowAndSwitches(updatedFlow)
 
         and: "LLDP meters must be installed"
@@ -225,7 +227,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def tgService = traffExamProvider.get()
         [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
             endpoint, lldpData, arpData ->
-                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.datapath), [endpoint.vlanId]).withCloseable {
+                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId), [endpoint.vlanId]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
                 }
@@ -233,7 +235,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Getting connecting devices shows corresponding devices on each endpoint according to updated status"
         Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
-            verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
+            verifyAll(northbound.getFlowConnectedDevices(flow.flowId)) {
                 it.source.lldp.size() == (newSrcEnabled ? 1 : 0)
                 it.destination.lldp.size() == (newDstEnabled ? 1 : 0)
                 it.source.arp.size() == (newSrcEnabled ? 1 : 0)
@@ -246,10 +248,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Delete the flow"
-        flow && flowHelper.deleteFlow(flow.id)
-        initialSrcProps && restoreSwitchProperties(flow.source.datapath, initialSrcProps)
-        initialDstProps && restoreSwitchProperties(flow.destination.datapath, initialDstProps)
-        srcLldpData && [flow.source.datapath, flow.destination.datapath].each { database.removeConnectedDevices(it) }
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        initialSrcProps && restoreSwitchProperties(flow.source.switchId, initialSrcProps)
+        initialDstProps && restoreSwitchProperties(flow.destination.switchId, initialDstProps)
+        srcLldpData && [flow.source.switchId, flow.destination.switchId].each { database.removeConnectedDevices(it) }
 
         where:
         [oldSrcEnabled, oldDstEnabled, newSrcEnabled, newDstEnabled] << [
@@ -273,9 +275,9 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def sw = topology.activeTraffGens*.switchConnected.first()
         def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
 
-        def flow = flowHelper.singleSwitchFlow(sw)
-        flow.source.detectConnectedDevices = new DetectConnectedDevicesPayload(true, true)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.singleSwitchFlow(sw)
+        flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
+        flowHelperV2.addFlow(flow)
 
         when: "Device connects to src endpoint and send lldp and arp packets"
         def lldpData = LldpData.buildRandom()
@@ -287,7 +289,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "LLDP and ARP connected devices are recognized and saved"
         Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
-            verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
+            verifyAll(northbound.getFlowConnectedDevices(flow.flowId)) {
                 it.source.lldp.size() == 1
                 it.source.arp.size() == 1
                 it.destination.lldp.empty
@@ -298,18 +300,18 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         when: "Remove the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
         def flowIsDeleted = true
 
         and: "Try to get connected devices for removed flow"
-        northbound.getFlowConnectedDevices(flow.id)
+        northbound.getFlowConnectedDevices(flow.flowId)
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.NOT_FOUND
 
         cleanup: "Restore initial switch properties"
-        flow && !flowIsDeleted && flowHelper.deleteFlow(flow.id)
+        flow && !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
         initialProps && restoreSwitchProperties(sw.dpId, initialProps)
         lldpData && database.removeConnectedDevices(sw.dpId)
     }
@@ -318,18 +320,18 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "Able to swap flow paths with connected devices (srcDevices=#srcEnabled, dstDevices=#dstEnabled)"() {
         given: "Switches with turned 'on' multiTable property"
         def flow = getFlowWithConnectedDevices(true, false, srcEnabled, dstEnabled)
-        def initialSrcProps = enableMultiTableIfNeeded(srcEnabled, flow.source.datapath)
-        def initialDstProps = enableMultiTableIfNeeded(dstEnabled, flow.destination.datapath)
+        def initialSrcProps = enableMultiTableIfNeeded(srcEnabled, flow.source.switchId)
+        def initialDstProps = enableMultiTableIfNeeded(dstEnabled, flow.destination.switchId)
 
         and: "Created protected flow with enabled or disabled connected devices"
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         when: "Swap flow paths"
-        northbound.swapFlowPath(flow.id)
+        northbound.swapFlowPath(flow.flowId)
 
         then: "Flow and src/dst switches are valid"
-        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.id).status == FlowState.UP }
-        def swappedFlow = database.getFlow(flow.id)
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+        def swappedFlow = database.getFlow(flow.flowId)
         validateFlowAndSwitches(swappedFlow)
 
         and: "LLDP meters must be installed"
@@ -344,7 +346,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def tgService = traffExamProvider.get()
         [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
             endpoint, lldpData, arpData ->
-                new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath), [endpoint.vlanId]).withCloseable {
+                new ConnectedDevice(tgService, topology.getTraffGen(endpoint.switchId), [endpoint.vlanId]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
                 }
@@ -352,7 +354,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Getting connecting devices shows corresponding devices on each endpoint"
         Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
-            verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
+            verifyAll(northbound.getFlowConnectedDevices(flow.flowId)) {
                 it.source.lldp.size() == (srcEnabled ? 1 : 0)
                 it.destination.lldp.size() == (dstEnabled ? 1 : 0)
                 it.source.arp.size() == (srcEnabled ? 1 : 0)
@@ -365,10 +367,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Delete the flow and restore initial switch properties"
-        flow && flowHelper.deleteFlow(flow.id)
-        [flow.source.datapath, flow.destination.datapath].each { database.removeConnectedDevices(it) }
-        initialSrcProps && restoreSwitchProperties(flow.source.datapath, initialSrcProps)
-        initialDstProps && restoreSwitchProperties(flow.destination.datapath, initialDstProps)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        [flow.source.switchId, flow.destination.switchId].each { database.removeConnectedDevices(it) }
+        initialSrcProps && restoreSwitchProperties(flow.source.switchId, initialSrcProps)
+        initialDstProps && restoreSwitchProperties(flow.destination.switchId, initialDstProps)
 
         where:
         [srcEnabled, dstEnabled] << [
@@ -381,13 +383,13 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "Able to handle 'timeLastSeen' field when receive repeating LLDP packets from the same device"() {
         given: "Switches with turned 'on' multiTable property"
         def flow = getFlowWithConnectedDevices(false, false, true, false)
-        def initialSrcProps = enableMultiTableIfNeeded(true, flow.source.datapath)
+        def initialSrcProps = enableMultiTableIfNeeded(true, flow.source.switchId)
 
         and: "Created flow that detects connected devices"
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         and: "A connected device"
-        def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.source.datapath),
+        def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.source.switchId),
                 [flow.source.vlanId])
 
         when: "Device sends lldp packet"
@@ -396,7 +398,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Device is registered for the flow, with timeLastSeen and timeFirstSeen values"
         def devices1 = Wrappers.retry(3, 0.5) {
-            def devices = northbound.getFlowConnectedDevices(flow.id).source.lldp
+            def devices = northbound.getFlowConnectedDevices(flow.flowId).source.lldp
             assert devices.size() == 1
             assert Instant.parse(devices[0].timeFirstSeen) == Instant.parse(devices[0].timeLastSeen)
             devices
@@ -407,32 +409,32 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "timeLastSeen is updated, timeFirstSeen remains the same"
         Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
-            def devices = northbound.getFlowConnectedDevices(flow.id).source.lldp
+            def devices = northbound.getFlowConnectedDevices(flow.flowId).source.lldp
             assert devices.size() == 1
             assert Instant.parse(devices[0].timeFirstSeen) == Instant.parse(devices1[0].timeFirstSeen)
             assert Instant.parse(devices[0].timeLastSeen) > Instant.parse(devices1[0].timeLastSeen)
         }
 
         cleanup: "Disconnect the device and remove the flow"
-        flow && flowHelper.deleteFlow(flow.id)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         device && device.close()
-        lldpData && database.removeConnectedDevices(flow.source.datapath)
+        lldpData && database.removeConnectedDevices(flow.source.switchId)
 
         and: "Restore initial switch properties"
-        initialSrcProps && restoreSwitchProperties(flow.source.datapath, initialSrcProps)
+        initialSrcProps && restoreSwitchProperties(flow.source.switchId, initialSrcProps)
     }
 
     @Tidy
     def "Able to handle 'timeLastSeen' field when receive repeating ARP packets from the same device"() {
         given: "Switches with turned 'on' multiTable property"
         def flow = getFlowWithConnectedDevices(false, false, true, false)
-        def initialSrcProps = enableMultiTableIfNeeded(true, flow.source.datapath)
+        def initialSrcProps = enableMultiTableIfNeeded(true, flow.source.switchId)
 
         and: "Created flow that detects connected devices"
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         and: "A connected device"
-        def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.source.datapath),
+        def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.source.switchId),
                 [flow.source.vlanId])
 
         when: "Device sends ARP packet"
@@ -441,7 +443,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Device is registered for the flow, with timeLastSeen and timeFirstSeen values"
         def devices1 = Wrappers.retry(3, 0.5) {
-            def devices = northbound.getFlowConnectedDevices(flow.id).source.arp
+            def devices = northbound.getFlowConnectedDevices(flow.flowId).source.arp
             assert devices.size() == 1
             assert Instant.parse(devices[0].timeFirstSeen) == Instant.parse(devices[0].timeLastSeen)
             devices
@@ -452,32 +454,32 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "timeLastSeen is updated, timeFirstSeen remains the same"
         Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
-            def devices = northbound.getFlowConnectedDevices(flow.id).source.arp
+            def devices = northbound.getFlowConnectedDevices(flow.flowId).source.arp
             assert devices.size() == 1
             assert Instant.parse(devices[0].timeFirstSeen) == Instant.parse(devices1[0].timeFirstSeen)
             assert Instant.parse(devices[0].timeLastSeen) > Instant.parse(devices1[0].timeLastSeen)
         }
 
         cleanup: "Disconnect the device and remove the flow"
-        flow && flowHelper.deleteFlow(flow.id)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         device && device.close()
-        arpData && database.removeConnectedDevices(flow.source.datapath)
+        arpData && database.removeConnectedDevices(flow.source.switchId)
 
         and: "Restore initial switch properties"
-        initialSrcProps && restoreSwitchProperties(flow.source.datapath, initialSrcProps)
+        initialSrcProps && restoreSwitchProperties(flow.source.switchId, initialSrcProps)
     }
 
     @Tidy
     def "Able to detect different devices on the same port (LLDP)"() {
         given: "Switches with turned 'on' multiTable property"
         def flow = getFlowWithConnectedDevices(false, false, false, true)
-        def initialDstProps = enableMultiTableIfNeeded(true, flow.destination.datapath)
+        def initialDstProps = enableMultiTableIfNeeded(true, flow.destination.switchId)
 
         and: "Created flow that detects connected devices"
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         and: "A connected device"
-        def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.destination.datapath),
+        def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.destination.switchId),
                 [flow.destination.vlanId])
 
         when: "Two completely different lldp packets are sent"
@@ -488,7 +490,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "2 devices are registered for the flow"
         Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
-            assert northbound.getFlowConnectedDevices(flow.id).destination.lldp.size() == 2
+            assert northbound.getFlowConnectedDevices(flow.flowId).destination.lldp.size() == 2
         }
 
         when: "Same device (same mac address) sends lldp packet with updated port number"
@@ -498,39 +500,39 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Device is recognized as new one and total of 3 devices are registered for the flow"
         def foundDevices = Wrappers.retry(3, 0.5) {
-            def devices = northbound.getFlowConnectedDevices(flow.id).destination.lldp
+            def devices = northbound.getFlowConnectedDevices(flow.flowId).destination.lldp
             assert devices.size() == 3
             devices
         } as List<ConnectedDeviceDto>
 
         when: "Request devices list with 'since' param equal to last registered device"
         def lastDevice = foundDevices.max { Instant.parse(it.timeLastSeen) }
-        def filteredDevices = northbound.getFlowConnectedDevices(flow.id, lastDevice.timeLastSeen).destination.lldp
+        def filteredDevices = northbound.getFlowConnectedDevices(flow.flowId, lastDevice.timeLastSeen).destination.lldp
 
         then: "Only 1 device is returned (the latest registered)"
         filteredDevices.size() == 1
         filteredDevices.first() == lastDevice
 
         cleanup: "Disconnect the device and remove the flow"
-        flow && flowHelper.deleteFlow(flow.id)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         device && device.close()
-        lldpData1 && database.removeConnectedDevices(flow.destination.datapath)
+        lldpData1 && database.removeConnectedDevices(flow.destination.switchId)
 
         and: "Restore initial switch properties"
-        initialDstProps && restoreSwitchProperties(flow.destination.datapath, initialDstProps)
+        initialDstProps && restoreSwitchProperties(flow.destination.switchId, initialDstProps)
     }
 
     @Tidy
     def "Able to detect different devices on the same port (ARP)"() {
         given: "Switches with turned 'on' multiTable property"
         def flow = getFlowWithConnectedDevices(false, false, false, true)
-        def initialDstProps = enableMultiTableIfNeeded(true, flow.destination.datapath)
+        def initialDstProps = enableMultiTableIfNeeded(true, flow.destination.switchId)
 
         and: "Created flow that detects connected devices"
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         and: "A connected device"
-        def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.destination.datapath),
+        def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.destination.switchId),
                 [flow.destination.vlanId])
 
         when: "Two completely different ARP packets are sent"
@@ -541,7 +543,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "2 arp devices are registered for the flow"
         Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
-            assert northbound.getFlowConnectedDevices(flow.id).destination.arp.size() == 2
+            assert northbound.getFlowConnectedDevices(flow.flowId).destination.arp.size() == 2
         }
 
         when: "Same device (same IP address) sends ARP packet with updated mac address"
@@ -552,26 +554,26 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Device is recognized as new one and total of 3 arp devices are registered for the flow"
         def foundDevices = Wrappers.retry(3, 0.5) {
-            def devices = northbound.getFlowConnectedDevices(flow.id).destination.arp
+            def devices = northbound.getFlowConnectedDevices(flow.flowId).destination.arp
             assert devices.size() == 3
             devices
         } as List<ConnectedDeviceDto>
 
         when: "Request devices list with 'since' param equal to last registered device"
         def lastDevice = foundDevices.max { Instant.parse(it.timeLastSeen) }
-        def filteredDevices = northbound.getFlowConnectedDevices(flow.id, lastDevice.timeLastSeen).destination.arp
+        def filteredDevices = northbound.getFlowConnectedDevices(flow.flowId, lastDevice.timeLastSeen).destination.arp
 
         then: "Only 1 device is returned (the latest registered)"
         filteredDevices.size() == 1
         filteredDevices.first() == lastDevice
 
         cleanup: "Disconnect the device and remove the flow"
-        flow && flowHelper.deleteFlow(flow.id)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         device && device.close()
-        arpData1 && database.removeConnectedDevices(flow.destination.datapath)
+        arpData1 && database.removeConnectedDevices(flow.destination.switchId)
 
         and: "Restore initial switch properties"
-        initialDstProps && restoreSwitchProperties(flow.destination.datapath, initialDstProps)
+        initialDstProps && restoreSwitchProperties(flow.destination.switchId, initialDstProps)
     }
 
     @Tidy
@@ -601,11 +603,11 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         when: "Flow is created on a target switch with devices feature 'on'"
         def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
-        def flow = flowHelper.randomFlow(sw, dst).tap {
-            it.source.detectConnectedDevices = new DetectConnectedDevicesPayload(true, true)
+        def flow = flowHelperV2.randomFlow(sw, dst).tap {
+            it.source.detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
             it.source.vlanId = deviceVlan
         }
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         and: "Device sends an lldp+arp packet into a flow port on that switch (with a correct flow vlan)"
         device.sendLldp(lldpData)
@@ -613,7 +615,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "LLDP and ARP devices are registered as flow devices"
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
+            verifyAll(northbound.getFlowConnectedDevices(flow.flowId)) {
                 it.source.lldp.size() == 1
                 verifyEquals(it.source.lldp.first(), lldpData)
                 it.source.arp.size() == 1
@@ -626,15 +628,15 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             it.size() == 1
             it[0].portNumber == tg.switchPort
             it[0].lldp.first().vlan == flow.source.vlanId
-            it[0].lldp.first().flowId == flow.id
+            it[0].lldp.first().flowId == flow.flowId
             verifyEquals(it[0].lldp.first(), lldpData)
             it[0].arp.first().vlan == flow.source.vlanId
-            it[0].arp.first().flowId == flow.id
+            it[0].arp.first().flowId == flow.flowId
             verifyEquals(it[0].arp.first(), arpData)
         }
 
         cleanup: "Remove created flow and device"
-        flow && flowHelper.deleteFlow(flow.id)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         device && device.close()
         lldpData && database.removeConnectedDevices(sw.dpId)
 
@@ -657,10 +659,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Flow is created on a target switch with devices feature 'off'"
         def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
-        def flow = flowHelper.randomFlow(sw, dst).tap {
-            it.source.detectConnectedDevices = new DetectConnectedDevicesPayload(false, false)
+        def flow = flowHelperV2.randomFlow(sw, dst).tap {
+            it.source.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
         }
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         when: "Devices send lldp and arp packets into a flow port"
         def lldpData = LldpData.buildRandom()
@@ -676,16 +678,16 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                 it.size() == 1
                 it[0].portNumber == tg.switchPort
                 it[0].lldp.first().vlan == flow.source.vlanId
-                it[0].lldp.first().flowId == flow.id
+                it[0].lldp.first().flowId == flow.flowId
                 verifyEquals(it[0].lldp.first(), lldpData)
                 it[0].arp.first().vlan == flow.source.vlanId
-                it[0].arp.first().flowId == flow.id
+                it[0].arp.first().flowId == flow.flowId
                 verifyEquals(it[0].arp.first(), arpData)
             }
         }
 
         then: "Devices are registered as flow devices"
-        verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
+        verifyAll(northbound.getFlowConnectedDevices(flow.flowId)) {
             it.source.lldp.size() == 1
             it.source.arp.size() == 1
             verifyEquals(it.source.lldp.first(), lldpData)
@@ -693,7 +695,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Remove created flow and registered devices, revert switch props"
-        flow && flowHelper.deleteFlow(flow.id)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         lldpData && database.removeConnectedDevices(sw.dpId)
         initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
     }
@@ -751,19 +753,19 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         })
 
         and: "A single-sw flow with devices feature 'on'"
-        def flow = flowHelper.randomFlow(sw, sw).tap {
-            it.source.detectConnectedDevices = new DetectConnectedDevicesPayload(true, true)
+        def flow = flowHelperV2.randomFlow(sw, sw).tap {
+            it.source.detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
         }
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         and: "A single-sw default flow with devices feature 'on'"
-        def defaultFlow = flowHelper.randomFlow(sw, sw, true, [flow]).tap {
-            it.source.detectConnectedDevices = new DetectConnectedDevicesPayload(true, true)
+        def defaultFlow = flowHelperV2.randomFlow(sw, sw, true, [flow]).tap {
+            it.source.detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
             it.source.portNumber = flow.source.portNumber
             srcDefault && (it.source.vlanId = 0)
             dstDefault && (it.destination.vlanId = 0)
         }
-        flowHelper.addFlow(defaultFlow)
+        flowHelperV2.addFlow(defaultFlow)
 
         when: "Devices send lldp and arp packets into a flow port with flow vlan"
         def lldpData = LldpData.buildRandom()
@@ -778,17 +780,17 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             verifyAll(northboundV2.getConnectedDevices(sw.dpId).ports) {
                 it.size() == 1
                 it[0].portNumber == tg.switchPort
-                it[0].lldp.first().flowId == flow.id
+                it[0].lldp.first().flowId == flow.flowId
                 it[0].lldp.first().vlan == flow.source.vlanId
                 verifyEquals(it[0].lldp.first(), lldpData)
-                it[0].arp.first().flowId == flow.id
+                it[0].arp.first().flowId == flow.flowId
                 it[0].arp.first().vlan == flow.source.vlanId
                 verifyEquals(it[0].arp.first(), arpData)
             }
         }
 
         and: "Devices are also visible as flow devices"
-        verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
+        verifyAll(northbound.getFlowConnectedDevices(flow.flowId)) {
             it.source.lldp.size() == 1
             verifyEquals(it.source.lldp.first(), lldpData)
             it.source.arp.size() == 1
@@ -796,7 +798,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         and: "Devices are NOT visible as a default flow devices"
-        def flowDevices = northbound.getFlowConnectedDevices(defaultFlow.id)
+        def flowDevices = northbound.getFlowConnectedDevices(defaultFlow.flowId)
         flowDevices.source.lldp.empty
         flowDevices.source.arp.empty
 
@@ -815,11 +817,11 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                 it.size() == 1
                 it[0].portNumber == tg.switchPort
                 it[0].lldp.size() == 2
-                it[0].lldp.last().flowId == defaultFlow.id
+                it[0].lldp.last().flowId == defaultFlow.flowId
                 it[0].lldp.last().vlan == vlan
                 verifyEquals(it[0].lldp.last(), lldpData2)
                 it[0].arp.size() == 2
-                it[0].arp.last().flowId == defaultFlow.id
+                it[0].arp.last().flowId == defaultFlow.flowId
                 it[0].arp.last().vlan == vlan
                 verifyEquals(it[0].arp.last(), arpData2)
             }
@@ -827,7 +829,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Devices are not visible as a flow devices"
         //it's a previous devices, nothing changed
-        verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
+        verifyAll(northbound.getFlowConnectedDevices(flow.flowId)) {
             it.source.lldp.size() == 1
             verifyEquals(it.source.lldp.first(), lldpData)
             it.source.arp.size() == 1
@@ -835,7 +837,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         and: "Devices are visible as a default flow devices"
-        verifyAll(northbound.getFlowConnectedDevices(defaultFlow.id)) {
+        verifyAll(northbound.getFlowConnectedDevices(defaultFlow.flowId)) {
             it.source.lldp.size() == 1
             verifyEquals(it.source.lldp.first(), lldpData2)
             it.source.arp.size() == 1
@@ -858,11 +860,11 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                 it.size() == 1
                 it[0].portNumber == tg.switchPort
                 it[0].lldp.size() == 3
-                it[0].lldp.last().flowId == defaultFlow.id
+                it[0].lldp.last().flowId == defaultFlow.flowId
                 it[0].lldp.last().vlan == vlans[0] //due to issue 3475
                 verifyEquals(it[0].lldp.last(), lldpData3)
                 it[0].arp.size() == 3
-                it[0].arp.last().flowId == defaultFlow.id
+                it[0].arp.last().flowId == defaultFlow.flowId
                 it[0].arp.last().vlan == vlans[0] //due to issue 3475
                 verifyEquals(it[0].arp.last(), arpData3)
             }
@@ -870,13 +872,13 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Devices are not visible as a flow devices"
         //it's a previous devices, nothing changed
-        verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
+        verifyAll(northbound.getFlowConnectedDevices(flow.flowId)) {
             it.source.lldp.size() == 1
             it.source.arp.size() == 1
         }
 
         and: "Devices are visible as a default flow devices"
-        verifyAll(northbound.getFlowConnectedDevices(defaultFlow.id)) {
+        verifyAll(northbound.getFlowConnectedDevices(defaultFlow.flowId)) {
             it.source.lldp.size() == 2
             verifyEquals(it.source.lldp.sort { it.timeFirstSeen }.last(), lldpData3)
             it.source.arp.size() == 2
@@ -884,8 +886,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Turn off devices prop, remove connected devices, remove flow"
-        flow && flowHelper.deleteFlow(flow.id)
-        defaultFlow && flowHelper.deleteFlow(defaultFlow.id)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        defaultFlow && flowHelperV2.deleteFlow(defaultFlow.flowId)
         lldpData && database.removeConnectedDevices(sw.dpId)
         initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
 
@@ -904,14 +906,14 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             srcDefault && (it.source.vlanId = 0)
             dstDefault && (it.destination.vlanId = 0)
         }
-        def srcTg = topology.activeTraffGens.find { it.switchConnected.dpId == flow.source.datapath }
-        def dstTg = topology.activeTraffGens.find { it.switchConnected.dpId == flow.destination.datapath }
-        def initialSrcProps = enableMultiTableIfNeeded(true, flow.source.datapath)
-        def initialDstProps = enableMultiTableIfNeeded(true, flow.destination.datapath)
+        def srcTg = topology.activeTraffGens.find { it.switchConnected.dpId == flow.source.switchId }
+        def dstTg = topology.activeTraffGens.find { it.switchConnected.dpId == flow.destination.switchId }
+        def initialSrcProps = enableMultiTableIfNeeded(true, flow.source.switchId)
+        def initialDstProps = enableMultiTableIfNeeded(true, flow.destination.switchId)
 
         and: "A flow with enbaled connected devices, #descr"
-        flowHelper.addFlow(flow)
-        waitForDevicesInputRules(database.getFlow(flow.id))
+        flowHelperV2.addFlow(flow)
+        waitForDevicesInputRules(database.getFlow(flow.flowId))
 
         when: "Devices send lldp and arp packets on each flow endpoint"
         def srcLldpData = LldpData.buildRandom()
@@ -922,7 +924,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def tgService = traffExamProvider.get()
         [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
             endpoint, lldpData, arpData ->
-                new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath),
+                new ConnectedDevice(tgService, topology.getTraffGen(endpoint.switchId),
                         [endpoint.vlanId ?: nonDefaultVlan]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
@@ -931,7 +933,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Devices are registered for the flow on src and dst"
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
+            verifyAll(northbound.getFlowConnectedDevices(flow.flowId)) {
                 it.source.lldp.size() == 1
                 it.destination.lldp.size() == 1
                 verifyEquals(it.source.lldp.first(), srcLldpData)
@@ -944,40 +946,40 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         and: "Devices are registered on src switch"
-        verifyAll(northboundV2.getConnectedDevices(flow.source.datapath).ports) {
+        verifyAll(northboundV2.getConnectedDevices(flow.source.switchId).ports) {
             it.size() == 1
             it[0].portNumber == srcTg.switchPort
             it[0].lldp.size() == 1
-            it[0].lldp.first().flowId == flow.id
+            it[0].lldp.first().flowId == flow.flowId
             it[0].lldp.first().vlan == (flow.source.vlanId ?: nonDefaultVlan)
             verifyEquals(it[0].lldp.first(), srcLldpData)
             it[0].arp.size() == 1
-            it[0].arp.first().flowId == flow.id
+            it[0].arp.first().flowId == flow.flowId
             it[0].arp.first().vlan == (flow.source.vlanId ?: nonDefaultVlan)
             verifyEquals(it[0].arp.first(), srcArpData)
         }
 
         and: "Device are registered on dst switch"
-        verifyAll(northboundV2.getConnectedDevices(flow.destination.datapath).ports) {
+        verifyAll(northboundV2.getConnectedDevices(flow.destination.switchId).ports) {
             it.size() == 1
             it[0].portNumber == dstTg.switchPort
             it[0].lldp.size() == 1
-            it[0].lldp.first().flowId == flow.id
+            it[0].lldp.first().flowId == flow.flowId
             it[0].lldp.first().vlan == (flow.destination.vlanId ?: nonDefaultVlan)
             verifyEquals(it[0].lldp.first(), dstLldpData)
             it[0].arp.size() == 1
-            it[0].arp.first().flowId == flow.id
+            it[0].arp.first().flowId == flow.flowId
             it[0].arp.first().vlan == (flow.destination.vlanId ?: nonDefaultVlan)
             verifyEquals(it[0].arp.first(), dstArpData)
         }
 
         cleanup: "Delete the flow"
-        flow && flowHelper.deleteFlow(flow.id)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         and: "Restore initial switch properties"
-        initialSrcProps && restoreSwitchProperties(flow.source.datapath, initialSrcProps)
-        initialDstProps && restoreSwitchProperties(flow.destination.datapath, initialDstProps)
-        srcLldpData && [flow.source.datapath, flow.destination.datapath].each { database.removeConnectedDevices(it) }
+        initialSrcProps && restoreSwitchProperties(flow.source.switchId, initialSrcProps)
+        initialDstProps && restoreSwitchProperties(flow.destination.switchId, initialDstProps)
+        srcLldpData && [flow.source.switchId, flow.destination.switchId].each { database.removeConnectedDevices(it) }
 
         where:
         srcDefault | dstDefault
@@ -1021,10 +1023,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         })
 
         when: "Try to create an lldp-enabled flow using single-table switch as src"
-        def flow = flowHelper.randomFlow(swPair).tap {
-            it.source.detectConnectedDevices = new DetectConnectedDevicesPayload(true, true)
+        def flow = flowHelperV2.randomFlow(swPair).tap {
+            it.source.detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
         }
-        northbound.addFlow(flow)
+        northboundV2.addFlow(flow)
 
         then: "Bad request error is returned"
         def e = thrown(HttpClientErrorException)
@@ -1033,7 +1035,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                 "switches with enabled 'multiTable' switch feature. This feature is disabled on switch $sw.dpId."
 
         cleanup: "Restore switch props"
-        flow && !e && flowHelper.deleteFlow(flow.id)
+        flow && !e && flowHelperV2.deleteFlow(flow.flowId)
         SwitchHelper.updateSwitchProperties(sw, initProps)
     }
 
@@ -1045,10 +1047,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def initProps = enableMultiTableIfNeeded(true, sw.dpId)
 
         when: "Create an lldp-enabled flow"
-        def flow = flowHelper.randomFlow(swPair).tap {
-            it.source.detectConnectedDevices = new DetectConnectedDevicesPayload(true, false)
+        def flow = flowHelperV2.randomFlow(swPair).tap {
+            it.source.detectConnectedDevices = new DetectConnectedDevicesV2(true, false)
         }
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         and: "Try disabling multi-table mode on a switch where lldp-per-flow is being enabled"
         northbound.updateSwitchProperties(sw.dpId, initProps.jacksonCopy().tap { it.multiTable = false })
@@ -1058,12 +1060,12 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         e.statusCode == HttpStatus.BAD_REQUEST
         e.responseBodyAsString.to(MessageError).errorDescription == "Failed to update switch properties."
         e.responseBodyAsString.to(MessageError).errorMessage == "Illegal switch properties combination for switch $sw.dpId. " +
-                "Detect Connected Devices feature is turn on for following flows [$flow.id]. " +
+                "Detect Connected Devices feature is turn on for following flows [$flow.flowId]. " +
                 "For correct work of this feature switch property 'multiTable' must be set to 'true' " +
                 "Please disable detecting of connected devices via LLDP for each flow before set 'multiTable' property to 'false'"
 
         cleanup: "Restore switch props"
-        flow && flowHelper.deleteFlow(flow.id)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         initProps && SwitchHelper.updateSwitchProperties(sw, initProps)
     }
 
@@ -1384,23 +1386,23 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
      * Note that for 'oneSwitch' it will return a single-port single-switch flow. There is no ability to obtain
      * single-switch different-port flow via this method.
      */
-    private FlowPayload getFlowWithConnectedDevices(
+    private FlowRequestV2 getFlowWithConnectedDevices(
             boolean protectedFlow, boolean oneSwitch, boolean srcEnabled, boolean dstEnabled, SwitchPair switchPair) {
         assert !(oneSwitch && protectedFlow), "Cannot create one-switch flow with protected path"
         def flow = null
         if (oneSwitch) {
-            flow = flowHelper.singleSwitchSinglePortFlow(switchPair.src)
+            flow = flowHelperV2.singleSwitchSinglePortFlow(switchPair.src)
         } else {
             assert switchPair.src.dpId != switchPair.dst.dpId
-            flow = flowHelper.randomFlow(switchPair)
+            flow = flowHelperV2.randomFlow(switchPair)
             flow.allocateProtectedPath = protectedFlow
         }
-        flow.source.detectConnectedDevices = new DetectConnectedDevicesPayload(srcEnabled, srcEnabled)
-        flow.destination.detectConnectedDevices = new DetectConnectedDevicesPayload(dstEnabled, dstEnabled)
+        flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(srcEnabled, srcEnabled)
+        flow.destination.detectConnectedDevices = new DetectConnectedDevicesV2(dstEnabled, dstEnabled)
         return flow
     }
 
-    private FlowPayload getFlowWithConnectedDevices(
+    private FlowRequestV2 getFlowWithConnectedDevices(
             boolean protectedFlow, boolean oneSwitch, boolean srcEnabled, boolean dstEnabled) {
         def tgSwPair = getUniqueSwitchPairs()?.first()
         assumeTrue(tgSwPair as boolean, "Unable to find a switchPair with traffgens for the requested flow arguments")
@@ -1408,7 +1410,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     }
 
 
-    private FlowPayload getFlowWithConnectedDevices(ConnectedDeviceTestData testData) {
+    private FlowRequestV2 getFlowWithConnectedDevices(ConnectedDeviceTestData testData) {
         getFlowWithConnectedDevices(testData.protectedFlow, testData.oneSwitch, testData.srcEnabled,
                 testData.dstEnabled, testData.switchPair)
     }
