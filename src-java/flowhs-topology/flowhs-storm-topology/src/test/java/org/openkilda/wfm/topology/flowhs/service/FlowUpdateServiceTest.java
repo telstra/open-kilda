@@ -633,6 +633,45 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         assertNull(result.getLoopSwitchId());
     }
 
+    @Test
+    public void shouldFailUpdateYSubFlow() throws UnroutableFlowException, RecoverableException {
+        Flow origin = makeFlow();
+        createTestYFlowForSubFlow(origin);
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
+
+        FlowRequest request = makeRequest()
+                .flowId(origin.getFlowId())
+                .build();
+
+        testExpectedFailure(request, origin, ErrorType.REQUEST_INVALID);
+    }
+
+    @Test
+    public void shouldFailCreateLoopOnYSubFlow() {
+        Flow origin = makeFlow();
+        createTestYFlowForSubFlow(origin);
+
+        CreateFlowLoopRequest request = new CreateFlowLoopRequest(origin.getFlowId(), origin.getSrcSwitchId());
+        FlowUpdateService service = makeService();
+        service.handleCreateFlowLoopRequest(dummyRequestKey, commandContext, request);
+
+        verifyNoSpeakerInteraction(carrier);
+        verifyNorthboundErrorResponse(carrier, ErrorType.REQUEST_INVALID);
+    }
+
+    @Test
+    public void shouldFailDeleteLoopOnYSubFlow() {
+        Flow origin = makeFlow();
+        createTestYFlowForSubFlow(origin);
+
+        DeleteFlowLoopRequest request = new DeleteFlowLoopRequest(origin.getFlowId());
+        FlowUpdateService service = makeService();
+        service.handleDeleteFlowLoopRequest(dummyRequestKey, commandContext, request);
+
+        verifyNoSpeakerInteraction(carrier);
+        verifyNorthboundErrorResponse(carrier, ErrorType.REQUEST_INVALID);
+    }
+
     private void testExpectedSuccess(FlowRequest request, Flow origin) {
         FlowUpdateService service = makeService();
         service.handleUpdateRequest(dummyRequestKey, commandContext, request);

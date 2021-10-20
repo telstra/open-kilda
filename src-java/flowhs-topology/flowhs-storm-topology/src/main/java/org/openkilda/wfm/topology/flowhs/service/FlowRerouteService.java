@@ -27,32 +27,19 @@ import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
-import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @Slf4j
-public class FlowRerouteService {
-    @VisibleForTesting
-    final Map<String, FlowRerouteFsm> fsms = new HashMap<>();
-
+public class FlowRerouteService extends FsmBasedFlowProcessingService<FlowRerouteFsm, Event, FlowRerouteContext,
+        FlowRerouteHubCarrier> {
     private final FlowRerouteFsm.Factory fsmFactory;
-    private final FsmExecutor<FlowRerouteFsm, State, Event, FlowRerouteContext> fsmExecutor
-            = new FsmExecutor<>(Event.NEXT);
-
-    private final FlowRerouteHubCarrier carrier;
-
-    private boolean active;
 
     public FlowRerouteService(FlowRerouteHubCarrier carrier, PersistenceManager persistenceManager,
                               PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
                               int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                               int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
-        this.carrier = carrier;
+        super(new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
         fsmFactory = new FlowRerouteFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
                 pathAllocationRetriesLimit, pathAllocationRetryDelay, resourceAllocationRetriesLimit,
                 speakerCommandRetriesLimit);
@@ -62,28 +49,33 @@ public class FlowRerouteService {
      * Handles request for flow reroute.
      */
     public void handleRequest(String key, FlowRerouteRequest reroute, final CommandContext commandContext) {
-        log.debug("Handling flow reroute request with key {} and flow ID: {}", key, reroute.getFlowId());
+        String flowId = reroute.getFlowId();
+        if (yFlowRepository.isSubFlow(flowId)) {
+            sendForbiddenSubFlowOperationToNorthbound(flowId, commandContext);
+            return;
+        }
+
+        log.debug("Handling flow reroute request with key {} and flow ID: {}", key, flowId);
 
         try {
-            checkRequestsCollision(key, reroute.getFlowId());
+            checkRequestsCollision(key, flowId);
         } catch (Exception e) {
             log.error(e.getMessage());
-            FlowRerouteFsm fsm = fsms.get(key);
+            FlowRerouteFsm fsm = getFsmByKey(key).orElse(null);
             if (fsm != null) {
                 removeIfFinished(fsm, key);
             }
             return;
         }
 
-        final String flowId = reroute.getFlowId();
-        if (isRerouteAlreadyInProgress(flowId)) {
+        if (hasRegisteredFsmWithFlowId(flowId)) {
             carrier.sendRerouteResultStatus(flowId, new RerouteInProgressError(),
                     commandContext.getCorrelationId());
             return;
         }
 
         FlowRerouteFsm fsm = fsmFactory.newInstance(commandContext, flowId);
-        fsms.put(key, fsm);
+        registerFsm(key, fsm);
 
         FlowRerouteContext context = FlowRerouteContext.builder()
                 .flowId(flowId)
@@ -98,12 +90,6 @@ public class FlowRerouteService {
         removeIfFinished(fsm, key);
     }
 
-    private boolean isRerouteAlreadyInProgress(String flowId) {
-        return fsms.values().stream()
-                .map(FlowRerouteFsm::getFlowId)
-                .anyMatch(id -> id.equals(flowId));
-    }
-
     /**
      * Handles async response from worker.
      *
@@ -111,7 +97,7 @@ public class FlowRerouteService {
      */
     public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) {
         log.debug("Received flow command response {}", flowResponse);
-        FlowRerouteFsm fsm = fsms.get(key);
+        FlowRerouteFsm fsm = getFsmByKey(key).orElse(null);
         if (fsm == null) {
             log.warn("Failed to find a FSM: received response with key {} for non pending FSM", key);
             return;
@@ -137,7 +123,7 @@ public class FlowRerouteService {
      */
     public void handleTimeout(String key) {
         log.debug("Handling timeout for {}", key);
-        FlowRerouteFsm fsm = fsms.get(key);
+        FlowRerouteFsm fsm = getFsmByKey(key).orElse(null);
         if (fsm == null) {
             log.warn("Failed to find a FSM: timeout event for non pending FSM with key {}", key);
             return;
@@ -149,7 +135,7 @@ public class FlowRerouteService {
     }
 
     private void checkRequestsCollision(String key, String flowId) {
-        if (fsms.containsKey(key)) {
+        if (hasRegisteredFsmWithKey(key)) {
             throw new IllegalStateException(String.format(
                     "Attempt to create a FSM with key %s, while there's another active FSM with the same key "
                             + "(flowId=\"%s\")", key, flowId));
@@ -159,34 +145,13 @@ public class FlowRerouteService {
     private void removeIfFinished(FlowRerouteFsm fsm, String key) {
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
-            performHousekeeping(key);
+            unregisterFsm(key);
 
-            if (!active && fsms.isEmpty()) {
+            carrier.cancelTimeoutCallback(key);
+
+            if (!isActive() && !hasAnyRegisteredFsm()) {
                 carrier.sendInactive();
             }
         }
-    }
-
-    private void performHousekeeping(String key) {
-        fsms.remove(key);
-        carrier.cancelTimeoutCallback(key);
-    }
-
-    /**
-     * Handles deactivate command.
-     */
-    public boolean deactivate() {
-        active = false;
-        if (fsms.isEmpty()) {
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Handles activate command.
-     */
-    public void activate() {
-        active = true;
     }
 }

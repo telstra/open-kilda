@@ -517,6 +517,21 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
         }
     }
 
+    @Override
+    public String getYFlowId() {
+        List<? extends YSubFlowFrame> subFlowFrames = traverse(v -> v.inE(YSubFlowFrame.FRAME_LABEL))
+                .toListExplicit(YSubFlowFrame.class);
+        if (subFlowFrames.isEmpty()) {
+            return null;
+        }
+        if (subFlowFrames.size() > 1) {
+            throw new IllegalStateException(format("The flow %s has more than one y_subflow references: %s",
+                    getId(), subFlowFrames));
+        }
+        return subFlowFrames.get(0).getYFlowId();
+    }
+
+
     public static Optional<FlowFrame> load(FramedGraph graph, String flowId) {
         List<? extends FlowFrame> flowFrames = graph.traverse(g -> g.V()
                         .hasLabel(FRAME_LABEL)

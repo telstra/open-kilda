@@ -15,9 +15,12 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
+import static java.lang.String.format;
+
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.messaging.command.flow.FlowMirrorPointCreateRequest;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
@@ -26,33 +29,20 @@ import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMirrorPointMapper;
 
-import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @Slf4j
-public class FlowMirrorPointCreateService {
-    @VisibleForTesting
-    final Map<String, FlowMirrorPointCreateFsm> fsms = new HashMap<>();
-
+public class FlowMirrorPointCreateService extends FsmBasedFlowProcessingService<FlowMirrorPointCreateFsm, Event,
+        FlowMirrorPointCreateContext, FlowMirrorPointCreateHubCarrier> {
     private final FlowMirrorPointCreateFsm.Factory fsmFactory;
-    private final FsmExecutor<FlowMirrorPointCreateFsm, State, Event, FlowMirrorPointCreateContext> fsmExecutor
-            = new FsmExecutor<>(Event.NEXT);
-
-    private final FlowMirrorPointCreateHubCarrier carrier;
-
-    private boolean active;
 
     public FlowMirrorPointCreateService(FlowMirrorPointCreateHubCarrier carrier, PersistenceManager persistenceManager,
                                         PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
                                         int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                                         int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
-        this.carrier = carrier;
+        super(new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
         fsmFactory = new FlowMirrorPointCreateFsm.Factory(carrier, persistenceManager, pathComputer,
                 flowResourcesManager, pathAllocationRetriesLimit, pathAllocationRetryDelay,
                 resourceAllocationRetriesLimit, speakerCommandRetriesLimit);
@@ -67,6 +57,11 @@ public class FlowMirrorPointCreateService {
 
     public void handleCreateMirrorPointRequest(String key, CommandContext commandContext,
                                                FlowMirrorPointCreateRequest request) {
+        if (yFlowRepository.isSubFlow(request.getFlowId())) {
+            sendForbiddenSubFlowOperationToNorthbound(request.getFlowId(), commandContext);
+            return;
+        }
+
         handleRequest(key, commandContext, request);
     }
 
@@ -77,7 +72,7 @@ public class FlowMirrorPointCreateService {
      */
     public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) {
         log.debug("Received flow command response {}", flowResponse);
-        FlowMirrorPointCreateFsm fsm = fsms.get(key);
+        FlowMirrorPointCreateFsm fsm = getFsmByKey(key).orElse(null);
         if (fsm == null) {
             log.warn("Failed to find a FSM: received response with key {} for non pending FSM", key);
             return;
@@ -103,7 +98,7 @@ public class FlowMirrorPointCreateService {
      */
     public void handleTimeout(String key) {
         log.debug("Handling timeout for {}", key);
-        FlowMirrorPointCreateFsm fsm = fsms.get(key);
+        FlowMirrorPointCreateFsm fsm = getFsmByKey(key).orElse(null);
         if (fsm == null) {
             log.warn("Failed to find a FSM: timeout event for non pending FSM with key {}", key);
             return;
@@ -115,16 +110,24 @@ public class FlowMirrorPointCreateService {
     }
 
     private void handleRequest(String key, CommandContext commandContext, FlowMirrorPointCreateRequest request) {
+        String flowId = request.getFlowId();
         log.debug("Handling flow create mirror point request with key {}, flow ID: {}, and flow mirror ID: {}",
-                key, request.getFlowId(), request.getMirrorPointId());
+                key, flowId, request.getMirrorPointId());
 
-        if (fsms.containsKey(key)) {
+        if (hasRegisteredFsmWithKey(key)) {
             log.error("Attempt to create a FSM with key {}, while there's another active FSM with the same key.", key);
             return;
         }
+        if (hasRegisteredFsmWithFlowId(flowId)) {
+            sendErrorResponseToNorthbound(ErrorType.REQUEST_INVALID, "Could not update flow",
+                    format("Flow %s is updating now", flowId), commandContext);
+            log.error("Attempt to create a FSM with key {}, while there's another active FSM for the same flowId {}.",
+                    key, flowId);
+            return;
+        }
 
-        FlowMirrorPointCreateFsm fsm = fsmFactory.newInstance(commandContext, request.getFlowId());
-        fsms.put(key, fsm);
+        FlowMirrorPointCreateFsm fsm = fsmFactory.newInstance(commandContext, flowId);
+        registerFsm(key, fsm);
 
         FlowMirrorPointCreateContext context = FlowMirrorPointCreateContext.builder()
                 .mirrorPoint(RequestedFlowMirrorPointMapper.INSTANCE.map(request))
@@ -137,28 +140,13 @@ public class FlowMirrorPointCreateService {
     private void removeIfFinished(FlowMirrorPointCreateFsm fsm, String key) {
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
-            fsms.remove(key);
+            unregisterFsm(key);
 
             carrier.cancelTimeoutCallback(key);
 
-            if (!active && fsms.isEmpty()) {
+            if (!isActive() && !hasAnyRegisteredFsm()) {
                 carrier.sendInactive();
             }
         }
-    }
-
-    /**
-     * Handles deactivate command.
-     */
-    public boolean deactivate() {
-        active = false;
-        return fsms.isEmpty();
-    }
-
-    /**
-     * Handles activate command.
-     */
-    public void activate() {
-        active = true;
     }
 }
