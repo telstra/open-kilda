@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.106.0 (20/10/2021)
+
+### Bug Fixes:
+-  [#4532](https://github.com/telstra/open-kilda/pull/4532) Fix nb worker ordering issue [**storm-topologies**]
+
+### Improvements:
+-  [#4518](https://github.com/telstra/open-kilda/pull/4518) Added flow mirror info into cookies.md [**docs**]
+-  [#4520](https://github.com/telstra/open-kilda/pull/4520) Remove flow latency properties migration
+-  [#4522](https://github.com/telstra/open-kilda/pull/4522) Add latency modified time into NB API [**northbound**][**storm-topologies**]
+-  [#4501](https://github.com/telstra/open-kilda/pull/4501) fixes for tests with smoke_switches tag [**tests**]
+-  [#4506](https://github.com/telstra/open-kilda/pull/4506) increase "kildaFlowSlaCheckInterval" in func-tests properties [**tests**]
+-  [#4509](https://github.com/telstra/open-kilda/pull/4509) fix test config for hardware env [**configuration**]
+-  [#4510](https://github.com/telstra/open-kilda/pull/4510) fix "assert" in s42+lagPort test [**tests**]
+-  [#4319](https://github.com/telstra/open-kilda/pull/4319) Set NB worker topology parallelism to 2 [**storm-topologies**]
+
+### Other changes:
+-  [#4524](https://github.com/telstra/open-kilda/pull/4524) GUI Add ms label to Max Latency in networkpath [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.105.2...v1.106.0).
+
+### Affected Components:
+gui, nb, nbworker
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
 ## v1.105.2 (07/10/2021)
 
 ### Bug Fixes:
