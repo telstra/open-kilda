@@ -38,6 +38,7 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.Objects;
 
 /**
@@ -119,6 +120,10 @@ public class FlowStats implements CompositeDataEntity<FlowStatsData> {
         Long getReverseLatency();
 
         void setReverseLatency(Long latency);
+
+        Instant getTimeModify();
+
+        void setTimeModify(Instant timeModify);
     }
 
     /**
@@ -135,6 +140,8 @@ public class FlowStats implements CompositeDataEntity<FlowStatsData> {
         Flow flowObj;
         Long forwardLatency;
         Long reverseLatency;
+
+        Instant timeModify;
 
         @Override
         public String getFlowId() {

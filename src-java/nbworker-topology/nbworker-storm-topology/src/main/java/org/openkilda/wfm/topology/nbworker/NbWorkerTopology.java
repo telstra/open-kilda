@@ -261,7 +261,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
 
         KafkaBolt kafkaNbBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         declareBolt(tb, kafkaNbBolt, NB_KAFKA_BOLT_NAME)
-                .shuffleGrouping(SPLITTER_BOLT_NAME)
+                .fieldsGrouping(SPLITTER_BOLT_NAME, FIELDS_KEY)
                 .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.ERROR.toString());
 
         KafkaBolt kafkaFlowHsBolt = buildKafkaBolt(topologyConfig.getKafkaFlowHsTopic());
