@@ -9,7 +9,7 @@ dependencies {
     implementation 'org.apache.commons:commons-lang3'
 
     implementation 'org.slf4j:slf4j-api'
-    testRuntimeOnly 'org.slf4j:slf4j-simple'
+    testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
     testImplementation 'org.junit.vintage:junit-vintage-engine'
