@@ -25,6 +25,7 @@ import springfox.documentation.builders.ApiInfoBuilder;
 import springfox.documentation.builders.ParameterBuilder;
 import springfox.documentation.builders.RequestHandlerSelectors;
 import springfox.documentation.schema.ModelRef;
+import springfox.documentation.service.Tag;
 import springfox.documentation.spi.DocumentationType;
 import springfox.documentation.spring.web.plugins.Docket;
 import springfox.documentation.swagger2.annotations.EnableSwagger2;
@@ -34,6 +35,7 @@ import java.util.Collections;
 @Configuration
 @EnableSwagger2
 public class SwaggerConfig {
+    public static final String DRAFT_API_TAG = "DRAFT";
 
     private final ParameterBuilder correlationIdParameter = new ParameterBuilder()
                 .name(CORRELATION_ID)
@@ -80,6 +82,7 @@ public class SwaggerConfig {
                 .globalOperationParameters(Collections.singletonList(correlationIdParameter.required(true).build()))
                 .select()
                 .apis(RequestHandlerSelectors.basePackage("org.openkilda.northbound.controller.v2"))
-                .build();
+                .build()
+                .tags(new Tag(DRAFT_API_TAG, "This API is still under development and may be changed in the future"));
     }
 }

@@ -17,7 +17,8 @@ package org.openkilda.config;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Key;
-import jakarta.validation.constraints.NotBlank;
+
+import javax.validation.constraints.NotBlank;
 
 
 @Configuration

@@ -21,11 +21,11 @@ import static java.util.stream.Collectors.toSet;
 
 import com.sabre.oss.conf4j.factory.ConfigurationFactory;
 import com.sabre.oss.conf4j.source.ConfigurationSource;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.Validation;
-import jakarta.validation.Validator;
 
 import java.util.Set;
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
 
 /**
  * This class creates a configuration instance, fills it with values from the source and validates against the

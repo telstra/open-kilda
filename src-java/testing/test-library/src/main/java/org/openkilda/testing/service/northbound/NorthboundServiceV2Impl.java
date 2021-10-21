@@ -40,6 +40,11 @@ import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
+import org.openkilda.northbound.dto.v2.yflows.YFlow;
+import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult;
+import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 
 import lombok.extern.slf4j.Slf4j;
@@ -362,6 +367,51 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     public BfdPropertiesPayload getLinkBfd(TopologyDefinition.Isl isl) {
         return getLinkBfd(isl.getSrcSwitch().getDpId(), isl.getSrcPort(), isl.getDstSwitch().getDpId(),
                 isl.getDstPort());
+    }
+
+    @Override
+    public YFlow getYFlow(String yFlowId) {
+        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), YFlow.class, yFlowId).getBody();
+    }
+
+    @Override
+    public List<YFlow> getAllYFlows() {
+        YFlow[] flows = restTemplate.exchange("/api/v2/y-flows", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), YFlow[].class).getBody();
+        return Arrays.asList(flows);
+    }
+
+    @Override
+    public YFlow addYFlow(YFlowCreatePayload request) {
+        HttpEntity<YFlowCreatePayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v2/y-flows", HttpMethod.POST, httpEntity, YFlow.class).getBody();
+    }
+
+    @Override
+    public YFlow updateYFlow(String yFlowId, YFlowUpdatePayload request) {
+        HttpEntity<YFlowUpdatePayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}", HttpMethod.PUT, httpEntity, YFlow.class,
+                yFlowId).getBody();
+    }
+
+    @Override
+    public YFlow partialUpdateYFlow(String yFlowId, YFlowPatchPayload request) {
+        HttpEntity<YFlowPatchPayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}", HttpMethod.PATCH, httpEntity, YFlow.class,
+                yFlowId).getBody();
+    }
+
+    @Override
+    public YFlow deleteYFlow(String yFlowId) {
+        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}", HttpMethod.DELETE,
+                new HttpEntity(buildHeadersWithCorrelationId()), YFlow.class, yFlowId).getBody();
+    }
+
+    @Override
+    public YFlowRerouteResult rerouteYFlow(String yFlowId) {
+        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}/reroute", HttpMethod.POST,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), YFlowRerouteResult.class, yFlowId).getBody();
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {
