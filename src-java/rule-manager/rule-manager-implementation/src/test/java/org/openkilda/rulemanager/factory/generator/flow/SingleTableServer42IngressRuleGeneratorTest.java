@@ -63,7 +63,7 @@ import org.openkilda.rulemanager.action.PushVlanAction;
 import org.openkilda.rulemanager.action.PushVxlanAction;
 import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.action.noviflow.CopyFieldAction;
-import org.openkilda.rulemanager.action.noviflow.Oxm;
+import org.openkilda.rulemanager.action.noviflow.OpenFlowOxms;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
@@ -137,8 +137,8 @@ public class SingleTableServer42IngressRuleGeneratorTest {
             .segments(new ArrayList<>())
             .build();
     public static final CopyFieldAction COPY_FIELD_ACTION = CopyFieldAction.builder()
-            .oxmSrcHeader(Oxm.NOVIFLOW_TX_TIMESTAMP)
-            .oxmDstHeader(Oxm.NOVIFLOW_UDP_PAYLOAD_OFFSET)
+            .oxmSrcHeader(OpenFlowOxms.NOVIFLOW_TX_TIMESTAMP)
+            .oxmDstHeader(OpenFlowOxms.NOVIFLOW_UDP_PAYLOAD_OFFSET)
             .numberOfBits(NOVIFLOW_TIMESTAMP_SIZE_IN_BITS)
             .dstOffset(0)
             .srcOffset(0)

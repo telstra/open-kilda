@@ -30,8 +30,8 @@ public class CopyFieldAction implements Action {
     int numberOfBits;
     int srcOffset;
     int dstOffset;
-    Oxm oxmSrcHeader;
-    Oxm oxmDstHeader;
+    OpenFlowOxms oxmSrcHeader;
+    OpenFlowOxms oxmDstHeader;
 
     @Override
     public ActionType getType() {

@@ -18,6 +18,8 @@ package org.openkilda.rulemanager.factory.generator.service;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
+import static org.openkilda.rulemanager.Constants.DISCOVERY_PACKET_UDP_PORT;
+import static org.openkilda.rulemanager.Constants.LATENCY_PACKET_UDP_PORT;
 import static org.openkilda.rulemanager.Constants.Priority.DISCOVERY_RULE_PRIORITY;
 import static org.openkilda.rulemanager.OfTable.INPUT;
 
@@ -56,9 +58,6 @@ import java.util.List;
 import java.util.Set;
 
 public class BroadCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator {
-
-    public static final int DISCOVERY_PACKET_UDP_PORT = 61231;
-    public static final int LATENCY_PACKET_UDP_PORT = 61232;
 
     @Builder
     public BroadCastDiscoveryRuleGenerator(RuleManagerConfig config) {

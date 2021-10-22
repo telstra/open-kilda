@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.rulemanager.adapters;
+package org.openkilda.rulemanager.adapter;
 
 import static java.lang.String.format;
 

@@ -15,7 +15,7 @@
 
 package org.openkilda.rulemanager.action.noviflow;
 
-public enum Oxm {
+public enum OpenFlowOxms {
 
     NOVIFLOW_PACKET_OFFSET,
     NOVIFLOW_UDP_PAYLOAD_OFFSET,

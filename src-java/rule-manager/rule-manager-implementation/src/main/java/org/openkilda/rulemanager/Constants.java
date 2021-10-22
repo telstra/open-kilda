@@ -28,6 +28,39 @@ public final class Constants {
     public static final int STUB_VXLAN_UDP_SRC = 4500;
     public static final int ARP_VXLAN_UDP_SRC = 4501;
 
+    public static final int DISCOVERY_PACKET_UDP_PORT = 61231;
+    public static final int LATENCY_PACKET_UDP_PORT = 61232;
+
+    public static final int BDF_DEFAULT_PORT = 3784;
+
+    public static final int ETHERNET_HEADER_SIZE = 112; // 48 dst mac, 48 src mac, 16 ether type
+    public static final int IP_V4_HEADER_SIZE = 160; /*
+     * 4 version, 4 IHL, 8 Type of service, 16 length, 16 ID,
+     * 4 flags, 12 Fragment Offset, 8 TTL, 8 Protocol,
+     * 16 checksum, 32 src IP, 32 dst IP
+     */
+    public static final int UDP_HEADER_SIZE = 64;                    // 16 src port, 16 dst port, 16 length, 16 checksum
+    public static final int LLDP_TLV_CHASSIS_ID_TOTAL_SIZE = 72;     // 7 type, 9 length, 56 chassisId
+    public static final int LLDP_TLV_PORT_ID_TOTAL_SIZE = 40;        // 7 type, 9 length, 24 port
+    public static final int LLDP_TLV_TTL_TOTAL_SIZE = 32;            // 7 type, 9 length, 16 port
+    public static final int ROUND_TRIP_LATENCY_TIMESTAMP_SIZE = 64;  // 24 bits OUI, 8 bits optional type
+    public static final int LLDP_TLV_HEADER_SIZE = 16;               // 7 type, 9 length
+    public static final int LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES = 4; // 24 bits OUI, 8 bits optional type
+
+    public static final int ROUND_TRIP_LATENCY_T0_OFFSET = ETHERNET_HEADER_SIZE
+            + IP_V4_HEADER_SIZE
+            + UDP_HEADER_SIZE
+            + LLDP_TLV_CHASSIS_ID_TOTAL_SIZE
+            + LLDP_TLV_PORT_ID_TOTAL_SIZE
+            + LLDP_TLV_TTL_TOTAL_SIZE
+            + LLDP_TLV_HEADER_SIZE
+            + (LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES * 8);
+
+    public static final int ROUND_TRIP_LATENCY_T1_OFFSET = ROUND_TRIP_LATENCY_T0_OFFSET
+            + ROUND_TRIP_LATENCY_TIMESTAMP_SIZE
+            + LLDP_TLV_HEADER_SIZE
+            + (LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES * 8);
+
     public static final class Priority {
         public static final int MINIMAL_POSITIVE_PRIORITY = 1;
         public static final int FLOW_PRIORITY = 24576;
@@ -35,9 +68,9 @@ public final class Constants {
 
 
         public static final int VERIFICATION_RULE_VXLAN_PRIORITY = DISCOVERY_RULE_PRIORITY + 1;
-        public static final int DROP_VERIFICATION_LOOP_RULE_PRIORITY = DISCOVERY_RULE_PRIORITY + 1;
-        public static final int CATCH_BFD_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
-        public static final int ROUND_TRIP_LATENCY_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
+        public static final int DROP_DISCOVERY_LOOP_RULE_PRIORITY = DISCOVERY_RULE_PRIORITY + 1;
+        public static final int CATCH_BFD_RULE_PRIORITY = DROP_DISCOVERY_LOOP_RULE_PRIORITY + 1;
+        public static final int ROUND_TRIP_LATENCY_RULE_PRIORITY = DROP_DISCOVERY_LOOP_RULE_PRIORITY + 1;
         public static final int FLOW_LOOP_PRIORITY = FLOW_PRIORITY + 100;
         public static final int MIRROR_FLOW_PRIORITY = FLOW_PRIORITY + 50;
         public static final int ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
