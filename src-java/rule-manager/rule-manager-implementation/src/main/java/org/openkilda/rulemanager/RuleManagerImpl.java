@@ -208,7 +208,9 @@ public class RuleManagerImpl implements RuleManager {
 
         generators.add(flowRulesFactory.getIngressRuleGenerator(
                 flowPath, flow, encapsulation, overlappingIngressAdapters));
-        // todo: add arp, lldp, flow loop, flow mirror, etc
+        generators.add(flowRulesFactory.getInputLldpRuleGenerator(flowPath, flow, overlappingIngressAdapters));
+        generators.add(flowRulesFactory.getInputArpRuleGenerator(flowPath, flow, overlappingIngressAdapters));
+        // todo: add flow loop, flow mirror, etc
 
         return generators.stream()
                 .flatMap(generator -> generator.generateCommands(sw).stream())
