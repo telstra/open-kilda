@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.107.0 (26/10/2021)
+
+### Features:
+-  [#4437](https://github.com/telstra/open-kilda/pull/4437) Introduce Y-Flow Northbound API [**northbound**]
+
+### Bug Fixes:
+-  [#4221](https://github.com/telstra/open-kilda/pull/4221) Fix BFD logical port recreate race condition [**storm-topologies**]
+-  [#4511](https://github.com/telstra/open-kilda/pull/4511) Fix slow PathsServiceTest caused by logging to the console
+
+### Improvements:
+-  [#4493](https://github.com/telstra/open-kilda/pull/4493) Add raw port events logging [**storm-topologies**]
+-  [#4531](https://github.com/telstra/open-kilda/pull/4531) delete dublicate key in kilda.properties.tmpl [**configuration**][**tests**]
+
+### Other changes:
+-  [#4515](https://github.com/telstra/open-kilda/pull/4515) Update README.md with proper installation instructions [**docs**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.106.0...v1.107.0).
+
+### Affected Components:
+network, nb
+
+---
+
 ## v1.106.0 (20/10/2021)
 
 ### Bug Fixes:
