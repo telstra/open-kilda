@@ -16,12 +16,15 @@
 package org.openkilda.rulemanager;
 
 import static java.util.stream.Collectors.toList;
+import static org.openkilda.adapter.FlowSideAdapter.makeIngressAdapter;
 import static org.openkilda.model.cookie.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_INGRESS_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE;
 
+import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.PathSegment;
@@ -36,7 +39,9 @@ import org.openkilda.rulemanager.factory.ServiceRulesGeneratorFactory;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class RuleManagerImpl implements RuleManager {
@@ -46,19 +51,23 @@ public class RuleManagerImpl implements RuleManager {
 
     public RuleManagerImpl(RuleManagerConfig config) {
         serviceRulesFactory = new ServiceRulesGeneratorFactory(config);
-        flowRulesFactory = new FlowRulesGeneratorFactory();
+        flowRulesFactory = new FlowRulesGeneratorFactory(config);
     }
 
     @Override
-    public List<SpeakerCommandData> buildRulesForFlowPath(FlowPath flowPath, DataAdapter adapter) {
+    public List<SpeakerCommandData> buildRulesForFlowPath(
+            FlowPath flowPath, boolean filterOutUsedSharedRules, DataAdapter adapter) {
         List<SpeakerCommandData> result = new ArrayList<>();
         Flow flow = adapter.getFlow(flowPath.getPathId());
         FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(flowPath.getPathId());
 
         if (!flow.isProtectedPath(flowPath.getPathId())) {
+            Set<FlowSideAdapter> overlappingAdapters = new HashSet<>();
+            if (filterOutUsedSharedRules) {
+                overlappingAdapters = getOverlappingMultiTableIngressAdapters(flowPath, adapter);
+            }
             buildIngressCommands(
-                    adapter.getSwitch(flowPath.getSrcSwitchId()),
-                    adapter.getSwitchProperties(flowPath.getSrcSwitchId()), flowPath, flow);
+                    adapter.getSwitch(flowPath.getSrcSwitchId()), flowPath, flow, encapsulation, overlappingAdapters);
         }
 
         if (flowPath.isOneSwitchFlow()) {
@@ -75,6 +84,28 @@ public class RuleManagerImpl implements RuleManager {
                     flowPath, encapsulation, firstSegment, secondSegment));
         }
 
+        return result;
+    }
+
+    private Set<FlowSideAdapter> getOverlappingMultiTableIngressAdapters(FlowPath path, DataAdapter adapter) {
+        FlowEndpoint endpoint = makeIngressAdapter(adapter.getFlow(path.getPathId()), path).getEndpoint();
+
+        Set<FlowSideAdapter> result = new HashSet<>();
+        if (!path.isSrcWithMultiTable()) {
+            // we do not care about overlapping for single table paths
+            return result;
+        }
+
+        for (FlowPath overlappingPath : adapter.getFlowPaths().values()) {
+            if (overlappingPath.isSrcWithMultiTable()
+                    && path.getSrcSwitchId().equals(overlappingPath.getSrcSwitchId())) {
+                Flow overlappingFlow = adapter.getFlow(overlappingPath.getPathId());
+                FlowSideAdapter flowAdapter = makeIngressAdapter(overlappingFlow, overlappingPath);
+                if (endpoint.getPortNumber().equals(flowAdapter.getEndpoint().getPortNumber())) {
+                    result.add(flowAdapter);
+                }
+            }
+        }
         return result;
     }
 
@@ -136,7 +167,8 @@ public class RuleManagerImpl implements RuleManager {
         FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(flowPath.getPathId());
 
         if (switchId.equals(flowPath.getSrcSwitchId()) && !flow.isProtectedPath(flowPath.getPathId())) {
-            result.addAll(buildIngressCommands(sw, switchProperties, flowPath, flow));
+            // TODO filter out equal shared rules from the result list
+            result.addAll(buildIngressCommands(sw, flowPath, flow, encapsulation, new HashSet<>()));
         }
 
         if (!flowPath.isOneSwitchFlow()) {
@@ -157,11 +189,12 @@ public class RuleManagerImpl implements RuleManager {
         return result;
     }
 
-    private List<SpeakerCommandData> buildIngressCommands(Switch sw, SwitchProperties switchProperties,
-                                                          FlowPath flowPath, Flow flow) {
+    private List<SpeakerCommandData> buildIngressCommands(Switch sw, FlowPath flowPath, Flow flow,
+            FlowTransitEncapsulation encapsulation, Set<FlowSideAdapter> overlappingIngressAdapters) {
         List<RuleGenerator> generators = new ArrayList<>();
 
-        generators.add(flowRulesFactory.getIngressRuleGenerator(flowPath, flow));
+        generators.add(flowRulesFactory.getIngressRuleGenerator(
+                flowPath, flow, encapsulation, overlappingIngressAdapters));
         // todo: add arp, lldp, flow loop, flow mirror, etc
 
         return generators.stream()

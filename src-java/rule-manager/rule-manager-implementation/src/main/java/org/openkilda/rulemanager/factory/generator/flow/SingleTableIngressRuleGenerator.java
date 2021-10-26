@@ -15,10 +15,15 @@
 
 package org.openkilda.rulemanager.factory.generator.flow;
 
+import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
+import static org.openkilda.model.FlowEncapsulationType.VXLAN;
+import static org.openkilda.model.FlowEndpoint.makeVlanStack;
+import static org.openkilda.rulemanager.utils.Utils.buildPushVxlan;
+import static org.openkilda.rulemanager.utils.Utils.getOutPort;
+import static org.openkilda.rulemanager.utils.Utils.isFullPortEndpoint;
+
 import org.openkilda.adapter.FlowSideAdapter;
-import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
-import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Constants;
@@ -26,16 +31,17 @@ import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.FlowSpeakerCommandData;
 import org.openkilda.rulemanager.FlowSpeakerCommandData.FlowSpeakerCommandDataBuilder;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.MeterSpeakerCommandData;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
+import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.SpeakerCommandData;
 import org.openkilda.rulemanager.action.Action;
-import org.openkilda.rulemanager.action.PopVlanAction;
-import org.openkilda.rulemanager.action.PushVlanAction;
+import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.match.FieldMatch;
+import org.openkilda.rulemanager.utils.Utils;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import lombok.experimental.SuperBuilder;
 
@@ -50,14 +56,14 @@ public class SingleTableIngressRuleGenerator extends IngressRuleGenerator {
     @Override
     public List<SpeakerCommandData> generateCommands(Switch sw) {
         List<SpeakerCommandData> result = new ArrayList<>();
-        FlowSideAdapter flowSide = FlowSideAdapter.makeIngressAdapter(flow, flowPath);
-        FlowSpeakerCommandData command = buildFlowCommand(sw, flowSide);
+        FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
+        FlowSpeakerCommandData command = buildFlowIngressCommand(sw, ingressEndpoint);
         if (command == null) {
             return Collections.emptyList();
         }
         result.add(command);
 
-        SpeakerCommandData meterCommand = buildMeter(flowPath.getMeterId());
+        SpeakerCommandData meterCommand = buildMeter(flowPath.getMeterId(), sw);
         if (meterCommand != null) {
             addMeterToInstructions(flowPath.getMeterId(), sw, command.getInstructions());
             result.add(meterCommand);
@@ -67,36 +73,24 @@ public class SingleTableIngressRuleGenerator extends IngressRuleGenerator {
         return result;
     }
 
-    private SpeakerCommandData buildMeter(MeterId meterId) {
-        // todo fix meter
-        return MeterSpeakerCommandData.builder().build();
-    }
-
-    private FlowSpeakerCommandData buildFlowCommand(Switch sw, FlowSideAdapter flowSide) {
-        FlowEndpoint endpoint = flowSide.getEndpoint();
-        Set<FieldMatch> match = Sets.newHashSet(
-                FieldMatch.builder().field(Field.IN_PORT).value(endpoint.getPortNumber()).build());
-        if (isFullPortFlow(flowSide.getEndpoint())) {
-            match.add(FieldMatch.builder().field(Field.VLAN_VID).value(endpoint.getOuterVlanId()).build());
-        }
+    private FlowSpeakerCommandData buildFlowIngressCommand(Switch sw, FlowEndpoint ingressEndpoint) {
         List<Action> actions = new ArrayList<>();
         Instructions instructions = Instructions.builder()
                 .applyActions(actions)
                 .build();
-        if (!isFullPortFlow(flowSide.getEndpoint())) {
-            // todo: check encapsulation
-            actions.add(new PopVlanAction());
-        }
-        actions.addAll(buildTransitEncapsulationActions());
+        // TODO should we check if switch supports encapsulation?
+        actions.addAll(buildTransformActions(ingressEndpoint.getOuterVlanId(), sw.getFeatures()));
+        actions.add(new PortOutAction(new PortNumber(getOutPort(flowPath, flow))));
+        addMeterToInstructions(flowPath.getMeterId(), sw, instructions);
 
         FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
-                .switchId(endpoint.getSwitchId())
+                .switchId(ingressEndpoint.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie())
                 .table(OfTable.INPUT)
-                .priority(isFullPortFlow(flowSide.getEndpoint()) ? Constants.Priority.DEFAULT_FLOW_PRIORITY
+                .priority(isFullPortEndpoint(ingressEndpoint) ? Constants.Priority.DEFAULT_FLOW_PRIORITY
                         : Constants.Priority.FLOW_PRIORITY)
-                .match(match)
+                .match(buildMatch(ingressEndpoint))
                 .instructions(instructions);
 
         if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
@@ -105,17 +99,36 @@ public class SingleTableIngressRuleGenerator extends IngressRuleGenerator {
         return builder.build();
     }
 
-    private boolean isFullPortFlow(FlowEndpoint flowEndpoint) {
-        return !FlowEndpoint.isVlanIdSet(flowEndpoint.getOuterVlanId());
+    @VisibleForTesting
+    Set<FieldMatch> buildMatch(FlowEndpoint ingressEndpoint) {
+        Set<FieldMatch> match = Sets.newHashSet(
+                FieldMatch.builder().field(Field.IN_PORT).value(ingressEndpoint.getPortNumber()).build());
+        if (!isFullPortEndpoint(ingressEndpoint)) {
+            match.add(FieldMatch.builder().field(Field.VLAN_VID).value(ingressEndpoint.getOuterVlanId()).build());
+        }
+        return match;
     }
 
-    private List<Action> buildTransitEncapsulationActions() {
-        if (flow.getEncapsulationType() == FlowEncapsulationType.TRANSIT_VLAN) {
-            return Collections.singletonList(PushVlanAction.builder()
-                    .vlanId(encapsulation.getId().shortValue()).build());
+    @VisibleForTesting
+    List<Action> buildTransformActions(int outerVlan, Set<SwitchFeature> features) {
+        List<Integer> currentStack = makeVlanStack(outerVlan);
+        List<Integer> targetStack;
+        if (flowPath.isOneSwitchFlow()) {
+            FlowEndpoint egressEndpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
+            targetStack = makeVlanStack(egressEndpoint.getOuterVlanId());
+        } else if (encapsulation.getType() == TRANSIT_VLAN) {
+            targetStack = makeVlanStack(encapsulation.getId());
         } else {
-            // todo: add VXLAN
-            return Collections.emptyList();
+            targetStack = new ArrayList<>();
         }
+        // TODO do something with groups
+
+        List<Action> transformActions = new ArrayList<>(Utils.makeVlanReplaceActions(currentStack, targetStack));
+
+        if (encapsulation.getType() == VXLAN && !flowPath.isOneSwitchFlow()) {
+            transformActions.add(buildPushVxlan(
+                    encapsulation.getId(), flowPath.getSrcSwitchId(), flowPath.getDestSwitchId(), features));
+        }
+        return transformActions;
     }
 }

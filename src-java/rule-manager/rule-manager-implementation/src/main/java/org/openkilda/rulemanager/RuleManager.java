@@ -25,7 +25,23 @@ import java.util.List;
  */
 public interface RuleManager {
 
-    List<SpeakerCommandData> buildRulesForFlowPath(FlowPath flowPath, DataAdapter adapter);
+    /**
+     * Builds all required rules, meters and groups for flow path.
+     *
+     * @param flowPath target flow path
+     * @param filterOutUsedSharedRules if False - all path shared rules (QinQ, server42 QinQ, LLDP input, ARP input)
+     *                                 will be included in result list.
+     *                                 If True - path shared rule will be included in result list only if this
+     *                                 rule is NOT used by any other overlapping path.
+     *                                 Overlapping means different for different rules:
+     *                                 * LLDP input, ARP input - shared rule use same switch port
+     *                                 * QinQ, server42 QinQ - shared rule use same switch port and same outer vlan
+     * @param adapter adapter with all needed data. All overlapping paths and flows for parameter
+     *                filterOutUsedSharedRules must be presented in this adapter
+     * @return list of rules, meters and groups.
+     */
+    List<SpeakerCommandData> buildRulesForFlowPath(FlowPath flowPath, boolean filterOutUsedSharedRules,
+                                                   DataAdapter adapter);
 
     /**
      * Build all required rules, meters and groups for switch. Including service and all required flow-related rules.

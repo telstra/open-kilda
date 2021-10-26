@@ -15,15 +15,32 @@
 
 package org.openkilda.rulemanager.utils;
 
+import static java.lang.String.format;
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
+import static org.openkilda.rulemanager.Constants.VXLAN_DST_IPV4_ADDRESS;
+import static org.openkilda.rulemanager.Constants.VXLAN_SRC_IPV4_ADDRESS;
+import static org.openkilda.rulemanager.Constants.VXLAN_UDP_SRC;
+
+import org.openkilda.adapter.FlowSideAdapter;
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.MacAddress;
+import org.openkilda.model.SwitchFeature;
+import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.action.Action;
+import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.PopVlanAction;
 import org.openkilda.rulemanager.action.PushVlanAction;
+import org.openkilda.rulemanager.action.PushVxlanAction;
 import org.openkilda.rulemanager.action.SetFieldAction;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public final class Utils {
 
@@ -68,5 +85,51 @@ public final class Utils {
             actions.add(PushVlanAction.builder().vlanId(targetIter.next().shortValue()).build());
         }
         return actions;
+    }
+
+    public static boolean isFullPortEndpoint(FlowEndpoint flowEndpoint) {
+        return !FlowEndpoint.isVlanIdSet(flowEndpoint.getOuterVlanId());
+    }
+
+    /**
+     * Returns port to which packets must be sent by first path switch.
+     */
+    public static int getOutPort(FlowPath path, Flow flow) {
+        if (path.isOneSwitchFlow()) {
+            FlowEndpoint endpoint = FlowSideAdapter.makeEgressAdapter(flow, path).getEndpoint();
+            return endpoint.getPortNumber();
+        } else {
+            if (path.getSegments().isEmpty()) {
+                throw new IllegalStateException(
+                        format("Multi switch flow path %s has no segments", path.getPathId()));
+            }
+            return path.getSegments().get(0).getSrcPort();
+        }
+    }
+
+    /**
+     * Builds push VXLAN action.
+     */
+    public static PushVxlanAction buildPushVxlan(
+            int vni, SwitchId srcSwitchId, SwitchId dstSwitchId, Set<SwitchFeature> features) {
+        ActionType type;
+        if (features.contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+            type = ActionType.PUSH_VXLAN_NOVIFLOW;
+        } else if (features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
+            type = ActionType.PUSH_VXLAN_OVS;
+        } else {
+            throw new IllegalArgumentException(format("To push VXLAN switch %s must support one of the following "
+                    + "features: [%s, %s]", srcSwitchId, NOVIFLOW_PUSH_POP_VXLAN, KILDA_OVS_PUSH_POP_MATCH_VXLAN));
+        }
+        return PushVxlanAction.builder()
+                .type(type)
+                .vni(vni)
+                .srcMacAddress(new MacAddress(srcSwitchId.toMacAddress()))
+                .dstMacAddress(new MacAddress(dstSwitchId.toMacAddress()))
+                .srcIpv4Address(VXLAN_SRC_IPV4_ADDRESS)
+                .dstIpv4Address(VXLAN_DST_IPV4_ADDRESS)
+                .udpSrc(VXLAN_UDP_SRC)
+                .build();
+
     }
 }
