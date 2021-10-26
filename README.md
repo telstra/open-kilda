@@ -13,51 +13,61 @@ The followings are required for building Kilda controller:
  - Gradle 6.7+
  - Maven 3.3.9+
  - JDK8
- - Python 2.7+
- - Python 3.5+
+ - Python 3.6+
  - Docker 19.03.3+
  - Docker Compose 1.20.0+
  - GNU Make 4.1+
  - Open vSwitch 2.9+
- 
-For running virtual environment you additionally need linux kernel 4.18+ for OVS meters support
 
-On Ubuntu 18.04, you can install those dependencies like this:
+#### Python dependency notice
 
+We do not recommend upgrading pip and install docker-compose using the methods described below, bypassing the packer managers. Instead, please read the documentation for installing the [pip](https://pip.pypa.io/en/stable/installation/#upgrading-pip) and the [docker-compose](https://docs.docker.com/compose/install/).
+
+
+#### Dependency installation on Ubuntu 18.04 
+For running virtual environment you additionally need linux kernel 4.18+ for OVS meters support. A virtual environment 
+in that sentence means docker instance with open-vswitch in it. We use that for functional testing.
 ```
-apt-get install maven openjdk-8-jdk python python3 docker.io docker-compose virtualenv make openvswitch-switch linux-generic-hwe-18.04 python3-setuptools python3-pip
+sudo apt install maven make openjdk-8-jdk openvswitch-switch python3-pip linux-generic-hwe-18.04 tox
 ```
+```
+sudo pip3 install --upgrade pip
+sudo pip3 install docker-compose
+```
+#### Dependency installation on Ubuntu 20.04
+
+```sudo apt install maven make openjdk-8-jdk openvswitch-switch python3-pip tox```
+
+```sudo pip3 install docker-compose```
 
 #### Gradle
 You can either install Gradle, or use Gradle wrapper:
- - Option 1 - Install Gradle (ensure that you have gradle 6.7 or later) - https://gradle.org/install/
-
- - Option 2 - Use Gradle wrapper. The Kilda repository contains an instance of Gradle Wrapper 
+ - Option 1 - Use Gradle wrapper. The Kilda repository contains an instance of Gradle Wrapper 
  which can be used straight from here without further installation.
+ - Option 2 - Install Gradle (ensure that you have gradle 6.7 or later) - https://gradle.org/install/
+
 
 #### Docker
 Note that your build user needs to be a member of the docker group for the build to work. 
 Do that by adding the user to /etc/groups and logging out and back in again.
+
+##### Basic installation instruction from Docker site
+
+```sudo apt-get install apt-transport-https ca-certificates curl gnupg lsb-release
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io
+sudo usermod -aG docker $USER
+# re-login for apply usermod command
+```
 
 #### Maven
 You also need to increase the maven RAM limit at least up to 1G.
 
 ```export MAVEN_OPTS="-Xmx1g -XX:MaxPermSize=128m"```
 
-#### Python
-Ensure that you have Python2 installed since some of build steps depends on it. 
-Possible option for that using virtual environment (`virtualenv`) with python interpreter version provided:
 
-```
-virtualenv --python=python2 .venv
-. .venv/bin/activate
-```
-
-Ensure that you have `tox` installed:
-```
-pip install -U pip
-pip install tox
-```
 #### Confd
 Also, don't forget to install confd. This tool is used for creating config/properties files from templates. 
 To install it execute the following command:
@@ -66,6 +76,26 @@ To install it execute the following command:
 wget https://github.com/kelseyhightower/confd/releases/download/v0.16.0/confd-0.16.0-linux-amd64 -O /usr/local/bin/confd
 chmod +x /usr/local/bin/confd
 ```
+
+##### Basic installation instruction from sources
+
+```
+cd /opt
+sudo mkdir confd
+sudo chown $USER:$USER confd
+cd confd
+git clone https://github.com/kelseyhightower/confd.git
+cd confd
+git checkout v0.16.0
+sudo apt install golang make
+go get github.com/BurntSushi/toml
+go build github.com/BurntSushi/toml
+go get github.com/kelseyhightower/confd/backends
+go build github.com/kelseyhightower/confd/backends
+make build
+sudo make install
+```
+
 
 #### /etc/hosts
 Following entry has to be added to /etc/hosts for _local_ Kilda to work properly

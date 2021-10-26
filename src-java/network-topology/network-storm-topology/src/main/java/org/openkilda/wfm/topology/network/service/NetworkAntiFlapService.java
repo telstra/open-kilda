@@ -32,6 +32,8 @@ import java.util.Map;
 
 @Slf4j
 public class NetworkAntiFlapService {
+    private final NetworkTopologyDashboardLogger dashboardLogger;
+
     private final AntiFlapFsm.AntiFlapFsmFactory controllerFactory;
     private final Map<Endpoint, AntiFlapFsm> controller = new HashMap<>();
     private final FsmExecutor<AntiFlapFsm, State, Event, Context> controllerExecutor;
@@ -40,6 +42,8 @@ public class NetworkAntiFlapService {
     private final AntiFlapFsm.Config config;
 
     public NetworkAntiFlapService(IAntiFlapCarrier carrier, AntiFlapFsm.Config config) {
+        dashboardLogger = new NetworkTopologyDashboardLogger(log);
+
         this.carrier = carrier;
         this.config = config;
 
@@ -58,9 +62,11 @@ public class NetworkAntiFlapService {
         switch (status) {
             case UP:
                 event = AntiFlapFsm.Event.PORT_UP;
+                dashboardLogger.onRawPortUp(endpoint);
                 break;
             case DOWN:
                 event = AntiFlapFsm.Event.PORT_DOWN;
+                dashboardLogger.onRawPortDown(endpoint);
                 break;
             default:
                 throw new IllegalArgumentException(

@@ -51,6 +51,10 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
         })
 @PropertySource({"classpath:northbound.properties"})
 public class TestConfig {
+    public static final String USERNAME = "kilda";
+    public static final String PASSWORD = "kilda";
+    public static final String ROLE = "ADMIN";
+
     @Bean
     public MessagingChannel messagingChannel() {
         return new TestMessageMock();

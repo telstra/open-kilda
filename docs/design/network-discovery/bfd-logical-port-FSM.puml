@@ -11,6 +11,7 @@ Input signals
 * offline
 * worker-success
 * worker-error
+* requests-query-empty (injected by processWorker* methods)
 
 @startuml
 title BFD logical port FSM
@@ -29,13 +30,13 @@ PREPARE --> CREATING : next
 PREPARE: enter / clean active requests
 PREPARE: enter / save session data
 
-READY --> OPERATIONAL : enable_update / save session data
+READY -> OPERATIONAL : enable_update / save session data
 READY --> REMOVING : disable
 READY --> [*] : port-del
 READY : enter / clear session data
 
-CREATING --> OPERATIONAL : port-add
-CREATING -> REMOVING : disable
+CREATING -> OPERATIONAL : port-add
+CREATING --> REMOVING : disable
 CREATING: enter / [isOnline] send port create request
 CREATING: online / send port create request
 CREATING: port-del / send port create request
@@ -52,9 +53,9 @@ OPERATIONAL: enter [have session data] / send session enable_update
 OPERATIONAL: enable_update / send session enable_update
 OPERATIONAL: disable / send session disable
 
-REMOVING --> PREPARE : enable_update
-REMOVING --> [*] : port-del
 REMOVING: enter / [isOnline] send port delete request
+REMOVING --> WAIT_ONGOING_REQUESTS : enable_update
+REMOVING --> [*] : port-del
 REMOVING: online / send port delete request
 REMOVING: port-add / send port delete request
 
@@ -67,5 +68,21 @@ HOUSEKEEPING : enter / send session disable
 DEBRIS --> [*] : session-del
 DEBRIS --> REMOVING : port-add
 DEBRIS --> PREPARE : enable_update
+
+WAIT_ONGOING_REQUESTS : enter / save session data
+WAIT_ONGOING_REQUESTS : enter / [requests query is empty] fire requests-query-empty
+WAIT_ONGOING_REQUESTS -u-> RECOVERY : requests-query-empty
+WAIT_ONGOING_REQUESTS --> CREATING : port-del / clean active requests
+WAIT_ONGOING_REQUESTS --> REMOVING : disable
+WAIT_ONGOING_REQUESTS : enable_update / save session data
+
+RECOVERY : enter / [isOnline] send port create request
+RECOVERY --> OPERATIONAL : worker-success
+RECOVERY --> REMOVING : disable
+RECOVERY --> CREATING : port-del
+RECOVERY : online / send port create request
+RECOVERY : enable_update / save session data
+RECOVERY : enable_update / [isOnline] send port create request
+RECOVERY: exit / clean active requests
 
 @enduml

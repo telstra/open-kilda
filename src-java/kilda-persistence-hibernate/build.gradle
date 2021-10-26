@@ -13,16 +13,35 @@ dependencies {
     implementation 'net.jodah:failsafe'
     implementation 'commons-codec:commons-codec'
 
-    implementation 'org.hibernate:hibernate-core:5.4.32.Final'
-    implementation 'org.hibernate:hibernate-c3p0:5.4.32.Final'
+    implementation ('org.hibernate:hibernate-core:5.4.32.Final') {
+        // To avoid collision between javax and jakarta implementations.
+        exclude module: 'jaxb-api'
+        exclude module: 'javax.activation-api'
+        exclude module: 'jaxb-runtime'
+    }
+    implementation ('org.hibernate:hibernate-c3p0:5.4.32.Final') {
+        // To avoid collision between javax and jakarta implementations.
+        exclude module: 'jaxb-api'
+        exclude module: 'javax.activation-api'
+        exclude module: 'jaxb-runtime'
+    }
     implementation 'com.fasterxml.jackson.module:jackson-module-jaxb-annotations'
     implementation('com.vladmihalcea:hibernate-types-52:2.12.0') {
         exclude group: 'com.fasterxml.jackson.module', module: 'jackson-module-jaxb-annotations'
+        // To avoid collision between javax and jakarta implementations.
+        exclude module: 'jaxb-api'
+        exclude module: 'javax.activation-api'
+        exclude module: 'jaxb-runtime'
     }
 
     implementation 'mysql:mysql-connector-java:8.0.25'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor 'org.hibernate:hibernate-jpamodelgen:5.4.32.Final'
+    annotationProcessor ('org.hibernate:hibernate-jpamodelgen:5.4.32.Final') {
+        // To avoid collision between javax and jakarta implementations.
+        exclude module: 'jaxb-api'
+        exclude module: 'javax.activation-api'
+        exclude module: 'jaxb-runtime'
+    }
 }

@@ -28,7 +28,7 @@ dependencies {
     testImplementation 'org.junit.vintage:junit-vintage-engine'
     testImplementation 'org.mockito:mockito-junit-jupiter'
     testImplementation 'org.hamcrest:hamcrest-library'
-    testRuntimeOnly 'org.glassfish:jakarta.el'
+    testRuntimeOnly 'org.glassfish:javax.el'
     testRuntimeOnly 'org.apache.curator:curator-test'
     testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
 

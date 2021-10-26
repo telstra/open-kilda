@@ -38,7 +38,7 @@ dependencies {
     testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
 
     implementation 'org.hibernate.validator:hibernate-validator'
-    implementation 'org.glassfish:jakarta.el'
+    implementation 'org.glassfish:javax.el'
     implementation 'com.google.guava:guava'
     implementation 'org.restlet.jse:org.restlet:2.3.12'
     compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
