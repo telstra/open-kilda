@@ -13,19 +13,13 @@
  *   limitations under the License.
  */
 
+
 package org.openkilda.rulemanager;
 
-public enum Field {
+import lombok.Value;
 
-    ETH_SRC,
-    ETH_DST,
-    UDP_SRC,
-    UDP_DST,
-    IP_PROTO,
-    ETH_TYPE,
-    VLAN_VID,
-    IN_PORT,
-    METADATA,
-    NOVIFLOW_TUNNEL_ID,
-    OVS_VXLAN_VNI
+@Value
+public class OfMetadata {
+    long value;
+    long mask;
 }

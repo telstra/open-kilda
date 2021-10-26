@@ -16,6 +16,7 @@
 package org.openkilda.rulemanager;
 
 import static java.lang.String.format;
+import static java.util.stream.Collectors.toSet;
 
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
@@ -23,6 +24,9 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.match.FieldMatch;
+
+import lombok.Value;
+import org.junit.Assert;
 
 import java.util.List;
 import java.util.Set;
@@ -35,13 +39,22 @@ public final class Utils {
     /**
      * Build switch object for tests.
      */
-    public static Switch buildSwitch(String version, Set<SwitchFeature> features) {
-        SwitchId switchId = new SwitchId(1L);
+    public static Switch buildSwitch(SwitchId switchId, String version, Set<SwitchFeature> features) {
         return Switch.builder()
                 .switchId(switchId)
                 .ofVersion(version)
                 .features(features)
+                .ofDescriptionManufacturer("Nikara")
+                .ofDescriptionSoftware("2.15.0")
                 .build();
+    }
+
+    public static Switch buildSwitch(String version, Set<SwitchFeature> features) {
+        return buildSwitch(new SwitchId(1L), version, features);
+    }
+
+    public static Switch buildSwitch(SwitchId switchId, Set<SwitchFeature> features) {
+        return buildSwitch(switchId, "OF_13", features);
     }
 
     /**
@@ -87,6 +100,28 @@ public final class Utils {
                 .orElseThrow(() -> new IllegalStateException(format("Can't find action with type %s", actionType)));
     }
 
+    /**
+     * Compare all fields of FieldMatch.
+     */
+    public static void assertEqualsMatch(Set<FieldMatch> expected, Set<FieldMatch> actual) {
+        Set<FullComparableMatch> expectedSet = expected.stream().map(FullComparableMatch::new).collect(toSet());
+        Set<FullComparableMatch> actualSet = actual.stream().map(FullComparableMatch::new).collect(toSet());
+        Assert.assertEquals(expectedSet, actualSet);
+    }
+
     private Utils() {
+    }
+
+    @Value
+    private static class FullComparableMatch {
+        long value;
+        Long mask;
+        Field field;
+
+        public FullComparableMatch(FieldMatch match) {
+            this.field = match.getField();
+            this.value = match.getValue();
+            this.mask = match.getMask();
+        }
     }
 }

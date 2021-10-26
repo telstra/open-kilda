@@ -16,12 +16,16 @@
 package org.openkilda.rulemanager;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.ToString;
 
 public final class ProtoConstants {
 
     public static final class EthType {
-        public static final long ETH_TYPE_IPv4 = 2048;
+        public static final long IPv4 = 0x0800;
+        public static final long LLDP = 0x88CC;
+        public static final long ARP = 0x0806;
     }
 
     public static final class IpProto {
@@ -34,6 +38,8 @@ public final class ProtoConstants {
 
     @JsonSerialize
     @Getter
+    @EqualsAndHashCode(of = {"portNumber", "portType"})
+    @ToString
     public static class PortNumber {
         private int portNumber;
         private SpecialPortType portType;

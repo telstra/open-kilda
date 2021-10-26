@@ -34,4 +34,5 @@ public class Instructions {
     Set<Action> writeActions;
     MeterId goToMeter;
     OfTable goToTable;
+    OfMetadata writeMetadata;
 }
