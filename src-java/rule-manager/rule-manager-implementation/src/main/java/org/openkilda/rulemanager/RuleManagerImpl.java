@@ -23,6 +23,8 @@ import static org.openkilda.model.cookie.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
@@ -49,8 +51,31 @@ public class RuleManagerImpl implements RuleManager {
 
     @Override
     public List<SpeakerCommandData> buildRulesForFlowPath(FlowPath flowPath, DataAdapter adapter) {
-        // todo: implement build rules for path
-        return null;
+        List<SpeakerCommandData> result = new ArrayList<>();
+        Flow flow = adapter.getFlow(flowPath.getPathId());
+        FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(flowPath.getPathId());
+
+        if (!flow.isProtectedPath(flowPath.getPathId())) {
+            buildIngressCommands(
+                    adapter.getSwitch(flowPath.getSrcSwitchId()),
+                    adapter.getSwitchProperties(flowPath.getSrcSwitchId()), flowPath, flow);
+        }
+
+        if (flowPath.isOneSwitchFlow()) {
+            return result;
+        }
+
+        result.addAll(buildEgressCommands(
+                adapter.getSwitch(flowPath.getDestSwitchId()), flowPath, flow, encapsulation));
+
+        for (int i = 1; i < flowPath.getSegments().size(); i++) {
+            PathSegment firstSegment = flowPath.getSegments().get(i - 1);
+            PathSegment secondSegment = flowPath.getSegments().get(i);
+            result.addAll(buildTransitCommands(adapter.getSwitch(firstSegment.getDestSwitchId()),
+                    flowPath, encapsulation, firstSegment, secondSegment));
+        }
+
+        return result;
     }
 
     @Override
@@ -60,7 +85,7 @@ public class RuleManagerImpl implements RuleManager {
 
         List<SpeakerCommandData> result = buildServiceRules(sw, switchProperties);
 
-        result.addAll(buildFlowRules(switchId, adapter));
+        result.addAll(buildFlowRulesForSwitch(switchId, adapter));
 
         return result;
     }
@@ -93,25 +118,41 @@ public class RuleManagerImpl implements RuleManager {
         return generators;
     }
 
-    private List<SpeakerCommandData> buildFlowRules(SwitchId switchId, DataAdapter adapter) {
+    private List<SpeakerCommandData> buildFlowRulesForSwitch(SwitchId switchId, DataAdapter adapter) {
         return adapter.getFlowPaths().values().stream()
-                .flatMap(flowPath -> buildFlowRules(switchId, flowPath, adapter).stream())
+                .flatMap(flowPath -> buildFlowRulesForSwitch(switchId, flowPath, adapter).stream())
                 .collect(Collectors.toList());
     }
 
     /**
      * Builds command data only for switches present in the map. Silently skips all others.
      */
-    private List<SpeakerCommandData> buildFlowRules(SwitchId switchId, FlowPath flowPath, DataAdapter adapter) {
+    private List<SpeakerCommandData> buildFlowRulesForSwitch(
+            SwitchId switchId, FlowPath flowPath, DataAdapter adapter) {
         List<SpeakerCommandData> result = new ArrayList<>();
+        Flow flow = adapter.getFlow(flowPath.getPathId());
+        Switch sw = adapter.getSwitch(switchId);
+        SwitchProperties switchProperties = adapter.getSwitchProperties(switchId);
+        FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(flowPath.getPathId());
 
-        SwitchId srcSwitchId = flowPath.getSrcSwitchId();
-        if (switchId.equals(srcSwitchId)) {
-            result.addAll(buildIngressCommands(adapter.getSwitch(srcSwitchId),
-                    adapter.getSwitchProperties(srcSwitchId),
-                    flowPath, adapter.getFlow(flowPath.getPathId())));
+        if (switchId.equals(flowPath.getSrcSwitchId()) && !flow.isProtectedPath(flowPath.getPathId())) {
+            result.addAll(buildIngressCommands(sw, switchProperties, flowPath, flow));
         }
-        // todo: add transit, egress and other flow rules
+
+        if (!flowPath.isOneSwitchFlow()) {
+            if (switchId.equals(flowPath.getDestSwitchId())) {
+                result.addAll(buildEgressCommands(sw, flowPath, flow, encapsulation));
+            }
+            for (int i = 1; i < flowPath.getSegments().size(); i++) {
+                PathSegment firstSegment = flowPath.getSegments().get(i - 1);
+                PathSegment secondSegment = flowPath.getSegments().get(i);
+                if (switchId.equals(firstSegment.getDestSwitchId())
+                        && switchId.equals(secondSegment.getSrcSwitchId())) {
+                    result.addAll(buildTransitCommands(sw, flowPath, encapsulation, firstSegment, secondSegment));
+                    break;
+                }
+            }
+        }
 
         return result;
     }
@@ -126,5 +167,19 @@ public class RuleManagerImpl implements RuleManager {
         return generators.stream()
                 .flatMap(generator -> generator.generateCommands(sw).stream())
                 .collect(Collectors.toList());
+    }
+
+    private List<SpeakerCommandData> buildEgressCommands(Switch sw, FlowPath flowPath, Flow flow,
+            FlowTransitEncapsulation encapsulation) {
+        RuleGenerator generator = flowRulesFactory.getEgressRuleGenerator(flowPath, flow, encapsulation);
+        return generator.generateCommands(sw);
+    }
+
+    private List<SpeakerCommandData> buildTransitCommands(
+            Switch sw, FlowPath flowPath, FlowTransitEncapsulation encapsulation, PathSegment firstSegment,
+            PathSegment secondSegment) {
+        RuleGenerator generator = flowRulesFactory.getTransitRuleGenerator(
+                flowPath, encapsulation, firstSegment, secondSegment);
+        return generator.generateCommands(sw);
     }
 }

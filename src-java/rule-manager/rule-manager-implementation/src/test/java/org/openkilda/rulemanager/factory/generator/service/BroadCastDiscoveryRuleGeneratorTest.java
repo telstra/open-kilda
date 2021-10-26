@@ -374,7 +374,7 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         assertFalse(ipProtoMatch.isMasked());
 
         FieldMatch ethTypeMatch = getMatchByField(Field.ETH_TYPE, match);
-        assertEquals(EthType.ETH_TYPE_IPv4, ethTypeMatch.getValue());
+        assertEquals(EthType.IPv4, ethTypeMatch.getValue());
         assertFalse(ethTypeMatch.isMasked());
 
         FieldMatch updDestMatch = getMatchByField(Field.UDP_DST, match);

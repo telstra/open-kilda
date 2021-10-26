@@ -17,6 +17,7 @@ package org.openkilda.rulemanager;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -29,6 +30,8 @@ public interface DataAdapter {
     Map<PathId, FlowPath> getFlowPaths();
 
     Flow getFlow(PathId pathId);
+
+    FlowTransitEncapsulation getTransitEncapsulation(PathId pathId);
 
     Switch getSwitch(SwitchId switchId);
 
