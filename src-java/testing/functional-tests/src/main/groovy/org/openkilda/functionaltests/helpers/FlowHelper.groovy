@@ -93,10 +93,9 @@ class FlowHelper {
      */
     FlowCreatePayload singleSwitchFlow(Switch sw, boolean useTraffgenPorts = true,
                                        List<FlowPayload> existingFlows = []) {
-        def allowedPorts = topology.getAllowedPortsForSwitch(sw)
         Wrappers.retry(3, 0) {
-            def srcEndpoint = getFlowEndpoint(sw, allowedPorts, useTraffgenPorts)
-            def dstEndpoint = getFlowEndpoint(sw, allowedPorts - srcEndpoint.portNumber, useTraffgenPorts)
+            def srcEndpoint = getFlowEndpoint(sw, [], useTraffgenPorts)
+            def dstEndpoint = getFlowEndpoint(sw, [srcEndpoint.portNumber], useTraffgenPorts)
             def newFlow = new FlowCreatePayload(generateFlowId(), srcEndpoint, dstEndpoint, 500, false, false, false,
                     generateDescription(), null, null, null, null, null, null, false, null, null)
             if (flowConflicts(newFlow, existingFlows)) {
@@ -111,9 +110,8 @@ class FlowHelper {
      * The flow will be on the same port.
      */
     FlowPayload singleSwitchSinglePortFlow(Switch sw) {
-        def allowedPorts = topology.getAllowedPortsForSwitch(sw)
-        def srcEndpoint = getFlowEndpoint(sw, allowedPorts)
-        def dstEndpoint = getFlowEndpoint(sw, [srcEndpoint.portNumber])
+        def srcEndpoint = getFlowEndpoint(sw, [])
+        def dstEndpoint = getFlowEndpoint(sw, []).tap { it.portNumber = srcEndpoint.portNumber }
         if (srcEndpoint.vlanId == dstEndpoint.vlanId) { //ensure same vlan is not randomly picked
             dstEndpoint.vlanId--
         }
@@ -293,23 +291,24 @@ class FlowHelper {
      * @param useTraffgenPorts whether to try finding a traffgen port
      */
     private FlowEndpointPayload getFlowEndpoint(Switch sw, boolean useTraffgenPorts = true) {
-        getFlowEndpoint(sw, topology.getAllowedPortsForSwitch(sw), useTraffgenPorts)
+        getFlowEndpoint(sw, [], useTraffgenPorts)
     }
 
     /**
      * Returns flow endpoint with randomly chosen vlan.
      *
-     * @param allowedPorts list of ports to randomly choose port from
+     * @param excludePorts list of ports that should not be picked
      * @param useTraffgenPorts if true, will try to use a port attached to a traffgen. The port must be present
      * in 'allowedPorts'
      */
-    private FlowEndpointPayload getFlowEndpoint(Switch sw, List<Integer> allowedPorts,
+    private FlowEndpointPayload getFlowEndpoint(Switch sw, List<Integer> excludePorts,
                                                 boolean useTraffgenPorts = true) {
-        def port = allowedPorts[random.nextInt(allowedPorts.size())]
+        def ports = topology.getAllowedPortsForSwitch(sw) - excludePorts
+        int port = ports[random.nextInt(ports.size())]
         if (useTraffgenPorts) {
-            def connectedTraffgens = topology.activeTraffGens.findAll { it.switchConnected == sw }
-            if (!connectedTraffgens.empty) {
-                port = connectedTraffgens.find { allowedPorts.contains(it.switchPort) }?.switchPort ?: port
+            List<Integer> tgPorts = sw.traffGens*.switchPort - excludePorts
+            if (tgPorts) {
+                port = tgPorts[0]
             }
         }
         return new FlowEndpointPayload(sw.dpId, port, allowedVlans[random.nextInt(allowedVlans.size())],
@@ -332,55 +331,5 @@ class FlowHelper {
                             faker.shakespeare().hamletQuote()]
         def r = new Random()
         "autotest flow: ${descpription[r.nextInt(descpription.size())]}"
-    }
-
-    /**
-     * Checks flow rules presence (or absence) on source and destination switches.
-     */
-    private void checkRulesOnSwitches(Flow flowEntry, int timeout, boolean rulesPresent) {
-        def cookies = [flowEntry.forwardPath.cookie.value, flowEntry.reversePath.cookie.value]
-        def switches = [flowEntry.srcSwitch.switchId, flowEntry.destSwitch.switchId].toSet()
-        withPool {
-            switches.eachParallel { sw ->
-                Wrappers.wait(timeout) {
-                    try {
-                        def result = northbound.getSwitchRules(sw).flowEntries*.cookie
-                        assert rulesPresent ? result.containsAll(cookies) : !result.any { it in cookies }, sw
-                    } catch (HttpClientErrorException exc) {
-                        if (exc.rawStatusCode == 404) {
-                            log.warn("Switch '$sw' was not found when checking rules after flow "
-                                    + (rulesPresent ? "creation" : "deletion"))
-                        } else {
-                            throw exc
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Checks flow meters presence (or absence) on source and destination switches.
-     */
-    private void checkMetersOnSwitches(Flow flowEntry, int timeout, boolean metersPresent) {
-        def meters = [flowEntry.forwardPath.meterId.value, flowEntry.reversePath.meterId.value]
-        def switches = [flowEntry.srcSwitch.switchId, flowEntry.destSwitch.switchId].toSet()
-        withPool {
-            switches.eachParallel { sw ->
-                Wrappers.wait(timeout) {
-                    try {
-                        def result = northbound.getAllMeters(sw).meterEntries*.meterId
-                        assert metersPresent ? result.containsAll(meters) : !result.any { it in metersPresent }, sw
-                    } catch (HttpClientErrorException exc) {
-                        if (exc.rawStatusCode == 404) {
-                            log.warn("Switch '$sw' was not found when checking meters after flow "
-                                    + (metersPresent ? "creation" : "deletion"))
-                        } else {
-                            throw exc
-                        }
-                    }
-                }
-            }
-        }
     }
 }
