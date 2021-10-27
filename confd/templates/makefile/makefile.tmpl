@@ -125,10 +125,10 @@ clean: clean-sources clean-test clean-docker-files
 FUNC_TESTS = src-java/testing/functional-tests
 
 $(FUNC_TESTS)/kilda.properties:
-	cp $(FUNC_TESTS)/kilda.properties.example $(FUNC_TESTS)/kilda.properties
+	cp -n $(FUNC_TESTS)/kilda.properties.example $(FUNC_TESTS)/kilda.properties
 
 $(FUNC_TESTS)/topology.yaml:
-	cp $(FUNC_TESTS)/src/test/resources/topology.yaml $(FUNC_TESTS)/topology.yaml
+	cp -n $(FUNC_TESTS)/src/test/resources/topology.yaml $(FUNC_TESTS)/topology.yaml
 
 copy-test-props: $(FUNC_TESTS)/kilda.properties $(FUNC_TESTS)/topology.yaml
 
