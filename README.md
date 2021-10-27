@@ -100,7 +100,7 @@ sudo make install
 #### /etc/hosts
 Following entry has to be added to /etc/hosts for _local_ Kilda to work properly
 ```
-127.0.0.1 localhost kafka.pendev logstash.pendev
+127.0.0.1 localhost logstash.pendev
 ```
 
 ### How to build Kilda Controller
