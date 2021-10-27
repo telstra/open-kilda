@@ -68,12 +68,6 @@ You also need to increase the maven RAM limit at least up to 1G.
 ```export MAVEN_OPTS="-Xmx1g -XX:MaxPermSize=128m"```
 
 
-#### /etc/hosts
-Following entry has to be added to /etc/hosts for _local_ Kilda to work properly
-```
-127.0.0.1 localhost logstash.pendev
-```
-
 ### How to build Kilda Controller
 
 From the base directory run the following command:
