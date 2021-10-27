@@ -37,10 +37,10 @@ class FlowStatSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
-    // statsrouter.request.interval = 60, this test often fails on jenkins with this value
-    // the statsrouter.request.interval is increased here to 120
+    // statsRouterRequestInterval = 60, this test often fails on jenkins with this value
+    // the statsrouter.request.interval is increased up to 120
     @Shared
-    Integer statsRouterInterval = 120
+    Integer statsRouterInterval = statsRouterRequestInterval * 2
 
     @Tidy
     def "System is able to collect stats after intentional swapping flow path to protected"() {

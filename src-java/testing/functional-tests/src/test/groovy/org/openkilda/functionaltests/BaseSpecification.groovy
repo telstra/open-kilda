@@ -92,6 +92,8 @@ class BaseSpecification extends Specification {
     String zkConnectString
     @Value('${affinity.isl.cost:10000}') @Shared
     int affinityIslCost
+    @Value('${statsrouter.request.interval:60}') @Shared //statsrouter.request.interval = 60
+    int statsRouterRequestInterval
 
     static ThreadLocal<TopologyDefinition> threadLocalTopology = new ThreadLocal<>()
 
