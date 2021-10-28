@@ -103,7 +103,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         swPair1.paths.findAll { it != path1 }.each { pathHelper.makePathMorePreferable(path1, it) }
         flowHelperV2.addFlow(flow)
         assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == path1
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
         and: "Potential affinity flow, which optimal path is diverse from the main flow, but it has a not optimal closer path"
         def affinityFlow = flowHelperV2.randomFlow(swPair2, false, [flow]).tap { affinityFlowId = flow.flowId }
@@ -121,7 +121,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
 
         cleanup:
         [flow, affinityFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
     }
 
