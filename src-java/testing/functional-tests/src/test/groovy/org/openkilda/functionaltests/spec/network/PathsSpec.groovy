@@ -11,6 +11,8 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
@@ -126,12 +128,14 @@ class PathsSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Unable to get a path for a 'vxlan' flowEncapsulationType when switches do not support it"() {
         given: "Two active not supported 'vxlan' flowEncapsulationType switches"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].any { sw ->
-                !northbound.getSwitchProperties(sw.dpId).supportedTransitEncapsulation.contains(
-                        FlowEncapsulationType.VXLAN.toString().toLowerCase()
-                )
-            }
+        def switchPair = topologyHelper.switchPairs.first()
+        Map<Switch, SwitchPropertiesDto> initProps = [switchPair.src, switchPair.dst].collectEntries {
+            [(it): switchHelper.getCachedSwProps(it.dpId)]
+        }
+        initProps.each { sw, swProp ->
+            switchHelper.updateSwitchProperties(sw, swProp.jacksonCopy().tap {
+                it.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
+            })
         }
         assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
         def srcProps = northbound.getSwitchProperties(switchPair.src.dpId)
@@ -155,5 +159,10 @@ class PathsSpec extends HealthCheckSpecification {
         errorDetails.errorMessage == "Switch $swWithoutVxlan.dpId doesn't support $FlowEncapsulationType.VXLAN " +
                 "encapslation type. Choose one of the supported encapsulation types $encapsTypesWithoutVxlan or " +
                 "update switch properties and add needed encapsulation type."
+
+        cleanup:
+        initProps.each { sw, swProps ->
+            switchHelper.updateSwitchProperties(sw, swProps)
+        }
     }
 }
