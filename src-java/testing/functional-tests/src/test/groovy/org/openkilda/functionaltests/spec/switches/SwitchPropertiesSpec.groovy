@@ -33,7 +33,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
                 || it.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN) }
         assumeTrue(sw as boolean, "Wasn't able to find vxlan-enabled switch")
-        def initSwitchProperties = northbound.getSwitchProperties(sw.dpId)
+        def initSwitchProperties = switchHelper.getCachedSwProps(sw.dpId)
         assert initSwitchProperties.multiTable != null
         assert !initSwitchProperties.supportedTransitEncapsulation.empty
         //make sure that two endpoints have the same info
@@ -199,7 +199,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
     def "Unable to turn on switchLldp property without turning on multiTable property"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
-        def initSwitchProperties = northbound.getSwitchProperties(sw.dpId)
+        def initSwitchProperties = switchHelper.getCachedSwProps(sw.dpId)
 
         when: "Try to update set switchLldp property to True and multiTable property to False"
         def switchProperties = new SwitchPropertiesDto()
@@ -223,7 +223,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
     def "Unable to turn on switchArp property without turning on multiTable property"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
-        def initSwitchProperties = northbound.getSwitchProperties(sw.dpId)
+        def initSwitchProperties = switchHelper.getCachedSwProps(sw.dpId)
 
         when: "Try to update set switchArp property to True and multiTable property to False"
         def switchProperties = new SwitchPropertiesDto()
@@ -252,7 +252,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         assumeTrue(sw as boolean, "There is no non-vxlan switch in the topology")
 
         when: "Try to turn on VXLAN encap type on that switch"
-        def initProps = northbound.getSwitchProperties(sw.dpId)
+        def initProps = switchHelper.getCachedSwProps(sw.dpId)
         northbound.updateSwitchProperties(sw.dpId, initProps.jacksonCopy().tap {
             it.supportedTransitEncapsulation = [FlowEncapsulationType.VXLAN.toString()]
         })

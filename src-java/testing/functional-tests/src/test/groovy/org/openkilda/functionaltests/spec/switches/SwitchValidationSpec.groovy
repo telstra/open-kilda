@@ -353,7 +353,7 @@ misconfigured"
         def sharedCookieOnSrcSw = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
             new Cookie(it.cookie).getType() in [CookieType.SHARED_OF_FLOW, CookieType.SERVER_42_FLOW_RTT_INGRESS]
         }?.cookie
-        def untouchedCookiesOnSrcSw = northbound.getSwitchProperties(srcSwitch.dpId).multiTable ?
+        def untouchedCookiesOnSrcSw = switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable ?
             (reverseCookies + sharedCookieOnSrcSw).sort() : reverseCookies
         def cookiesOnDstSw = northbound.getSwitchRules(dstSwitch.dpId).flowEntries*.cookie
         northbound.deleteMeter(srcSwitch.dpId, srcSwitchCreatedMeterIds[0])
@@ -451,7 +451,7 @@ misconfigured"
         def sharedCookieOnSrcSw = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
             new Cookie(it.cookie).getType() in [CookieType.SHARED_OF_FLOW, CookieType.SERVER_42_FLOW_RTT_INGRESS]
         }?.cookie
-        def untouchedCookies = northbound.getSwitchProperties(srcSwitch.dpId).multiTable ?
+        def untouchedCookies = switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable ?
                 ([egressCookie] + sharedCookieOnSrcSw).sort() : [egressCookie]
         verifyAll(northbound.validateSwitch(srcSwitch.dpId)) {
             it.rules.missing == [ingressCookie]

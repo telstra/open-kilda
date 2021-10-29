@@ -328,7 +328,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
     def "System doesn't allow to create a QinQ flow when a switch supports multi table mode but it is disabled"() {
         given: "A switch pair with disabled multi table mode at least on the one switch"
         def swP = topologyHelper.getNeighboringSwitchPair()
-        def initSrcSwProps = northbound.getSwitchProperties(swP.src.dpId)
+        def initSrcSwProps = switchHelper.getCachedSwProps(swP.src.dpId)
         SwitchHelper.updateSwitchProperties(swP.src, initSrcSwProps.jacksonCopy().tap {
             it.multiTable = false
         })
@@ -886,7 +886,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         northbound.deleteSwitchRules(swP.src.dpId, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
 
         then: "System detects missing rules on the src switch"
-        def amountOfServer42Rules = northbound.getSwitchProperties(swP.src.dpId).server42FlowRtt ? 2 : 0
+        def amountOfServer42Rules = switchHelper.getCachedSwProps(swP.src.dpId).server42FlowRtt ? 2 : 0
         with(northbound.validateSwitch(swP.src.dpId).rules) {
             it.excess.empty
             it.excessHex.empty

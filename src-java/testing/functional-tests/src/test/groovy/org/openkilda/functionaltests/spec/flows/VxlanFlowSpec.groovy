@@ -401,7 +401,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         given: "Src and dst switches do not support VXLAN"
         def switchPair = topologyHelper.switchPairs.first()
         Map<Switch, SwitchPropertiesDto> initProps = [switchPair.src, switchPair.dst].collectEntries {
-            [(it): northbound.getSwitchProperties(it.dpId)]
+            [(it): switchHelper.getCachedSwProps(it.dpId)]
         }
         initProps.each { sw, swProp ->
             SwitchHelper.updateSwitchProperties(sw, swProp.jacksonCopy().tap {
