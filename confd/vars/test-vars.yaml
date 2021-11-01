@@ -5,6 +5,7 @@ kilda_tests_orientdb_hosts: "localhost"
 kilda_tests_orientdb_hosts_single: "localhost"
 
 kilda_tests_kafka_hosts: "localhost:9093"
+kilda_tests_kafka_hosts_internal: "localhost:9092"
 kilda_tests_zookeeper_hosts: "localhost"
 
 kilda_tests_opentsdb_hosts: "localhost"
