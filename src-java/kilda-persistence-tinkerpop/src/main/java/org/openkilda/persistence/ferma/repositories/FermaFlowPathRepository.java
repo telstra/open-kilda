@@ -17,6 +17,7 @@ package org.openkilda.persistence.ferma.repositories;
 
 import static java.lang.String.format;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPath.FlowPathData;
 import org.openkilda.model.FlowPathStatus;
@@ -48,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -76,6 +78,34 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
                 .toListExplicit(FlowPathFrame.class);
         return flowPathFrames.isEmpty() ? Optional.empty() : Optional.of(flowPathFrames.get(0))
                 .map(FlowPath::new);
+    }
+
+    @Override
+    public Map<PathId, FlowPath> findByIds(Set<PathId> pathIds) {
+        Set<String> graphPathIds = pathIds.stream()
+                .map(PathIdConverter.INSTANCE::toGraphProperty)
+                .collect(Collectors.toSet());
+        List<? extends FlowPathFrame> flowPathFrames = framedGraph().traverse(g -> g.V()
+                .hasLabel(FlowPathFrame.FRAME_LABEL)
+                .has(FlowPathFrame.PATH_ID_PROPERTY, P.within(graphPathIds)))
+                .toListExplicit(FlowPathFrame.class);
+        return flowPathFrames.stream()
+                .map(FlowPath::new)
+                .collect(Collectors.toMap(FlowPath::getPathId, Function.identity()));
+    }
+
+    @Override
+    public Map<PathId, Flow> findFlowsByPathIds(Set<PathId> pathIds) {
+        Set<String> graphPathIds = pathIds.stream()
+                .map(PathIdConverter.INSTANCE::toGraphProperty)
+                .collect(Collectors.toSet());
+        List<? extends FlowPathFrame> flowPathFrames = framedGraph().traverse(g -> g.V()
+                .hasLabel(FlowPathFrame.FRAME_LABEL)
+                .has(FlowPathFrame.PATH_ID_PROPERTY, P.within(graphPathIds)))
+                .toListExplicit(FlowPathFrame.class);
+        return flowPathFrames.stream()
+                .map(FlowPath::new)
+                .collect(Collectors.toMap(FlowPath::getPathId, FlowPath::getFlow));
     }
 
     @Override
