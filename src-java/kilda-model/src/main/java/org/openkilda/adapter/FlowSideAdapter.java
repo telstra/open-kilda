@@ -80,4 +80,8 @@ public abstract class FlowSideAdapter {
     public abstract boolean isPrimaryEgressPath(@NonNull PathId pathId);
 
     public abstract boolean isLooped();
+
+    public boolean isOneSwitchFlow() {
+        return flow.getSrcSwitchId().equals(flow.getDestSwitchId());
+    }
 }

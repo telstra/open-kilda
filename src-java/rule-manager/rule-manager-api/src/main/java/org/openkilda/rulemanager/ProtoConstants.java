@@ -29,7 +29,7 @@ public final class ProtoConstants {
     }
 
     public static final class IpProto {
-        public static final long UDP_IP_PROTO = 17;
+        public static final long UDP = 17;
     }
 
     public static final class Mask {

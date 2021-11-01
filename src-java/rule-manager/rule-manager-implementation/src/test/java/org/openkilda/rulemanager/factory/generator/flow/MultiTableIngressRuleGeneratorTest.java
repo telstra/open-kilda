@@ -27,7 +27,7 @@ import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
 import static org.openkilda.model.cookie.CookieBase.CookieType.MULTI_TABLE_INGRESS_RULES;
 import static org.openkilda.rulemanager.Utils.assertEqualsMatch;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
-import static org.openkilda.rulemanager.Utils.mapMetadata;
+import static org.openkilda.rulemanager.utils.Utils.mapMetadata;
 
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.adapter.FlowSourceAdapter;

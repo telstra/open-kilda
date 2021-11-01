@@ -28,6 +28,7 @@ import java.util.Objects;
 @Value
 public class SwitchId implements Comparable<SwitchId>, Serializable {
     private static final long serialVersionUID = 1L;
+    public static final long MAC_ADDRESS_MASK = 0x0000_FFFF_FFFF_FFFFL;
 
     private final long id;
 
@@ -67,6 +68,13 @@ public class SwitchId implements Comparable<SwitchId>, Serializable {
      */
     public String toMacAddress() {
         return colonSeparatedBytes(toHexArray(), 4);
+    }
+
+    /**
+     * Return Switch MAC address as long (it is equal to last 6 bytes of switch ID).
+     */
+    public long toMacAddressAsLong() {
+        return id & MAC_ADDRESS_MASK;
     }
 
     /**

@@ -20,6 +20,7 @@ import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 import static org.openkilda.model.FlowEndpoint.isVlanIdSet;
 import static org.openkilda.model.FlowEndpoint.makeVlanStack;
+import static org.openkilda.rulemanager.Constants.VXLAN_UDP_SRC;
 import static org.openkilda.rulemanager.utils.Utils.buildPushVxlan;
 import static org.openkilda.rulemanager.utils.Utils.getOutPort;
 import static org.openkilda.rulemanager.utils.Utils.isFullPortEndpoint;
@@ -66,6 +67,10 @@ import java.util.Set;
 @SuperBuilder
 public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
 
+    /*
+     * This set must contain FlowSideAdapters with src multiTable=true which have same SwitchId and inPort as ingress
+     * endpoint of target flowPath.
+     */
     @Default
     protected final Set<FlowSideAdapter> overlappingIngressAdapters = new HashSet<>();
 
@@ -241,7 +246,7 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
 
         if (encapsulation.getType() == VXLAN && !flowPath.isOneSwitchFlow()) {
             transformActions.add(buildPushVxlan(encapsulation.getId(), flowPath.getSrcSwitchId(),
-                    flowPath.getDestSwitchId(), features));
+                    flowPath.getDestSwitchId(), VXLAN_UDP_SRC, features));
         }
         return transformActions;
     }

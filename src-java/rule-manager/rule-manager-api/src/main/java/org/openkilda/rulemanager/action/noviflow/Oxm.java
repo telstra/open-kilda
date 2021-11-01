@@ -13,19 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.rulemanager.action;
+package org.openkilda.rulemanager.action.noviflow;
 
-public enum ActionType {
+public enum Oxm {
 
-    GROUP,
-    PORT_OUT,
-    POP_VLAN,
-    PUSH_VLAN,
-    POP_VXLAN_NOVIFLOW,
-    POP_VXLAN_OVS,
-    PUSH_VXLAN_NOVIFLOW,
-    PUSH_VXLAN_OVS,
-    SET_FIELD,
-    METER,
-    NOVI_COPY_FIELD
+    NOVIFLOW_PACKET_OFFSET,
+    NOVIFLOW_UDP_PAYLOAD_OFFSET,
+    NOVIFLOW_RX_TIMESTAMP,
+    NOVIFLOW_TX_TIMESTAMP
 }

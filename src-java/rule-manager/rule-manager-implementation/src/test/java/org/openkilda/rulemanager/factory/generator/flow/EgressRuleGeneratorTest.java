@@ -334,7 +334,7 @@ public class EgressRuleGeneratorTest {
         return Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(port).build(),
                 FieldMatch.builder().field(Field.ETH_TYPE).value(EthType.IPv4).build(),
-                FieldMatch.builder().field(Field.IP_PROTO).value(IpProto.UDP_IP_PROTO).build(),
+                FieldMatch.builder().field(Field.IP_PROTO).value(IpProto.UDP).build(),
                 FieldMatch.builder().field(Field.UDP_DST).value(Constants.VXLAN_UDP_DST).build(),
                 FieldMatch.builder().field(Field.NOVIFLOW_TUNNEL_ID).value(vni).build());
     }

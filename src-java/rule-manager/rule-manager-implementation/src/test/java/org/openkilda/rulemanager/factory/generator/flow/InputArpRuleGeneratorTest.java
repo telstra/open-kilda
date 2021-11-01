@@ -17,6 +17,7 @@ package org.openkilda.rulemanager.factory.generator.flow;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.openkilda.rulemanager.Utils.assertEqualsMatch;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
 import static org.openkilda.rulemanager.Utils.getCommand;
 
@@ -87,7 +88,7 @@ public class InputArpRuleGeneratorTest {
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
                 FieldMatch.builder().field(Field.ETH_TYPE).value(EthType.ARP).build());
-        assertEquals(expectedMatch, flowCommandData.getMatch());
+        assertEqualsMatch(expectedMatch, flowCommandData.getMatch());
 
         RoutingMetadata metadata = RoutingMetadata.builder().arpFlag(true).build();
         Instructions expectedInstructions = Instructions.builder()

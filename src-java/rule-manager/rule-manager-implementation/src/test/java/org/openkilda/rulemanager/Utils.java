@@ -24,7 +24,6 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.match.FieldMatch;
-import org.openkilda.rulemanager.utils.RoutingMetadata;
 
 import lombok.Value;
 import org.junit.Assert;
@@ -99,10 +98,6 @@ public final class Utils {
                 .map(actionType::cast)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(format("Can't find action with type %s", actionType)));
-    }
-
-    public static OfMetadata mapMetadata(RoutingMetadata metadata) {
-        return new OfMetadata(metadata.getValue(), metadata.getMask());
     }
 
     /**
