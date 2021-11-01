@@ -68,11 +68,11 @@ public class PathSegment implements CompositeDataEntity<PathSegment.PathSegmentD
     public PathSegment(@NonNull PathId pathId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
                        int srcPort, int destPort,
                        boolean srcWithMultiTable, boolean destWithMultiTable, int seqId, Long latency, long bandwidth,
-                       boolean ignoreBandwidth, boolean failed) {
+                       boolean ignoreBandwidth, boolean failed, String sharedBandwidthGroupId) {
         data = PathSegmentDataImpl.builder().pathId(pathId).srcSwitch(srcSwitch).destSwitch(destSwitch)
                 .srcPort(srcPort).destPort(destPort).srcWithMultiTable(srcWithMultiTable)
                 .destWithMultiTable(destWithMultiTable).seqId(seqId).latency(latency).bandwidth(bandwidth)
-                .ignoreBandwidth(ignoreBandwidth).failed(failed).build();
+                .ignoreBandwidth(ignoreBandwidth).failed(failed).sharedBandwidthGroupId(sharedBandwidthGroupId).build();
     }
 
     public PathSegment(@NonNull PathSegmentData data) {
@@ -115,13 +115,15 @@ public class PathSegment implements CompositeDataEntity<PathSegment.PathSegmentD
                 .append(getDestSwitchId(), that.getDestSwitchId())
                 .append(getLatency(), that.getLatency())
                 .append(getBandwidth(), that.getBandwidth())
+                .append(getSharedBandwidthGroupId(), that.getSharedBandwidthGroupId())
                 .isEquals();
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(getPathId(), getSrcSwitchId(), getDestSwitchId(), getSrcPort(), getDestPort(),
-                isSrcWithMultiTable(), isDestWithMultiTable(), getSeqId(), getLatency(), getBandwidth(), isFailed());
+                isSrcWithMultiTable(), isDestWithMultiTable(), getSeqId(), getLatency(), getBandwidth(), isFailed(),
+                getSharedBandwidthGroupId());
     }
 
     /**
@@ -179,6 +181,10 @@ public class PathSegment implements CompositeDataEntity<PathSegment.PathSegmentD
         boolean isFailed();
 
         void setFailed(boolean failed);
+
+        String getSharedBandwidthGroupId();
+
+        void setSharedBandwidthGroupId(String sharedBandwidthGroupId);
     }
 
     /**
@@ -192,6 +198,8 @@ public class PathSegment implements CompositeDataEntity<PathSegment.PathSegmentD
         void setBandwidth(long bandwidth);
 
         void setIgnoreBandwidth(boolean ignoreBandwidth);
+
+        void setSharedBandwidthGroupId(String sharedBandwidthGroupId);
     }
 
     /**
@@ -215,6 +223,7 @@ public class PathSegment implements CompositeDataEntity<PathSegment.PathSegmentD
         long bandwidth;
         boolean ignoreBandwidth;
         boolean failed;
+        String sharedBandwidthGroupId;
 
         @Override
         public SwitchId getSrcSwitchId() {

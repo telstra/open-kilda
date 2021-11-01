@@ -108,13 +108,14 @@ public class FlowPathBuilder {
      * @param path path to be used for the flow path.
      * @param cookie cookie to be used for the flow path.
      * @param forceToIgnoreBandwidth force path to ignore bandwidth.
+     * @param sharedBandwidthGroupId a shared bandwidth group to be set for the path
      */
     public FlowPath buildFlowPath(Flow flow, PathResources pathResources, Path path, FlowSegmentCookie cookie,
-                                  boolean forceToIgnoreBandwidth) {
+                                  boolean forceToIgnoreBandwidth, String sharedBandwidthGroupId) {
         List<PathSegment> segments = buildPathSegments(pathResources.getPathId(), path, flow.getBandwidth(),
-                flow.isIgnoreBandwidth() || forceToIgnoreBandwidth);
+                flow.isIgnoreBandwidth() || forceToIgnoreBandwidth, sharedBandwidthGroupId);
         return buildFlowPath(flow, pathResources, path.getLatency(), path.getSrcSwitchId(), path.getDestSwitchId(),
-                segments, cookie, forceToIgnoreBandwidth);
+                segments, cookie, forceToIgnoreBandwidth, sharedBandwidthGroupId);
     }
 
     /**
@@ -126,11 +127,12 @@ public class FlowPathBuilder {
      * @param segments segments to be used for the flow path.
      * @param cookie cookie to be used for the flow path.
      * @param forceToIgnoreBandwidth force path to ignore bandwidth.
+     * @param sharedBandwidthGroupId a shared bandwidth group to be set for the path
      */
     public FlowPath buildFlowPath(Flow flow, PathResources pathResources, long pathLatency,
                                   SwitchId srcSwitchId, SwitchId destSwitchId,
                                   List<PathSegment> segments, FlowSegmentCookie cookie,
-                                  boolean forceToIgnoreBandwidth) {
+                                  boolean forceToIgnoreBandwidth, String sharedBandwidthGroupId) {
         Map<SwitchId, Switch> switches = new HashMap<>();
         switches.put(flow.getSrcSwitchId(), flow.getSrcSwitch());
         switches.put(flow.getDestSwitchId(), flow.getDestSwitch());
@@ -166,6 +168,7 @@ public class FlowPathBuilder {
                 .segments(segments)
                 .srcWithMultiTable(srcWithMultiTable)
                 .destWithMultiTable(dstWithMultiTable)
+                .sharedBandwidthGroupId(sharedBandwidthGroupId)
                 .build();
     }
 
@@ -176,9 +179,10 @@ public class FlowPathBuilder {
      * @param pathForSegments path to be used for the segments.
      * @param bandwidth bandwidth to be used for the segments.
      * @param ignoreBandwidth ignore bandwidth be used for the segments.
+     * @param sharedBandwidthGroupId a shared bandwidth group to be set for the segments
      */
     public List<PathSegment> buildPathSegments(PathId pathId, Path pathForSegments, long bandwidth,
-                                               boolean ignoreBandwidth) {
+                                               boolean ignoreBandwidth, String sharedBandwidthGroupId) {
         Map<SwitchId, SwitchProperties> switchProperties = getSwitchProperties(pathId);
 
         List<PathSegment> result = new ArrayList<>();
@@ -200,6 +204,7 @@ public class FlowPathBuilder {
                     .latency(segment.getLatency())
                     .bandwidth(bandwidth)
                     .ignoreBandwidth(ignoreBandwidth)
+                    .sharedBandwidthGroupId(sharedBandwidthGroupId)
                     .build());
         }
 

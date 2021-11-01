@@ -185,6 +185,7 @@ public class FlowUpdateService extends FsmBasedFlowProcessingService<FlowUpdateF
         }
 
         FlowUpdateFsm fsm = fsmFactory.newInstance(commandContext, flowId);
+        fsm.setSharedBandwidthGroupId(request.getFlowId());
         registerFsm(key, fsm);
 
         RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);

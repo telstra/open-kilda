@@ -78,7 +78,8 @@ public class AllocatePrimaryResourcesAction extends
 
         log.debug("Finding a new primary path for flow {}", flowId);
         GetPathsResult allocatedPaths = allocatePathPair(tmpFlow, newForwardPathId, newReversePathId,
-                false, pathIdsToReuse, oldPaths, true, path -> true);
+                false, pathIdsToReuse, oldPaths, true,
+                stateMachine.getSharedBandwidthGroupId(), path -> true);
         if (allocatedPaths == null) {
             throw new ResourceAllocationException("Unable to allocate a path");
         }
@@ -91,7 +92,8 @@ public class AllocatePrimaryResourcesAction extends
         FlowResources flowResources = allocateFlowResources(tmpFlow, newForwardPathId, newReversePathId);
         stateMachine.setNewPrimaryResources(flowResources);
 
-        FlowPathPair createdPaths = createFlowPathPair(flowId, flowResources, allocatedPaths, false);
+        FlowPathPair createdPaths = createFlowPathPair(flowId, flowResources, allocatedPaths, false,
+                stateMachine.getSharedBandwidthGroupId());
         log.debug("New primary path has been created: {}", createdPaths);
 
         setMirrorPointsToNewPath(oldPaths.getForwardPathId(), newForwardPathId);

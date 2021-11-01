@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: siakovenko
+      changes:
+        - tagDatabase:
+            tag: 019-add-shared-bandwidth-group-properties
+
+  - changeSet:
+      id: add_shared_bandwidth_group_properties
+      author: siakovenko
+      changes:
+        - sql: "CREATE PROPERTY path_segment.shared_bw_group_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_path.shared_bw_group_id IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX flow_path.shared_bw_group_id NOTUNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DROP INDEX flow_path.shared_bw_group_id"
+        - sql: "DROP PROPERTY flow_path.shared_bw_group_id IF EXISTS"
+        - sql: "DROP PROPERTY path_segment.shared_bw_group_id IF EXISTS"
+  - changeSet:
+      id: set_shared_bandwidth_group_on_existing_entities
+      author: siakovenko
+      changes:
+        - sql: "UPDATE flow_path SET shared_bw_group_id = flow_id"
+        - sql: "UPDATE path_segment SET shared_bw_group_id = in('owns').shared_bw_group_id"
+      rollback:
+        - sql: "UPDATE path_segment REMOVE shared_bw_group_id"
+        - sql: "UPDATE flow_path REMOVE shared_bw_group_id"

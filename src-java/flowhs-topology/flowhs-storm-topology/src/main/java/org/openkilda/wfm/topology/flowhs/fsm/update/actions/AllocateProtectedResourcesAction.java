@@ -86,7 +86,8 @@ public class AllocateProtectedResourcesAction extends
 
         log.debug("Finding a new protected path for flow {}", flowId);
         GetPathsResult allocatedPaths = allocatePathPair(tmpFlow, newForwardPathId, newReversePathId,
-                false, pathIdsToReuse, oldPaths, true, testNonOverlappingPath);
+                false, pathIdsToReuse, oldPaths, true,
+                stateMachine.getSharedBandwidthGroupId(), testNonOverlappingPath);
         if (allocatedPaths == null) {
             throw new ResourceAllocationException("Unable to allocate a path");
         }
@@ -103,7 +104,8 @@ public class AllocateProtectedResourcesAction extends
             FlowResources flowResources = allocateFlowResources(tmpFlow, newForwardPathId, newReversePathId);
             stateMachine.setNewProtectedResources(flowResources);
 
-            FlowPathPair createdPaths = createFlowPathPair(flowId, flowResources, allocatedPaths, false);
+            FlowPathPair createdPaths = createFlowPathPair(flowId, flowResources, allocatedPaths, false,
+                    stateMachine.getSharedBandwidthGroupId());
             log.debug("New protected path has been created: {}", createdPaths);
 
             saveAllocationActionWithDumpsToHistory(stateMachine, tmpFlow, "protected", createdPaths);
