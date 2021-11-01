@@ -1,0 +1,77 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: surabujin
+      changes:
+        - tagDatabase:
+            tag: opt--remove-history-classes
+
+  - changeSet:
+      id: remove_class-flow_history
+      author: surabujin
+      changes:
+        - sql: "DELETE VERTEX flow_history"
+        - sql: "DROP CLASS flow_history"
+      rollback:
+        - sql: "CREATE CLASS flow_history IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY flow_history.task_id IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX flow_history.task_id NOTUNIQUE_HASH_INDEX"
+
+  - changeSet:
+      id: remove_class-flow_dump
+      author: surabujin
+      changes:
+        - sql: "DELETE VERTEX flow_dump"
+        - sql: "DROP CLASS flow_dump"
+      rollback:
+        - sql: "CREATE CLASS flow_dump IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY flow_dump.task_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_dump.flow_id IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX flow_dump.task_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_dump.flow_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE PROPERTY flow_dump.bandwidth IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY flow_dump.forward_cookie IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY flow_dump.reverse_cookie IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY flow_dump.src_port IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_dump.dst_port IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_dump.src_vlan IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_dump.dst_vlan IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_dump.src_inner_vlan IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_dump.dst_inner_vlan IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_dump.forward_meter_id IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY flow_dump.reverse_meter_id IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY flow_dump.max_latency IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY flow_dump.diverse_group_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_dump.affinity_group_id IF NOT EXISTS STRING"
+
+  - changeSet:
+      id: remove_class-flow_event
+      author: surabujin
+      changes:
+        - sql: "DELETE VERTEX flow_event"
+        - sql: "DROP CLASS flow_event"
+      rollback:
+        - sql: "CREATE CLASS flow_event IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY flow_event.task_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_event.flow_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_event.timestamp IF NOT EXISTS LONG"
+        - sql: "CREATE INDEX flow_event.task_id UNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_event.flow_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_event.timestamp NOTUNIQUE"
+
+  - changeSet:
+      id: remove_class-port_history
+      author: surabujin
+      changes:
+        - sql: "DELETE VERTEX port_history"
+        - sql: "DROP CLASS port_history"
+      rollback:
+        - sql: "CREATE CLASS port_history IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY port_history.switch_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY port_history.port_number IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY port_history.time IF NOT EXISTS LONG"
+        - sql: "CREATE INDEX port_history.switch_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX port_history.port_number NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX port_history.time NOTUNIQUE"
+        - sql: "CREATE PROPERTY port_history.id IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX port_history.id UNIQUE_HASH_INDEX"
