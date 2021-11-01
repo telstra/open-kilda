@@ -38,6 +38,8 @@ include 'ping-storm-topology'
 include 'portstate-storm-topology'
 include 'reroute-messaging'
 include 'reroute-storm-topology'
+include 'rule-manager-api'
+include 'rule-manager-implementation'
 include 'server42-control'
 include 'server42-control-messaging'
 include 'server42-control-server-stub'
@@ -82,6 +84,8 @@ project(':ping-storm-topology').projectDir = "$rootDir/ping-topology/ping-storm-
 project(':portstate-storm-topology').projectDir = "$rootDir/portstate-topology/portstate-storm-topology" as File
 project(':reroute-messaging').projectDir = "$rootDir/reroute-topology/reroute-messaging" as File
 project(':reroute-storm-topology').projectDir = "$rootDir/reroute-topology/reroute-storm-topology" as File
+project(':rule-manager-api').projectDir = "$rootDir/rule-manager/rule-manager-api" as File
+project(':rule-manager-implementation').projectDir = "$rootDir/rule-manager/rule-manager-implementation" as File
 project(':server42-control').projectDir = "$rootDir/server42/server42-control" as File
 project(':server42-control-messaging').projectDir = "$rootDir/server42/server42-control-messaging" as File
 project(':server42-control-server-stub').projectDir = "$rootDir/server42/server42-control-server-stub" as File
