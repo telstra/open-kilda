@@ -15,6 +15,7 @@
 
 package org.openkilda.persistence.repositories;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
@@ -22,6 +23,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -29,6 +31,10 @@ public interface FlowPathRepository extends Repository<FlowPath> {
     Collection<FlowPath> findAll();
 
     Optional<FlowPath> findById(PathId pathId);
+
+    Map<PathId, FlowPath> findByIds(Set<PathId> pathIds);
+
+    Map<PathId, Flow> findFlowsByPathIds(Set<PathId> pathIds);
 
     Optional<FlowPath> findByFlowIdAndCookie(String flowId, FlowSegmentCookie flowCookie);
 

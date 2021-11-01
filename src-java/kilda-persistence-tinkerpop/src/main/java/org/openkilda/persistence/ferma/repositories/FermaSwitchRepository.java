@@ -32,6 +32,7 @@ import org.openkilda.persistence.ferma.frames.converters.SwitchStatusConverter;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.tx.TransactionRequired;
 
+import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.Edge;
@@ -43,6 +44,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -89,6 +92,20 @@ public class FermaSwitchRepository extends FermaGenericRepository<Switch, Switch
     @Override
     public Optional<Switch> findById(SwitchId switchId) {
         return SwitchFrame.load(framedGraph(), SwitchIdConverter.INSTANCE.toGraphProperty(switchId)).map(Switch::new);
+    }
+
+    @Override
+    public Map<SwitchId, Switch> findByIds(Set<SwitchId> switchIds) {
+        Set<String> graphSwitchIds = switchIds.stream()
+                .map(SwitchIdConverter.INSTANCE::toGraphProperty)
+                .collect(Collectors.toSet());
+        List<? extends SwitchFrame> switchFrames = framedGraph().traverse(g -> g.V()
+                        .hasLabel(SwitchFrame.FRAME_LABEL)
+                        .has(SwitchFrame.SWITCH_ID_PROPERTY, P.within(graphSwitchIds)))
+                .toListExplicit(SwitchFrame.class);
+        return switchFrames.stream()
+                .map(Switch::new)
+                .collect(Collectors.toMap(Switch::getSwitchId, Function.identity()));
     }
 
     @Override

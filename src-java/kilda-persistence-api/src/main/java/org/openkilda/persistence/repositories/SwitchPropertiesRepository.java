@@ -19,11 +19,14 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public interface SwitchPropertiesRepository extends Repository<SwitchProperties> {
     Collection<SwitchProperties> findAll();
 
     Optional<SwitchProperties> findBySwitchId(SwitchId switchId);
 
+    Map<SwitchId, SwitchProperties> findBySwitchIds(Set<SwitchId> switchIds);
 }

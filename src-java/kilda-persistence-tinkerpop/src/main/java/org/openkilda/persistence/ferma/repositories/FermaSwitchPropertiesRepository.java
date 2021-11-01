@@ -24,9 +24,14 @@ import org.openkilda.persistence.ferma.frames.SwitchPropertiesFrame;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 
+import org.apache.tinkerpop.gremlin.process.traversal.P;
+
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -57,6 +62,20 @@ public class FermaSwitchPropertiesRepository
                 .toListExplicit(SwitchPropertiesFrame.class);
         return switchPropertiesFrames.isEmpty() ? Optional.empty() : Optional.of(switchPropertiesFrames.get(0))
                 .map(SwitchProperties::new);
+    }
+
+    @Override
+    public Map<SwitchId, SwitchProperties> findBySwitchIds(Set<SwitchId> switchIds) {
+        Set<String> graphSwitchIds = switchIds.stream()
+                .map(SwitchIdConverter.INSTANCE::toGraphProperty)
+                .collect(Collectors.toSet());
+        List<? extends SwitchPropertiesFrame> switchPropertiesFrames = framedGraph().traverse(g -> g.V()
+                .hasLabel(SwitchPropertiesFrame.FRAME_LABEL)
+                .has(SwitchPropertiesFrame.SWITCH_ID_PROPERTY, P.within(graphSwitchIds)))
+                .toListExplicit(SwitchPropertiesFrame.class);
+        return switchPropertiesFrames.stream()
+                .map(SwitchProperties::new)
+                .collect(Collectors.toMap(SwitchProperties::getSwitchId, Function.identity()));
     }
 
     @Override
