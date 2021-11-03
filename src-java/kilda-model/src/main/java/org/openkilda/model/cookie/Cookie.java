@@ -16,6 +16,7 @@
 package org.openkilda.model.cookie;
 
 import org.openkilda.model.MeterId;
+import org.openkilda.model.cookie.ServiceCookie.ServiceCookieTag;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import lombok.Builder;
@@ -83,6 +84,8 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
             ServiceCookie.ServiceCookieTag.SERVER_42_ISL_RTT_OUTPUT_COOKIE).getValue();
     public static final long SERVER_42_ISL_RTT_TURNING_COOKIE = new ServiceCookie(
             ServiceCookie.ServiceCookieTag.SERVER_42_ISL_RTT_TURNING_COOKIE).getValue();
+    public static final long SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE = new ServiceCookie(
+            ServiceCookieTag.SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE).getValue();
 
 
     @JsonCreator

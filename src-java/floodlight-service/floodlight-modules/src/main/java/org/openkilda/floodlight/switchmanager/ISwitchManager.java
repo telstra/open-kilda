@@ -231,6 +231,14 @@ public interface ISwitchManager extends IFloodlightService {
     Long installServer42FlowRttTurningFlow(DatapathId dpid) throws SwitchOperationException;
 
     /**
+     * Install Server 42 turning rule which will send Ping packet from last switch back to first for the vxlan flow.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    Long installServer42FlowRttVxlanTurningFlow(DatapathId dpid) throws SwitchOperationException;
+
+    /**
      * Install Server 42 output vlan rule which will send Ping packet back to Server 42.
      *
      * @param dpid datapathId of the switch

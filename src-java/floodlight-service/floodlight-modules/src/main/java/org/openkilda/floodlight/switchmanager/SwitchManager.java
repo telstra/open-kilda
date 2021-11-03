@@ -68,6 +68,7 @@ import static org.openkilda.model.cookie.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_TURNING_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
@@ -238,6 +239,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     public static final int SERVER_42_FLOW_RTT_INPUT_PRIORITY = INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE;
     public static final int SERVER_42_FLOW_RTT_TURNING_PRIORITY = VERIFICATION_RULE_PRIORITY;
+    public static final int SERVER_42_FLOW_RTT_VXLAN_TURNING_PRIORITY = VERIFICATION_RULE_VXLAN_PRIORITY + 1;
     public static final int SERVER_42_FLOW_RTT_OUTPUT_VLAN_PRIORITY = VERIFICATION_RULE_PRIORITY;
     public static final int SERVER_42_FLOW_RTT_OUTPUT_VXLAN_PRIORITY = VERIFICATION_RULE_PRIORITY;
 
@@ -273,6 +275,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int ARP_VXLAN_UDP_SRC = 4501;
     public static final int SERVER_42_FLOW_RTT_FORWARD_UDP_PORT = 4700;
     public static final int SERVER_42_FLOW_RTT_REVERSE_UDP_PORT = 4701;
+    public static final int SERVER_42_FLOW_RTT_REVERSE_UDP_VXLAN_PORT = 4702;
     public static final int SERVER_42_ISL_RTT_FORWARD_UDP_PORT = 4710;
     public static final int SERVER_42_ISL_RTT_REVERSE_UDP_PORT = 4711;
     public static final int VXLAN_UDP_DST = 4789;
@@ -934,7 +937,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 ARP_INGRESS_COOKIE, ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE,
                 ARP_POST_INGRESS_ONE_SWITCH_COOKIE, SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE,
                 SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE, SERVER_42_FLOW_RTT_TURNING_COOKIE,
-                SERVER_42_ISL_RTT_OUTPUT_COOKIE, SERVER_42_ISL_RTT_TURNING_COOKIE);
+                SERVER_42_ISL_RTT_OUTPUT_COOKIE, SERVER_42_ISL_RTT_TURNING_COOKIE,
+                SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE);
         if (multiTable) {
             for (int islPort : islPorts) {
                 deletedRules.addAll(removeMultitableEndpointIslRules(dpid, islPort));
@@ -1328,6 +1332,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
+    public Long installServer42FlowRttVxlanTurningFlow(DatapathId dpid) throws SwitchOperationException {
+        return installDefaultFlow(dpid, switchFlowFactory.getServer42FlowRttVxlanTurningFlowGenerator(),
+                "--server 42 flow RTT vxlan turning rule--");
+    }
+
+    @Override
     public Long installServer42FlowRttOutputVlanFlow(
             DatapathId dpid, int port, int vlan, org.openkilda.model.MacAddress macAddress)
             throws SwitchOperationException {
@@ -1589,7 +1599,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         List<SwitchFlowGenerator> generators = new ArrayList<>();
         if (server42FlowRttFeatureToggle) {
             generators.add(switchFlowFactory.getServer42FlowRttTurningFlowGenerator());
-
+            generators.add(switchFlowFactory.getServer42FlowRttVxlanTurningFlowGenerator());
             if (server42FlowRttSwitchProperty) {
                 for (Integer port : customerPorts) {
                     generators.add(switchFlowFactory.getServer42FlowRttInputFlowGenerator(

@@ -13,7 +13,11 @@
 #   limitations under the License.
 #
 ARG base_image=ubuntu:focal
+
 FROM ${base_image}
+
+ARG OVS_VERSION
+ENV OVS_VERSION=${OVS_VERSION:-"kilda.v2.15.0.1"}
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -37,9 +41,9 @@ RUN apt update \
     && pip3 install wheel==0.34.2 \
     && pip3 install tox==3.14.4 \
     && cd /root \
-    && wget https://github.com/timofei-durakov/ovs/archive/refs/tags/kilda.v2.15.1.3.tar.gz \
-    && tar -xvf kilda.v2.15.1.3.tar.gz \
-    && cd ovs-kilda.v2.15.1.3 \
+    && wget https://github.com/timofei-durakov/ovs/archive/refs/tags/${OVS_VERSION}.tar.gz \
+    && tar -xvf ${OVS_VERSION}.tar.gz \
+    && cd ovs-${OVS_VERSION} \
     && ./boot.sh \
     && ./configure --prefix=/usr --localstatedir=/var --sysconfdir=/etc \
     && make \

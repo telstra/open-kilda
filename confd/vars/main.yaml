@@ -212,3 +212,5 @@ kilda_flow_rtt_stats_expiration_seconds: 30
 kilda_isl_rtt_latency_expiration_seconds: 10
 kilda_flow_latency_sla_timeout_seconds: 30
 kilda_flow_latency_sla_threshold_percent: 0.05
+
+#ovs_vxlan: true

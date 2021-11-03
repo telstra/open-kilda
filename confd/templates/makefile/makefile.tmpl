@@ -11,7 +11,7 @@ build-base: {{if not (exists "/no_grpc_stub")}}build-grpc-stub {{end}}build-lock
 {{end}}{{if not (exists "/no_logstash")}}	docker build -t kilda/logstash:latest docker/logstash
 {{end}}{{if not (exists "/no_elasticsearch")}}	docker build -t kilda/elasticsearch:latest docker/elasticsearch
 {{end}}	$(MAKE) -C src-python/lab-service find-python-requirements
-	docker build -t kilda/base-lab-service:latest docker/base/kilda-base-lab-service/
+	docker build -t kilda/base-lab-service:latest docker/base/kilda-base-lab-service/ {{if (exists "/ovs_vxlan")}} --build-arg=OVS_VERSION=kilda.v2.15.1.3{{end}}
 
 .PHONY: build-lock-keeper
 build-lock-keeper:

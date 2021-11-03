@@ -106,6 +106,9 @@ public enum InstallRulesAction {
     // Install Turning Server 42 Flow RTT rule
     INSTALL_SERVER_42_FLOW_RTT_TURNING,
 
+    // Install Turning Server 42 Flow RTT Vxlan rule
+    INSTALL_SERVER_42_FLOW_RTT_VXLAN_TURNING,
+
     // Install Output VLAN Server 42 Flow RTT rule
     INSTALL_SERVER_42_FLOW_RTT_OUTPUT_VLAN,
 

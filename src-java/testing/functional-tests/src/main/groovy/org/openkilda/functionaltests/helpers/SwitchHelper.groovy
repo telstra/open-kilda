@@ -29,6 +29,7 @@ import static org.openkilda.model.cookie.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_TURNING_COOKIE
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE
 import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE
 import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
@@ -216,6 +217,7 @@ class SwitchHelper {
             if (sw.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST) ||
                     sw.features.contains(SwitchFeature.KILDA_OVS_SWAP_FIELD)) {
                 server42Rules << SERVER_42_FLOW_RTT_TURNING_COOKIE
+                server42Rules << SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE
             }
         }
         if (toggles.server42IslRtt &&
