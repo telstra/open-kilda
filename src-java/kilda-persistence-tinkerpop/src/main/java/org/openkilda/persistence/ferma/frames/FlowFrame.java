@@ -26,6 +26,7 @@ import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.YFlow;
 import org.openkilda.persistence.ferma.frames.converters.Convert;
 import org.openkilda.persistence.ferma.frames.converters.FlowEncapsulationTypeConverter;
 import org.openkilda.persistence.ferma.frames.converters.FlowStatusConverter;
@@ -531,6 +532,19 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
         return subFlowFrames.get(0).getYFlowId();
     }
 
+    @Override
+    public YFlow getYFlow() {
+        List<? extends YSubFlowFrame> subFlowFrames = traverse(v -> v.inE(YSubFlowFrame.FRAME_LABEL))
+                .toListExplicit(YSubFlowFrame.class);
+        if (subFlowFrames.isEmpty()) {
+            return null;
+        }
+        if (subFlowFrames.size() > 1) {
+            throw new IllegalStateException(format("The flow %s has more than one y_subflow references: %s",
+                    getId(), subFlowFrames));
+        }
+        return subFlowFrames.get(0).getYFlow();
+    }
 
     public static Optional<FlowFrame> load(FramedGraph graph, String flowId) {
         List<? extends FlowFrame> flowFrames = graph.traverse(g -> g.V()
