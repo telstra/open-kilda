@@ -43,6 +43,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
             [swP.src, swP.dst].every { sw -> switchHelper.isVxlanEnabled(sw.dpId) }
         }
+        assumeTrue(switchPair != null, "Unable to find required switch pair in topology")
         def flow1 = flowHelperV2.randomFlow(switchPair)
         flow1.encapsulationType = null
         northboundV2.addFlow(flow1)
