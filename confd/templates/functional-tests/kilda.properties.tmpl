@@ -7,6 +7,7 @@ hibernate.url = {{ getv "/kilda_tests_hibernate_url" "n/a" }}
 elasticsearch.endpoint={{ getv "/kilda_tests_logging_elasticsearch_proto" "n/a" }}://{{ getv "/kilda_tests_logging_elasticsearch_hosts" "n/a" }}
 zookeeper.connect_string = {{ getv "/kilda_tests_zookeeper_hosts" "n/a" }}/{{ getv "/kilda_zookeeper_state_root" }}
 kafka.bootstrap.server={{ getv "/kilda_tests_kafka_hosts" "n/a" }}
+kafka.bootstrap.server.internal={{ getv "/kilda_tests_kafka_hosts_internal" "n/a" }}
 opentsdb.endpoint=http://{{ getv "/kilda_tests_opentsdb_hosts" "n/a" }}:{{ getv "/kilda_tests_opentsdb_port" "n/a" }}
 grpc.endpoint={{ getv "/kilda_tests_grpc_endpoint" "n/a" }}:{{ getv "/kilda_tests_grpc_rest_port" "n/a" }}
 {{else}}
@@ -16,6 +17,7 @@ hibernate.url = {{ getv "/kilda_hibernate_url" }}
 elasticsearch.endpoint={{ getv "/kilda_logging_elasticsearch_proto" }}://{{ getv "/kilda_logging_elasticsearch_hosts" }}
 zookeeper.connect_string = {{ getv "/kilda_zookeeper_hosts"}}/{{ getv "/kilda_zookeeper_state_root" }}
 kafka.bootstrap.server={{ getv "/kilda_kafka_hosts" }}
+kafka.bootstrap.server.internal={{ getv "/kilda_kafka_hosts" }}
 opentsdb.endpoint=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
 grpc.endpoint={{ getv "/kilda_grpc_endpoint" }}:{{ getv "/kilda_grpc_rest_port" }}
 {{end}}

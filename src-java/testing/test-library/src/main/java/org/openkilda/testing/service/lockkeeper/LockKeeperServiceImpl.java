@@ -66,7 +66,7 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     @Autowired
     private FloodlightsHelper flHelper;
 
-    @Value("${kafka.bootstrap.server}")
+    @Value("${kafka.bootstrap.server.internal}")
     private String kafkaBootstrapServer;
 
     /**
