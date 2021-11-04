@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.107.1 (02/11/2021)
+
+### Improvements:
+-  [#4544](https://github.com/telstra/open-kilda/pull/4544) Add ability to configure flowhs workers exclusively [**configuration**]
+-  [#4545](https://github.com/telstra/open-kilda/pull/4545) Remove history classes from orientdb
+-  [#4550](https://github.com/telstra/open-kilda/pull/4550) Remove logstash.pendev from README.md [**docs**]
+-  [#4487](https://github.com/telstra/open-kilda/pull/4487) Add rule manager library PoC
+-  [#4173](https://github.com/telstra/open-kilda/pull/4173) Add the antipatterns section to the logging conventions [**docs**]
+-  [#4561](https://github.com/telstra/open-kilda/pull/4561) Revert "Use sql for history on local env" (Issue: [#4499](https://github.com/telstra/open-kilda/issues/4499))
+-  [#4563](https://github.com/telstra/open-kilda/pull/4563) Set FlowHs worker count to 1 [**configuration**]
+-  [#4499](https://github.com/telstra/open-kilda/pull/4499) Use sql for history on local env [**configuration**][**tests**]
+-  [#4512](https://github.com/telstra/open-kilda/pull/4512) attempt 2: "tests: Add extension for proper release of the lab."" [**tests**]
+-  [#4519](https://github.com/telstra/open-kilda/pull/4519) add test for #4517 and extract statsRouterInterval into baseSpecification (Issue: [#4517](https://github.com/telstra/open-kilda/issues/4517)) [**tests**]
+-  [#4521](https://github.com/telstra/open-kilda/pull/4521) Remove confd from local dev dependencies [**docs**]
+-  [#4523](https://github.com/telstra/open-kilda/pull/4523) adjust flowRulesSpec to work with enabled s42 [**tests**]
+-  [#4529](https://github.com/telstra/open-kilda/pull/4529) Remove kafka.pendev from /etc/hosts [**configuration**]
+-  [#4536](https://github.com/telstra/open-kilda/pull/4536) Change ConnectedDevicesSpec to use flowHelperV2 [**tests**]
+-  [#4537](https://github.com/telstra/open-kilda/pull/4537) Fix old FlowHelper to properly pick traffgen ports [**tests**]
+-  [#4540](https://github.com/telstra/open-kilda/pull/4540) Change copy-test-props to not overwrite existing [**configuration**][**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.107.0...v1.107.1).
+
+---
+
 ## v1.107.0 (26/10/2021)
 
 ### Features:
