@@ -82,9 +82,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
-    @Unroll("Valid #data.description has traffic and no rule discrepancies \
-(#flow.source.datapath - #flow.destination.datapath)")
-    def "Valid flow has no rule discrepancies"() {
+    def "Valid #data.description has traffic and no rule discrepancies [#srcDstStr]"() {
         given: "A flow"
         assumeTrue(topology.activeTraffGens.size() >= 2,
 "There should be at least two active traffgens for test execution")
@@ -147,6 +145,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         */
         data << flowsWithoutTransitSwitch + flowsWithTransitSwitch + singleSwitchFlows
         flow = data.flow as FlowPayload
+        srcDstStr = "src:${topology.find(flow.source.datapath).hwSwString}->dst:${topology.find(flow.destination.datapath).hwSwString}"
     }
 
     @Tidy
