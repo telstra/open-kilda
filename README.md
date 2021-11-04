@@ -68,41 +68,6 @@ You also need to increase the maven RAM limit at least up to 1G.
 ```export MAVEN_OPTS="-Xmx1g -XX:MaxPermSize=128m"```
 
 
-#### Confd
-Also, don't forget to install confd. This tool is used for creating config/properties files from templates. 
-To install it execute the following command:
-
-```
-wget https://github.com/kelseyhightower/confd/releases/download/v0.16.0/confd-0.16.0-linux-amd64 -O /usr/local/bin/confd
-chmod +x /usr/local/bin/confd
-```
-
-##### Basic installation instruction from sources
-
-```
-cd /opt
-sudo mkdir confd
-sudo chown $USER:$USER confd
-cd confd
-git clone https://github.com/kelseyhightower/confd.git
-cd confd
-git checkout v0.16.0
-sudo apt install golang make
-go get github.com/BurntSushi/toml
-go build github.com/BurntSushi/toml
-go get github.com/kelseyhightower/confd/backends
-go build github.com/kelseyhightower/confd/backends
-make build
-sudo make install
-```
-
-
-#### /etc/hosts
-Following entry has to be added to /etc/hosts for _local_ Kilda to work properly
-```
-127.0.0.1 localhost kafka.pendev logstash.pendev
-```
-
 ### How to build Kilda Controller
 
 From the base directory run the following command:
@@ -354,9 +319,6 @@ make up-test-mode
 ```
 
 ### How to use confd for config/properties templating
-
-Pre-requirements: you need confd version v0.14.0+ for processing yams/json as backend. 
-You can download it from [official confd site](https://github.com/kelseyhightower/confd/blob/master/docs/installation.md)
 
 We have confd for managing config/properties files from templates. Confd configs, templates and variable file stored in confd/ folder.
 `confd/conf.d/*.toml` - files with desctiption how to process templates (src. path, dst.path.... etc)
