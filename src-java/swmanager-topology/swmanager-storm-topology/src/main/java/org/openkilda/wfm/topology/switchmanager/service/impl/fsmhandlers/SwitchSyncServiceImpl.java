@@ -17,9 +17,7 @@ package org.openkilda.wfm.topology.switchmanager.service.impl.fsmhandlers;
 
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState;
@@ -52,10 +50,9 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
     private SwitchManagerCarrier carrier;
     private StateMachineBuilder<SwitchSyncFsm, SwitchSyncState, SwitchSyncEvent, Object> builder;
 
-    public SwitchSyncServiceImpl(SwitchManagerCarrier carrier, PersistenceManager persistenceManager,
-                                 FlowResourcesConfig flowResourcesConfig) {
+    public SwitchSyncServiceImpl(SwitchManagerCarrier carrier, PersistenceManager persistenceManager) {
         this.carrier = carrier;
-        this.commandBuilder = new CommandBuilderImpl(persistenceManager, flowResourcesConfig);
+        this.commandBuilder = new CommandBuilderImpl(persistenceManager);
         this.builder = SwitchSyncFsm.builder();
     }
 
@@ -69,14 +66,26 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
     }
 
     @Override
-    public void handleInstallRulesResponse(String key) {
+    public void handleInstallCommandsResponse(String key) {
         SwitchSyncFsm fsm = fsms.get(key);
         if (fsm == null) {
             logFsmNotFound(key);
             return;
         }
 
-        fsm.fire(SwitchSyncEvent.MISSING_RULES_INSTALLED);
+        fsm.fire(SwitchSyncEvent.COMMANDS_INSTALLED);
+        process(fsm);
+    }
+
+    @Override
+    public void handleRemoveCommandsResponse(String key) {
+        SwitchSyncFsm fsm = fsms.get(key);
+        if (fsm == null) {
+            logFsmNotFound(key);
+            return;
+        }
+
+        fsm.fire(SwitchSyncEvent.COMMANDS_REMOVED);
         process(fsm);
     }
 
@@ -93,18 +102,6 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
     }
 
     @Override
-    public void handleReinstallDefaultRulesResponse(String key, FlowReinstallResponse response) {
-        SwitchSyncFsm fsm = fsms.get(key);
-        if (fsm == null) {
-            logFsmNotFound(key);
-            return;
-        }
-
-        fsm.fire(SwitchSyncEvent.MISCONFIGURED_RULES_REINSTALLED, response);
-        process(fsm);
-    }
-
-    @Override
     public void handleRemoveMetersResponse(String key) {
         SwitchSyncFsm fsm = fsms.get(key);
         if (fsm == null) {
@@ -113,42 +110,6 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
         }
 
         fsm.fire(SwitchSyncEvent.METERS_REMOVED);
-        process(fsm);
-    }
-
-    @Override
-    public void handleModifyMetersResponse(String key) {
-        SwitchSyncFsm fsm = fsms.get(key);
-        if (fsm == null) {
-            logFsmNotFound(key);
-            return;
-        }
-
-        fsm.fire(SwitchSyncEvent.MISCONFIGURED_METERS_MODIFIED);
-        process(fsm);
-    }
-
-    @Override
-    public void handleInstallGroupResponse(String key) {
-        SwitchSyncFsm fsm = fsms.get(key);
-        if (fsm == null) {
-            logFsmNotFound(key);
-            return;
-        }
-
-        fsm.fire(SwitchSyncEvent.GROUPS_INSTALLED);
-        process(fsm);
-    }
-
-    @Override
-    public void handleModifyGroupResponse(String key) {
-        SwitchSyncFsm fsm = fsms.get(key);
-        if (fsm == null) {
-            logFsmNotFound(key);
-            return;
-        }
-
-        fsm.fire(SwitchSyncEvent.GROUPS_MODIFIED);
         process(fsm);
     }
 
@@ -227,9 +188,10 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
 
     void process(SwitchSyncFsm fsm) {
         final List<SwitchSyncState> stopStates = Arrays.asList(
-                SwitchSyncState.RULES_COMMANDS_SEND,
-                SwitchSyncState.METERS_COMMANDS_SEND,
-                SwitchSyncState.GROUPS_COMMANDS_SEND,
+                SwitchSyncState.REMOVE_RULES_COMMANDS_SEND,
+                SwitchSyncState.REMOVE_METERS_COMMANDS_SEND,
+                SwitchSyncState.REMOVE_GROUPS_COMMANDS_SEND,
+                SwitchSyncState.SEND_COMMANDS,
                 SwitchSyncState.FINISHED,
                 SwitchSyncState.FINISHED_WITH_ERROR
         );

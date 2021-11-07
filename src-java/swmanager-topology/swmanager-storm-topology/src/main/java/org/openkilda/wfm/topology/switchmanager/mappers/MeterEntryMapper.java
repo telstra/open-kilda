@@ -16,11 +16,17 @@
 package org.openkilda.wfm.topology.switchmanager.mappers;
 
 import org.openkilda.messaging.info.meter.MeterEntry;
+import org.openkilda.model.MeterId;
+import org.openkilda.rulemanager.MeterFlag;
+import org.openkilda.rulemanager.MeterSpeakerCommandData;
 import org.openkilda.wfm.topology.switchmanager.model.SimpleMeterEntry;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
+
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Mapper
 public interface MeterEntryMapper {
@@ -30,4 +36,17 @@ public interface MeterEntryMapper {
     @Mapping(target = "flowId", ignore = true)
     @Mapping(target = "cookie", ignore = true)
     SimpleMeterEntry map(MeterEntry meterEntry);
+
+    @Mapping(target = "flowId", ignore = true)
+    @Mapping(target = "cookie", ignore = true)
+    @Mapping(target = "burstSize", source = "burst")
+    SimpleMeterEntry map(MeterSpeakerCommandData meterSpeakerCommandData);
+
+    default long map(MeterId meterId) {
+        return meterId.getValue();
+    }
+
+    default Set<String> map(Set<MeterFlag> flags) {
+        return flags.stream().map(MeterFlag::toString).collect(Collectors.toSet());
+    }
 }

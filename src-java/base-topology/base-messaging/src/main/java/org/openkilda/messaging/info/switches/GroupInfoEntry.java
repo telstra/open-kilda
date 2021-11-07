@@ -36,6 +36,7 @@ public class GroupInfoEntry implements Serializable {
 
     @Data
     @AllArgsConstructor
+    @Builder
     @JsonNaming(value = SnakeCaseStrategy.class)
     public static class BucketEntry implements Serializable {
         private Integer port;

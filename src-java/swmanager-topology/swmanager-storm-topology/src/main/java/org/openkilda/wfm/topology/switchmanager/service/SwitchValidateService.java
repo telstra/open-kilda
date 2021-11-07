@@ -19,8 +19,6 @@ import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
-import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 
@@ -33,10 +31,6 @@ public interface SwitchValidateService {
     void handleGroupEntriesResponse(String key, SwitchGroupEntries data);
 
     void handleLogicalPortResponse(String key, DumpLogicalPortsResponse data);
-
-    void handleExpectedDefaultFlowEntriesResponse(String key, SwitchExpectedDefaultFlowEntries data);
-
-    void handleExpectedDefaultMeterEntriesResponse(String key, SwitchExpectedDefaultMeterEntries data);
 
     void handleMeterEntriesResponse(String key, SwitchMeterEntries data);
 

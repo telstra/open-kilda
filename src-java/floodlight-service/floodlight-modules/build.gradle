@@ -12,6 +12,7 @@ dependencies {
     implementation project(':kilda-model')
     implementation project(':kilda-reporting')
     implementation project(':blue-green')
+    implementation project(':rule-manager-api')
     testImplementation project(':kilda-utils:stubs')
 
     implementation('org.projectfloodlight:openflowj')

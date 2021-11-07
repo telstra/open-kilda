@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.switchmanager.bolt;
 
 import org.openkilda.bluegreen.LifecycleEvent;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -28,7 +29,6 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowInstallResponse;
-import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.messaging.info.flow.FlowRemoveResponse;
 import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
@@ -36,21 +36,17 @@ import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterData;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
-import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.messaging.info.switches.DeleteGroupResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
-import org.openkilda.messaging.info.switches.InstallGroupResponse;
-import org.openkilda.messaging.info.switches.ModifyGroupResponse;
-import org.openkilda.messaging.info.switches.ModifyMeterResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.swmanager.request.CreateLagPortRequest;
 import org.openkilda.messaging.swmanager.request.DeleteLagPortRequest;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.wfm.error.PipelineException;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.share.zk.ZkStreams;
@@ -90,7 +86,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     public static final Fields ZOOKEEPER_STREAM_FIELDS = new Fields(
             ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT);
 
-    private final FlowResourcesConfig flowResourcesConfig;
+    private final RuleManagerConfig ruleManagerConfig;
     private final SwitchManagerTopologyConfig topologyConfig;
     private transient SwitchValidateService validateService;
     private transient SwitchSyncService syncService;
@@ -102,10 +98,10 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
 
     public SwitchManagerHub(HubBolt.Config hubConfig, PersistenceManager persistenceManager,
                             SwitchManagerTopologyConfig topologyConfig,
-                            FlowResourcesConfig flowResourcesConfig) {
+                            RuleManagerConfig ruleManagerConfig) {
         super(persistenceManager, hubConfig);
         this.topologyConfig = topologyConfig;
-        this.flowResourcesConfig = flowResourcesConfig;
+        this.ruleManagerConfig = ruleManagerConfig;
 
         enableMeterRegistry("kilda.switch_validate", StreamType.HUB_TO_METRICS_BOLT.name());
     }
@@ -115,8 +111,9 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
         super.init();
 
         validateService = new SwitchValidateServiceImpl(this, persistenceManager,
-                new ValidationServiceImpl(persistenceManager, topologyConfig, flowResourcesConfig));
-        syncService = new SwitchSyncServiceImpl(this, persistenceManager, flowResourcesConfig);
+                new ValidationServiceImpl(persistenceManager),
+                new RuleManagerImpl(ruleManagerConfig));
+        syncService = new SwitchSyncServiceImpl(this, persistenceManager);
         switchRuleService = new SwitchRuleServiceImpl(this, persistenceManager.getRepositoryFactory());
         createLagPortService = new CreateLagPortServiceImpl(this, persistenceManager.getRepositoryFactory(),
                 persistenceManager.getTransactionManager(), topologyConfig.getBfdPortOffset(),
@@ -171,11 +168,6 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
             InfoData data = ((InfoMessage) message).getData();
             if (data instanceof SwitchFlowEntries) {
                 validateService.handleFlowEntriesResponse(key, (SwitchFlowEntries) data);
-            } else if (data instanceof SwitchExpectedDefaultFlowEntries) {
-                validateService.handleExpectedDefaultFlowEntriesResponse(key, (SwitchExpectedDefaultFlowEntries) data);
-            } else if (data instanceof SwitchExpectedDefaultMeterEntries) {
-                validateService.handleExpectedDefaultMeterEntriesResponse(key,
-                        (SwitchExpectedDefaultMeterEntries) data);
             } else if (data instanceof SwitchGroupEntries) {
                 validateService.handleGroupEntriesResponse(key, (SwitchGroupEntries) data);
             } else if (data instanceof DumpLogicalPortsResponse) {
@@ -183,19 +175,12 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
             } else if (data instanceof SwitchMeterData) {
                 handleMetersResponse(key, (SwitchMeterData) data);
             } else if (data instanceof FlowInstallResponse) {
-                syncService.handleInstallRulesResponse(key);
+                // todo (rule-manager-fl-integration): handle new speaker responses
+                syncService.handleInstallCommandsResponse(key);
             } else if (data instanceof FlowRemoveResponse) {
                 syncService.handleRemoveRulesResponse(key);
-            } else if (data instanceof FlowReinstallResponse) {
-                syncService.handleReinstallDefaultRulesResponse(key, (FlowReinstallResponse) data);
             } else if (data instanceof DeleteMeterResponse) {
                 syncService.handleRemoveMetersResponse(key);
-            } else if (data instanceof ModifyMeterResponse) {
-                syncService.handleModifyMetersResponse(key);
-            } else if (data instanceof InstallGroupResponse) {
-                syncService.handleInstallGroupResponse(key);
-            } else if (data instanceof ModifyGroupResponse) {
-                syncService.handleModifyGroupResponse(key);
             } else if (data instanceof DeleteGroupResponse) {
                 syncService.handleDeleteGroupResponse(key);
             } else if (data instanceof SwitchRulesResponse) {
@@ -257,6 +242,11 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     }
 
     @Override
+    public void sendCommandToSpeaker(String key, SpeakerRequest request) {
+        emit(SpeakerWorkerBolt.INCOME_STREAM, getCurrentTuple(), makeWorkerTuple(key, request));
+    }
+
+    @Override
     public void response(String key, Message message) {
         emit(NORTHBOUND_STREAM_ID, getCurrentTuple(), makeNorthboundTuple(key, message));
     }
@@ -293,6 +283,10 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     }
 
     private Values makeWorkerTuple(String key, CommandData payload) {
+        return new Values(KeyProvider.generateChainedKey(key), payload, getCommandContext());
+    }
+
+    private Values makeWorkerTuple(String key, SpeakerRequest payload) {
         return new Values(KeyProvider.generateChainedKey(key), payload, getCommandContext());
     }
 

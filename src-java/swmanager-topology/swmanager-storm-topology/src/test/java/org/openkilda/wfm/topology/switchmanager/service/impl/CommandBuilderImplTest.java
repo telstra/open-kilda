@@ -19,21 +19,11 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.openkilda.model.cookie.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE;
 
-import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
-import org.openkilda.messaging.command.flow.BaseFlow;
-import org.openkilda.messaging.command.flow.InstallEgressFlow;
-import org.openkilda.messaging.command.flow.InstallIngressFlow;
-import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
-import org.openkilda.messaging.command.flow.InstallTransitFlow;
-import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
-import org.openkilda.messaging.command.flow.ReinstallServer42FlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
@@ -51,7 +41,6 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.TransitVlan;
-import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -59,21 +48,12 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 
-import com.google.common.collect.Lists;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class CommandBuilderImplTest {
 
@@ -84,42 +64,13 @@ public class CommandBuilderImplTest {
     private static final int SERVER42_PORT = 1;
     private static final int SERVER42_VLAN = 2;
 
-    private static CommandBuilderImpl commandBuilder;
-
-    @BeforeClass
-    public static void setUpOnce() {
-        Properties configProps = new Properties();
-        configProps.setProperty("flow.meter-id.max", "40");
-        configProps.setProperty("flow.vlan.max", "50");
-
-        PropertiesBasedConfigurationProvider configurationProvider =
-                new PropertiesBasedConfigurationProvider(configProps);
-        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
-        commandBuilder = new CommandBuilderImpl(persistenceManager().build(), flowResourcesConfig);
-    }
-
-    @Test
-    public void testCommandBuilder() {
-        List<BaseFlow> response = commandBuilder
-                .buildCommandsToSyncMissingRules(SWITCH_ID_B,
-                        Stream.of(1L, 2L, 3L, 4L)
-                                .map(effectiveId -> new FlowSegmentCookie(FlowPathDirection.FORWARD, effectiveId))
-                                .map(Cookie::getValue)
-                                .collect(Collectors.toList()));
-        assertEquals(4, response.size());
-        assertTrue(response.get(0) instanceof InstallEgressFlow);
-        assertTrue(response.get(1) instanceof InstallTransitFlow);
-        assertTrue(response.get(2) instanceof InstallOneSwitchFlow);
-        assertTrue(response.get(3) instanceof InstallIngressFlow);
-    }
+    private static CommandBuilderImpl commandBuilder = new CommandBuilderImpl(persistenceManager().build());
 
     private static PersistenceManagerBuilder persistenceManager() {
         return new PersistenceManagerBuilder();
     }
 
     private static class PersistenceManagerBuilder {
-        private final Map<SwitchId, Switch> switchStorage = new HashMap<>();
-
         private FlowRepository flowRepository = mock(FlowRepository.class);
         private FlowPathRepository flowPathRepository = mock(FlowPathRepository.class);
         private TransitVlanRepository transitVlanRepository = mock(TransitVlanRepository.class);
@@ -302,31 +253,6 @@ public class CommandBuilderImplTest {
         assertEquals(Integer.valueOf(outPort), criteria.getOutPort());
         assertNull(criteria.getMetadataValue());
         assertNull(criteria.getMetadataMask());
-    }
-
-    @Test
-    public void reinstallDefaultRuleTest() {
-        List<ReinstallDefaultFlowForSwitchManagerRequest> commands = commandBuilder.buildCommandsToReinstallRules(
-                SWITCH_ID_A, Lists.newArrayList(ROUND_TRIP_LATENCY_RULE_COOKIE));
-
-        assertEquals(1, commands.size());
-        assertEquals(ROUND_TRIP_LATENCY_RULE_COOKIE, commands.get(0).getCookie());
-        assertEquals(SWITCH_ID_A, commands.get(0).getSwitchId());
-    }
-
-    @Test
-    public void reinstallServer42RuleTest() {
-        List<ReinstallDefaultFlowForSwitchManagerRequest> commands = commandBuilder.buildCommandsToReinstallRules(
-                SWITCH_ID_A, Lists.newArrayList(Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE));
-
-        assertEquals(1, commands.size());
-        assertEquals(ReinstallServer42FlowForSwitchManagerRequest.class, commands.get(0).getClass());
-        ReinstallServer42FlowForSwitchManagerRequest server42Command =
-                (ReinstallServer42FlowForSwitchManagerRequest) commands.get(0);
-
-        assertEquals(SERVER42_MAC_ADDRESS, server42Command.getServer42MacAddress());
-        assertEquals(SERVER42_PORT, server42Command.getServer42Port());
-        assertEquals(SERVER42_VLAN, server42Command.getServer42Vlan());
     }
 
     private FlowEntry buildFlowEntry(Long cookie, String inPort, String inVlan, String outPort,

@@ -21,11 +21,13 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.SwitchId;
+import org.openkilda.rulemanager.SpeakerCommandData;
 
 import com.google.common.collect.ImmutableList;
 import lombok.Builder;
 import lombok.Value;
 
+import java.util.Collection;
 import java.util.List;
 
 @Value
@@ -47,6 +49,8 @@ public class SwitchValidationContext {
     ValidateGroupsResult validateGroupsResult;
     ValidateLogicalPortsResult validateLogicalPortResult;
 
+    Collection<SpeakerCommandData> expectedOfElements;
+
     @Builder(toBuilder = true)
     protected SwitchValidationContext(
             SwitchId switchId, List<FlowSegmentRequestFactory> expectedFlowSegments,
@@ -55,7 +59,8 @@ public class SwitchValidationContext {
             List<GroupEntry> actualGroupEntries,
             List<LogicalPort> actualLogicalPortEntries,
             ValidateRulesResult ofFlowsValidationReport, ValidateMetersResult metersValidationReport,
-            ValidateGroupsResult validateGroupsResult, ValidateLogicalPortsResult validateLogicalPortResult) {
+            ValidateGroupsResult validateGroupsResult, ValidateLogicalPortsResult validateLogicalPortResult,
+            Collection<SpeakerCommandData> expectedOfElements) {
         this.switchId = switchId;
 
         this.expectedFlowSegments = expectedFlowSegments != null ? ImmutableList.copyOf(expectedFlowSegments) : null;
@@ -74,6 +79,8 @@ public class SwitchValidationContext {
         this.metersValidationReport = metersValidationReport;
         this.validateGroupsResult = validateGroupsResult;
         this.validateLogicalPortResult = validateLogicalPortResult;
+
+        this.expectedOfElements = expectedOfElements;
     }
 
     public static SwitchValidationContextBuilder builder(SwitchId switchId) {

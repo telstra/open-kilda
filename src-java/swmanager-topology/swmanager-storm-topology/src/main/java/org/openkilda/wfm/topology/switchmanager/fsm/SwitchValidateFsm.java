@@ -17,8 +17,6 @@ package org.openkilda.wfm.topology.switchmanager.fsm;
 
 import static org.openkilda.model.SwitchFeature.LAG;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.ERROR;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.EXPECTED_DEFAULT_METERS_RECEIVED;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.EXPECTED_DEFAULT_RULES_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.GROUPS_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.LOGICAL_PORTS_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.METERS_RECEIVED;
@@ -30,13 +28,10 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.Swi
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState.FINISHED_WITH_ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState.VALIDATE;
 
-import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.messaging.command.grpc.DumpLogicalPortsRequest;
 import org.openkilda.messaging.command.switches.DumpGroupsForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
-import org.openkilda.messaging.command.switches.GetExpectedDefaultMetersRequest;
-import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.meter.MeterEntry;
@@ -44,22 +39,25 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.messaging.model.grpc.LogicalPort;
-import org.openkilda.model.Flow;
-import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.IpSocketAddress;
-import org.openkilda.model.Isl;
-import org.openkilda.model.KildaFeatureToggles;
+import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.IslRepository;
-import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.GroupSpeakerCommandData;
+import org.openkilda.rulemanager.MeterSpeakerCommandData;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.adapter.PersistenceDataAdapter;
 import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchManagerException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
@@ -84,21 +82,23 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import org.squirrelframework.foundation.fsm.StateMachineStatus;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class SwitchValidateFsm extends AbstractStateMachine<
         SwitchValidateFsm, SwitchValidateState, SwitchValidateEvent, SwitchValidateContext> {
 
-    private final KildaFeatureTogglesRepository featureTogglesRepository;
+    private final PersistenceManager persistenceManager;
     private final SwitchRepository switchRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
-    private final IslRepository islRepository;
     private final FlowRepository flowRepository;
     private final FlowPathRepository flowPathRepository;
+    private final RuleManager ruleManager;
 
     private final String key;
     private final SwitchValidateRequest request;
@@ -110,21 +110,24 @@ public class SwitchValidateFsm extends AbstractStateMachine<
 
     public SwitchValidateFsm(
             SwitchManagerCarrier carrier, String key, SwitchValidateRequest request,
-            ValidationService validationService, RepositoryFactory repositoryFactory) {
+            ValidationService validationService, PersistenceManager persistenceManager,
+            RuleManager ruleManager) {
         this.carrier = carrier;
         this.key = key;
         this.request = request;
         this.validationService = validationService;
+        this.persistenceManager = persistenceManager;
+        this.ruleManager = ruleManager;
 
         SwitchId switchId = request.getSwitchId();
         this.validationContext = SwitchValidationContext.builder(switchId).build();
 
-        featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
         switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
-        islRepository = repositoryFactory.createIslRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
         flowRepository = repositoryFactory.createFlowRepository();
+
     }
 
     /**
@@ -142,7 +145,8 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                 String.class,
                 SwitchValidateRequest.class,
                 ValidationService.class,
-                RepositoryFactory.class);
+                PersistenceManager.class,
+                RuleManager.class);
 
         // START
         builder.transition().from(SwitchValidateState.START).to(SwitchValidateState.COLLECT_DATA).on(NEXT);
@@ -153,15 +157,11 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         builder.internalTransition().within(SwitchValidateState.COLLECT_DATA)
                 .on(RULES_RECEIVED).callMethod("rulesReceived");
         builder.internalTransition().within(SwitchValidateState.COLLECT_DATA)
-                .on(EXPECTED_DEFAULT_RULES_RECEIVED).callMethod("expectedDefaultRulesReceived");
-        builder.internalTransition().within(SwitchValidateState.COLLECT_DATA)
                 .on(GROUPS_RECEIVED).callMethod("groupsReceived");
         builder.internalTransition().within(SwitchValidateState.COLLECT_DATA)
                 .on(LOGICAL_PORTS_RECEIVED).callMethod("logicalPortsReceived");
         builder.internalTransition().within(SwitchValidateState.COLLECT_DATA)
                 .on(METERS_RECEIVED).callMethod("metersReceived");
-        builder.internalTransition().within(SwitchValidateState.COLLECT_DATA)
-                .on(EXPECTED_DEFAULT_METERS_RECEIVED).callMethod("expectedDefaultMetersReceived");
         builder.internalTransition().within(SwitchValidateState.COLLECT_DATA)
                 .on(METERS_UNSUPPORTED).callMethod("metersUnsupported");
         builder.externalTransition().from(SwitchValidateState.COLLECT_DATA).to(VALIDATE).on(READY);
@@ -210,8 +210,6 @@ public class SwitchValidateFsm extends AbstractStateMachine<
             boolean isSwitchArp = switchProperties.isSwitchArp();
 
             requestSwitchOfFlows();
-            requestExpectedServiceOfFlows(switchProperties, isMultiTable, isSwitchLldp, isSwitchArp);
-
             requestSwitchOfGroups();
 
             if (sw.get().getFeatures().contains(LAG)) {
@@ -226,7 +224,6 @@ public class SwitchValidateFsm extends AbstractStateMachine<
 
             if (request.isProcessMeters()) {
                 requestSwitchMeters();
-                requestExpectedServiceMeters(isMultiTable, isSwitchLldp, isSwitchArp);
             }
         } catch (Exception ex) {
             log.error("Failure in emitRequests", ex);
@@ -268,18 +265,6 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         fireReadyIfAllResourcesReceived();
     }
 
-    protected void expectedDefaultRulesReceived(SwitchValidateState from, SwitchValidateState to,
-                                                SwitchValidateEvent event, SwitchValidateContext context) {
-        log.info("Switch expected default rules received (switch={}, key={})", getSwitchId(), key);
-
-        validationContext = validationContext.toBuilder()
-                .expectedServiceOfFlows(context.flowEntries)
-                .build();
-        pendingRequests.remove(ExternalResources.EXPECTED_SERVICE_OF_FLOWS);
-
-        fireReadyIfAllResourcesReceived();
-    }
-
     protected void metersReceived(SwitchValidateState from, SwitchValidateState to,
                                   SwitchValidateEvent event, SwitchValidateContext context) {
         log.info("Switch meters received (switch={}, key={})", getSwitchId(), key);
@@ -288,18 +273,6 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                 .actualMeters(context.getMeterEntries())
                 .build();
         pendingRequests.remove(ExternalResources.ACTUAL_METERS);
-
-        fireReadyIfAllResourcesReceived();
-    }
-
-    protected void expectedDefaultMetersReceived(SwitchValidateState from, SwitchValidateState to,
-                                                 SwitchValidateEvent event, SwitchValidateContext context) {
-        log.info("Switch expected service meters received (switch={}, key={})", getSwitchId(), key);
-
-        validationContext = validationContext.toBuilder()
-                .expectedServiceMeters(context.getMeterEntries())
-                .build();
-        pendingRequests.remove(ExternalResources.EXPECTED_SERVICE_METERS);
 
         fireReadyIfAllResourcesReceived();
     }
@@ -313,10 +286,51 @@ public class SwitchValidateFsm extends AbstractStateMachine<
 
     protected void validateEnter(SwitchValidateState from, SwitchValidateState to,
                                  SwitchValidateEvent event, SwitchValidateContext context) {
-        validateRules();
-        validateMeters();
-        validateGroups();
+        SwitchId switchId = getSwitchId();
+        PersistenceDataAdapter adapter = PersistenceDataAdapter.builder()
+                .persistenceManager(persistenceManager)
+                .switchIds(Collections.singleton(switchId))
+                .pathIds(getFlowPathsBySwitchId(switchId))
+                .build();
+        List<SpeakerCommandData> commands = ruleManager.buildRulesForSwitch(switchId, adapter);
+
+        validationContext = validationContext.toBuilder()
+                .expectedOfElements(commands)
+                .build();
+
+        List<FlowSpeakerCommandData> expectedRules = commands.stream()
+                .filter(command -> command instanceof FlowSpeakerCommandData)
+                .map(command -> (FlowSpeakerCommandData) command)
+                .collect(Collectors.toList());
+        validateRules(expectedRules);
+        List<MeterSpeakerCommandData> expectedMeters = commands.stream()
+                .filter(command -> command instanceof MeterSpeakerCommandData)
+                .map(command -> (MeterSpeakerCommandData) command)
+                .collect(Collectors.toList());
+        validateMeters(expectedMeters);
+        List<GroupSpeakerCommandData> expectedGroups = commands.stream()
+                .filter(command -> command instanceof GroupSpeakerCommandData)
+                .map(command -> (GroupSpeakerCommandData) command)
+                .collect(Collectors.toList());
+        validateGroups(expectedGroups);
         validateLogicalPorts();
+    }
+
+    private Set<PathId> getFlowPathsBySwitchId(SwitchId switchId) {
+        // collect transit segments
+        Set<PathId> result = flowPathRepository.findBySegmentDestSwitch(switchId).stream()
+                .filter(flowPath -> flowPath.getStatus() != FlowPathStatus.IN_PROGRESS)
+                .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
+                .map(FlowPath::getPathId)
+                .collect(Collectors.toSet());
+
+        // collect termination segments
+        result.addAll(flowPathRepository.findByEndpointSwitch(switchId).stream()
+                .filter(flowPath -> flowPath.getStatus() != FlowPathStatus.IN_PROGRESS)
+                .filter(path -> path.getFlow().isActualPathId(path.getPathId()))
+                .map(FlowPath::getPathId)
+                .collect(Collectors.toList()));
+        return result;
     }
 
     protected void finishedEnter(SwitchValidateState from, SwitchValidateState to,
@@ -325,7 +339,8 @@ public class SwitchValidateFsm extends AbstractStateMachine<
             ValidationResult results = new ValidationResult(
                     validationContext.getActualOfFlows(), validationContext.getMetersValidationReport() != null,
                     validationContext.getOfFlowsValidationReport(), validationContext.getMetersValidationReport(),
-                    validationContext.getValidateGroupsResult(), validationContext.getValidateLogicalPortResult());
+                    validationContext.getValidateGroupsResult(), validationContext.getValidateLogicalPortResult(),
+                    validationContext.getExpectedOfElements());
             carrier.runSwitchSync(key, request, results);
         } else {
             SwitchValidationResponse response = ValidationMapper.INSTANCE.toSwitchResponse(validationContext);
@@ -362,63 +377,6 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         pendingRequests.add(ExternalResources.ACTUAL_OF_FLOWS);
     }
 
-    private void requestExpectedServiceOfFlows(
-            SwitchProperties switchProperties, boolean isMultiTable, boolean isSwitchLldp, boolean isSwitchArp) {
-        final SwitchId switchId = getSwitchId();
-        log.info("Sending requests to get expected switch service rules (switch={}, key={})", switchId, key);
-
-        KildaFeatureToggles featureToggles = featureTogglesRepository.getOrDefault();
-
-        GetExpectedDefaultRulesRequest.GetExpectedDefaultRulesRequestBuilder payload = GetExpectedDefaultRulesRequest
-                .builder()
-                .switchId(switchId)
-                .multiTable(isMultiTable)
-                .switchLldp(isSwitchLldp)
-                .switchArp(isSwitchArp)
-                .server42FlowRttFeatureToggle(featureToggles.getServer42FlowRtt())
-                .server42FlowRttSwitchProperty(switchProperties.isServer42FlowRtt())
-                .server42Port(switchProperties.getServer42Port())
-                .server42Vlan(switchProperties.getServer42Vlan())
-                .server42MacAddress(switchProperties.getServer42MacAddress())
-                .server42IslRttEnabled(featureToggles.getServer42IslRtt()
-                        && switchProperties.hasServer42IslRttEnabled());
-
-        for (FlowPath flowPath : flowPathRepository.findBySrcSwitch(switchId)) {
-            Flow flow = flowPath.getFlow();
-            FlowSideAdapter flowSide;
-
-            if (flow.isOneSwitchFlow()) {
-                // we will get both forward and reverse paths for one-switch flows, so we can use ingress side for
-                // both of them
-                flowSide = FlowSideAdapter.makeIngressAdapter(flow, flowPath);
-            } else {
-                flowSide = FlowSideAdapter.makeAdapter(switchId, flow);
-            }
-            FlowEndpoint endpoint = flowSide.getEndpoint();
-
-            if (flowPath.isSrcWithMultiTable()) {
-                payload.flowPort(endpoint.getPortNumber());
-                if (featureToggles.getServer42FlowRtt() && switchProperties.isServer42FlowRtt()
-                        && !flow.isOneSwitchFlow()) {
-                    payload.server42FlowRttPort(endpoint.getPortNumber());
-                }
-            }
-            if (isSwitchLldp || flowSide.isDetectConnectedDevicesLldp()) {
-                payload.flowLldpPort(endpoint.getPortNumber());
-            }
-            if (isSwitchArp || flowSide.isDetectConnectedDevicesArp()) {
-                payload.flowArpPort(endpoint.getPortNumber());
-            }
-        }
-
-        islRepository.findBySrcSwitch(switchId).stream()
-                .map(Isl::getSrcPort)
-                .forEach(payload::islPort);
-
-        carrier.sendCommandToSpeaker(key, payload.build());
-        pendingRequests.add(ExternalResources.EXPECTED_SERVICE_OF_FLOWS);
-    }
-
     private void requestSwitchOfGroups() {
         SwitchId switchId = getSwitchId();
         log.info("Sending requests to get switch OF-groups (switch={}, key={})", switchId, key);
@@ -443,41 +401,32 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         pendingRequests.add(ExternalResources.ACTUAL_METERS);
     }
 
-    private void requestExpectedServiceMeters(boolean isMultiTable, boolean isSwitchLldp, boolean isSwitchArp) {
-        SwitchId switchId = getSwitchId();
-        log.info("Sending requests to get switch expected service meters (switch={}, key={})", switchId, key);
-
-        carrier.sendCommandToSpeaker(key, new GetExpectedDefaultMetersRequest(
-                switchId, isMultiTable, isSwitchLldp, isSwitchArp));
-        pendingRequests.add(ExternalResources.EXPECTED_SERVICE_METERS);
-    }
-
-    private void validateRules() {
+    private void validateRules(List<FlowSpeakerCommandData> expectedRules) {
         log.info("Validate rules (switch={}, key={})", getSwitchId(), key);
         ValidateRulesResult results = validationService.validateRules(
-                getSwitchId(), validationContext.getActualOfFlows(), validationContext.getExpectedServiceOfFlows());
+                getSwitchId(), validationContext.getActualOfFlows(), expectedRules);
         validationContext = validationContext.toBuilder()
                 .ofFlowsValidationReport(results)
                 .build();
     }
 
-    private void validateMeters() {
+    private void validateMeters(List<MeterSpeakerCommandData> expectedMeters) {
         if (!request.isProcessMeters() || validationContext.getActualMeters() == null) {
             return;
         }
 
         log.info("Validate meters (switch={}, key={})", getSwitchId(), key);
         ValidateMetersResult results = validationService.validateMeters(
-                getSwitchId(), validationContext.getActualMeters(), validationContext.getExpectedServiceMeters());
+                getSwitchId(), validationContext.getActualMeters(), expectedMeters);
         validationContext = validationContext.toBuilder()
                 .metersValidationReport(results)
                 .build();
     }
 
-    protected void validateGroups() {
+    protected void validateGroups(List<GroupSpeakerCommandData> expectedGroups) {
         log.info("Validate groups (switch={}, key={})", getSwitchId(), key);
         ValidateGroupsResult results = validationService.validateGroups(
-                getSwitchId(), validationContext.getActualGroupEntries());
+                getSwitchId(), validationContext.getActualGroupEntries(), expectedGroups);
         validationContext = validationContext.toBuilder()
                 .validateGroupsResult(results)
                 .build();
@@ -542,8 +491,6 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         METERS_RECEIVED,
         GROUPS_RECEIVED,
         LOGICAL_PORTS_RECEIVED,
-        EXPECTED_DEFAULT_RULES_RECEIVED,
-        EXPECTED_DEFAULT_METERS_RECEIVED,
         METERS_UNSUPPORTED,
         ERROR
     }
@@ -552,9 +499,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         ACTUAL_OF_FLOWS,
         ACTUAL_METERS,
         ACTUAL_OF_GROUPS,
-        ACTUAL_LOGICAL_PORTS,
-        EXPECTED_SERVICE_OF_FLOWS,
-        EXPECTED_SERVICE_METERS
+        ACTUAL_LOGICAL_PORTS
     }
 
     @Value

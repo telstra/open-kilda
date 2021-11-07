@@ -22,12 +22,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.LogicalPortInfoEntry;
@@ -35,28 +32,24 @@ import org.openkilda.messaging.info.switches.LogicalPortMisconfiguredInfoEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.messaging.model.grpc.LogicalPortType;
-import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.FlowPathDirection;
-import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.wfm.error.SwitchNotFoundException;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
-import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
+import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.MeterFlag;
+import org.openkilda.rulemanager.MeterSpeakerCommandData;
+import org.openkilda.rulemanager.OfTable;
+import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.wfm.topology.switchmanager.mappers.LogicalPortMapper;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
@@ -66,23 +59,18 @@ import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Properties;
 
 public class ValidationServiceImplTest {
 
     private static final SwitchId SWITCH_ID_A = new SwitchId("00:10");
     private static final SwitchId SWITCH_ID_B = new SwitchId("00:20");
     private static final SwitchId SWITCH_ID_E = new SwitchId("00:30");
-    private static final SwitchId SWITCH_ID_C = new SwitchId("00:40");
     private static final long FLOW_E_BANDWIDTH = 10000L;
     private static final Switch switchA = Switch.builder()
             .switchId(SWITCH_ID_A)
@@ -90,6 +78,10 @@ public class ValidationServiceImplTest {
             .build();
     private static final Switch switchB = Switch.builder()
             .switchId(SWITCH_ID_B)
+            .description("Nicira, Inc. OF_13 2.5.5")
+            .build();
+    private static final Switch switchE = Switch.builder()
+            .switchId(SWITCH_ID_E)
             .description("Nicira, Inc. OF_13 2.5.5")
             .build();
     public static final int LOGICAL_PORT_NUMBER_1 = 2001;
@@ -104,21 +96,10 @@ public class ValidationServiceImplTest {
     public static final int PHYSICAL_PORT_5 = 5;
     public static final int PHYSICAL_PORT_6 = 6;
     public static final int PHYSICAL_PORT_7 = 7;
-    private static SwitchManagerTopologyConfig topologyConfig;
-    private static FlowResourcesConfig flowResourcesConfig;
-
-    @BeforeClass
-    public static void setupOnce() {
-        PropertiesBasedConfigurationProvider configurationProvider =
-                new PropertiesBasedConfigurationProvider(new Properties());
-        topologyConfig = configurationProvider.getConfiguration(SwitchManagerTopologyConfig.class);
-        flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
-    }
 
     @Test
-    public void validateRulesEmpty() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
-                flowResourcesConfig);
+    public void validateRulesEmpty() {
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
         ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, emptyList(), emptyList());
         assertTrue(response.getMissingRules().isEmpty());
         assertTrue(response.getProperRules().isEmpty());
@@ -126,98 +107,38 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateRulesSimpleSegmentCookies() throws SwitchNotFoundException {
+    public void validateRules() {
         ValidationService validationService =
-                new ValidationServiceImpl(persistenceManager().withSegmentsCookies(2L, 3L).build(), topologyConfig,
-                        flowResourcesConfig);
+                new ValidationServiceImpl(persistenceManager().build());
         List<FlowEntry> flowEntries =
-                Lists.newArrayList(FlowEntry.builder().cookie(1L).build(), FlowEntry.builder().cookie(2L).build());
-        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
-        assertEquals(ImmutableSet.of(3L), response.getMissingRules());
-        assertEquals(ImmutableSet.of(2L), response.getProperRules());
+                Lists.newArrayList(FlowEntry.builder()
+                                .cookie(1L)
+                                .tableId(1)
+                                .build(),
+                        FlowEntry.builder()
+                                .cookie(2L)
+                                .tableId(2)
+                                .build(),
+                        FlowEntry.builder()
+                                .cookie(3L)
+                                .tableId(3)
+                                .build()
+                );
+        List<FlowSpeakerCommandData> expectedRules = Lists.newArrayList(
+                FlowSpeakerCommandData.builder().cookie(new Cookie(2L)).table(OfTable.INGRESS).build(),
+                FlowSpeakerCommandData.builder().cookie(new Cookie(3L)).table(OfTable.INPUT).build(),
+                FlowSpeakerCommandData.builder().cookie(new Cookie(4L)).table(OfTable.INPUT).build()
+        );
+        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, expectedRules);
         assertEquals(ImmutableSet.of(1L), response.getExcessRules());
+        assertEquals(ImmutableSet.of(2L), response.getProperRules());
+        assertEquals(ImmutableSet.of(3L), response.getMisconfiguredRules());
+        assertEquals(ImmutableSet.of(4L), response.getMissingRules());
     }
 
     @Test
-    public void validateRulesSegmentAndIngressCookies() throws SwitchNotFoundException {
-        ValidationService validationService =
-                new ValidationServiceImpl(persistenceManager().withSegmentsCookies(2L).withIngressCookies(1L).build(),
-                        topologyConfig, flowResourcesConfig);
-        List<FlowEntry> flowEntries =
-                Lists.newArrayList(FlowEntry.builder().cookie(1L).build(), FlowEntry.builder().cookie(2L).build());
-        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
-        assertTrue(response.getMissingRules().isEmpty());
-        assertEquals(ImmutableSet.of(1L, 2L), new HashSet<>(response.getProperRules()));
-        assertTrue(response.getExcessRules().isEmpty());
-    }
-
-    @Test
-    public void validateRulesSegmentAndIngressCookiesWithServer42Rules() {
-        SwitchProperties switchProperties = SwitchProperties.builder()
-                .server42FlowRtt(true)
-                .build();
-        ValidationService validationService =
-                new ValidationServiceImpl(persistenceManager()
-                        .withIngressCookies(1L)
-                        .withSwitchProperties(switchProperties)
-                        .build(),
-                        topologyConfig,
-                        flowResourcesConfig);
-        List<FlowEntry> flowEntries =
-                Lists.newArrayList(FlowEntry.builder().cookie(0xC0000000000001L).build(),
-                        FlowEntry.builder().cookie(1L).build());
-        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
-        assertTrue(response.getMissingRules().isEmpty());
-        assertEquals(ImmutableSet.of(0xC0000000000001L, 1L),
-                new HashSet<>(response.getProperRules()));
-        assertTrue(response.getExcessRules().isEmpty());
-    }
-
-    @Test
-    public void validateLoopedRules() {
-        ValidationService validationService =
-                new ValidationServiceImpl(persistenceManager()
-                        .withIngressCookies(1L)
-                        .withLoop()
-                        .build(),
-                        topologyConfig,
-                        flowResourcesConfig);
-        List<FlowEntry> flowEntries = Lists.newArrayList(FlowEntry.builder().cookie(1L).build(),
-                FlowEntry.builder().cookie(0x8000000000001L).build());
-        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
-        assertTrue(response.getMissingRules().isEmpty());
-        assertEquals(ImmutableSet.of(0x8000000000001L, 1L),
-                new HashSet<>(response.getProperRules()));
-        assertTrue(response.getExcessRules().isEmpty());
-    }
-
-    @Test
-    public void validateDefaultRules() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
-                flowResourcesConfig);
-        List<FlowEntry> flowEntries =
-                Lists.newArrayList(FlowEntry.builder().cookie(0x8000000000000001L).priority(1).byteCount(123).build(),
-                        FlowEntry.builder().cookie(0x8000000000000001L).priority(2).build(),
-                        FlowEntry.builder().cookie(0x8000000000000002L).priority(1).build(),
-                        FlowEntry.builder().cookie(0x8000000000000002L).priority(2).build(),
-                        FlowEntry.builder().cookie(0x8000000000000004L).priority(1).build());
-        List<FlowEntry> expectedDefaultFlowEntries =
-                Lists.newArrayList(FlowEntry.builder().cookie(0x8000000000000001L).priority(1).byteCount(321).build(),
-                        FlowEntry.builder().cookie(0x8000000000000002L).priority(3).build(),
-                        FlowEntry.builder().cookie(0x8000000000000003L).priority(1).build());
-        ValidateRulesResult response =
-                validationService.validateRules(SWITCH_ID_A, flowEntries, expectedDefaultFlowEntries);
-        assertEquals(ImmutableSet.of(0x8000000000000001L), new HashSet<>(response.getProperRules()));
-        assertEquals(ImmutableSet.of(0x8000000000000001L, 0x8000000000000002L),
-                new HashSet<>(response.getMisconfiguredRules()));
-        assertEquals(ImmutableSet.of(0x8000000000000003L), new HashSet<>(response.getMissingRules()));
-        assertEquals(ImmutableSet.of(0x8000000000000004L), new HashSet<>(response.getExcessRules()));
-    }
-
-    @Test
-    public void validateMetersEmpty() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
-                flowResourcesConfig);
+    public void validateMetersEmpty() {
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_A, emptyList(), emptyList());
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
@@ -226,12 +147,17 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateMetersProperMeters() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
-                flowResourcesConfig);
+    public void validateProperMeters() {
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
-                emptyList());
+                singletonList(new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
+                singletonList(MeterSpeakerCommandData.builder()
+                        .meterId(new MeterId(32))
+                        .rate(10000)
+                        .burst(10500)
+                        .ofVersion(OfVersion.OF_13)
+                        .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
+                        .build()));
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
         assertFalse(response.getProperMeters().isEmpty());
@@ -241,13 +167,18 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateMetersMisconfiguredMeters() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
-                flowResourcesConfig);
+    public void validateMetersMisconfiguredMeters() {
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
         String[] actualFlags = new String[]{"PKTPS", "BURST", "STATS"};
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(new MeterEntry(32, 10002, 10498, "OF_13", actualFlags)),
-                emptyList());
+                singletonList(new MeterEntry(32, 10002, 10498, "OF_13", actualFlags)),
+                singletonList(MeterSpeakerCommandData.builder()
+                        .meterId(new MeterId(32))
+                        .rate(10000)
+                        .burst(10500)
+                        .ofVersion(OfVersion.OF_13)
+                        .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
+                        .build()));
         assertTrue(response.getMissingMeters().isEmpty());
         assertFalse(response.getMisconfiguredMeters().isEmpty());
         assertEquals(10002, (long) response.getMisconfiguredMeters().get(0).getActual().getRate());
@@ -255,31 +186,15 @@ public class ValidationServiceImplTest {
         assertEquals(10498L, (long) response.getMisconfiguredMeters().get(0).getActual().getBurstSize());
         assertEquals(10500L, (long) response.getMisconfiguredMeters().get(0).getExpected().getBurstSize());
         assertArrayEquals(actualFlags, response.getMisconfiguredMeters().get(0).getActual().getFlags());
-        assertArrayEquals(new String[]{"KBPS", "BURST", "STATS"},
-                response.getMisconfiguredMeters().get(0).getExpected().getFlags());
+        assertTrue(Sets.newHashSet("KBPS", "BURST", "STATS").containsAll(Sets.newHashSet(
+                response.getMisconfiguredMeters().get(0).getExpected().getFlags())));
         assertTrue(response.getProperMeters().isEmpty());
         assertTrue(response.getExcessMeters().isEmpty());
     }
 
     @Test
-    public void validateMetersMissingAndExcessMeters() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
-                flowResourcesConfig);
-        ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(new MeterEntry(33, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
-                emptyList());
-        assertFalse(response.getMissingMeters().isEmpty());
-        assertMeter(response.getMissingMeters().get(0), 32, 10000, 10500, new String[]{"KBPS", "BURST", "STATS"});
-        assertTrue(response.getMisconfiguredMeters().isEmpty());
-        assertTrue(response.getProperMeters().isEmpty());
-        assertFalse(response.getExcessMeters().isEmpty());
-        assertMeter(response.getExcessMeters().get(0), 33, 10000, 10500, new String[]{"KBPS", "BURST", "STATS"});
-    }
-
-    @Test
-    public void validateExcessMeters() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
-                flowResourcesConfig);
+    public void validateExcessMeters() {
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_A,
                 Lists.newArrayList(new MeterEntry(100, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
                 emptyList());
@@ -291,37 +206,47 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateDefaultMeters() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
-                flowResourcesConfig);
-        MeterEntry missingMeter = new MeterEntry(2, 10, 20, "OF_13", new String[]{"KBPS", "BURST", "STATS"});
+    public void validateMissingAndExcessMeters() {
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        MeterSpeakerCommandData missingMeter = MeterSpeakerCommandData.builder()
+                .meterId(new MeterId(2))
+                .rate(10)
+                .burst(20)
+                .ofVersion(OfVersion.OF_13)
+                .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
+                .build();
+
         MeterEntry excessMeter = new MeterEntry(4, 10, 20, "OF_13", new String[]{"KBPS", "BURST", "STATS"});
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(excessMeter,
-                        new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
+                Lists.newArrayList(excessMeter),
                 Lists.newArrayList(missingMeter));
         assertFalse(response.getMissingMeters().isEmpty());
         assertEquals(1, response.getMissingMeters().size());
-        assertMeter(response.getMissingMeters().get(0), missingMeter);
+        MeterEntry expectedMissingMeter = new MeterEntry(2, 10, 20, "OF_13", new String[]{"KBPS", "BURST", "STATS"});
+        assertMeter(response.getMissingMeters().get(0), expectedMissingMeter);
         assertTrue(response.getMisconfiguredMeters().isEmpty());
-        assertFalse(response.getProperMeters().isEmpty());
-        assertEquals(1, response.getProperMeters().size());
+        assertTrue(response.getProperMeters().isEmpty());
         assertFalse(response.getExcessMeters().isEmpty());
         assertEquals(1, response.getExcessMeters().size());
         assertMeter(response.getExcessMeters().get(0), excessMeter);
     }
 
     @Test
-    public void validateMetersProperMetersESwitch() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
-                flowResourcesConfig);
+    public void validateMetersProperMetersESwitch() {
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
         long rateESwitch = FLOW_E_BANDWIDTH + (long) (FLOW_E_BANDWIDTH * 0.01) - 1;
         long burstSize = (long) (FLOW_E_BANDWIDTH * 1.05);
         long burstSizeESwitch = burstSize + (long) (burstSize * 0.01) - 1;
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_E,
-                Lists.newArrayList(new MeterEntry(32, rateESwitch, burstSizeESwitch, "OF_13",
+                singletonList(new MeterEntry(32, rateESwitch, burstSizeESwitch, "OF_13",
                         new String[]{"KBPS", "BURST", "STATS"})),
-                emptyList());
+                singletonList(MeterSpeakerCommandData.builder()
+                        .meterId(new MeterId(32))
+                        .rate(rateESwitch)
+                        .burst(burstSizeESwitch)
+                        .ofVersion(OfVersion.OF_13)
+                        .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
+                        .build()));
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
         assertFalse(response.getProperMeters().isEmpty());
@@ -332,16 +257,21 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateMetersMisconfiguredMetersESwitch() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
-                flowResourcesConfig);
+    public void validateMetersMisconfiguredMetersESwitch() {
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
         long rateESwitch = FLOW_E_BANDWIDTH + (long) (FLOW_E_BANDWIDTH * 0.01) + 1;
         long burstSize = (long) (FLOW_E_BANDWIDTH * 1.05);
         long burstSizeESwitch = burstSize + (long) (burstSize * 0.01) + 1;
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_E,
                 Lists.newArrayList(new MeterEntry(32, rateESwitch, burstSizeESwitch, "OF_13",
                         new String[]{"KBPS", "BURST", "STATS"})),
-                emptyList());
+                singletonList(MeterSpeakerCommandData.builder()
+                        .meterId(new MeterId(32))
+                        .rate(rateESwitch)
+                        .burst(burstSize)
+                        .ofVersion(OfVersion.OF_13)
+                        .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
+                        .build()));
         assertTrue(response.getMissingMeters().isEmpty());
         assertFalse(response.getMisconfiguredMeters().isEmpty());
         assertEquals(10606L, (long) response.getMisconfiguredMeters().get(0).getActual().getBurstSize());
@@ -352,8 +282,7 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateLogicalPorts() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig,
-                flowResourcesConfig);
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
 
         LogicalPort proper = buildLogicalPort(LOGICAL_PORT_NUMBER_1, PHYSICAL_PORT_2, PHYSICAL_PORT_1);
         LogicalPort misconfigured = buildLogicalPort(LOGICAL_PORT_NUMBER_2, LogicalPortType.BFD, PHYSICAL_PORT_3);
@@ -399,8 +328,7 @@ public class ValidationServiceImplTest {
 
     @Test
     public void calculateMisconfiguredLogicalPortDifferentPortOrderTest() {
-        ValidationServiceImpl validationService = new ValidationServiceImpl(persistenceManager().build(),
-                topologyConfig, flowResourcesConfig);
+        ValidationServiceImpl validationService = new ValidationServiceImpl(persistenceManager().build());
 
         LogicalPortInfoEntry actual = LogicalPortInfoEntry.builder()
                 .type(org.openkilda.messaging.info.switches.LogicalPortType.LAG)
@@ -460,148 +388,15 @@ public class ValidationServiceImplTest {
     }
 
     private static class PersistenceManagerBuilder {
-        private FlowPathRepository flowPathRepository = mock(FlowPathRepository.class);
         private SwitchRepository switchRepository = mock(SwitchRepository.class);
-        private SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
-        private KildaFeatureTogglesRepository featureTogglesRepository = mock(KildaFeatureTogglesRepository.class);
         private LagLogicalPortRepository lagLogicalPortRepository = mock(LagLogicalPortRepository.class);
 
-        private long[] segmentsCookies = new long[0];
-        private long[] ingressCookies = new long[0];
-        private boolean looped = false;
-        private DetectConnectedDevices detectConnectedDevices = DetectConnectedDevices.builder().build();
-        private SwitchProperties switchProperties = SwitchProperties.builder().build();
-
-        private PersistenceManagerBuilder withSegmentsCookies(long... cookies) {
-            segmentsCookies = cookies;
-            return this;
-        }
-
-        private PersistenceManagerBuilder withIngressCookies(long... cookies) {
-            ingressCookies = cookies;
-            return this;
-        }
-
-        private PersistenceManagerBuilder withSwitchProperties(SwitchProperties switchProperties) {
-            this.switchProperties = switchProperties;
-            return this;
-        }
-
-        private PersistenceManagerBuilder withDetectConnectedDevices(DetectConnectedDevices detectConnectedDevices) {
-            this.detectConnectedDevices = detectConnectedDevices;
-            return this;
-        }
-
-        private PersistenceManagerBuilder withLoop() {
-            this.looped = true;
-            return this;
-        }
-
         private PersistenceManager build() {
-            List<FlowPath> pathsBySegment = new ArrayList<>(segmentsCookies.length);
-            for (long cookie : segmentsCookies) {
-                Flow flow = buildFlow(cookie, "flow_", looped);
-                FlowPath flowPath = buildFlowPath(flow, switchA, switchB, "path_" + cookie, cookie);
-                flow.setForwardPath(flowPath);
-                pathsBySegment.add(flowPath);
-                FlowPath flowReversePath = buildFlowPath(flow, switchB, switchA, "reverse_path_" + cookie, cookie);
-                flow.setReversePath(flowReversePath);
-                pathsBySegment.add(flowReversePath);
-
-                FlowPath flowOldPath = buildFlowPath(flow, switchA, switchB, "old_path_" + cookie, cookie + 10000);
-                flow.addPaths(flowOldPath);
-                pathsBySegment.add(flowOldPath);
-                FlowPath flowOldReversePath = buildFlowPath(flow, switchB, switchA, "old_reverse_path_" + cookie,
-                        cookie + 10000);
-                flow.addPaths(flowOldReversePath);
-                pathsBySegment.add(flowOldReversePath);
-            }
-            List<FlowPath> flowPaths = new ArrayList<>(ingressCookies.length);
-            for (long cookie : ingressCookies) {
-                Flow flow = buildFlow(cookie, "flow_", looped);
-                FlowPath flowPath = buildFlowPath(flow, switchA, switchB, "path_" + cookie, cookie);
-                flow.setForwardPath(flowPath);
-                flowPaths.add(flowPath);
-                FlowPath flowReversePath = buildFlowPath(flow, switchB, switchA, "reverse_path_" + cookie, cookie);
-                flow.setReversePath(flowReversePath);
-                flowPaths.add(flowReversePath);
-
-                FlowPath flowOldPath = buildFlowPath(flow, switchA, switchB, "old_path_" + cookie, cookie + 10000);
-                flow.addPaths(flowOldPath);
-                flowPaths.add(flowOldPath);
-                FlowPath flowOldReversePath = buildFlowPath(flow, switchB, switchA, "old_reverse_path_" + cookie,
-                        cookie + 10000);
-                flow.addPaths(flowOldReversePath);
-                flowPaths.add(flowOldReversePath);
-            }
-            when(flowPathRepository.findBySegmentDestSwitch(any())).thenReturn(pathsBySegment);
-            when(flowPathRepository.findByEndpointSwitch(any())).thenReturn(flowPaths);
-
-            FlowPath flowPathA = mock(FlowPath.class);
-            PathId flowAPathId = new PathId("flow_path_a");
-            when(flowPathA.getSrcSwitch()).thenReturn(switchB);
-            when(flowPathA.getDestSwitch()).thenReturn(switchA);
-            when(flowPathA.getBandwidth()).thenReturn(10000L);
-            when(flowPathA.getCookie()).thenReturn(new FlowSegmentCookie(FlowPathDirection.FORWARD, 1));
-            when(flowPathA.getMeterId()).thenReturn(new MeterId(32L));
-            when(flowPathA.getPathId()).thenReturn(flowAPathId);
-
-            Flow flowA = mock(Flow.class);
-            when(flowA.getFlowId()).thenReturn("test_flow");
-            when(flowA.getSrcSwitch()).thenReturn(switchB);
-            when(flowA.getDestSwitch()).thenReturn(switchA);
-            when(flowA.getDetectConnectedDevices()).thenReturn(detectConnectedDevices);
-            when(flowA.isActualPathId(flowAPathId)).thenReturn(true);
-            when(flowPathA.getFlow()).thenReturn(flowA);
-
-            FlowPath flowPathC = mock(FlowPath.class);
-            PathId flowCPathId = new PathId("flow_path_d");
-            when(flowA.isActualPathId(flowCPathId)).thenReturn(false);
-            when(flowPathC.getFlow()).thenReturn(flowA);
-
-            Switch switchE = Switch.builder()
-                    .switchId(SWITCH_ID_E)
-                    .description("Nicira, Inc. OF_13 2.5.5")
-                    .build();
-            switchE.setOfDescriptionManufacturer("E");
-            FlowPath flowPathB = mock(FlowPath.class);
-            PathId flowBPathId = new PathId("flow_path_b");
-            when(flowPathB.getSrcSwitch()).thenReturn(switchE);
-            when(flowPathB.getDestSwitch()).thenReturn(switchA);
-            when(flowPathB.getBandwidth()).thenReturn(FLOW_E_BANDWIDTH);
-            when(flowPathB.getCookie()).thenReturn(new FlowSegmentCookie(FlowPathDirection.FORWARD, 1));
-            when(flowPathB.getMeterId()).thenReturn(new MeterId(32L));
-            when(flowPathB.getPathId()).thenReturn(flowBPathId);
-
-            Flow flowB = mock(Flow.class);
-            when(flowB.getFlowId()).thenReturn("test_flow_b");
-            when(flowB.getSrcSwitch()).thenReturn(switchE);
-            when(flowB.getDestSwitch()).thenReturn(switchA);
-            when(flowB.getDetectConnectedDevices()).thenReturn(detectConnectedDevices);
-            when(flowB.isActualPathId(flowBPathId)).thenReturn(true);
-            when(flowPathB.getFlow()).thenReturn(flowB);
-
-            when(flowPathRepository.findBySrcSwitch(eq(SWITCH_ID_B)))
-                    .thenReturn(singletonList(flowPathA));
-            when(flowPathRepository.findBySrcSwitch(eq(SWITCH_ID_E)))
-                    .thenReturn(singletonList(flowPathB));
-
             RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
-            when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
-
             when(switchRepository.findById(SWITCH_ID_A)).thenReturn(Optional.of(switchA));
             when(switchRepository.findById(SWITCH_ID_B)).thenReturn(Optional.of(switchB));
             when(switchRepository.findById(SWITCH_ID_E)).thenReturn(Optional.of(switchE));
             when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
-
-            when(switchPropertiesRepository.findBySwitchId(SWITCH_ID_A)).thenReturn(Optional.of(switchProperties));
-            when(switchPropertiesRepository.findBySwitchId(SWITCH_ID_B)).thenReturn(Optional.of(switchProperties));
-            when(switchPropertiesRepository.findBySwitchId(SWITCH_ID_E)).thenReturn(Optional.of(switchProperties));
-            when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
-
-            KildaFeatureToggles featureToggles = KildaFeatureToggles.builder().server42FlowRtt(true).build();
-            when(featureTogglesRepository.getOrDefault()).thenReturn(featureToggles);
-            when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
 
             LagLogicalPort lagLogicalPortA = new LagLogicalPort(SWITCH_ID_A, LOGICAL_PORT_NUMBER_1,
                     Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2));
@@ -617,16 +412,6 @@ public class ValidationServiceImplTest {
             PersistenceManager persistenceManager = mock(PersistenceManager.class);
             when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
             return persistenceManager;
-        }
-
-        private Flow buildFlow(long cookie, String flowIdPrefix, boolean looped) {
-            return Flow.builder()
-                    .srcSwitch(switchA)
-                    .destSwitch(switchB)
-                    .detectConnectedDevices(detectConnectedDevices)
-                    .flowId(flowIdPrefix + cookie)
-                    .loopSwitchId(looped ? switchA.getSwitchId() : null)
-                    .build();
         }
     }
 }

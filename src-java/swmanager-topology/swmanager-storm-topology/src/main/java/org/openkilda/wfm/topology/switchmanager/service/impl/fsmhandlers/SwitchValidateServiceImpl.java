@@ -19,12 +19,10 @@ import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
-import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.switchmanager.error.OperationTimeoutException;
@@ -60,18 +58,21 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
     private final FsmExecutor<
             SwitchValidateFsm, SwitchValidateState, SwitchValidateEvent, SwitchValidateContext> fsmExecutor;
 
-    private final RepositoryFactory repositoryFactory;
+    private final PersistenceManager persistenceManager;
+    private final RuleManager ruleManager;
 
     @Getter
     private boolean active = true;
 
     public SwitchValidateServiceImpl(
-            SwitchManagerCarrier carrier, PersistenceManager persistenceManager, ValidationService validationService) {
+            SwitchManagerCarrier carrier, PersistenceManager persistenceManager, ValidationService validationService,
+            RuleManager ruleManager) {
         this.carrier = carrier;
         this.builder = SwitchValidateFsm.builder();
         this.fsmExecutor = new FsmExecutor<>(SwitchValidateEvent.NEXT);
         this.validationService = validationService;
-        this.repositoryFactory = persistenceManager.getRepositoryFactory();
+        this.persistenceManager = persistenceManager;
+        this.ruleManager = ruleManager;
     }
 
     @Override
@@ -79,7 +80,7 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
         SwitchValidateFsm fsm =
                 builder.newStateMachine(
                         SwitchValidateState.START, carrier, key, request, validationService,
-                        repositoryFactory);
+                        persistenceManager, ruleManager);
         MeterRegistryHolder.getRegistry().ifPresent(registry -> {
             Sample sample = LongTaskTimer.builder("fsm.active_execution")
                     .register(registry)
@@ -117,18 +118,6 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
     public void handleLogicalPortResponse(String key, DumpLogicalPortsResponse data) {
         handle(key, SwitchValidateEvent.LOGICAL_PORTS_RECEIVED, SwitchValidateContext.builder()
                 .logicalPortEntries(data.getLogicalPorts()).build());
-    }
-
-    @Override
-    public void handleExpectedDefaultFlowEntriesResponse(String key, SwitchExpectedDefaultFlowEntries data) {
-        handle(key, SwitchValidateEvent.EXPECTED_DEFAULT_RULES_RECEIVED,
-                SwitchValidateContext.builder().flowEntries(data.getFlowEntries()).build());
-    }
-
-    @Override
-    public void handleExpectedDefaultMeterEntriesResponse(String key, SwitchExpectedDefaultMeterEntries data) {
-        handle(key, SwitchValidateEvent.EXPECTED_DEFAULT_METERS_RECEIVED,
-                SwitchValidateContext.builder().meterEntries(data.getMeterEntries()).build());
     }
 
     @Override

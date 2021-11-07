@@ -16,8 +16,8 @@
 package org.openkilda.wfm.topology.switchmanager;
 
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
@@ -82,7 +82,7 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
                 topologyConfig.getKafkaSwitchManagerNbWorkerTopic());
         declareKafkaSpout(builder, inputTopics, HUB_SPOUT);
         declareBolt(builder, new SwitchManagerHub(hubConfig, persistenceManager,
-                        topologyConfig, configurationProvider.getConfiguration(FlowResourcesConfig.class)),
+                        topologyConfig, configurationProvider.getConfiguration(RuleManagerConfig.class)),
                 SwitchManagerHub.ID)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID)
                 .fieldsGrouping(HUB_SPOUT, FIELDS_KEY)

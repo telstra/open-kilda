@@ -17,26 +17,19 @@ package org.openkilda.wfm.topology.switchmanager.service;
 
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 
 public interface SwitchSyncService {
 
     void handleSwitchSync(String key, SwitchValidateRequest request, ValidationResult validationResult);
 
-    void handleInstallRulesResponse(String key);
+    void handleInstallCommandsResponse(String key);
+
+    void handleRemoveCommandsResponse(String key);
 
     void handleRemoveRulesResponse(String key);
 
-    void handleReinstallDefaultRulesResponse(String key, FlowReinstallResponse response);
-
     void handleRemoveMetersResponse(String key);
-
-    void handleModifyMetersResponse(String key);
-
-    void handleInstallGroupResponse(String key);
-
-    void handleModifyGroupResponse(String key);
 
     void handleDeleteGroupResponse(String key);
 

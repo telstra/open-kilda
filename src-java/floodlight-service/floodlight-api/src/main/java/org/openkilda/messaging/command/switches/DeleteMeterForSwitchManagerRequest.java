@@ -25,11 +25,11 @@ import lombok.Value;
 
 @Value
 @EqualsAndHashCode(callSuper = true)
-public class DeleterMeterForSwitchManagerRequest extends DeleteMeterRequest {
+public class DeleteMeterForSwitchManagerRequest extends DeleteMeterRequest {
 
     @JsonCreator
-    public DeleterMeterForSwitchManagerRequest(@JsonProperty("switch_id") SwitchId switchId,
-                                               @JsonProperty("meter_id") Long meterId) {
+    public DeleteMeterForSwitchManagerRequest(@JsonProperty("switch_id") SwitchId switchId,
+                                              @JsonProperty("meter_id") Long meterId) {
         super(switchId, meterId);
     }
 }

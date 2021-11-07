@@ -20,6 +20,9 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.SwitchId;
+import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.GroupSpeakerCommandData;
+import org.openkilda.rulemanager.MeterSpeakerCommandData;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
@@ -29,12 +32,13 @@ import java.util.List;
 
 public interface ValidationService {
     ValidateRulesResult validateRules(SwitchId switchId, List<FlowEntry> presentRules,
-                                      List<FlowEntry> expectedDefaultRules);
+                                      List<FlowSpeakerCommandData> expectedRules);
 
-    ValidateGroupsResult validateGroups(SwitchId switchId, List<GroupEntry> presentGroups);
+    ValidateGroupsResult validateGroups(SwitchId switchId, List<GroupEntry> presentGroups,
+                                        List<GroupSpeakerCommandData> expectedGroups);
 
     ValidateLogicalPortsResult validateLogicalPorts(SwitchId switchId, List<LogicalPort> presentLogicalPorts);
 
     ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters,
-                                        List<MeterEntry> expectedDefaultMeters);
+                                        List<MeterSpeakerCommandData> expectedMeters);
 }

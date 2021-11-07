@@ -17,23 +17,22 @@ package org.openkilda.wfm.topology.switchmanager.service.impl.fsmhandlers;
 
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
+import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
-import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
-import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.DeleteMeterForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -42,17 +41,13 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
-import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPathDirection;
-import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.TransitVlanRepository;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.rulemanager.FlowSpeakerCommandData;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
@@ -70,18 +65,16 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.List;
-import java.util.Properties;
+import java.util.Set;
 import java.util.UUID;
 
 @RunWith(MockitoJUnitRunner.class)
 public class SwitchSyncServiceImplTest {
 
-    private static SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
-    private static SwitchId INGRESS_SWITCH_ID = new SwitchId(0x0000000000000002L);
-    private static SwitchId EGRESS_SWITCH_ID = new SwitchId(0x0000000000000002L);
-    private static String FLOW_ID = "flow_id";
-    private static String KEY = "KEY";
-    private static long EXCESS_COOKIE = new FlowSegmentCookie(FlowPathDirection.FORWARD, 1).getValue();
+    private static final SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
+    private static final String FLOW_ID = "flow_id";
+    private static final String KEY = "KEY";
+    private static final long EXCESS_COOKIE = new FlowSegmentCookie(FlowPathDirection.FORWARD, 1).getValue();
 
     @Mock
     private SwitchManagerCarrier carrier;
@@ -96,49 +89,32 @@ public class SwitchSyncServiceImplTest {
 
     private SwitchValidateRequest request;
     private FlowEntry flowEntry;
+    private FlowSpeakerCommandData expectedFlow;
 
     private List<Long> missingRules;
-    private List<Long> excessRules;
+    private Set<Long> excessRules;
     private List<Long> misconfiguredRules;
     private List<MeterInfoEntry> excessMeters;
 
     @Before
     public void setUp() {
         RepositoryFactory repositoryFactory = Mockito.mock(RepositoryFactory.class);
-        FlowRepository flowRepository = Mockito.mock(FlowRepository.class);
-        FlowPathRepository flowPathRepository = Mockito.mock(FlowPathRepository.class);
-        TransitVlanRepository transitVlanRepository = Mockito.mock(TransitVlanRepository.class);
 
-        when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
-        when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
-        when(repositoryFactory.createTransitVlanRepository()).thenReturn(transitVlanRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
-        Properties configProps = new Properties();
-        configProps.setProperty("flow.meter-id.max", "40");
-        configProps.setProperty("flow.vlan.max", "50");
-
-        PropertiesBasedConfigurationProvider configurationProvider =
-                new PropertiesBasedConfigurationProvider(configProps);
-        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
-
-        service = new SwitchSyncServiceImpl(carrier, persistenceManager, flowResourcesConfig);
+        service = new SwitchSyncServiceImpl(carrier, persistenceManager);
         service.commandBuilder = commandBuilder;
 
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).build();
         flowEntry = new FlowEntry(
                 new FlowSegmentCookie(FlowPathDirection.FORWARD, 7).getValue(),
                 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
-
-        InstallIngressFlow installingRule = new InstallIngressFlow(UUID.randomUUID(), FLOW_ID, flowEntry.getCookie(),
-                SWITCH_ID, 1, 2, 50, 0,
-                60, FlowEncapsulationType.TRANSIT_VLAN, OutputVlanType.POP, 10L,
-                100L, EGRESS_SWITCH_ID, false, false, false, null);
-        when(commandBuilder.buildCommandsToSyncMissingRules(eq(SWITCH_ID), any()))
-                .thenReturn(singletonList(installingRule));
+        expectedFlow = FlowSpeakerCommandData.builder()
+                .cookie(new Cookie(flowEntry.getCookie()))
+                .build();
 
         missingRules = singletonList(flowEntry.getCookie());
-        excessRules = emptyList();
+        excessRules = emptySet();
         misconfiguredRules = emptyList();
         excessMeters = emptyList();
     }
@@ -157,39 +133,20 @@ public class SwitchSyncServiceImplTest {
     }
 
     @Test
-    public void handleCommandBuilderMissingRulesException() {
-        String errorMessage = "test error";
-        when(commandBuilder.buildCommandsToSyncMissingRules(eq(SWITCH_ID), any()))
-                .thenThrow(new IllegalArgumentException(errorMessage));
-
-        service.handleSwitchSync(KEY, request, makeValidationResult());
-
-        verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
-        ArgumentCaptor<ErrorMessage> errorCaptor = ArgumentCaptor.forClass(ErrorMessage.class);
-        verify(carrier).cancelTimeoutCallback(eq(KEY));
-        verify(carrier).response(eq(KEY), errorCaptor.capture());
-        assertEquals(errorMessage, errorCaptor.getValue().getData().getErrorMessage());
-
-        verifyNoMoreInteractions(commandBuilder);
-        verifyNoMoreInteractions(carrier);
-    }
-
-    @Test
     public void doNothingWhenFsmNotFound() {
-        service.handleInstallRulesResponse(KEY);
+        service.handleInstallCommandsResponse(KEY);
 
-        verifyZeroInteractions(carrier);
-        verifyZeroInteractions(commandBuilder);
+        verifyNoMoreInteractions(carrier);
+        verifyNoMoreInteractions(commandBuilder);
     }
 
     @Test
     public void handleRuleSyncSuccess() {
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
-        verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
-        verify(carrier).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
+        verify(carrier).sendCommandToSpeaker(eq(KEY), any(SpeakerRequest.class));
 
-        service.handleInstallRulesResponse(KEY);
+        service.handleInstallCommandsResponse(KEY);
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         verify(carrier).response(eq(KEY), any(InfoMessage.class));
@@ -202,8 +159,7 @@ public class SwitchSyncServiceImplTest {
     public void receiveRuleSyncTimeout() {
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
-        verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
-        verify(carrier).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
+        verify(carrier).sendCommandToSpeaker(eq(KEY), any(SpeakerRequest.class));
 
         service.handleTaskTimeout(KEY);
 
@@ -217,8 +173,7 @@ public class SwitchSyncServiceImplTest {
     public void receiveRuleSyncError() {
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
-        verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
-        verify(carrier).sendCommandToSpeaker(eq(KEY), any(InstallFlowForSwitchManagerRequest.class));
+        verify(carrier).sendCommandToSpeaker(eq(KEY), any(SpeakerRequest.class));
 
         ErrorMessage errorMessage = getErrorMessage();
         service.handleTaskError(KEY, errorMessage);
@@ -268,7 +223,7 @@ public class SwitchSyncServiceImplTest {
     public void handleSyncExcess() {
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).removeExcess(true).build();
 
-        excessRules = singletonList(EXCESS_COOKIE);
+        excessRules = singleton(EXCESS_COOKIE);
         excessMeters = singletonList(
                 new MeterInfoEntry(EXCESS_COOKIE, EXCESS_COOKIE, FLOW_ID, 0L, 0L, new String[]{}, null, null));
 
@@ -284,17 +239,17 @@ public class SwitchSyncServiceImplTest {
 
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
-        verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
         verify(commandBuilder).buildCommandsToRemoveExcessRules(
                 eq(SWITCH_ID), eq(singletonList(flowEntry)), eq(excessRules));
-        verify(carrier).sendCommandToSpeaker(eq(KEY), any(InstallFlowForSwitchManagerRequest.class));
         verify(carrier).sendCommandToSpeaker(eq(KEY), any(RemoveFlowForSwitchManagerRequest.class));
-
-        service.handleInstallRulesResponse(KEY);
         service.handleRemoveRulesResponse(KEY);
 
+        verify(carrier).sendCommandToSpeaker(eq(KEY), any(DeleteMeterForSwitchManagerRequest.class));
         service.handleRemoveMetersResponse(KEY);
-        verify(carrier, times(3)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
+
+        verify(carrier, times(2)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
+        verify(carrier).sendCommandToSpeaker(eq(KEY), any(SpeakerRequest.class));
+        service.handleInstallCommandsResponse(KEY);
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         verify(carrier).response(eq(KEY), any(InfoMessage.class));
@@ -330,12 +285,11 @@ public class SwitchSyncServiceImplTest {
         service.handleSwitchSync(KEY, request, new ValidationResult(
                 tempResult.getFlowEntries(), false, tempResult.getValidateRulesResult(), null,
                 new ValidateGroupsResult(emptyList(), emptyList(), emptyList(), emptyList()),
-                new ValidateLogicalPortsResult(emptyList(), emptyList(), emptyList(), emptyList())));
+                new ValidateLogicalPortsResult(emptyList(), emptyList(), emptyList(), emptyList()),
+                singletonList(expectedFlow)));
 
-        verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
-        verify(carrier).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
-
-        service.handleInstallRulesResponse(KEY);
+        verify(carrier).sendCommandToSpeaker(eq(KEY), any(SpeakerRequest.class));
+        service.handleInstallCommandsResponse(KEY);
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
@@ -353,7 +307,8 @@ public class SwitchSyncServiceImplTest {
                         newHashSet(excessRules), newHashSet(misconfiguredRules)),
                 new ValidateMetersResult(emptyList(), emptyList(), emptyList(), excessMeters),
                 new ValidateGroupsResult(emptyList(), emptyList(), emptyList(), emptyList()),
-                new ValidateLogicalPortsResult(emptyList(), emptyList(), emptyList(), emptyList()));
+                new ValidateLogicalPortsResult(emptyList(), emptyList(), emptyList(), emptyList()),
+                singletonList(expectedFlow));
     }
 
     private ErrorMessage getErrorMessage() {

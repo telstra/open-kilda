@@ -16,10 +16,16 @@
 package org.openkilda.wfm.topology.switchmanager.model;
 
 import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.MeterSpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerCommandData;
 
 import lombok.Value;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Value
 public class ValidationResult {
@@ -30,4 +36,28 @@ public class ValidationResult {
     ValidateMetersResult validateMetersResult;
     ValidateGroupsResult validateGroupsResult;
     ValidateLogicalPortsResult validateLogicalPortsResult;
+
+    Collection<SpeakerCommandData> expectedOfElements;
+
+    /**
+     * Get expected rules by cookies.
+     */
+    public List<FlowSpeakerCommandData> getRulesByCookies(Set<Long> cookies) {
+        return expectedOfElements.stream()
+                .filter(ofElement -> ofElement instanceof FlowSpeakerCommandData)
+                .map(ofElement -> (FlowSpeakerCommandData) ofElement)
+                .filter(rule -> cookies.contains(rule.getCookie().getValue()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get expected meters by meter ids.
+     */
+    public List<MeterSpeakerCommandData> getMeterByMeterId(Set<Long> meterIds) {
+        return expectedOfElements.stream()
+                .filter(ofElement -> ofElement instanceof MeterSpeakerCommandData)
+                .map(ofElement -> (MeterSpeakerCommandData) ofElement)
+                .filter(meter -> meterIds.contains(meter.getMeterId().getValue()))
+                .collect(Collectors.toList());
+    }
 }

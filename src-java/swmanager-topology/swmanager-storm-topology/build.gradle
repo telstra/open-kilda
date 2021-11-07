@@ -10,6 +10,8 @@ description = 'Switch Manager Storm Topology'
 dependencies {
     implementation project(':base-storm-topology')
     implementation project(':swmanager-messaging')
+    implementation project(':rule-manager-api')
+    implementation project(':rule-manager-implementation')
     implementation project(':grpc-api')
     aspect project(':base-storm-topology')
     runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')

@@ -16,55 +16,48 @@
 package org.openkilda.wfm.topology.switchmanager.fsm;
 
 import static java.util.Collections.emptyList;
-import static org.apache.storm.shade.org.apache.commons.collections.ListUtils.union;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.COMMANDS_INSTALLED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.COMMANDS_REMOVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.EXCESS_RULES_REMOVED;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.GROUPS_INSTALLED;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.GROUPS_MODIFIED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.GROUPS_REMOVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.LOGICAL_PORT_INSTALLED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.LOGICAL_PORT_REMOVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.METERS_REMOVED;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.MISCONFIGURED_METERS_MODIFIED;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.MISCONFIGURED_RULES_REINSTALLED;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.MISSING_RULES_INSTALLED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.NEXT;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.RULES_SYNCHRONIZED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.SWITCH_SYNCHRONIZED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.TIMEOUT;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_EXCESS_GROUPS;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_EXCESS_METERS;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_EXCESS_RULES;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_GROUP_MIRROR_CONFIGS;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_LOGICAL_PORTS_COMMANDS;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_MISCONFIGURED_METERS;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_MISCONFIGURED_RULES;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_MISSING_RULES;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.FINISHED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.FINISHED_WITH_ERROR;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.GROUPS_COMMANDS_SEND;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.INITIALIZED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.LOGICAL_PORTS_COMMANDS_SEND;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.METERS_COMMANDS_SEND;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.RULES_COMMANDS_SEND;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.REMOVE_GROUPS_COMMANDS_SEND;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.REMOVE_METERS_COMMANDS_SEND;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.REMOVE_RULES_COMMANDS_SEND;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.SEND_COMMANDS;
 
-import org.openkilda.messaging.command.flow.BaseFlow;
-import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
-import org.openkilda.messaging.command.flow.ModifyDefaultMeterForSwitchManagerRequest;
-import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
+import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.RemoveSpeakerCommandsRequest;
+import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.grpc.CreateLogicalPortRequest;
 import org.openkilda.messaging.command.grpc.DeleteLogicalPortRequest;
 import org.openkilda.messaging.command.switches.DeleteGroupRequest;
-import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
-import org.openkilda.messaging.command.switches.InstallGroupRequest;
-import org.openkilda.messaging.command.switches.ModifyGroupRequest;
+import org.openkilda.messaging.command.switches.DeleteMeterForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.rule.SwitchSyncErrorData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.messaging.info.switches.GroupInfoEntry;
 import org.openkilda.messaging.info.switches.GroupSyncEntry;
 import org.openkilda.messaging.info.switches.LogicalPortInfoEntry;
@@ -74,10 +67,10 @@ import org.openkilda.messaging.info.switches.MetersSyncEntry;
 import org.openkilda.messaging.info.switches.RulesSyncEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.model.GroupId;
-import org.openkilda.model.MeterId;
 import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.cookie.Cookie;
+import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerCommandData;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState;
@@ -97,6 +90,8 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -113,13 +108,9 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     private final CommandBuilder commandBuilder;
     private final SwitchId switchId;
     private final ValidationResult validationResult;
-    private List<Long> installedRulesCookies;
-    private List<Long> removedFlowRulesCookies;
-    private final List<Long> removedDefaultRulesCookies = new ArrayList<>();
+    private Set<Long> missingRulesCookies;
+    private Set<Long> excessRulesCookies;
 
-    private List<BaseFlow> missingRules = emptyList();
-    private List<ReinstallDefaultFlowForSwitchManagerRequest> misconfiguredRules = emptyList();
-    private List<ModifyDefaultMeterForSwitchManagerRequest> misconfiguredMeters = emptyList();
     private List<RemoveFlow> excessRules = emptyList();
     private List<Long> excessMeters = emptyList();
     private List<GroupInstallContext> missingGroups = emptyList();
@@ -128,16 +119,17 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     private List<CreateLogicalPortRequest> missingLogicalPorts = emptyList();
     private List<DeleteLogicalPortRequest> excessLogicalPorts = emptyList();
 
-    private int missingRulesPendingResponsesCount = 0;
+    private List<SpeakerCommandData> removeOfElements = new ArrayList<>();
+    private List<SpeakerCommandData> installOfElements = new ArrayList<>();
+
     private int excessRulesPendingResponsesCount = 0;
-    private int reinstallDefaultRulesPendingResponsesCount = 0;
     private int excessMetersPendingResponsesCount = 0;
-    private int misconfiguredMetersPendingResponsesCount = 0;
-    private int missingGroupsPendingResponsesCount = 0;
-    private int misconfiguredGroupsPendingResponsesCount = 0;
     private int excessGroupsPendingResponsesCount = 0;
     private int missingLogicalPortsPendingResponsesCount = 0;
     private int excessLogicalPortsPendingResponsesCount = 0;
+
+    private boolean waitRemoveOfElementsResult = false;
+    private boolean waitInstallOfElementsResult = false;
 
     public SwitchSyncFsm(SwitchManagerCarrier carrier, String key, CommandBuilder commandBuilder,
                          SwitchValidateRequest request, ValidationResult validationResult) {
@@ -182,22 +174,22 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         builder.externalTransition().from(COMPUTE_EXCESS_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(COMPUTE_EXCESS_RULES).to(COMPUTE_EXCESS_METERS).on(NEXT)
+        builder.externalTransition().from(COMPUTE_EXCESS_RULES).to(COMPUTE_MISCONFIGURED_METERS).on(NEXT)
+                .callMethod("computeMisconfiguredAndMissingMeters");
+        builder.externalTransition().from(COMPUTE_MISCONFIGURED_METERS).to(FINISHED_WITH_ERROR).on(ERROR)
+                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
+
+        builder.externalTransition().from(COMPUTE_MISCONFIGURED_METERS).to(COMPUTE_EXCESS_METERS).on(NEXT)
                 .callMethod("computeExcessMeters");
         builder.externalTransition().from(COMPUTE_EXCESS_METERS).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(COMPUTE_EXCESS_METERS).to(COMPUTE_MISCONFIGURED_METERS).on(NEXT)
-                .callMethod("computeMisconfiguredMeters");
-        builder.externalTransition().from(COMPUTE_MISCONFIGURED_METERS).to(FINISHED_WITH_ERROR).on(ERROR)
+        builder.externalTransition().from(COMPUTE_EXCESS_METERS).to(COMPUTE_EXCESS_GROUPS).on(NEXT)
+                .callMethod("computeExcessGroups");
+        builder.externalTransition().from(COMPUTE_EXCESS_GROUPS).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(COMPUTE_MISCONFIGURED_METERS).to(COMPUTE_GROUP_MIRROR_CONFIGS).on(NEXT)
-                .callMethod("computeGroupMirrorConfigs");
-        builder.externalTransition().from(COMPUTE_GROUP_MIRROR_CONFIGS).to(FINISHED_WITH_ERROR).on(ERROR)
-                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
-
-        builder.externalTransition().from(COMPUTE_GROUP_MIRROR_CONFIGS).to(COMPUTE_LOGICAL_PORTS_COMMANDS).on(NEXT)
+        builder.externalTransition().from(COMPUTE_EXCESS_GROUPS).to(COMPUTE_LOGICAL_PORTS_COMMANDS).on(NEXT)
                 .callMethod("computeLogicalPortsCommands");
         builder.externalTransition().from(COMPUTE_LOGICAL_PORTS_COMMANDS).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
@@ -213,42 +205,46 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         builder.externalTransition().from(LOGICAL_PORTS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(LOGICAL_PORTS_COMMANDS_SEND).to(GROUPS_COMMANDS_SEND).on(NEXT)
-                .callMethod("sendGroupsCommands");
-        builder.internalTransition().within(GROUPS_COMMANDS_SEND).on(GROUPS_INSTALLED).callMethod("groupsInstalled");
-        builder.internalTransition().within(GROUPS_COMMANDS_SEND).on(GROUPS_MODIFIED).callMethod("groupsModified");
-        builder.internalTransition().within(GROUPS_COMMANDS_SEND).on(GROUPS_REMOVED).callMethod("groupsRemoved");
+        builder.externalTransition().from(LOGICAL_PORTS_COMMANDS_SEND).to(REMOVE_GROUPS_COMMANDS_SEND).on(NEXT)
+                .callMethod("sendExcessGroupsCommands");
+        builder.internalTransition().within(REMOVE_GROUPS_COMMANDS_SEND).on(GROUPS_REMOVED).callMethod("groupsRemoved");
 
-        builder.externalTransition().from(GROUPS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(TIMEOUT)
+        builder.externalTransition().from(REMOVE_GROUPS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(TIMEOUT)
                 .callMethod(COMMANDS_PROCESSING_FAILED_BY_TIMEOUT_METHOD_NAME);
-        builder.externalTransition().from(GROUPS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(ERROR)
+        builder.externalTransition().from(REMOVE_GROUPS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(GROUPS_COMMANDS_SEND).to(RULES_COMMANDS_SEND).on(NEXT)
-                .callMethod("sendRulesCommands");
-        builder.internalTransition().within(RULES_COMMANDS_SEND).on(MISSING_RULES_INSTALLED)
-                .callMethod("missingRuleInstalled");
-        builder.internalTransition().within(RULES_COMMANDS_SEND).on(EXCESS_RULES_REMOVED)
+        builder.externalTransition().from(REMOVE_GROUPS_COMMANDS_SEND).to(REMOVE_RULES_COMMANDS_SEND).on(NEXT)
+                .callMethod("sendExcessRulesCommands");
+        builder.internalTransition().within(REMOVE_RULES_COMMANDS_SEND).on(EXCESS_RULES_REMOVED)
                 .callMethod("excessRuleRemoved");
-        builder.internalTransition().within(RULES_COMMANDS_SEND).on(MISCONFIGURED_RULES_REINSTALLED)
-                .callMethod("misconfiguredRuleReinstalled");
 
-        builder.externalTransition().from(RULES_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(TIMEOUT)
+        builder.externalTransition().from(REMOVE_RULES_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(TIMEOUT)
                 .callMethod(COMMANDS_PROCESSING_FAILED_BY_TIMEOUT_METHOD_NAME);
-        builder.externalTransition().from(RULES_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(ERROR)
+        builder.externalTransition().from(REMOVE_RULES_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(RULES_COMMANDS_SEND).to(METERS_COMMANDS_SEND).on(RULES_SYNCHRONIZED)
-                .callMethod("sendMetersCommands");
-        builder.internalTransition().within(METERS_COMMANDS_SEND).on(METERS_REMOVED).callMethod("meterRemoved");
-        builder.internalTransition().within(METERS_COMMANDS_SEND).on(MISCONFIGURED_METERS_MODIFIED)
-                .callMethod("meterModified");
+        builder.externalTransition().from(REMOVE_RULES_COMMANDS_SEND).to(REMOVE_METERS_COMMANDS_SEND)
+                .on(NEXT)
+                .callMethod("sendExcessMetersCommands");
+        builder.internalTransition().within(REMOVE_METERS_COMMANDS_SEND).on(METERS_REMOVED).callMethod("meterRemoved");
 
-        builder.externalTransition().from(METERS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(TIMEOUT)
+        builder.externalTransition().from(REMOVE_METERS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(TIMEOUT)
                 .callMethod(COMMANDS_PROCESSING_FAILED_BY_TIMEOUT_METHOD_NAME);
-        builder.externalTransition().from(METERS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(ERROR)
+        builder.externalTransition().from(REMOVE_METERS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
-        builder.externalTransition().from(METERS_COMMANDS_SEND).to(FINISHED).on(NEXT)
+
+        builder.externalTransition().from(REMOVE_METERS_COMMANDS_SEND).to(SEND_COMMANDS).on(NEXT)
+                .callMethod("sendCommands");
+        builder.internalTransition().within(SEND_COMMANDS).on(COMMANDS_REMOVED).callMethod("commandsRemoved");
+        builder.internalTransition().within(SEND_COMMANDS).on(COMMANDS_INSTALLED).callMethod("commandsInstalled");
+
+        builder.externalTransition().from(SEND_COMMANDS).to(FINISHED_WITH_ERROR).on(TIMEOUT)
+                .callMethod(COMMANDS_PROCESSING_FAILED_BY_TIMEOUT_METHOD_NAME);
+        builder.externalTransition().from(SEND_COMMANDS).to(FINISHED_WITH_ERROR).on(ERROR)
+                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
+
+        builder.externalTransition().from(SEND_COMMANDS).to(FINISHED).on(SWITCH_SYNCHRONIZED)
                 .callMethod(FINISHED_METHOD_NAME);
 
         return builder;
@@ -265,11 +261,13 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     protected void computeMissingRules(SwitchSyncState from, SwitchSyncState to,
                                        SwitchSyncEvent event, Object context) {
-        installedRulesCookies = new ArrayList<>(validationResult.getValidateRulesResult().getMissingRules());
-        if (!installedRulesCookies.isEmpty()) {
-            log.info("Compute install rules (switch={}, key={})", switchId, key);
+        missingRulesCookies = validationResult.getValidateRulesResult().getMissingRules();
+        if (!missingRulesCookies.isEmpty()) {
+            log.info("Compute install missing rules (switch={}, key={})", switchId, key);
             try {
-                missingRules = commandBuilder.buildCommandsToSyncMissingRules(switchId, installedRulesCookies);
+                List<FlowSpeakerCommandData> missingRules = validationResult.getRulesByCookies(missingRulesCookies);
+
+                installOfElements.addAll(missingRules);
             } catch (Exception e) {
                 sendException(e);
             }
@@ -278,11 +276,13 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     protected void computeMisconfiguredRules(SwitchSyncState from, SwitchSyncState to,
                                              SwitchSyncEvent event, Object context) {
-        List<Long> reinstallRules = getReinstallDefaultRules();
+        Set<Long> reinstallRules = validationResult.getValidateRulesResult().getMisconfiguredRules();
         if (!reinstallRules.isEmpty()) {
-            log.info("Compute reinstall default rules (switch={}, key={})", switchId, key);
+            log.info("Compute reinstall misconfigured rules (switch={}, key={})", switchId, key);
             try {
-                misconfiguredRules = commandBuilder.buildCommandsToReinstallRules(switchId, reinstallRules);
+                // todo (rule-manager-fl-integration): use separate modifyOfElements and modify commands
+                installOfElements.addAll(validationResult.getRulesByCookies(reinstallRules));
+                removeOfElements.addAll(validationResult.getRulesByCookies(reinstallRules));
             } catch (Exception e) {
                 sendException(e);
             }
@@ -291,13 +291,13 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     protected void computeExcessRules(SwitchSyncState from, SwitchSyncState to,
                                       SwitchSyncEvent event, Object context) {
-        removedFlowRulesCookies = new ArrayList<>(validationResult.getValidateRulesResult().getExcessRules());
+        excessRulesCookies = validationResult.getValidateRulesResult().getExcessRules();
 
-        if (request.isRemoveExcess() && !removedFlowRulesCookies.isEmpty()) {
-            log.info("Compute remove rules (switch={}, key={})", switchId, key);
+        if (request.isRemoveExcess() && !excessRulesCookies.isEmpty()) {
+            log.info("Compute remove excess rules (switch={}, key={})", switchId, key);
             try {
                 excessRules = commandBuilder.buildCommandsToRemoveExcessRules(
-                        switchId, validationResult.getFlowEntries(), removedFlowRulesCookies);
+                        switchId, validationResult.getFlowEntries(), excessRulesCookies);
             } catch (Exception e) {
                 sendException(e);
             }
@@ -310,7 +310,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
             ValidateMetersResult validateMetersResult = validationResult.getValidateMetersResult();
 
             if (!validateMetersResult.getExcessMeters().isEmpty()) {
-                log.info("Compute remove meters (switch={}, key={})", switchId, key);
+                log.info("Compute remove excess meters (switch={}, key={})", switchId, key);
                 try {
                     excessMeters = validateMetersResult.getExcessMeters().stream()
                             .map(MeterInfoEntry::getMeterId)
@@ -322,156 +322,114 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         }
     }
 
-    protected void computeMisconfiguredMeters(SwitchSyncState from, SwitchSyncState to,
-                                             SwitchSyncEvent event, Object context) {
+    protected void computeMisconfiguredAndMissingMeters(SwitchSyncState from, SwitchSyncState to,
+                                                        SwitchSyncEvent event, Object context) {
         if (!validationResult.isProcessMeters()) {
             return;
         }
-        List<Long> modifyDefaultMeters = getModifyDefaultMeters();
-        List<MeterInfoEntry> modifyFlowMeters = getModifyFlowMeters();
-        if (!modifyDefaultMeters.isEmpty() || !modifyFlowMeters.isEmpty()) {
-            log.info("Compute modify meters (switch={}, key={})", switchId, key);
+        Set<Long> modifyFlowMeterIds = validationResult.getValidateMetersResult().getMisconfiguredMeters()
+                .stream()
+                .map(MeterInfoEntry::getMeterId)
+                .collect(Collectors.toSet());
+        if (!modifyFlowMeterIds.isEmpty()) {
+            log.info("Compute misconfigured and missing meters (switch={}, key={})", switchId, key);
             try {
-                misconfiguredMeters = commandBuilder.buildCommandsToModifyMisconfiguredMeters(
-                        switchId, modifyDefaultMeters, modifyFlowMeters);
+                // todo (rule-manager-fl-integration): use separate modifyOfElements and modify commands
+                installOfElements.addAll(validationResult.getMeterByMeterId(modifyFlowMeterIds));
             } catch (Exception e) {
                 sendException(e);
             }
         }
     }
 
-    protected void sendRulesCommands(SwitchSyncState from, SwitchSyncState to,
-                                     SwitchSyncEvent event, Object context) {
-        if (missingRules.isEmpty() && excessRules.isEmpty()) {
-            log.info("Nothing to do with rules (switch={}, key={})", switchId, key);
-            fire(NEXT);
-        }
-
-        if (!missingRules.isEmpty()) {
-            log.info("Request to install switch rules has been sent (switch={}, key={})", switchId, key);
-            missingRulesPendingResponsesCount = missingRules.size();
-
-            for (BaseFlow command : missingRules) {
-                carrier.sendCommandToSpeaker(key, new InstallFlowForSwitchManagerRequest(command));
-            }
-        }
-
-        if (!excessRules.isEmpty()) {
-            log.info("Request to remove switch rules has been sent (switch={}, key={})", switchId, key);
-            excessRulesPendingResponsesCount = excessRules.size();
-
-            for (RemoveFlow command : excessRules) {
-                carrier.sendCommandToSpeaker(key, new RemoveFlowForSwitchManagerRequest(switchId, command));
-            }
-        }
-
-        if (!misconfiguredRules.isEmpty()) {
-            log.info("Request to reinstall default switch rules has been sent (switch={}, key={})", switchId, key);
-            reinstallDefaultRulesPendingResponsesCount = misconfiguredRules.size();
-
-            for (ReinstallDefaultFlowForSwitchManagerRequest command : misconfiguredRules) {
-                carrier.sendCommandToSpeaker(key, command);
-            }
-        }
-
-        continueIfRulesSynchronized();
-    }
-
-    private List<Long> getReinstallDefaultRules() {
-        ValidateRulesResult validateRulesResult = validationResult.getValidateRulesResult();
-        return validateRulesResult.getMisconfiguredRules().stream()
-                .filter(Cookie::isDefaultRule)
-                .collect(Collectors.toList());
-    }
-
-    List<Long> getModifyDefaultMeters() {
-        ValidateRulesResult validateRulesResult = validationResult.getValidateRulesResult();
-        return validationResult.getValidateMetersResult().getMisconfiguredMeters().stream()
-                .filter(meter -> MeterId.isMeterIdOfDefaultRule(meter.getMeterId()))
-                .filter(meter -> !validateRulesResult.getMissingRules().contains(meter.getCookie()))
-                .filter(meter -> !validateRulesResult.getMisconfiguredRules().contains(meter.getCookie()))
-                .map(MeterInfoEntry::getMeterId)
-                .collect(Collectors.toList());
-    }
-
-    List<MeterInfoEntry> getModifyFlowMeters() {
-        ValidateRulesResult validateRulesResult = validationResult.getValidateRulesResult();
-        return validationResult.getValidateMetersResult().getMisconfiguredMeters().stream()
-                .filter(meter -> MeterId.isMeterIdOfFlowRule(meter.getMeterId()))
-                .filter(meter -> !validateRulesResult.getMissingRules().contains(meter.getCookie()))
-                .collect(Collectors.toList());
-    }
-
-    protected void sendMetersCommands(SwitchSyncState from, SwitchSyncState to,
-                                      SwitchSyncEvent event, Object context) {
-        if (excessMeters.isEmpty() && misconfiguredMeters.isEmpty()) {
-            log.info("Nothing to do with meters (switch={}, key={})", switchId, key);
+    protected void sendExcessRulesCommands(SwitchSyncState from, SwitchSyncState to,
+                                           SwitchSyncEvent event, Object context) {
+        if (excessRules.isEmpty()) {
+            log.info("Nothing to do with excess rules (switch={}, key={})", switchId, key);
             fire(NEXT);
             return;
         }
-        if (!excessMeters.isEmpty()) {
-            log.info("Request to remove switch meters has been sent (switch={}, key={})", switchId, key);
-            excessMetersPendingResponsesCount = excessMeters.size();
+        log.info("Request to remove excess switch rules has been sent (switch={}, key={})", switchId, key);
+        excessRulesPendingResponsesCount = excessRules.size();
 
-            for (Long meterId : excessMeters) {
-                carrier.sendCommandToSpeaker(key, new DeleterMeterForSwitchManagerRequest(switchId, meterId));
-            }
+        for (RemoveFlow command : excessRules) {
+            carrier.sendCommandToSpeaker(key, new RemoveFlowForSwitchManagerRequest(switchId, command));
         }
-        if (!misconfiguredMeters.isEmpty()) {
-            log.info("Request to modify switch meters has been sent (switch={}, key={})", switchId, key);
-            misconfiguredMetersPendingResponsesCount = misconfiguredMeters.size();
 
-            for (ModifyDefaultMeterForSwitchManagerRequest request : misconfiguredMeters) {
-                carrier.sendCommandToSpeaker(key, request);
-            }
-        }
+        continueIfExcessRulesSynchronized();
     }
 
-    protected void missingRuleInstalled(SwitchSyncState from, SwitchSyncState to,
-                                        SwitchSyncEvent event, Object context) {
-        log.info("Switch rule installed (switch={}, key={})", switchId, key);
-        missingRulesPendingResponsesCount--;
-        continueIfRulesSynchronized();
+    protected void sendExcessMetersCommands(SwitchSyncState from, SwitchSyncState to,
+                                            SwitchSyncEvent event, Object context) {
+        if (excessMeters.isEmpty()) {
+            log.info("Nothing to do with excess meters (switch={}, key={})", switchId, key);
+            fire(NEXT);
+            return;
+        }
+        log.info("Request to remove excess switch meters has been sent (switch={}, key={})", switchId, key);
+        excessMetersPendingResponsesCount = excessMeters.size();
+
+        for (Long meterId : excessMeters) {
+            carrier.sendCommandToSpeaker(key, new DeleteMeterForSwitchManagerRequest(switchId, meterId));
+        }
+
+        continueIfExcessMetersDone();
+    }
+
+    protected void sendCommands(SwitchSyncState from, SwitchSyncState to,
+                                SwitchSyncEvent event, Object context) {
+        if (removeOfElements.isEmpty() && installOfElements.isEmpty()) {
+            log.info("Nothing to do with rules/meters/groups (switch={}, key={})", switchId, key);
+            fire(SWITCH_SYNCHRONIZED);
+            return;
+        }
+
+        MessageContext messageContext = new MessageContext();
+        if (!removeOfElements.isEmpty()) {
+            log.info("Request to remove switch rules/meters/groups has been sent (switch={}, key={})", switchId, key);
+
+            carrier.sendCommandToSpeaker(key, new RemoveSpeakerCommandsRequest(messageContext, switchId,
+                    UUID.fromString(messageContext.getCorrelationId()), removeOfElements));
+            waitRemoveOfElementsResult = true;
+        }
+
+        if (!installOfElements.isEmpty()) {
+            log.info("Request to install switch rules/meters/groups has been sent (switch={}, key={})", switchId, key);
+
+            carrier.sendCommandToSpeaker(key, new InstallSpeakerCommandsRequest(messageContext, switchId,
+                    UUID.fromString(messageContext.getCorrelationId()), installOfElements));
+            waitInstallOfElementsResult = true;
+        }
+
+        continueIfCommandsSynchronized();
+    }
+
+    protected void commandsRemoved(SwitchSyncState from, SwitchSyncState to,
+                                   SwitchSyncEvent event, Object context) {
+        log.info("Switch remove rules/meters/groups processed (switch={}, key={})", switchId, key);
+        waitRemoveOfElementsResult = false;
+        continueIfCommandsSynchronized();
+    }
+
+    protected void commandsInstalled(SwitchSyncState from, SwitchSyncState to,
+                                     SwitchSyncEvent event, Object context) {
+        log.info("Switch install rules/meters/groups processed (switch={}, key={})", switchId, key);
+        waitInstallOfElementsResult = false;
+        continueIfCommandsSynchronized();
     }
 
     protected void excessRuleRemoved(SwitchSyncState from, SwitchSyncState to,
                                      SwitchSyncEvent event, Object context) {
-        log.info("Switch rule removed (switch={}, key={})", switchId, key);
+        log.info("Switch excess rule removed (switch={}, key={})", switchId, key);
         excessRulesPendingResponsesCount--;
-        continueIfRulesSynchronized();
-    }
-
-    protected void misconfiguredRuleReinstalled(SwitchSyncState from, SwitchSyncState to,
-                                                SwitchSyncEvent event, Object context) {
-        log.info("Default switch rule reinstalled (switch={}, key={})", switchId, key);
-        FlowReinstallResponse response = (FlowReinstallResponse) context;
-
-        Long removedRule = response.getRemovedRule();
-        if (removedRule != null && !removedDefaultRulesCookies.contains(removedRule)) {
-            removedDefaultRulesCookies.add(removedRule);
-        }
-
-        Long installedRule = response.getInstalledRule();
-        if (installedRule != null && !installedRulesCookies.contains(installedRule)) {
-            installedRulesCookies.add(installedRule);
-        }
-
-        reinstallDefaultRulesPendingResponsesCount--;
-        continueIfRulesSynchronized();
+        continueIfExcessRulesSynchronized();
     }
 
     protected void meterRemoved(SwitchSyncState from, SwitchSyncState to,
                                 SwitchSyncEvent event, Object context) {
-        log.info("Switch meter removed (switch={}, key={})", switchId, key);
+        log.info("Switch excess meter removed (switch={}, key={})", switchId, key);
         excessMetersPendingResponsesCount--;
-        continueIfMetersCommandsDone();
-    }
-
-    protected void meterModified(SwitchSyncState from, SwitchSyncState to,
-                                 SwitchSyncEvent event, Object context) {
-        log.info("Switch meter modified (switch={}, key={})", switchId, key);
-        misconfiguredMetersPendingResponsesCount--;
-        continueIfMetersCommandsDone();
+        continueIfExcessMetersDone();
     }
 
     protected void computeLogicalPortsCommands(SwitchSyncState from, SwitchSyncState to,
@@ -507,10 +465,11 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     }
 
     protected void sendLogicalPortsCommandsCommands(SwitchSyncState from, SwitchSyncState to,
-                                               SwitchSyncEvent event, Object context) {
+                                                    SwitchSyncEvent event, Object context) {
         if (missingLogicalPorts.isEmpty() && excessLogicalPorts.isEmpty()) {
             log.info("Nothing to do with logical ports (switch={}, key={})", switchId, key);
             fire(NEXT);
+            return;
         }
 
         if (!missingLogicalPorts.isEmpty()) {
@@ -549,119 +508,51 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         continueIfLogicalPortsSynchronized();
     }
 
-    protected void computeGroupMirrorConfigs(SwitchSyncState from, SwitchSyncState to,
-                                             SwitchSyncEvent event, Object context) {
-
-        List<Integer> missingGroupIds = validationResult.getValidateGroupsResult().getMissingGroups().stream()
-                .map(GroupInfoEntry::getGroupId)
-                .collect(Collectors.toList());
-
-        if (!missingGroupIds.isEmpty()) {
-            log.info("Compute mirror configs for install groups (switch={}, key={})", switchId, key);
-            try {
-                missingGroups = commandBuilder.buildGroupInstallContexts(switchId, missingGroupIds);
-            } catch (Exception e) {
-                sendException(e);
-            }
-        }
-
-        List<Integer> misconfiguredGroupIds = validationResult.getValidateGroupsResult().getMisconfiguredGroups()
-                .stream()
-                .map(GroupInfoEntry::getGroupId)
-                .collect(Collectors.toList());
-        if (!misconfiguredGroupIds.isEmpty()) {
-            log.info("Compute mirror configs for modify groups (switch={}, key={})", switchId, key);
-            try {
-                misconfiguredGroups = commandBuilder.buildGroupInstallContexts(switchId, misconfiguredGroupIds);
-            } catch (Exception e) {
-                sendException(e);
-            }
-        }
-
+    protected void computeExcessGroups(SwitchSyncState from, SwitchSyncState to,
+                                       SwitchSyncEvent event, Object context) {
         excessGroups = validationResult.getValidateGroupsResult().getExcessGroups().stream()
                 .map(GroupInfoEntry::getGroupId)
                 .collect(Collectors.toList());
     }
 
-    protected void sendGroupsCommands(SwitchSyncState from, SwitchSyncState to,
-                                      SwitchSyncEvent event, Object context) {
-        if (missingGroups.isEmpty() && misconfiguredGroups.isEmpty() && excessGroups.isEmpty()) {
-            log.info("Nothing to do with groups (switch={}, key={})", switchId, key);
+    protected void sendExcessGroupsCommands(SwitchSyncState from, SwitchSyncState to,
+                                            SwitchSyncEvent event, Object context) {
+        if (excessGroups.isEmpty()) {
+            log.info("Nothing to do with excess groups (switch={}, key={})", switchId, key);
             fire(NEXT);
+            return;
+        }
+        log.info("Request to remove switch groups has been sent (switch={}, key={})", switchId, key);
+        excessGroupsPendingResponsesCount = excessGroups.size();
+
+        for (Integer groupId : excessGroups) {
+            carrier.sendCommandToSpeaker(key, new DeleteGroupRequest(switchId, new GroupId(groupId)));
         }
 
-        if (!missingGroups.isEmpty()) {
-            log.info("Request to install switch groups has been sent (switch={}, key={})", switchId, key);
-            missingGroupsPendingResponsesCount = missingGroups.size();
-
-            for (GroupInstallContext groupContext : missingGroups) {
-                carrier.sendCommandToSpeaker(key, new InstallGroupRequest(switchId, groupContext.getMirrorConfig(),
-                        groupContext.getEncapsulation(), groupContext.getEgressSwitchId()));
-            }
-        }
-
-        if (!misconfiguredGroups.isEmpty()) {
-            log.info("Request to modify switch groups has been sent (switch={}, key={})", switchId, key);
-            misconfiguredGroupsPendingResponsesCount = misconfiguredGroups.size();
-
-            for (GroupInstallContext groupContext : misconfiguredGroups) {
-                carrier.sendCommandToSpeaker(key, new ModifyGroupRequest(switchId, groupContext.getMirrorConfig(),
-                        groupContext.getEncapsulation(), groupContext.getEgressSwitchId()));
-            }
-        }
-
-        if (!excessGroups.isEmpty()) {
-            log.info("Request to remove switch groups has been sent (switch={}, key={})", switchId, key);
-            excessGroupsPendingResponsesCount = excessGroups.size();
-
-            for (Integer groupId : excessGroups) {
-                carrier.sendCommandToSpeaker(key, new DeleteGroupRequest(switchId, new GroupId(groupId)));
-            }
-        }
-
-        continueIfGroupsSynchronized();
-    }
-
-    protected void groupsInstalled(SwitchSyncState from, SwitchSyncState to,
-                                   SwitchSyncEvent event, Object context) {
-        log.info("Switch group installed (switch={}, key={})", switchId, key);
-        missingGroupsPendingResponsesCount--;
-        continueIfGroupsSynchronized();
-
-    }
-
-    protected void groupsModified(SwitchSyncState from, SwitchSyncState to,
-                                  SwitchSyncEvent event, Object context) {
-        log.info("Switch group modified (switch={}, key={})", switchId, key);
-        misconfiguredGroupsPendingResponsesCount--;
-        continueIfGroupsSynchronized();
+        continueIfExcessGroupsSynchronized();
     }
 
     protected void groupsRemoved(SwitchSyncState from, SwitchSyncState to,
                                  SwitchSyncEvent event, Object context) {
-        log.info("Switch group removed (switch={}, key={})", switchId, key);
+        log.info("Switch excess group removed (switch={}, key={})", switchId, key);
         excessGroupsPendingResponsesCount--;
-        continueIfGroupsSynchronized();
+        continueIfExcessGroupsSynchronized();
     }
 
-    private void continueIfRulesSynchronized() {
-        if (missingRulesPendingResponsesCount == 0
-                && excessRulesPendingResponsesCount == 0
-                && reinstallDefaultRulesPendingResponsesCount == 0) {
-            fire(RULES_SYNCHRONIZED);
-        }
-    }
-
-    private void continueIfMetersCommandsDone() {
-        if (excessMetersPendingResponsesCount == 0 && misconfiguredMetersPendingResponsesCount == 0) {
+    private void continueIfExcessRulesSynchronized() {
+        if (excessRulesPendingResponsesCount == 0) {
             fire(NEXT);
         }
     }
 
-    private void continueIfGroupsSynchronized() {
-        if (missingGroupsPendingResponsesCount == 0
-                && misconfiguredGroupsPendingResponsesCount == 0
-                && excessGroupsPendingResponsesCount == 0) {
+    private void continueIfExcessMetersDone() {
+        if (excessMetersPendingResponsesCount == 0) {
+            fire(NEXT);
+        }
+    }
+
+    private void continueIfExcessGroupsSynchronized() {
+        if (excessGroupsPendingResponsesCount == 0) {
             fire(NEXT);
         }
     }
@@ -669,6 +560,12 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     private void continueIfLogicalPortsSynchronized() {
         if (missingLogicalPortsPendingResponsesCount == 0 && excessLogicalPortsPendingResponsesCount == 0) {
             fire(NEXT);
+        }
+    }
+
+    private void continueIfCommandsSynchronized() {
+        if (!(waitInstallOfElementsResult || waitRemoveOfElementsResult)) {
+            fire(SWITCH_SYNCHRONIZED);
         }
     }
 
@@ -695,9 +592,8 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                 new ArrayList<>(validateRulesResult.getMisconfiguredRules()),
                 new ArrayList<>(validateRulesResult.getProperRules()),
                 new ArrayList<>(validateRulesResult.getExcessRules()),
-                installedRulesCookies,
-                request.isRemoveExcess() ? union(removedFlowRulesCookies, removedDefaultRulesCookies)
-                        : removedDefaultRulesCookies);
+                new ArrayList<>(missingRulesCookies),
+                request.isRemoveExcess() ? new ArrayList<>(excessRulesCookies) : emptyList());
 
         MetersSyncEntry metersEntry = null;
         if (validationResult.isProcessMeters()) {
@@ -709,6 +605,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                     request.isRemoveExcess() ? validateMetersResult.getExcessMeters() : emptyList());
         }
 
+        // todo (rule-manager-fl-integration): fix groups in response. Groups installed and modified using rule-manager.
         List<Integer> installedGroupsIds = missingGroups.stream().map(GroupInstallContext::getMirrorConfig)
                 .map(MirrorConfig::getGroupId).map(GroupId::intValue).collect(Collectors.toList());
         List<Integer> modifiedGroupsIds = misconfiguredGroups.stream().map(GroupInstallContext::getMirrorConfig)
@@ -773,27 +670,25 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         COMPUTE_EXCESS_RULES,
         COMPUTE_EXCESS_METERS,
         COMPUTE_MISCONFIGURED_METERS,
-        COMPUTE_GROUP_MIRROR_CONFIGS,
+        COMPUTE_EXCESS_GROUPS,
         COMPUTE_LOGICAL_PORTS_COMMANDS,
-        RULES_COMMANDS_SEND,
-        METERS_COMMANDS_SEND,
-        GROUPS_COMMANDS_SEND,
+        REMOVE_RULES_COMMANDS_SEND,
+        REMOVE_METERS_COMMANDS_SEND,
+        REMOVE_GROUPS_COMMANDS_SEND,
         LOGICAL_PORTS_COMMANDS_SEND,
+        SEND_COMMANDS,
         FINISHED_WITH_ERROR,
         FINISHED
     }
 
     public enum SwitchSyncEvent {
         NEXT,
-        MISSING_RULES_INSTALLED,
         EXCESS_RULES_REMOVED,
-        MISCONFIGURED_RULES_REINSTALLED,
-        RULES_SYNCHRONIZED,
         METERS_REMOVED,
-        MISCONFIGURED_METERS_MODIFIED,
-        GROUPS_INSTALLED,
-        GROUPS_MODIFIED,
         GROUPS_REMOVED,
+        COMMANDS_REMOVED,
+        COMMANDS_INSTALLED,
+        SWITCH_SYNCHRONIZED,
         LOGICAL_PORT_INSTALLED,
         LOGICAL_PORT_REMOVED,
         TIMEOUT,

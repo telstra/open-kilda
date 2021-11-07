@@ -33,7 +33,7 @@ import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteGroupRequest;
-import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.DeleteMeterForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpGroupsForNbWorkerRequest;
 import org.openkilda.messaging.command.switches.DumpGroupsForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
@@ -97,8 +97,8 @@ public final class RouterUtils {
                 return ((SwitchRulesInstallRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpRulesRequest) {
                 return ((DumpRulesRequest) commandData).getSwitchId();
-            } else if (commandData instanceof DeleterMeterForSwitchManagerRequest) {
-                return ((DeleterMeterForSwitchManagerRequest) commandData).getSwitchId();
+            } else if (commandData instanceof DeleteMeterForSwitchManagerRequest) {
+                return ((DeleteMeterForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DeleteMeterRequest) {
                 return ((DeleteMeterRequest) commandData).getSwitchId();
             } else if (commandData instanceof PortConfigurationRequest) {

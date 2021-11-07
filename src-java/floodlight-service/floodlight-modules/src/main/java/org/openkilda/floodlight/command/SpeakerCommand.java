@@ -42,6 +42,7 @@ import org.openkilda.floodlight.command.flow.transit.TransitFlowLoopSegmentVerif
 import org.openkilda.floodlight.command.flow.transit.TransitFlowSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.transit.TransitFlowSegmentRemoveCommand;
 import org.openkilda.floodlight.command.flow.transit.TransitFlowSegmentVerifyCommand;
+import org.openkilda.floodlight.command.rulemanager.InstallSpeakerCommands;
 import org.openkilda.floodlight.error.SessionErrorResponseException;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.service.session.SessionService;
@@ -126,7 +127,11 @@ import java.util.concurrent.CompletionException;
         @Type(value = OneSwitchMirrorFlowRemoveCommand.class,
                 name = "org.openkilda.floodlight.api.request.OneSwitchMirrorFlowRemoveRequest"),
         @Type(value = OneSwitchMirrorFlowVerifyCommand.class,
-                name = "org.openkilda.floodlight.api.request.OneSwitchMirrorFlowVerifyRequest")
+                name = "org.openkilda.floodlight.api.request.OneSwitchMirrorFlowVerifyRequest"),
+        // rule-manager commands
+        @Type(value = InstallSpeakerCommands.class,
+                name = "org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest")
+        //todo add remove/modify/verify SpeakerCommands
 
 })
 @Getter

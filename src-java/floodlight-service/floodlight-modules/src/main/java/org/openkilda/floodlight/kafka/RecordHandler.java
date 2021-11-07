@@ -130,9 +130,9 @@ import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteGroupRequest;
+import org.openkilda.messaging.command.switches.DeleteMeterForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
-import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpGroupsForNbWorkerRequest;
 import org.openkilda.messaging.command.switches.DumpGroupsForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
@@ -281,7 +281,7 @@ class RecordHandler implements Runnable {
             doDumpRulesForSwitchManagerRequest(message);
         } else if (data instanceof InstallFlowForSwitchManagerRequest) {
             doInstallFlowForSwitchManager(message);
-        } else if (data instanceof DeleterMeterForSwitchManagerRequest) {
+        } else if (data instanceof DeleteMeterForSwitchManagerRequest) {
             doDeleteMeter(message, context.getKafkaSwitchManagerTopic());
         } else if (data instanceof DeleteMeterRequest) {
             doDeleteMeter(message, context.getKafkaNorthboundTopic());
