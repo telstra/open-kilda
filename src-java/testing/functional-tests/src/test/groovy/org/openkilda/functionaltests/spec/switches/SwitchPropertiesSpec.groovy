@@ -261,8 +261,8 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.BAD_REQUEST
         e.responseBodyAsString.to(MessageError).errorDescription ==
-                "Switch $sw.dpId must support at least one of the next features: [NOVIFLOW_PUSH_POP_VXLAN, "
-                + "KILDA_OVS_PUSH_POP_MATCH_VXLAN]"
+                "Switch $sw.dpId must support at least one of the next features: [NOVIFLOW_PUSH_POP_VXLAN, " +
+                "KILDA_OVS_PUSH_POP_MATCH_VXLAN]"
 
         cleanup:
         !e && SwitchHelper.updateSwitchProperties(sw, initProps)
