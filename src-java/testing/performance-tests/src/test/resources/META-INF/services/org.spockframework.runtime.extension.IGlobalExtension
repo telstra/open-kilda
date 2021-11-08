@@ -1,4 +1,3 @@
 org.openkilda.functionaltests.extension.SkippedTestsLogger
 org.openkilda.functionaltests.extension.tags.TagExtension
 org.openkilda.functionaltests.extension.env.AssumeProfileExtension
-org.openkilda.functionaltests.extension.TestDataLoggingExtension
