@@ -112,7 +112,7 @@ and at least 1 path must remain safe"
         and: "All related switches have no rule anomalies"
         [mainPath, failoverPath, currentPath].collectMany { pathHelper.getInvolvedSwitches(it) }.unique()
                 .findAll { it != switchToBreak }.each {
-            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(it.dpId, ["missing", "excess", "misconfigured"])
+            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
 
         cleanup:
@@ -213,8 +213,8 @@ and at least 1 path must remain safe"
         wait(WAIT_OFFSET / 2) {
             involvedSwitchIds.each { swId ->
                 with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
                 }
             }
         }
@@ -367,8 +367,8 @@ and at least 1 path must remain safe"
         wait(WAIT_OFFSET / 2) {
             involvedSwitchIds.each { swId ->
                 with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
                 }
             }
         }
@@ -475,8 +475,8 @@ and at least 1 path must remain safe"
         northbound.validateFlow(flow.flowId).every { it.asExpected }
         currentSwitches.each {
             def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyRuleSectionsAreEmpty(it.dpId, ["excess", "missing", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(it.dpId, ["excess", "missing", "misconfigured"])
+            validation.verifyRuleSectionsAreEmpty(["excess", "missing", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(["excess", "missing", "misconfigured"])
         }
         def done = true
 
@@ -563,8 +563,8 @@ and at least 1 path must remain safe"
         northbound.validateFlow(flow.flowId).every { it.asExpected }
         currentSwitches.each {
             def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyRuleSectionsAreEmpty(it.dpId, ["excess", "missing", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(it.dpId, ["excess", "missing", "misconfigured"])
+            validation.verifyRuleSectionsAreEmpty(["excess", "missing", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(["excess", "missing", "misconfigured"])
         }
         def done = true
 

@@ -805,8 +805,8 @@ class LinkSpec extends HealthCheckSpecification {
         withPool {
             [switchPair.src.dpId, switchPair.dst.dpId].eachParallel { SwitchId swId ->
                 with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
                 }
             }
         }

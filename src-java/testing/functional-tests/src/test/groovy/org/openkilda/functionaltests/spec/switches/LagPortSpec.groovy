@@ -82,8 +82,8 @@ class LagPortSpec extends HealthCheckSpecification {
 
         and: "Switch is valid"
         with(northbound.validateSwitch(sw.dpId)) {
-            it.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty(sw.dpId)
+            it.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            it.verifyMeterSectionsAreEmpty()
         }
 
         when: "Delete the LAG port"
@@ -215,8 +215,8 @@ class LagPortSpec extends HealthCheckSpecification {
 
         and: "Switch is valid"
         with(northbound.validateSwitch(sw.dpId)) {
-            it.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty(sw.dpId)
+            it.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            it.verifyMeterSectionsAreEmpty()
         }
 
         cleanup:

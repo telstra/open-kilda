@@ -312,14 +312,12 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "The src switch passes switch validation"
         with(northbound.validateSwitch(srcSwitch.dpId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(srcSwitch.dpId, ["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(srcSwitch.dpId, ["missing", "excess", "misconfigured"])
+            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
-        def srcSwitchIsFine = true
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        !srcSwitchIsFine && northbound.synchronizeSwitch(srcSwitch.dpId, true)
     }
 
     @Tidy
@@ -377,13 +375,9 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 //            }
 //        }
 //        def dstSwitchesAreFine = true
-        def dstSwitchesAreFine = false
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        !dstSwitchesAreFine && dstSwitch && newDstSwitch && [dstSwitch, newDstSwitch]*.dpId.each {
-            northbound.synchronizeSwitch(it, true)
-        }
     }
 
     @Tidy
@@ -472,14 +466,12 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "The switch passes switch validation"
         with(northbound.validateSwitch(flow.source.switchId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(flow.source.switchId, ["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(flow.source.switchId, ["missing", "excess", "misconfigured"])
+            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
-        def switchIsFine = true
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        !switchIsFine && northbound.synchronizeSwitch(flow.source.switchId, true)
     }
 
     @Tidy
@@ -535,14 +527,12 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "The switch passes switch validation"
         with(northbound.validateSwitch(flow.source.switchId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(flow.source.switchId, ["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(flow.source.switchId, ["missing", "excess", "misconfigured"])
+            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
-        def switchIsFine = true
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        !switchIsFine && northbound.synchronizeSwitch(flow.source.switchId, true)
     }
 
     @Tidy

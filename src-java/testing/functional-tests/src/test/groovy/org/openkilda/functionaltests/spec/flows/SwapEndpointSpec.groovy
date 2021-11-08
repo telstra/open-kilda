@@ -74,11 +74,9 @@ class SwapEndpointSpec extends HealthCheckSpecification {
             [it.source.datapath, it.destination.datapath].collect { findSw(it) }
         }.unique()
         validateSwitches(involvedSwitches)
-        def isSwitchValid = true
 
         cleanup: "Delete flows"
         flows.each { it && flowHelper.deleteFlow(it.id) }
-        !isSwitchValid && involvedSwitches.each { northbound.synchronizeSwitch(it.dpId, true) }
 
         where:
         data << [
@@ -245,14 +243,9 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(data.switchPairs[0])
         validateSwitches(data.switchPairs[1])
-        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [data.flow1, data.flow2].each { it && flowHelper.deleteFlow(it.id) }
-        if (!isSwitchValid) {
-            [data.switchPairs[0].src.dpId, data.switchPairs[0].dst.dpId, data.switchPairs[1].src.dpId, data.switchPairs[1].dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
-        }
 
         where:
         data << [{
@@ -313,14 +306,9 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(data.switchPairs[0])
         validateSwitches(data.switchPairs[1])
-        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [data.flow1, data.flow2].each { it && flowHelper.deleteFlow(it.id) }
-        if (!isSwitchValid) {
-            [data.switchPairs[0].src.dpId, data.switchPairs[0].dst.dpId, data.switchPairs[1].src.dpId, data.switchPairs[1].dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
-        }
 
         where:
         data << [{
@@ -388,14 +376,9 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(switchPairs[0])
         validateSwitches(switchPairs[1])
-        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-        if (!isSwitchValid) {
-            [switchPairs[0].src.dpId, switchPairs[0].dst.dpId, switchPairs[1].src.dpId, switchPairs[1].dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
-        }
 
         where:
         endpointsPart << ["vlans", "ports", "switches"]
@@ -439,14 +422,9 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
-        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-        if (!isSwitchValid) {
-            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
-        }
 
         where:
         endpointsPart << ["vlans", "ports", "switches"]
@@ -486,14 +464,9 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
-        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-        if (!isSwitchValid) {
-            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
-        }
 
         where:
         data << [{
@@ -1494,8 +1467,8 @@ switches"() {
         then: "Related switch have no rule anomalies"
         switches.each {
             def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyRuleSectionsAreEmpty(it.dpId)
-            validation.verifyMeterSectionsAreEmpty(it.dpId)
+            validation.verifyRuleSectionsAreEmpty()
+            validation.verifyMeterSectionsAreEmpty()
         }
         def isSwitchValid = true
 
@@ -1657,8 +1630,8 @@ switches"() {
                 if (it.ofVersion == "OF_13") {
                     def validationResult = northbound.validateSwitch(it.dpId)
                     //below verification should also include 'excess' after #4003 is fixed
-                    validationResult.verifyRuleSectionsAreEmpty(it.dpId, ["missing"])
-                    validationResult.verifyMeterSectionsAreEmpty(it.dpId, ["missing", "misconfigured", "excess"])
+                    validationResult.verifyRuleSectionsAreEmpty(["missing"])
+                    validationResult.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
                 } else {
                     def validationResult = northbound.validateSwitchRules(it.dpId)
                     assert validationResult.missingRules.size() == 0
