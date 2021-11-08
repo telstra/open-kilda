@@ -15,8 +15,15 @@
 
 package org.openkilda.messaging.info;
 
+import org.openkilda.bluegreen.kafka.TransportAdapter;
+import org.openkilda.bluegreen.kafka.TransportErrorReport;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NonNull;
+
+import java.util.Optional;
 
 /**
  * Class represents error info data.
@@ -24,12 +31,16 @@ import lombok.EqualsAndHashCode;
 //FIXME: should be deleted after OpenTSDB topology messaging is refactored to use Messages instead of InfoData
 @Data
 @EqualsAndHashCode(callSuper = false)
-public class ErrorInfoData extends InfoData {
-    private String errorMessage;
-    private String errorDescription;
+public class TransportErrorWrapper extends InfoData implements TransportAdapter {
+    private final TransportErrorReport errorReport;
 
-    public ErrorInfoData(String errorMessage, String errorDescription) {
-        this.errorMessage = errorMessage;
-        this.errorDescription = errorDescription;
+    public TransportErrorWrapper(@NonNull TransportErrorReport errorReport) {
+        this.errorReport = errorReport;
+    }
+
+    @JsonIgnore
+    @Override
+    public Optional<TransportErrorReport> getErrorReport() {
+        return Optional.of(errorReport);
     }
 }

@@ -21,15 +21,20 @@ import static org.openkilda.messaging.Utils.PAYLOAD;
 import static org.openkilda.messaging.Utils.REGION;
 import static org.openkilda.messaging.Utils.TIMESTAMP;
 
+import org.openkilda.bluegreen.kafka.TransportAdapter;
+import org.openkilda.bluegreen.kafka.TransportErrorReport;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
+
+import java.util.Optional;
 
 /**
  * Class represents information message.
@@ -37,7 +42,7 @@ import lombok.ToString;
 @Getter
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-public class InfoMessage extends Message {
+public class InfoMessage extends Message implements TransportAdapter {
     /**
      * Serialization version number constant.
      */
@@ -103,4 +108,12 @@ public class InfoMessage extends Message {
         this.region = region;
     }
 
+    @JsonIgnore
+    @Override
+    public Optional<TransportErrorReport> getErrorReport() {
+        if (data instanceof TransportAdapter) {
+            return ((TransportAdapter) data).getErrorReport();
+        }
+        return Optional.empty();
+    }
 }

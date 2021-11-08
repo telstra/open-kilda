@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 
 package org.openkilda.bluegreen.kafka;
 
-public interface DeserializationError {
-    String getDeserializationErrorMessage();
+import java.util.Optional;
+
+public interface TransportAdapter {
+    Optional<TransportErrorReport> getErrorReport();
 }

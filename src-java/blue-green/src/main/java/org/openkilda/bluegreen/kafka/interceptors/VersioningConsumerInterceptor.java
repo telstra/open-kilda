@@ -23,7 +23,7 @@ import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_RECONNECTIO
 import static org.openkilda.bluegreen.kafka.Utils.MESSAGE_VERSION_HEADER;
 import static org.openkilda.bluegreen.kafka.Utils.getValue;
 
-import org.openkilda.bluegreen.kafka.DeserializationError;
+import org.openkilda.bluegreen.kafka.TransportAdapter;
 
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
@@ -66,18 +66,18 @@ public class VersioningConsumerInterceptor<K, V> extends VersioningInterceptorBa
             List<ConsumerRecord<K, V>> filteredRecords = new ArrayList<>();
 
             for (ConsumerRecord<K, V> record : records.records(partition)) {
-                if (checkRecordVersion(record)) {
-                    filteredRecords.add(record);
+                if (! checkRecordVersion(record)) {
+                    continue;
+                }
 
-                    if (record.value() instanceof DeserializationError) {
-                        log.error("Can't deserialize message from topic: {}, partition: {}, error: {}",
-                                record.topic(), record.partition(),
-                                ((DeserializationError) record.value()).getDeserializationErrorMessage());
-                    }
+                if (! checkDeserializationError(record.value())) {
+                    filteredRecords.add(record);
                 }
             }
 
-            filteredRecordMap.put(partition, filteredRecords);
+            if (! filteredRecords.isEmpty()) {
+                filteredRecordMap.put(partition, filteredRecords);
+            }
         }
         return new ConsumerRecords<>(filteredRecordMap);
     }
@@ -115,6 +115,27 @@ public class VersioningConsumerInterceptor<K, V> extends VersioningInterceptorBa
             return false;
         }
         return true;
+    }
+
+    private boolean checkDeserializationError(V value) {
+        if (value instanceof TransportAdapter) {
+            return checkDeserializationError((TransportAdapter) value);
+        }
+        return false;
+    }
+
+    private boolean checkDeserializationError(TransportAdapter adapter) {
+        return adapter.getErrorReport()
+                .map(report -> {
+                    log.error(
+                            "Failed to deserialize message in kafka-topic \"{}\" using base class {}: {}",
+                            report.getKafkaTopic(), report.getBaseClassName(), report.getError().getMessage());
+                    log.debug(
+                            "Not deserializable entry in kafka-topic \"{}\": {}",
+                            report.getKafkaTopic(), report.getRawSource());
+                    return true;
+                })
+                .orElse(false);
     }
 
     @Override

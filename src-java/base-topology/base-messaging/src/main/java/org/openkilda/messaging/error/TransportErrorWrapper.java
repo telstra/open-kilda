@@ -15,12 +15,18 @@
 
 package org.openkilda.messaging.error;
 
+import org.openkilda.bluegreen.kafka.TransportAdapter;
+import org.openkilda.bluegreen.kafka.TransportErrorReport;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.MessageContext;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.ToString;
+
+import java.util.Optional;
 
 /**
  * Class represents error abstract message.
@@ -28,14 +34,17 @@ import lombok.ToString;
 @Getter
 @ToString
 @EqualsAndHashCode(callSuper = false)
-public class ErrorAbstractMessage extends AbstractMessage {
+public class TransportErrorWrapper extends AbstractMessage implements TransportAdapter {
+    private final TransportErrorReport errorReport;
 
-    private String errorMessage;
-    private String errorDescription;
-
-    public ErrorAbstractMessage(String errorMessage, String errorDescription) {
+    public TransportErrorWrapper(@NonNull TransportErrorReport errorReport) {
         super(new MessageContext());
-        this.errorMessage = errorMessage;
-        this.errorDescription = errorDescription;
+        this.errorReport = errorReport;
+    }
+
+    @JsonIgnore
+    @Override
+    public Optional<TransportErrorReport> getErrorReport() {
+        return Optional.of(errorReport);
     }
 }
