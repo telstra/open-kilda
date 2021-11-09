@@ -19,8 +19,6 @@ import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -44,18 +42,15 @@ public class FlowPathSwapService {
     private final FsmExecutor<FlowPathSwapFsm, State, Event, FlowPathSwapContext> fsmExecutor
             = new FsmExecutor<>(Event.NEXT);
     private final FlowPathSwapHubCarrier carrier;
-    private final FlowEventRepository flowEventRepository;
 
     private boolean active;
 
     public FlowPathSwapService(FlowPathSwapHubCarrier carrier,
                                PersistenceManager persistenceManager,
                                int speakerCommandRetriesLimit, FlowResourcesManager flowResourcesManager) {
+        this.carrier = carrier;
         fsmFactory = new FlowPathSwapFsm.Factory(carrier,
                 persistenceManager, flowResourcesManager, speakerCommandRetriesLimit);
-        this.carrier = carrier;
-        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        this.flowEventRepository = repositoryFactory.createFlowEventRepository();
     }
 
     /**
@@ -69,12 +64,6 @@ public class FlowPathSwapService {
 
         if (fsms.containsKey(key)) {
             log.error("Attempt to create a FSM with key {}, while there's another active FSM with the same key.", key);
-            return;
-        }
-
-        String eventKey = commandContext.getCorrelationId();
-        if (flowEventRepository.existsByTaskId(eventKey)) {
-            log.error("Attempt to reuse key {}, but there's a history record(s) for it.", eventKey);
             return;
         }
 

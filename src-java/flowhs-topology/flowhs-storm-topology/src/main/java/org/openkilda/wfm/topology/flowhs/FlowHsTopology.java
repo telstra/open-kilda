@@ -36,6 +36,7 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.UPDATE_HUB
 import static org.openkilda.wfm.topology.flowhs.bolts.RouterBolt.FLOW_ID_FIELD;
 
 import org.openkilda.messaging.AbstractMessage;
+import org.openkilda.messaging.Message;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.LaunchEnvironment;
@@ -70,6 +71,8 @@ import org.openkilda.wfm.topology.flowhs.bolts.SpeakerWorkerBolt;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
+import org.apache.storm.kafka.spout.KafkaSpoutConfig;
+import org.apache.storm.kafka.spout.KafkaSpoutConfig.ProcessingGuarantee;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 
@@ -156,7 +159,13 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     }
 
     private void inputSpout(TopologyBuilder topologyBuilder) {
-        declareKafkaSpout(topologyBuilder, getConfig().getKafkaFlowHsTopic(), ComponentId.FLOW_SPOUT.name());
+        String spoutId = ComponentId.FLOW_SPOUT.name();
+        KafkaSpoutConfig<String, Message> spoutConfig = getKafkaSpoutConfigBuilder(
+                getConfig().getKafkaFlowHsTopic(), spoutId)
+                .setProcessingGuarantee(ProcessingGuarantee.AT_MOST_ONCE)
+                .setTupleTrackingEnforced(true)
+                .build();
+        declareKafkaSpout(topologyBuilder, spoutConfig, spoutId);
     }
 
     private void inputRouter(TopologyBuilder topologyBuilder) {
