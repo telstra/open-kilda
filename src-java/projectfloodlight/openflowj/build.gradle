@@ -23,6 +23,10 @@ configurations {
     'default'
 }
 
+repositories {
+    mavenCentral()
+}
+
 task cloneLoxigenRepo {
     def repo = file('loxigen')
     outputs.dir(repo)
