@@ -272,6 +272,16 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
     }
 
     /**
+     * Checks if specified path is protected.
+     */
+    public boolean isProtectedPath(PathId pathId) {
+        if (pathId == null) {
+            throw new IllegalArgumentException("Path id can't be null");
+        }
+        return pathId.equals(getProtectedForwardPathId()) || pathId.equals(getProtectedReversePathId());
+    }
+
+    /**
      * Return main flow prioritized paths status.
      */
     public FlowPathStatus getMainFlowPrioritizedPathsStatus() {

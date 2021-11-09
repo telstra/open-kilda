@@ -21,6 +21,10 @@ public enum ActionType {
     PORT_OUT,
     POP_VLAN,
     PUSH_VLAN,
+    POP_VXLAN_NOVIFLOW,
+    POP_VXLAN_OVS,
+    PUSH_VXLAN_NOVIFLOW,
+    PUSH_VXLAN_OVS,
     SET_FIELD,
     METER
 }
