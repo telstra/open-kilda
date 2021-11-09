@@ -7,6 +7,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.model.cookie.Cookie.LLDP_INGRESS_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_INPUT_PRE_DROP_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_COOKIE
@@ -1505,7 +1506,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def swProps = northbound.getSwitchProperties(sw.switchId)
         def postIngressMeterCount = swProps.multiTable ? 1 : 0
         def switchLldpMeterCount = swProps.switchLldp ? 1 : 0
-        def vxlanMeterCount = swProps.multiTable && sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) ? 1 : 0
+        def vxlanMeterCount = swProps.multiTable && (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
+                || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) ? 1 : 0
 
         def meters = northbound.getAllMeters(sw.switchId).meterEntries*.meterId
 

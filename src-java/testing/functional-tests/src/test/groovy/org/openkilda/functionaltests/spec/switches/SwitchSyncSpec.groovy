@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -246,7 +245,6 @@ class SwitchSyncSpec extends BaseSpecification {
     }
 
     @Tidy
-    @Tags(HARDWARE)
     def "Able to synchronize switch with 'vxlan' rule(install missing rules and meters)"() {
         given: "Two active not neighboring Noviflow switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->

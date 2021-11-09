@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.command.flow.transit;
 
 import static org.easymock.EasyMock.expect;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 
 import org.openkilda.floodlight.command.AbstractSpeakerCommandTest;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
@@ -24,11 +25,11 @@ import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowTransitEncapsulation;
 
+import com.google.common.collect.Sets;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 
-import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 
 abstract class TransitFlowSegmentCommandTest extends AbstractSpeakerCommandTest {
@@ -40,8 +41,8 @@ abstract class TransitFlowSegmentCommandTest extends AbstractSpeakerCommandTest 
     public void setUp() throws Exception {
         super.setUp();
 
-        expect(featureDetectorService.detectSwitch(sw)).andStubReturn(Collections.emptySet());
-        expect(featureDetectorService.detectSwitch(swNext)).andStubReturn(Collections.emptySet());
+        expect(featureDetectorService.detectSwitch(sw)).andStubReturn(Sets.newHashSet(NOVIFLOW_PUSH_POP_VXLAN));
+        expect(featureDetectorService.detectSwitch(swNext)).andStubReturn(Sets.newHashSet(NOVIFLOW_PUSH_POP_VXLAN));
     }
 
     @Test

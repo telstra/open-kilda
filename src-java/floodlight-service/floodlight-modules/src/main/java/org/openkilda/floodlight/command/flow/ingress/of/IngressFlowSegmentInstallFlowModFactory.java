@@ -18,7 +18,9 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLOW_RTT_FORWARD_UDP_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_UDP_SRC;
 import static org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42FlowRttInputFlowGenerator.buildServer42CopyFirstTimestamp;
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentCommand;
 import org.openkilda.floodlight.error.NotImplementedEncapsulationException;
@@ -28,11 +30,10 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.SwitchFeature;
 
+import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
-import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowPushVxlanTunnel;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
-import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
@@ -42,6 +43,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlowModFactory {
     private final IngressFlowSegmentCommand command;
 
@@ -94,13 +96,6 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
                 actions.addAll(makeVlanEncapsulationTransformActions(vlanStack, false));
                 break;
             case VXLAN:
-                if (vlanStack.isEmpty()) {
-                    // Server 42 requires constant number of Vlans in packet.
-                    // TRANSIT_VLAN encapsulation always keeps 1 Vlan in packet.
-                    // VXLAN encapsulation for NON default port also keeps 1 Vlan in packet.
-                    // VXLAN encapsulation for default port has no Vlans in packet so we will add one fake Vlan
-                    actions.add(of.actions().pushVlan(EthType.VLAN_FRAME));
-                }
                 if (!getCommand().getMetadata().isMultiTable() && switchFeatures.contains(NOVIFLOW_COPY_FIELD)) {
                     actions.add(buildServer42CopyFirstTimestamp(of));
                 }
@@ -132,9 +127,18 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
         return actions;
     }
 
-    private OFActionNoviflowPushVxlanTunnel pushVxlanAction(int udpSrcPort) {
-        return OfAdapter.INSTANCE.makePushVxlanAction(of, command.getEncapsulation().getId(),
-                MacAddress.of(sw.getId()), MacAddress.of(command.getEgressSwitchId().toLong()), udpSrcPort);
+    private OFAction pushVxlanAction(int udpSrcPort) {
+        if (switchFeatures.contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+            return OfAdapter.INSTANCE.makeNoviflowPushVxlanAction(of, command.getEncapsulation().getId(),
+                    MacAddress.of(sw.getId()), MacAddress.of(command.getEgressSwitchId().toLong()), udpSrcPort);
+        } else if (switchFeatures.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
+            return OfAdapter.INSTANCE.makeOvsPushVxlanAction(of, command.getEncapsulation().getId(),
+                    MacAddress.of(sw.getId()), MacAddress.of(command.getEgressSwitchId().toLong()), udpSrcPort);
+        } else {
+            throw new UnsupportedOperationException(String.format("To push VXLAN switch %s must support one of the "
+                    + "following features [%s, %s]",
+                    sw.getId(), NOVIFLOW_PUSH_POP_VXLAN, KILDA_OVS_PUSH_POP_MATCH_VXLAN));
+        }
     }
 
     @Override

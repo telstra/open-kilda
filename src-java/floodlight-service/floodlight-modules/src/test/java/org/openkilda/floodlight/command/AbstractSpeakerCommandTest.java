@@ -257,9 +257,9 @@ public abstract class AbstractSpeakerCommandTest extends EasyMockSupport {
 
     protected void switchFeaturesSetup(IOFSwitch target, boolean metersSupport) {
         if (metersSupport) {
-            switchFeaturesSetup(target, SwitchFeature.METERS);
+            switchFeaturesSetup(target, SwitchFeature.METERS, SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN);
         } else {
-            switchFeaturesSetup(target);
+            switchFeaturesSetup(target, SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN);
         }
     }
 

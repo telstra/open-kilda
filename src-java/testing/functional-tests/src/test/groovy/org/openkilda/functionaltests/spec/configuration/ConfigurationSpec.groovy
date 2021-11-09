@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.spec.configuration
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
@@ -39,12 +38,12 @@ class ConfigurationSpec extends HealthCheckSpecification {
     FlowEncapsulationType defaultEncapsulationType = FlowEncapsulationType.TRANSIT_VLAN
 
     @Tidy
-    @Tags(HARDWARE)
     def "System takes into account default flow encapsulation type while creating a flow"() {
         when: "Create a flow without encapsulation type"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
             [swP.src, swP.dst].every { sw -> switchHelper.isVxlanEnabled(sw.dpId) }
         }
+        assumeTrue(switchPair != null, "Unable to find required switch pair in topology")
         def flow1 = flowHelperV2.randomFlow(switchPair)
         flow1.encapsulationType = null
         northboundV2.addFlow(flow1)

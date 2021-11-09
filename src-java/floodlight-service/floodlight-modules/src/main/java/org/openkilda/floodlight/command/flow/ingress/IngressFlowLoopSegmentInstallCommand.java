@@ -27,6 +27,7 @@ import org.openkilda.model.SwitchFeature;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.Sets;
 import lombok.Getter;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 
@@ -48,10 +49,10 @@ public class IngressFlowLoopSegmentInstallCommand extends IngressFlowLoopCommand
     }
 
     @Override
-    protected Set<SwitchFeature> getRequiredFeatures() {
-        Set<SwitchFeature> required = super.getRequiredFeatures();
+    protected List<Set<SwitchFeature>> getRequiredFeatures() {
+        List<Set<SwitchFeature>> required = super.getRequiredFeatures();
         if (metadata.isMultiTable()) {
-            required.add(SwitchFeature.MULTI_TABLE);
+            required.add(Sets.newHashSet(SwitchFeature.MULTI_TABLE));
         }
 
         return required;

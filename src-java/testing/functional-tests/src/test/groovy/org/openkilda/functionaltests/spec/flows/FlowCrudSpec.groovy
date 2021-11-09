@@ -868,7 +868,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         given: "Two active switches"
         def swPair = topologyHelper.getNeighboringSwitchPair().find {
             [it.src, it.dst].any { !switchHelper.isVxlanEnabled(it.dpId) }
-        }
+        } ?: assumeTrue(false, "Unable to find required switches in topology")
 
         def srcProps = northbound.getSwitchProperties(swPair.src.dpId)
         def dstProps = northbound.getSwitchProperties(swPair.dst.dpId)

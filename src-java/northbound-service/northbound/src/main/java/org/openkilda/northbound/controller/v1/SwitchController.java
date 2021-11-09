@@ -162,7 +162,7 @@ public class SwitchController extends BaseController {
                     + "REMOVE_SERVER_42_FLOW_RTT_TURNING,REMOVE_SERVER_42_FLOW_RTT_OUTPUT_VLAN,"
                     + "REMOVE_SERVER_42_FLOW_RTT_OUTPUT_VXLAN,"
                     + "REMOVE_SERVER_42_ISL_RTT_TURNING,REMOVE_SERVER_42_ISL_RTT_OUTPUT,"
-                    + "REMOVE_DEFAULTS,REMOVE_ADD_DEFAULTS",
+                    + "REMOVE_DEFAULTS,REMOVE_ADD_DEFAULTS,REMOVE_SERVER_42_FLOW_RTT_VXLAN_TURNING",
                     required = false)
             @RequestParam(value = "delete-action", required = false) Optional<DeleteRulesAction> deleteAction,
             @RequestParam(value = "cookie", required = false) Optional<Long> cookie,
@@ -243,7 +243,7 @@ public class SwitchController extends BaseController {
                     + "INSTALL_SERVER_42_FLOW_RTT_TURNING,INSTALL_SERVER_42_FLOW_RTT_OUTPUT_VLAN,"
                     + "INSTALL_SERVER_42_FLOW_RTT_OUTPUT_VXLAN,"
                     + "INSTALL_SERVER_42_ISL_RTT_TURNING,INSTALL_SERVER_42_ISL_RTT_OUTPUT,"
-                    + "INSTALL_DEFAULTS")
+                    + "INSTALL_SERVER_42_FLOW_RTT_VXLAN_TURNING,INSTALL_DEFAULTS")
             @RequestParam(value = "install-action", required = false) Optional<InstallRulesAction> installAction) {
         return switchService.installRules(switchId, installAction.orElse(InstallRulesAction.INSTALL_DEFAULTS));
     }

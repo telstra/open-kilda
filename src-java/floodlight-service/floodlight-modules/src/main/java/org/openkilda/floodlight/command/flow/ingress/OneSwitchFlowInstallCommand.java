@@ -30,6 +30,7 @@ import org.openkilda.model.SwitchFeature;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.Sets;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 
 import java.util.List;
@@ -74,10 +75,10 @@ public class OneSwitchFlowInstallCommand extends OneSwitchFlowCommand {
     }
 
     @Override
-    protected Set<SwitchFeature> getRequiredFeatures() {
-        Set<SwitchFeature> required = super.getRequiredFeatures();
+    protected List<Set<SwitchFeature>> getRequiredFeatures() {
+        List<Set<SwitchFeature>> required = super.getRequiredFeatures();
         if (metadata.isMultiTable()) {
-            required.add(SwitchFeature.MULTI_TABLE);
+            required.add(Sets.newHashSet(SwitchFeature.MULTI_TABLE));
         }
 
         return required;
