@@ -128,11 +128,7 @@ services:
 
   mysql_db:
     hostname: mysql.pendev
-<<<<<<< HEAD
-    image: mysql:5.7.34
-=======
-    image: "mysql:${MYSQL_TAG:-5.6}"
->>>>>>> e2e8d81fa... * Update Logstash version
+    image: "mysql:${MYSQL_TAG:-5.7.34}"
     command: --default-authentication-plugin=mysql_native_password
     volumes:
       - ./docker/mysql/setup_data:/docker-entrypoint-initdb.d
