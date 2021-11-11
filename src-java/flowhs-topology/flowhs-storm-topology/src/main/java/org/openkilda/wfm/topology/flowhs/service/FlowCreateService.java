@@ -21,7 +21,6 @@ import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
@@ -43,7 +42,6 @@ public class FlowCreateService {
 
     private final FlowCreateFsm.Factory fsmFactory;
     private final FlowCreateHubCarrier carrier;
-    private final FlowEventRepository flowEventRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
     private boolean active;
 
@@ -52,8 +50,8 @@ public class FlowCreateService {
                              int genericRetriesLimit, int pathAllocationRetriesLimit,
                              int pathAllocationRetryDelay, int speakerCommandRetriesLimit) {
         this.carrier = carrier;
+
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        flowEventRepository = repositoryFactory.createFlowEventRepository();
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
 
         Config fsmConfig = Config.builder()
@@ -76,12 +74,6 @@ public class FlowCreateService {
 
         if (fsms.containsKey(key)) {
             log.error("Attempt to create a FSM with key {}, while there's another active FSM with the same key.", key);
-            return;
-        }
-
-        String eventKey = commandContext.getCorrelationId();
-        if (flowEventRepository.existsByTaskId(eventKey)) {
-            log.error("Attempt to reuse key {}, but there's a history record(s) for it.", eventKey);
             return;
         }
 
