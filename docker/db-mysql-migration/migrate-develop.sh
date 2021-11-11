@@ -2,6 +2,8 @@
 
 set -e
 
+set ${DEBUG:+x}
+
 cd /liquibase/changelog
 liquibase \
   --headless=true --defaultsFile=/liquibase/liquibase.docker.properties \
