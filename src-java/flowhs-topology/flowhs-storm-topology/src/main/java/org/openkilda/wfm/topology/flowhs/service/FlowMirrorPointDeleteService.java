@@ -19,8 +19,6 @@ import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.messaging.command.flow.FlowMirrorPointDeleteRequest;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -45,15 +43,12 @@ public class FlowMirrorPointDeleteService {
             = new FsmExecutor<>(Event.NEXT);
 
     private final FlowMirrorPointDeleteHubCarrier carrier;
-    private final FlowEventRepository flowEventRepository;
 
     private boolean active;
 
     public FlowMirrorPointDeleteService(FlowMirrorPointDeleteHubCarrier carrier, PersistenceManager persistenceManager,
                                         FlowResourcesManager flowResourcesManager, int speakerCommandRetriesLimit) {
         this.carrier = carrier;
-        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        flowEventRepository = repositoryFactory.createFlowEventRepository();
         fsmFactory = new FlowMirrorPointDeleteFsm.Factory(carrier, persistenceManager, flowResourcesManager,
                 speakerCommandRetriesLimit);
     }
@@ -120,12 +115,6 @@ public class FlowMirrorPointDeleteService {
 
         if (fsms.containsKey(key)) {
             log.error("Attempt to create a FSM with key {}, while there's another active FSM with the same key.", key);
-            return;
-        }
-
-        String eventKey = commandContext.getCorrelationId();
-        if (flowEventRepository.existsByTaskId(eventKey)) {
-            log.error("Attempt to reuse key {}, but there's a history record(s) for it.", eventKey);
             return;
         }
 

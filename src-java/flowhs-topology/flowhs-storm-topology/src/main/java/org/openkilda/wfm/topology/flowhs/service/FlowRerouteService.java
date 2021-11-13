@@ -21,7 +21,6 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -46,7 +45,6 @@ public class FlowRerouteService {
             = new FsmExecutor<>(Event.NEXT);
 
     private final FlowRerouteHubCarrier carrier;
-    private final FlowEventRepository flowEventRepository;
 
     private boolean active;
 
@@ -55,7 +53,6 @@ public class FlowRerouteService {
                               int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                               int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
         this.carrier = carrier;
-        this.flowEventRepository = persistenceManager.getRepositoryFactory().createFlowEventRepository();
         fsmFactory = new FlowRerouteFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
                 pathAllocationRetriesLimit, pathAllocationRetryDelay, resourceAllocationRetriesLimit,
                 speakerCommandRetriesLimit);
@@ -68,7 +65,7 @@ public class FlowRerouteService {
         log.debug("Handling flow reroute request with key {} and flow ID: {}", key, reroute.getFlowId());
 
         try {
-            checkRequestsCollision(key, reroute.getFlowId(), commandContext);
+            checkRequestsCollision(key, reroute.getFlowId());
         } catch (Exception e) {
             log.error(e.getMessage());
             FlowRerouteFsm fsm = fsms.get(key);
@@ -151,18 +148,11 @@ public class FlowRerouteService {
         removeIfFinished(fsm, key);
     }
 
-    private void checkRequestsCollision(String key, String flowId, CommandContext commandContext) {
+    private void checkRequestsCollision(String key, String flowId) {
         if (fsms.containsKey(key)) {
             throw new IllegalStateException(String.format(
                     "Attempt to create a FSM with key %s, while there's another active FSM with the same key "
                             + "(flowId=\"%s\")", key, flowId));
-        }
-
-        String eventKey = commandContext.getCorrelationId();
-        if (flowEventRepository.existsByTaskId(eventKey)) {
-            throw new IllegalStateException(String.format(
-                    "Attempt to reuse history key %s, but there's a history record(s) for it (flowId=\"%s\")",
-                    eventKey, flowId));
         }
     }
 

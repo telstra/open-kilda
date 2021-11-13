@@ -281,8 +281,12 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     }
 
     protected SpoutDeclarer declareKafkaSpout(TopologyBuilder builder, List<String> topics, String spoutId) {
-        KafkaSpoutConfig<String, Message> config = getKafkaSpoutConfigBuilder(topics, spoutId)
-                .build();
+        KafkaSpoutConfig<String, Message> config = getKafkaSpoutConfigBuilder(topics, spoutId).build();
+        return declareKafkaSpout(builder, config, spoutId);
+    }
+
+    protected <V> SpoutDeclarer declareKafkaSpout(
+            TopologyBuilder builder, KafkaSpoutConfig<String, V> config, String spoutId) {
         logger.info("Setup kafka spout: id={}, group={}, subscriptions={}",
                 spoutId, config.getConsumerGroupId(), config.getSubscription().getTopicsString());
         return declareSpout(builder, new KafkaSpout<>(config), spoutId);
