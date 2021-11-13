@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.107.2 (13/11/2021)
+
+### Improvements:
+-  [#4579](https://github.com/telstra/open-kilda/pull/4579) At most once guarantee strategy for flowhs input spout 
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.107.1...v1.107.2).
+
+### Affected Components:
+flow-hs
+
+
 ## v1.107.1 (02/11/2021)
 
 ### Improvements:
