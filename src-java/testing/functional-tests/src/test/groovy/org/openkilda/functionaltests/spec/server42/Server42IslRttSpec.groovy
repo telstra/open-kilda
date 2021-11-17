@@ -105,7 +105,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
 
         then: "ISL RTT forward stats are available"
         and: "ISL RTT reverse stats are available"
-        wait(islSyncWaitSeconds, 2) {
+        wait(islSyncWaitSeconds + WAIT_OFFSET, 2) {
             checkIslRttStats(isl, checkpointTime, true)
             checkIslRttStats(isl.reversed, checkpointTime, true)
         }
