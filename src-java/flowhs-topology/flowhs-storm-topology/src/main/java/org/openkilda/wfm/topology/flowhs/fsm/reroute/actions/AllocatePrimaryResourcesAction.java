@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.reroute.error.NoPathFoundError;
 import org.openkilda.model.Flow;
 import org.openkilda.model.PathId;
@@ -117,5 +118,13 @@ public class AllocatePrimaryResourcesAction extends
     @Override
     protected String getGenericErrorMessage() {
         return "Could not reroute flow";
+    }
+
+    @Override
+    protected void handleError(FlowRerouteFsm stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        super.handleError(stateMachine, ex, errorType, logTraceback);
+
+        // Notify about failed allocation.
+        stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
     }
 }

@@ -357,7 +357,7 @@ public class YFlowUpdateService
             try {
                 flowUpdateService.handleTimeoutByFlowId(flowId);
             } catch (UnknownKeyException e) {
-                log.error("Failed to handle a timeout event by FlowCreateService for {}.", flowId);
+                log.error("Failed to handle a timeout event by FlowUpdateService for {}.", flowId);
             }
         });
 

@@ -27,6 +27,7 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_CREATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_DELETE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_READ;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_REROUTE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_UPDATE_HUB;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_KEY;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
@@ -48,6 +49,7 @@ import org.openkilda.messaging.command.yflow.YFlowPartialUpdateRequest;
 import org.openkilda.messaging.command.yflow.YFlowPathsReadRequest;
 import org.openkilda.messaging.command.yflow.YFlowReadRequest;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
+import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.command.yflow.YFlowsDumpRequest;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.share.zk.ZkStreams;
@@ -162,6 +164,10 @@ public class RouterBolt extends AbstractBolt {
                 YFlowPartialUpdateRequest request = (YFlowPartialUpdateRequest) data;
                 log.debug("Received a y-flow partial update request {} with key {}", request, key);
                 emitWithContext(ROUTER_TO_YFLOW_UPDATE_HUB.name(), input, new Values(key, request.getYFlowId(), data));
+            } else if (data instanceof YFlowRerouteRequest) {
+                YFlowRerouteRequest request = (YFlowRerouteRequest) data;
+                log.debug("Received a y-flow reroute request {} with key {}", data, key);
+                emitWithContext(ROUTER_TO_YFLOW_REROUTE_HUB.name(), input, new Values(key, request.getYFlowId(), data));
             } else if (data instanceof YFlowDeleteRequest) {
                 YFlowDeleteRequest request = (YFlowDeleteRequest) data;
                 log.debug("Received a y-flow delete request {} with key {}", request, key);
@@ -197,6 +203,7 @@ public class RouterBolt extends AbstractBolt {
                 new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
         declarer.declareStream(ROUTER_TO_YFLOW_CREATE_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_YFLOW_UPDATE_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_YFLOW_REROUTE_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_YFLOW_DELETE_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_YFLOW_READ.name(),
                 new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
