@@ -489,9 +489,17 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     def "Unable to create a vxlan flow when dst switch does not support it"() {
         given: "VXLAN supported and not supported switches"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            switchHelper.isVxlanEnabled(it.src.dpId) && !switchHelper.isVxlanEnabled(it.dst.dpId)
+            switchHelper.isVxlanEnabled(it.src.dpId)
         }
         assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
+        def isVxlanEnabledOnDstSw = switchHelper.isVxlanEnabled(switchPair.dst.dpId)
+        def originDstSwProps
+        if (isVxlanEnabledOnDstSw) {
+            originDstSwProps = switchHelper.getCachedSwProps(switchPair.dst.dpId)
+            switchHelper.updateSwitchProperties(switchPair.dst, originDstSwProps.jacksonCopy().tap {
+                it.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
+            })
+        }
         def dstSupportedEncapsulationTypes = northbound.getSwitchProperties(switchPair.dst.dpId)
                 .supportedTransitEncapsulation.collect { it.toUpperCase() }
 
@@ -510,6 +518,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         cleanup:
         !exc && flowHelperV2.deleteFlow(flow.flowId)
+        isVxlanEnabledOnDstSw && switchHelper.updateSwitchProperties(switchPair.dst, originDstSwProps)
     }
 
     @Tidy
