@@ -11,14 +11,11 @@ Do not change this file, all changes will be lost. Change corresponding template
         <File name="SkippedTestsFile" fileName="build/logs/skipped_tests.log" append="false">
             <PatternLayout pattern="%m%n%n"/>
         </File>
+{{if eq (getv "/kilda_environment_role") "local"}}
         <Routing name="LogstashRouting">
             <Routes pattern="$${ctx:test_name}">
                 <Route>
-{{if eq (getv "/kilda_environment_role") "local"}}
 					<Socket name="Logstash" host="{{ getv "/kilda_tests_logging_logstash_host" }}" port="{{ getv "/kilda_logging_port_tests" }}">
-{{else}}
-					<Socket name="Logstash" host="{{ getv "/kilda_logging_logstash_host" }}" port="{{ getv "/kilda_logging_port_tests" }}">
-{{end}}
                         <JsonLayout compact="true" eventEol="true" properties="true">
                             <KeyValuePair key="test_name" value="${ctx:test_name:-none}"/>
                         </JsonLayout>
@@ -26,6 +23,7 @@ Do not change this file, all changes will be lost. Change corresponding template
                 </Route>
             </Routes>
         </Routing>
+{{end}}
         <Routing name="FileRouting">
             <Routes pattern="$${ctx:test_name}">
                 <Route>
@@ -47,13 +45,17 @@ Do not change this file, all changes will be lost. Change corresponding template
     </Appenders>
     <Loggers>
         <Logger name="org.openkilda.functionaltests" level="DEBUG" additivity="false">
+{{if eq (getv "/kilda_environment_role") "local"}}
             <AppenderRef ref="LogstashRouting" level="DEBUG"/>
+{{end}}
             <AppenderRef ref="FileRouting" level="DEBUG"/>
             <AppenderRef ref="STDOUT" level="INFO"/>
         </Logger>
         <Logger name="org.openkilda.testing.tools.LoggingRequestInterceptor" level="DEBUG" additivity="false">
             <AppenderRef ref="RequestsFileRouting" level="DEBUG"/>
+{{if eq (getv "/kilda_environment_role") "local"}}
             <AppenderRef ref="LogstashRouting" level="DEBUG"/>
+{{end}}
         </Logger>
         <Logger name="org.openkilda.functionaltests.extension.SkippedTestsLogger" level="DEBUG" additivity="true">
             <AppenderRef ref="SkippedTestsFile" level="DEBUG"/>
