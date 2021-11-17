@@ -17,6 +17,7 @@ ARG base_image=ubuntu:focal
 FROM ${base_image}
 
 ARG OVS_VERSION
+# By default OVS version doesn't support vxlan flows. This could be overrided via `build-arg`, see makefile.tmpl.
 ENV OVS_VERSION=${OVS_VERSION:-"kilda.v2.15.0.1"}
 
 ENV DEBIAN_FRONTEND noninteractive
