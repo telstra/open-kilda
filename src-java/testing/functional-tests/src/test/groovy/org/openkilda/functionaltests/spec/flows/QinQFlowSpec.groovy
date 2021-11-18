@@ -220,7 +220,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         then: "Flows rules are deleted"
         involvedSwitchesforBothFlows.each { sw ->
             Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+                assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
+                        .containsExactlyInAnyOrder(*sw.defaultCookies)
             }
         }
 
@@ -672,7 +673,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "Flow rules are deleted"
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+            assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
+                    .containsExactlyInAnyOrder(*sw.defaultCookies)
         }
 
         cleanup:
@@ -844,7 +846,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         then: "Flows rules are deleted"
         involvedSwitchesforBothFlows.each { sw ->
             Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+                assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
+                        .containsExactlyInAnyOrder(*sw.defaultCookies)
             }
         }
 
