@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.kafka;
 
 import org.openkilda.floodlight.KafkaChannel;
+import org.openkilda.floodlight.command.OfSpeakerService;
 import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.kafka.discovery.NetworkDiscoveryEmitter;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
@@ -32,6 +33,7 @@ public class ConsumerContext {
     private final ISwitchManager switchManager;
     private final KafkaChannel kafkaChannel;
     private final SpeakerCommandProcessor commandProcessor;
+    private final OfSpeakerService speakerService;
     private final NetworkDiscoveryEmitter discoveryEmitter;
 
     public ConsumerContext(FloodlightModuleContext moduleContext, KafkaMessageCollectorConfig config) {
@@ -40,6 +42,7 @@ public class ConsumerContext {
         this.switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
         kafkaChannel = moduleContext.getServiceImpl(KafkaUtilityService.class).getKafkaChannel();
         commandProcessor = new SpeakerCommandProcessor(moduleContext);
+        speakerService = new OfSpeakerService(moduleContext);
 
         Duration flushDelay = Duration.ofMillis(config.getDiscoveryFlushDelayMillis());
         discoveryEmitter = new NetworkDiscoveryEmitter(moduleContext, flushDelay);
@@ -47,18 +50,6 @@ public class ConsumerContext {
 
     public String getRegion() {
         return kafkaChannel.getRegion();
-    }
-
-    public FloodlightModuleContext getModuleContext() {
-        return moduleContext;
-    }
-
-    public ISwitchManager getSwitchManager() {
-        return switchManager;
-    }
-
-    public SpeakerCommandProcessor getCommandProcessor() {
-        return commandProcessor;
     }
 
     public String getKafkaTopoDiscoTopic() {

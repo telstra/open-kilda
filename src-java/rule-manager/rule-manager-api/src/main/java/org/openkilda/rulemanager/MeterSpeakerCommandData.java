@@ -15,12 +15,14 @@
 
 package org.openkilda.rulemanager;
 
+import org.openkilda.floodlight.api.OfSpeaker;
 import org.openkilda.model.MeterId;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
+import org.apache.commons.lang3.NotImplementedException;
 
 import java.util.Set;
 
@@ -34,4 +36,9 @@ public class MeterSpeakerCommandData extends SpeakerCommandData {
     long rate;
     long burst;
     Set<MeterFlag> flags;
+
+    @Override
+    public void execute(OfSpeaker speaker) {
+        throw new NotImplementedException(String.format("%s.execute(OfSpeaker speaker)", getClass().getName()));
+    }
 }

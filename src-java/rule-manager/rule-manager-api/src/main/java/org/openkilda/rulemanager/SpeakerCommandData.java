@@ -15,26 +15,37 @@
 
 package org.openkilda.rulemanager;
 
+import org.openkilda.floodlight.api.request.OfSpeakerBatchEntry;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Singular;
 import lombok.experimental.SuperBuilder;
 
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @JsonSerialize
 @Getter
 @SuperBuilder
-public abstract class SpeakerCommandData {
+public abstract class SpeakerCommandData implements OfSpeakerBatchEntry {
 
     @Builder.Default
-    protected String uuid = UUID.randomUUID().toString();
-    protected SwitchId switchId;
-    @Builder.Default
-    protected Collection<String> dependsOn = new ArrayList<>();
+    protected UUID commandId = UUID.randomUUID();  // TODO: can collide
+
+    @Singular
+    protected Collection<UUID> dependsOnCommands;
+
+    protected SwitchId switchId;  // TODO: is it really required here?
+
     protected OfVersion ofVersion;
+
+    @Override
+    public Set<UUID> dependencies() {
+        return new HashSet<>(dependsOnCommands);
+    }
 }

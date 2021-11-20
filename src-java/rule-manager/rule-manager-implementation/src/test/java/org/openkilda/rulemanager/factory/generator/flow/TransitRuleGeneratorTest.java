@@ -138,7 +138,7 @@ public class TransitRuleGeneratorTest {
         FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
         assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        assertTrue(flowCommandData.getDependsOnCommands().isEmpty());
 
         assertEquals(COOKIE, flowCommandData.getCookie());
         assertEquals(table, flowCommandData.getTable());

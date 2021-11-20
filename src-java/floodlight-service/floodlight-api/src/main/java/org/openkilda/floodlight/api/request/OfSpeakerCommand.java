@@ -1,4 +1,5 @@
-/* Copyright 2021 Telstra Open Source
+/*
+ * Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,23 +14,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.api.request.rulemanager;
+package org.openkilda.floodlight.api.request;
 
+import org.openkilda.floodlight.api.OfSpeaker;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
-import org.openkilda.rulemanager.SpeakerCommandData;
 
-import lombok.NonNull;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
-// TODO remove
-public class VerifySpeakerCommandsRequest extends SpeakerCommandsBatchRequest {
-    public VerifySpeakerCommandsRequest(MessageContext messageContext,
-                                        @NonNull SwitchId switchId,
-                                        @NonNull UUID commandId,
-                                        List<SpeakerCommandData> commandData) {
-        super(messageContext, switchId, commandId, commandData);
-    }
+public interface OfSpeakerCommand {
+    @JsonIgnore
+    UUID getCommandId();
+
+    SwitchId getSwitchId();
+
+    CompletableFuture<MessageContext> execute(OfSpeaker speaker);
 }

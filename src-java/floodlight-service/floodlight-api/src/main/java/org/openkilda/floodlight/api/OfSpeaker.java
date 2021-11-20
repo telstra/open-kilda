@@ -13,23 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.api.request.rulemanager;
+package org.openkilda.floodlight.api;
 
+import org.openkilda.floodlight.api.request.OfSpeakerBatchEntry;
 import org.openkilda.messaging.MessageContext;
+import org.openkilda.model.MeterConfig;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
-import org.openkilda.rulemanager.SpeakerCommandData;
 
-import lombok.NonNull;
+import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
 
-import java.util.List;
-import java.util.UUID;
+public interface OfSpeaker {
+    CompletableFuture<MessageContext> commandsBatch(
+            MessageContext context, SwitchId switchId, Collection<OfSpeakerBatchEntry> batch);
 
-// TODO remove
-public class VerifySpeakerCommandsRequest extends SpeakerCommandsBatchRequest {
-    public VerifySpeakerCommandsRequest(MessageContext messageContext,
-                                        @NonNull SwitchId switchId,
-                                        @NonNull UUID commandId,
-                                        List<SpeakerCommandData> commandData) {
-        super(messageContext, switchId, commandId, commandData);
-    }
+    CompletableFuture<MessageContext> installMeter(MessageContext context, SwitchId switchId, MeterConfig meterConfig);
+
+    CompletableFuture<MessageContext> removeMeter(MessageContext context, SwitchId switchId, MeterId meterId);
+
+    // TODO
 }

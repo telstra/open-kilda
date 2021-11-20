@@ -24,7 +24,8 @@ import lombok.NonNull;
 import java.util.List;
 import java.util.UUID;
 
-public class InstallSpeakerCommandsRequest extends BaseSpeakerCommandsRequest {
+// TODO remove
+public class InstallSpeakerCommandsRequest extends SpeakerCommandsBatchRequest {
 
     public InstallSpeakerCommandsRequest(MessageContext messageContext,
                                          @NonNull SwitchId switchId,

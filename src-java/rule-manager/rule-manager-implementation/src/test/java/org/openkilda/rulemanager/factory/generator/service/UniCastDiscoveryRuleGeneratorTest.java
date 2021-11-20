@@ -89,8 +89,8 @@ public class UniCastDiscoveryRuleGeneratorTest {
         FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
         MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
 
-        assertEquals(1, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+        assertEquals(1, flowCommandData.getDependsOnCommands().size());
+        assertTrue(flowCommandData.getDependsOnCommands().contains(meterCommandData.getCommandId()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -125,8 +125,8 @@ public class UniCastDiscoveryRuleGeneratorTest {
         FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
         MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
 
-        assertEquals(1, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+        assertEquals(1, flowCommandData.getDependsOnCommands().size());
+        assertTrue(flowCommandData.getDependsOnCommands().contains(meterCommandData.getCommandId()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -163,7 +163,7 @@ public class UniCastDiscoveryRuleGeneratorTest {
 
         FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
 
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        assertTrue(flowCommandData.getDependsOnCommands().isEmpty());
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -192,8 +192,8 @@ public class UniCastDiscoveryRuleGeneratorTest {
         FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
         MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
 
-        assertEquals(1, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+        assertEquals(1, flowCommandData.getDependsOnCommands().size());
+        assertTrue(flowCommandData.getDependsOnCommands().contains(meterCommandData.getCommandId()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);

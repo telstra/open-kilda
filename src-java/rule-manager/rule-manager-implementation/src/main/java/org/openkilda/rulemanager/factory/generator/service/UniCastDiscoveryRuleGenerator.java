@@ -74,7 +74,7 @@ public class UniCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator {
         instructions.getApplyActions().add(new PortOutAction(new PortNumber(SpecialPortType.CONTROLLER)));
 
         if (meterCommand != null) {
-            flowCommand.getDependsOn().add(meterCommand.getUuid());
+            flowCommand.getDependsOnCommands().add(meterCommand.getCommandId());
         }
 
         return commands;

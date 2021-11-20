@@ -50,7 +50,7 @@ public class TableDefaultRuleGeneratorTest {
         FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
         assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        assertTrue(flowCommandData.getDependsOnCommands().isEmpty());
 
         assertEquals(new Cookie(DROP_RULE_COOKIE), flowCommandData.getCookie());
         assertEquals(OfTable.INPUT, flowCommandData.getTable());

@@ -277,7 +277,7 @@ public class EgressRuleGeneratorTest {
         FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
         assertEquals(SWITCH_2.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(SWITCH_2.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        assertTrue(flowCommandData.getDependsOnCommands().isEmpty());
 
         assertEquals(COOKIE, flowCommandData.getCookie());
         assertEquals(table, flowCommandData.getTable());

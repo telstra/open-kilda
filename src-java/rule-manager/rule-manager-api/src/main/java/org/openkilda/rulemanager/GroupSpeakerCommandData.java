@@ -15,6 +15,8 @@
 
 package org.openkilda.rulemanager;
 
+import org.openkilda.floodlight.api.OfSpeaker;
+import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.GroupId;
 import org.openkilda.rulemanager.group.Bucket;
 import org.openkilda.rulemanager.group.GroupType;
@@ -23,8 +25,10 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
+import org.apache.commons.lang3.NotImplementedException;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
@@ -35,4 +39,9 @@ public class GroupSpeakerCommandData extends SpeakerCommandData {
     GroupId groupId;
     GroupType type;
     List<Bucket> buckets;
+
+    @Override
+    public CompletableFuture<MessageContext> execute(OfSpeaker speaker) {
+        throw new NotImplementedException(String.format("%s.execute(OfSpeaker speaker)", getClass().getName()));
+    }
 }

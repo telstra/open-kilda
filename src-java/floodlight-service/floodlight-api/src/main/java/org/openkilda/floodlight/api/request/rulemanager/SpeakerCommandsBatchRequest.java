@@ -13,32 +13,34 @@
  *   limitations under the License.
  */
 
-package org.openkilda.rulemanager;
+package org.openkilda.floodlight.api.request.rulemanager;
 
 import org.openkilda.floodlight.api.OfSpeaker;
+import org.openkilda.floodlight.api.request.OfSpeakerBatchEntry;
+import org.openkilda.floodlight.api.request.SpeakerServiceRequest;
 import org.openkilda.messaging.MessageContext;
-import org.openkilda.model.cookie.CookieBase;
-import org.openkilda.rulemanager.match.FieldMatch;
+import org.openkilda.model.SwitchId;
 
-import lombok.EqualsAndHashCode;
-import lombok.Value;
-import lombok.experimental.SuperBuilder;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.NonNull;
 import org.apache.commons.lang3.NotImplementedException;
 
-import java.util.Set;
+import java.util.Collection;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-@EqualsAndHashCode(callSuper = true)
-@Value
-@SuperBuilder
-public class FlowSpeakerCommandData extends SpeakerCommandData {
+public class SpeakerCommandsBatchRequest extends SpeakerServiceRequest {
 
-    CookieBase cookie;
-    OfTable table;
-    int priority;
-    Set<FieldMatch> match;
-    Instructions instructions;
-    Set<OfFlowFlag> flags;
+    @JsonProperty("command_data")
+    protected Collection<OfSpeakerBatchEntry> batch;
+
+    public SpeakerCommandsBatchRequest(MessageContext messageContext,
+                                       @NonNull SwitchId switchId,
+                                       @NonNull UUID commandId,
+                                       Collection<OfSpeakerBatchEntry> batch) {
+        super(messageContext, switchId, commandId);
+        this.batch = batch;
+    }
 
     @Override
     public CompletableFuture<MessageContext> execute(OfSpeaker speaker) {

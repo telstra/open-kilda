@@ -93,10 +93,10 @@ public class BroadCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator
         }
 
         if (meterCommand != null) {
-            flowCommand.getDependsOn().add(meterCommand.getUuid());
+            flowCommand.getDependsOnCommands().add(meterCommand.getCommandId());
         }
         if (groupCommand != null) {
-            flowCommand.getDependsOn().add(groupCommand.getUuid());
+            flowCommand.getDependsOnCommands().add(groupCommand.getCommandId());
         }
 
         return commands;

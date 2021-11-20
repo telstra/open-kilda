@@ -13,29 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.api.request.rulemanager;
+package org.openkilda.floodlight.api.request;
 
-import org.openkilda.floodlight.api.request.SpeakerRequest;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
-import org.openkilda.rulemanager.SpeakerCommandData;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.NonNull;
 
-import java.util.Collection;
 import java.util.UUID;
 
-public class BaseSpeakerCommandsRequest extends SpeakerRequest {
-
-    @JsonProperty("command_data")
-    protected Collection<SpeakerCommandData> commandData;
-
-    public BaseSpeakerCommandsRequest(MessageContext messageContext,
-                                      @NonNull SwitchId switchId,
-                                      @NonNull UUID commandId,
-                                      Collection<SpeakerCommandData> commandData) {
+public abstract class SpeakerServiceRequest extends SpeakerRequest implements OfSpeakerCommand {
+    public SpeakerServiceRequest(MessageContext messageContext, @NonNull SwitchId switchId, @NonNull UUID commandId) {
         super(messageContext, switchId, commandId);
-        this.commandData = commandData;
     }
 }

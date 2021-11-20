@@ -51,6 +51,9 @@ import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOK
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 
+import org.openkilda.floodlight.api.request.OfSpeakerCommand;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
+import org.openkilda.floodlight.api.request.SpeakerServiceRequest;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.SpeakerCommand;
@@ -1854,6 +1857,9 @@ class RecordHandler implements Runnable {
         if (handleSpeakerCommand()) {
             return;
         }
+        if (handleSpeakerServiceCommand()) {
+            return;
+        }
 
         CommandMessage message;
         try {
@@ -2080,6 +2086,27 @@ class RecordHandler implements Runnable {
         try (CorrelationContextClosable closable =
                      CorrelationContext.create(messageContext.getCorrelationId())) {
             context.getCommandProcessor().process(command, record.key());
+        }
+    }
+
+    private boolean handleSpeakerServiceCommand() {
+        try {
+            SpeakerServiceRequest request = MAPPER.readValue(record.value(), SpeakerServiceRequest.class);
+            handleSpeakerServiceCommand(request);
+            return true;
+        } catch (JsonMappingException e) {
+            logger.trace("Received deprecated command message");
+        } catch (IOException e) {
+            logger.error("Error while parsing record {}", record.value(), e);
+        }
+        return false;
+    }
+
+    private void handleSpeakerServiceCommand(SpeakerServiceRequest command) {
+        final MessageContext messageContext = command.getMessageContext();
+        try (CorrelationContextClosable closable =
+                     CorrelationContext.create(messageContext.getCorrelationId())) {
+            context.getSpeakerService().execute(command, record.key());
         }
     }
 

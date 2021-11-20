@@ -61,7 +61,7 @@ public class SingleTableIngressRuleGenerator extends IngressRuleGenerator {
         if (meterCommand != null) {
             addMeterToInstructions(flowPath.getMeterId(), sw, command.getInstructions());
             result.add(meterCommand);
-            command.getDependsOn().add(meterCommand.getUuid());
+            command.getDependsOnCommands().add(meterCommand.getCommandId());
         }
 
         return result;

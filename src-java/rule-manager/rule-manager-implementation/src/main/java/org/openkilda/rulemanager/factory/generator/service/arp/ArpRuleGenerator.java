@@ -65,7 +65,7 @@ public abstract class ArpRuleGenerator extends MeteredServiceRuleGenerator {
         if (meterCommand != null) {
             result.add(meterCommand);
             addMeterToInstructions(meterCommand.getMeterId(), sw, instructions);
-            flowCommand.getDependsOn().add(meterCommand.getUuid());
+            flowCommand.getDependsOnCommands().add(meterCommand.getCommandId());
         }
 
         return result;

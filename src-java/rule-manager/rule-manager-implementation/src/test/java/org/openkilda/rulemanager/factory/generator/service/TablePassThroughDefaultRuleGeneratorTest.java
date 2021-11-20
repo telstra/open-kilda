@@ -52,7 +52,7 @@ public class TablePassThroughDefaultRuleGeneratorTest {
         FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
         assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        assertTrue(flowCommandData.getDependsOnCommands().isEmpty());
 
         assertEquals(new Cookie(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE), flowCommandData.getCookie());
         assertEquals(OfTable.EGRESS, flowCommandData.getTable());

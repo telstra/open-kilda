@@ -103,9 +103,9 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
         GroupSpeakerCommandData groupCommandData = getCommand(GroupSpeakerCommandData.class, commands);
 
-        assertEquals(2, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
-        assertTrue(flowCommandData.getDependsOn().contains(groupCommandData.getUuid()));
+        assertEquals(2, flowCommandData.getDependsOnCommands().size());
+        assertTrue(flowCommandData.getDependsOnCommands().contains(meterCommandData.getCommandId()));
+        assertTrue(flowCommandData.getDependsOnCommands().contains(groupCommandData.getCommandId()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -138,9 +138,9 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
         GroupSpeakerCommandData groupCommandData = getCommand(GroupSpeakerCommandData.class, commands);
 
-        assertEquals(2, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
-        assertTrue(flowCommandData.getDependsOn().contains(groupCommandData.getUuid()));
+        assertEquals(2, flowCommandData.getDependsOnCommands().size());
+        assertTrue(flowCommandData.getDependsOnCommands().contains(meterCommandData.getCommandId()));
+        assertTrue(flowCommandData.getDependsOnCommands().contains(groupCommandData.getCommandId()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -182,8 +182,8 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
         MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
 
-        assertEquals(1, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+        assertEquals(1, flowCommandData.getDependsOnCommands().size());
+        assertTrue(flowCommandData.getDependsOnCommands().contains(meterCommandData.getCommandId()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -220,8 +220,8 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
         GroupSpeakerCommandData groupCommandData = getCommand(GroupSpeakerCommandData.class, commands);
 
-        assertEquals(1, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(groupCommandData.getUuid()));
+        assertEquals(1, flowCommandData.getDependsOnCommands().size());
+        assertTrue(flowCommandData.getDependsOnCommands().contains(groupCommandData.getCommandId()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -255,7 +255,7 @@ public class BroadCastDiscoveryRuleGeneratorTest {
 
         FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
 
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        assertTrue(flowCommandData.getDependsOnCommands().isEmpty());
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -290,9 +290,9 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
         GroupSpeakerCommandData groupCommandData = getCommand(GroupSpeakerCommandData.class, commands);
 
-        assertEquals(2, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
-        assertTrue(flowCommandData.getDependsOn().contains(groupCommandData.getUuid()));
+        assertEquals(2, flowCommandData.getDependsOnCommands().size());
+        assertTrue(flowCommandData.getDependsOnCommands().contains(meterCommandData.getCommandId()));
+        assertTrue(flowCommandData.getDependsOnCommands().contains(groupCommandData.getCommandId()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -325,9 +325,9 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
         GroupSpeakerCommandData groupCommandData = getCommand(GroupSpeakerCommandData.class, commands);
 
-        assertEquals(2, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
-        assertTrue(flowCommandData.getDependsOn().contains(groupCommandData.getUuid()));
+        assertEquals(2, flowCommandData.getDependsOnCommands().size());
+        assertTrue(flowCommandData.getDependsOnCommands().contains(meterCommandData.getCommandId()));
+        assertTrue(flowCommandData.getDependsOnCommands().contains(groupCommandData.getCommandId()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);

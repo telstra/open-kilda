@@ -36,6 +36,7 @@ import lombok.ToString;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -70,19 +71,19 @@ public class InstallSpeakerCommands extends SpeakerCommand<InstallSpeakerCommand
     }
 
     private List<SpeakerCommandData> sortCommands(Collection<SpeakerCommandData> commandData) {
-        Set<String> uuids = commandData.stream().map(SpeakerCommandData::getUuid).collect(Collectors.toSet());
-        commandData.forEach(command -> command.getDependsOn().retainAll(uuids));
+        Set<UUID> uuids = commandData.stream().map(SpeakerCommandData::getCommandId).collect(Collectors.toSet());
+        commandData.forEach(command -> command.getDependsOnCommands().retainAll(uuids));
 
         List<SpeakerCommandData> result = commandData.stream()
-                .filter(command -> command.getDependsOn().isEmpty())
+                .filter(command -> command.getDependsOnCommands().isEmpty())
                 .collect(Collectors.toList());
 
         int depth = 0;
         while (depth < MAX_DEPTH || result.size() == commandData.size()) {
-            Set<String> currentUuids = result.stream().map(SpeakerCommandData::getUuid).collect(Collectors.toSet());
+            Set<UUID> currentUuids = result.stream().map(SpeakerCommandData::getCommandId).collect(Collectors.toSet());
             List<SpeakerCommandData> toAdd = commandData.stream()
-                    .filter(command -> currentUuids.containsAll(command.getDependsOn()))
-                    .filter(command -> !currentUuids.contains(command.getUuid()))
+                    .filter(command -> currentUuids.containsAll(command.getDependsOnCommands()))
+                    .filter(command -> !currentUuids.contains(command.getCommandId()))
                     .collect(Collectors.toList());
 
             result.addAll(toAdd);

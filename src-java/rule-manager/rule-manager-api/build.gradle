@@ -10,6 +10,7 @@ dependencies {
 
     implementation project(':base-messaging')
     implementation project(':kilda-model')
+    implementation project(':floodlight-api')
 
     implementation 'com.google.guava:guava'
     implementation 'org.apache.commons:commons-lang3'

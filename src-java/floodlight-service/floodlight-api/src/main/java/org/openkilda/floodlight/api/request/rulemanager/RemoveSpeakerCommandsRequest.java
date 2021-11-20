@@ -24,12 +24,13 @@ import lombok.NonNull;
 import java.util.List;
 import java.util.UUID;
 
-public class RemoveSpeakerCommandsRequest extends BaseSpeakerCommandsRequest {
+// TODO remove
+public class RemoveSpeakerCommandsRequest extends SpeakerCommandsBatchRequest {
 
     public RemoveSpeakerCommandsRequest(MessageContext messageContext,
                                         @NonNull SwitchId switchId,
                                         @NonNull UUID commandId,
-                                        List<SpeakerCommandData> commandData) {
-        super(messageContext, switchId, commandId, commandData);
+                                        List<SpeakerCommandData> batch) {
+        super(messageContext, switchId, commandId, batch);
     }
 }
