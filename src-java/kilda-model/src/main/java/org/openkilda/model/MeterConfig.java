@@ -17,12 +17,12 @@ package org.openkilda.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
 import lombok.NonNull;
-import lombok.Value;
 
 import java.io.Serializable;
 
-@Value
+@Getter
 public class MeterConfig implements Serializable {
     @JsonProperty("meter_id")
     private final MeterId id;

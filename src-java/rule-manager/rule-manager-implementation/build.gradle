@@ -5,6 +5,7 @@ dependencies {
     implementation project(':kilda-configuration')
     implementation project(':kilda-model')
     implementation project(':kilda-persistence-api')
+    implementation project(':kilda-floodlight-api')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
 
     implementation 'com.google.guava:guava'

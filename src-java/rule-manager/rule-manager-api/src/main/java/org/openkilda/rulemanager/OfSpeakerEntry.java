@@ -1,4 +1,5 @@
-/* Copyright 2021 Telstra Open Source
+/*
+ * Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,28 +16,6 @@
 
 package org.openkilda.rulemanager;
 
-import org.openkilda.model.MeterId;
-
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
-import lombok.experimental.SuperBuilder;
-
-import java.util.Set;
-
-@EqualsAndHashCode(callSuper = true)
-@Value
-@JsonSerialize
-@SuperBuilder
-public class MeterSpeakerCommandData extends SpeakerCommandData {
-
-    MeterId meterId;
-    long rate;
-    long burst;
-    Set<MeterFlag> flags;
-
-    @Override
-    public void handle(OfSpeakerEntryHandler handler) {
-        handler.handle(this);
-    }
+public interface OfSpeakerEntry {
+    void handle(OfSpeakerEntryHandler handler);
 }

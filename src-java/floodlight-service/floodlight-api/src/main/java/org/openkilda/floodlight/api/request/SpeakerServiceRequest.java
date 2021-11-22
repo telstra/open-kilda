@@ -17,13 +17,28 @@ package org.openkilda.floodlight.api.request;
 
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
+import org.openkilda.rulemanager.SpeakerCommandData;
 
 import lombok.NonNull;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
-public abstract class SpeakerServiceRequest extends SpeakerRequest implements OfSpeakerCommand {
-    public SpeakerServiceRequest(MessageContext messageContext, @NonNull SwitchId switchId, @NonNull UUID commandId) {
+// TODO Need better name, because of "binding" to rules-manager-api objects
+public abstract class SpeakerServiceRequest extends SpeakerRequest implements OfSpeakerBatchEntry {
+    private final SpeakerCommandData payload;
+
+    public SpeakerServiceRequest(
+            MessageContext messageContext, @NonNull SwitchId switchId, @NonNull UUID commandId,
+            SpeakerCommandData payload) {
         super(messageContext, switchId, commandId);
+        this.payload = payload;
+    }
+
+    @Override
+    public Set<UUID> dependencies() {
+        // TODO: Do we need write protection? Perhaps should be just "return dependsOd"
+        return new HashSet<>(payload.getDependsOnCommands());
     }
 }

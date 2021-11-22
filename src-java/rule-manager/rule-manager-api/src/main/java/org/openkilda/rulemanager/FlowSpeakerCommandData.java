@@ -15,18 +15,14 @@
 
 package org.openkilda.rulemanager;
 
-import org.openkilda.floodlight.api.OfSpeaker;
-import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.cookie.CookieBase;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
-import org.apache.commons.lang3.NotImplementedException;
 
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
@@ -41,7 +37,7 @@ public class FlowSpeakerCommandData extends SpeakerCommandData {
     Set<OfFlowFlag> flags;
 
     @Override
-    public CompletableFuture<MessageContext> execute(OfSpeaker speaker) {
-        throw new NotImplementedException(String.format("%s.execute(OfSpeaker speaker)", getClass().getName()));
+    public void handle(OfSpeakerEntryHandler handler) {
+        handler.handle(this);
     }
 }

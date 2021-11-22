@@ -17,7 +17,6 @@ package org.openkilda.floodlight.api;
 
 import org.openkilda.floodlight.api.request.OfSpeakerBatchEntry;
 import org.openkilda.messaging.MessageContext;
-import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 
@@ -28,7 +27,8 @@ public interface OfSpeaker {
     CompletableFuture<MessageContext> commandsBatch(
             MessageContext context, SwitchId switchId, Collection<OfSpeakerBatchEntry> batch);
 
-    CompletableFuture<MessageContext> installMeter(MessageContext context, SwitchId switchId, MeterConfig meterConfig);
+    CompletableFuture<MessageContext> installMeter(
+            MessageContext context, SwitchId switchId, MeterId meterId, long bandwidth, long burst);
 
     CompletableFuture<MessageContext> removeMeter(MessageContext context, SwitchId switchId, MeterId meterId);
 

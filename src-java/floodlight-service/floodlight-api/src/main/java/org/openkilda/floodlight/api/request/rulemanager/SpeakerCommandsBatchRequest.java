@@ -38,7 +38,7 @@ public class SpeakerCommandsBatchRequest extends SpeakerServiceRequest {
                                        @NonNull SwitchId switchId,
                                        @NonNull UUID commandId,
                                        Collection<OfSpeakerBatchEntry> batch) {
-        super(messageContext, switchId, commandId);
+        super(messageContext, switchId, commandId, payload);
         this.batch = batch;
     }
 

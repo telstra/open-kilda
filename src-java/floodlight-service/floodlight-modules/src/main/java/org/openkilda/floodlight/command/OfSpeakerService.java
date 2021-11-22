@@ -77,7 +77,7 @@ public class OfSpeakerService implements OfSpeaker {
 
     @Override
     public CompletableFuture<MessageContext> installMeter(
-            MessageContext context, SwitchId switchId, MeterConfig meterConfig) {
+            MessageContext context, SwitchId switchId, MeterId meterId, long bandwidth, long burst) {
         // TODO
         return CompletableFuture.completedFuture(context);
     }
