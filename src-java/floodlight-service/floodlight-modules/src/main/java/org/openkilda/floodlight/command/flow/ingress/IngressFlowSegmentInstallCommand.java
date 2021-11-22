@@ -33,6 +33,7 @@ import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.Sets;
 import lombok.Getter;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 
@@ -62,13 +63,14 @@ public class IngressFlowSegmentInstallCommand extends IngressFlowSegmentCommand 
     }
 
     @Override
-    protected Set<SwitchFeature> getRequiredFeatures() {
-        Set<SwitchFeature> required = super.getRequiredFeatures();
+    protected List<Set<SwitchFeature>> getRequiredFeatures() {
+        List<Set<SwitchFeature>> required = super.getRequiredFeatures();
         if (encapsulation.getType() == FlowEncapsulationType.VXLAN) {
-            required.add(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN);
+            required.add(Sets.newHashSet(
+                    SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN, SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN));
         }
         if (metadata.isMultiTable()) {
-            required.add(SwitchFeature.MULTI_TABLE);
+            required.add(Sets.newHashSet(SwitchFeature.MULTI_TABLE));
         }
 
         return required;

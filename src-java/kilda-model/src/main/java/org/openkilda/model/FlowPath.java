@@ -143,8 +143,7 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
      */
     public boolean isProtected() {
         Flow flow = getFlow();
-        return flow != null && (getPathId().equals(flow.getProtectedForwardPathId())
-                || getPathId().equals(flow.getProtectedReversePathId()));
+        return flow != null && flow.isProtectedPath(getPathId());
     }
 
     @Override

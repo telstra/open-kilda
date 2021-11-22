@@ -72,7 +72,7 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
             501, FlowEncapsulationType.VXLAN);
 
     protected static final Set<SwitchFeature> switchFeatures = ImmutableSet.of(
-            SwitchFeature.METERS);
+            SwitchFeature.METERS, SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN);
 
     protected static final String flowId = "flow-id-unit-test";
     protected static final Cookie cookie = new FlowSegmentCookie(FlowPathDirection.FORWARD, 1);

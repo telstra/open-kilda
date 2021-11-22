@@ -24,5 +24,8 @@ public enum Field {
     IP_PROTO,
     ETH_TYPE,
     VLAN_VID,
-    IN_PORT
+    IN_PORT,
+    METADATA,
+    NOVIFLOW_TUNNEL_ID,
+    OVS_VXLAN_VNI
 }

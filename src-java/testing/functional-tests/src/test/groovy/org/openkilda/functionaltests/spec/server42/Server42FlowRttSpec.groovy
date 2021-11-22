@@ -7,6 +7,7 @@ import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
@@ -820,7 +821,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def swPropIsWrong = true
 
         then: "server42 rules on the switch are updated"
-        def amountOfS42Rules = switchPair.src.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) ? 2 : 1
+        def amountOfS42Rules = (switchPair.src.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
+                || switchPair.src.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) ? 2 : 1
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             def s42Rules = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
                 it.cookie in  [SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE, SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE]
@@ -960,7 +962,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
             })
         }
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            def amountOfS42Rules = sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) ? 2 : 1
+            def amountOfS42Rules = (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
+                    || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) ? 2 : 1
             def s42Rules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
                 it.cookie in  [SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE,
                                SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE]

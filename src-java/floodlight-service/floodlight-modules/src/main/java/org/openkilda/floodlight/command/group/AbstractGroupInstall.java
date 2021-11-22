@@ -17,6 +17,8 @@ package org.openkilda.floodlight.command.group;
 
 import static java.lang.String.format;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_UDP_SRC;
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 
 import org.openkilda.floodlight.command.SpeakerCommandReport;
 import org.openkilda.floodlight.model.FlowTransitData;
@@ -108,11 +110,26 @@ abstract class AbstractGroupInstall<T extends SpeakerCommandReport> extends Grou
                     return OfAdapter.INSTANCE.makeVlanReplaceActions(ofFactory, Collections.emptyList(),
                             Lists.newArrayList(flowTransitData.getEncapsulation().getId()));
                 case VXLAN:
-                    return Lists.newArrayList(OfAdapter.INSTANCE.makePushVxlanAction(
-                            ofFactory, flowTransitData.getEncapsulation().getId(),
-                            MacAddress.of(flowTransitData.getIngressSwitchId().toLong()),
-                            MacAddress.of(flowTransitData.getEgressSwitchId().toLong()),
-                            STUB_VXLAN_UDP_SRC));
+                    OFAction pushVxlan;
+                    if (getSwitchFeatures().contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+                        pushVxlan = OfAdapter.INSTANCE.makeNoviflowPushVxlanAction(
+                                ofFactory, flowTransitData.getEncapsulation().getId(),
+                                MacAddress.of(flowTransitData.getIngressSwitchId().toLong()),
+                                MacAddress.of(flowTransitData.getEgressSwitchId().toLong()),
+                                STUB_VXLAN_UDP_SRC);
+                    } else if (getSwitchFeatures().contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
+                        pushVxlan = OfAdapter.INSTANCE.makeOvsPushVxlanAction(
+                                ofFactory, flowTransitData.getEncapsulation().getId(),
+                                MacAddress.of(flowTransitData.getIngressSwitchId().toLong()),
+                                MacAddress.of(flowTransitData.getEgressSwitchId().toLong()),
+                                STUB_VXLAN_UDP_SRC);
+                    } else {
+                        log.error("To push VXLAN switch {} must support one of the following features: [{}, {}]",
+                                switchId, NOVIFLOW_PUSH_POP_VXLAN, KILDA_OVS_PUSH_POP_MATCH_VXLAN);
+                        return Lists.newArrayList();
+                    }
+
+                    return Lists.newArrayList(pushVxlan);
                 default:
                     log.warn(format("Unexpected transit encapsulation type \"%s\"",
                             flowTransitData.getEncapsulation().getType()));

@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,8 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.bluegreen.kafka;
 
-public interface DeserializationError {
-    String getDeserializationErrorMessage();
+package org.openkilda.rulemanager;
+
+import lombok.Value;
+
+@Value
+public class OfMetadata {
+    long value;
+    long mask;
 }

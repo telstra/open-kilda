@@ -118,6 +118,9 @@ public enum DeleteRulesAction {
     // Remove Turning Server 42 Flow RTT rule
     REMOVE_SERVER_42_FLOW_RTT_TURNING,
 
+    // Remove Turning Server 42 Flow RTT Vxlan rule
+    REMOVE_SERVER_42_FLOW_RTT_VXLAN_TURNING,
+
     // Remove Output VLAN Server 42 Flow RTT rule
     REMOVE_SERVER_42_FLOW_RTT_OUTPUT_VLAN,
 

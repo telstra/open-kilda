@@ -45,6 +45,7 @@ import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server4
 import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42FlowRttOutputVlanFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42FlowRttOutputVxlanFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42FlowRttTurningFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42FlowRttVxlanTurningFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42IslRttInputFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42IslRttOutputFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42IslRttTurningFlowGenerator;
@@ -282,6 +283,15 @@ public class SwitchFlowFactory implements IService {
      */
     public SwitchFlowGenerator getServer42FlowRttTurningFlowGenerator() {
         return Server42FlowRttTurningFlowGenerator.builder()
+                .featureDetectorService(featureDetectorService)
+                .build();
+    }
+
+    /**
+     * Get Server 42 Flow RTT Vxlan turning flow generator.
+     */
+    public SwitchFlowGenerator getServer42FlowRttVxlanTurningFlowGenerator() {
+        return Server42FlowRttVxlanTurningFlowGenerator.builder()
                 .featureDetectorService(featureDetectorService)
                 .build();
     }

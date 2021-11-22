@@ -44,6 +44,7 @@ import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.of.MeterSchema;
 
+import com.google.common.collect.Sets;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NonNull;
@@ -53,13 +54,11 @@ import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 @Getter
 public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
@@ -416,8 +415,12 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
         return ofMessages;
     }
 
-    protected Set<SwitchFeature> getRequiredFeatures() {
-        return new HashSet<>();
+    /**
+     * Returns a list of sets of required features.
+     * Switch must support at least one feature from each set.
+     */
+    protected List<Set<SwitchFeature>> getRequiredFeatures() {
+        return new ArrayList<>();
     }
 
     protected void ensureMeterSuccess(SpeakerCommandReport report) {
@@ -434,18 +437,22 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     }
 
     private void ensureSwitchEnoughCapabilities() throws UnsupportedSwitchOperationException {
-        Set<SwitchFeature> required = getRequiredFeatures();
-        required.removeAll(getSwitchFeatures());
-        if (required.isEmpty()) {
+        List<Set<SwitchFeature>> required = getRequiredFeatures();
+        Set<SwitchFeature> switchFeatures = getSwitchFeatures();
+
+        List<Set<SwitchFeature>> missedFeatures = new ArrayList<>();
+        for (Set<SwitchFeature> requiredSet : required) {
+            if (Sets.intersection(requiredSet, switchFeatures).isEmpty()) {
+                missedFeatures.add(requiredSet);
+            }
+        }
+        if (missedFeatures.isEmpty()) {
             return;
         }
 
-        String requiredAsString = required.stream()
-                .map(SwitchFeature::name)
-                .sorted()
-                .collect(Collectors.joining(", "));
         throw new UnsupportedSwitchOperationException(
-                getSw().getId(), String.format("Switch %s do not support %s", switchId, requiredAsString));
+                getSw().getId(), String.format("Switch %s must support at least one feature from each of the following "
+                + "lists: %s", switchId, missedFeatures));
     }
 
     private FlowTransitData getFlowTransitData() {

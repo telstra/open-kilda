@@ -150,6 +150,7 @@ Constraints:
 |`0x8000_0000_0000_001B`|`SERVER_42_FLOW_RTT_TURNING_COOKIE`|Catches flow RTT packer, swaps ETH src and dst and sends back to IN_PORT|
 |`0x8000_0000_0000_001C`|`SERVER_42_ISL_RTT_OUTPUT_COOKIE`|Sends ISL RTT packet back to server42|
 |`0x8000_0000_0000_001D`|`SERVER_42_ISL_RTT_TURNING_COOKIE`|Sends ISL RTT packet back to IN_PORT|
+|`0x8000_0000_0000_001E`|`SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE`|Catches flow RTT packet for VXLAN Flows, swaps ETH src and dst and sends back to IN_PORT|
 |`0x8010_0000_XXXX_XXXX`|`LLDP_INPUT_CUSTOMER`|Marks LLDP packets from port XXX by metadata|
 |`0x8020_0000_XXXX_XXXX`|`MULTI_TABLE_ISL_VLAN_EGRESS`|Moves Vlan packets received from ISL port XXX from input table to egress table|
 |`0x8030_0000_XXXX_XXXX`|`MULTI_TABLE_ISL_VXLAN_EGRESS`|Moves VXLAN packets received from ISL port XXX from input table to egress table|

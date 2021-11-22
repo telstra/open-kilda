@@ -21,6 +21,7 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.LLDP_POST_ING
 import static org.openkilda.floodlight.switchmanager.SwitchManager.POST_INGRESS_TABLE_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_UDP_SRC;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.VXLAN_UDP_DST;
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE;
 
@@ -39,6 +40,7 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyAct
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.TransportPort;
@@ -58,19 +60,27 @@ public class LldpPostIngressVxlanFlowGenerator extends LldpFlowGenerator {
     OFFlowMod getLldpFlowMod(IOFSwitch sw, OFInstructionMeter meter, List<OFAction> actionList) {
         OFFactory ofFactory = sw.getOFFactory();
         Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
-        if (!features.contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+        if (!features.contains(NOVIFLOW_PUSH_POP_VXLAN) && !features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
             return null;
         }
 
         RoutingMetadata metadata = buildMetadata(RoutingMetadata.builder().lldpFlag(true), sw);
-        Match match = ofFactory.buildMatch()
+        Match.Builder matchBuilder = ofFactory.buildMatch()
                 .setMasked(MatchField.METADATA, OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
                 .setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC))
-                .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST))
-                .build();
+                .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST));
 
-        actionList.add(ofFactory.actions().noviflowPopVxlanTunnel());
+        if (features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
+            matchBuilder.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+        }
+        Match match = matchBuilder.build();
+
+        if (features.contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+            actionList.add(ofFactory.actions().noviflowPopVxlanTunnel());
+        } else {
+            actionList.add(ofFactory.actions().kildaPopVxlanField());
+        }
         actionList.add(actionSendToController(sw.getOFFactory()));
         OFInstructionApplyActions actions = ofFactory.instructions().applyActions(actionList).createBuilder().build();
 

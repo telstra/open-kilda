@@ -81,6 +81,7 @@ import static org.openkilda.model.cookie.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_TURNING_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
@@ -571,10 +572,11 @@ public class SwitchManagerTest {
                 ARP_INGRESS_COOKIE, ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE,
                 ARP_POST_INGRESS_ONE_SWITCH_COOKIE, SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE,
                 SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE, SERVER_42_FLOW_RTT_TURNING_COOKIE,
-                SERVER_42_ISL_RTT_OUTPUT_COOKIE, SERVER_42_ISL_RTT_TURNING_COOKIE);
+                SERVER_42_ISL_RTT_OUTPUT_COOKIE, SERVER_42_ISL_RTT_TURNING_COOKIE,
+                SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE);
 
         Capture<OFFlowMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(29);
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(30);
         expect(iofSwitch.write(isA(OFGroupDelete.class))).andReturn(true).once();
 
         mockBarrierRequest();
@@ -590,7 +592,7 @@ public class SwitchManagerTest {
 
         // then
         final List<OFFlowMod> actual = capture.getValues();
-        assertEquals(29, actual.size());
+        assertEquals(30, actual.size());
         assertThat(actual, everyItem(hasProperty("command", equalTo(OFFlowModCommand.DELETE))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_RULE_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_BROADCAST_RULE_COOKIE)))));
@@ -621,6 +623,7 @@ public class SwitchManagerTest {
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(SERVER_42_ISL_RTT_TURNING_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(SERVER_42_ISL_RTT_OUTPUT_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE)))));
 
         assertThat(deletedRules, containsInAnyOrder(DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                 VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
@@ -632,7 +635,8 @@ public class SwitchManagerTest {
                 LLDP_POST_INGRESS_ONE_SWITCH_COOKIE, ARP_INPUT_PRE_DROP_COOKIE, ARP_TRANSIT_COOKIE, ARP_INGRESS_COOKIE,
                 ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE,
                 SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE, SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE,
-                SERVER_42_FLOW_RTT_TURNING_COOKIE, SERVER_42_ISL_RTT_OUTPUT_COOKIE, SERVER_42_ISL_RTT_TURNING_COOKIE));
+                SERVER_42_FLOW_RTT_TURNING_COOKIE, SERVER_42_ISL_RTT_OUTPUT_COOKIE, SERVER_42_ISL_RTT_TURNING_COOKIE,
+                SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE));
     }
 
     @Test
@@ -654,10 +658,11 @@ public class SwitchManagerTest {
                 ARP_INPUT_PRE_DROP_COOKIE, ARP_TRANSIT_COOKIE, ARP_INGRESS_COOKIE, ARP_POST_INGRESS_COOKIE,
                 ARP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE,
                 SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE, SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE,
-                SERVER_42_FLOW_RTT_TURNING_COOKIE, SERVER_42_ISL_RTT_OUTPUT_COOKIE, SERVER_42_ISL_RTT_TURNING_COOKIE);
+                SERVER_42_FLOW_RTT_TURNING_COOKIE, SERVER_42_ISL_RTT_OUTPUT_COOKIE, SERVER_42_ISL_RTT_TURNING_COOKIE,
+                SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE);
 
         Capture<OFFlowMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(45);
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(46);
         expect(iofSwitch.write(isA(OFGroupDelete.class))).andReturn(true).once();
 
         mockBarrierRequest();
@@ -681,13 +686,14 @@ public class SwitchManagerTest {
                 ARP_INGRESS_COOKIE, ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE,
                 ARP_POST_INGRESS_ONE_SWITCH_COOKIE, SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE,
                 SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE, SERVER_42_FLOW_RTT_TURNING_COOKIE,
-                SERVER_42_ISL_RTT_OUTPUT_COOKIE, SERVER_42_ISL_RTT_TURNING_COOKIE));
+                SERVER_42_ISL_RTT_OUTPUT_COOKIE, SERVER_42_ISL_RTT_TURNING_COOKIE,
+                SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE));
 
         final List<OFFlowMod> actual = capture.getValues();
-        assertEquals(45, actual.size());
+        assertEquals(46, actual.size());
 
         // check rules deletion
-        List<OFFlowMod> rulesMod = actual.subList(0, 29);
+        List<OFFlowMod> rulesMod = actual.subList(0, 30);
         assertThat(rulesMod, everyItem(hasProperty("command", equalTo(OFFlowModCommand.DELETE))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_RULE_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_BROADCAST_RULE_COOKIE)))));
@@ -719,6 +725,7 @@ public class SwitchManagerTest {
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(SERVER_42_ISL_RTT_TURNING_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(SERVER_42_ISL_RTT_OUTPUT_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE)))));
 
 
         // verify meters deletion

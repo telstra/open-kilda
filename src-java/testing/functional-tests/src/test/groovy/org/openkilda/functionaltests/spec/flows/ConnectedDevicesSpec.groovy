@@ -1,11 +1,13 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.model.cookie.Cookie.LLDP_INGRESS_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_INPUT_PRE_DROP_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_COOKIE
@@ -25,8 +27,6 @@ import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
-import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Flow
 import org.openkilda.model.FlowEncapsulationType
@@ -68,6 +68,8 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
+
+    List<SwitchId> switchesToSync = []
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
@@ -1461,12 +1463,14 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
     private void validateFlowAndSwitches(Flow flow) {
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
-        [flow.srcSwitch, flow.destSwitch].each {
-            def validation = northbound.validateSwitch(it.switchId)
-            validation.verifyRuleSectionsAreEmpty(it.switchId, ["missing", "excess", "misconfigured"])
-            validation.verifyHexRuleSectionsAreEmpty(it.switchId, ["missingHex", "excessHex", "misconfiguredHex"])
-            if (it.ofVersion != "OF_12") {
-                validation.verifyMeterSectionsAreEmpty(it.switchId, ["missing", "misconfigured", "excess"])
+        trySwValidation([flow.srcSwitch, flow.destSwitch]*.switchId) {
+            [flow.srcSwitch, flow.destSwitch].each {
+                def validation = northbound.validateSwitch(it.switchId)
+                validation.verifyRuleSectionsAreEmpty(it.switchId, ["missing", "excess", "misconfigured"])
+                validation.verifyHexRuleSectionsAreEmpty(it.switchId, ["missingHex", "excessHex", "misconfiguredHex"])
+                if (it.ofVersion != "OF_12") {
+                    validation.verifyMeterSectionsAreEmpty(it.switchId, ["missing", "misconfigured", "excess"])
+                }
             }
         }
     }
@@ -1502,7 +1506,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def swProps = northbound.getSwitchProperties(sw.switchId)
         def postIngressMeterCount = swProps.multiTable ? 1 : 0
         def switchLldpMeterCount = swProps.switchLldp ? 1 : 0
-        def vxlanMeterCount = swProps.multiTable && sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) ? 1 : 0
+        def vxlanMeterCount = swProps.multiTable && (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
+                || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) ? 1 : 0
 
         def meters = northbound.getAllMeters(sw.switchId).meterEntries*.meterId
 
@@ -1574,5 +1579,23 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         } else {
             "none of the endpoints"
         }
+    }
+
+    private trySwValidation(List<SwitchId> switches = topology.activeSwitches*.dpId, Closure code) {
+        try {
+            code()
+        } catch(Throwable t) {
+            switchesToSync.addAll(switches)
+            throw t
+        }
+    }
+
+    def cleanup() {
+        withPool {
+            switchesToSync.unique().eachParallel { SwitchId swId ->
+                Wrappers.silent { northbound.synchronizeSwitch(swId, true) }
+            }
+        }
+        switchesToSync.clear()
     }
 }

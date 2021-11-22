@@ -214,7 +214,9 @@ class MaxLatencySpec extends HealthCheckSpecification {
             assert flowInfo.status == FlowState.DEGRADED.toString()
             assert flowInfo.statusInfo == "An alternative way (back up strategy or max_latency_tier2 value) of" +
                     " building the path was used"
-            assert northboundV2.getFlowHistoryStatuses(flow.flowId).historyStatuses*.statusBecome == ["UP", "DEGRADED"]
+            /*[0..1] - can be more than two statuses due to running this test in a parallel mode.
+            for example: reroute can be triggered by blinking/activating any isl (not involved in flow path)*/
+            assert northboundV2.getFlowHistoryStatuses(flow.flowId).historyStatuses*.statusBecome[0..1] == ["UP", "DEGRADED"]
         }
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == alternativePath
 

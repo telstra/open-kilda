@@ -59,8 +59,8 @@ task functionalTest(type: Test, dependsOn: 'compileGroovy') {
             exclude excludeTerm
          }
     }
-
     systemProperty 'tags', System.getProperty('tags')
+    systemProperty 'parallel.topologies', System.getProperty('parallel.topologies')
 
     Properties properties = new Properties()
     File propertiesFile = file("kilda.properties.example")
@@ -79,6 +79,7 @@ task runTest(type: Test) {
     description = 'Includes all tests from functional-tests module.'
     include '**/functionaltests/**'
     systemProperty 'tags', System.getProperty('tags')
+    systemProperty 'parallel.topologies', System.getProperty('parallel.topologies')
 }
 
 tasks.withType(Test) {

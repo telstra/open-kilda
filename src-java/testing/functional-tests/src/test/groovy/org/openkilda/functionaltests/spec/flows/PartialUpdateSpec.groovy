@@ -3,7 +3,6 @@ package org.openkilda.functionaltests.spec.flows
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -388,7 +387,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(HARDWARE)
     def "Able to update flow encapsulationType using partial update"() {
         given: "A flow with a 'transit_vlan' encapsulation"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->

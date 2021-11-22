@@ -42,6 +42,8 @@ import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionGroup;
+import org.projectfloodlight.openflow.protocol.action.OFActionKildaPushVxlanField;
+import org.projectfloodlight.openflow.protocol.action.OFActionKildaSwapField;
 import org.projectfloodlight.openflow.protocol.action.OFActionMeter;
 import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowCopyField;
 import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowPushVxlanTunnel;
@@ -146,8 +148,7 @@ public abstract class OfFlowStatsMapper {
                         .map(Objects::toString).orElse(null))
                 .udpSrc(Optional.ofNullable(match.get(MatchField.UDP_SRC))
                         .map(Objects::toString).orElse(null))
-                .tunnelId(Optional.ofNullable(match.get(MatchField.TUNNEL_ID))
-                        .map(Objects::toString).orElse(null))
+                .tunnelId(getTunnelId(match))
                 .metadataValue(Optional.ofNullable(match.getMasked(MatchField.METADATA))
                         .map(Masked::getValue)
                         .map(Objects::toString).orElse(null))
@@ -155,6 +156,15 @@ public abstract class OfFlowStatsMapper {
                         .map(Masked::getMask)
                         .map(Objects::toString).orElse(null))
                 .build();
+    }
+
+    private String getTunnelId(final Match match) {
+        if (match.get(MatchField.TUNNEL_ID) != null) {
+            return match.get(MatchField.TUNNEL_ID).toString();
+        } else if (match.get(MatchField.KILDA_VXLAN_VNI) != null) {
+            return match.get(MatchField.KILDA_VXLAN_VNI).toString();
+        }
+        return null;
     }
 
     /**
@@ -233,12 +243,16 @@ public abstract class OfFlowStatsMapper {
                 fillFlowAction(flowActions, (OFActionSetField) action);
             } else if (action instanceof OFActionNoviflowPushVxlanTunnel) {
                 fillFlowAction(flowActions, (OFActionNoviflowPushVxlanTunnel) action);
+            } else if (action instanceof OFActionKildaPushVxlanField) {
+                fillFlowAction(flowActions, (OFActionKildaPushVxlanField) action);
             } else if (action instanceof OFActionGroup) {
                 fillFlowAction(flowActions, (OFActionGroup) action);
             } else if (action instanceof OFActionNoviflowCopyField) {
                 fillFlowAction(flowActions, (OFActionNoviflowCopyField) action);
             } else if (action instanceof OFActionNoviflowSwapField) {
                 fillFlowAction(flowActions, (OFActionNoviflowSwapField) action);
+            } else if (action instanceof OFActionKildaSwapField) {
+                fillFlowAction(flowActions, (OFActionKildaSwapField) action);
             }
             // add handling for other actions here
         }
@@ -313,6 +327,11 @@ public abstract class OfFlowStatsMapper {
         flowActions.pushVxlan(String.valueOf(action.getVni()));
     }
 
+    private void fillFlowAction(
+            FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionKildaPushVxlanField action) {
+        flowActions.pushVxlan(String.valueOf(action.getVni()));
+    }
+
     private void fillFlowAction(FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionGroup action) {
         flowActions.group(String.valueOf(action.getGroup()));
     }
@@ -330,6 +349,17 @@ public abstract class OfFlowStatsMapper {
 
     private void fillFlowAction(
             FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionNoviflowSwapField action) {
+        flowActions.swapFieldAction(FlowSwapFieldAction.builder()
+                .bits(String.valueOf(action.getNBits()))
+                .srcOffset(String.valueOf(action.getSrcOffset()))
+                .dstOffset(String.valueOf(action.getDstOffset()))
+                .srcOxm(String.valueOf(action.getOxmSrcHeader()))
+                .dstOxm(String.valueOf(action.getOxmDstHeader()))
+                .build());
+    }
+
+    private void fillFlowAction(
+            FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionKildaSwapField action) {
         flowActions.swapFieldAction(FlowSwapFieldAction.builder()
                 .bits(String.valueOf(action.getNBits()))
                 .srcOffset(String.valueOf(action.getSrcOffset()))

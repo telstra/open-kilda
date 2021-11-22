@@ -34,4 +34,4 @@ if NETWORK_LAB_IFACE is None:
 
     raise SystemExit(2)
 
-subprocess.run(["./server42", "-c", "0x1f", f"--vdev=net_pcap0,iface={NETWORK_LAB_IFACE}", "--no-huge", "--", "--debug"], stderr=sys.stderr, stdout=sys.stdout)
+subprocess.run(["./server42" , "-c", "0x1f", "--log-level=lib.eal:8" , f"--vdev=net_pcap0,iface={NETWORK_LAB_IFACE}", "--no-huge", "--", "--debug"], stderr=sys.stderr, stdout=sys.stdout)

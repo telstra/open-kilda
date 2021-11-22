@@ -79,9 +79,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                     /random vlans|no vlans|single-switch flow with vlans/),
             @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /and vlan only on/)
     ])
-    @Unroll("Valid #data.description has traffic and no rule discrepancies \
-(#flow.source.switchId - #flow.destination.switchId)")
-    def "Valid flow has no rule discrepancies"() {
+    def "Valid #data.description has traffic and no rule discrepancies [#srcDstStr]"() {
         given: "A flow"
         assumeTrue(topology.activeTraffGens.size() >= 2,
 "There should be at least two active traffgens for test execution")
@@ -152,6 +150,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         */
         data << flowsWithoutTransitSwitch + flowsWithTransitSwitch + singleSwitchFlows
         flow = data.flow as FlowRequestV2
+        srcDstStr = "src:${topology.find(flow.source.switchId).hwSwString}->dst:${topology.find(flow.destination.switchId).hwSwString}"
     }
 
     @Tidy
@@ -869,7 +868,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         given: "Two active switches"
         def swPair = topologyHelper.getNeighboringSwitchPair().find {
             [it.src, it.dst].any { !switchHelper.isVxlanEnabled(it.dpId) }
-        }
+        } ?: assumeTrue(false, "Unable to find required switches in topology")
 
         def srcProps = northbound.getSwitchProperties(swPair.src.dpId)
         def dstProps = northbound.getSwitchProperties(swPair.dst.dpId)

@@ -25,6 +25,7 @@ import org.openkilda.floodlight.feature.HalfSizeMetadataFeature;
 import org.openkilda.floodlight.feature.InaccurateMeterFeature;
 import org.openkilda.floodlight.feature.InaccurateSetVlanVidAction;
 import org.openkilda.floodlight.feature.KildaOvsCopyFieldFeature;
+import org.openkilda.floodlight.feature.KildaOvsPushPopMatchVxlanFeature;
 import org.openkilda.floodlight.feature.KildaOvsSwapFieldFeature;
 import org.openkilda.floodlight.feature.LagFeature;
 import org.openkilda.floodlight.feature.LimitedBurstSizeFeature;
@@ -93,6 +94,7 @@ public class FeatureDetectorService implements IService {
                 new GroupsFeature(),
                 new KildaOvsCopyFieldFeature(),
                 new KildaOvsSwapFieldFeature(),
+                new KildaOvsPushPopMatchVxlanFeature(),
                 new LagFeature());
     }
 }

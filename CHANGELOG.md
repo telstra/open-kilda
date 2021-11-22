@@ -1,5 +1,42 @@
 # Changelog
 
+## v1.107.3 (17/11/2021)
+
+### Features:
+-  [#4546](https://github.com/telstra/open-kilda/pull/4546) Rule manager: Egress and Transit 
+-  [#4516](https://github.com/telstra/open-kilda/pull/4516) Added Kilda OVS VXLAN support [**floodlight**]
+-  [#4538](https://github.com/telstra/open-kilda/pull/4538) Rule manager: Ingress rules 
+
+### Bug Fixes:
+-  [#4556](https://github.com/telstra/open-kilda/pull/4556) Minor fixes for better parallel tests isolation [**tests**]
+-  [#4539](https://github.com/telstra/open-kilda/pull/4539) [Server42] Fix build for linux-kernel-5.9+ 
+
+### Improvements:
+-  [#4553](https://github.com/telstra/open-kilda/pull/4553) adjust vxlanTests to case when all SWs support vxlan [**tests**]
+-  [#4555](https://github.com/telstra/open-kilda/pull/4555) fix "Shortest path transit switch does not support VXLAN and alt path… [**tests**]
+-  [#4565](https://github.com/telstra/open-kilda/pull/4565) fix statsRouterInterval variable initialize in flowStatSpec [**tests**]
+-  [#4567](https://github.com/telstra/open-kilda/pull/4567) Tests parallelism is now controlled by single property [**configuration**][**tests**]
+-  [#4569](https://github.com/telstra/open-kilda/pull/4569) Add tests cleanup with switch sync [**tests**]
+-  [#4570](https://github.com/telstra/open-kilda/pull/4570) Remove switch ids from test name to fix retries (Issue: [#4446](https://github.com/telstra/open-kilda/issues/4446)) [**tests**]
+-  [#4575](https://github.com/telstra/open-kilda/pull/4575) remove conflicting s42 connection in a local env [**tests**]
+-  [#4576](https://github.com/telstra/open-kilda/pull/4576) increase "wait" in IslRttSpec [**tests**]
+-  [#4578](https://github.com/telstra/open-kilda/pull/4578) Remove usage of jcentral repository 
+-  [#4580](https://github.com/telstra/open-kilda/pull/4580) make less strict verification for historyStatuses in maxLatencySpec [**tests**]
+-  [#4585](https://github.com/telstra/open-kilda/pull/4585) Comment on ovs versions in docker file 
+-  [#4203](https://github.com/telstra/open-kilda/pull/4203) Cleanup deserialization error handling reporting 
+
+### Other changes:
+-  [#4559](https://github.com/telstra/open-kilda/pull/4559) Add test property with kafka internal port [**configuration**][**tests**]
+-  [#4564](https://github.com/telstra/open-kilda/pull/4564) Make test logs to go to separate files for each test [**configuration**][**tests**]
+-  [#4584](https://github.com/telstra/open-kilda/pull/4584) Added docs for s42 vxlan flow turning cookie [**docs**]
+-  [#4586](https://github.com/telstra/open-kilda/pull/4586) Pass `parallel.topologies` property to tests execution [**configuration**][**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.107.2...v1.107.3).
+
+### Affected Components:
+server42, fl
+
+
 ## v1.107.2 (13/11/2021)
 
 ### Improvements:

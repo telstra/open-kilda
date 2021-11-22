@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.switches
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -29,7 +30,8 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to manipulate with switch properties"() {
         given: "A switch that supports VXLAN"
-        def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) }
+        def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
+                || it.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN) }
         assumeTrue(sw as boolean, "Wasn't able to find vxlan-enabled switch")
         def initSwitchProperties = northbound.getSwitchProperties(sw.dpId)
         assert initSwitchProperties.multiTable != null
@@ -245,7 +247,8 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "System forbids to turn on VXLAN encap type on switch that does not support it"() {
         given: "Switch that does not support VXLAN feature"
-        def sw = topology.activeSwitches.find { !it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN) }
+        def sw = topology.activeSwitches.find { !it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
+                && !it.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN) }
         assumeTrue(sw as boolean, "There is no non-vxlan switch in the topology")
 
         when: "Try to turn on VXLAN encap type on that switch"
@@ -258,7 +261,8 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.BAD_REQUEST
         e.responseBodyAsString.to(MessageError).errorDescription ==
-                "Switch $sw.dpId doesn't support requested feature NOVIFLOW_PUSH_POP_VXLAN"
+                "Switch $sw.dpId must support at least one of the next features: [NOVIFLOW_PUSH_POP_VXLAN, " +
+                "KILDA_OVS_PUSH_POP_MATCH_VXLAN]"
 
         cleanup:
         !e && SwitchHelper.updateSwitchProperties(sw, initProps)

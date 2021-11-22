@@ -15,7 +15,7 @@
 
 package org.openkilda.rulemanager;
 
-import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.CookieBase;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import lombok.EqualsAndHashCode;
@@ -29,7 +29,7 @@ import java.util.Set;
 @SuperBuilder
 public class FlowSpeakerCommandData extends SpeakerCommandData {
 
-    Cookie cookie;
+    CookieBase cookie;
     OfTable table;
     int priority;
     Set<FieldMatch> match;

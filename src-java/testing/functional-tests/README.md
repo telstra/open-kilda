@@ -75,13 +75,14 @@ Common usages:
 func tests for each PR on github
 
 ## Parallel Tests
-Tests on virtual lab are run in parallel. Each 'thread' is executed in it's own isolated topology (island).
-If number of parallel threads is more than the number of available islands, such threads will be blocked
-until free island is available (returned to the pool). Amount of created islands is controlled by
-`parallel.topologies` property, which can be set either as system property during build
-`-Dparallel.topologies=3` or in `kilda.properties` file. Amount of parallel threads is defined in
-`SpockConfig.groovy`([spock docs](https://spockframework.org/spock/docs/2.0/parallel_execution.html)).  
-'Hardware' profile is always run on a single island, so technically there is no parallelism available
+Tests on virtual lab can be run in parallel. Each 'thread' is executed in it's own isolated topology (island).
+Amount of created islands as well as amount of specs to be run in parallel is controlled by
+`parallel.topologies` property, which can be passed as a system property during build
+`-Dparallel.topologies=3`. Note that it _cannot_ be set via `kilda.properies` file since this 
+prop is required before this file is parsed by Spring.    
+'Hardware' profile is always run on a single island, so technically there is no parallelism available.  
+Refer to [spock docs](https://spockframework.org/spock/docs/2.0/parallel_execution.html) for more info on how
+ parallel execution works in spock
 
 ## Artifacts
 * Logs - ```build/logs```

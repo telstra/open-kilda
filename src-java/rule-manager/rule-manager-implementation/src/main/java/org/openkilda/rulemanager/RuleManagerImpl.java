@@ -16,13 +16,18 @@
 package org.openkilda.rulemanager;
 
 import static java.util.stream.Collectors.toList;
+import static org.openkilda.adapter.FlowSideAdapter.makeIngressAdapter;
 import static org.openkilda.model.cookie.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_INGRESS_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE;
 
+import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
@@ -34,7 +39,9 @@ import org.openkilda.rulemanager.factory.ServiceRulesGeneratorFactory;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class RuleManagerImpl implements RuleManager {
@@ -44,13 +51,62 @@ public class RuleManagerImpl implements RuleManager {
 
     public RuleManagerImpl(RuleManagerConfig config) {
         serviceRulesFactory = new ServiceRulesGeneratorFactory(config);
-        flowRulesFactory = new FlowRulesGeneratorFactory();
+        flowRulesFactory = new FlowRulesGeneratorFactory(config);
     }
 
     @Override
-    public List<SpeakerCommandData> buildRulesForFlowPath(FlowPath flowPath, DataAdapter adapter) {
-        // todo: implement build rules for path
-        return null;
+    public List<SpeakerCommandData> buildRulesForFlowPath(
+            FlowPath flowPath, boolean filterOutUsedSharedRules, DataAdapter adapter) {
+        List<SpeakerCommandData> result = new ArrayList<>();
+        Flow flow = adapter.getFlow(flowPath.getPathId());
+        FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(flowPath.getPathId());
+
+        if (!flow.isProtectedPath(flowPath.getPathId())) {
+            Set<FlowSideAdapter> overlappingAdapters = new HashSet<>();
+            if (filterOutUsedSharedRules) {
+                overlappingAdapters = getOverlappingMultiTableIngressAdapters(flowPath, adapter);
+            }
+            buildIngressCommands(
+                    adapter.getSwitch(flowPath.getSrcSwitchId()), flowPath, flow, encapsulation, overlappingAdapters);
+        }
+
+        if (flowPath.isOneSwitchFlow()) {
+            return result;
+        }
+
+        result.addAll(buildEgressCommands(
+                adapter.getSwitch(flowPath.getDestSwitchId()), flowPath, flow, encapsulation));
+
+        for (int i = 1; i < flowPath.getSegments().size(); i++) {
+            PathSegment firstSegment = flowPath.getSegments().get(i - 1);
+            PathSegment secondSegment = flowPath.getSegments().get(i);
+            result.addAll(buildTransitCommands(adapter.getSwitch(firstSegment.getDestSwitchId()),
+                    flowPath, encapsulation, firstSegment, secondSegment));
+        }
+
+        return result;
+    }
+
+    private Set<FlowSideAdapter> getOverlappingMultiTableIngressAdapters(FlowPath path, DataAdapter adapter) {
+        FlowEndpoint endpoint = makeIngressAdapter(adapter.getFlow(path.getPathId()), path).getEndpoint();
+
+        Set<FlowSideAdapter> result = new HashSet<>();
+        if (!path.isSrcWithMultiTable()) {
+            // we do not care about overlapping for single table paths
+            return result;
+        }
+
+        for (FlowPath overlappingPath : adapter.getFlowPaths().values()) {
+            if (overlappingPath.isSrcWithMultiTable()
+                    && path.getSrcSwitchId().equals(overlappingPath.getSrcSwitchId())) {
+                Flow overlappingFlow = adapter.getFlow(overlappingPath.getPathId());
+                FlowSideAdapter flowAdapter = makeIngressAdapter(overlappingFlow, overlappingPath);
+                if (endpoint.getPortNumber().equals(flowAdapter.getEndpoint().getPortNumber())) {
+                    result.add(flowAdapter);
+                }
+            }
+        }
+        return result;
     }
 
     @Override
@@ -60,7 +116,7 @@ public class RuleManagerImpl implements RuleManager {
 
         List<SpeakerCommandData> result = buildServiceRules(sw, switchProperties);
 
-        result.addAll(buildFlowRules(switchId, adapter));
+        result.addAll(buildFlowRulesForSwitch(switchId, adapter));
 
         return result;
     }
@@ -93,38 +149,70 @@ public class RuleManagerImpl implements RuleManager {
         return generators;
     }
 
-    private List<SpeakerCommandData> buildFlowRules(SwitchId switchId, DataAdapter adapter) {
+    private List<SpeakerCommandData> buildFlowRulesForSwitch(SwitchId switchId, DataAdapter adapter) {
         return adapter.getFlowPaths().values().stream()
-                .flatMap(flowPath -> buildFlowRules(switchId, flowPath, adapter).stream())
+                .flatMap(flowPath -> buildFlowRulesForSwitch(switchId, flowPath, adapter).stream())
                 .collect(Collectors.toList());
     }
 
     /**
      * Builds command data only for switches present in the map. Silently skips all others.
      */
-    private List<SpeakerCommandData> buildFlowRules(SwitchId switchId, FlowPath flowPath, DataAdapter adapter) {
+    private List<SpeakerCommandData> buildFlowRulesForSwitch(
+            SwitchId switchId, FlowPath flowPath, DataAdapter adapter) {
         List<SpeakerCommandData> result = new ArrayList<>();
+        Flow flow = adapter.getFlow(flowPath.getPathId());
+        Switch sw = adapter.getSwitch(switchId);
+        SwitchProperties switchProperties = adapter.getSwitchProperties(switchId);
+        FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(flowPath.getPathId());
 
-        SwitchId srcSwitchId = flowPath.getSrcSwitchId();
-        if (switchId.equals(srcSwitchId)) {
-            result.addAll(buildIngressCommands(adapter.getSwitch(srcSwitchId),
-                    adapter.getSwitchProperties(srcSwitchId),
-                    flowPath, adapter.getFlow(flowPath.getPathId())));
+        if (switchId.equals(flowPath.getSrcSwitchId()) && !flow.isProtectedPath(flowPath.getPathId())) {
+            // TODO filter out equal shared rules from the result list
+            result.addAll(buildIngressCommands(sw, flowPath, flow, encapsulation, new HashSet<>()));
         }
-        // todo: add transit, egress and other flow rules
+
+        if (!flowPath.isOneSwitchFlow()) {
+            if (switchId.equals(flowPath.getDestSwitchId())) {
+                result.addAll(buildEgressCommands(sw, flowPath, flow, encapsulation));
+            }
+            for (int i = 1; i < flowPath.getSegments().size(); i++) {
+                PathSegment firstSegment = flowPath.getSegments().get(i - 1);
+                PathSegment secondSegment = flowPath.getSegments().get(i);
+                if (switchId.equals(firstSegment.getDestSwitchId())
+                        && switchId.equals(secondSegment.getSrcSwitchId())) {
+                    result.addAll(buildTransitCommands(sw, flowPath, encapsulation, firstSegment, secondSegment));
+                    break;
+                }
+            }
+        }
 
         return result;
     }
 
-    private List<SpeakerCommandData> buildIngressCommands(Switch sw, SwitchProperties switchProperties,
-                                                          FlowPath flowPath, Flow flow) {
+    private List<SpeakerCommandData> buildIngressCommands(Switch sw, FlowPath flowPath, Flow flow,
+            FlowTransitEncapsulation encapsulation, Set<FlowSideAdapter> overlappingIngressAdapters) {
         List<RuleGenerator> generators = new ArrayList<>();
 
-        generators.add(flowRulesFactory.getIngressRuleGenerator(flowPath, flow));
+        generators.add(flowRulesFactory.getIngressRuleGenerator(
+                flowPath, flow, encapsulation, overlappingIngressAdapters));
         // todo: add arp, lldp, flow loop, flow mirror, etc
 
         return generators.stream()
                 .flatMap(generator -> generator.generateCommands(sw).stream())
                 .collect(Collectors.toList());
+    }
+
+    private List<SpeakerCommandData> buildEgressCommands(Switch sw, FlowPath flowPath, Flow flow,
+            FlowTransitEncapsulation encapsulation) {
+        RuleGenerator generator = flowRulesFactory.getEgressRuleGenerator(flowPath, flow, encapsulation);
+        return generator.generateCommands(sw);
+    }
+
+    private List<SpeakerCommandData> buildTransitCommands(
+            Switch sw, FlowPath flowPath, FlowTransitEncapsulation encapsulation, PathSegment firstSegment,
+            PathSegment secondSegment) {
+        RuleGenerator generator = flowRulesFactory.getTransitRuleGenerator(
+                flowPath, encapsulation, firstSegment, secondSegment);
+        return generator.generateCommands(sw);
     }
 }

@@ -28,6 +28,10 @@ dependencies {
     openflowj 'org.projectfloodlight:openflowj'
 }
 
+repositories {
+    mavenCentral()
+}
+
 task cloneFloodlightRepo {
     def repo = file('floodlight')
     outputs.dir(repo)
