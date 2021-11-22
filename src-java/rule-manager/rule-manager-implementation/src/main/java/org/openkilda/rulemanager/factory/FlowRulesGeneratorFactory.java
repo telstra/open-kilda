@@ -21,11 +21,14 @@ import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.factory.generator.flow.EgressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.MultiTableIngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.MultiTableIngressYRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.SingleTableIngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.SingleTableIngressYRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.TransitRuleGenerator;
 
 import java.util.Set;
@@ -59,6 +62,33 @@ public class FlowRulesGeneratorFactory {
                     .flowPath(flowPath)
                     .flow(flow)
                     .encapsulation(encapsulation)
+                    .build();
+        }
+    }
+
+    /**
+     * Get ingress y-rule generator.
+     */
+    public RuleGenerator getIngressYRuleGenerator(
+            FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
+            Set<FlowSideAdapter> overlappingIngressAdapters, MeterId sharedMeterId) {
+        boolean multiTable = isPathSrcMultiTable(flowPath, flow);
+        if (multiTable) {
+            return MultiTableIngressYRuleGenerator.builder()
+                    .config(config)
+                    .flowPath(flowPath)
+                    .flow(flow)
+                    .encapsulation(encapsulation)
+                    .overlappingIngressAdapters(overlappingIngressAdapters)
+                    .sharedMeterId(sharedMeterId)
+                    .build();
+        } else {
+            return SingleTableIngressYRuleGenerator.builder()
+                    .config(config)
+                    .flowPath(flowPath)
+                    .flow(flow)
+                    .encapsulation(encapsulation)
+                    .sharedMeterId(sharedMeterId)
                     .build();
         }
     }

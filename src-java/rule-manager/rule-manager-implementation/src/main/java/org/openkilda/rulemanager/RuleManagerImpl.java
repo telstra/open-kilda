@@ -27,6 +27,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -187,6 +188,18 @@ public class RuleManagerImpl implements RuleManager {
         }
 
         return result;
+    }
+
+    private List<SpeakerCommandData> buildIngressYCommands(Switch sw, FlowPath flowPath, Flow flow,
+            FlowTransitEncapsulation encapsulation, Set<FlowSideAdapter> overlappingIngressAdapters,
+                                                           MeterId sharedMeterId) {
+        List<RuleGenerator> generators = new ArrayList<>();
+
+        generators.add(flowRulesFactory.getIngressYRuleGenerator(
+                flowPath, flow, encapsulation, overlappingIngressAdapters, sharedMeterId));
+        return generators.stream()
+                .flatMap(generator -> generator.generateCommands(sw).stream())
+                .collect(Collectors.toList());
     }
 
     private List<SpeakerCommandData> buildIngressCommands(Switch sw, FlowPath flowPath, Flow flow,
