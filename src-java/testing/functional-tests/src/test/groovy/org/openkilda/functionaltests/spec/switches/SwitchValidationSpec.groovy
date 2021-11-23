@@ -16,6 +16,7 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.Message
 import org.openkilda.messaging.command.CommandMessage
@@ -86,9 +87,9 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         def srcSwitchProperMeters = srcSwitchValidateInfo.meters.proper.findAll({ !isDefaultMeter(it) })
         def dstSwitchProperMeters = dstSwitchValidateInfo.meters.proper.findAll({ !isDefaultMeter(it) })
 
-        [srcSwitchProperMeters, dstSwitchProperMeters].each {
-            it.each {
-                assert it.rate == flow.maximumBandwidth
+        [[srcSwitch, srcSwitchProperMeters], [dstSwitch, dstSwitchProperMeters]].each { sw, meters ->
+            meters.each {
+                SwitchHelper.verifyRateSizeIsCorrect(sw, flow.maximumBandwidth, it.rate)
                 assert it.flowId == flow.flowId
                 assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
             }
@@ -239,10 +240,10 @@ misconfigured"
         srcSwitchValidateInfo.meters.misconfigured*.cookie.containsAll(srcSwitchCreatedCookies)
         dstSwitchValidateInfo.meters.misconfigured*.cookie.containsAll(dstSwitchCreatedCookies)
 
-        [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
-            assert it.meters.misconfigured.meterId.size() == 1
-            it.meters.misconfigured.each {
-                assert it.rate == flow.maximumBandwidth
+        [[srcSwitch, srcSwitchValidateInfo], [dstSwitch, dstSwitchValidateInfo]].each { sw, validation ->
+            assert validation.meters.misconfigured.meterId.size() == 1
+            validation.meters.misconfigured.each {
+                SwitchHelper.verifyRateSizeIsCorrect(sw, flow.maximumBandwidth, it.rate)
                 assert it.flowId == flow.flowId
                 assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
             }
@@ -367,7 +368,7 @@ misconfigured"
 
             Long srcSwitchBurstSize = switchHelper.getExpectedBurst(srcSwitch.dpId, flow.maximumBandwidth)
             it.meters.missing.each {
-                assert it.rate == flow.maximumBandwidth
+                SwitchHelper.verifyRateSizeIsCorrect(srcSwitch, flow.maximumBandwidth, it.rate)
                 assert it.flowId == flow.flowId
                 assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
                 switchHelper.verifyBurstSizeIsCorrect(srcSwitch, srcSwitchBurstSize, it.burstSize)
@@ -387,7 +388,7 @@ misconfigured"
 
             Long dstSwitchBurstSize = switchHelper.getExpectedBurst(dstSwitch.dpId, flow.maximumBandwidth)
             properMeters.each {
-                assert it.rate == flow.maximumBandwidth
+                SwitchHelper.verifyRateSizeIsCorrect(dstSwitch, flow.maximumBandwidth, it.rate)
                 assert it.flowId == flow.flowId
                 assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
                 switchHelper.verifyBurstSizeIsCorrect(dstSwitch, dstSwitchBurstSize, it.burstSize)
@@ -719,9 +720,9 @@ misconfigured"
         def validateSwitchInfo = northbound.validateSwitch(switchPair.src.dpId)
         assert validateSwitchInfo.meters.excess.size() == 1
         assert validateSwitchInfo.meters.excess.each {
-            assert it.rate == flow.maximumBandwidth
             assert it.meterId == excessMeterId
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
+            switchHelper.verifyRateSizeIsCorrect(switchPair.src, flow.maximumBandwidth, it.rate)
             switchHelper.verifyBurstSizeIsCorrect(switchPair.src, burstSize, it.burstSize)
         }
         involvedSwitches[1..-1].findAll { !it.description.contains("OF_12") }.each { switchId ->

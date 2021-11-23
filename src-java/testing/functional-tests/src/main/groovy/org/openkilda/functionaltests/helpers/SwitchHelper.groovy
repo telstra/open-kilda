@@ -463,6 +463,14 @@ class SwitchHelper {
         }
     }
 
+    static void verifyRateSizeIsCorrect(Switch sw, Long expected, Long actual) {
+        if (sw.isWb5164()) {
+            assert Math.abs(expected - actual) <= expected * 0.01
+        } else {
+            assert Math.abs(expected - actual) <= 1
+        }
+    }
+
     static SwitchProperties getDummyServer42Props() {
         return new SwitchProperties(true, 33, "00:00:00:00:00:00", 1, null)
     }
