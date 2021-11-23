@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.107.4 (23/11/2021)
+
+### Bug Fixes:
+-  [#4593](https://github.com/telstra/open-kilda/pull/4593) Fixed server42 flow rtt Kilda ovs installation
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.107.3...v1.107.4).
+
+### Affected Components:
+fl
+
+----
+
 ## v1.107.3 (17/11/2021)
 
 ### Features:
