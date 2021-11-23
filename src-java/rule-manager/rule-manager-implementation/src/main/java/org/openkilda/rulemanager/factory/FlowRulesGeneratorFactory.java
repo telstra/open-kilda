@@ -21,12 +21,16 @@ import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.factory.generator.flow.EgressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.MultiTableIngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.MultiTableIngressYRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.SingleTableIngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.SingleTableIngressYRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.TransitRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.TransitYRuleGenerator;
 
 import java.util.Set;
 
@@ -59,6 +63,33 @@ public class FlowRulesGeneratorFactory {
                     .flowPath(flowPath)
                     .flow(flow)
                     .encapsulation(encapsulation)
+                    .build();
+        }
+    }
+
+    /**
+     * Get ingress y-rule generator.
+     */
+    public RuleGenerator getIngressYRuleGenerator(
+            FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
+            Set<FlowSideAdapter> overlappingIngressAdapters, MeterId sharedMeterId) {
+        boolean multiTable = isPathSrcMultiTable(flowPath, flow);
+        if (multiTable) {
+            return MultiTableIngressYRuleGenerator.builder()
+                    .config(config)
+                    .flowPath(flowPath)
+                    .flow(flow)
+                    .encapsulation(encapsulation)
+                    .overlappingIngressAdapters(overlappingIngressAdapters)
+                    .sharedMeterId(sharedMeterId)
+                    .build();
+        } else {
+            return SingleTableIngressYRuleGenerator.builder()
+                    .config(config)
+                    .flowPath(flowPath)
+                    .flow(flow)
+                    .encapsulation(encapsulation)
+                    .sharedMeterId(sharedMeterId)
                     .build();
         }
     }
@@ -108,6 +139,34 @@ public class FlowRulesGeneratorFactory {
                 .inPort(firstSegment.getDestPort())
                 .outPort(secondSegment.getSrcPort())
                 .multiTable(isSegmentMultiTable(firstSegment, secondSegment))
+                .build();
+    }
+
+    /**
+     * Get transit y-rule generator.
+     */
+    public RuleGenerator getTransitYRuleGenerator(FlowPath flowPath, FlowTransitEncapsulation encapsulation,
+                                                  PathSegment firstSegment, PathSegment secondSegment,
+                                                  MeterId sharedMeterId) {
+        if (flowPath.isOneSwitchFlow()) {
+            throw new IllegalArgumentException(format(
+                    "Couldn't create transit rule for path %s because it is one switch path", flowPath.getPathId()));
+        }
+
+        if (!firstSegment.getDestSwitchId().equals(secondSegment.getSrcSwitchId())) {
+            throw new IllegalArgumentException(format(
+                    "Couldn't create transit rule for path %s because segments switch ids are different: %s, %s",
+                    flowPath.getPathId(), firstSegment.getDestSwitchId(), secondSegment.getSrcSwitchId()));
+        }
+
+        return TransitYRuleGenerator.builder()
+                .flowPath(flowPath)
+                .encapsulation(encapsulation)
+                .inPort(firstSegment.getDestPort())
+                .outPort(secondSegment.getSrcPort())
+                .multiTable(isSegmentMultiTable(firstSegment, secondSegment))
+                .config(config)
+                .sharedMeterId(sharedMeterId)
                 .build();
     }
 

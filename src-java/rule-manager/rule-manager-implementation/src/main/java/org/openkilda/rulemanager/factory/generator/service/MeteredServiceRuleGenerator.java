@@ -34,7 +34,7 @@ import lombok.AllArgsConstructor;
 import java.util.Set;
 
 @AllArgsConstructor
-public abstract class MeteredServiceRuleGenerator extends MeteredRuleGenerator {
+public abstract class MeteredServiceRuleGenerator implements MeteredRuleGenerator {
 
     protected RuleManagerConfig config;
 

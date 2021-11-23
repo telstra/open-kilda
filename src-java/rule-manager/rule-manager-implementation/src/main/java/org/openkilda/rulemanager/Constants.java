@@ -41,6 +41,9 @@ public final class Constants {
         public static final int ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 5;
         public static final int DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 1;
 
+        public static final int Y_FLOW_PRIORITY = FLOW_PRIORITY + 50;
+        public static final int Y_DEFAULT_FLOW_PRIORITY = DEFAULT_FLOW_PRIORITY + 50;
+
         public static final int SERVER_42_FLOW_RTT_INPUT_PRIORITY = INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE;
         public static final int SERVER_42_FLOW_RTT_TURNING_PRIORITY = DISCOVERY_RULE_PRIORITY;
         public static final int SERVER_42_FLOW_RTT_OUTPUT_VLAN_PRIORITY = DISCOVERY_RULE_PRIORITY;
