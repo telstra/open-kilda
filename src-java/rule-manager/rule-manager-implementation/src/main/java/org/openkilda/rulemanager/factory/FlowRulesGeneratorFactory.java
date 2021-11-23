@@ -30,6 +30,7 @@ import org.openkilda.rulemanager.factory.generator.flow.MultiTableIngressYRuleGe
 import org.openkilda.rulemanager.factory.generator.flow.SingleTableIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.SingleTableIngressYRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.TransitRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.TransitYRuleGenerator;
 
 import java.util.Set;
 
@@ -138,6 +139,34 @@ public class FlowRulesGeneratorFactory {
                 .inPort(firstSegment.getDestPort())
                 .outPort(secondSegment.getSrcPort())
                 .multiTable(isSegmentMultiTable(firstSegment, secondSegment))
+                .build();
+    }
+
+    /**
+     * Get transit y-rule generator.
+     */
+    public RuleGenerator getTransitYRuleGenerator(FlowPath flowPath, FlowTransitEncapsulation encapsulation,
+                                                  PathSegment firstSegment, PathSegment secondSegment,
+                                                  MeterId sharedMeterId) {
+        if (flowPath.isOneSwitchFlow()) {
+            throw new IllegalArgumentException(format(
+                    "Couldn't create transit rule for path %s because it is one switch path", flowPath.getPathId()));
+        }
+
+        if (!firstSegment.getDestSwitchId().equals(secondSegment.getSrcSwitchId())) {
+            throw new IllegalArgumentException(format(
+                    "Couldn't create transit rule for path %s because segments switch ids are different: %s, %s",
+                    flowPath.getPathId(), firstSegment.getDestSwitchId(), secondSegment.getSrcSwitchId()));
+        }
+
+        return TransitYRuleGenerator.builder()
+                .flowPath(flowPath)
+                .encapsulation(encapsulation)
+                .inPort(firstSegment.getDestPort())
+                .outPort(secondSegment.getSrcPort())
+                .multiTable(isSegmentMultiTable(firstSegment, secondSegment))
+                .config(config)
+                .sharedMeterId(sharedMeterId)
                 .build();
     }
 

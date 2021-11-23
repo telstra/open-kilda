@@ -49,6 +49,9 @@ public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGene
 
     @Override
     public List<SpeakerCommandData> generateCommands(Switch sw) {
+        if (flow.isOneSwitchFlow()) {
+            throw new IllegalStateException("Y-Flow rules can't be created for one switch flow");
+        }
         List<SpeakerCommandData> result = new ArrayList<>();
         FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
         FlowSpeakerCommandData command = buildFlowIngressCommand(sw, ingressEndpoint);
@@ -57,9 +60,10 @@ public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGene
         }
         result.add(command);
 
-        SpeakerCommandData meterCommand = buildMeter(sharedMeterId, sw);
+        // TODO(tdurakov): since it's shared meter, this build might be moved outside.
+        SpeakerCommandData meterCommand = buildMeter(flowPath, config, sharedMeterId, sw);
         if (meterCommand != null) {
-            addMeterToInstructions(flowPath.getMeterId(), sw, command.getInstructions());
+            addMeterToInstructions(sharedMeterId, sw, command.getInstructions());
             result.add(meterCommand);
             command.getDependsOn().add(meterCommand.getUuid());
         }
@@ -74,7 +78,6 @@ public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGene
                 .build();
         actions.addAll(buildTransformActions(ingressEndpoint.getOuterVlanId(), sw.getFeatures()));
         actions.add(new PortOutAction(new PortNumber(getOutPort(flowPath, flow))));
-        addMeterToInstructions(sharedMeterId, sw, instructions);
 
         FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
                 .switchId(ingressEndpoint.getSwitchId())

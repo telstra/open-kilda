@@ -37,7 +37,7 @@ Constraints:
 Fields:
 
 ```
-_FR_____ ____L000 00000000 00000000 00000000 0000IIII IIIIIIII IIIIIIII
+_FR_____ ____LMY0 00000000 00000000 00000000 0000IIII IIIIIIII IIIIIIII
 ^                                                                     ^
 `- 63 bit                                                             `- 0 bit
 ```
@@ -46,6 +46,8 @@ _FR_____ ____L000 00000000 00000000 00000000 0000IIII IIIIIIII IIIIIIII
 * R - FLOW_REVERSE_DIRECTION_FLAG (1 bit) - if set OF flow belongs to reverse (Z-to-A) kilda-flow path
 * F - FLOW_FORWARD_DIRECTION_FLAG (1 bit) - if set OF flow belongs to forward (A-to-Z) kilda-flow path
 * L - FLOW_LOOP_FLAG (1 bit) - if set this is OF flow that "makes" loop on kilda-flow 
+* M - MIRROR_LOOP_FLAG (1 bit) - if set this is OF flow that mirrors kilda-flow
+* Y - Y_FLOW_FLAG (1 bit) - if set this is OF flow that used by y-flows to share same meter
 
 Constraints:
 * SERVICE_FLAG == 0
@@ -168,6 +170,8 @@ Constraints:
 |`0x2008_0000_000X_XXXX`|`FLOW_LOOP_REVERSE`|Makes flow loop for reverse direction (sends all customer traffic back to IN_PORT). XXX - path unmasked cookie|
 |`0x4004_0000_000X_XXXX`|`FLOW_MIRROR_FORWARD`|Mirrors forward flow traffic to specific endpoint. XXX - path unmasked cookie|
 |`0x2004_0000_000X_XXXX`|`FLOW_MIRROR_REVERSE`|Mirrors reverse flow traffic to specific endpoint. XXX - path unmasked cookie|
+|`0x4002_0000_000X_XXXX`|`FLOW_Y_FORWARD`|Y-flows forward shared meter flow. XXX - path unmasked cookie|
+|`0x2002_0000_000X_XXXX`|`FLOW_Y_REVERSE`|Y-flows reverse shared meter flow. XXX - path unmasked cookie|
 |`0x40B0_0000_000X_XXXX`|`EXCLUSION_FLOW_FORWARD`|Filter packets by 5-tuple to not mirror it. Forward direction. XXX - exlusion ID|
 |`0x20B0_0000_000X_XXXX`|`EXCLUSION_FLOW_REVERSE`|Filter packets by 5-tuple to not mirror it. Reverse direction. XXX - exlusion ID|
 |`0x40C0_0000_000X_XXXX`|`SERVER_42_FLOW_RTT_INGRESS_FORWARD`|Receives server42 flow RTT packet from SERVER_42_FLOW_RTT_INPUT, push transit encapsulation and sends to ISL port. (It's a copy of regular flow INGRESS_FORWARD rule but with matching by server42 input port). XXX - path unmasked cookie|

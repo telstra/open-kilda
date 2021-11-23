@@ -90,7 +90,7 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
             result.add(buildCustomerPortSharedCatchCommand(sw, ingressEndpoint));
         }
 
-        SpeakerCommandData meterCommand = buildMeter(flowPath.getMeterId(), sw);
+        SpeakerCommandData meterCommand = buildMeter(flowPath, config, flowPath.getMeterId(), sw);
         if (meterCommand != null) {
             result.add(meterCommand);
             command.getDependsOn().add(meterCommand.getUuid());

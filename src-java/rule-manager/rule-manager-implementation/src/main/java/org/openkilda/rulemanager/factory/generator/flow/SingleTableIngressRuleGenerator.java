@@ -63,7 +63,7 @@ public class SingleTableIngressRuleGenerator extends IngressRuleGenerator {
         }
         result.add(command);
 
-        SpeakerCommandData meterCommand = buildMeter(flowPath.getMeterId(), sw);
+        SpeakerCommandData meterCommand = buildMeter(flowPath, config, flowPath.getMeterId(), sw);
         if (meterCommand != null) {
             addMeterToInstructions(flowPath.getMeterId(), sw, command.getInstructions());
             result.add(meterCommand);

@@ -29,14 +29,12 @@ import org.openkilda.rulemanager.FlowSpeakerCommandData;
 import org.openkilda.rulemanager.FlowSpeakerCommandData.FlowSpeakerCommandDataBuilder;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
-import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.SpeakerCommandData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PortOutAction;
-import org.openkilda.rulemanager.utils.RoutingMetadata;
 
 import com.google.common.collect.Sets;
 import lombok.experimental.SuperBuilder;
@@ -52,6 +50,9 @@ public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenera
 
     @Override
     public List<SpeakerCommandData> generateCommands(Switch sw) {
+        if (flow.isOneSwitchFlow()) {
+            throw new IllegalStateException("Y-Flow rules can't be created for one switch flow");
+        }
         List<SpeakerCommandData> result = new ArrayList<>();
         FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
         if (!ingressEndpoint.getSwitchId().equals(sw.getSwitchId())) {
@@ -65,7 +66,8 @@ public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenera
         }
         result.add(command);
 
-        SpeakerCommandData meterCommand = buildMeter(flowPath.getMeterId(), sw);
+        // TODO(tdurakov): since it's shared meter, this build might be moved outside.
+        SpeakerCommandData meterCommand = buildMeter(flowPath, config, sharedMeterId, sw);
         if (meterCommand != null) {
             result.add(meterCommand);
             command.getDependsOn().add(meterCommand.getUuid());
@@ -103,10 +105,6 @@ public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenera
                 .goToTable(OfTable.POST_INGRESS)
                 .build();
         addMeterToInstructions(sharedMeterId, sw, instructions);
-        if (flowPath.isOneSwitchFlow()) {
-            RoutingMetadata metadata = RoutingMetadata.builder().oneSwitchFlowFlag(true).build();
-            instructions.setWriteMetadata(new OfMetadata(metadata.getValue(), metadata.getMask()));
-        }
         return instructions;
     }
 }
