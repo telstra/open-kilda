@@ -139,7 +139,7 @@ public class Server42FlowRttOutputVxlanFlowGenerator implements SwitchFlowGenera
     }
 
     private static OFAction buildPopVxlanAction(OFFactory factory, Set<SwitchFeature> features) {
-        if (features.contains(NOVIFLOW_COPY_FIELD)) {
+        if (features.contains(NOVIFLOW_PUSH_POP_VXLAN)) {
             return factory.actions().noviflowPopVxlanTunnel();
         } else {
             return factory.actions().kildaPopVxlanField();
