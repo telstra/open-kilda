@@ -39,19 +39,23 @@ public class UpdateSubFlowsAction extends HistoryRecordingAction<YFlowUpdateFsm,
 
     @Override
     public void perform(State from, State to, Event event, YFlowUpdateContext context, YFlowUpdateFsm stateMachine) {
-        String yFlowId = stateMachine.getYFlowId();
         Collection<RequestedFlow> requestedFlows =
                 YFlowRequestMapper.INSTANCE.toRequestedFlows(stateMachine.getTargetFlow());
+        stateMachine.setRequestedFlows(requestedFlows);
         log.debug("Start updating {} sub-flows for y-flow {}", requestedFlows.size(), stateMachine.getYFlowId());
         stateMachine.clearUpdatingSubFlows();
 
-        requestedFlows.forEach(requestedFlow -> {
-            String subFlowId = requestedFlow.getFlowId();
-            stateMachine.addSubFlow(subFlowId);
-            stateMachine.addUpdatingSubFlow(subFlowId);
-            stateMachine.notifyEventListeners(listener -> listener.onSubFlowProcessingStart(yFlowId, subFlowId));
-            CommandContext flowContext = stateMachine.getCommandContext().fork(subFlowId);
-            flowUpdateService.startFlowUpdating(flowContext, requestedFlow, yFlowId);
-        });
+        String yFlowId = stateMachine.getYFlowId();
+        requestedFlows.stream()
+                .filter(requestedFlow -> requestedFlow.getFlowId().equals(stateMachine.getMainAffinityFlowId()))
+                .forEach(requestedFlow -> {
+                    String subFlowId = requestedFlow.getFlowId();
+                    stateMachine.addSubFlow(subFlowId);
+                    stateMachine.addUpdatingSubFlow(subFlowId);
+                    stateMachine.notifyEventListeners(listener ->
+                            listener.onSubFlowProcessingStart(yFlowId, subFlowId));
+                    CommandContext flowContext = stateMachine.getCommandContext().fork(subFlowId);
+                    flowUpdateService.startFlowUpdating(flowContext, requestedFlow, yFlowId);
+                });
     }
 }
