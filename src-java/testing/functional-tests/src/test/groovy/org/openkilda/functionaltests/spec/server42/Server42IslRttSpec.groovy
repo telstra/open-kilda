@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.server42
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
+import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -686,7 +687,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         initialSwitchRtt.each { sw, state -> changeIslRttSwitch(sw, state) }
         initialSwitchRtt.keySet().each { sw ->
             wait(RULES_INSTALLATION_TIME) {
-                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+                assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
+                        .containsExactlyInAnyOrder(*sw.defaultCookies)
             }
         }
     }

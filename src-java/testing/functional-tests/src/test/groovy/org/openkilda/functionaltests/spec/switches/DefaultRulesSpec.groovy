@@ -69,7 +69,8 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         if (!testIsCompleted) {
             northbound.synchronizeSwitch(sw.dpId, true)
             Wrappers.wait(RULES_INSTALLATION_TIME) {
-                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+                assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
+                        .containsExactlyInAnyOrder(*sw.defaultCookies)
             }
         }
     }
