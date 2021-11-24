@@ -18,6 +18,7 @@ package org.openkilda.rulemanager.factory.generator.flow;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 import static org.openkilda.model.FlowEndpoint.makeVlanStack;
+import static org.openkilda.rulemanager.Constants.VXLAN_UDP_SRC;
 import static org.openkilda.rulemanager.utils.Utils.buildPushVxlan;
 import static org.openkilda.rulemanager.utils.Utils.getOutPort;
 import static org.openkilda.rulemanager.utils.Utils.isFullPortEndpoint;
@@ -127,7 +128,8 @@ public class SingleTableIngressRuleGenerator extends IngressRuleGenerator {
 
         if (encapsulation.getType() == VXLAN && !flowPath.isOneSwitchFlow()) {
             transformActions.add(buildPushVxlan(
-                    encapsulation.getId(), flowPath.getSrcSwitchId(), flowPath.getDestSwitchId(), features));
+                    encapsulation.getId(), flowPath.getSrcSwitchId(), flowPath.getDestSwitchId(), VXLAN_UDP_SRC,
+                    features));
         }
         return transformActions;
     }

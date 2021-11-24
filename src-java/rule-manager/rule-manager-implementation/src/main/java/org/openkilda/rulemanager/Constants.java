@@ -20,8 +20,11 @@ import org.openkilda.model.IPv4Address;
 public final class Constants {
     public static final int VXLAN_UDP_SRC = 4500;
     public static final int VXLAN_UDP_DST = 4789;
+    public static final int SERVER_42_FLOW_RTT_FORWARD_UDP_PORT = 4700;
+    public static final int SERVER_42_FLOW_RTT_REVERSE_UDP_PORT = 4701;
     public static final IPv4Address VXLAN_SRC_IPV4_ADDRESS = new IPv4Address("127.0.0.1");
     public static final IPv4Address VXLAN_DST_IPV4_ADDRESS = new IPv4Address("127.0.0.2");
+    public static final int NOVIFLOW_TIMESTAMP_SIZE_IN_BITS = 64;
 
     public static final class Priority {
         public static final int MINIMAL_POSITIVE_PRIORITY = 1;
@@ -69,10 +72,10 @@ public final class Constants {
         public static final int ARP_POST_INGRESS_VXLAN_PRIORITY = FLOW_PRIORITY - 1;
         public static final int ARP_POST_INGRESS_ONE_SWITCH_PRIORITY = FLOW_PRIORITY;
 
-        public static final int SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY_OFFSET = -10;
-        public static final int SERVER_42_INGRESS_DOUBLE_VLAN_FLOW_PRIORITY_OFFSET = 10;
-        public static final int SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY
-                + SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY_OFFSET;
+        public static final int SERVER_42_INGRESS_SINGLE_VLAN_FLOW_PRIORITY = FLOW_PRIORITY;
+        public static final int SERVER_42_INGRESS_DOUBLE_VLAN_FLOW_PRIORITY = FLOW_PRIORITY + 10;
+        public static final int SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 10;
+        public static final int SERVER_42_PRE_INGRESS_FLOW_PRIORITY = FLOW_PRIORITY;
     }
 
     private Constants() {

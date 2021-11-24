@@ -13,19 +13,28 @@
  *   limitations under the License.
  */
 
-package org.openkilda.rulemanager.action;
+package org.openkilda.rulemanager.action.noviflow;
 
-public enum ActionType {
+import org.openkilda.rulemanager.action.Action;
+import org.openkilda.rulemanager.action.ActionType;
 
-    GROUP,
-    PORT_OUT,
-    POP_VLAN,
-    PUSH_VLAN,
-    POP_VXLAN_NOVIFLOW,
-    POP_VXLAN_OVS,
-    PUSH_VXLAN_NOVIFLOW,
-    PUSH_VXLAN_OVS,
-    SET_FIELD,
-    METER,
-    NOVI_COPY_FIELD
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Builder;
+import lombok.Value;
+
+@Value
+@JsonSerialize
+@Builder
+public class CopyFieldAction implements Action {
+
+    int numberOfBits;
+    int srcOffset;
+    int dstOffset;
+    Oxm oxmSrcHeader;
+    Oxm oxmDstHeader;
+
+    @Override
+    public ActionType getType() {
+        return ActionType.NOVI_COPY_FIELD;
+    }
 }

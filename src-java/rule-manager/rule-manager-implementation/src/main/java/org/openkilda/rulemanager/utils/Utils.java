@@ -20,7 +20,6 @@ import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.rulemanager.Constants.VXLAN_DST_IPV4_ADDRESS;
 import static org.openkilda.rulemanager.Constants.VXLAN_SRC_IPV4_ADDRESS;
-import static org.openkilda.rulemanager.Constants.VXLAN_UDP_SRC;
 
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.Flow;
@@ -30,6 +29,7 @@ import org.openkilda.model.MacAddress;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.Field;
+import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.PopVlanAction;
@@ -111,7 +111,7 @@ public final class Utils {
      * Builds push VXLAN action.
      */
     public static PushVxlanAction buildPushVxlan(
-            int vni, SwitchId srcSwitchId, SwitchId dstSwitchId, Set<SwitchFeature> features) {
+            int vni, SwitchId srcSwitchId, SwitchId dstSwitchId, int udpSrc, Set<SwitchFeature> features) {
         ActionType type;
         if (features.contains(NOVIFLOW_PUSH_POP_VXLAN)) {
             type = ActionType.PUSH_VXLAN_NOVIFLOW;
@@ -128,8 +128,12 @@ public final class Utils {
                 .dstMacAddress(new MacAddress(dstSwitchId.toMacAddress()))
                 .srcIpv4Address(VXLAN_SRC_IPV4_ADDRESS)
                 .dstIpv4Address(VXLAN_DST_IPV4_ADDRESS)
-                .udpSrc(VXLAN_UDP_SRC)
+                .udpSrc(udpSrc)
                 .build();
 
+    }
+
+    public static OfMetadata mapMetadata(RoutingMetadata metadata) {
+        return new OfMetadata(metadata.getValue(), metadata.getMask());
     }
 }

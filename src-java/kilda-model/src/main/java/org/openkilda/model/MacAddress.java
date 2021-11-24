@@ -38,6 +38,10 @@ public class MacAddress implements Serializable {
         }
     }
 
+    public long toLong() {
+        return Long.parseUnsignedLong(address.replaceAll("[:]", ""), 16);
+    }
+
     @JsonValue
     @Override
     public String toString() {

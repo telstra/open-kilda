@@ -125,7 +125,7 @@ public class BroadCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator
                 .mask(Mask.NO_MASK)
                 .build());
         if (sw.getFeatures().contains(MATCH_UDP_PORT)) {
-            match.add(FieldMatch.builder().field(Field.IP_PROTO).value(IpProto.UDP_IP_PROTO).build());
+            match.add(FieldMatch.builder().field(Field.IP_PROTO).value(IpProto.UDP).build());
             match.add(FieldMatch.builder().field(Field.ETH_TYPE).value(EthType.IPv4).build());
             match.add(FieldMatch.builder().field(Field.UDP_DST).value(DISCOVERY_PACKET_UDP_PORT).build());
         }

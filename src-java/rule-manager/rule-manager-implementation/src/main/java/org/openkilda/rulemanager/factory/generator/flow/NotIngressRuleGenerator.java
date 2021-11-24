@@ -56,7 +56,7 @@ public abstract class NotIngressRuleGenerator implements RuleGenerator {
     private Set<FieldMatch> makeTransitVxLanMatch(Switch sw, long vni) {
         Set<FieldMatch> result = new HashSet<>();
         result.add(FieldMatch.builder().field(Field.ETH_TYPE).value(EthType.IPv4).build());
-        result.add(FieldMatch.builder().field(Field.IP_PROTO).value(IpProto.UDP_IP_PROTO).build());
+        result.add(FieldMatch.builder().field(Field.IP_PROTO).value(IpProto.UDP).build());
         result.add(FieldMatch.builder().field(Field.UDP_DST).value(VXLAN_UDP_DST).build());
 
         if (sw.getFeatures().contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {

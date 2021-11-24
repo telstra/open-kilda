@@ -23,6 +23,7 @@ import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
+import static org.openkilda.rulemanager.Constants.VXLAN_UDP_SRC;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
 
 import org.openkilda.model.Flow;
@@ -107,20 +108,20 @@ public class UtilsTest {
     @Test
     public void buildNoviflowPushVxlanTest() {
         PushVxlanAction pushVxlan = Utils.buildPushVxlan(
-                VNI, SWITCH_ID_1, SWITCH_ID_2, Sets.newHashSet(NOVIFLOW_PUSH_POP_VXLAN));
+                VNI, SWITCH_ID_1, SWITCH_ID_2, VXLAN_UDP_SRC, Sets.newHashSet(NOVIFLOW_PUSH_POP_VXLAN));
         assertPushVxlan(ActionType.PUSH_VXLAN_NOVIFLOW, pushVxlan);
     }
 
     @Test
     public void buildOvsPushVxlanTest() {
         PushVxlanAction pushVxlan = Utils.buildPushVxlan(
-                VNI, SWITCH_ID_1, SWITCH_ID_2, Sets.newHashSet(KILDA_OVS_PUSH_POP_MATCH_VXLAN));
+                VNI, SWITCH_ID_1, SWITCH_ID_2, VXLAN_UDP_SRC, Sets.newHashSet(KILDA_OVS_PUSH_POP_MATCH_VXLAN));
         assertPushVxlan(ActionType.PUSH_VXLAN_OVS, pushVxlan);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void buildInvalidPushVxlanTest() {
-        Utils.buildPushVxlan(VNI, SWITCH_ID_1, SWITCH_ID_2, Sets.newHashSet());
+        Utils.buildPushVxlan(VNI, SWITCH_ID_1, SWITCH_ID_2, VXLAN_UDP_SRC, Sets.newHashSet());
     }
 
     private void assertPushVxlan(ActionType actionType, PushVxlanAction pushVxlanAction) {

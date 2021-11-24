@@ -370,7 +370,7 @@ public class BroadCastDiscoveryRuleGeneratorTest {
 
     private void checkUpdDstMatch(Set<FieldMatch> match) {
         FieldMatch ipProtoMatch = getMatchByField(Field.IP_PROTO, match);
-        assertEquals(IpProto.UDP_IP_PROTO, ipProtoMatch.getValue());
+        assertEquals(IpProto.UDP, ipProtoMatch.getValue());
         assertFalse(ipProtoMatch.isMasked());
 
         FieldMatch ethTypeMatch = getMatchByField(Field.ETH_TYPE, match);
