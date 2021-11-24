@@ -28,7 +28,7 @@ We do not recommend upgrading pip and install docker-compose using the methods d
 For running virtual environment you additionally need linux kernel 4.18+ for OVS meters support. A virtual environment 
 in that sentence means docker instance with open-vswitch in it. We use that for functional testing.
 ```
-sudo apt install maven make openjdk-8-jdk openvswitch-switch python3-pip linux-generic-hwe-18.04 tox
+sudo apt install maven make openjdk-8-jdk openvswitch-switch python3-pip linux-generic-hwe-18.04 tox rsync
 ```
 ```
 sudo pip3 install --upgrade pip
@@ -36,7 +36,7 @@ sudo pip3 install docker-compose
 ```
 #### Dependency installation on Ubuntu 20.04
 
-```sudo apt install maven make openjdk-8-jdk openvswitch-switch python3-pip tox```
+```sudo apt install maven make openjdk-8-jdk openvswitch-switch python3-pip tox rsync```
 
 ```sudo pip3 install docker-compose```
 
