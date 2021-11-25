@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,14 +15,11 @@
 
 package org.openkilda.pce;
 
-import static com.google.common.base.Preconditions.checkElementIndex;
-
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
-import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
@@ -42,7 +39,7 @@ public interface PathComputer {
      * only.
      *
      * @param flow the {@link Flow} instance
-     * @return {@link PathPair} instances
+     * @return {@link GetPathsResult} instance
      */
     default GetPathsResult getPath(Flow flow) throws UnroutableFlowException, RecoverableException {
         return getPath(flow, Collections.emptyList());
@@ -54,7 +51,7 @@ public interface PathComputer {
      * @param flow the {@link Flow} instance.
      * @param reusePathsResources    allow already allocated path resources (bandwidth)
      *                               be reused in new path computation.
-     * @return {@link PathPair} instances
+     * @return {@link GetPathsResult} instance
      */
     GetPathsResult getPath(Flow flow, Collection<PathId> reusePathsResources)
             throws UnroutableFlowException, RecoverableException;
@@ -77,11 +74,5 @@ public interface PathComputer {
     /**
      * Finds the Y-point from the provided flow paths.
      */
-    default SwitchId getIntersectionPoint(SwitchId sharedSwitchId, FlowPath... flowPaths) {
-        //TODO: implement
-
-        checkElementIndex(0, flowPaths.length);
-        List<PathSegment> segments = flowPaths[0].getSegments();
-        return segments.get(segments.size() / 2).getSrcSwitchId();
-    }
+    SwitchId getIntersectionPoint(SwitchId sharedSwitchId, FlowPath... flowPaths);
 }
