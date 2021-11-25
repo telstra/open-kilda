@@ -64,7 +64,7 @@ public class InputLldpRuleGenerator implements RuleGenerator {
     }
 
     private SpeakerCommandData buildLldpInputCustomerFlowCommand(Switch sw, FlowEndpoint endpoint) {
-        RoutingMetadata metadata = RoutingMetadata.builder().lldpFlag(true).build();
+        RoutingMetadata metadata = RoutingMetadata.builder().lldpFlag(true).build(sw.getFeatures());
 
         FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
                 .switchId(endpoint.getSwitchId())

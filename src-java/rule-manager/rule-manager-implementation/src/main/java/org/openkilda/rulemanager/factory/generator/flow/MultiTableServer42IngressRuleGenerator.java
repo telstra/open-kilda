@@ -132,7 +132,8 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
                 .vlanId(endpoint.getOuterVlanId())
                 .build();
 
-        RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(endpoint.getOuterVlanId()).build();
+        RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(endpoint.getOuterVlanId())
+                .build(sw.getFeatures());
         Instructions instructions = Instructions.builder()
                 .applyActions(Lists.newArrayList(new PopVlanAction()))
                 .writeMetadata(new OfMetadata(metadata.getValue(), metadata.getMask()))
@@ -157,7 +158,7 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
         RoutingMetadata metadata = RoutingMetadata.builder()
                 .inputPort(ingressEndpoint.getPortNumber())
                 .outerVlanId(ingressEndpoint.getOuterVlanId())
-                .build();
+                .build(sw.getFeatures());
         Set<FieldMatch> match = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(switchProperties.getServer42Port()).build(),
                 FieldMatch.builder().field(Field.METADATA).value(metadata.getValue()).mask(metadata.getMask()).build(),
@@ -169,7 +170,7 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
         RoutingMetadata metadata = RoutingMetadata.builder()
                 .inputPort(ingressEndpoint.getPortNumber())
                 .outerVlanId(ingressEndpoint.getOuterVlanId())
-                .build();
+                .build(sw.getFeatures());
         Set<FieldMatch> match = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(switchProperties.getServer42Port()).build(),
                 FieldMatch.builder().field(Field.METADATA).value(metadata.getValue()).mask(metadata.getMask()).build());
@@ -179,7 +180,7 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
     private FlowSpeakerCommandData buildServer42IngressFullPortCommand(Switch sw, FlowEndpoint ingressEndpoint) {
         RoutingMetadata metadata = RoutingMetadata.builder()
                 .inputPort(ingressEndpoint.getPortNumber())
-                .build();
+                .build(sw.getFeatures());
         Set<FieldMatch> match = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(switchProperties.getServer42Port()).build(),
                 FieldMatch.builder().field(Field.METADATA).value(metadata.getValue()).mask(metadata.getMask()).build());
@@ -269,7 +270,7 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
         Instructions instructions = Instructions.builder()
                 .applyActions(applyActions)
                 .goToTable(OfTable.PRE_INGRESS)
-                .writeMetadata(mapMetadata(RoutingMetadata.builder().inputPort(inPort).build()))
+                .writeMetadata(mapMetadata(RoutingMetadata.builder().inputPort(inPort).build(sw.getFeatures())))
                 .build();
 
         FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()

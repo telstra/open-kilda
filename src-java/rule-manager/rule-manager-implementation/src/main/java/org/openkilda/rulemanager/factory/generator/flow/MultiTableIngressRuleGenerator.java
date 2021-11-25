@@ -144,7 +144,8 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
                 .vlanId(endpoint.getOuterVlanId())
                 .build();
 
-        RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(endpoint.getOuterVlanId()).build();
+        RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(endpoint.getOuterVlanId())
+                .build(sw.getFeatures());
         Instructions instructions = Instructions.builder()
                 .applyActions(Lists.newArrayList(new PopVlanAction()))
                 .writeMetadata(new OfMetadata(metadata.getValue(), metadata.getMask()))
@@ -179,7 +180,7 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
                 .table(OfTable.INGRESS)
                 .priority(isFullPortEndpoint(ingressEndpoint) ? Constants.Priority.DEFAULT_FLOW_PRIORITY
                         : Constants.Priority.FLOW_PRIORITY)
-                .match(buildIngressMatch(ingressEndpoint))
+                .match(buildIngressMatch(ingressEndpoint, sw))
                 .instructions(buildInstructions(sw, actions));
 
         if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
@@ -195,7 +196,7 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
                 .build();
         addMeterToInstructions(flowPath.getMeterId(), sw, instructions);
         if (flowPath.isOneSwitchFlow()) {
-            RoutingMetadata metadata = RoutingMetadata.builder().oneSwitchFlowFlag(true).build();
+            RoutingMetadata metadata = RoutingMetadata.builder().oneSwitchFlowFlag(true).build(sw.getFeatures());
             instructions.setWriteMetadata(new OfMetadata(metadata.getValue(), metadata.getMask()));
         }
         return instructions;
@@ -208,14 +209,14 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
     }
 
     @VisibleForTesting
-    Set<FieldMatch> buildIngressMatch(FlowEndpoint endpoint) {
+    Set<FieldMatch> buildIngressMatch(FlowEndpoint endpoint, Switch sw) {
         Set<FieldMatch> match = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(endpoint.getPortNumber()).build());
 
         if (isVlanIdSet(endpoint.getOuterVlanId())) {
             RoutingMetadata metadata = RoutingMetadata.builder()
                     .outerVlanId(endpoint.getOuterVlanId())
-                    .build();
+                    .build(sw.getFeatures());
             match.add(FieldMatch.builder()
                     .field(Field.METADATA)
                     .value(metadata.getValue())

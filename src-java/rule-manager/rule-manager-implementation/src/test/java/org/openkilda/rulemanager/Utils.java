@@ -24,6 +24,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.match.FieldMatch;
+import org.openkilda.rulemanager.utils.RoutingMetadata;
 
 import lombok.Value;
 import org.junit.Assert;
@@ -57,13 +58,27 @@ public final class Utils {
         return buildSwitch(switchId, "OF_13", features);
     }
 
+    public static OfMetadata mapMetadata(RoutingMetadata metadata) {
+        return new OfMetadata(metadata.getValue(), metadata.getMask());
+    }
+
     /**
      * Build switch properties object for tests.
      */
     public static SwitchProperties buildSwitchProperties(Switch sw, boolean multiTable) {
+        return buildSwitchProperties(sw, multiTable, false, false);
+    }
+
+    /**
+     * Build switch properties object for tests.
+     */
+    public static SwitchProperties buildSwitchProperties(Switch sw, boolean multiTable,
+                                                         boolean switchLldp, boolean switchArp) {
         return SwitchProperties.builder()
                 .switchObj(sw)
                 .multiTable(multiTable)
+                .switchLldp(switchLldp)
+                .switchArp(switchArp)
                 .build();
     }
 

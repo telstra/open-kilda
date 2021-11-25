@@ -279,7 +279,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
         assertInputCommand(inputCustomerCommand);
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder()
-                .inputPort(PORT_NUMBER_1).outerVlanId(OUTER_VLAN_ID_1).build();
+                .inputPort(PORT_NUMBER_1).outerVlanId(OUTER_VLAN_ID_1).build(SWITCH_1.getFeatures());
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(SERVER_42_PORT_NUMBER).build(),
                 FieldMatch.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID_1).build(),
@@ -310,7 +310,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
         assertInputCommand(inputCustomerCommand);
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder()
-                .inputPort(PORT_NUMBER_1).outerVlanId(OUTER_VLAN_ID_1).build();
+                .inputPort(PORT_NUMBER_1).outerVlanId(OUTER_VLAN_ID_1).build(SWITCH_1.getFeatures());
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(SERVER_42_PORT_NUMBER).build(),
                 FieldMatch.builder().field(Field.METADATA)
@@ -333,7 +333,8 @@ public class MultiTableServer42IngressRuleGeneratorTest {
 
         assertInputCommand(inputCustomerCommand);
 
-        RoutingMetadata ingressMetadata = RoutingMetadata.builder().inputPort(PORT_NUMBER_1).build();
+        RoutingMetadata ingressMetadata = RoutingMetadata.builder().inputPort(PORT_NUMBER_1)
+                .build(SWITCH_1.getFeatures());
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(SERVER_42_PORT_NUMBER).build(),
                 FieldMatch.builder().field(Field.METADATA)
@@ -446,7 +447,8 @@ public class MultiTableServer42IngressRuleGeneratorTest {
         assertEqualsMatch(expectedMatch, command.getMatch());
 
         Instructions expectedInstructions = Instructions.builder()
-                .writeMetadata(mapMetadata(RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1).build()))
+                .writeMetadata(mapMetadata(RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
+                        .build(SWITCH_1.getFeatures())))
                 .applyActions(expectedApplyActions)
                 .goToTable(OfTable.INGRESS)
                 .build();
@@ -478,7 +480,8 @@ public class MultiTableServer42IngressRuleGeneratorTest {
         Instructions expectedInstructions = Instructions.builder()
                 .applyActions(expectedApplyActions)
                 .goToTable(OfTable.PRE_INGRESS)
-                .writeMetadata(mapMetadata(RoutingMetadata.builder().inputPort(PORT_NUMBER_1).build()))
+                .writeMetadata(mapMetadata(RoutingMetadata.builder().inputPort(PORT_NUMBER_1)
+                        .build(SWITCH_1.getFeatures())))
                 .build();
         assertEquals(expectedInstructions, command.getInstructions());
         assertNull(command.getFlags());

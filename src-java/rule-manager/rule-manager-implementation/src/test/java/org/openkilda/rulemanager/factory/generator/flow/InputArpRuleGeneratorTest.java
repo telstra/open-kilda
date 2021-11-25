@@ -90,7 +90,7 @@ public class InputArpRuleGeneratorTest {
                 FieldMatch.builder().field(Field.ETH_TYPE).value(EthType.ARP).build());
         assertEqualsMatch(expectedMatch, flowCommandData.getMatch());
 
-        RoutingMetadata metadata = RoutingMetadata.builder().arpFlag(true).build();
+        RoutingMetadata metadata = RoutingMetadata.builder().arpFlag(true).build(SW.getFeatures());
         Instructions expectedInstructions = Instructions.builder()
                 .writeMetadata(new OfMetadata(metadata.getValue(), metadata.getMask()))
                 .goToTable(OfTable.PRE_INGRESS)

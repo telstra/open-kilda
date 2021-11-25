@@ -90,7 +90,7 @@ public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenera
                 .table(OfTable.INGRESS)
                 .priority(isFullPortEndpoint(ingressEndpoint) ? Constants.Priority.Y_DEFAULT_FLOW_PRIORITY
                         : Constants.Priority.Y_FLOW_PRIORITY)
-                .match(buildIngressMatch(ingressEndpoint))
+                .match(buildIngressMatch(ingressEndpoint, sw))
                 .instructions(buildInstructions(sw, actions));
 
         if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
