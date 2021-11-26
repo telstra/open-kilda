@@ -87,6 +87,11 @@ public class RuleManagerImpl implements RuleManager {
                     flowPath, encapsulation, firstSegment, secondSegment));
         }
 
+        if (flow.isLooped()) {
+            Switch loopedSwitch = adapter.getSwitch(flow.getLoopSwitchId());
+            result.addAll(buildTransitLoopCommands(loopedSwitch, flowPath, flow, encapsulation));
+        }
+
         return result;
     }
 
@@ -211,6 +216,10 @@ public class RuleManagerImpl implements RuleManager {
                     break;
                 }
             }
+
+            if (flow.isLooped() && sw.getSwitchId().equals(flow.getLoopSwitchId())) {
+                result.addAll(buildTransitLoopCommands(sw, flowPath, flow, encapsulation));
+            }
         }
 
         return result;
@@ -236,7 +245,11 @@ public class RuleManagerImpl implements RuleManager {
                 flowPath, flow, encapsulation, overlappingIngressAdapters));
         generators.add(flowRulesFactory.getInputLldpRuleGenerator(flowPath, flow, overlappingIngressAdapters));
         generators.add(flowRulesFactory.getInputArpRuleGenerator(flowPath, flow, overlappingIngressAdapters));
-        // todo: add flow loop, flow mirror, etc
+
+        if (flow.isLooped() && sw.getSwitchId().equals(flow.getLoopSwitchId())) {
+            generators.add(flowRulesFactory.getIngressLoopRuleGenerator(flowPath, flow));
+        }
+        // todo: add flow mirror, etc
 
         return generators.stream()
                 .flatMap(generator -> generator.generateCommands(sw).stream())
@@ -255,5 +268,19 @@ public class RuleManagerImpl implements RuleManager {
         RuleGenerator generator = flowRulesFactory.getTransitRuleGenerator(
                 flowPath, encapsulation, firstSegment, secondSegment);
         return generator.generateCommands(sw);
+    }
+
+    private List<SpeakerCommandData> buildTransitLoopCommands(
+            Switch sw, FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation) {
+        List<SpeakerCommandData> result = new ArrayList<>();
+
+        flowPath.getSegments().stream()
+                .filter(segment -> segment.getDestSwitchId().equals(flow.getLoopSwitchId()))
+                .findFirst()
+                .map(PathSegment::getDestPort)
+                .map(inPort -> flowRulesFactory.getTransitLoopRuleGenerator(flowPath, flow, encapsulation, inPort))
+                .map(generator -> generator.generateCommands(sw))
+                .map(result::addAll);
+        return result;
     }
 }

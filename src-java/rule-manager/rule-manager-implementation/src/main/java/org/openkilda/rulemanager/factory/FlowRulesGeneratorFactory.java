@@ -33,6 +33,8 @@ import org.openkilda.rulemanager.factory.generator.flow.SingleTableIngressRuleGe
 import org.openkilda.rulemanager.factory.generator.flow.SingleTableIngressYRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.TransitRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.TransitYRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopIngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopTransitRuleGenerator;
 
 import java.util.Set;
 
@@ -94,6 +96,17 @@ public class FlowRulesGeneratorFactory {
                     .sharedMeterId(sharedMeterId)
                     .build();
         }
+    }
+
+    /**
+     * Get ingress loop rule generator.
+     */
+    public RuleGenerator getIngressLoopRuleGenerator(FlowPath flowPath, Flow flow) {
+        return FlowLoopIngressRuleGenerator.builder()
+                .flowPath(flowPath)
+                .flow(flow)
+                .multiTable(isPathSrcMultiTable(flowPath, flow))
+                .build();
     }
 
     /**
@@ -193,6 +206,20 @@ public class FlowRulesGeneratorFactory {
                 .multiTable(isSegmentMultiTable(firstSegment, secondSegment))
                 .config(config)
                 .sharedMeterId(sharedMeterId)
+                .build();
+    }
+
+    /**
+     * Get transit loop rule generator.
+     */
+    public RuleGenerator getTransitLoopRuleGenerator(
+            FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation, int inPort) {
+        return FlowLoopTransitRuleGenerator.builder()
+                .flowPath(flowPath)
+                .flow(flow)
+                .multiTable(isPathSrcMultiTable(flowPath, flow))
+                .inPort(inPort)
+                .encapsulation(encapsulation)
                 .build();
     }
 

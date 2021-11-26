@@ -15,16 +15,15 @@
 
 package org.openkilda.rulemanager.factory.generator.flow;
 
-import static java.lang.String.format;
+import static org.openkilda.model.FlowEndpoint.isVlanIdSet;
+import static org.openkilda.rulemanager.utils.Utils.checkAndBuildIngressEndpoint;
 import static org.openkilda.rulemanager.utils.Utils.getOutPort;
-import static org.openkilda.rulemanager.utils.Utils.isFullPortEndpoint;
 
-import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
-import org.openkilda.rulemanager.Constants;
+import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.FlowSpeakerCommandData;
 import org.openkilda.rulemanager.FlowSpeakerCommandData.FlowSpeakerCommandDataBuilder;
 import org.openkilda.rulemanager.Instructions;
@@ -54,12 +53,7 @@ public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenera
             throw new IllegalStateException("Y-Flow rules can't be created for one switch flow");
         }
         List<SpeakerCommandData> result = new ArrayList<>();
-        FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
-        if (!ingressEndpoint.getSwitchId().equals(sw.getSwitchId())) {
-            throw new IllegalArgumentException(format("Path %s has ingress endpoint %s with switchId %s. But switchId "
-                            + "must be equal to target switchId %s", flowPath.getPathId(), ingressEndpoint,
-                    ingressEndpoint.getSwitchId(), sw.getSwitchId()));
-        }
+        FlowEndpoint ingressEndpoint = checkAndBuildIngressEndpoint(flow, flowPath, sw.getSwitchId());
         FlowSpeakerCommandData command = buildFlowIngressCommand(sw, ingressEndpoint);
         if (command == null) {
             return Collections.emptyList();
@@ -76,8 +70,6 @@ public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenera
         return result;
     }
 
-
-
     private FlowSpeakerCommandData buildFlowIngressCommand(Switch sw, FlowEndpoint ingressEndpoint) {
         List<Action> actions = new ArrayList<>(buildTransformActions(
                 ingressEndpoint.getInnerVlanId(), sw.getFeatures()));
@@ -88,8 +80,7 @@ public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenera
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie().toBuilder().yFlow(true).build())
                 .table(OfTable.INGRESS)
-                .priority(isFullPortEndpoint(ingressEndpoint) ? Constants.Priority.Y_DEFAULT_FLOW_PRIORITY
-                        : Constants.Priority.Y_FLOW_PRIORITY)
+                .priority(getPriority(ingressEndpoint))
                 .match(buildIngressMatch(ingressEndpoint, sw))
                 .instructions(buildInstructions(sw, actions));
 
@@ -97,6 +88,18 @@ public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenera
             builder.flags(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS));
         }
         return builder.build();
+    }
+
+    private int getPriority(FlowEndpoint ingressEndpoint) {
+        if (isVlanIdSet(ingressEndpoint.getOuterVlanId())) {
+            if (isVlanIdSet(ingressEndpoint.getInnerVlanId())) {
+                return Priority.Y_FLOW_DOUBLE_VLAN_PRIORITY;
+            } else {
+                return Priority.Y_FLOW_PRIORITY;
+            }
+        } else {
+            return Priority.Y_DEFAULT_FLOW_PRIORITY;
+        }
     }
 
     private Instructions buildInstructions(Switch sw, List<Action> actions) {

@@ -75,7 +75,7 @@ public final class Utils {
             }
         }
 
-        // remove all extra VLANs (if previous loops ends with lack of target VLANs
+        // remove all extra VLANs (if previous loops ends with lack of target VLANs)
         while (currentIter.hasNext()) {
             currentIter.next();
             actions.add(new PopVlanAction());
@@ -135,5 +135,18 @@ public final class Utils {
 
     public static OfMetadata mapMetadata(RoutingMetadata metadata) {
         return new OfMetadata(metadata.getValue(), metadata.getMask());
+    }
+
+    /**
+     * Builds ingress endpoint from flow and flowPath and checks if target switchId equal to path src switchId.
+     */
+    public static FlowEndpoint checkAndBuildIngressEndpoint(Flow flow, FlowPath flowPath, SwitchId switchId) {
+        FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
+        if (!ingressEndpoint.getSwitchId().equals(switchId)) {
+            throw new IllegalArgumentException(format("Path %s has ingress endpoint %s with switchId %s. But switchId "
+                            + "must be equal to target switchId %s", flowPath.getPathId(), ingressEndpoint,
+                    ingressEndpoint.getSwitchId(), switchId));
+        }
+        return ingressEndpoint;
     }
 }
