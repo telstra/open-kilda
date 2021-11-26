@@ -136,6 +136,11 @@ public class RuleManagerImpl implements RuleManager {
         generators.add(serviceRulesFactory.getTableDefaultRuleGenerator(new Cookie(DROP_RULE_COOKIE), OfTable.INPUT));
         generators.add(serviceRulesFactory.getUniCastDiscoveryRuleGenerator());
         generators.add(serviceRulesFactory.getBroadCastDiscoveryRuleGenerator());
+        generators.add(serviceRulesFactory.getDropDiscoveryLoopRuleGenerator());
+        generators.add(serviceRulesFactory.getBfdCatchRuleGenerator());
+        generators.add(serviceRulesFactory.getRoundTripLatencyRuleGenerator());
+        generators.add(serviceRulesFactory.getUnicastVerificationVxlanRuleGenerator());
+
         // TODO: add other rules
 
         if (switchProperties.isMultiTable()) {

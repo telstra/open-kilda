@@ -27,7 +27,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.action.noviflow.CopyFieldAction;
-import org.openkilda.rulemanager.action.noviflow.Oxm;
+import org.openkilda.rulemanager.action.noviflow.OpenFlowOxms;
 import org.openkilda.rulemanager.factory.RuleGenerator;
 
 import lombok.AllArgsConstructor;
@@ -48,8 +48,8 @@ public abstract class Server42IngressRuleGenerator implements RuleGenerator {
                 .numberOfBits(NOVIFLOW_TIMESTAMP_SIZE_IN_BITS)
                 .srcOffset(0)
                 .dstOffset(0)
-                .oxmSrcHeader(Oxm.NOVIFLOW_TX_TIMESTAMP)
-                .oxmDstHeader(Oxm.NOVIFLOW_UDP_PAYLOAD_OFFSET)
+                .oxmSrcHeader(OpenFlowOxms.NOVIFLOW_TX_TIMESTAMP)
+                .oxmDstHeader(OpenFlowOxms.NOVIFLOW_UDP_PAYLOAD_OFFSET)
                 .build();
     }
 

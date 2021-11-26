@@ -25,10 +25,13 @@ import static org.openkilda.rulemanager.Utils.buildSwitchProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.rulemanager.factory.RuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.BfdCatchRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.BroadCastDiscoveryRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.DropDiscoveryLoopRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.TableDefaultRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.TablePassThroughDefaultRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.UniCastDiscoveryRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.UnicastVerificationVxlanRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.arp.ArpIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.arp.ArpInputPreDropRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressOneSwitchRuleGenerator;
@@ -41,6 +44,7 @@ import org.openkilda.rulemanager.factory.generator.service.lldp.LldpPostIngressO
 import org.openkilda.rulemanager.factory.generator.service.lldp.LldpPostIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.lldp.LldpPostIngressVxlanRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.lldp.LldpTransitRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.noviflow.RoundTripLatencyRuleGenerator;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -71,10 +75,14 @@ public class RuleManagerServiceRulesTest {
 
         List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(switchProperties);
 
-        assertEquals(3, generators.size());
+        assertEquals(7, generators.size());
         assertTrue(generators.stream().anyMatch(g -> g instanceof TableDefaultRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof DropDiscoveryLoopRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof BfdCatchRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof RoundTripLatencyRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof UnicastVerificationVxlanRuleGenerator));
     }
 
     @Test
@@ -84,9 +92,13 @@ public class RuleManagerServiceRulesTest {
 
         List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(switchProperties);
 
-        assertEquals(14, generators.size());
+        assertEquals(18, generators.size());
         assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof DropDiscoveryLoopRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof BfdCatchRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof RoundTripLatencyRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof UnicastVerificationVxlanRuleGenerator));
 
         assertEquals(4, generators.stream().filter(g -> g instanceof TableDefaultRuleGenerator).count());
         assertEquals(2, generators.stream().filter(g -> g instanceof TablePassThroughDefaultRuleGenerator).count());
@@ -106,7 +118,7 @@ public class RuleManagerServiceRulesTest {
 
         List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(switchProperties);
 
-        assertEquals(20, generators.size());
+        assertEquals(24, generators.size());
         assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
 
