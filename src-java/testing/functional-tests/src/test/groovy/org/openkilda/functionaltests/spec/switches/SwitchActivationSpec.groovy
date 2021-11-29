@@ -203,7 +203,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             isls.each { assert islUtils.getIslInfo(allIsls, it).get().actualState == IslChangeType.FAILED }
         }
         isls.each { northbound.deleteLink(islUtils.toLinkParameters(it), true) }
-        northbound.deleteSwitch(sw.dpId, false)
+        Wrappers.retry(2) { northbound.deleteSwitch(sw.dpId, false) }
 
         when: "New switch connects"
         lockKeeper.reviveSwitch(sw, blockData)
