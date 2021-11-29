@@ -339,5 +339,6 @@ class PortHistoryIsolatedSpec extends HealthCheckSpecification {
         updateToogles && northbound.toggleFeature(FeatureTogglesDto.builder()
                 .floodlightRoutePeriodicSync(true)
                 .build())
+        database.resetCosts(topology.isls)
     }
 }
