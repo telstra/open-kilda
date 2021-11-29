@@ -109,4 +109,12 @@ public abstract class KildaFeatureTogglesFrame extends KildaBaseVertexFrame impl
     @Override
     @Property("server42_isl_rtt")
     public abstract void setServer42IslRtt(Boolean server42IslRtt);
+
+    @Override
+    @Property("modify_y_flow_enabled")
+    public abstract Boolean getModifyYFlowEnabled();
+
+    @Override
+    @Property("modify_y_flow_enabled")
+    public abstract void setModifyYFlowEnabled(Boolean modifyYFlowEnabled);
 }

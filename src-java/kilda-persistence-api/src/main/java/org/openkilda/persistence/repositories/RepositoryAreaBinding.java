@@ -58,6 +58,7 @@ public final class RepositoryAreaBinding {
         binding.put(TransitVlanRepository.class, PersistenceArea.COMMON);
         binding.put(VxlanRepository.class, PersistenceArea.COMMON);
         binding.put(FlowStatsRepository.class, PersistenceArea.COMMON);
+        binding.put(YFlowRepository.class, PersistenceArea.COMMON);
 
         // history
         binding.put(FlowEventActionRepository.class, PersistenceArea.HISTORY);

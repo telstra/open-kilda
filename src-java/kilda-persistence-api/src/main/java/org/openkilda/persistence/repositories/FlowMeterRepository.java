@@ -34,6 +34,11 @@ public interface FlowMeterRepository extends Repository<FlowMeter> {
      */
     Optional<FlowMeter> findByPathId(PathId pathId);
 
+    /**
+     * Find a meter by unique ID.
+     */
+    Optional<FlowMeter> findById(SwitchId switchId, MeterId meterId);
+
     boolean exists(SwitchId switchId, MeterId meterId);
 
     /**

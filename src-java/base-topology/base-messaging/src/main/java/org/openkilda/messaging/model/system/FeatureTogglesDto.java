@@ -62,6 +62,9 @@ public class FeatureTogglesDto implements Serializable {
     @JsonProperty("server42_isl_rtt")
     private Boolean server42IslRtt;
 
+    @JsonProperty("modify_y_flow_enabled")
+    private Boolean modifyYFlowEnabled;
+
     @JsonCreator
     public FeatureTogglesDto(@JsonProperty("flows_reroute_on_isl_discovery") Boolean flowsRerouteOnIslDiscoveryEnabled,
                              @JsonProperty("create_flow") Boolean createFlowEnabled,
@@ -75,7 +78,8 @@ public class FeatureTogglesDto implements Serializable {
                              @JsonProperty("server42_flow_rtt") Boolean server42FlowRtt,
                              @JsonProperty("flow_latency_monitoring_reactions")
                                          Boolean flowLatencyMonitoringReactions,
-                             @JsonProperty("server42_isl_rtt") Boolean server42IslRtt) {
+                             @JsonProperty("server42_isl_rtt") Boolean server42IslRtt,
+                             @JsonProperty("modify_y_flow_enabled") Boolean modifyYFlowEnabled) {
         this.flowsRerouteOnIslDiscoveryEnabled = flowsRerouteOnIslDiscoveryEnabled;
         this.createFlowEnabled = createFlowEnabled;
         this.updateFlowEnabled = updateFlowEnabled;
@@ -87,5 +91,6 @@ public class FeatureTogglesDto implements Serializable {
         this.server42FlowRtt = server42FlowRtt;
         this.flowLatencyMonitoringReactions = flowLatencyMonitoringReactions;
         this.server42IslRtt = server42IslRtt;
+        this.modifyYFlowEnabled = modifyYFlowEnabled;
     }
 }
