@@ -406,8 +406,8 @@ public class MultiTableIngressRuleGeneratorTest {
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_2))
         );
-        assertIngressCommand(ingressCommand, Priority.FLOW_PRIORITY, expectedIngressMatch, expectedIngressActions,
-                METER_ID, null);
+        assertIngressCommand(ingressCommand, Priority.DOUBLE_VLAN_FLOW_PRIORITY, expectedIngressMatch,
+                expectedIngressActions, METER_ID, null);
 
         assertMeterCommand(meterCommand);
     }
@@ -438,8 +438,8 @@ public class MultiTableIngressRuleGeneratorTest {
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_2))
         );
-        assertIngressCommand(ingressCommand, Priority.FLOW_PRIORITY, expectedIngressMatch, expectedIngressActions,
-                METER_ID, null);
+        assertIngressCommand(ingressCommand, Priority.DOUBLE_VLAN_FLOW_PRIORITY, expectedIngressMatch,
+                expectedIngressActions, METER_ID, null);
         assertMeterCommand(meterCommand);
     }
 
@@ -482,8 +482,8 @@ public class MultiTableIngressRuleGeneratorTest {
         assertPreIngressCommand(preIngressCommand, preIngressCookie, Priority.FLOW_PRIORITY, expectedPreIngressMatch,
                 newArrayList(new PopVlanAction()), mapMetadata(preIngressMetadata));
 
-        assertIngressCommand(ingressCommand, Priority.FLOW_PRIORITY, expectedIngressMatch, expectedIngressActions,
-                METER_ID, null);
+        assertIngressCommand(ingressCommand, Priority.DOUBLE_VLAN_FLOW_PRIORITY, expectedIngressMatch,
+                expectedIngressActions, METER_ID, null);
         assertMeterCommand(meterCommand);
     }
 

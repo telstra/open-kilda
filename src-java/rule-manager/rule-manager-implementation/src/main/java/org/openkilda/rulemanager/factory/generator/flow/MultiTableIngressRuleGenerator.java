@@ -15,15 +15,14 @@
 
 package org.openkilda.rulemanager.factory.generator.flow;
 
-import static java.lang.String.format;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 import static org.openkilda.model.FlowEndpoint.isVlanIdSet;
 import static org.openkilda.model.FlowEndpoint.makeVlanStack;
 import static org.openkilda.rulemanager.Constants.VXLAN_UDP_SRC;
 import static org.openkilda.rulemanager.utils.Utils.buildPushVxlan;
+import static org.openkilda.rulemanager.utils.Utils.checkAndBuildIngressEndpoint;
 import static org.openkilda.rulemanager.utils.Utils.getOutPort;
-import static org.openkilda.rulemanager.utils.Utils.isFullPortEndpoint;
 
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.FlowEndpoint;
@@ -77,12 +76,7 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
     @Override
     public List<SpeakerCommandData> generateCommands(Switch sw) {
         List<SpeakerCommandData> result = new ArrayList<>();
-        FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
-        if (!ingressEndpoint.getSwitchId().equals(sw.getSwitchId())) {
-            throw new IllegalArgumentException(format("Path %s has ingress endpoint %s with switchId %s. But switchId "
-                    + "must be equal to target switchId %s", flowPath.getPathId(), ingressEndpoint,
-                    ingressEndpoint.getSwitchId(), sw.getSwitchId()));
-        }
+        FlowEndpoint ingressEndpoint = checkAndBuildIngressEndpoint(flow, flowPath, sw.getSwitchId());
         FlowSpeakerCommandData command = buildFlowIngressCommand(sw, ingressEndpoint);
         if (command == null) {
             return Collections.emptyList();
@@ -178,8 +172,7 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie())
                 .table(OfTable.INGRESS)
-                .priority(isFullPortEndpoint(ingressEndpoint) ? Constants.Priority.DEFAULT_FLOW_PRIORITY
-                        : Constants.Priority.FLOW_PRIORITY)
+                .priority(getPriority(ingressEndpoint))
                 .match(buildIngressMatch(ingressEndpoint, sw))
                 .instructions(buildInstructions(sw, actions));
 
@@ -187,6 +180,18 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
             builder.flags(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS));
         }
         return builder.build();
+    }
+
+    private int getPriority(FlowEndpoint ingressEndpoint) {
+        if (isVlanIdSet(ingressEndpoint.getOuterVlanId())) {
+            if (isVlanIdSet(ingressEndpoint.getInnerVlanId())) {
+                return Priority.DOUBLE_VLAN_FLOW_PRIORITY;
+            } else {
+                return Priority.FLOW_PRIORITY;
+            }
+        } else {
+            return Priority.DEFAULT_FLOW_PRIORITY;
+        }
     }
 
     private Instructions buildInstructions(Switch sw, List<Action> actions) {
