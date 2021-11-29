@@ -196,6 +196,11 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         setup: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
         def sw = topology.activeSwitches.first()
         def isls = topology.getRelatedIsls(sw)
+        /*in case supportedTransitEncapsulation == ["transit_vlan", "vxlan"]
+        then after removing/adding the same switch this fields will be changed (["transit_vlan"])
+        vxlan encapsulation is not set by default*/
+        def initSwProps = switchHelper.getCachedSwProps(sw.dpId)
+        initSwProps.supportedTransitEncapsulation
         def blockData = switchHelper.knockoutSwitch(sw, RW)
         Wrappers.wait(WAIT_OFFSET + discoveryTimeout) {
             assert northbound.getSwitch(sw.dpId).state == DEACTIVATED
@@ -221,6 +226,9 @@ class SwitchActivationSpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(allIsls, it.reversed).get().actualState == IslChangeType.DISCOVERED
             }
         }
+
+        cleanup:
+        initSwProps && switchHelper.updateSwitchProperties(sw, initSwProps)
     }
 
     private static Message buildMessage(final BaseInstallFlow commandData) {

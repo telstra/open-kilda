@@ -128,6 +128,8 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
     def "Able to delete an inactive switch without any ISLs"() {
         given: "An inactive switch without any ISLs"
         def sw = topology.getActiveSwitches()[0]
+        //need to restore supportedTransitEncapsulation field after deleting sw
+        def initSwProps = switchHelper.getCachedSwProps(sw.dpId)
         def swIsls = topology.getRelatedIsls(sw)
         // port down on all active ISLs on switch
         swIsls.each { antiflap.portDown(sw.dpId, it.srcPort) }
@@ -150,6 +152,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         cleanup: "Activate the switch back, restore ISLs and reset costs"
         switchHelper.reviveSwitch(sw, blockData)
         swIsls.each { antiflap.portUp(sw.dpId, it.srcPort) }
+        initSwProps && switchHelper.updateSwitchProperties(sw, initSwProps)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
@@ -161,6 +164,8 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
     def "Able to delete an active switch with active ISLs if using force delete"() {
         given: "An active switch with active ISLs"
         def sw = topology.getActiveSwitches()[0]
+        //need to restore supportedTransitEncapsulation field after deleting sw
+        def initSwProps = switchHelper.getCachedSwProps(sw.dpId)
         def swIsls = topology.getRelatedIsls(sw)
 
         when: "Try to force delete the switch"
@@ -196,6 +201,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
             swIsls.collectMany { [it, it.reversed] }
                     .each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
+        initSwProps && switchHelper.updateSwitchProperties(sw, initSwProps)
         database.resetCosts(topology.isls)
     }
 }
