@@ -61,7 +61,5 @@ abstract class OnReceivedResponseAction extends FlowProcessingAction<FlowCreateF
         onComplete(stateMachine, context);
     }
 
-    protected void onComplete(FlowCreateFsm stateMachine, FlowCreateContext context) {
-        stateMachine.fireNext(context);
-    }
+    protected abstract void onComplete(FlowCreateFsm stateMachine, FlowCreateContext context);
 }

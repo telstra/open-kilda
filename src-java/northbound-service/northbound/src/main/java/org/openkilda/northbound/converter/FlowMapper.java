@@ -37,20 +37,16 @@ import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse.
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
-import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
-import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowStatusDetails;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.history.FlowStatusTimestampsEntry;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPathDirection;
-import org.openkilda.model.FlowPathStatus;
-import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
@@ -80,6 +76,8 @@ import org.mapstruct.MappingTarget;
 import java.time.format.DateTimeFormatter;
 
 @Mapper(componentModel = "spring",
+        uses = {FlowEncapsulationTypeMapper.class, FlowStatusMapper.class, PathComputationStrategyMapper.class,
+                InstantMapper.class},
         imports = {FlowEndpointPayload.class, FlowEndpointV2.class, DetectConnectedDevicesPayload.class,
                 DetectConnectedDevicesV2.class, DetectConnectedDevicesDto.class, Sets.class, DateTimeFormatter.class})
 public abstract class FlowMapper {
@@ -399,95 +397,9 @@ public abstract class FlowMapper {
                         f.getDetectConnectedDevices().isDstLldp(), f.getDetectConnectedDevices().isDstArp()));
     }
 
-    /**
-     * Convert {@link FlowState} to {@link String}.
-     */
-    public String encodeFlowState(FlowState state) {
-        if (state == null) {
-            return null;
-        }
-
-        return state.getState();
-    }
-
     @Mapping(target = "mainPath", source = "mainFlowPathStatus")
     @Mapping(target = "protectedPath", source = "protectedFlowPathStatus")
     public abstract PathStatus map(FlowStatusDetails flowStatusDetails);
-
-    /**
-     * Convert {@link FlowPathStatus} to {@link String}.
-     */
-    public String map(FlowPathStatus flowPathStatus) {
-        if (flowPathStatus == null) {
-            return null;
-        }
-
-        switch (flowPathStatus) {
-            case ACTIVE:
-                return "Up";
-            case INACTIVE:
-                return "Down";
-            case IN_PROGRESS:
-                return "In progress";
-            default:
-                return flowPathStatus.toString().toLowerCase();
-        }
-    }
-
-    /**
-     * Convert {@link FlowEncapsulationType} to {@link String}.
-     */
-    public String map(FlowEncapsulationType encapsulationType) {
-        if (encapsulationType == null) {
-            return null;
-        }
-
-        return encapsulationType.toString().toLowerCase();
-    }
-
-    /**
-     * Convert {@link String} to {@link FlowEncapsulationType}.
-     */
-    public FlowEncapsulationType map(String encapsulationType) {
-        if (encapsulationType == null) {
-            return null;
-        }
-
-        return FlowEncapsulationType.valueOf(encapsulationType.toUpperCase());
-    }
-
-    /**
-     * Convert {@link PathComputationStrategy} to {@link String}.
-     */
-    public String map(PathComputationStrategy pathComputationStrategy) {
-        if (pathComputationStrategy == null) {
-            return null;
-        }
-
-        return pathComputationStrategy.toString().toLowerCase();
-    }
-
-    /**
-     * Convert {@link String} to {@link PathComputationStrategy}.
-     */
-    public PathComputationStrategy mapPathComputationStrategy(String pathComputationStrategy) {
-        if (pathComputationStrategy == null) {
-            return null;
-        }
-
-        return PathComputationStrategy.valueOf(pathComputationStrategy.toUpperCase());
-    }
-
-    /**
-     * Convert {@link String} to {@link org.openkilda.model.FlowEncapsulationType}.
-     */
-    public org.openkilda.model.FlowEncapsulationType mapEncapsulationType(String encapsulationType) {
-        if (encapsulationType == null) {
-            return null;
-        }
-
-        return org.openkilda.model.FlowEncapsulationType.valueOf(encapsulationType.toUpperCase());
-    }
 
     /**
      * Translate Java's error code(enum) into human readable string.
@@ -526,8 +438,7 @@ public abstract class FlowMapper {
     @Mapping(target = "switchId", source = "payload.loopSwitchId")
     public abstract FlowLoopResponse toFlowLoopResponse(FlowResponse response);
 
-    @Mapping(target = "timestamp",
-            expression = "java(DateTimeFormatter.ISO_INSTANT.format(entry.getStatusChangeTimestamp()))")
+    @Mapping(target = "timestamp", source = "entry.statusChangeTimestamp")
     public abstract FlowHistoryStatus toFlowHistoryStatus(FlowStatusTimestampsEntry entry);
 
     public abstract FlowMirrorPointCreateRequest toFlowMirrorPointCreateRequest(String flowId,

@@ -32,7 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-public class NotifyFlowMonitorAction<T extends FlowProcessingFsm<T, S, E, C>, S, E, C>
+public class NotifyFlowMonitorAction<T extends FlowProcessingFsm<T, S, E, C, ?>, S, E, C>
         extends FlowProcessingAction<T, S, E, C> {
 
     private FlowGenericCarrier carrier;

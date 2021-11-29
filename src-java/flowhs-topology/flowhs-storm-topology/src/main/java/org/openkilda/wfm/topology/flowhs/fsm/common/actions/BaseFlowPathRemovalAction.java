@@ -33,7 +33,7 @@ import lombok.extern.slf4j.Slf4j;
  * A base for action classes that remove flow paths.
  */
 @Slf4j
-public abstract class BaseFlowPathRemovalAction<T extends FlowProcessingFsm<T, S, E, C>, S, E, C> extends
+public abstract class BaseFlowPathRemovalAction<T extends FlowProcessingFsm<T, S, E, C, ?>, S, E, C> extends
         FlowProcessingAction<T, S, E, C> {
     protected final IslRepository islRepository;
 

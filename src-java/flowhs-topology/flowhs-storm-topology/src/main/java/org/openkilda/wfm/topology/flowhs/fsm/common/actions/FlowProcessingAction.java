@@ -63,7 +63,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
-public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, C>, S, E, C>
+public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, C, ?>, S, E, C>
         extends AnonymousAction<T, S, E, C> {
 
     protected final NoArgGenerator commandIdGenerator = Generators.timeBasedGenerator();

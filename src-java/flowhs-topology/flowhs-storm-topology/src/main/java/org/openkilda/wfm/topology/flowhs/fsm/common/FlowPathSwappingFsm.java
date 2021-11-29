@@ -23,8 +23,10 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,8 +40,8 @@ import java.util.UUID;
 @Getter
 @Setter
 @Slf4j
-public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, S, E, C>
-        extends NbTrackableFsm<T, S, E, C> {
+public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C, R>, S, E, C,
+        R extends FlowGenericCarrier> extends NbTrackableFsm<T, S, E, C, R> {
 
     protected final String flowId;
 
@@ -77,8 +79,13 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, 
     protected String errorReason;
     protected boolean periodicPingsEnabled;
 
-    public FlowPathSwappingFsm(CommandContext commandContext, String flowId) {
-        super(commandContext);
+    public FlowPathSwappingFsm(CommandContext commandContext, @NonNull R carrier, String flowId) {
+        this(commandContext, carrier, flowId, true);
+    }
+
+    public FlowPathSwappingFsm(CommandContext commandContext, @NonNull R carrier, String flowId,
+                               boolean allowNorthboundResponse) {
+        super(commandContext, carrier, allowNorthboundResponse);
         this.flowId = flowId;
     }
 

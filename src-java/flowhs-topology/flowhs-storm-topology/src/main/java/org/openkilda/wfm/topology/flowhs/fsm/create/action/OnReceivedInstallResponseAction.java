@@ -22,6 +22,7 @@ import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -47,7 +48,7 @@ public class OnReceivedInstallResponseAction extends OnReceivedResponseAction {
         if (stateMachine.getFailedCommands().isEmpty()) {
             log.debug("Received responses for all pending commands of the flow {} ({})",
                     stateMachine.getFlowId(), stateMachine.getCurrentState());
-            stateMachine.fireNext(context);
+            stateMachine.fire(Event.RULES_INSTALLED);
         } else {
             String errorMessage = format("Received error response(s) for %d commands (%s)",
                     stateMachine.getFailedCommands().size(), stateMachine.getCurrentState());

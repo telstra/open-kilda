@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.swapendpoints;
 
 import static java.lang.String.format;
 
-import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
@@ -40,6 +39,7 @@ import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowSwapEndpointsHubCarrier;
 
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
@@ -52,12 +52,11 @@ import java.util.stream.Collectors;
 @Getter
 @Setter
 @Slf4j
-public class FlowSwapEndpointsFsm extends NbTrackableFsm<FlowSwapEndpointsFsm, State, Event, FlowSwapEndpointsContext> {
+public class FlowSwapEndpointsFsm extends NbTrackableFsm<FlowSwapEndpointsFsm, State, Event, FlowSwapEndpointsContext,
+        FlowSwapEndpointsHubCarrier> {
     public static final int REQUEST_COUNT = 2;
 
     public static final String GENERIC_ERROR_MESSAGE = "Could not swap endpoints";
-
-    private final FlowSwapEndpointsHubCarrier carrier;
 
     private RequestedFlow firstTargetFlow;
     private RequestedFlow secondTargetFlow;
@@ -70,10 +69,9 @@ public class FlowSwapEndpointsFsm extends NbTrackableFsm<FlowSwapEndpointsFsm, S
     private Flow firstOriginalFlow;
     private Flow secondOriginalFlow;
 
-    public FlowSwapEndpointsFsm(CommandContext commandContext, FlowSwapEndpointsHubCarrier carrier,
+    public FlowSwapEndpointsFsm(CommandContext commandContext, @NonNull FlowSwapEndpointsHubCarrier carrier,
                                 RequestedFlow firstTargetFlow, RequestedFlow secondTargetFlow) {
-        super(commandContext);
-        this.carrier = carrier;
+        super(commandContext, carrier);
         this.firstTargetFlow = firstTargetFlow;
         this.secondTargetFlow = secondTargetFlow;
         this.firstFlowId = firstTargetFlow.getFlowId();
@@ -149,13 +147,8 @@ public class FlowSwapEndpointsFsm extends NbTrackableFsm<FlowSwapEndpointsFsm, S
         }
     }
 
-    @Override
-    public void sendNorthboundResponse(Message message) {
-        carrier.sendNorthboundResponse(message);
-    }
-
     public void sendFlowUpdateRequest(FlowRequest flowRequest) {
-        carrier.sendFlowUpdateRequest(flowRequest);
+        getCarrier().sendFlowUpdateRequest(flowRequest);
     }
 
     public static class Factory {

@@ -46,10 +46,15 @@ import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 
 import org.assertj.core.util.Lists;
 import org.junit.Test;
-import org.mapstruct.factory.Mappers;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.List;
 
+@RunWith(SpringRunner.class)
 public class FlowMapperTest {
     private static final String FLOW_ID = "flow1";
     private static final String DIVERSE_FLOW_ID = "flow2";
@@ -104,7 +109,8 @@ public class FlowMapperTest {
 
     private static final long MS_TO_NS_MULTIPLIER = 1000000L;
 
-    private FlowMapper flowMapper = Mappers.getMapper(FlowMapper.class);
+    @Autowired
+    private FlowMapper flowMapper;
 
     @Test
     public void testFlowRequestV2Mapping() {
@@ -378,5 +384,33 @@ public class FlowMapperTest {
         assertEquals(secondPoint.getSinkEndpoint().getPortNumber(), secondPayload.getSinkEndpoint().getPortNumber());
         assertEquals(secondPoint.getSinkEndpoint().getOuterVlanId(), secondPayload.getSinkEndpoint().getVlanId());
         assertEquals(secondPoint.getSinkEndpoint().getInnerVlanId(), secondPayload.getSinkEndpoint().getInnerVlanId());
+    }
+
+    @TestConfiguration
+    static class Config {
+        @Bean
+        public InstantMapper instantMapper() {
+            return new InstantMapperImpl();
+        }
+
+        @Bean
+        public PathComputationStrategyMapper pathComputationStrategyMapper() {
+            return new PathComputationStrategyMapperImpl();
+        }
+
+        @Bean
+        public FlowStatusMapper flowStatusMapper() {
+            return new FlowStatusMapperImpl();
+        }
+
+        @Bean
+        public FlowEncapsulationTypeMapper flowEncapsulationTypeMapper() {
+            return new FlowEncapsulationTypeMapperImpl();
+        }
+
+        @Bean
+        public FlowMapper flowMapper() {
+            return new FlowMapperImpl();
+        }
     }
 }

@@ -16,8 +16,9 @@
 package org.openkilda.messaging.command.yflow;
 
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.PathComputationStrategy;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
@@ -40,7 +41,7 @@ public class YFlowPatchRequest extends CommandData {
     String yFlowId;
     FlowEndpoint sharedEndpoint;
     Long maximumBandwidth;
-    String pathComputationStrategy;
+    PathComputationStrategy pathComputationStrategy;
     FlowEncapsulationType encapsulationType;
     Long maxLatency;
     Long maxLatencyTier2;

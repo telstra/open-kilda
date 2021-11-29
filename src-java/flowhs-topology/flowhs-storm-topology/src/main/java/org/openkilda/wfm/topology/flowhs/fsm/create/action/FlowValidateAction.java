@@ -81,6 +81,8 @@ public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, 
             throw new FlowProcessingException(ErrorType.DATA_INVALID, e.getMessage(), e);
         }
 
+        stateMachine.setTargetFlow(request);
+
         if (event != Event.RETRY) {
             stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.CREATE);
         } else {
@@ -88,12 +90,19 @@ public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, 
             stateMachine.saveActionToHistory("Flow was validated successfully");
         }
 
-
         return Optional.empty();
     }
 
     @Override
     protected String getGenericErrorMessage() {
         return "Could not create flow";
+    }
+
+    @Override
+    protected void handleError(FlowCreateFsm stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        super.handleError(stateMachine, ex, errorType, logTraceback);
+
+        // Notify about failed validation.
+        stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
     }
 }

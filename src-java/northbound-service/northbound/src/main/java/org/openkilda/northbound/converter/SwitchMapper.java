@@ -68,13 +68,12 @@ import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-import java.time.Instant;
-import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Mapper(componentModel = "spring", uses = {FlowMapper.class},
+@Mapper(componentModel = "spring",
+        uses = {FlowMapper.class, InstantMapper.class},
         imports = {Date.class, MacAddress.class, SwitchLocationDto.class, SwitchLocationDtoV2.class})
 public abstract class SwitchMapper {
 
@@ -219,10 +218,6 @@ public abstract class SwitchMapper {
     }
 
     public abstract SwitchConnectEntry map(SwitchAvailabilityEntry data);
-
-    public String map(Instant data) {
-        return DateTimeFormatter.ISO_INSTANT.format(data);
-    }
 
     /**
      * Produce string representation of {@link IpSocketAddress}.

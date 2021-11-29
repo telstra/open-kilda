@@ -70,6 +70,7 @@ import org.openkilda.wfm.topology.flowhs.service.FlowUpdateHubCarrier;
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
@@ -81,10 +82,8 @@ import java.util.concurrent.TimeUnit;
 @Getter
 @Setter
 @Slf4j
-public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, State, Event, FlowUpdateContext> {
-
-    private final FlowUpdateHubCarrier carrier;
-
+public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, State, Event, FlowUpdateContext,
+        FlowUpdateHubCarrier> {
     private RequestedFlow targetFlow;
 
     private FlowStatus originalFlowStatus;
@@ -102,9 +101,8 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
     private EndpointUpdate endpointUpdate = EndpointUpdate.NONE;
     private FlowLoopOperation flowLoopOperation = FlowLoopOperation.NONE;
 
-    public FlowUpdateFsm(CommandContext commandContext, FlowUpdateHubCarrier carrier, String flowId) {
-        super(commandContext, flowId);
-        this.carrier = carrier;
+    public FlowUpdateFsm(CommandContext commandContext, @NonNull FlowUpdateHubCarrier carrier, String flowId) {
+        super(commandContext, carrier, flowId);
     }
 
     @Override
@@ -137,11 +135,6 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
     }
 
     @Override
-    public void sendNorthboundResponse(Message message) {
-        carrier.sendNorthboundResponse(message);
-    }
-
-    @Override
     public void reportError(Event event) {
         if (Event.TIMEOUT == event) {
             reportGlobalTimeout();
@@ -154,7 +147,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
     }
 
     public void sendHubSwapEndpointsResponse(Message message) {
-        carrier.sendHubSwapEndpointsResponse(message);
+        getCarrier().sendHubSwapEndpointsResponse(message);
     }
 
     public static class Factory {

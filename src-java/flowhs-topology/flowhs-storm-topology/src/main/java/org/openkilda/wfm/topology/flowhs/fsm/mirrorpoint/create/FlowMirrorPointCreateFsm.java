@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
-import org.openkilda.messaging.Message;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
@@ -46,6 +45,7 @@ import org.openkilda.wfm.topology.flowhs.model.RequestedFlowMirrorPoint;
 import org.openkilda.wfm.topology.flowhs.service.FlowMirrorPointCreateHubCarrier;
 
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
@@ -58,10 +58,8 @@ import java.util.UUID;
 @Getter
 @Setter
 @Slf4j
-public final class FlowMirrorPointCreateFsm
-        extends FlowPathSwappingFsm<FlowMirrorPointCreateFsm, State, Event, FlowMirrorPointCreateContext> {
-
-    private final FlowMirrorPointCreateHubCarrier carrier;
+public final class FlowMirrorPointCreateFsm extends FlowPathSwappingFsm<FlowMirrorPointCreateFsm, State, Event,
+        FlowMirrorPointCreateContext, FlowMirrorPointCreateHubCarrier> {
 
     private RequestedFlowMirrorPoint requestedFlowMirrorPoint;
 
@@ -76,10 +74,9 @@ public final class FlowMirrorPointCreateFsm
 
     private final Map<UUID, FlowSegmentRequestFactory> commands = new HashMap<>();
 
-    public FlowMirrorPointCreateFsm(CommandContext commandContext, FlowMirrorPointCreateHubCarrier carrier,
+    public FlowMirrorPointCreateFsm(CommandContext commandContext, @NonNull FlowMirrorPointCreateHubCarrier carrier,
                                     String flowId) {
-        super(commandContext, flowId);
-        this.carrier = carrier;
+        super(commandContext, carrier, flowId);
     }
 
     @Override
@@ -109,11 +106,6 @@ public final class FlowMirrorPointCreateFsm
     @Override
     public void fireNoPathFound(String errorReason) {
         fireError(Event.NO_PATH_FOUND, errorReason);
-    }
-
-    @Override
-    public void sendNorthboundResponse(Message message) {
-        carrier.sendNorthboundResponse(message);
     }
 
     @Override
