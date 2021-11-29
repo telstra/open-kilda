@@ -1,0 +1,97 @@
+@startuml
+title Create y-flow
+
+boundary Northbound
+box "Flow HS Topology" #LightGreen
+    participant YFlowCreateHub
+    participant YFlowValidator
+    participant PathComputer
+    participant FlowCreateService1 as "FlowCreateService + FSM 1"
+    participant FlowCreateService2 as "FlowCreateService + FSM 2"
+    participant FlowResourcesManager
+    participant RuleManager
+    participant SpeakerWorker
+end box
+database OrientDB
+
+Northbound -> YFlowCreateHub : YFlowCreateRequest
+activate YFlowCreateHub
+
+==Validate Y-Flow==
+YFlowCreateHub -> YFlowValidator : Validate the y-flow
+activate YFlowValidator
+YFlowCreateHub <- YFlowValidator
+deactivate YFlowValidator
+alt Validation error
+    Northbound <- YFlowCreateHub : Y-flow creation error
+end
+
+YFlowCreateHub -> OrientDB : Create draft y-flow entities
+
+==Validate sub-flows==
+YFlowCreateHub -> FlowCreateService1 : Initiate the flow creation
+deactivate YFlowCreateHub
+activate FlowCreateService1
+YFlowCreateHub <- FlowCreateService1 : Callback: validation passed, path is found, resources are allocated
+activate YFlowCreateHub
+YFlowCreateHub -> FlowCreateService2 : Initiate the flow creation
+deactivate YFlowCreateHub
+activate FlowCreateService2
+YFlowCreateHub <- FlowCreateService2 : Callback: validation passed, path is found, resources are allocated
+activate YFlowCreateHub
+
+alt Flow creation failed or timeout
+    Northbound <- YFlowCreateHub : Y-flow creation error
+    YFlowCreateHub <- YFlowCreateHub : Rollback
+end
+
+Northbound <- YFlowCreateHub : Y-flow creation is in progress
+deactivate YFlowCreateHub
+
+==Complete sub-flow creation==
+FlowCreateService1 -> SpeakerWorker : Send install/validate rules command
+deactivate FlowCreateService1
+FlowCreateService1 <- SpeakerWorker
+activate FlowCreateService1
+FlowCreateService2 -> SpeakerWorker : Send install/validate rules command
+deactivate FlowCreateService2
+FlowCreateService2 <- SpeakerWorker
+activate FlowCreateService2
+
+FlowCreateService1 -> OrientDB : Update sub-flow entity & ISLs available bandwidth
+FlowCreateService2 -> OrientDB : Update sub-flow entity & ISLs available bandwidth
+
+YFlowCreateHub <- FlowCreateService1 : Callback: creation completed
+deactivate FlowCreateService1
+activate YFlowCreateHub
+YFlowCreateHub <- FlowCreateService2 : Callback: creation completed
+deactivate FlowCreateService2
+
+alt Flow creation failed or timeout
+    YFlowCreateHub <- YFlowCreateHub : Rollback
+end
+
+YFlowCreateHub -> OrientDB : Update y-flow entities with sub-flows
+
+==Complete y-flow creation==
+YFlowCreateHub -> PathComputer : Calculate the new y-point
+activate PathComputer
+YFlowCreateHub <- PathComputer
+deactivate PathComputer
+
+YFlowCreateHub -> FlowResourcesManager : Allocate the new y-point & shared endpoint meters
+activate FlowResourcesManager
+YFlowCreateHub <- FlowResourcesManager
+deactivate FlowResourcesManager
+
+YFlowCreateHub -> SpeakerWorker : Send install/validate the new y-point & shared endpoint meters
+deactivate YFlowCreateHub
+YFlowCreateHub <- SpeakerWorker
+activate YFlowCreateHub
+
+== Completing ==
+YFlowCreateHub -> OrientDB : Update y-flow status
+
+deactivate YFlowCreateHub
+
+@enduml
