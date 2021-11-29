@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker.services;
+package org.openkilda.wfm.topology.flowhs.fsm.validation;
 
 import org.openkilda.messaging.info.flow.FlowValidationResponse;
 import org.openkilda.messaging.info.flow.PathDiscrepancyEntity;
@@ -24,7 +24,6 @@ import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.model.Meter;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
@@ -44,24 +43,23 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.nio.file.InvalidPathException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class FlowValidationService {
-    private SwitchRepository switchRepository;
-    private FlowRepository flowRepository;
-    private FlowResourcesManager flowResourcesManager;
+    private final SwitchRepository switchRepository;
+    private final FlowRepository flowRepository;
+    private final FlowResourcesManager flowResourcesManager;
 
-    private SimpleSwitchRuleConverter simpleSwitchRuleConverter = new SimpleSwitchRuleConverter();
+    private final SimpleSwitchRuleConverter simpleSwitchRuleConverter = new SimpleSwitchRuleConverter();
+    private final SimpleSwitchRuleComparator simpleSwitchRuleComparator;
 
-    private long flowMeterMinBurstSizeInKbits;
-    private double flowMeterBurstCoefficient;
+    private final long flowMeterMinBurstSizeInKbits;
+    private final double flowMeterBurstCoefficient;
 
     public FlowValidationService(PersistenceManager persistenceManager, FlowResourcesConfig flowResourcesConfig,
                                  long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
@@ -70,6 +68,8 @@ public class FlowValidationService {
         this.flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
         this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;
+
+        this.simpleSwitchRuleComparator = new SimpleSwitchRuleComparator(switchRepository);
     }
 
     /**
@@ -172,8 +172,8 @@ public class FlowValidationService {
         boolean ingressMirrorFlowIsPresent = false;
         boolean egressMirrorFlowIsPresent = false;
         for (SimpleSwitchRule simpleRule : rulesFromDb) {
-            discrepancies.addAll(
-                    findDiscrepancy(simpleRule, rulesPerSwitch.get(simpleRule.getSwitchId()), pktCounts, byteCounts));
+            discrepancies.addAll(simpleSwitchRuleComparator.findDiscrepancy(simpleRule,
+                    rulesPerSwitch.get(simpleRule.getSwitchId()), pktCounts, byteCounts));
 
             if (new FlowSegmentCookie(simpleRule.getCookie()).isMirror() && simpleRule.isIngressRule()) {
                 ingressMirrorFlowIsPresent = true;
@@ -218,135 +218,5 @@ public class FlowValidationService {
 
         return simpleSwitchRuleConverter.convertFlowPathToSimpleSwitchRules(flow, flowPath, encapsulationId,
                 flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient);
-    }
-
-    private List<PathDiscrepancyEntity> findDiscrepancy(SimpleSwitchRule expected, List<SimpleSwitchRule> actual,
-                                                        List<Long> pktCounts, List<Long> byteCounts)
-            throws SwitchNotFoundException {
-        List<PathDiscrepancyEntity> discrepancies = new ArrayList<>();
-        SimpleSwitchRule matched = findMatched(expected, actual);
-
-        if (matched == null) {
-            discrepancies.add(new PathDiscrepancyEntity(String.valueOf(expected), "all", String.valueOf(expected), ""));
-            pktCounts.add(-1L);
-            byteCounts.add(-1L);
-        } else {
-            discrepancies.addAll(getRuleDiscrepancies(expected, matched));
-            pktCounts.add(matched.getPktCount());
-            byteCounts.add(matched.getByteCount());
-        }
-
-        return discrepancies;
-    }
-
-    private SimpleSwitchRule findMatched(SimpleSwitchRule expected, List<SimpleSwitchRule> actual) {
-
-        //try to match on the cookie
-        SimpleSwitchRule matched = actual.stream()
-                .filter(rule -> rule.getCookie() != 0 && rule.getCookie() == expected.getCookie())
-                .findFirst()
-                .orElse(null);
-
-        //if no cookie match, then try to match on in_port and in_vlan
-        if (matched == null) {
-            matched = actual.stream()
-                    .filter(rule -> rule.getInPort() == expected.getInPort()
-                            && rule.getInVlan() == expected.getInVlan())
-                    .findFirst()
-                    .orElse(null);
-        }
-
-        //if cookie or in_port and in_vlan doesn't match, try to match on out_port and out_vlan
-        if (matched == null) {
-            matched = actual.stream()
-                    .filter(rule -> rule.getOutPort() == expected.getOutPort()
-                            && Objects.equals(rule.getOutVlan(), expected.getOutVlan()))
-                    .findFirst()
-                    .orElse(null);
-        }
-        return matched;
-    }
-
-    private List<PathDiscrepancyEntity> getRuleDiscrepancies(SimpleSwitchRule expected, SimpleSwitchRule matched)
-            throws SwitchNotFoundException {
-        List<PathDiscrepancyEntity> discrepancies = new ArrayList<>();
-        if (matched.getCookie() != expected.getCookie()) {
-            discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "cookie",
-                    String.valueOf(expected.getCookie()), String.valueOf(matched.getCookie())));
-        }
-        if (matched.getInPort() != expected.getInPort()) {
-            discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "inPort",
-                    String.valueOf(expected.getInPort()), String.valueOf(matched.getInPort())));
-        }
-        if (matched.getInVlan() != expected.getInVlan()) {
-            discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "inVlan",
-                    String.valueOf(expected.getInVlan()), String.valueOf(matched.getInVlan())));
-        }
-        if (matched.getTunnelId() != expected.getTunnelId()) {
-            discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "tunnelId",
-                    String.valueOf(expected.getTunnelId()), String.valueOf(matched.getTunnelId())));
-        }
-        if (matched.getOutPort() != expected.getOutPort()) {
-            discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "outPort",
-                    String.valueOf(expected.getOutPort()), String.valueOf(matched.getOutPort())));
-        }
-        if (! Objects.equals(matched.getOutVlan(), expected.getOutVlan())) {
-            discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "outVlan",
-                    String.valueOf(expected.getOutVlan()), String.valueOf(matched.getOutVlan())));
-        }
-        //meters on OF_12 switches are not supported, so skip them.
-        if ((matched.getVersion() == null || matched.getVersion().compareTo("OF_12") > 0)
-                && !(matched.getMeterId() == null && expected.getMeterId() == null)) {
-
-            if (!Objects.equals(matched.getMeterId(), expected.getMeterId())) {
-                discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterId",
-                        String.valueOf(expected.getMeterId()), String.valueOf(matched.getMeterId())));
-            } else {
-
-                Switch sw = switchRepository.findById(expected.getSwitchId())
-                        .orElseThrow(() -> new SwitchNotFoundException(expected.getSwitchId()));
-                boolean isESwitch =
-                        Switch.isNoviflowESwitch(sw.getOfDescriptionManufacturer(), sw.getOfDescriptionHardware());
-
-                if (!equalsRate(matched.getMeterRate(), expected.getMeterRate(), isESwitch)) {
-                    discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterRate",
-                            String.valueOf(expected.getMeterRate()), String.valueOf(matched.getMeterRate())));
-                }
-                if (!equalsBurstSize(matched.getMeterBurstSize(), expected.getMeterBurstSize(), isESwitch)) {
-                    discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterBurstSize",
-                            String.valueOf(expected.getMeterBurstSize()), String.valueOf(matched.getMeterBurstSize())));
-                }
-                if (!Arrays.equals(matched.getMeterFlags(), expected.getMeterFlags())) {
-                    discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterFlags",
-                            Arrays.toString(expected.getMeterFlags()), Arrays.toString(matched.getMeterFlags())));
-                }
-            }
-        }
-
-        if (matched.getGroupId() != expected.getGroupId()) {
-            discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "groupId",
-                    String.valueOf(expected.getGroupId()), String.valueOf(matched.getGroupId())));
-        }
-        if (! Objects.equals(matched.getGroupBuckets(), expected.getGroupBuckets())) {
-            discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "groupBuckets",
-                    String.valueOf(expected.getGroupBuckets()), String.valueOf(matched.getGroupBuckets())));
-        }
-        return discrepancies;
-    }
-
-    private boolean equalsRate(Long actual, Long expected, boolean isESwitch) {
-        if (actual == null || expected == null) {
-            return Objects.equals(actual, expected);
-        }
-
-        return Meter.equalsRate(actual, expected, isESwitch);
-    }
-
-    private boolean equalsBurstSize(Long actual, Long expected, boolean isESwitch) {
-        if (actual == null || expected == null) {
-            return Objects.equals(actual, expected);
-        }
-
-        return Meter.equalsBurstSize(actual, expected, isESwitch);
     }
 }
