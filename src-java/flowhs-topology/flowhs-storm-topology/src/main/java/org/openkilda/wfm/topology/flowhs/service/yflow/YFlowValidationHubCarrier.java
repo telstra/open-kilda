@@ -15,12 +15,15 @@
 
 package org.openkilda.wfm.topology.flowhs.service.yflow;
 
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.wfm.topology.flowhs.service.common.LifecycleEventCarrier;
+import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
 
-public interface YFlowDeleteHubCarrier extends FlowGenericCarrier {
+import lombok.NonNull;
+
+public interface YFlowValidationHubCarrier extends NorthboundResponseCarrier, LifecycleEventCarrier {
     /**
-     * Cancels timeout callback.
-     * @param key operation identifier.
+     * Sends a command to speaker.
      */
-    void cancelTimeoutCallback(String key);
+    void sendSpeakerRequest(String flowId, @NonNull CommandData commandData);
 }

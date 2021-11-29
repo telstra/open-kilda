@@ -230,6 +230,11 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
                     .to(State.INSTALLING_NEW_YFLOW_METERS)
                     .on(Event.NEXT)
                     .perform(new InstallNewMetersAction(persistenceManager, ruleManager));
+            /*TODO: need to handle errors and timeout here
+            builder.transitions()
+                    .from(State.NEW_YFLOW_RESOURCES_ALLOCATED)
+                    .toAmong(???)
+                    .onEach(Event.ERROR, Event.TIMEOUT);*/
 
             builder.internalTransition()
                     .within(State.INSTALLING_NEW_YFLOW_METERS)
@@ -239,10 +244,10 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
                     .from(State.INSTALLING_NEW_YFLOW_METERS)
                     .to(State.NEW_YFLOW_METERS_INSTALLED)
                     .on(Event.YFLOW_METERS_INSTALLED);
-            builder.transition()
+            builder.transitions()
                     .from(State.INSTALLING_NEW_YFLOW_METERS)
-                    .to(State.NEW_YFLOW_METERS_INSTALLED)
-                    .on(Event.ERROR)
+                    .toAmong(State.NEW_YFLOW_METERS_INSTALLED, State.NEW_YFLOW_METERS_INSTALLED)
+                    .onEach(Event.ERROR, Event.TIMEOUT)
                     .perform(new HandleNotCompletedCommandsAction("install new meters"));
 
             builder.transition()
@@ -259,10 +264,10 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
                     .from(State.VALIDATING_NEW_YFLOW_METERS)
                     .to(State.NEW_YFLOW_METERS_VALIDATED)
                     .on(Event.YFLOW_METERS_VALIDATED);
-            builder.transition()
+            builder.transitions()
                     .from(State.VALIDATING_NEW_YFLOW_METERS)
-                    .to(State.NEW_YFLOW_METERS_VALIDATED)
-                    .on(Event.ERROR)
+                    .toAmong(State.NEW_YFLOW_METERS_VALIDATED, State.NEW_YFLOW_METERS_VALIDATED)
+                    .onEach(Event.ERROR, Event.TIMEOUT)
                     .perform(new HandleNotCompletedCommandsAction("validate new meters"));
 
             builder.transition()

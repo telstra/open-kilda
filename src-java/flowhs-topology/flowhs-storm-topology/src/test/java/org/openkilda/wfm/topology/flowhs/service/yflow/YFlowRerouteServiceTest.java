@@ -71,7 +71,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @RunWith(MockitoJUnitRunner.class)
-public class YFlowRerouteServiceTest extends AbstractYFlowTest {
+public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     private static final int METER_ALLOCATION_RETRIES_LIMIT = 3;
 
     @Mock
@@ -87,13 +87,13 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest {
 
     @Before
     public void init() {
-        doAnswer(getSpeakerCommandsAnswer())
+        doAnswer(buildSpeakerRequestAnswer())
                 .when(flowCreateHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
-        doAnswer(getSpeakerCommandsAnswer())
+        doAnswer(buildSpeakerRequestAnswer())
                 .when(flowRerouteHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
-        doAnswer(getSpeakerCommandsAnswer())
+        doAnswer(buildSpeakerRequestAnswer())
                 .when(yFlowCreateHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
-        doAnswer(getSpeakerCommandsAnswer())
+        doAnswer(buildSpeakerRequestAnswer())
                 .when(yFlowRerouteHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
     }
 
@@ -323,7 +323,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest {
         service.handleRequest(request.getYFlowId(), new CommandContext(), request);
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
         // and
-        handleSpeakerCommandsAndTimeoutInstall(service, request.getYFlowId(), "test_successful_yflow");
+        handleSpeakerCommandsAndTimeoutInstall(service, request.getYFlowId());
 
         // then
         verifyNorthboundSuccessResponse(yFlowRerouteHubCarrier, YFlowRerouteResponse.class);
@@ -377,7 +377,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest {
 
         verifyYFlowStatus(yFlowRequest.getYFlowId(), FlowStatus.IN_PROGRESS);
 
-        handleSpeakerCommands(speakerRequest -> {
+        handleSpeakerRequests(speakerRequest -> {
             SpeakerResponse commandResponse;
             if (speakerRequest instanceof FlowSegmentRequest) {
                 FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) speakerRequest;
@@ -398,7 +398,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest {
 
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
 
-        handleSpeakerCommands(speakerRequest -> {
+        handleSpeakerRequests(speakerRequest -> {
             SpeakerResponse commandResponse;
             if (speakerRequest instanceof FlowSegmentRequest) {
                 FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) speakerRequest;
@@ -424,7 +424,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest {
                 expectedFirstSubFlowStatus, expectedSecondSubFlowStatus);
 
 
-        handleSpeakerCommands(speakerRequest -> {
+        handleSpeakerRequests(speakerRequest -> {
             SpeakerResponse commandResponse;
             if (speakerRequest instanceof FlowSegmentRequest) {
                 FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) speakerRequest;
@@ -438,18 +438,18 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest {
     }
 
     private void handleAsyncResponse(YFlowCreateService yFlowCreateService,
-                                     String key, SpeakerResponse commandResponse) {
+                                     String yFlowFsmKey, SpeakerResponse commandResponse) {
         try {
-            yFlowCreateService.handleAsyncResponse(key, commandResponse);
+            yFlowCreateService.handleAsyncResponse(yFlowFsmKey, commandResponse);
         } catch (UnknownKeyException ex) {
             //skip
         }
     }
 
     private void handleAsyncResponse(YFlowRerouteService yFlowRerouteService,
-                                     String key, SpeakerResponse commandResponse) {
+                                     String yFlowFsmKey, SpeakerResponse commandResponse) {
         try {
-            yFlowRerouteService.handleAsyncResponse(key, commandResponse);
+            yFlowRerouteService.handleAsyncResponse(yFlowFsmKey, commandResponse);
         } catch (UnknownKeyException ex) {
             //skip
         }
@@ -473,14 +473,14 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest {
         return flow;
     }
 
-    private void handleSpeakerCommandsAndFailInstall(YFlowRerouteService yFlowRerouteService, String key,
-                                                     String commandKeyToFail) {
-        handleSpeakerCommands(request -> {
+    private void handleSpeakerCommandsAndFailInstall(YFlowRerouteService yFlowRerouteService, String yFlowFsmKey,
+                                                     String commandFlowIdToFail) {
+        handleSpeakerRequests(request -> {
             SpeakerResponse commandResponse;
             if (request instanceof FlowSegmentRequest) {
                 FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) request;
                 commandResponse = flowSegmentRequest.isInstallRequest()
-                        && flowSegmentRequest.getMetadata().getFlowId().equals(commandKeyToFail)
+                        && flowSegmentRequest.getMetadata().getFlowId().equals(commandFlowIdToFail)
                         ? buildErrorSpeakerResponse(flowSegmentRequest)
                         : buildSuccessfulSpeakerResponse(flowSegmentRequest);
             } else {
@@ -489,28 +489,30 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest {
                         ? buildErrorYFlowSpeakerResponse(speakerCommandsRequest)
                         : buildSuccessfulYFlowSpeakerResponse(speakerCommandsRequest);
             }
-            handleAsyncResponse(yFlowRerouteService, key, commandResponse);
+            handleAsyncResponse(yFlowRerouteService, yFlowFsmKey, commandResponse);
         });
     }
 
-    private void handleSpeakerCommandsAndTimeoutInstall(YFlowRerouteService service, String key,
-                                                        String commandKeyToFail) {
-        handleSpeakerCommands(request -> {
+    private void handleSpeakerCommandsAndTimeoutInstall(YFlowRerouteService service, String yFlowFsmKey) {
+        handleSpeakerRequests(request -> {
             SpeakerResponse commandResponse;
             if (request instanceof FlowSegmentRequest) {
                 FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) request;
-                if (flowSegmentRequest.isInstallRequest() && key.equals(commandKeyToFail)) {
-                    service.handleTimeout(key);
-                }
                 commandResponse = buildSuccessfulSpeakerResponse(flowSegmentRequest);
+                handleAsyncResponse(service, yFlowFsmKey, commandResponse);
             } else {
                 BaseSpeakerCommandsRequest speakerCommandsRequest = (BaseSpeakerCommandsRequest) request;
-                if (speakerCommandsRequest instanceof InstallSpeakerCommandsRequest && key.equals(commandKeyToFail)) {
-                    service.handleTimeout(key);
+                if (speakerCommandsRequest instanceof InstallSpeakerCommandsRequest) {
+                    try {
+                        service.handleTimeout(yFlowFsmKey);
+                    } catch (UnknownKeyException ex) {
+                        //skip
+                    }
+                } else {
+                    commandResponse = buildSuccessfulYFlowSpeakerResponse(speakerCommandsRequest);
+                    handleAsyncResponse(service, yFlowFsmKey, commandResponse);
                 }
-                commandResponse = buildSuccessfulYFlowSpeakerResponse(speakerCommandsRequest);
             }
-            handleAsyncResponse(service, key, commandResponse);
         });
     }
 

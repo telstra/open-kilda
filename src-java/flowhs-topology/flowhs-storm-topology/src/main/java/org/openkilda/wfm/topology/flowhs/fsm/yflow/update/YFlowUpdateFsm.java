@@ -439,10 +439,10 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
                     .from(State.INSTALLING_OLD_YPOINT_METER)
                     .to(State.OLD_YPOINT_METER_INSTALLED)
                     .on(Event.ALL_YFLOW_METERS_INSTALLED);
-            builder.transition()
+            builder.transitions()
                     .from(State.INSTALLING_OLD_YPOINT_METER)
-                    .to(State.OLD_YPOINT_METER_INSTALLED)
-                    .on(Event.ERROR)
+                    .toAmong(State.OLD_YPOINT_METER_INSTALLED, State.OLD_YPOINT_METER_INSTALLED)
+                    .onEach(Event.ERROR, Event.TIMEOUT)
                     .perform(new HandleNotCompletedCommandsAction());
 
             builder.transition()

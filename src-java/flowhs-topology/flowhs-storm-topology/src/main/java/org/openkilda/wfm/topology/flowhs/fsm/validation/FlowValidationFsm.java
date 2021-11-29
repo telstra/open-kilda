@@ -44,7 +44,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IllegalFlowStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableFlowProcessingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.FlowValidationFsm.Event;
@@ -89,13 +89,13 @@ public final class FlowValidationFsm extends NbTrackableFlowProcessingFsm<FlowVa
 
     public FlowValidationFsm(@NonNull CommandContext commandContext, @NonNull FlowValidationHubCarrier carrier,
                              @NonNull String flowId, @NonNull PersistenceManager persistenceManager,
-                             @NonNull FlowResourcesConfig flowResourcesConfig,
+                             @NonNull FlowResourcesManager flowResourcesManager,
                              @NonNull Config config,
                              @NonNull Collection<FlowValidationEventListener> eventListeners) {
         super(Event.NEXT, Event.ERROR, commandContext, carrier, eventListeners);
         this.flowId = flowId;
 
-        service = new FlowValidationService(persistenceManager, flowResourcesConfig,
+        service = new FlowValidationService(persistenceManager, flowResourcesManager,
                 config.getFlowMeterMinBurstSizeInKbits(), config.getFlowMeterBurstCoefficient());
     }
 
@@ -204,14 +204,14 @@ public final class FlowValidationFsm extends NbTrackableFlowProcessingFsm<FlowVa
         private final StateMachineBuilder<FlowValidationFsm, State, Event, Object> builder;
         private final FlowValidationHubCarrier carrier;
         private final PersistenceManager persistenceManager;
-        private final FlowResourcesConfig flowResourcesConfig;
+        private final FlowResourcesManager flowResourcesManager;
         private final Config config;
 
         public Factory(@NonNull FlowValidationHubCarrier carrier, @NonNull PersistenceManager persistenceManager,
-                       @NonNull FlowResourcesConfig flowResourcesConfig, @NonNull Config config) {
+                       @NonNull FlowResourcesManager flowResourcesManager, @NonNull Config config) {
             this.carrier = carrier;
             this.persistenceManager = persistenceManager;
-            this.flowResourcesConfig = flowResourcesConfig;
+            this.flowResourcesManager = flowResourcesManager;
             this.config = config;
 
             builder = StateMachineBuilderFactory.create(
@@ -223,7 +223,7 @@ public final class FlowValidationFsm extends NbTrackableFlowProcessingFsm<FlowVa
                     FlowValidationHubCarrier.class,
                     String.class,
                     PersistenceManager.class,
-                    FlowResourcesConfig.class,
+                    FlowResourcesManager.class,
                     Config.class,
                     Collection.class);
 
@@ -249,7 +249,7 @@ public final class FlowValidationFsm extends NbTrackableFlowProcessingFsm<FlowVa
         public FlowValidationFsm newInstance(@NonNull String flowId, @NonNull CommandContext commandContext,
                                              @NonNull Collection<FlowValidationEventListener> eventListeners) {
             FlowValidationFsm fsm = builder.newStateMachine(INITIALIZED, commandContext, carrier, flowId,
-                    persistenceManager, flowResourcesConfig, config, eventListeners);
+                    persistenceManager, flowResourcesManager, config, eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("FlowValidationFsm, transition to {} on {}", event.getTargetState(), event.getCause()));

@@ -29,7 +29,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
-import org.openkilda.floodlight.api.request.SpeakerRequest;
 import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
 import org.openkilda.floodlight.api.request.rulemanager.GroupCommand;
@@ -48,6 +47,7 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowMeter;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.KildaFeatureToggles;
@@ -70,6 +70,7 @@ import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
 
 import com.google.common.collect.ImmutableList;
 import lombok.SneakyThrows;
@@ -91,7 +92,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
+public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
     protected static final SwitchId SWITCH_SHARED = new SwitchId(1);
     protected static final SwitchId SWITCH_FIRST_EP = new SwitchId(2);
     protected static final SwitchId SWITCH_SECOND_EP = new SwitchId(3);
@@ -170,7 +171,7 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
     @Mock
     protected PathComputer pathComputer;
 
-    final Queue<SpeakerRequest> requests = new ArrayDeque<>();
+    protected final Queue<T> requests = new ArrayDeque<>();
 
     @Before
     public void before() {
@@ -209,26 +210,21 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
         }
     }
 
-    protected Answer getSpeakerCommandsAnswer() {
+    protected Answer<T> buildSpeakerRequestAnswer() {
         return invocation -> {
-            SpeakerRequest request = invocation.getArgument(0);
+            T request = invocation.getArgument(0);
             requests.offer(request);
             return request;
         };
     }
 
     @SneakyThrows
-    protected void handleSpeakerCommands(CheckedConsumer<SpeakerRequest> speakerRequestConsumer) {
-        SpeakerRequest request;
+    protected void handleSpeakerRequests(CheckedConsumer<T> speakerRequestConsumer) {
+        T request;
         while ((request = requests.poll()) != null) {
             // For testing purpose we assume that key equals to flowId.
             speakerRequestConsumer.accept(request);
         }
-    }
-
-    @FunctionalInterface
-    protected interface CheckedBiConsumer<T, U> {
-        void accept(T t, U u) throws Exception;
     }
 
     protected SpeakerFlowSegmentResponse buildSuccessfulSpeakerResponse(FlowSegmentRequest flowRequest) {
@@ -328,11 +324,12 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
                         "Y-flow %s not found in persistent storage", yFlowId)));
     }
 
-    protected void verifyNorthboundSuccessResponse(FlowGenericCarrier carrierMock, Class<?> expectedPayloadType) {
+    protected void verifyNorthboundSuccessResponse(NorthboundResponseCarrier carrierMock,
+                                                   Class<?> expectedPayloadType) {
         verifyNorthboundSuccessResponse(carrierMock, expectedPayloadType, 1);
     }
 
-    protected void verifyNorthboundSuccessResponse(FlowGenericCarrier carrierMock, Class<?> expectedPayloadType,
+    protected void verifyNorthboundSuccessResponse(NorthboundResponseCarrier carrierMock, Class<?> expectedPayloadType,
                                                    int times) {
         ArgumentCaptor<Message> responseCaptor = ArgumentCaptor.forClass(Message.class);
         verify(carrierMock, times(times)).sendNorthboundResponse(responseCaptor.capture());
@@ -345,7 +342,7 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
         Assert.assertTrue(expectedPayloadType.isInstance(rawPayload));
     }
 
-    protected void verifyNorthboundErrorResponse(FlowGenericCarrier carrier, ErrorType expectedErrorType) {
+    protected void verifyNorthboundErrorResponse(NorthboundResponseCarrier carrier, ErrorType expectedErrorType) {
         ArgumentCaptor<Message> responseCaptor = ArgumentCaptor.forClass(Message.class);
         verify(carrier).sendNorthboundResponse(responseCaptor.capture());
 
@@ -357,7 +354,7 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
         Assert.assertSame(expectedErrorType, response.getData().getErrorType());
     }
 
-    protected void verifyNoNorthboundResponse(FlowGenericCarrier carrier) {
+    protected void verifyNoNorthboundResponse(NorthboundResponseCarrier carrier) {
         verify(carrier, never()).sendNorthboundResponse(any());
     }
 
@@ -667,10 +664,17 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
         Flow secondFlow =
                 dummyFactory.makeFlow(secondSharedEndpoint, secondEndpoint, islSharedToTransit, islTransitToSecond);
 
+        SwitchId yPoint = SWITCH_TRANSIT;
+        FlowMeter yPointMeter = dummyFactory.makeFlowMeter(yPoint, yFlowId, null);
+        FlowMeter sharedEndpointMeter = dummyFactory.makeFlowMeter(firstSharedEndpoint.getSwitchId(), yFlowId, null);
+
         YFlow yFlow = YFlow.builder()
                 .yFlowId(yFlowId)
                 .sharedEndpoint(new SharedEndpoint(firstSharedEndpoint.getSwitchId(),
                         firstSharedEndpoint.getPortNumber()))
+                .sharedEndpointMeterId(sharedEndpointMeter.getMeterId())
+                .yPoint(yPoint)
+                .meterId(yPointMeter.getMeterId())
                 .status(FlowStatus.UP)
                 .build();
         yFlow.setSubFlows(Stream.of(firstFlow, secondFlow)

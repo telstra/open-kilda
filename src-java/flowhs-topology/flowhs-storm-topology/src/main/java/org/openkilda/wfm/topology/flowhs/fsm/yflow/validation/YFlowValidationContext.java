@@ -13,14 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.service.yflow;
+package org.openkilda.wfm.topology.flowhs.fsm.yflow.validation;
 
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.messaging.MessageData;
+import org.openkilda.messaging.info.flow.FlowValidationResponse;
 
-public interface YFlowUpdateHubCarrier extends FlowGenericCarrier {
-    /**
-     * Cancels timeout callback.
-     * @param key operation identifier.
-     */
-    void cancelTimeoutCallback(String key);
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+import java.util.List;
+
+@Data
+@AllArgsConstructor
+@Builder
+@EqualsAndHashCode
+public class YFlowValidationContext {
+    String subFlowId;
+    List<FlowValidationResponse> validationResult;
+    MessageData speakerResponse;
 }
