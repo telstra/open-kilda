@@ -37,6 +37,7 @@ import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.factory.FlowRulesGeneratorFactory;
 import org.openkilda.rulemanager.factory.RuleGenerator;
 import org.openkilda.rulemanager.factory.ServiceRulesGeneratorFactory;
+import org.openkilda.rulemanager.utils.Utils;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -194,7 +195,6 @@ public class RuleManagerImpl implements RuleManager {
         List<SpeakerCommandData> result = new ArrayList<>();
         Flow flow = adapter.getFlow(flowPath.getPathId());
         Switch sw = adapter.getSwitch(switchId);
-        SwitchProperties switchProperties = adapter.getSwitchProperties(switchId);
         FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(flowPath.getPathId());
 
         if (switchId.equals(flowPath.getSrcSwitchId()) && !flow.isProtectedPath(flowPath.getPathId())) {
@@ -226,27 +226,37 @@ public class RuleManagerImpl implements RuleManager {
 
     private List<SpeakerCommandData> buildIngressCommands(Switch sw, FlowPath flowPath, Flow flow,
             FlowTransitEncapsulation encapsulation, Set<FlowSideAdapter> overlappingIngressAdapters) {
-        List<RuleGenerator> generators = new ArrayList<>();
+        List<SpeakerCommandData> ingressCommands = flowRulesFactory.getIngressRuleGenerator(
+                flowPath, flow, encapsulation, overlappingIngressAdapters).generateCommands(sw);
+        String ingressMeterCommandUuid = Utils.getCommand(MeterSpeakerCommandData.class, ingressCommands)
+                .map(SpeakerCommandData::getUuid).orElse(null);
 
-        generators.add(flowRulesFactory.getIngressRuleGenerator(
-                flowPath, flow, encapsulation, overlappingIngressAdapters));
+        List<RuleGenerator> generators = new ArrayList<>();
         generators.add(flowRulesFactory.getInputLldpRuleGenerator(flowPath, flow, overlappingIngressAdapters));
         generators.add(flowRulesFactory.getInputArpRuleGenerator(flowPath, flow, overlappingIngressAdapters));
 
         if (flow.isLooped() && sw.getSwitchId().equals(flow.getLoopSwitchId())) {
             generators.add(flowRulesFactory.getIngressLoopRuleGenerator(flowPath, flow));
         }
-        // todo: add flow mirror, etc
+        if (flowPath.getFlowMirrorPointsSet() != null && !flowPath.getFlowMirrorPointsSet().isEmpty()) {
+            generators.add(flowRulesFactory.getIngressMirrorRuleGenerator(
+                    flowPath, flow, encapsulation, ingressMeterCommandUuid));
+        }
 
-        return generators.stream()
-                .flatMap(generator -> generator.generateCommands(sw).stream())
-                .collect(Collectors.toList());
+        ingressCommands.addAll(generateRules(sw, generators));
+        return ingressCommands;
     }
 
     private List<SpeakerCommandData> buildEgressCommands(Switch sw, FlowPath flowPath, Flow flow,
             FlowTransitEncapsulation encapsulation) {
-        RuleGenerator generator = flowRulesFactory.getEgressRuleGenerator(flowPath, flow, encapsulation);
-        return generator.generateCommands(sw);
+        List<RuleGenerator> generators = new ArrayList<>();
+
+        generators.add(flowRulesFactory.getEgressRuleGenerator(flowPath, flow, encapsulation));
+        if (flowPath.getFlowMirrorPointsSet() != null && !flowPath.getFlowMirrorPointsSet().isEmpty()) {
+            generators.add(flowRulesFactory.getEgressMirrorRuleGenerator(flowPath, flow, encapsulation));
+        }
+
+        return generateRules(sw, generators);
     }
 
     private List<SpeakerCommandData> buildTransitCommands(
@@ -270,5 +280,11 @@ public class RuleManagerImpl implements RuleManager {
                 .map(generator -> generator.generateCommands(sw))
                 .map(result::addAll);
         return result;
+    }
+
+    private List<SpeakerCommandData> generateRules(Switch sw, List<RuleGenerator> generators) {
+        return generators.stream()
+                .flatMap(generator -> generator.generateCommands(sw).stream())
+                .collect(Collectors.toList());
     }
 }

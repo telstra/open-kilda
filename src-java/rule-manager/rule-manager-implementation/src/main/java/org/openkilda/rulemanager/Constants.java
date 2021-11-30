@@ -71,13 +71,16 @@ public final class Constants {
         public static final int DROP_DISCOVERY_LOOP_RULE_PRIORITY = DISCOVERY_RULE_PRIORITY + 1;
         public static final int CATCH_BFD_RULE_PRIORITY = DROP_DISCOVERY_LOOP_RULE_PRIORITY + 1;
         public static final int ROUND_TRIP_LATENCY_RULE_PRIORITY = DROP_DISCOVERY_LOOP_RULE_PRIORITY + 1;
-        public static final int MIRROR_FLOW_PRIORITY = FLOW_PRIORITY + 50;
         public static final int ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
         public static final int ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 3;
         public static final int INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
         public static final int ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 5;
         public static final int DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 1;
         public static final int DOUBLE_VLAN_FLOW_PRIORITY = FLOW_PRIORITY + 10;
+
+        public static final int MIRROR_FLOW_PRIORITY = FLOW_PRIORITY + 50;
+        public static final int MIRROR_DOUBLE_VLAN_FLOW_PRIORITY = MIRROR_FLOW_PRIORITY + 10;
+        public static final int MIRROR_DEFAULT_FLOW_PRIORITY = MIRROR_FLOW_PRIORITY - 10;
 
         public static final int LOOP_FLOW_PRIORITY = FLOW_PRIORITY + 100;
         public static final int LOOP_DOUBLE_VLAN_FLOW_PRIORITY = LOOP_FLOW_PRIORITY + 10;
