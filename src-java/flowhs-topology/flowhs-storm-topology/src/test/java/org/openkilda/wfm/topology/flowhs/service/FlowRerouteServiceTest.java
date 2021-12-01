@@ -647,6 +647,22 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         assertNull(result.getTargetPathComputationStrategy());
     }
 
+    @Test
+    public void shouldFailRerouteYSubFlow() throws UnroutableFlowException, RecoverableException {
+        Flow origin = makeFlow();
+        createTestYFlowForSubFlow(origin);
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
+
+        FlowRerouteService service = makeService();
+        IslEndpoint affectedEndpoint = extractIslEndpoint(origin);
+        FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false, true,
+                false, Collections.singleton(affectedEndpoint), null, false);
+        service.handleRequest(currentRequestKey, request, commandContext);
+
+        verifyNoSpeakerInteraction(carrier);
+        verifyNorthboundErrorResponse(carrier, ErrorType.REQUEST_INVALID);
+    }
+
     protected void produceAsyncResponse(FlowRerouteService service, FlowSegmentRequest speakerRequest) {
         service.handleAsyncResponse(currentRequestKey, buildSpeakerResponse(speakerRequest));
     }

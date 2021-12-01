@@ -15,12 +15,15 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import static java.lang.String.format;
 import static org.apache.commons.collections4.ListUtils.union;
 import static org.openkilda.model.PathComputationStrategy.LATENCY;
 import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.model.DetectConnectedDevicesDto;
 import org.openkilda.messaging.model.FlowPatch;
@@ -50,6 +53,7 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
@@ -96,6 +100,7 @@ public class FlowOperationsService {
     private FlowStatsRepository flowStatsRepository;
     private FlowPathRepository flowPathRepository;
     private SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
+    private YFlowRepository yFlowRepository;
 
     public FlowOperationsService(RepositoryFactory repositoryFactory, TransactionManager transactionManager) {
         this.islRepository = repositoryFactory.createIslRepository();
@@ -104,6 +109,7 @@ public class FlowOperationsService {
         this.flowStatsRepository = repositoryFactory.createFlowStatsRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.switchConnectedDeviceRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
+        yFlowRepository = repositoryFactory.createYFlowRepository();
         this.transactionManager = transactionManager;
     }
 
@@ -346,8 +352,14 @@ public class FlowOperationsService {
      * Partial update flow.
      */
     public Flow updateFlow(FlowOperationsCarrier carrier, FlowPatch flowPatch) throws FlowNotFoundException {
+        String flowId = flowPatch.getFlowId();
+        if (yFlowRepository.isSubFlow(flowId)) {
+            throw new MessageException(ErrorType.REQUEST_INVALID, "Could not modify flow",
+                    format("%s is a sub-flow of a y-flow. Operations on sub-flows are forbidden.", flowId));
+        }
+
         UpdateFlowResult updateFlowResult = transactionManager.doInTransaction(() -> {
-            Optional<Flow> foundFlow = flowRepository.findById(flowPatch.getFlowId());
+            Optional<Flow> foundFlow = flowRepository.findById(flowId);
             if (!foundFlow.isPresent()) {
                 return Optional.<UpdateFlowResult>empty();
             }
@@ -370,13 +382,13 @@ public class FlowOperationsService {
                 boolean oldPeriodicPings = currentFlow.isPeriodicPings();
                 currentFlow.setPeriodicPings(periodicPings);
                 if (oldPeriodicPings != currentFlow.isPeriodicPings()) {
-                    carrier.emitPeriodicPingUpdate(flowPatch.getFlowId(), flowPatch.getPeriodicPings());
+                    carrier.emitPeriodicPingUpdate(flowId, flowPatch.getPeriodicPings());
                 }
             });
 
             return Optional.of(result.updatedFlow(currentFlow).build());
 
-        }).orElseThrow(() -> new FlowNotFoundException(flowPatch.getFlowId()));
+        }).orElseThrow(() -> new FlowNotFoundException(flowId));
 
         Flow updatedFlow = updateFlowResult.getUpdatedFlow();
         if (updateFlowResult.isNeedUpdateFlow()) {

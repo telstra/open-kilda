@@ -324,6 +324,7 @@ public abstract class FlowMapper {
     @Mapping(target = "loopSwitchId", source = "f.loopSwitchId")
     @Mapping(target = "forwardPathLatencyNs", source = "f.forwardLatency")
     @Mapping(target = "reversePathLatencyNs", source = "f.reverseLatency")
+    @Mapping(target = "yFlowId", source = "f.YFlowId")
     protected abstract FlowResponseV2 generatedMap(FlowDto f, FlowEndpointV2 source, FlowEndpointV2 destination);
 
     @Mapping(target = "id", source = "flowId")

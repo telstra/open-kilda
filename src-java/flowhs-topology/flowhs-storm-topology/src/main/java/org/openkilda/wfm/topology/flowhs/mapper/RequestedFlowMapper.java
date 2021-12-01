@@ -113,6 +113,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "statusInfo", ignore = true)
     @Mapping(target = "targetPathComputationStrategy", ignore = true)
     @Mapping(target = "loopSwitchId", source = "loopSwitchId")
+    @Mapping(target = "yFlowId", ignore = true)
     public abstract Flow toFlow(RequestedFlow requestedFlow);
 
     @Mapping(source = "encapsulationType", target = "flowEncapsulationType")

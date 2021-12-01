@@ -61,6 +61,10 @@ public class FlowResponsePayload extends FlowPayload {
     @JsonProperty("latency-last-modified-time")
     private String latencyLastModifiedTime;
 
+    @JsonProperty("y_flow_id")
+    @JsonInclude(Include.NON_NULL)
+    private String yFlowId;
+
     /**
      * Instance constructor.
      *
@@ -88,6 +92,7 @@ public class FlowResponsePayload extends FlowPayload {
      * @param forwardLatency            forward path latency nanoseconds
      * @param reverseLatency            reverse path latency nanoseconds
      * @param latencyLastModifiedTime   latency last modified time
+     * @param yFlowId                   the y-flow ID in the case of sub-flow
      */
     @Builder(builderMethodName = "flowResponsePayloadBuilder")
     @JsonCreator
@@ -114,7 +119,8 @@ public class FlowResponsePayload extends FlowPayload {
                                @JsonProperty("loop-switch-id") SwitchId loopSwitchId,
                                @JsonProperty("forward-latency") long forwardLatency,
                                @JsonProperty("reverse-latency") long reverseLatency,
-                               @JsonProperty("latency-last-modified-time") String latencyLastModifiedTime) {
+                               @JsonProperty("latency-last-modified-time") String latencyLastModifiedTime,
+                               @JsonProperty("y_flow_id") String yFlowId) {
         super(id, source, destination, maximumBandwidth, ignoreBandwidth, periodicPings, allocateProtectedPath,
                 description, created, lastUpdated, status, maxLatency, priority, pinned, encapsulationType,
                 pathComputationStrategy);
@@ -126,5 +132,6 @@ public class FlowResponsePayload extends FlowPayload {
         this.forwardLatency = forwardLatency;
         this.reverseLatency = reverseLatency;
         this.latencyLastModifiedTime = latencyLastModifiedTime;
+        this.yFlowId = yFlowId;
     }
 }

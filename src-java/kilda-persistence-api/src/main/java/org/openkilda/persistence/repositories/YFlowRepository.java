@@ -30,5 +30,7 @@ public interface YFlowRepository extends Repository<YFlow> {
 
     Optional<YFlow> findById(String yFlowId);
 
+    boolean isSubFlow(String flowId);
+
     Optional<YFlow> remove(String yFlowId);
 }

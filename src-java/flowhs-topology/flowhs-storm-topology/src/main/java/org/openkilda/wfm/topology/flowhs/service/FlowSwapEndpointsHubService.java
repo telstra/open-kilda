@@ -35,17 +35,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-public class FlowSwapEndpointsHubService {
+public class FlowSwapEndpointsHubService extends FlowProcessingService<FlowSwapEndpointsHubCarrier> {
     private Map<String, FlowSwapEndpointsFsm> fsms = new HashMap<>();
 
     private final FlowSwapEndpointsFsm.Factory fsmFactory;
 
-    private final FlowSwapEndpointsHubCarrier carrier;
-
     private boolean active;
 
     public FlowSwapEndpointsHubService(FlowSwapEndpointsHubCarrier carrier, PersistenceManager persistenceManager) {
-        this.carrier = carrier;
+        super(carrier, persistenceManager);
         this.fsmFactory = new Factory(carrier, persistenceManager);
     }
 
@@ -53,6 +51,15 @@ public class FlowSwapEndpointsHubService {
      * Handles request for swap flow endpoints.
      */
     public void handleRequest(String key, CommandContext commandContext, SwapFlowEndpointRequest request) {
+        if (yFlowRepository.isSubFlow(request.getFirstFlow().getFlowId())) {
+            sendForbiddenSubFlowOperationToNorthbound(request.getFirstFlow().getFlowId(), commandContext);
+            return;
+        }
+        if (yFlowRepository.isSubFlow(request.getSecondFlow().getFlowId())) {
+            sendForbiddenSubFlowOperationToNorthbound(request.getSecondFlow().getFlowId(), commandContext);
+            return;
+        }
+
         log.debug("Handling swap flow endpoints request with key {} and flow IDs: {}, {}", key,
                 request.getFirstFlow().getFlowId(), request.getSecondFlow().getFlowId());
 
@@ -83,7 +90,7 @@ public class FlowSwapEndpointsHubService {
 
         if (message instanceof InfoMessage && ((InfoMessage) message).getData() instanceof FlowResponse) {
             fsm.fire(Event.RESPONSE_RECEIVED, new FlowSwapEndpointsContext(((InfoMessage) message).getData()));
-        } else  if (message instanceof ErrorMessage) {
+        } else if (message instanceof ErrorMessage) {
             fsm.fire(Event.ERROR_RECEIVED, new FlowSwapEndpointsContext(((ErrorMessage) message).getData()));
         } else {
             log.warn("Key: {}; Unhandled message {}", key, message);

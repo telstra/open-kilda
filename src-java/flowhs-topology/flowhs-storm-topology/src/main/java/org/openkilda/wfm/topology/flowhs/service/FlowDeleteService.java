@@ -53,6 +53,10 @@ public class FlowDeleteService extends FlowProcessingWithEventSupportService<Flo
      * @param flowId the flow to delete.
      */
     public void handleRequest(String key, CommandContext commandContext, String flowId) throws DuplicateKeyException {
+        if (yFlowRepository.isSubFlow(flowId)) {
+            sendForbiddenSubFlowOperationToNorthbound(flowId, commandContext);
+            return;
+        }
         startFlowDeletion(key, commandContext, flowId, true);
     }
 

@@ -271,6 +271,17 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
         verifyFlowIsMissing(target);
     }
 
+    @Test
+    public void shouldFailDeleteYSubFlow() throws DuplicateKeyException {
+        Flow flow = makeFlow();
+        createTestYFlowForSubFlow(flow);
+
+        makeService().handleRequest(dummyRequestKey, commandContext, flow.getFlowId());
+
+        verifyNoSpeakerInteraction(carrier);
+        verifyNorthboundErrorResponse(carrier, ErrorType.REQUEST_INVALID);
+    }
+
     private void verifyFlowIsMissing(Flow flow) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         FlowRepository flowRepository = repositoryFactory.createFlowRepository();

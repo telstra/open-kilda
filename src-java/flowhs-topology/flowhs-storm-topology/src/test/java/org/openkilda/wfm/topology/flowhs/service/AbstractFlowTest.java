@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
+import static java.util.Collections.singleton;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -41,6 +42,9 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.YFlow;
+import org.openkilda.model.YFlow.SharedEndpoint;
+import org.openkilda.model.YSubFlow;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.Path;
@@ -54,6 +58,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -395,5 +400,26 @@ public abstract class AbstractFlowTest extends InMemoryGraphBasedTest {
     protected Flow makeFlowArgumentMatch(String flowId) {
         return MockitoHamcrest.argThat(
                 Matchers.hasProperty("flowId", is(flowId)));
+    }
+
+    protected void createTestYFlowForSubFlow(Flow subFlow) {
+        YFlow yFlow = YFlow.builder()
+                .yFlowId("test_y_flow")
+                .sharedEndpoint(new SharedEndpoint(subFlow.getSrcSwitchId(),
+                        subFlow.getSrcPort()))
+                .status(FlowStatus.UP)
+                .build();
+        yFlow.setSubFlows(singleton(YSubFlow.builder()
+                .sharedEndpointVlan(subFlow.getSrcVlan())
+                .sharedEndpointInnerVlan(subFlow.getSrcInnerVlan())
+                .endpointSwitchId(subFlow.getDestSwitchId())
+                .endpointPort(subFlow.getDestPort())
+                .endpointVlan(subFlow.getDestVlan())
+                .endpointInnerVlan(subFlow.getDestInnerVlan())
+                .flow(subFlow)
+                .yFlow(yFlow)
+                .build()));
+        YFlowRepository yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
+        yFlowRepository.add(yFlow);
     }
 }

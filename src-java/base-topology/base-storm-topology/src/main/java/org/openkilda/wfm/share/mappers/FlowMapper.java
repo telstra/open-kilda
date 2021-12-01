@@ -79,6 +79,7 @@ public abstract class FlowMapper {
     @Mapping(target = "forwardLatency", ignore = true)
     @Mapping(target = "reverseLatency", ignore = true)
     @Mapping(target = "latencyLastModifiedTime", ignore = true)
+    @Mapping(target = "yFlowId", source = "YFlowId")
     public abstract FlowDto map(Flow flow);
 
     /**
