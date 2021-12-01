@@ -61,7 +61,7 @@ import java.util.stream.Collectors;
 public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
     @Getter
     @Setter
-    @Delegate
+    @Delegate(excludes = FlowPathInternalData.class)
     @JsonIgnore
     private FlowPathData data;
 
@@ -87,12 +87,14 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
                     FlowSegmentCookie cookie, MeterId meterId, GroupId ingressMirrorGroupId,
                     long latency, long bandwidth,
                     boolean ignoreBandwidth, FlowPathStatus status, List<PathSegment> segments,
-                    Set<FlowApplication> applications, boolean srcWithMultiTable, boolean destWithMultiTable) {
+                    Set<FlowApplication> applications, boolean srcWithMultiTable, boolean destWithMultiTable,
+                    String sharedBandwidthGroupId) {
         data = FlowPathDataImpl.builder().pathId(pathId).srcSwitch(srcSwitch).destSwitch(destSwitch)
                 .cookie(cookie).meterId(meterId).ingressMirrorGroupId(ingressMirrorGroupId)
                 .latency(latency).bandwidth(bandwidth)
                 .ignoreBandwidth(ignoreBandwidth).status(status)
                 .applications(applications).srcWithMultiTable(srcWithMultiTable).destWithMultiTable(destWithMultiTable)
+                .sharedBandwidthGroupId(sharedBandwidthGroupId)
                 .build();
         // The reference is used to link path segments back to the path. See {@link #setSegments(List)}.
         ((FlowPathDataImpl) data).flowPath = this;
@@ -146,6 +148,45 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         return flow != null && flow.isProtectedPath(getPathId());
     }
 
+    /**
+     * Sets the bandwidth.
+     * This also updates the corresponding path segments.
+     */
+    public void setBandwidth(long bandwidth) {
+        data.setBandwidth(bandwidth);
+
+        List<PathSegment> segments = getSegments();
+        if (segments != null) {
+            segments.forEach(segment -> segment.getData().setBandwidth(bandwidth));
+        }
+    }
+
+    /**
+     * Sets the ignoreBandwidth flag.
+     * This also updates the corresponding path segments.
+     */
+    public void setIgnoreBandwidth(boolean ignoreBandwidth) {
+        data.setIgnoreBandwidth(ignoreBandwidth);
+
+        List<PathSegment> segments = getSegments();
+        if (segments != null) {
+            segments.forEach(segment -> segment.getData().setIgnoreBandwidth(ignoreBandwidth));
+        }
+    }
+
+    /**
+     * Sets the sharedBandwidthGroupId.
+     * This also updates the corresponding path segments.
+     */
+    public void setSharedBandwidthGroupId(String sharedBandwidthGroupId) {
+        data.setSharedBandwidthGroupId(sharedBandwidthGroupId);
+
+        List<PathSegment> segments = getSegments();
+        if (segments != null) {
+            segments.forEach(segment -> segment.getData().setSharedBandwidthGroupId(sharedBandwidthGroupId));
+        }
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -173,6 +214,7 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
                 .append(getApplications(), that.getApplications())
                 .append(isSrcWithMultiTable(), that.isSrcWithMultiTable())
                 .append(isDestWithMultiTable(), that.isDestWithMultiTable())
+                .append(getSharedBandwidthGroupId(), that.getSharedBandwidthGroupId())
                 .isEquals();
     }
 
@@ -180,7 +222,8 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
     public int hashCode() {
         return Objects.hash(getPathId(), getSrcSwitchId(), getDestSwitchId(), getFlowId(), getCookie(), getMeterId(),
                 getLatency(), getBandwidth(), isIgnoreBandwidth(), getTimeCreate(), getTimeModify(), getStatus(),
-                getSegments(), getApplications(), isSrcWithMultiTable(), isDestWithMultiTable());
+                getSegments(), getApplications(), isSrcWithMultiTable(), isDestWithMultiTable(),
+                getSharedBandwidthGroupId());
     }
 
     /**
@@ -262,6 +305,21 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         Set<FlowMirrorPoints> getFlowMirrorPointsSet();
 
         void addFlowMirrorPoints(FlowMirrorPoints flowMirrorPoints);
+
+        String getSharedBandwidthGroupId();
+
+        void setSharedBandwidthGroupId(String sharedBandwidthGroupId);
+    }
+
+    /**
+     * Defines methods which don't need to be delegated.
+     */
+    interface FlowPathInternalData {
+        void setBandwidth(long bandwidth);
+
+        void setIgnoreBandwidth(boolean ignoreBandwidth);
+
+        void setSharedBandwidthGroupId(String sharedBandwidthGroupId);
     }
 
     /**
@@ -300,14 +358,6 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         @EqualsAndHashCode.Exclude
         final Set<FlowMirrorPoints> flowMirrorPointsSet = new HashSet<>();
 
-        public void setPathId(PathId pathId) {
-            this.pathId = pathId;
-
-            if (segments != null) {
-                segments.forEach(segment -> segment.getData().setPathId(pathId));
-            }
-        }
-
         // The reference is used to link path segments back to the path. See {@link #setSegments(List)}.
         @Setter(AccessLevel.NONE)
         @Getter(AccessLevel.NONE)
@@ -317,6 +367,15 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
 
         boolean srcWithMultiTable;
         boolean destWithMultiTable;
+        String sharedBandwidthGroupId;
+
+        public void setPathId(PathId pathId) {
+            this.pathId = pathId;
+
+            if (segments != null) {
+                segments.forEach(segment -> segment.getData().setPathId(pathId));
+            }
+        }
 
         @Override
         public String getFlowId() {
@@ -331,22 +390,6 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         @Override
         public SwitchId getDestSwitchId() {
             return destSwitch.getSwitchId();
-        }
-
-        public void setBandwidth(long bandwidth) {
-            this.bandwidth = bandwidth;
-
-            if (segments != null) {
-                segments.forEach(segment -> segment.getData().setBandwidth(bandwidth));
-            }
-        }
-
-        public void setIgnoreBandwidth(boolean ignoreBandwidth) {
-            this.ignoreBandwidth = ignoreBandwidth;
-
-            if (segments != null) {
-                segments.forEach(segment -> segment.getData().setIgnoreBandwidth(ignoreBandwidth));
-            }
         }
 
         @Override
@@ -366,11 +409,11 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
                 data.setSeqId(idx);
                 data.setIgnoreBandwidth(ignoreBandwidth);
                 data.setBandwidth(bandwidth);
+                data.setSharedBandwidthGroupId(sharedBandwidthGroupId);
             }
 
             this.segments = new ArrayList<>(segments);
         }
-
 
         @Override
         public void addFlowMirrorPoints(FlowMirrorPoints flowMirrorPoints) {

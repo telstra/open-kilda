@@ -41,6 +41,8 @@ import org.openkilda.persistence.tx.TransactionManager;
 import com.syncleus.ferma.FramedGraph;
 import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
+import org.apache.tinkerpop.gremlin.structure.Column;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -366,7 +368,13 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
                 .has(PathSegmentFrame.SRC_PORT_PROPERTY, srcPort)
                 .has(PathSegmentFrame.DST_PORT_PROPERTY, dstPort)
                 .has(PathSegmentFrame.IGNORE_BANDWIDTH_PROPERTY, false)
-                .values(PathSegmentFrame.BANDWIDTH_PROPERTY)
+                .choose(__.has(PathSegmentFrame.SHARED_BANDWIDTH_GROUP_ID_PROPERTY),
+                        __.group()
+                                .by(PathSegmentFrame.SHARED_BANDWIDTH_GROUP_ID_PROPERTY)
+                                .by(__.values(PathSegmentFrame.BANDWIDTH_PROPERTY).max())
+                                .select(Column.values)
+                                .unfold(),
+                        __.values(PathSegmentFrame.BANDWIDTH_PROPERTY))
                 .sum())
                 .getRawTraversal()) {
             return traversal.tryNext()

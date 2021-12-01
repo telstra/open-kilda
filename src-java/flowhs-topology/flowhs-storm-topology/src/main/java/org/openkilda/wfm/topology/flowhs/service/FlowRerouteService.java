@@ -75,6 +75,7 @@ public class FlowRerouteService extends FsmBasedFlowProcessingService<FlowRerout
         }
 
         FlowRerouteFsm fsm = fsmFactory.newInstance(commandContext, flowId);
+        fsm.setSharedBandwidthGroupId(flowId);
         registerFsm(key, fsm);
 
         FlowRerouteContext context = FlowRerouteContext.builder()

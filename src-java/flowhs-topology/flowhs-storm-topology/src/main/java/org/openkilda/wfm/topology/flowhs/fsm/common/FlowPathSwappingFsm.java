@@ -44,6 +44,7 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C, R
         R extends FlowGenericCarrier> extends NbTrackableFsm<T, S, E, C, R> {
 
     protected final String flowId;
+    protected String sharedBandwidthGroupId;
 
     protected FlowResources newPrimaryResources;
     protected FlowResources newProtectedResources;

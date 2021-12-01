@@ -259,14 +259,16 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
 
             FlowPath forward = flowPathBuilder.buildFlowPath(
                     flow, flowResources.getForward(), paths.getForward(),
-                    cookieBuilder.direction(FlowPathDirection.FORWARD).build(), false);
+                    cookieBuilder.direction(FlowPathDirection.FORWARD).build(), false,
+                    stateMachine.getSharedBandwidthGroupId());
             forward.setStatus(FlowPathStatus.IN_PROGRESS);
             flowPathRepository.add(forward);
             flow.setForwardPath(forward);
 
             FlowPath reverse = flowPathBuilder.buildFlowPath(
                     flow, flowResources.getReverse(), paths.getReverse(),
-                    cookieBuilder.direction(FlowPathDirection.REVERSE).build(), false);
+                    cookieBuilder.direction(FlowPathDirection.REVERSE).build(), false,
+                    stateMachine.getSharedBandwidthGroupId());
             reverse.setStatus(FlowPathStatus.IN_PROGRESS);
             flowPathRepository.add(reverse);
             flow.setReversePath(reverse);
@@ -312,14 +314,16 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
 
             FlowPath forward = flowPathBuilder.buildFlowPath(
                     flow, flowResources.getForward(), protectedPath.getForward(),
-                    cookieBuilder.direction(FlowPathDirection.FORWARD).build(), false);
+                    cookieBuilder.direction(FlowPathDirection.FORWARD).build(), false,
+                    stateMachine.getSharedBandwidthGroupId());
             forward.setStatus(FlowPathStatus.IN_PROGRESS);
             flowPathRepository.add(forward);
             flow.setProtectedForwardPath(forward);
 
             FlowPath reverse = flowPathBuilder.buildFlowPath(
                     flow, flowResources.getReverse(), protectedPath.getReverse(),
-                    cookieBuilder.direction(FlowPathDirection.REVERSE).build(), false);
+                    cookieBuilder.direction(FlowPathDirection.REVERSE).build(), false,
+                    stateMachine.getSharedBandwidthGroupId());
             reverse.setStatus(FlowPathStatus.IN_PROGRESS);
             flowPathRepository.add(reverse);
             flow.setProtectedReversePath(reverse);

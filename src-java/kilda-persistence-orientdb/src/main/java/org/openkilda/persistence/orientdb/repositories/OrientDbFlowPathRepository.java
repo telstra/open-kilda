@@ -20,18 +20,14 @@ import static java.lang.String.format;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.ferma.frames.FlowFrame;
 import org.openkilda.persistence.ferma.frames.FlowPathFrame;
-import org.openkilda.persistence.ferma.frames.PathSegmentFrame;
 import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
 import org.openkilda.persistence.ferma.repositories.FermaFlowPathRepository;
 import org.openkilda.persistence.orientdb.OrientDbPersistenceImplementation;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 
-import com.syncleus.ferma.FramedGraph;
-import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResult;
 import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResultSet;
 
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.stream.Collectors;
 
 /**
@@ -67,6 +63,7 @@ public class OrientDbFlowPathRepository extends FermaFlowPathRepository {
         }
     }
 
+    /*TODO: this need to be reimplemented to work with PathSegmentFrame.SHARED_BANDWIDTH_GROUP_ID_PROPERTY
     @Override
     protected long getUsedBandwidthBetweenEndpoints(FramedGraph framedGraph,
                                                     String srcSwitchId, int srcPort, String dstSwitchId, int dstPort) {
@@ -87,4 +84,5 @@ public class OrientDbFlowPathRepository extends FermaFlowPathRepository {
             return 0;
         }
     }
+    */
 }

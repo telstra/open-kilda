@@ -80,7 +80,7 @@ public class AllocatePrimaryResourcesAction extends
         log.debug("Finding a new primary path for flow {}", flowId);
         GetPathsResult allocatedPaths = allocatePathPair(tmpFlowCopy, newForwardPathId, newReversePathId,
                 stateMachine.isIgnoreBandwidth(), pathsToReuse, oldPaths, stateMachine.isRecreateIfSamePath(),
-                path -> true);
+                stateMachine.getSharedBandwidthGroupId(), path -> true);
         if (allocatedPaths != null) {
             log.debug("New primary paths have been allocated: {}", allocatedPaths);
             stateMachine.setBackUpPrimaryPathComputationWayUsed(allocatedPaths.isBackUpPathComputationWayUsed());
@@ -92,7 +92,7 @@ public class AllocatePrimaryResourcesAction extends
             stateMachine.setNewPrimaryResources(flowResources);
 
             FlowPathPair createdPaths = createFlowPathPair(flowId, flowResources, allocatedPaths,
-                    stateMachine.isIgnoreBandwidth());
+                    stateMachine.isIgnoreBandwidth(), stateMachine.getSharedBandwidthGroupId());
             log.debug("New primary paths have been created: {}", createdPaths);
 
             setMirrorPointsToNewPath(oldPaths.getForwardPathId(), newForwardPathId);
