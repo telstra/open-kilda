@@ -1,0 +1,123 @@
+@startuml
+title Update y-flow
+
+boundary Northbound
+box "Flow HS Topology" #LightGreen
+    participant YFlowUpdateHub
+    participant YFlowValidator
+    participant PathComputer
+    participant FlowUpdateService1 as "FlowUpdateService + FSM 1"
+    participant FlowUpdateService2 as "FlowUpdateService + FSM 2"
+    participant FlowResourcesManager
+    participant RuleManager
+    participant SpeakerWorker
+end box
+database OrientDB
+
+Northbound -> YFlowUpdateHub : YFlowUpdateRequest
+activate YFlowUpdateHub
+YFlowUpdateHub -> OrientDB : Update y-flow status to lock it
+alt Y-flow is already locked
+    Northbound <- YFlowUpdateHub : Y-flow update error
+end
+
+==Validate Y-Flow==
+YFlowUpdateHub -> YFlowValidator : Validate the y-flow
+activate YFlowValidator
+YFlowUpdateHub <- YFlowValidator
+deactivate YFlowValidator
+alt Validation error
+    Northbound <- YFlowUpdateHub : Y-flow update error
+end
+
+==Validate sub-flows==
+YFlowUpdateHub -> FlowUpdateService1 : Initiate the flow update
+deactivate YFlowUpdateHub
+activate FlowUpdateService1
+YFlowUpdateHub <- FlowUpdateService1 : Callback: validation passed, path is found, resources are allocated
+activate YFlowUpdateHub
+YFlowUpdateHub -> FlowUpdateService2 : Initiate the flow update
+deactivate YFlowUpdateHub
+activate FlowUpdateService2
+YFlowUpdateHub <- FlowUpdateService2 : Callback: validation passed, path is found, resources are allocated
+activate YFlowUpdateHub
+
+alt Flow update failed or timeout
+    Northbound <- YFlowUpdateHub : Y-flow update error
+    YFlowUpdateHub <- YFlowUpdateHub : Rollback
+end
+Northbound <- YFlowUpdateHub : Y-flow update is in progress
+deactivate YFlowUpdateHub
+
+==Complete sub-flow update==
+FlowUpdateService1 -> SpeakerWorker : Send install/validate rules command
+deactivate FlowUpdateService1
+FlowUpdateService1 <- SpeakerWorker
+activate FlowUpdateService1
+FlowUpdateService2 -> SpeakerWorker : Send install/validate rules command
+deactivate FlowUpdateService2
+FlowUpdateService2 <- SpeakerWorker
+activate FlowUpdateService2
+
+FlowUpdateService1 -> OrientDB : Update sub-flow entity & ISLs available bandwidth
+FlowUpdateService2 -> OrientDB : Update sub-flow entity & ISLs available bandwidth
+
+FlowUpdateService1 -> SpeakerWorker : Send remove old rules command
+deactivate FlowUpdateService1
+FlowUpdateService1 <- SpeakerWorker
+activate FlowUpdateService1
+FlowUpdateService2 -> SpeakerWorker : Send remove old rules command
+deactivate FlowUpdateService2
+FlowUpdateService2 <- SpeakerWorker
+activate FlowUpdateService2
+
+FlowUpdateService1 -> FlowResourcesManager : Deallocate resources for old sub-flow paths
+FlowUpdateService2 -> FlowResourcesManager : Deallocate resources for old sub-flow paths
+
+FlowUpdateService1 -> OrientDB : Remove old sub-flow paths
+FlowUpdateService2 -> OrientDB : Remove old sub-flow paths
+
+YFlowUpdateHub <- FlowUpdateService1 : Callback: update completed
+deactivate FlowUpdateService1
+activate YFlowUpdateHub
+YFlowUpdateHub <- FlowUpdateService2 : Callback: update completed
+deactivate FlowUpdateService2
+
+alt Flow update failed or timeout
+    YFlowUpdateHub <- YFlowUpdateHub : Rollback
+end
+
+==Complete y-flow update==
+YFlowUpdateHub -> PathComputer : Calculate the new y-point
+activate PathComputer
+YFlowUpdateHub <- PathComputer
+deactivate PathComputer
+
+YFlowUpdateHub -> FlowResourcesManager : Allocate the new y-point meter (and shared endpoint meter if needed)
+activate FlowResourcesManager
+YFlowUpdateHub <- FlowResourcesManager
+deactivate FlowResourcesManager
+
+YFlowUpdateHub -> OrientDB : Save y-flow entities
+
+YFlowUpdateHub -> SpeakerWorker : Send install/validate the new y-point meter (and shared endpoint meter if needed)
+deactivate YFlowUpdateHub
+YFlowUpdateHub <- SpeakerWorker
+activate YFlowUpdateHub
+
+YFlowUpdateHub -> SpeakerWorker : Send remove the old y-point meter (and shared endpoint meter if needed)
+deactivate YFlowUpdateHub
+YFlowUpdateHub <- SpeakerWorker
+activate YFlowUpdateHub
+
+YFlowUpdateHub -> FlowResourcesManager : Deallocate the old y-point meter (and shared endpoint meter if needed)
+activate FlowResourcesManager
+YFlowUpdateHub <- FlowResourcesManager
+deactivate FlowResourcesManager
+
+== Completing ==
+YFlowUpdateHub -> OrientDB : Update y-flow status
+
+deactivate YFlowUpdateHub
+
+@enduml

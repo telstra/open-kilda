@@ -53,6 +53,7 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
             .server42FlowRtt(false)
             .flowLatencyMonitoringReactions(false)
             .server42IslRtt(false)
+            .modifyYFlowEnabled(false)
             .build();
 
     @Getter
@@ -84,7 +85,7 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
                                Boolean floodlightRoutePeriodicSync,
                                Boolean flowsRerouteUsingDefaultEncapType, Boolean collectGrpcStats,
                                Boolean server42FlowRtt, Boolean flowLatencyMonitoringReactions,
-                               Boolean server42IslRtt) {
+                               Boolean server42IslRtt, Boolean modifyYFlowEnabled) {
         data = KildaFeatureTogglesDataImpl.builder()
                 .flowsRerouteOnIslDiscoveryEnabled(flowsRerouteOnIslDiscoveryEnabled)
                 .createFlowEnabled(createFlowEnabled).updateFlowEnabled(updateFlowEnabled)
@@ -95,6 +96,7 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
                 .server42IslRtt(server42IslRtt)
                 .collectGrpcStats(collectGrpcStats)
                 .flowLatencyMonitoringReactions(flowLatencyMonitoringReactions)
+                .modifyYFlowEnabled(modifyYFlowEnabled)
                 .build();
     }
 
@@ -123,6 +125,7 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
                 .append(getServer42FlowRtt(), that.getServer42FlowRtt())
                 .append(getFlowLatencyMonitoringReactions(), that.getFlowLatencyMonitoringReactions())
                 .append(getServer42IslRtt(), that.getServer42IslRtt())
+                .append(getModifyYFlowEnabled(), that.getModifyYFlowEnabled())
                 .isEquals();
     }
 
@@ -132,7 +135,7 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
                 getUpdateFlowEnabled(), getDeleteFlowEnabled(),
                 getUseBfdForIslIntegrityCheck(), getFloodlightRoutePeriodicSync(),
                 getFlowsRerouteUsingDefaultEncapType(), getCollectGrpcStats(), getServer42FlowRtt(),
-                getFlowLatencyMonitoringReactions(), getServer42IslRtt());
+                getFlowLatencyMonitoringReactions(), getServer42IslRtt(), getModifyYFlowEnabled());
     }
 
     /**
@@ -182,6 +185,10 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
         Boolean getServer42IslRtt();
 
         void setServer42IslRtt(Boolean server42IslRtt);
+
+        Boolean getModifyYFlowEnabled();
+
+        void setModifyYFlowEnabled(Boolean modifyYFlowEnabled);
     }
 
     /**
@@ -204,6 +211,7 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
         Boolean server42FlowRtt;
         Boolean flowLatencyMonitoringReactions;
         Boolean server42IslRtt;
+        Boolean modifyYFlowEnabled;
     }
 
     /**
@@ -264,6 +272,9 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
             }
             if (target.getServer42IslRtt() == null) {
                 target.setServer42IslRtt(source.getServer42IslRtt());
+            }
+            if (target.getModifyYFlowEnabled() == null) {
+                target.setModifyYFlowEnabled(source.getModifyYFlowEnabled());
             }
         }
     }

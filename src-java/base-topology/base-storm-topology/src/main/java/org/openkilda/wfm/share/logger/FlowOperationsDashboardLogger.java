@@ -16,6 +16,7 @@
 package org.openkilda.wfm.share.logger;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.SwitchId;
@@ -26,6 +27,7 @@ import org.slf4j.event.Level;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
@@ -47,6 +49,9 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     private static final String FLOW_MIRROR_POINT_CREATE_RESULT_EVENT = "flow_mirror_point_create_result";
     private static final String FLOW_MIRROR_POINT_DELETE_EVENT = "flow_mirror_point_delete";
     private static final String FLOW_MIRROR_POINT_DELETE_RESULT_EVENT = "flow_mirror_point_create_delete";
+
+    private static final String YFLOW_CREATE_EVENT = "y_flow_create";
+    private static final String YFLOW_CREATE_RESULT_EVENT = "y_flow_create_result";
 
     private static final String TAG = "FLOW_OPERATIONS_DASHBOARD";
     private static final String DASHBOARD = "dashboard";
@@ -442,4 +447,54 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
                 flowMirrorPointId, flowId, failureReason), data);
     }
 
+    /**
+     * Log a y-flow-create event.
+     */
+    public void onYFlowCreate(String yFlowId, FlowEndpoint sharedEndpoint,
+                              List<FlowEndpoint> subFlowEndpoints, long maximumBandwidth) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-create");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_CREATE_EVENT);
+        invokeLogger(Level.INFO, String.format("Create the y-flow: %s, shared endpoint %s, endpoints (%s), "
+                        + "bandwidth %d", yFlowId, sharedEndpoint, subFlowEndpoints, maximumBandwidth), data);
+    }
+
+    /**
+     * Log a y-flow-create-successful event.
+     */
+    public void onSuccessfulYFlowCreate(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-create-successful");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_CREATE_RESULT_EVENT);
+        data.put("create-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful create of the y-flow %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-create-failed event.
+     */
+    public void onFailedYFlowCreate(String yFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-create-failed");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_CREATE_RESULT_EVENT);
+        data.put("update-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed create of the y-flow %s, reason: %s", yFlowId, failureReason),
+                data);
+    }
+
+    /**
+     * Log a y-flow-status-update event.
+     */
+    public void onYFlowStatusUpdate(String yFlowId, FlowStatus status) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-status-update");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, STATUS_UPDATE_EVENT);
+        data.put("status", status.toString());
+        invokeLogger(Level.INFO, String.format("Update the status of the y-flow %s to %s", yFlowId, status), data);
+    }
 }

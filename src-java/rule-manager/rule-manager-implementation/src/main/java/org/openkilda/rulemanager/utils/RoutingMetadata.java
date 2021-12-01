@@ -17,12 +17,15 @@ package org.openkilda.rulemanager.utils;
 
 import static java.lang.String.format;
 
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.bitops.BitField;
 import org.openkilda.model.bitops.NumericEnumField;
 
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+
+import java.util.Set;
 
 @Getter
 @EqualsAndHashCode(of = {"value", "mask"})
@@ -127,5 +130,31 @@ public class RoutingMetadata {
             result = setField(result, FULL_MASK, INPUT_PORT_FIELD);
         }
         return result;
+    }
+
+    public static class RoutingMetadataBuilder {
+        /**
+         * Choose correct metadata representation and build instance.
+         */
+        public RoutingMetadata build(Set<SwitchFeature> features) {
+            if (isMetadataTruncatedTo32Bits(features)) {
+                return buildTruncatedTo32Bits();
+            } else {
+                return buildGeneric();
+            }
+        }
+
+        private RoutingMetadata buildTruncatedTo32Bits() {
+            // todo fix 32-bits metadata
+            return new RoutingMetadata(lldpFlag, arpFlag, oneSwitchFlowFlag, outerVlanId, inputPort);
+        }
+
+        private RoutingMetadata buildGeneric() {
+            return new RoutingMetadata(lldpFlag, arpFlag, oneSwitchFlowFlag, outerVlanId, inputPort);
+        }
+    }
+
+    protected static boolean isMetadataTruncatedTo32Bits(Set<SwitchFeature> features) {
+        return features.contains(SwitchFeature.HALF_SIZE_METADATA);
     }
 }

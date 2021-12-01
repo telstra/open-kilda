@@ -26,5 +26,6 @@ public enum ActionType {
     PUSH_VXLAN_NOVIFLOW,
     PUSH_VXLAN_OVS,
     SET_FIELD,
-    METER
+    METER,
+    NOVI_COPY_FIELD
 }

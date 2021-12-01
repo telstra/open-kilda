@@ -95,5 +95,15 @@ public interface RuleManagerConfig extends Serializable {
     @Key("flow-ping-magic-src-mac-address")
     @Default("00:26:E1:FF:FF:FE")
     String getFlowPingMagicSrcMacAddress();
+
+    /**
+     * This offset is used for encoding flow in_port number into udp_src port of Server 42 Flow RTT packets.
+     * Example: Flow with in_port 10. Server 42 Input rule will match RTT packets by
+     * udp_src port number 5010 (offset + flow in_port).
+     * We need an offset to do not intersect with some popular ports (like 22 port for ssh)
+     */
+    @Key("server42-flow-rtt-udp-port-offset")
+    @Default("5000")
+    int getServer42FlowRttUdpPortOffset();
 }
 

@@ -60,3 +60,9 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 016-remove-flow-latency-properties.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 017-add-yflow-classes.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 018-add-support-of-yflow-meters.yaml

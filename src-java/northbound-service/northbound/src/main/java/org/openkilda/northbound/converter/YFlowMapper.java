@@ -47,7 +47,11 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+import java.util.stream.Collectors;
+
 @Mapper(componentModel = "spring",
+        uses = {FlowEncapsulationTypeMapper.class, FlowStatusMapper.class, PathComputationStrategyMapper.class,
+                InstantMapper.class},
         imports = {FlowEndpointPayload.class, FlowEndpointV2.class})
 public abstract class YFlowMapper {
 
@@ -74,10 +78,19 @@ public abstract class YFlowMapper {
     @Mapping(target = "nodes", source = "path.path")
     public abstract SubFlowPath toSubFlowPath(SubFlowPathDto flow);
 
-    @Mapping(target = "nodes", source = "path")
-    public abstract YFlowPath toYFlowPath(PathInfoData path);
+    /**
+     * Convert {@link PathInfoData} to {@link YFlowPath}.
+     */
+    public YFlowPath toYFlowPath(PathInfoData path) {
+        if (path != null && path.getPath() != null && !path.getPath().isEmpty()) {
+            return YFlowPath.builder()
+                    .nodes(path.getPath().stream().map(this::toPathNodeV2).collect(Collectors.toList()))
+                    .build();
+        }
+        return null;
+    }
 
-    @Mapping(target = "segmentLatency", ignore = true)
+    @Mapping(target = "segmentLatency", source = "segLatency")
     public abstract FlowPathV2.PathNodeV2 toPathNodeV2(PathNode pathNode);
 
     @Mapping(target = "type", constant = "CREATE")

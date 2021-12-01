@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.pathswap;
 
-import org.openkilda.messaging.Message;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -47,6 +46,7 @@ import org.openkilda.wfm.topology.flowhs.service.FlowPathSwapHubCarrier;
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
@@ -57,14 +57,12 @@ import java.util.concurrent.TimeUnit;
 @Getter
 @Setter
 @Slf4j
-public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, State, Event, FlowPathSwapContext> {
+public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, State, Event, FlowPathSwapContext,
+        FlowPathSwapHubCarrier> {
 
-    private final FlowPathSwapHubCarrier carrier;
-
-    public FlowPathSwapFsm(CommandContext commandContext, FlowPathSwapHubCarrier carrier,
+    public FlowPathSwapFsm(CommandContext commandContext, @NonNull FlowPathSwapHubCarrier carrier,
                            String flowId) {
-        super(commandContext, flowId);
-        this.carrier = carrier;
+        super(commandContext, carrier, flowId);
     }
 
     @Override
@@ -90,11 +88,6 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
     @Override
     public void fireNoPathFound(String errorReason) {
 
-    }
-
-    @Override
-    public void sendNorthboundResponse(Message message) {
-        carrier.sendNorthboundResponse(message);
     }
 
     @Override

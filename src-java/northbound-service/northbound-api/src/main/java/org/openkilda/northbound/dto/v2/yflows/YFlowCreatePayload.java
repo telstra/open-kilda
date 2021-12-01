@@ -22,7 +22,6 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.util.List;
-import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.PositiveOrZero;
 
 @Data
@@ -34,9 +33,7 @@ public class YFlowCreatePayload {
 
     @PositiveOrZero(message = "maximumBandwidth can't be negative")
     long maximumBandwidth;
-    @NotBlank(message = "pathComputationStrategy should be provided")
     String pathComputationStrategy;
-    @NotBlank(message = "encapsulationType should be provided")
     String encapsulationType;
     @PositiveOrZero(message = "maxLatency can't be negative")
     Long maxLatency;

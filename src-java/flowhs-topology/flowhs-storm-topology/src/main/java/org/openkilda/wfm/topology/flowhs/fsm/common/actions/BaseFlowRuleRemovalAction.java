@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
  * A base for action classes that remove or revert flow rules.
  */
 @Slf4j
-public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S, E, C>, S, E, C> extends
+public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S, E, C, ?>, S, E, C> extends
         FlowProcessingAction<T, S, E, C> {
     protected final FlowCommandBuilderFactory commandBuilderFactory;
 

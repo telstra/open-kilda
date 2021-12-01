@@ -44,6 +44,7 @@ import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.VxlanRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
 import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
@@ -218,5 +219,10 @@ public class FermaRepositoryFactory implements RepositoryFactory {
     @Override
     public PhysicalPortRepository createPhysicalPortRepository() {
         return new FermaPhysicalPortRepository(implementation);
+    }
+
+    @Override
+    public YFlowRepository createYFlowRepository() {
+        return new FermaYFlowRepository(implementation);
     }
 }

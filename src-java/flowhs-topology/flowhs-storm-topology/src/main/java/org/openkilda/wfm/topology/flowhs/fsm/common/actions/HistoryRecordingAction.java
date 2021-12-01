@@ -23,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 @Slf4j
-public abstract class HistoryRecordingAction<T extends WithHistorySupportFsm<T, S, E, C>, S, E, C>
+public abstract class HistoryRecordingAction<T extends WithHistorySupportFsm<T, S, E, C, ?>, S, E, C>
         extends AnonymousAction<T, S, E, C> {
     @Override
     public final void execute(S from, S to, E event, C context, T stateMachine) {

@@ -27,7 +27,7 @@ import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
 import static org.openkilda.model.cookie.CookieBase.CookieType.MULTI_TABLE_INGRESS_RULES;
 import static org.openkilda.rulemanager.Utils.assertEqualsMatch;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
-import static org.openkilda.rulemanager.Utils.mapMetadata;
+import static org.openkilda.rulemanager.utils.Utils.mapMetadata;
 
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.adapter.FlowSourceAdapter;
@@ -310,8 +310,9 @@ public class MultiTableIngressRuleGeneratorTest {
     public void buildMatchVlanEncapsulationDoubleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint());
-        RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1).build();
+        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), SWITCH_1);
+        RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
+                .build(SWITCH_1.getFeatures());
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
                 FieldMatch.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID_1).build(),
@@ -324,8 +325,9 @@ public class MultiTableIngressRuleGeneratorTest {
     public void buildMatchVlanEncapsulationSingleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
         MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint());
-        RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1).build();
+        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), SWITCH_1);
+        RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
+                .build(SWITCH_1.getFeatures());
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
                 FieldMatch.builder().field(Field.METADATA).value(metadata.getValue()).mask(metadata.getMask()).build()
@@ -337,7 +339,7 @@ public class MultiTableIngressRuleGeneratorTest {
     public void buildMatchVlanEncapsulationFullPortTest() {
         Flow flow = buildFlow(PATH, 0, 0);
         MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint());
+        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), SWITCH_1);
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()
         );
@@ -359,7 +361,7 @@ public class MultiTableIngressRuleGeneratorTest {
         List<Action> expectedIngressActions = newArrayList(
                 PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID_2).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_2)));
-        RoutingMetadata metadata = RoutingMetadata.builder().oneSwitchFlowFlag(true).build();
+        RoutingMetadata metadata = RoutingMetadata.builder().oneSwitchFlowFlag(true).build(SWITCH_1.getFeatures());
         assertIngressCommand(ingressCommand, Priority.DEFAULT_FLOW_PRIORITY, expectedIngressMatch,
                 expectedIngressActions, null, mapMetadata(metadata));
         assertInputCustomerCommand(inputCustomerCommand, new PortColourCookie(MULTI_TABLE_INGRESS_RULES, PORT_NUMBER_1),
@@ -385,14 +387,16 @@ public class MultiTableIngressRuleGeneratorTest {
         FlowSharedSegmentCookie preIngressCookie = FlowSharedSegmentCookie.builder(SharedSegmentType.QINQ_OUTER_VLAN)
                 .portNumber(PORT_NUMBER_1)
                 .vlanId(OUTER_VLAN_ID_1).build();
-        RoutingMetadata preIngressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1).build();
+        RoutingMetadata preIngressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
+                .build(SWITCH_1.getFeatures());
         assertPreIngressCommand(preIngressCommand, preIngressCookie, Priority.FLOW_PRIORITY, expectedPreIngressMatch,
                 newArrayList(new PopVlanAction()), mapMetadata(preIngressMetadata));
 
         assertInputCustomerCommand(inputCustomerCommand, new PortColourCookie(MULTI_TABLE_INGRESS_RULES, PORT_NUMBER_1),
                 Sets.newHashSet(FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()));
 
-        RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1).build();
+        RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
+                .build(SWITCH_1.getFeatures());
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
                 FieldMatch.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID_1).build(),
@@ -402,8 +406,8 @@ public class MultiTableIngressRuleGeneratorTest {
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_2))
         );
-        assertIngressCommand(ingressCommand, Priority.FLOW_PRIORITY, expectedIngressMatch, expectedIngressActions,
-                METER_ID, null);
+        assertIngressCommand(ingressCommand, Priority.DOUBLE_VLAN_FLOW_PRIORITY, expectedIngressMatch,
+                expectedIngressActions, METER_ID, null);
 
         assertMeterCommand(meterCommand);
     }
@@ -422,7 +426,8 @@ public class MultiTableIngressRuleGeneratorTest {
         MeterSpeakerCommandData meterCommand = (MeterSpeakerCommandData) commands.get(1);
         assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
 
-        RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1).build();
+        RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
+                .build(SWITCH_1.getFeatures());
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
                 FieldMatch.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID_1).build(),
@@ -433,8 +438,8 @@ public class MultiTableIngressRuleGeneratorTest {
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_2))
         );
-        assertIngressCommand(ingressCommand, Priority.FLOW_PRIORITY, expectedIngressMatch, expectedIngressActions,
-                METER_ID, null);
+        assertIngressCommand(ingressCommand, Priority.DOUBLE_VLAN_FLOW_PRIORITY, expectedIngressMatch,
+                expectedIngressActions, METER_ID, null);
         assertMeterCommand(meterCommand);
     }
 
@@ -453,7 +458,8 @@ public class MultiTableIngressRuleGeneratorTest {
         MeterSpeakerCommandData meterCommand = (MeterSpeakerCommandData) commands.get(2);
         assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
 
-        RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1).build();
+        RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
+                .build(SWITCH_1.getFeatures());
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
                 FieldMatch.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID_1).build(),
@@ -471,12 +477,13 @@ public class MultiTableIngressRuleGeneratorTest {
         FlowSharedSegmentCookie preIngressCookie = FlowSharedSegmentCookie.builder(SharedSegmentType.QINQ_OUTER_VLAN)
                 .portNumber(PORT_NUMBER_1)
                 .vlanId(OUTER_VLAN_ID_1).build();
-        RoutingMetadata preIngressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1).build();
+        RoutingMetadata preIngressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
+                .build(SWITCH_1.getFeatures());
         assertPreIngressCommand(preIngressCommand, preIngressCookie, Priority.FLOW_PRIORITY, expectedPreIngressMatch,
                 newArrayList(new PopVlanAction()), mapMetadata(preIngressMetadata));
 
-        assertIngressCommand(ingressCommand, Priority.FLOW_PRIORITY, expectedIngressMatch, expectedIngressActions,
-                METER_ID, null);
+        assertIngressCommand(ingressCommand, Priority.DOUBLE_VLAN_FLOW_PRIORITY, expectedIngressMatch,
+                expectedIngressActions, METER_ID, null);
         assertMeterCommand(meterCommand);
     }
 

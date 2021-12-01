@@ -25,9 +25,26 @@ import static org.openkilda.rulemanager.Utils.buildSwitchProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.rulemanager.factory.RuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.BfdCatchRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.BroadCastDiscoveryRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.DropDiscoveryLoopRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.TableDefaultRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.TablePassThroughDefaultRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.UniCastDiscoveryRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.UnicastVerificationVxlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.arp.ArpIngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.arp.ArpInputPreDropRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressOneSwitchRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressVxlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.arp.ArpTransitRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.lldp.LldpIngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.lldp.LldpInputPreDropRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.lldp.LldpPostIngressOneSwitchRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.lldp.LldpPostIngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.lldp.LldpPostIngressVxlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.lldp.LldpTransitRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.noviflow.RoundTripLatencyRuleGenerator;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -58,10 +75,14 @@ public class RuleManagerServiceRulesTest {
 
         List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(switchProperties);
 
-        assertEquals(3, generators.size());
+        assertEquals(7, generators.size());
         assertTrue(generators.stream().anyMatch(g -> g instanceof TableDefaultRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof DropDiscoveryLoopRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof BfdCatchRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof RoundTripLatencyRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof UnicastVerificationVxlanRuleGenerator));
     }
 
     @Test
@@ -71,10 +92,52 @@ public class RuleManagerServiceRulesTest {
 
         List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(switchProperties);
 
-        assertEquals(6, generators.size());
+        assertEquals(18, generators.size());
+        assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof DropDiscoveryLoopRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof BfdCatchRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof RoundTripLatencyRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof UnicastVerificationVxlanRuleGenerator));
+
+        assertEquals(4, generators.stream().filter(g -> g instanceof TableDefaultRuleGenerator).count());
+        assertEquals(2, generators.stream().filter(g -> g instanceof TablePassThroughDefaultRuleGenerator).count());
+
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressVxlanRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressOneSwitchRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressVxlanRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressOneSwitchRuleGenerator));
+    }
+
+    @Test
+    public void shouldUseCorrectServiceRuleGeneratorsForSwitchInMultiTableModeWithSwitchArpAndLldp() {
+        Switch sw = buildSwitch("OF_13", Collections.emptySet());
+        SwitchProperties switchProperties = buildSwitchProperties(sw, true, true, true);
+
+        List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(switchProperties);
+
+        assertEquals(24, generators.size());
         assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
 
         assertEquals(4, generators.stream().filter(g -> g instanceof TableDefaultRuleGenerator).count());
+        assertEquals(2, generators.stream().filter(g -> g instanceof TablePassThroughDefaultRuleGenerator).count());
+
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressVxlanRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressOneSwitchRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressVxlanRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressOneSwitchRuleGenerator));
+
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpTransitRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpInputPreDropRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpIngressRuleGenerator));
+
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpTransitRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpInputPreDropRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpIngressRuleGenerator));
     }
 }

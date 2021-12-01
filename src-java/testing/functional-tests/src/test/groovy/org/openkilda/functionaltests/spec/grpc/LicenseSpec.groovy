@@ -9,6 +9,7 @@ import org.openkilda.messaging.error.MessageError
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 
 @Narrative("""NoviWare software license file is used to activate the basic and licensed features.
@@ -18,6 +19,7 @@ If you want to test full functionality then you have to perform the following ma
 class LicenseSpec extends GrpcBaseSpecification {
     @Tidy
     @Tags(HARDWARE)
+    @Ignore("https://github.com/telstra/open-kilda/issues/4592")
     def "Not able to set incorrect license on #sw.hwSwString"() {
         when: "Try to set incorrect license key"
         String licenseFileName = "incorrectLicenseFileName.key"

@@ -27,7 +27,7 @@ import org.squirrelframework.foundation.fsm.StateMachine;
 
 import java.time.Instant;
 
-public abstract class WithHistorySupportFsm<T extends StateMachine<T, S, E, C>, S, E, C>
+public abstract class WithHistorySupportFsm<T extends StateMachine<T, S, E, C>, S, E, C, R extends FlowGenericCarrier>
         extends WithCommandContextFsm<T, S, E, C> {
 
     private Instant lastHistoryEntryTime;
@@ -38,7 +38,7 @@ public abstract class WithHistorySupportFsm<T extends StateMachine<T, S, E, C>, 
 
     public abstract String getFlowId();
 
-    public abstract FlowGenericCarrier getCarrier();
+    public abstract R getCarrier();
 
     /**
      * Add a history record on the action.

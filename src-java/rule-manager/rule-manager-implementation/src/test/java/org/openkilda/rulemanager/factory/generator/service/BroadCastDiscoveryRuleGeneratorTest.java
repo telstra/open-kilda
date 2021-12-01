@@ -27,13 +27,13 @@ import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
+import static org.openkilda.rulemanager.Constants.DISCOVERY_PACKET_UDP_PORT;
+import static org.openkilda.rulemanager.Constants.LATENCY_PACKET_UDP_PORT;
 import static org.openkilda.rulemanager.Constants.Priority.DISCOVERY_RULE_PRIORITY;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
 import static org.openkilda.rulemanager.Utils.getActionByType;
 import static org.openkilda.rulemanager.Utils.getCommand;
 import static org.openkilda.rulemanager.Utils.getMatchByField;
-import static org.openkilda.rulemanager.factory.generator.service.BroadCastDiscoveryRuleGenerator.DISCOVERY_PACKET_UDP_PORT;
-import static org.openkilda.rulemanager.factory.generator.service.BroadCastDiscoveryRuleGenerator.LATENCY_PACKET_UDP_PORT;
 
 import org.openkilda.model.GroupId;
 import org.openkilda.model.Meter;
@@ -370,7 +370,7 @@ public class BroadCastDiscoveryRuleGeneratorTest {
 
     private void checkUpdDstMatch(Set<FieldMatch> match) {
         FieldMatch ipProtoMatch = getMatchByField(Field.IP_PROTO, match);
-        assertEquals(IpProto.UDP_IP_PROTO, ipProtoMatch.getValue());
+        assertEquals(IpProto.UDP, ipProtoMatch.getValue());
         assertFalse(ipProtoMatch.isMasked());
 
         FieldMatch ethTypeMatch = getMatchByField(Field.ETH_TYPE, match);

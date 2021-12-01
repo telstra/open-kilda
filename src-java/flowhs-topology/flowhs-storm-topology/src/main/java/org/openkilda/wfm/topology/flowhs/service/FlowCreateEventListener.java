@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,19 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.pce;
+package org.openkilda.wfm.topology.flowhs.service;
 
-import lombok.Builder;
-import lombok.Value;
-
-import java.io.Serializable;
-
-@Value
-@Builder
-public class PathPair implements Serializable {
-    private static final long serialVersionUID = 1L;
-
-    public final Path forward;
-
-    public final Path reverse;
+/**
+ * Defines a listener for FlowCreate events.
+ */
+public interface FlowCreateEventListener extends FlowProcessingEventListener {
+    void onResourcesAllocated(String flowId);
 }

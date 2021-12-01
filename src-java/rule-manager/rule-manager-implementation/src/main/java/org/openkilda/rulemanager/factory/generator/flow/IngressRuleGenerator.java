@@ -15,7 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.flow;
 
-import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.rulemanager.MeterFlag.BURST;
 import static org.openkilda.rulemanager.MeterFlag.KBPS;
 import static org.openkilda.rulemanager.MeterFlag.STATS;
@@ -23,15 +22,8 @@ import static org.openkilda.rulemanager.MeterFlag.STATS;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
-import org.openkilda.model.Meter;
-import org.openkilda.model.MeterId;
-import org.openkilda.model.Switch;
-import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.MeterFlag;
-import org.openkilda.rulemanager.MeterSpeakerCommandData;
-import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
 import org.openkilda.rulemanager.factory.MeteredRuleGenerator;
 
 import com.google.common.collect.Sets;
@@ -42,7 +34,7 @@ import java.util.HashSet;
 
 @SuperBuilder
 @AllArgsConstructor
-public abstract class IngressRuleGenerator extends MeteredRuleGenerator {
+public abstract class IngressRuleGenerator implements MeteredRuleGenerator {
 
     public static final HashSet<MeterFlag> FLOW_METER_STATS = Sets.newHashSet(KBPS, BURST, STATS);
 
@@ -51,31 +43,4 @@ public abstract class IngressRuleGenerator extends MeteredRuleGenerator {
     protected final Flow flow;
     protected final FlowTransitEncapsulation encapsulation;
 
-    protected SpeakerCommandData buildMeter(MeterId meterId, Switch sw) {
-        if (meterId == null || !sw.getFeatures().contains(METERS)) {
-            return null;
-        }
-
-        long burstSize = Meter.calculateBurstSize(
-                flowPath.getBandwidth(), config.getFlowMeterMinBurstSizeInKbits(),
-                config.getFlowMeterBurstCoefficient(),
-                flowPath.getSrcSwitch().getOfDescriptionManufacturer(),
-                flowPath.getSrcSwitch().getOfDescriptionSoftware());
-
-        return MeterSpeakerCommandData.builder()
-                .ofVersion(OfVersion.of(sw.getOfVersion()))
-                .meterId(meterId)
-                .switchId(flowPath.getSrcSwitchId())
-                .rate(flowPath.getBandwidth())
-                .burst(burstSize)
-                .flags(FLOW_METER_STATS)
-                .build();
-    }
-
-    @Override
-    protected void addMeterToInstructions(MeterId meterId, Switch sw, Instructions instructions) {
-        if (meterId != null && sw.getFeatures().contains(METERS)) {
-            super.addMeterToInstructions(meterId, sw, instructions);
-        }
-    }
 }

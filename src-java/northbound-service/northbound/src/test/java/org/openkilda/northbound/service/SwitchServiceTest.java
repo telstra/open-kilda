@@ -31,10 +31,18 @@ import org.openkilda.northbound.MessageExchanger;
 import org.openkilda.northbound.config.KafkaConfig;
 import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.ConnectedDeviceMapperImpl;
+import org.openkilda.northbound.converter.FlowEncapsulationTypeMapper;
+import org.openkilda.northbound.converter.FlowEncapsulationTypeMapperImpl;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.FlowMapperImpl;
+import org.openkilda.northbound.converter.FlowStatusMapper;
+import org.openkilda.northbound.converter.FlowStatusMapperImpl;
+import org.openkilda.northbound.converter.InstantMapper;
+import org.openkilda.northbound.converter.InstantMapperImpl;
 import org.openkilda.northbound.converter.LagPortMapper;
 import org.openkilda.northbound.converter.LagPortMapperImpl;
+import org.openkilda.northbound.converter.PathComputationStrategyMapper;
+import org.openkilda.northbound.converter.PathComputationStrategyMapperImpl;
 import org.openkilda.northbound.converter.PortPropertiesMapper;
 import org.openkilda.northbound.converter.PortPropertiesMapperImpl;
 import org.openkilda.northbound.converter.SwitchMapper;
@@ -164,6 +172,26 @@ public class SwitchServiceTest {
         @Bean
         public PortPropertiesMapper portPropertiesMapper() {
             return new PortPropertiesMapperImpl();
+        }
+
+        @Bean
+        public InstantMapper instantMapper() {
+            return new InstantMapperImpl();
+        }
+
+        @Bean
+        public PathComputationStrategyMapper pathComputationStrategyMapper() {
+            return new PathComputationStrategyMapperImpl();
+        }
+
+        @Bean
+        public FlowStatusMapper flowStatusMapper() {
+            return new FlowStatusMapperImpl();
+        }
+
+        @Bean
+        public FlowEncapsulationTypeMapper flowEncapsulationTypeMapper() {
+            return new FlowEncapsulationTypeMapperImpl();
         }
 
         @Bean

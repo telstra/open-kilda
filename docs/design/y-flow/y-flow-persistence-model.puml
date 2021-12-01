@@ -1,0 +1,62 @@
+@startuml
+
+title Y-Flow Persistence Model
+
+object YFlow <<Node>> {
+    yflow_id
+    ..
+    status : FlowStatus
+    ..
+    shared_endpoint_switch_id : SwitchId
+    shared_endpoint_port
+    ..
+    maximum_bandwidth
+    path_computation_strategy : PathComputationStrategy
+    encapsulation_type : FlowEncapsulationType
+    max_latency
+    max_latency_tier2
+    ignore_bandwidth
+    periodic_pings
+    pinned
+    priority
+    strict_bandwidth
+    description
+    allocate_protected_path
+    ..
+    ypoint : SwitchId
+    protected_path_ypoint : SwitchId
+    ..
+    meter_id : MeterId
+    protected_path_meter_id : MeterId
+    shared_endpoint_meter_id : MeterId
+    __
+    unique constraint on yflow_id
+    index on yflow_id
+}
+
+object YSubFlowFields <<Relation>> {
+    yflow_id
+    subflow_id
+    ..
+    shared_endpoint_vlan
+    shared_endpoint_inner_vlan
+    ..
+    endpoint_switch_id: SwitchId
+    endpoint_port
+    endpoint_vlan
+    endpoint_inner_vlan
+    __
+    unique constraint on yflow_id + subflow_id
+    index on yflow_id
+    index on subflow_id
+}
+
+object Flow <<Node>> {
+    flow_id
+    ...
+}
+
+YFlow }-- YSubFlowFields
+YSubFlowFields --> Flow
+
+@enduml

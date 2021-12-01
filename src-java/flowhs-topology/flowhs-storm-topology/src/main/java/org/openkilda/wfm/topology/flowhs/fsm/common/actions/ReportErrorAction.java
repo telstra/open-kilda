@@ -19,7 +19,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.WithHistorySupportFsm;
 
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
-public class ReportErrorAction<T extends WithHistorySupportFsm<T, S, E, C>, S, E, C>
+public class ReportErrorAction<T extends WithHistorySupportFsm<T, S, E, C, ?>, S, E, C>
         extends AnonymousAction<T, S, E, C> {
     @Override
     public void execute(S from, S to, E event, C context, T stateMachine) {

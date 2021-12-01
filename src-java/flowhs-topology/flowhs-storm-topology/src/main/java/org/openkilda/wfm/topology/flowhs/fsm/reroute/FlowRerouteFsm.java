@@ -75,6 +75,7 @@ import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
@@ -86,10 +87,8 @@ import java.util.concurrent.TimeUnit;
 @Getter
 @Setter
 @Slf4j
-public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-
-    private final FlowRerouteHubCarrier carrier;
-
+public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, State, Event, FlowRerouteContext,
+        FlowRerouteHubCarrier> {
     private boolean recreateIfSamePath;
     private boolean reroutePrimary;
     private boolean rerouteProtected;
@@ -111,9 +110,8 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
     private RerouteError rerouteError;
 
-    public FlowRerouteFsm(CommandContext commandContext, FlowRerouteHubCarrier carrier, String flowId) {
-        super(commandContext, flowId);
-        this.carrier = carrier;
+    public FlowRerouteFsm(CommandContext commandContext, @NonNull FlowRerouteHubCarrier carrier, String flowId) {
+        super(commandContext, carrier, flowId);
     }
 
     @Override
@@ -124,7 +122,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
             ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, "Could not reroute flow", errorMessage);
             Message message = new ErrorMessage(error, getCommandContext().getCreateTime(),
                                                getCommandContext().getCorrelationId());
-            carrier.sendNorthboundResponse(message);
+            sendNorthboundResponse(message);
         }
 
         fireError(errorMessage);
@@ -159,11 +157,6 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
     public void fireRerouteIsSkipped(String errorReason) {
         fireError(Event.REROUTE_IS_SKIPPED, errorReason);
-    }
-
-    @Override
-    public void sendNorthboundResponse(Message message) {
-        carrier.sendNorthboundResponse(message);
     }
 
     public void setRerouteError(RerouteError rerouteError) {

@@ -4,7 +4,7 @@ import static FlowHistoryConstants.UPDATE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_MIRROR_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
-import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
@@ -157,7 +157,7 @@ class FlowHelperV2 {
     FlowResponseV2 addFlow(FlowRequestV2 flow) {
         log.debug("Adding flow '${flow.flowId}'")
         def response = northboundV2.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == CREATE_SUCCESS
         }
@@ -178,7 +178,7 @@ class FlowHelperV2 {
         Wrappers.wait(WAIT_OFFSET * 2) { assert northboundV2.getFlowStatus(flowId).status != FlowState.IN_PROGRESS }
         log.debug("Deleting flow '$flowId'")
         def response = northboundV2.deleteFlow(flowId)
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             assert !northboundV2.getFlowStatus(flowId)
             assert northbound.getFlowHistory(flowId).find { it.payload.last().action == DELETE_SUCCESS }
         }
@@ -191,7 +191,7 @@ class FlowHelperV2 {
     FlowResponseV2 updateFlow(String flowId, FlowRequestV2 flow) {
         log.debug("Updating flow '${flowId}'")
         def response = northboundV2.updateFlow(flowId, flow)
-        Wrappers.wait(PATH_INSTALLATION_TIME) {
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             assert northboundV2.getFlowStatus(flowId).status == FlowState.UP
             assert northbound.getFlowHistory(flowId).last().payload.last().action == UPDATE_SUCCESS
         }
@@ -208,7 +208,7 @@ class FlowHelperV2 {
     FlowResponseV2 partialUpdate(String flowId, FlowPatchV2 flow) {
         log.debug("Updating flow '${flowId}'(partial update)")
         def response = northboundV2.partialUpdate(flowId, flow)
-        Wrappers.wait(PATH_INSTALLATION_TIME) {
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             assert northboundV2.getFlowStatus(flowId).status == FlowState.UP
             assert northbound.getFlowHistory(flowId).last().payload.last().action == UPDATE_SUCCESS
         }
@@ -217,7 +217,7 @@ class FlowHelperV2 {
 
     FlowMirrorPointResponseV2 createMirrorPoint(String flowId, FlowMirrorPointPayload mirrorPoint) {
         def response = northboundV2.createMirrorPoint(flowId, mirrorPoint)
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             assert northboundV2.getFlow(flowId).mirrorPointStatuses[0].status ==
                     FlowPathStatus.ACTIVE.toString().toLowerCase()
             assert northbound.getFlowHistory(flowId).last().payload.last().action == CREATE_MIRROR_SUCCESS

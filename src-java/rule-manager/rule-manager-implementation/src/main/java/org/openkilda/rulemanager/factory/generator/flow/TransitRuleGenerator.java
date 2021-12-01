@@ -40,11 +40,11 @@ import java.util.List;
 @SuperBuilder
 public class TransitRuleGenerator extends NotIngressRuleGenerator {
 
-    private final FlowPath flowPath;
-    private final int inPort;
-    private final int outPort;
-    private final boolean multiTable;
-    private final FlowTransitEncapsulation encapsulation;
+    protected final FlowPath flowPath;
+    protected final int inPort;
+    protected final int outPort;
+    protected final boolean multiTable;
+    protected final FlowTransitEncapsulation encapsulation;
 
     @Override
     public List<SpeakerCommandData> generateCommands(Switch sw) {

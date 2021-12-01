@@ -18,8 +18,10 @@ package org.openkilda.rulemanager;
 import static java.util.stream.Collectors.toList;
 import static org.openkilda.adapter.FlowSideAdapter.makeIngressAdapter;
 import static org.openkilda.model.cookie.Cookie.DROP_RULE_COOKIE;
+import static org.openkilda.model.cookie.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_INGRESS_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE;
+import static org.openkilda.model.cookie.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE;
 
 import org.openkilda.adapter.FlowSideAdapter;
@@ -27,6 +29,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -84,6 +87,11 @@ public class RuleManagerImpl implements RuleManager {
                     flowPath, encapsulation, firstSegment, secondSegment));
         }
 
+        if (flow.isLooped()) {
+            Switch loopedSwitch = adapter.getSwitch(flow.getLoopSwitchId());
+            result.addAll(buildTransitLoopCommands(loopedSwitch, flowPath, flow, encapsulation));
+        }
+
         return result;
     }
 
@@ -133,6 +141,11 @@ public class RuleManagerImpl implements RuleManager {
         generators.add(serviceRulesFactory.getTableDefaultRuleGenerator(new Cookie(DROP_RULE_COOKIE), OfTable.INPUT));
         generators.add(serviceRulesFactory.getUniCastDiscoveryRuleGenerator());
         generators.add(serviceRulesFactory.getBroadCastDiscoveryRuleGenerator());
+        generators.add(serviceRulesFactory.getDropDiscoveryLoopRuleGenerator());
+        generators.add(serviceRulesFactory.getBfdCatchRuleGenerator());
+        generators.add(serviceRulesFactory.getRoundTripLatencyRuleGenerator());
+        generators.add(serviceRulesFactory.getUnicastVerificationVxlanRuleGenerator());
+
         // TODO: add other rules
 
         if (switchProperties.isMultiTable()) {
@@ -142,8 +155,27 @@ public class RuleManagerImpl implements RuleManager {
                     new Cookie(MULTITABLE_TRANSIT_DROP_COOKIE), OfTable.TRANSIT));
             generators.add(serviceRulesFactory.getTableDefaultRuleGenerator(
                     new Cookie(MULTITABLE_POST_INGRESS_DROP_COOKIE), OfTable.POST_INGRESS));
+            generators.add(serviceRulesFactory.getTablePassThroughDefaultRuleGenerator(
+                    new Cookie(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE), OfTable.TRANSIT, OfTable.EGRESS));
+            generators.add(serviceRulesFactory.getTablePassThroughDefaultRuleGenerator(
+                    new Cookie(MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE), OfTable.INGRESS, OfTable.PRE_INGRESS));
+            generators.add(serviceRulesFactory.getLldpPostIngressRuleGenerator());
+            generators.add(serviceRulesFactory.getLldpPostIngressVxlanRuleGenerator());
+            generators.add(serviceRulesFactory.getLldpPostIngressOneSwitchRuleGenerator());
+            generators.add(serviceRulesFactory.getArpPostIngressRuleGenerator());
+            generators.add(serviceRulesFactory.getArpPostIngressVxlanRuleGenerator());
+            generators.add(serviceRulesFactory.getArpPostIngressOneSwitchRuleGenerator());
 
-            // TODO: add other rules
+            if (switchProperties.isSwitchLldp()) {
+                generators.add(serviceRulesFactory.getLldpTransitRuleGenerator());
+                generators.add(serviceRulesFactory.getLldpInputPreDropRuleGenerator());
+                generators.add(serviceRulesFactory.getLldpIngressRuleGenerator());
+            }
+            if (switchProperties.isSwitchArp()) {
+                generators.add(serviceRulesFactory.getArpTransitRuleGenerator());
+                generators.add(serviceRulesFactory.getArpInputPreDropRuleGenerator());
+                generators.add(serviceRulesFactory.getArpIngressRuleGenerator());
+            }
         }
 
         return generators;
@@ -184,9 +216,25 @@ public class RuleManagerImpl implements RuleManager {
                     break;
                 }
             }
+
+            if (flow.isLooped() && sw.getSwitchId().equals(flow.getLoopSwitchId())) {
+                result.addAll(buildTransitLoopCommands(sw, flowPath, flow, encapsulation));
+            }
         }
 
         return result;
+    }
+
+    private List<SpeakerCommandData> buildIngressYCommands(Switch sw, FlowPath flowPath, Flow flow,
+            FlowTransitEncapsulation encapsulation, Set<FlowSideAdapter> overlappingIngressAdapters,
+                                                           MeterId sharedMeterId) {
+        List<RuleGenerator> generators = new ArrayList<>();
+
+        generators.add(flowRulesFactory.getIngressYRuleGenerator(
+                flowPath, flow, encapsulation, overlappingIngressAdapters, sharedMeterId));
+        return generators.stream()
+                .flatMap(generator -> generator.generateCommands(sw).stream())
+                .collect(Collectors.toList());
     }
 
     private List<SpeakerCommandData> buildIngressCommands(Switch sw, FlowPath flowPath, Flow flow,
@@ -195,7 +243,13 @@ public class RuleManagerImpl implements RuleManager {
 
         generators.add(flowRulesFactory.getIngressRuleGenerator(
                 flowPath, flow, encapsulation, overlappingIngressAdapters));
-        // todo: add arp, lldp, flow loop, flow mirror, etc
+        generators.add(flowRulesFactory.getInputLldpRuleGenerator(flowPath, flow, overlappingIngressAdapters));
+        generators.add(flowRulesFactory.getInputArpRuleGenerator(flowPath, flow, overlappingIngressAdapters));
+
+        if (flow.isLooped() && sw.getSwitchId().equals(flow.getLoopSwitchId())) {
+            generators.add(flowRulesFactory.getIngressLoopRuleGenerator(flowPath, flow));
+        }
+        // todo: add flow mirror, etc
 
         return generators.stream()
                 .flatMap(generator -> generator.generateCommands(sw).stream())
@@ -214,5 +268,19 @@ public class RuleManagerImpl implements RuleManager {
         RuleGenerator generator = flowRulesFactory.getTransitRuleGenerator(
                 flowPath, encapsulation, firstSegment, secondSegment);
         return generator.generateCommands(sw);
+    }
+
+    private List<SpeakerCommandData> buildTransitLoopCommands(
+            Switch sw, FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation) {
+        List<SpeakerCommandData> result = new ArrayList<>();
+
+        flowPath.getSegments().stream()
+                .filter(segment -> segment.getDestSwitchId().equals(flow.getLoopSwitchId()))
+                .findFirst()
+                .map(PathSegment::getDestPort)
+                .map(inPort -> flowRulesFactory.getTransitLoopRuleGenerator(flowPath, flow, encapsulation, inPort))
+                .map(generator -> generator.generateCommands(sw))
+                .map(result::addAll);
+        return result;
     }
 }

@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.108.0 (29/11/2021)
+
+### Features:
+-  [#4547](https://github.com/telstra/open-kilda/pull/4547) Rule Manager: Input LLDP and ARP
+-  [#4554](https://github.com/telstra/open-kilda/pull/4554) Feature/rule manager service rules
+-  [#4562](https://github.com/telstra/open-kilda/pull/4562) Added Server42 ingress rules
+-  [#4502](https://github.com/telstra/open-kilda/pull/4502) Implement Y-flow create feature  (Issue: [#4530](https://github.com/telstra/open-kilda/issues/4530))
+-  [#4530](https://github.com/telstra/open-kilda/pull/4530) YFlow changes to persistence layer
+-  [#4594](https://github.com/telstra/open-kilda/pull/4594) Rule manager y flows
+-  [#4600](https://github.com/telstra/open-kilda/pull/4600) Rule Manager: Flow loop [**storm-topologies**]
+
+### Improvements:
+-  [#4568](https://github.com/telstra/open-kilda/pull/4568) Design for shared bandwidth group solution [**docs**]
+-  [#4582](https://github.com/telstra/open-kilda/pull/4582) improve check(switchNotFound) in MultiFloodlightsSpec [**tests**]
+-  [#4598](https://github.com/telstra/open-kilda/pull/4598) [test]restore initSwProps after removing/adding switch [**tests**]
+-  [#4599](https://github.com/telstra/open-kilda/pull/4599) [test] clear 'timeUnstable' field in portHistSpec [**tests**]
+-  [#4543](https://github.com/telstra/open-kilda/pull/4543) Add service rules for input table
+
+### Other changes:
+-  [#4583](https://github.com/telstra/open-kilda/pull/4583) Minor QOL improvements in tests [**tests**]
+-  [#4588](https://github.com/telstra/open-kilda/pull/4588) Limit file name length for test log file [**tests**]
+-  [#4590](https://github.com/telstra/open-kilda/pull/4590) Tests write logs to logstash only on local env [**tests**]
+-  [#4464](https://github.com/telstra/open-kilda/pull/4464) Solution design for Y-Flow [**docs**]
+-  [#4597](https://github.com/telstra/open-kilda/pull/4597) Fix meters comparison for wb switches in tests [**tests**]
+-  [#4601](https://github.com/telstra/open-kilda/pull/4601) Fix passing property to tests build [**configuration**][**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.107.4...v1.108.0).
+
+### Affected Components:
+swmanager, flow-hs
+
+----
+
 ## v1.107.4 (23/11/2021)
 
 ### Bug Fixes:

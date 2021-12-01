@@ -132,4 +132,14 @@ public class MeterPool {
             meters.forEach(flowMeterRepository::remove);
         });
     }
+
+    /**
+     * Deallocates a meter.
+     */
+    public void deallocate(SwitchId switchId, MeterId meterId) {
+        transactionManager.doInTransaction(() -> {
+            flowMeterRepository.findById(switchId, meterId)
+                    .ifPresent(flowMeterRepository::remove);
+        });
+    }
 }

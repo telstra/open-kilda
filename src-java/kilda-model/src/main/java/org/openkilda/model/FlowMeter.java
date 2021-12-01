@@ -56,7 +56,7 @@ public class FlowMeter implements CompositeDataEntity<FlowMeter.FlowMeterData> {
 
     @Builder
     public FlowMeter(@NonNull SwitchId switchId, @NonNull MeterId meterId, @NonNull String flowId,
-                     @NonNull PathId pathId) {
+                     PathId pathId) {
         data = FlowMeterDataImpl.builder().switchId(switchId).meterId(meterId).flowId(flowId).pathId(pathId).build();
     }
 
@@ -119,7 +119,7 @@ public class FlowMeter implements CompositeDataEntity<FlowMeter.FlowMeterData> {
         @NonNull SwitchId switchId;
         @NonNull MeterId meterId;
         @NonNull String flowId;
-        @NonNull PathId pathId;
+        PathId pathId;
     }
 
     /**

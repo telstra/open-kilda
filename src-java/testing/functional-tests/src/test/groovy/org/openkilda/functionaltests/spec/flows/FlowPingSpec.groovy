@@ -15,6 +15,7 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
@@ -48,7 +49,7 @@ class FlowPingSpec extends HealthCheckSpecification {
     int pingInterval
 
     @Tidy
-    @Unroll("Able to ping a flow with vlan between switches #srcSwitch.dpId - #dstSwitch.dpId")
+    @Unroll("Able to ping a flow with vlan between switches #swPair.toString()")
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to ping a flow with vlan"(Switch srcSwitch, Switch dstSwitch) {
         given: "A flow with random vlan"
@@ -91,10 +92,11 @@ class FlowPingSpec extends HealthCheckSpecification {
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
+        swPair = new SwitchPair(src: srcSwitch, dst: dstSwitch, paths: [])
     }
 
     @Tidy
-    @Unroll("Able to ping a flow with no vlan between switches #srcSwitch.dpId - #dstSwitch.dpId")
+    @Unroll("Able to ping a flow with no vlan between switches #swPair.toString()")
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to ping a flow with no vlan"(Switch srcSwitch, Switch dstSwitch) {
         given: "A flow with no vlan"
@@ -120,6 +122,7 @@ class FlowPingSpec extends HealthCheckSpecification {
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
+        swPair = new SwitchPair(src: srcSwitch, dst: dstSwitch, paths: [])
     }
 
     @Tidy
