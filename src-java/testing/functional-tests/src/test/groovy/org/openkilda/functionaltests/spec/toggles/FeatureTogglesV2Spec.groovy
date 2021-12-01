@@ -218,6 +218,7 @@ feature toggle"() {
             assert islUtils.getIslInfo(links, newIslToBreak).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(links, newIslToBreak.reversed).get().state == IslChangeType.DISCOVERED
         }
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
@@ -307,6 +308,7 @@ feature toggle"() {
             assert islUtils.getIslInfo(links, islToBreak).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(links, islToBreak.reversed).get().state == IslChangeType.DISCOVERED
         }
+        database.resetCosts(topology.isls)
     }
 
     @Tidy
