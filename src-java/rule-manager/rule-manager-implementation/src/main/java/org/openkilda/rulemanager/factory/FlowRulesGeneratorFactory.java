@@ -27,6 +27,7 @@ import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.factory.generator.flow.EgressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.InputArpRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.InputLldpRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.JointRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.MultiTableIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.MultiTableIngressYRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.SingleTableIngressRuleGenerator;
@@ -37,6 +38,7 @@ import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopIngressRule
 import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopTransitRuleGenerator;
 
 import java.util.Set;
+import java.util.UUID;
 
 public class FlowRulesGeneratorFactory {
 
@@ -76,7 +78,29 @@ public class FlowRulesGeneratorFactory {
      */
     public RuleGenerator getIngressYRuleGenerator(
             FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
-            Set<FlowSideAdapter> overlappingIngressAdapters, MeterId sharedMeterId) {
+            Set<FlowSideAdapter> overlappingIngressAdapters,
+            FlowPath alternativeFlowPath, Flow alternativeFlow, FlowTransitEncapsulation alternativeEncapsulation,
+            Set<FlowSideAdapter> alternativeOverlappingIngressAdapters,
+            MeterId sharedMeterId) {
+        String externalMeterCommandUuid = UUID.randomUUID().toString();
+        RuleGenerator firstGenerator = getIngressYRuleGenerator(flowPath, flow, encapsulation,
+                overlappingIngressAdapters, sharedMeterId,
+                externalMeterCommandUuid, true);
+
+        RuleGenerator secondGenerator = getIngressYRuleGenerator(alternativeFlowPath, alternativeFlow,
+                alternativeEncapsulation, alternativeOverlappingIngressAdapters, sharedMeterId,
+                externalMeterCommandUuid, false);
+        return JointRuleGenerator.builder()
+                .firstGenerator(firstGenerator)
+                .secondGenerator(secondGenerator)
+                .build();
+    }
+
+
+    RuleGenerator getIngressYRuleGenerator(
+            FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
+            Set<FlowSideAdapter> overlappingIngressAdapters, MeterId sharedMeterId, String externalMeterCommandUuid,
+            boolean generateMeterCommand) {
         boolean multiTable = isPathSrcMultiTable(flowPath, flow);
         if (multiTable) {
             return MultiTableIngressYRuleGenerator.builder()
@@ -86,6 +110,8 @@ public class FlowRulesGeneratorFactory {
                     .encapsulation(encapsulation)
                     .overlappingIngressAdapters(overlappingIngressAdapters)
                     .sharedMeterId(sharedMeterId)
+                    .externalMeterCommandUuid(externalMeterCommandUuid)
+                    .generateMeterCommand(generateMeterCommand)
                     .build();
         } else {
             return SingleTableIngressYRuleGenerator.builder()
@@ -94,6 +120,8 @@ public class FlowRulesGeneratorFactory {
                     .flow(flow)
                     .encapsulation(encapsulation)
                     .sharedMeterId(sharedMeterId)
+                    .externalMeterCommandUuid(externalMeterCommandUuid)
+                    .generateMeterCommand(generateMeterCommand)
                     .build();
         }
     }
@@ -181,12 +209,36 @@ public class FlowRulesGeneratorFactory {
                 .build();
     }
 
+
+    /**
+     * Get joint transit y-rule generator.
+     */
+    public RuleGenerator getTransitYRuleGenerator(
+            FlowPath flowPath, FlowTransitEncapsulation encapsulation, PathSegment firstSegment,
+            PathSegment secondSegment, FlowPath alternativeFlowPath, FlowTransitEncapsulation alternativeEncapsulation,
+            PathSegment alternativeFirstSegment, PathSegment alternativeSecondSegment, MeterId sharedMeterId) {
+
+        String externalMeterCommandUuid = UUID.randomUUID().toString();
+        TransitYRuleGenerator firstGenerator = getTransitYRuleGenerator(flowPath, encapsulation, firstSegment,
+                secondSegment, sharedMeterId, externalMeterCommandUuid, true);
+
+        TransitYRuleGenerator secondGenerator = getTransitYRuleGenerator(alternativeFlowPath, alternativeEncapsulation,
+                alternativeFirstSegment, alternativeSecondSegment, sharedMeterId, externalMeterCommandUuid, false);
+
+        return JointRuleGenerator.builder()
+                .firstGenerator(firstGenerator)
+                .secondGenerator(secondGenerator)
+                .build();
+    }
+
     /**
      * Get transit y-rule generator.
      */
-    public RuleGenerator getTransitYRuleGenerator(FlowPath flowPath, FlowTransitEncapsulation encapsulation,
-                                                  PathSegment firstSegment, PathSegment secondSegment,
-                                                  MeterId sharedMeterId) {
+    TransitYRuleGenerator getTransitYRuleGenerator(FlowPath flowPath, FlowTransitEncapsulation encapsulation,
+                                                   PathSegment firstSegment, PathSegment secondSegment,
+                                                   MeterId sharedMeterId, String externalMeterCommandUuid,
+                                                   boolean generateMeterCommand
+    ) {
         if (flowPath.isOneSwitchFlow()) {
             throw new IllegalArgumentException(format(
                     "Couldn't create transit rule for path %s because it is one switch path", flowPath.getPathId()));
@@ -206,6 +258,8 @@ public class FlowRulesGeneratorFactory {
                 .multiTable(isSegmentMultiTable(firstSegment, secondSegment))
                 .config(config)
                 .sharedMeterId(sharedMeterId)
+                .externalMeterCommandUuid(externalMeterCommandUuid)
+                .generateMeterCommand(generateMeterCommand)
                 .build();
     }
 
