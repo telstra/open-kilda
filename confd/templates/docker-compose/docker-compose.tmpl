@@ -739,12 +739,12 @@ services:
     container_name: logstash
     hostname: logstash.pendev
     image: "kilda/logstash:${TAG:-latest}"{{if not (exists "/no_elasticsearch")}}
-    build:
-      context: docker/logstash
-      dockerfile: Dockerfile
     depends_on:
       elasticsearch:
         condition: service_started{{end}}
+    build:
+      context: docker/logstash
+      dockerfile: Dockerfile
     ports:
       - 9600:9600
       - {{ getv "/kilda_logging_port_tests" }}:{{ getv "/kilda_logging_port_tests" }}
