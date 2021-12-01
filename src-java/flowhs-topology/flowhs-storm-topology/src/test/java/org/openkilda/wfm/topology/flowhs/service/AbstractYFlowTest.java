@@ -222,6 +222,11 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
     protected void verifyYFlowStatus(String yFlowId, FlowStatus expectedStatus) {
         YFlow flow = getYFlow(yFlowId);
         assertEquals(expectedStatus, flow.getStatus());
+    }
+
+    protected void verifyYFlowAndSubFlowStatus(String yFlowId, FlowStatus expectedStatus) {
+        YFlow flow = getYFlow(yFlowId);
+        assertEquals(expectedStatus, flow.getStatus());
         flow.getSubFlows().forEach(subFlow -> {
             assertEquals(expectedStatus, subFlow.getFlow().getStatus());
         });
@@ -444,6 +449,41 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
                 .yFlowId(yFlowId)
                 .sharedEndpoint(new SharedEndpoint(firstSharedEndpoint.getSwitchId(),
                         firstSharedEndpoint.getPortNumber()))
+                .status(FlowStatus.UP)
+                .build();
+        yFlow.setSubFlows(Stream.of(firstFlow, secondFlow)
+                .map(flow -> YSubFlow.builder()
+                        .sharedEndpointVlan(flow.getSrcVlan())
+                        .sharedEndpointInnerVlan(flow.getSrcInnerVlan())
+                        .endpointSwitchId(flow.getDestSwitchId())
+                        .endpointPort(flow.getDestPort())
+                        .endpointVlan(flow.getDestVlan())
+                        .endpointInnerVlan(flow.getDestInnerVlan())
+                        .flow(flow)
+                        .yFlow(yFlow)
+                        .build())
+                .collect(Collectors.toSet()));
+
+        YFlowRepository yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
+        yFlowRepository.add(yFlow);
+        return yFlow;
+    }
+
+    protected YFlow createYFlowWithProtected(String yFlowId) {
+        dummyFactory.getFlowDefaults().setAllocateProtectedPath(true);
+        // Create sub-flows
+        Flow firstFlow = dummyFactory.makeFlowWithProtectedPath(firstSharedEndpoint, firstEndpoint,
+                asList(islSharedToTransit, islTransitToFirst),
+                asList(islSharedToAltTransit, islAltTransitToFirst));
+        Flow secondFlow = dummyFactory.makeFlowWithProtectedPath(secondSharedEndpoint, secondEndpoint,
+                asList(islSharedToTransit, islTransitToSecond),
+                asList(islSharedToAltTransit, islAltTransitToSecond));
+
+        YFlow yFlow = YFlow.builder()
+                .yFlowId(yFlowId)
+                .sharedEndpoint(new SharedEndpoint(firstSharedEndpoint.getSwitchId(),
+                        firstSharedEndpoint.getPortNumber()))
+                .allocateProtectedPath(true)
                 .status(FlowStatus.UP)
                 .build();
         yFlow.setSubFlows(Stream.of(firstFlow, secondFlow)

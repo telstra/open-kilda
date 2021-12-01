@@ -52,6 +52,8 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
 
     private static final String YFLOW_CREATE_EVENT = "y_flow_create";
     private static final String YFLOW_CREATE_RESULT_EVENT = "y_flow_create_result";
+    private static final String YFLOW_DELETE_EVENT = "y_flow_delete";
+    private static final String YFLOW_DELETE_RESULT_EVENT = "y_flow_delete_result";
 
     private static final String TAG = "FLOW_OPERATIONS_DASHBOARD";
     private static final String DASHBOARD = "dashboard";
@@ -496,5 +498,42 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(EVENT_TYPE, STATUS_UPDATE_EVENT);
         data.put("status", status.toString());
         invokeLogger(Level.INFO, String.format("Update the status of the y-flow %s to %s", yFlowId, status), data);
+    }
+
+    /**
+     * Log a y-flow-delete event.
+     */
+    public void onYFlowDelete(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-delete");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_DELETE_EVENT);
+        invokeLogger(Level.INFO, String.format("Delete the y-flow: %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-delete-successful event.
+     */
+    public void onSuccessfulYFlowDelete(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-delete-successful");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_DELETE_RESULT_EVENT);
+        data.put("delete-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful delete of the y-flow %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-delete-failed event.
+     */
+    public void onFailedYFlowDelete(String yFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-delete-failed");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_DELETE_RESULT_EVENT);
+        data.put("delete-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed delete of the y-flow %s, reason: %s", yFlowId, failureReason),
+                data);
     }
 }
