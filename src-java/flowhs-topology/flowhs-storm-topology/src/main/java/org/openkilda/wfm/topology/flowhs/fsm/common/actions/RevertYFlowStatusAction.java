@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
 
@@ -21,16 +21,13 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.YFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowProcessingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteContext;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.YFlowProcessingFsm;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class RevertYFlowStatusAction extends YFlowProcessingAction<YFlowDeleteFsm, State, Event, YFlowDeleteContext> {
+public class RevertYFlowStatusAction<T extends YFlowProcessingFsm<T, S, E, C, ?, ?>, S, E, C>
+        extends YFlowProcessingAction<T, S, E, C>  {
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public RevertYFlowStatusAction(PersistenceManager persistenceManager,
@@ -40,7 +37,7 @@ public class RevertYFlowStatusAction extends YFlowProcessingAction<YFlowDeleteFs
     }
 
     @Override
-    protected void perform(State from, State to, Event event, YFlowDeleteContext context, YFlowDeleteFsm stateMachine) {
+    protected void perform(S from, S to, E event, C context, T stateMachine) {
         String yFlowId = stateMachine.getYFlowId();
         FlowStatus originalStatus = stateMachine.getOriginalYFlowStatus();
         if (originalStatus != null) {

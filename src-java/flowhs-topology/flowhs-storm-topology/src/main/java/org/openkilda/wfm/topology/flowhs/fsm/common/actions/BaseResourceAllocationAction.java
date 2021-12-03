@@ -82,7 +82,7 @@ import java.util.function.Supplier;
  * A base for action classes that allocate resources for flow paths.
  */
 @Slf4j
-public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm<T, S, E, C, ?>, S, E, C> extends
+public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E, C> extends
         NbTrackableAction<T, S, E, C> {
     private final int pathAllocationRetriesLimit;
     private final int pathAllocationRetryDelay;
@@ -140,27 +140,33 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             stateMachine.saveActionToHistory(errorMessage);
             stateMachine.fireNoPathFound(errorMessage);
 
-            Message message = buildErrorMessage(stateMachine, ErrorType.NOT_FOUND,
-                    getGenericErrorMessage(), errorMessage);
+            ErrorType errorType = ErrorType.NOT_FOUND;
+            Message message = buildErrorMessage(stateMachine, errorType, getGenericErrorMessage(), errorMessage);
             stateMachine.setOperationResultMessage(message);
+
+            stateMachine.notifyEventListenersOnError(errorType, errorMessage);
             return Optional.of(message);
         } catch (RecoverableException ex) {
             String errorMessage = format("Failed to find a path. %s", ex.getMessage());
             stateMachine.saveActionToHistory(errorMessage);
             stateMachine.fireError(errorMessage);
 
-            Message message = buildErrorMessage(stateMachine, ErrorType.INTERNAL_ERROR,
-                    getGenericErrorMessage(), errorMessage);
+            ErrorType errorType = ErrorType.INTERNAL_ERROR;
+            Message message = buildErrorMessage(stateMachine, errorType, getGenericErrorMessage(), errorMessage);
             stateMachine.setOperationResultMessage(message);
+
+            stateMachine.notifyEventListenersOnError(errorType, errorMessage);
             return Optional.of(message);
         } catch (ResourceAllocationException ex) {
             String errorMessage = format("Failed to allocate flow resources. %s", ex.getMessage());
             stateMachine.saveErrorToHistory(errorMessage, ex);
             stateMachine.fireError(errorMessage);
 
-            Message message = buildErrorMessage(stateMachine, ErrorType.INTERNAL_ERROR,
-                    getGenericErrorMessage(), errorMessage);
+            ErrorType errorType = ErrorType.INTERNAL_ERROR;
+            Message message = buildErrorMessage(stateMachine, errorType, getGenericErrorMessage(), errorMessage);
             stateMachine.setOperationResultMessage(message);
+
+            stateMachine.notifyEventListenersOnError(errorType, errorMessage);
             return Optional.of(message);
         }
     }

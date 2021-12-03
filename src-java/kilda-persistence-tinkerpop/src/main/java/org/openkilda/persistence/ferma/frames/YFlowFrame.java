@@ -266,6 +266,22 @@ public abstract class YFlowFrame extends KildaBaseVertexFrame implements YFlowDa
         }
     }
 
+    @Override
+    public void updateSubFlow(YSubFlow subFlow) {
+        getElement().edges(Direction.OUT, YSubFlowFrame.FRAME_LABEL)
+                .forEachRemaining(v -> {
+                    String subFlowId = v.value(YSubFlowFrame.SUBFLOW_ID_PROPERTY);
+                    if (subFlow.getSubFlowId().equals(subFlowId)) {
+                        v.remove();
+                    }
+                });
+
+        subFlow.setData(YSubFlowFrame.create(getGraph(), subFlow.getData()));
+
+        // force to reload
+        this.subFlows = null;
+    }
+
     public static Optional<YFlowFrame> load(FramedGraph graph, String yFlowId) {
         List<? extends YFlowFrame> yFlowFrames = graph.traverse(g -> g.V()
                         .hasLabel(YFlowFrame.FRAME_LABEL)

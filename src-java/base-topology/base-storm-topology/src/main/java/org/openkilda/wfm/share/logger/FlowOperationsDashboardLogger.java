@@ -52,6 +52,8 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
 
     private static final String YFLOW_CREATE_EVENT = "y_flow_create";
     private static final String YFLOW_CREATE_RESULT_EVENT = "y_flow_create_result";
+    private static final String YFLOW_UPDATE_EVENT = "y_flow_update";
+    private static final String YFLOW_UPDATE_RESULT_EVENT = "y_flow_update_result";
     private static final String YFLOW_DELETE_EVENT = "y_flow_delete";
     private static final String YFLOW_DELETE_RESULT_EVENT = "y_flow_delete_result";
 
@@ -485,6 +487,45 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put("update-result", "failed");
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed create of the y-flow %s, reason: %s", yFlowId, failureReason),
+                data);
+    }
+
+    /**
+     * Log a y-flow-update event.
+     */
+    public void onYFlowUpdate(String yFlowId, FlowEndpoint sharedEndpoint,
+                              List<FlowEndpoint> subFlowEndpoints, long maximumBandwidth) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-update");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_UPDATE_EVENT);
+        invokeLogger(Level.INFO, String.format("Update the y-flow: %s, shared endpoint %s, endpoints (%s), "
+                + "bandwidth %d", yFlowId, sharedEndpoint, subFlowEndpoints, maximumBandwidth), data);
+    }
+
+    /**
+     * Log a y-flow-update-successful event.
+     */
+    public void onSuccessfulYFlowUpdate(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-update-successful");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_UPDATE_RESULT_EVENT);
+        data.put("update-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful update of the y-flow %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-update-failed event.
+     */
+    public void onFailedYFlowUpdate(String yFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-update-failed");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_UPDATE_RESULT_EVENT);
+        data.put("update-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed update of the y-flow %s, reason: %s", yFlowId, failureReason),
                 data);
     }
 

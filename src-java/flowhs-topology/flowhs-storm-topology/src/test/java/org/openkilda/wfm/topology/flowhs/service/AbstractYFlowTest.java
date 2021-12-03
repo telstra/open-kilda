@@ -87,6 +87,9 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
     protected static final SwitchId SWITCH_SECOND_EP = new SwitchId(3);
     protected static final SwitchId SWITCH_TRANSIT = new SwitchId(4);
     protected static final SwitchId SWITCH_ALT_TRANSIT = new SwitchId(5);
+    protected static final SwitchId SWITCH_NEW_FIRST_EP = new SwitchId(6);
+    protected static final SwitchId SWITCH_NEW_SECOND_EP = new SwitchId(7);
+    protected static final SwitchId SWITCH_NEW_ALT_TRANSIT = new SwitchId(8);
 
     protected final IslDirectionalReference islSharedToFirst = new IslDirectionalReference(
             new IslEndpoint(SWITCH_SHARED, 24),
@@ -112,11 +115,28 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
     protected final IslDirectionalReference islAltTransitToSecond = new IslDirectionalReference(
             new IslEndpoint(SWITCH_ALT_TRANSIT, 27),
             new IslEndpoint(SWITCH_SECOND_EP, 28));
+    protected final IslDirectionalReference islTransitToNewFirst = new IslDirectionalReference(
+            new IslEndpoint(SWITCH_TRANSIT, 31),
+            new IslEndpoint(SWITCH_NEW_FIRST_EP, 31));
+    protected final IslDirectionalReference islTransitToNewSecond = new IslDirectionalReference(
+            new IslEndpoint(SWITCH_TRANSIT, 32),
+            new IslEndpoint(SWITCH_NEW_SECOND_EP, 32));
+    protected final IslDirectionalReference islSharedToNewAltTransit = new IslDirectionalReference(
+            new IslEndpoint(SWITCH_SHARED, 22),
+            new IslEndpoint(SWITCH_NEW_ALT_TRANSIT, 25));
+    protected final IslDirectionalReference islNewAltTransitToFirst = new IslDirectionalReference(
+            new IslEndpoint(SWITCH_NEW_ALT_TRANSIT, 26),
+            new IslEndpoint(SWITCH_NEW_FIRST_EP, 33));
+    protected final IslDirectionalReference islNewAltTransitToSecond = new IslDirectionalReference(
+            new IslEndpoint(SWITCH_NEW_ALT_TRANSIT, 27),
+            new IslEndpoint(SWITCH_NEW_SECOND_EP, 34));
 
     protected final FlowEndpoint firstSharedEndpoint = new FlowEndpoint(SWITCH_SHARED, 1, 101);
     protected final FlowEndpoint secondSharedEndpoint = new FlowEndpoint(SWITCH_SHARED, 1, 102);
     protected final FlowEndpoint firstEndpoint = new FlowEndpoint(SWITCH_FIRST_EP, 2, 103);
     protected final FlowEndpoint secondEndpoint = new FlowEndpoint(SWITCH_SECOND_EP, 3, 104);
+    protected final FlowEndpoint newFirstEndpoint = new FlowEndpoint(SWITCH_NEW_FIRST_EP, 2, 103);
+    protected final FlowEndpoint newSecondEndpoint = new FlowEndpoint(SWITCH_NEW_SECOND_EP, 3, 104);
 
     protected static PersistenceDummyEntityFactory dummyFactory;
 
@@ -146,9 +166,12 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
         dummyFactory.makeSwitch(SWITCH_SECOND_EP);
         dummyFactory.makeSwitch(SWITCH_TRANSIT);
         dummyFactory.makeSwitch(SWITCH_ALT_TRANSIT);
+        dummyFactory.makeSwitch(SWITCH_NEW_FIRST_EP);
+        dummyFactory.makeSwitch(SWITCH_NEW_SECOND_EP);
         for (IslDirectionalReference reference : new IslDirectionalReference[]{
                 islSharedToFirst, islSharedToSecond, islSharedToTransit, islTransitToFirst, islTransitToSecond,
-                islSharedToAltTransit, islAltTransitToFirst, islAltTransitToSecond}) {
+                islSharedToAltTransit, islAltTransitToFirst, islAltTransitToSecond, islTransitToNewFirst,
+                islTransitToNewSecond, islSharedToNewAltTransit, islNewAltTransitToFirst, islNewAltTransitToSecond}) {
             dummyFactory.makeIsl(reference.getSourceEndpoint(), reference.getDestEndpoint());
             dummyFactory.makeIsl(reference.getDestEndpoint(), reference.getSourceEndpoint());
         }
@@ -415,6 +438,98 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
                         .build())
                 .reverse(Path.builder()
                         .srcSwitchId(SWITCH_SECOND_EP)
+                        .destSwitchId(SWITCH_SHARED)
+                        .segments(reverseSegments)
+                        .build())
+                .backUpPathComputationWayUsed(false)
+                .build();
+    }
+
+    protected GetPathsResult buildNewFirstSubFlowPathPair() {
+        List<Segment> forwardSegments = ImmutableList.of(
+                buildPathSegment(islSharedToTransit),
+                buildPathSegment(islTransitToNewFirst));
+        List<Segment> reverseSegments = ImmutableList.of(
+                buildPathSegment(islTransitToNewFirst.makeOpposite()),
+                buildPathSegment(islSharedToTransit.makeOpposite()));
+
+        return GetPathsResult.builder()
+                .forward(Path.builder()
+                        .srcSwitchId(SWITCH_SHARED)
+                        .destSwitchId(SWITCH_NEW_FIRST_EP)
+                        .segments(forwardSegments)
+                        .build())
+                .reverse(Path.builder()
+                        .srcSwitchId(SWITCH_NEW_FIRST_EP)
+                        .destSwitchId(SWITCH_SHARED)
+                        .segments(reverseSegments)
+                        .build())
+                .backUpPathComputationWayUsed(false)
+                .build();
+    }
+
+    protected GetPathsResult buildNewSecondSubFlowPathPair() {
+        List<Segment> forwardSegments = ImmutableList.of(
+                buildPathSegment(islSharedToTransit),
+                buildPathSegment(islTransitToNewSecond));
+        List<Segment> reverseSegments = ImmutableList.of(
+                buildPathSegment(islTransitToNewSecond.makeOpposite()),
+                buildPathSegment(islSharedToTransit.makeOpposite()));
+
+        return GetPathsResult.builder()
+                .forward(Path.builder()
+                        .srcSwitchId(SWITCH_SHARED)
+                        .destSwitchId(SWITCH_NEW_SECOND_EP)
+                        .segments(forwardSegments)
+                        .build())
+                .reverse(Path.builder()
+                        .srcSwitchId(SWITCH_NEW_SECOND_EP)
+                        .destSwitchId(SWITCH_SHARED)
+                        .segments(reverseSegments)
+                        .build())
+                .backUpPathComputationWayUsed(false)
+                .build();
+    }
+
+    protected GetPathsResult buildNewFirstSubFlowProtectedPathPair() {
+        List<Segment> forwardSegments = ImmutableList.of(
+                buildPathSegment(islSharedToNewAltTransit),
+                buildPathSegment(islNewAltTransitToFirst));
+        List<Segment> reverseSegments = ImmutableList.of(
+                buildPathSegment(islNewAltTransitToFirst.makeOpposite()),
+                buildPathSegment(islSharedToNewAltTransit.makeOpposite()));
+
+        return GetPathsResult.builder()
+                .forward(Path.builder()
+                        .srcSwitchId(SWITCH_SHARED)
+                        .destSwitchId(SWITCH_NEW_FIRST_EP)
+                        .segments(forwardSegments)
+                        .build())
+                .reverse(Path.builder()
+                        .srcSwitchId(SWITCH_NEW_FIRST_EP)
+                        .destSwitchId(SWITCH_SHARED)
+                        .segments(reverseSegments)
+                        .build())
+                .backUpPathComputationWayUsed(false)
+                .build();
+    }
+
+    protected GetPathsResult buildNewSecondSubFlowProtectedPathPair() {
+        List<Segment> forwardSegments = ImmutableList.of(
+                buildPathSegment(islSharedToNewAltTransit),
+                buildPathSegment(islNewAltTransitToSecond));
+        List<Segment> reverseSegments = ImmutableList.of(
+                buildPathSegment(islNewAltTransitToSecond.makeOpposite()),
+                buildPathSegment(islSharedToNewAltTransit.makeOpposite()));
+
+        return GetPathsResult.builder()
+                .forward(Path.builder()
+                        .srcSwitchId(SWITCH_SHARED)
+                        .destSwitchId(SWITCH_NEW_SECOND_EP)
+                        .segments(forwardSegments)
+                        .build())
+                .reverse(Path.builder()
+                        .srcSwitchId(SWITCH_NEW_SECOND_EP)
                         .destSwitchId(SWITCH_SHARED)
                         .segments(reverseSegments)
                         .build())

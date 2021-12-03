@@ -24,9 +24,9 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.YFlowProcessingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.AllocateYFlowResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.AllocateYFlowResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.CompleteYFlowInstallationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.CreateDraftYFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.CreateSubFlowsAction;
@@ -49,7 +49,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.RemoveYFlowActi
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.RemoveYFlowResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.ValidateYFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.ValidateYFlowResourcesAction;
-import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
 import org.openkilda.wfm.topology.flowhs.service.FlowCreateService;
 import org.openkilda.wfm.topology.flowhs.service.FlowDeleteService;
 import org.openkilda.wfm.topology.flowhs.service.YFlowCreateHubCarrier;
@@ -75,8 +74,6 @@ import java.util.concurrent.TimeUnit;
 public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, State, Event, YFlowCreateContext,
         YFlowCreateHubCarrier, YFlowEventListener> {
     private YFlowRequest targetFlow;
-
-    private YFlowResources newResources;
 
     private final Set<String> subFlows = new HashSet<>();
     private final Set<String> creatingSubFlows = new HashSet<>();
@@ -251,7 +248,7 @@ public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, Sta
                     .from(State.SUB_FLOWS_CREATED)
                     .to(State.YFLOW_RESOURCES_ALLOCATED)
                     .on(Event.NEXT)
-                    .perform(new AllocateYFlowResourcesAction(persistenceManager, resourceAllocationRetriesLimit,
+                    .perform(new AllocateYFlowResourcesAction<>(persistenceManager, resourceAllocationRetriesLimit,
                             pathComputer, resourcesManager));
 
             builder.transition()

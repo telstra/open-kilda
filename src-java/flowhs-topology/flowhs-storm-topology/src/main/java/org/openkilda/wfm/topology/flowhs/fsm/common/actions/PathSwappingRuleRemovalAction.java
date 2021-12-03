@@ -23,14 +23,14 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
-public abstract class PathSwappingRuleRemovalAction<T extends FlowPathSwappingFsm<T, S, E, C, ?>, S, E, C> extends
+public abstract class PathSwappingRuleRemovalAction<T extends FlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E, C> extends
         BaseFlowRuleRemovalAction<T, S, E, C> {
 
     public PathSwappingRuleRemovalAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager, resourcesManager);
     }
 
-    protected Flow getOriginalFlowWithPaths(FlowPathSwappingFsm<T, S, E, C, ?> stateMachine,
+    protected Flow getOriginalFlowWithPaths(FlowPathSwappingFsm<T, S, E, C, ?, ?> stateMachine,
                                             RequestedFlow originalFlow) {
         Flow flow = RequestedFlowMapper.INSTANCE.toFlow(originalFlow);
         flow.setForwardPathId(stateMachine.getOldPrimaryForwardPath());

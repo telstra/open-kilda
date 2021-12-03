@@ -24,7 +24,7 @@ import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-public class NotifyFlowStatsOnNewPathsAction<T extends FlowPathSwappingFsm<T, S, E, C, ?>, S, E, C> extends
+public class NotifyFlowStatsOnNewPathsAction<T extends FlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E, C> extends
         FlowProcessingAction<T, S, E, C> {
 
     private FlowGenericCarrier carrier;

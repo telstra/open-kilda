@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
 
@@ -28,11 +28,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowProcessingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.YFlowProcessingFsm;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources.EndpointResources;
 
@@ -41,8 +37,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.RetryPolicy;
 
 @Slf4j
-public class AllocateYFlowResourcesAction extends
-        YFlowProcessingAction<YFlowCreateFsm, State, Event, YFlowCreateContext> {
+public class AllocateYFlowResourcesAction<T extends YFlowProcessingFsm<T, S, E, C, ?, ?>, S, E, C>
+        extends YFlowProcessingAction<T, S, E, C> {
     private final PathComputer pathComputer;
     private final FlowResourcesManager resourcesManager;
     private final RetryPolicy<MeterId> resourceAllocationRetryPolicy;
@@ -66,7 +62,7 @@ public class AllocateYFlowResourcesAction extends
     }
 
     @Override
-    public void perform(State from, State to, Event event, YFlowCreateContext context, YFlowCreateFsm stateMachine) {
+    public void perform(S from, S to, E event, C context, T stateMachine) {
         try {
             String yFlowId = stateMachine.getYFlowId();
             YFlowResources newResources;

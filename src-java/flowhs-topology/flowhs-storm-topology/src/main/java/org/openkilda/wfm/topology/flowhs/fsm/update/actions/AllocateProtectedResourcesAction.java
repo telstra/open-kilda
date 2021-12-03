@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
@@ -122,5 +123,13 @@ public class AllocateProtectedResourcesAction extends
     @Override
     protected String getGenericErrorMessage() {
         return "Could not update flow";
+    }
+
+    @Override
+    protected void handleError(FlowUpdateFsm stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        super.handleError(stateMachine, ex, errorType, logTraceback);
+
+        // Notify about failed allocation.
+        stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
     }
 }

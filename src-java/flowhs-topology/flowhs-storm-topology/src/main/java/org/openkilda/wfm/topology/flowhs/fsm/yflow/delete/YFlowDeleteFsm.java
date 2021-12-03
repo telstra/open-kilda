@@ -23,6 +23,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.YFlowProcessingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.RevertYFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.CompleteYFlowRemovalAction;
@@ -36,7 +37,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.OnReceivedRemo
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.OnSubFlowRemovedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.RemoveSubFlowsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.RemoveYFlowResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.RevertYFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.ValidateYFlowAction;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
 import org.openkilda.wfm.topology.flowhs.service.FlowDeleteService;
@@ -241,7 +241,7 @@ public final class YFlowDeleteFsm extends YFlowProcessingFsm<YFlowDeleteFsm, Sta
                     .from(State.REVERTING_YFLOW_STATUS)
                     .to(State.FINISHED_WITH_ERROR)
                     .on(Event.NEXT)
-                    .perform(new RevertYFlowStatusAction(persistenceManager, dashboardLogger));
+                    .perform(new RevertYFlowStatusAction<>(persistenceManager, dashboardLogger));
 
             builder.defineFinalState(State.FINISHED)
                     .addEntryAction(new OnFinishedAction(dashboardLogger));

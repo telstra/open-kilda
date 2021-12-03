@@ -16,11 +16,12 @@
 package org.openkilda.northbound.converter;
 
 import org.openkilda.messaging.command.yflow.SubFlowDto;
+import org.openkilda.messaging.command.yflow.SubFlowPartialUpdateDto;
 import org.openkilda.messaging.command.yflow.SubFlowPathDto;
 import org.openkilda.messaging.command.yflow.SubFlowSharedEndpointEncapsulation;
 import org.openkilda.messaging.command.yflow.SubFlowsResponse;
 import org.openkilda.messaging.command.yflow.YFlowDto;
-import org.openkilda.messaging.command.yflow.YFlowPatchRequest;
+import org.openkilda.messaging.command.yflow.YFlowPartialUpdateRequest;
 import org.openkilda.messaging.command.yflow.YFlowPathsResponse;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.messaging.command.yflow.YFlowRerouteResponse;
@@ -31,6 +32,7 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPathV2;
 import org.openkilda.northbound.dto.v2.yflows.SubFlow;
+import org.openkilda.northbound.dto.v2.yflows.SubFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.yflows.SubFlowPath;
 import org.openkilda.northbound.dto.v2.yflows.SubFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.yflows.SubFlowsDump;
@@ -94,19 +96,23 @@ public abstract class YFlowMapper {
     public abstract FlowPathV2.PathNodeV2 toPathNodeV2(PathNode pathNode);
 
     @Mapping(target = "type", constant = "CREATE")
-    @Mapping(target = "yFlowId", ignore = true)
+    @Mapping(target = "yFlowId", source = "YFlowId")
     public abstract YFlowRequest toYFlowCreateRequest(YFlowCreatePayload source);
 
     @Mapping(target = "type", constant = "UPDATE")
     public abstract YFlowRequest toYFlowUpdateRequest(String yFlowId, YFlowUpdatePayload source);
 
-    public abstract YFlowPatchRequest toYFlowPatchRequest(String yFlowId, YFlowPatchPayload source);
+    public abstract YFlowPartialUpdateRequest toYFlowPatchRequest(String yFlowId, YFlowPatchPayload source);
 
-    @Mapping(target = "flowId", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "timeCreate", ignore = true)
     @Mapping(target = "timeUpdate", ignore = true)
     public abstract SubFlowDto toSubFlowDto(SubFlowUpdatePayload source);
+
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "timeCreate", ignore = true)
+    @Mapping(target = "timeUpdate", ignore = true)
+    public abstract SubFlowPartialUpdateDto toSubFlowPatchDto(SubFlowPatchPayload source);
 
     @Mapping(target = "outerVlanId", source = "vlanId")
     @Mapping(target = "trackLldpConnectedDevices", source = "detectConnectedDevices.lldp")

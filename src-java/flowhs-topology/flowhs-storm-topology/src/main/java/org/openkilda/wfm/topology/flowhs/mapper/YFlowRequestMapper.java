@@ -15,8 +15,12 @@
 
 package org.openkilda.wfm.topology.flowhs.mapper;
 
+import org.openkilda.messaging.command.yflow.SubFlowDto;
+import org.openkilda.messaging.command.yflow.SubFlowSharedEndpointEncapsulation;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.YFlow;
+import org.openkilda.model.YSubFlow;
 import org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
@@ -39,6 +43,35 @@ public abstract class YFlowRequestMapper {
     @Mapping(target = "protectedPathMeterId", ignore = true)
     @Mapping(target = "sharedEndpointMeterId", ignore = true)
     public abstract YFlow toYFlow(YFlowRequest request);
+
+    @Mapping(target = "yFlowId", source = "YFlowId")
+    @Mapping(target = "type", ignore = true)
+    @Mapping(target = "sharedEndpoint.outerVlanId", ignore = true)
+    @Mapping(target = "sharedEndpoint.innerVlanId", ignore = true)
+    @Mapping(target = "sharedEndpoint.trackLldpConnectedDevices", ignore = true)
+    @Mapping(target = "sharedEndpoint.trackArpConnectedDevices", ignore = true)
+    public abstract YFlowRequest toYFlowRequest(YFlow yFlow);
+
+    @Mapping(target = "flowId", source = "subFlowId")
+    @Mapping(target = "endpoint", source = "ySubFlow")
+    @Mapping(target = "sharedEndpoint", source = "ySubFlow")
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "description", ignore = true)
+    @Mapping(target = "timeCreate", ignore = true)
+    @Mapping(target = "timeUpdate", ignore = true)
+    public abstract SubFlowDto toSubFlowDto(YSubFlow ySubFlow);
+
+    @Mapping(target = "switchId", source = "endpointSwitchId")
+    @Mapping(target = "portNumber", source = "endpointPort")
+    @Mapping(target = "outerVlanId", source = "endpointVlan")
+    @Mapping(target = "innerVlanId", source = "endpointInnerVlan")
+    @Mapping(target = "trackLldpConnectedDevices", ignore = true)
+    @Mapping(target = "trackArpConnectedDevices", ignore = true)
+    public abstract FlowEndpoint toFlowEndpoint(YSubFlow ySubFlow);
+
+    @Mapping(target = "vlanId", source = "sharedEndpointVlan")
+    @Mapping(target = "innerVlanId", source = "sharedEndpointInnerVlan")
+    public abstract SubFlowSharedEndpointEncapsulation toSubFlowSharedEndpointEncapsulation(YSubFlow ySubFlow);
 
     /**
      * Convert {@link YFlowRequest} to a few {@link RequestedFlow}.
