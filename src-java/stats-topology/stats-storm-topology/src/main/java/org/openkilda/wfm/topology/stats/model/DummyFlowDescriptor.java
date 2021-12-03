@@ -13,16 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.stats.service;
+package org.openkilda.wfm.topology.stats.model;
 
 import org.openkilda.model.SwitchId;
 
+import lombok.EqualsAndHashCode;
 import lombok.NonNull;
-import lombok.Value;
+import lombok.ToString;
 
-@Value
-public class CookieCacheKey {
-    @NonNull
-    SwitchId switchId;
-    long cookie;
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
+public class DummyFlowDescriptor extends KildaEntryDescriptor {
+    public DummyFlowDescriptor(@NonNull SwitchId switchId) {
+        super(switchId, MeasurePoint.UNKNOWN);
+    }
+
+    @Override
+    public void handle(KildaEntryDescriptorHandler handler) {
+        handler.handleStatsEntry(this);
+    }
 }

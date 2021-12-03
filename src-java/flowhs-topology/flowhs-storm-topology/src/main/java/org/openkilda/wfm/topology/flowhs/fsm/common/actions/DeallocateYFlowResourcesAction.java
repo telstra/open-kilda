@@ -48,6 +48,8 @@ public abstract class DeallocateYFlowResourcesAction<T extends YFlowProcessingFs
             return;
         }
 
+        stateMachine.sendRemoveStatsNotification(resources);
+
         Optional<EndpointResources> sharedEndpointResources = ofNullable(resources.getSharedEndpointResources());
         Optional<MeterId> sharedEndpointMeterId = sharedEndpointResources.map(EndpointResources::getMeterId);
         if (sharedEndpointMeterId.isPresent()) {

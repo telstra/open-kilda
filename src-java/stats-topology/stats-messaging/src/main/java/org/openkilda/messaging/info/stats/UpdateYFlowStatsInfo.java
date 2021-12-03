@@ -15,35 +15,28 @@
 
 package org.openkilda.messaging.info.stats;
 
-import org.openkilda.messaging.payload.flow.PathNodePayload;
-import org.openkilda.model.MeterId;
-import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.messaging.payload.yflow.YFlowEndpointResources;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
-import lombok.NonNull;
 import lombok.Value;
 
-import java.util.List;
-
-/**
- * Represents update path info.
- */
 @Value
 @EqualsAndHashCode(callSuper = true)
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class UpdateFlowPathInfo extends BaseFlowPathInfo {
-    private static final long serialVersionUID = 1L;
-
+public class UpdateYFlowStatsInfo extends BaseYFlowStatsInfo {
     @JsonCreator
-    public UpdateFlowPathInfo(@NonNull @JsonProperty("flow_id") String flowId,
-                              @JsonProperty("y_flow_id") String yFlowId,
-                              @NonNull @JsonProperty("cookie") FlowSegmentCookie cookie,
-                              @JsonProperty("meter_id") MeterId meterId,
-                              @NonNull @JsonProperty("path_nodes") List<PathNodePayload> pathNodes) {
-        super(flowId, yFlowId, cookie, meterId, pathNodes);
+    public UpdateYFlowStatsInfo(
+            @JsonProperty("y_flow_id") String yFlowId,
+            @JsonProperty("shared_endpoint_resources") YFlowEndpointResources sharedEndpointResources,
+            @JsonProperty("y_point_resources") YFlowEndpointResources yPointResources) {
+        super(yFlowId, sharedEndpointResources, yPointResources);
+    }
+
+    public UpdateYFlowStatsInfo(BaseYFlowStatsInfo other) {
+        super(other);
     }
 }

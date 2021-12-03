@@ -15,16 +15,15 @@
 
 package org.openkilda.wfm.topology.stats.model;
 
-import lombok.NonNull;
-import lombok.Value;
+import lombok.Getter;
 
-import java.io.Serializable;
+@Getter
+public abstract class StatsAndDescriptor<T> {
+    private final T data;
+    private final KildaEntryDescriptor descriptor;
 
-@Value
-public class FlowCacheEntry implements Serializable {
-    @NonNull
-    String flowId;
-    long cookie;
-    @NonNull
-    MeasurePoint measurePoint;
+    public StatsAndDescriptor(T data, KildaEntryDescriptor descriptor) {
+        this.data = data;
+        this.descriptor = descriptor;
+    }
 }

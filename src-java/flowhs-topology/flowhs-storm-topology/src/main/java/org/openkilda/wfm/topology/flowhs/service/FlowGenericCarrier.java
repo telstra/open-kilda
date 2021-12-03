@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.service;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
+import org.openkilda.messaging.info.stats.StatsNotification;
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
@@ -68,4 +69,6 @@ public interface FlowGenericCarrier extends NorthboundResponseCarrier, HistoryUp
      * @param flowPathInfo message to send
      */
     default void sendNotifyFlowStats(RemoveFlowPathInfo flowPathInfo) {}
+
+    default void sendStatsNotification(StatsNotification notification) {}
 }
