@@ -26,6 +26,7 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_UPDATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_CREATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_DELETE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_READ;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_CREATE;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_CREATE_MIRROR_POINT;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_DELETE;
@@ -76,6 +77,8 @@ import org.openkilda.wfm.topology.flowhs.bolts.YFlowCreateHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.YFlowCreateHubBolt.YFlowCreateConfig;
 import org.openkilda.wfm.topology.flowhs.bolts.YFlowDeleteHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.YFlowDeleteHubBolt.YFlowDeleteConfig;
+import org.openkilda.wfm.topology.flowhs.bolts.YFlowReadBolt;
+import org.openkilda.wfm.topology.flowhs.bolts.YFlowReadBolt.YFlowReadConfig;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -84,6 +87,7 @@ import org.apache.storm.kafka.spout.KafkaSpoutConfig.ProcessingGuarantee;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
@@ -112,6 +116,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         flowDeleteMirrorPointHub(tb, persistenceManager);
         yFlowCreateHub(tb, persistenceManager);
         yFlowDeleteHub(tb, persistenceManager);
+        yFlowReadBolt(tb, persistenceManager);
 
         speakerSpout(tb);
         flowCreateSpeakerWorker(tb);
@@ -159,7 +164,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                         ComponentId.FLOW_ROUTER_BOLT.name(), ComponentId.FLOW_CREATE_MIRROR_POINT_HUB.name(),
                         ComponentId.FLOW_DELETE_MIRROR_POINT_HUB.name(),
                         ComponentId.YFLOW_CREATE_HUB.name(),
-                        ComponentId.YFLOW_DELETE_HUB.name()));
+                        ComponentId.YFLOW_DELETE_HUB.name(),
+                        ComponentId.YFLOW_READ_BOLT.name()));
         declareBolt(topologyBuilder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(ComponentId.FLOW_CREATE_HUB.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.FLOW_UPDATE_HUB.name(), ZkStreams.ZK.toString())
@@ -171,7 +177,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .allGrouping(ComponentId.FLOW_CREATE_MIRROR_POINT_HUB.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.FLOW_DELETE_MIRROR_POINT_HUB.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.YFLOW_CREATE_HUB.name(), ZkStreams.ZK.toString())
-                .allGrouping(ComponentId.YFLOW_DELETE_HUB.name(), ZkStreams.ZK.toString());
+                .allGrouping(ComponentId.YFLOW_DELETE_HUB.name(), ZkStreams.ZK.toString())
+                .allGrouping(ComponentId.YFLOW_READ_BOLT.name(), ZkStreams.ZK.toString());
     }
 
     private void inputSpout(TopologyBuilder topologyBuilder) {
@@ -448,6 +455,19 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .directGrouping(CoordinatorBolt.ID);
     }
 
+    private void yFlowReadBolt(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
+        YFlowReadConfig yFlowReadConfig = YFlowReadConfig.builder()
+                .readOperationRetriesLimit(topologyConfig.getYFlowReadRetriesLimit())
+                .readOperationRetryDelay(Duration.ofMillis(topologyConfig.getYFlowReadRetryDelayMillis()))
+                .lifeCycleEventComponent(ZooKeeperSpout.SPOUT_ID)
+                .build();
+
+        YFlowReadBolt bolt = new YFlowReadBolt(yFlowReadConfig, persistenceManager);
+        declareBolt(topologyBuilder, bolt, ComponentId.YFLOW_READ_BOLT.name())
+                .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_YFLOW_READ.name(), FIELDS_KEY)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
+    }
+
     private void speakerSpout(TopologyBuilder topologyBuilder) {
         declareKafkaSpoutForAbstractMessage(topologyBuilder, getConfig().getKafkaFlowSpeakerWorkerTopic(),
                 ComponentId.SPEAKER_WORKER_SPOUT.name());
@@ -665,7 +685,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .shuffleGrouping(ComponentId.FLOW_DELETE_MIRROR_POINT_HUB.name(),
                         Stream.HUB_TO_NB_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.YFLOW_CREATE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
-                .shuffleGrouping(ComponentId.YFLOW_DELETE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name());
+                .shuffleGrouping(ComponentId.YFLOW_DELETE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
+                .shuffleGrouping(ComponentId.YFLOW_READ_BOLT.name());
     }
 
     private void rerouteTopologyOutput(TopologyBuilder topologyBuilder) {
@@ -801,6 +822,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
         YFLOW_CREATE_HUB("y_flow.create.hub.bolt"),
         YFLOW_DELETE_HUB("y_flow.delete.hub.bolt"),
+        YFLOW_READ_BOLT("y_flow.read.bolt"),
 
         YFLOW_CREATE_SPEAKER_WORKER("y_flow.create.worker.bolt"),
         YFLOW_DELETE_SPEAKER_WORKER("y_flow.delete.worker.bolt"),
@@ -843,6 +865,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         ROUTER_TO_FLOW_DELETE_MIRROR_POINT_HUB,
         ROUTER_TO_YFLOW_CREATE_HUB,
         ROUTER_TO_YFLOW_DELETE_HUB,
+        ROUTER_TO_YFLOW_READ,
 
         HUB_TO_SPEAKER_WORKER,
         HUB_TO_HISTORY_BOLT,

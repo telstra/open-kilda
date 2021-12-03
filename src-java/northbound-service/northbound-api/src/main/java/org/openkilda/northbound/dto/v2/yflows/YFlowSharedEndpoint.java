@@ -28,7 +28,7 @@ import javax.validation.constraints.NotBlank;
 @Data
 @Builder
 @AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class YFlowSharedEndpoint {
     @NotBlank(message = "switchId should be provided")
     SwitchId switchId;

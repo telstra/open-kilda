@@ -15,9 +15,11 @@
 
 package org.openkilda.wfm.share.service;
 
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.openkilda.messaging.payload.flow.OverlappingSegmentsStats;
 import org.openkilda.model.Flow;
@@ -229,6 +231,129 @@ public class IntersectionComputerTest {
                 buildPathSegment(PATH_ID, SWITCH_ID_A, SWITCH_ID_C, 3, 3));
 
         assertFalse(IntersectionComputer.isProtectedPathOverlaps(primarySegments, protectedSegmets));
+    }
+
+    @Test
+    public void shouldCalculateSharedPathWithSingleSegment() {
+        FlowPath firstPath = FlowPath.builder()
+                .pathId(PATH_ID)
+                .srcSwitch(makeSwitch(SWITCH_ID_A))
+                .destSwitch(makeSwitch(SWITCH_ID_C))
+                .segments(Lists.newArrayList(
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_A, SWITCH_ID_B, 1, 1),
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_B, SWITCH_ID_C, 2, 2)))
+                .build();
+
+        FlowPath secondPath = FlowPath.builder()
+                .pathId(NEW_PATH_ID)
+                .srcSwitch(makeSwitch(SWITCH_ID_A))
+                .destSwitch(makeSwitch(SWITCH_ID_D))
+                .segments(Lists.newArrayList(
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_A, SWITCH_ID_B, 1, 1),
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_B, SWITCH_ID_D, 3, 3)))
+                .build();
+
+        List<PathSegment> sharedPath =
+                IntersectionComputer.calculatePathIntersectionFromSource(asList(firstPath, secondPath));
+
+        assertEquals(1, sharedPath.size());
+        PathSegment sharedSegment = sharedPath.get(0);
+        assertEquals(SWITCH_ID_A, sharedSegment.getSrcSwitchId());
+        assertEquals(SWITCH_ID_B, sharedSegment.getDestSwitchId());
+    }
+
+    @Test
+    public void shouldCalculateSharedPathWithNoSegments() {
+        FlowPath firstPath = FlowPath.builder()
+                .pathId(PATH_ID)
+                .srcSwitch(makeSwitch(SWITCH_ID_A))
+                .destSwitch(makeSwitch(SWITCH_ID_C))
+                .segments(Lists.newArrayList(
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_A, SWITCH_ID_D, 1, 1),
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_D, SWITCH_ID_C, 2, 2)))
+                .build();
+
+        FlowPath secondPath = FlowPath.builder()
+                .pathId(NEW_PATH_ID)
+                .srcSwitch(makeSwitch(SWITCH_ID_A))
+                .destSwitch(makeSwitch(SWITCH_ID_D))
+                .segments(Lists.newArrayList(
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_A, SWITCH_ID_B, 1, 1),
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_B, SWITCH_ID_D, 3, 3)))
+                .build();
+
+        List<PathSegment> sharedPath =
+                IntersectionComputer.calculatePathIntersectionFromSource(asList(firstPath, secondPath));
+
+        assertEquals(0, sharedPath.size());
+    }
+
+    @Test
+    public void shouldCalculateSharedPathAsFullPath() {
+        FlowPath firstPath = FlowPath.builder()
+                .pathId(PATH_ID)
+                .srcSwitch(makeSwitch(SWITCH_ID_A))
+                .destSwitch(makeSwitch(SWITCH_ID_C))
+                .segments(Lists.newArrayList(
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_A, SWITCH_ID_B, 1, 1),
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_B, SWITCH_ID_C, 2, 2)))
+                .build();
+
+        FlowPath secondPath = FlowPath.builder()
+                .pathId(NEW_PATH_ID)
+                .srcSwitch(makeSwitch(SWITCH_ID_A))
+                .destSwitch(makeSwitch(SWITCH_ID_D))
+                .segments(Lists.newArrayList(
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_A, SWITCH_ID_B, 1, 1),
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_B, SWITCH_ID_C, 2, 2),
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_C, SWITCH_ID_D, 3, 3)))
+                .build();
+
+        List<PathSegment> sharedPath =
+                IntersectionComputer.calculatePathIntersectionFromSource(asList(firstPath, secondPath));
+
+        assertEquals(2, sharedPath.size());
+        assertEquals(SWITCH_ID_A, sharedPath.get(0).getSrcSwitchId());
+        assertEquals(SWITCH_ID_B, sharedPath.get(0).getDestSwitchId());
+        assertEquals(SWITCH_ID_B, sharedPath.get(1).getSrcSwitchId());
+        assertEquals(SWITCH_ID_C, sharedPath.get(1).getDestSwitchId());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void failCalculateSharedPathForOnePath() {
+        FlowPath firstPath = FlowPath.builder()
+                .pathId(PATH_ID)
+                .srcSwitch(makeSwitch(SWITCH_ID_A))
+                .destSwitch(makeSwitch(SWITCH_ID_C))
+                .segments(Lists.newArrayList(
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_A, SWITCH_ID_B, 1, 1),
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_B, SWITCH_ID_C, 2, 2)))
+                .build();
+        IntersectionComputer.calculatePathIntersectionFromSource(asList(firstPath));
+        fail();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void failCalculateSharedPathForDifferentSources() {
+        FlowPath firstPath = FlowPath.builder()
+                .pathId(PATH_ID)
+                .srcSwitch(makeSwitch(SWITCH_ID_A))
+                .destSwitch(makeSwitch(SWITCH_ID_C))
+                .segments(Lists.newArrayList(
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_A, SWITCH_ID_B, 1, 1),
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_B, SWITCH_ID_C, 2, 2)))
+                .build();
+        FlowPath secondPath = FlowPath.builder()
+                .pathId(NEW_PATH_ID)
+                .srcSwitch(makeSwitch(SWITCH_ID_B))
+                .destSwitch(makeSwitch(SWITCH_ID_D))
+                .segments(Lists.newArrayList(
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_B, SWITCH_ID_C, 1, 1),
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_C, SWITCH_ID_D, 3, 3)))
+                .build();
+
+        IntersectionComputer.calculatePathIntersectionFromSource(asList(firstPath, secondPath));
+        fail();
     }
 
     private List<PathSegment> getFlowPathSegments(List<FlowPath> paths) {

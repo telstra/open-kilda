@@ -28,7 +28,7 @@ import java.util.List;
 @Data
 @Builder
 @AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class YFlowPath {
     List<PathNodeV2> nodes;
 }

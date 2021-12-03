@@ -28,7 +28,7 @@ import java.time.Instant;
 
 @Data
 @Builder
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class SubFlowDto implements Serializable {
     private static final long serialVersionUID = 1L;
 

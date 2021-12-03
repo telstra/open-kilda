@@ -31,7 +31,7 @@ import lombok.EqualsAndHashCode;
 @Builder
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class YFlowResponse extends InfoData {
     private static final long serialVersionUID = 1L;
 

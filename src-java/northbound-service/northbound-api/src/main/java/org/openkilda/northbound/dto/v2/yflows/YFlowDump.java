@@ -27,7 +27,7 @@ import java.util.List;
 @Data
 @Builder
 @AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class YFlowDump {
     @JsonProperty("y_flows")
     List<YFlow> yFlows;

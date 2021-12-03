@@ -24,9 +24,11 @@ import org.openkilda.model.SwitchId;
 import com.google.common.collect.Sets;
 import lombok.Value;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -129,6 +131,63 @@ public class IntersectionComputer {
                 .collect(Collectors.toSet());
 
         return !Sets.intersection(primaryEdges, protectedEdges).isEmpty();
+    }
+
+    /**
+     * Calculates intersection (shared part) among the paths starting from the source endpoint.
+     *
+     * @param paths the paths to examine.
+     * @return the overlapping path segments.
+     */
+    public static List<PathSegment> calculatePathIntersectionFromSource(Collection<FlowPath> paths) {
+        if (paths.size() < 2) {
+            throw new IllegalArgumentException("At least 2 paths must be provided");
+        }
+
+        SwitchId source = null;
+        for (FlowPath path : paths) {
+            List<PathSegment> segments = path.getSegments();
+            if (segments.isEmpty()) {
+                throw new IllegalArgumentException("All paths mustn't be empty");
+            }
+            // Check that all paths have the same source.
+            if (source == null) {
+                source = segments.get(0).getSrcSwitchId();
+            } else if (!segments.get(0).getSrcSwitchId().equals(source)) {
+                throw new IllegalArgumentException("All paths must have the same source endpoint");
+            }
+        }
+
+        // Gather iterators of all paths' segments.
+        List<Iterator<PathSegment>> pathSegmentIterators = paths.stream()
+                .map(FlowPath::getSegments)
+                .map(List::iterator)
+                .collect(Collectors.toList());
+        return getLongestIntersectionOfSegments(pathSegmentIterators);
+    }
+
+    private static List<PathSegment> getLongestIntersectionOfSegments(List<Iterator<PathSegment>> pathSegments) {
+        List<PathSegment> result = new ArrayList<>();
+        // Iterate over the first path's segments and check other paths' segments.
+        Iterator<PathSegment> firstPathSegmentIterator = pathSegments.get(0);
+        while (firstPathSegmentIterator.hasNext()) {
+            PathSegment firstPathSegment = firstPathSegmentIterator.next();
+            for (Iterator<PathSegment> it : pathSegments.subList(1, pathSegments.size())) {
+                if (it.hasNext()) {
+                    PathSegment anotherSegment = it.next();
+                    if (!firstPathSegment.getSrcSwitchId().equals(anotherSegment.getSrcSwitchId())
+                            || firstPathSegment.getSrcPort() != anotherSegment.getSrcPort()
+                            || !firstPathSegment.getDestSwitchId().equals(anotherSegment.getDestSwitchId())
+                            || firstPathSegment.getDestPort() != anotherSegment.getDestPort()) {
+                        return result;
+                    }
+                } else {
+                    return result;
+                }
+            }
+            result.add(firstPathSegment);
+        }
+        return result;
     }
 
     /**

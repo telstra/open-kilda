@@ -30,7 +30,7 @@ import java.time.Instant;
 import java.util.List;
 
 @Data
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class YFlowDto implements Serializable {
     private static final long serialVersionUID = 1L;
 

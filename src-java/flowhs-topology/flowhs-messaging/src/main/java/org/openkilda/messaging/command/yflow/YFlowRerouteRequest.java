@@ -32,7 +32,7 @@ import java.util.Set;
 @Data
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class YFlowRerouteRequest extends CommandData {
     private static final long serialVersionUID = 1L;
 
