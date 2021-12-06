@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -57,6 +57,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
+import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -199,7 +200,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldFailRerouteOnUnsuccessfulInstallation() throws RecoverableException, UnroutableFlowException {
+    public void shouldFailRerouteOnUnsuccessfulInstallation()
+            throws RecoverableException, UnroutableFlowException, UnknownKeyException {
         Flow origin = makeFlow();
         GetPathsResult newPathPair = make3SwitchesPathPair();
         preparePathComputation(origin.getFlowId(), newPathPair);
@@ -236,7 +238,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldFailRerouteOnTimeoutDuringInstallation() throws RecoverableException, UnroutableFlowException {
+    public void shouldFailRerouteOnTimeoutDuringInstallation()
+            throws RecoverableException, UnroutableFlowException, UnknownKeyException {
         Flow origin = makeFlow();
         GetPathsResult newPathPair = make3SwitchesPathPair();
         preparePathComputation(origin.getFlowId(), newPathPair);
@@ -264,7 +267,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldFailRerouteOnUnsuccessfulValidation() throws RecoverableException, UnroutableFlowException {
+    public void shouldFailRerouteOnUnsuccessfulValidation()
+            throws RecoverableException, UnroutableFlowException, UnknownKeyException {
         Flow origin = makeFlow();
         GetPathsResult newPathPair = make3SwitchesPathPair();
         preparePathComputation(origin.getFlowId(), newPathPair);
@@ -301,7 +305,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldFailRerouteOnTimeoutDuringValidation() throws RecoverableException, UnroutableFlowException {
+    public void shouldFailRerouteOnTimeoutDuringValidation()
+            throws RecoverableException, UnroutableFlowException, UnknownKeyException {
         Flow origin = makeFlow();
         GetPathsResult newPathPair = make3SwitchesPathPair();
         preparePathComputation(origin.getFlowId(), newPathPair);
@@ -333,7 +338,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
     @Ignore("FIXME: need to replace mocking of updateStatus with another approach")
     @Test
-    public void shouldFailRerouteOnSwapPathsError() throws RecoverableException, UnroutableFlowException {
+    public void shouldFailRerouteOnSwapPathsError()
+            throws RecoverableException, UnroutableFlowException, UnknownKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -365,7 +371,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
     @Test
     public void shouldFailRerouteOnErrorDuringCompletingFlowPathInstallation()
-            throws RecoverableException, UnroutableFlowException {
+            throws RecoverableException, UnroutableFlowException, UnknownKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -402,7 +408,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
     @Test
     public void shouldCompleteRerouteOnErrorDuringCompletingFlowPathRemoval()
-            throws RecoverableException, UnroutableFlowException {
+            throws RecoverableException, UnroutableFlowException, UnknownKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -430,7 +436,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
     @Test
     public void shouldCompleteRerouteOnErrorDuringResourceDeallocation()
-            throws RecoverableException, UnroutableFlowException {
+            throws RecoverableException, UnroutableFlowException, UnknownKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -462,7 +468,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldSuccessfullyRerouteFlow() throws RecoverableException, UnroutableFlowException {
+    public void shouldSuccessfullyRerouteFlow()
+            throws RecoverableException, UnroutableFlowException, UnknownKeyException {
         Flow origin = makeFlow();
         origin.setStatus(FlowStatus.DOWN);
         transactionManager.doInTransaction(() ->
@@ -493,7 +500,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldSuccessfullyHandleOverlappingRequests() throws RecoverableException, UnroutableFlowException {
+    public void shouldSuccessfullyHandleOverlappingRequests()
+            throws RecoverableException, UnroutableFlowException, UnknownKeyException {
         Flow origin = makeFlow();
         origin.setStatus(FlowStatus.DOWN);
         transactionManager.doInTransaction(() ->
@@ -534,7 +542,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldMakeFlowDownOnTimeoutIfEffectivelyDown() throws RecoverableException, UnroutableFlowException {
+    public void shouldMakeFlowDownOnTimeoutIfEffectivelyDown()
+            throws RecoverableException, UnroutableFlowException, UnknownKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -558,7 +567,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldIgnoreEffectivelyDownStateIfSamePaths() throws RecoverableException, UnroutableFlowException {
+    public void shouldIgnoreEffectivelyDownStateIfSamePaths()
+            throws RecoverableException, UnroutableFlowException, UnknownKeyException {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make2SwitchesPathPair());
 
@@ -578,7 +588,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldProcessRerouteForValidRequest() throws RecoverableException, UnroutableFlowException {
+    public void shouldProcessRerouteForValidRequest()
+            throws RecoverableException, UnroutableFlowException, UnknownKeyException {
         Flow origin = makeFlow();
         origin.setTargetPathComputationStrategy(LATENCY);
         setupFlowRepositorySpy().findById(origin.getFlowId())
@@ -663,7 +674,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         verifyNorthboundErrorResponse(carrier, ErrorType.REQUEST_INVALID);
     }
 
-    protected void produceAsyncResponse(FlowRerouteService service, FlowSegmentRequest speakerRequest) {
+    protected void produceAsyncResponse(FlowRerouteService service, FlowSegmentRequest speakerRequest)
+            throws UnknownKeyException {
         service.handleAsyncResponse(currentRequestKey, buildSpeakerResponse(speakerRequest));
     }
 

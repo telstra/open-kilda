@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
@@ -77,6 +78,9 @@ public class PostResourceAllocationAction extends
             stateMachine.setOriginalFlowStatus(FlowStatus.DOWN);
         }
 
+        // Notify about successful allocation.
+        stateMachine.notifyEventListeners(listener -> listener.onResourcesAllocated(flowId));
+
         return Optional.of(buildRerouteResponseMessage(currentForwardPath, newForwardPath,
                 stateMachine.getCommandContext()));
     }
@@ -96,5 +100,13 @@ public class PostResourceAllocationAction extends
     @Override
     protected String getGenericErrorMessage() {
         return "Could not reroute flow";
+    }
+
+    @Override
+    protected void handleError(FlowRerouteFsm stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        super.handleError(stateMachine, ex, errorType, logTraceback);
+
+        // Notify about failed allocation.
+        stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
     }
 }

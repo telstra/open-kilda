@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action;
 
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.DeallocateYFlowResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.Event;

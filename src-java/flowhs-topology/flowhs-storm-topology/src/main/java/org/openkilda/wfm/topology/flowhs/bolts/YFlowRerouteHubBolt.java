@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_MET
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_NB_RESPONSE_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_PING_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_REROUTE_RESPONSE_SENDER;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_SPEAKER_WORKER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_STATS_TOPOLOGY_SENDER;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
@@ -31,18 +32,18 @@ import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.PeriodicPingCommand;
+import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
-import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.server42.control.messaging.flowrtt.ActivateFlowMonitoringInfoData;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -53,56 +54,71 @@ import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
+import org.openkilda.wfm.topology.flowhs.bolts.FlowRerouteHubBolt.FlowRerouteConfig;
+import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
+import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteService;
+import org.openkilda.wfm.topology.flowhs.service.YFlowRerouteHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.YFlowRerouteService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
-import lombok.Builder;
 import lombok.Getter;
+import lombok.experimental.SuperBuilder;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier {
+public class YFlowRerouteHubBolt extends HubBolt implements YFlowRerouteHubCarrier, FlowRerouteHubCarrier {
 
-    private final FlowRerouteConfig config;
+    private final YFlowRerouteConfig yFlowRerouteConfig;
+    private final FlowRerouteConfig flowRerouteConfig;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
 
-    private transient FlowRerouteService service;
+    private transient YFlowRerouteService yFlowRerouteService;
+    private transient FlowRerouteService flowRerouteService;
     private String currentKey;
 
     private LifecycleEvent deferredShutdownEvent;
 
-    public FlowRerouteHubBolt(FlowRerouteConfig config, PersistenceManager persistenceManager,
-                              PathComputerConfig pathComputerConfig, FlowResourcesConfig flowResourcesConfig) {
-        super(persistenceManager, config);
+    public YFlowRerouteHubBolt(YFlowRerouteConfig yFlowRerouteConfig, FlowRerouteConfig flowRerouteConfig,
+                               PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig,
+                               FlowResourcesConfig flowResourcesConfig) {
+        super(persistenceManager, yFlowRerouteConfig);
 
-        this.config = config;
+        this.yFlowRerouteConfig = yFlowRerouteConfig;
+        this.flowRerouteConfig = flowRerouteConfig;
         this.pathComputerConfig = pathComputerConfig;
         this.flowResourcesConfig = flowResourcesConfig;
 
-        enableMeterRegistry("kilda.flow_reroute", HUB_TO_METRICS_BOLT.name());
+        enableMeterRegistry("kilda.y_flow_reroute", HUB_TO_METRICS_BOLT.name());
     }
 
     @Override
     protected void init() {
+        FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         AvailableNetworkFactory availableNetworkFactory =
                 new AvailableNetworkFactory(pathComputerConfig, persistenceManager.getRepositoryFactory());
         PathComputer pathComputer =
                 new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
 
-        FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
-        service = new FlowRerouteService(this, persistenceManager, pathComputer, resourcesManager,
-                config.getPathAllocationRetriesLimit(), config.getPathAllocationRetryDelay(),
-                config.getResourceAllocationRetriesLimit(), config.getSpeakerCommandRetriesLimit());
+        flowRerouteService = new FlowRerouteService(this, persistenceManager, pathComputer, resourcesManager,
+                flowRerouteConfig.getPathAllocationRetriesLimit(), flowRerouteConfig.getPathAllocationRetryDelay(),
+                flowRerouteConfig.getResourceAllocationRetriesLimit(),
+                flowRerouteConfig.getSpeakerCommandRetriesLimit());
+
+        yFlowRerouteService = new YFlowRerouteService(this, persistenceManager, pathComputer, resourcesManager,
+                flowRerouteService, yFlowRerouteConfig.getResourceAllocationRetriesLimit(),
+                yFlowRerouteConfig.getSpeakerCommandRetriesLimit());
     }
 
     @Override
     protected boolean deactivate(LifecycleEvent event) {
-        if (service.deactivate()) {
+        if (yFlowRerouteService.deactivate() && flowRerouteService.deactivate()) {
             return true;
         }
         deferredShutdownEvent = event;
@@ -111,14 +127,20 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
 
     @Override
     protected void activate() {
-        service.activate();
+        flowRerouteService.deactivate();
+        yFlowRerouteService.deactivate();
     }
+
 
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
         currentKey = pullKey(input);
-        FlowRerouteRequest request = pullValue(input, FIELD_ID_PAYLOAD, FlowRerouteRequest.class);
-        service.handleRequest(currentKey, request, getCommandContext());
+        YFlowRerouteRequest payload = pullValue(input, FIELD_ID_PAYLOAD, YFlowRerouteRequest.class);
+        try {
+            yFlowRerouteService.handleRequest(currentKey, pullContext(input), payload);
+        } catch (DuplicateKeyException e) {
+            log.error("Failed to handle a request with key {}. {}", currentKey, e.getMessage());
+        }
     }
 
     @Override
@@ -127,9 +149,9 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
         currentKey = KeyProvider.getParentKey(operationKey);
         SpeakerFlowSegmentResponse flowResponse = pullValue(input, FIELD_ID_PAYLOAD, SpeakerFlowSegmentResponse.class);
         try {
-            service.handleAsyncResponse(currentKey, flowResponse);
+            yFlowRerouteService.handleAsyncResponse(currentKey, flowResponse);
         } catch (UnknownKeyException e) {
-            log.warn("Received a response with unknown key {}.", currentKey);
+            log.error("Received a response with unknown key {}.", currentKey);
         }
     }
 
@@ -137,16 +159,10 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     public void onTimeout(String key, Tuple tuple) {
         currentKey = key;
         try {
-            service.handleTimeout(key);
+            yFlowRerouteService.handleTimeout(key);
         } catch (UnknownKeyException e) {
-            log.warn("Failed to handle a timeout event for unknown key {}.", currentKey);
+            log.error("Failed to handle a timeout event for unknown key {}.", currentKey);
         }
-    }
-
-    @Override
-    public void sendInactive() {
-        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferredShutdownEvent, getCommandContext()));
-        deferredShutdownEvent = null;
     }
 
     @Override
@@ -169,11 +185,49 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     }
 
     @Override
+    public void cancelTimeoutCallback(String key) {
+        cancelCallback(key);
+    }
+
+    @Override
+    public void sendYFlowRerouteResultStatus(String flowId, RerouteError rerouteError, String correlationId) {
+        RerouteResultInfoData rerouteResult = RerouteResultInfoData.builder()
+                .flowId(flowId)
+                .success(rerouteError == null)
+                .rerouteError(rerouteError)
+                .build();
+        Message message = new InfoMessage(rerouteResult, System.currentTimeMillis(), correlationId);
+        emitWithContext(Stream.HUB_TO_REROUTE_RESPONSE_SENDER.name(), getCurrentTuple(),
+                new Values(currentKey, message));
+    }
+
+    @Override
+    public void sendRerouteResultStatus(String flowId, RerouteError rerouteError, String correlationId) {
+        // do not need to send response to reroute topology by calling this method
+    }
+
+    @Override
+    public void sendInactive() {
+        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferredShutdownEvent, getCommandContext()));
+        deferredShutdownEvent = null;
+    }
+
+    @Override
     public void sendPeriodicPingNotification(String flowId, boolean enabled) {
         PeriodicPingCommand payload = new PeriodicPingCommand(flowId, enabled);
         Message message = new CommandMessage(payload, getCommandContext().getCreateTime(),
                 getCommandContext().getCorrelationId());
         emitWithContext(Stream.HUB_TO_PING_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
+    }
+
+    @Override
+    public void sendActivateFlowMonitoring(RequestedFlow flow) {
+        ActivateFlowMonitoringInfoData payload = RequestedFlowMapper.INSTANCE.toActivateFlowMonitoringInfoData(flow);
+
+        Message message = new InfoMessage(payload, getCommandContext().getCreateTime(),
+                getCommandContext().getCorrelationId());
+        emitWithContext(HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(flow.getFlowId(), message));
     }
 
     @Override
@@ -183,7 +237,6 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
 
         emitWithContext(HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name(), getCurrentTuple(),
                 new Values(correlationId, message));
-
     }
 
     @Override
@@ -196,61 +249,31 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     }
 
     @Override
-    public void sendNotifyFlowStats(RemoveFlowPathInfo flowPathInfo) {
-        Message message = new InfoMessage(flowPathInfo, System.currentTimeMillis(),
-                getCommandContext().getCorrelationId());
-
-        emitWithContext(HUB_TO_STATS_TOPOLOGY_SENDER.name(), getCurrentTuple(),
-                new Values(flowPathInfo.getFlowId(), message));
-    }
-
-    @Override
-    public void cancelTimeoutCallback(String key) {
-        cancelCallback(key);
-    }
-
-    @Override
-    public void sendRerouteResultStatus(String flowId, RerouteError rerouteError, String correlationId) {
-        RerouteResultInfoData rerouteResult = RerouteResultInfoData.builder()
-                .flowId(flowId)
-                .success(rerouteError == null)
-                .rerouteError(rerouteError)
-                .build();
-        Message message = new InfoMessage(rerouteResult, System.currentTimeMillis(), correlationId);
-        emitWithContext(Stream.HUB_TO_REROUTE_RESPONSE_SENDER.name(), getCurrentTuple(),
-                new Values(currentKey, message));
-    }
-
-    @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
 
         declarer.declareStream(HUB_TO_SPEAKER_WORKER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
-        declarer.declareStream(HUB_TO_REROUTE_RESPONSE_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), HistoryBolt.INPUT_FIELDS);
         declarer.declareStream(HUB_TO_PING_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(ZkStreams.ZK.toString(),
                 new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
         declarer.declareStream(HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_STATS_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(HUB_TO_REROUTE_RESPONSE_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
     }
 
     @Getter
-    public static class FlowRerouteConfig extends Config {
-        private int pathAllocationRetriesLimit;
-        private int pathAllocationRetryDelay;
+    @SuperBuilder
+    public static class YFlowRerouteConfig extends Config {
         private int resourceAllocationRetriesLimit;
         private int speakerCommandRetriesLimit;
 
-        @Builder(builderMethodName = "flowRerouteBuilder", builderClassName = "flowRerouteBuild")
-        public FlowRerouteConfig(String requestSenderComponent, String workerComponent,  String lifeCycleEventComponent,
-                                 int timeoutMs, boolean autoAck,
-                                 int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
-                                 int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
+        public YFlowRerouteConfig(String requestSenderComponent, String workerComponent, String lifeCycleEventComponent,
+                                  int timeoutMs, boolean autoAck, int resourceAllocationRetriesLimit,
+                                  int speakerCommandRetriesLimit) {
             super(requestSenderComponent, workerComponent, lifeCycleEventComponent, timeoutMs, autoAck);
-            this.pathAllocationRetriesLimit = pathAllocationRetriesLimit;
-            this.pathAllocationRetryDelay = pathAllocationRetryDelay;
             this.resourceAllocationRetriesLimit = resourceAllocationRetriesLimit;
             this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
         }

@@ -201,4 +201,12 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
     private IslEndpoint getSegmentDestEndpoint(PathSegment segment) {
         return new IslEndpoint(segment.getDestSwitchId(), segment.getDestPort());
     }
+
+    @Override
+    protected void handleError(FlowRerouteFsm stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        super.handleError(stateMachine, ex, errorType, logTraceback);
+
+        // Notify about failed validation.
+        stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
+    }
 }

@@ -13,21 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action;
+package org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action;
 
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.DeallocateYFlowResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteContext;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class DeallocateOldYFlowResourcesAction extends
-        DeallocateYFlowResourcesAction<YFlowUpdateFsm, State, Event, YFlowUpdateContext> {
+        DeallocateYFlowResourcesAction<YFlowRerouteFsm, State, Event, YFlowRerouteContext> {
 
     public DeallocateOldYFlowResourcesAction(PersistenceManager persistenceManager,
                                              FlowResourcesManager resourcesManager) {
@@ -35,7 +35,7 @@ public class DeallocateOldYFlowResourcesAction extends
     }
 
     @Override
-    public void perform(State from, State to, Event event, YFlowUpdateContext context, YFlowUpdateFsm stateMachine) {
+    public void perform(State from, State to, Event event, YFlowRerouteContext context, YFlowRerouteFsm stateMachine) {
         deallocateYFlowResources(stateMachine.getOldResources(), stateMachine);
     }
 }

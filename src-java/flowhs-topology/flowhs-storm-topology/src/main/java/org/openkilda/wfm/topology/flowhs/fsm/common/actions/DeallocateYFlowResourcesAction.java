@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
 import static java.util.Optional.ofNullable;
@@ -23,7 +23,6 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.YFlowProcessingFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources.EndpointResources;
 
