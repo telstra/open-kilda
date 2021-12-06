@@ -112,6 +112,11 @@ public class ValidateYFlowAction extends NbTrackableAction<YFlowUpdateFsm, State
                     format("Unable to map provided sub-flows set onto existing y-flow %s", yFlowId));
         }
 
+        YSubFlow subFlow = yFlow.getSubFlows().stream().findAny()
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.DATA_INVALID,
+                        format("No sub-flows of the y-flow %s were found", yFlowId)));
+        stateMachine.setMainAffinityFlowId(subFlow.getFlow().getAffinityGroupId());
+
         List<FlowEndpoint> subFlowEndpoints = targetFlow.getSubFlows().stream()
                 .map(SubFlowDto::getEndpoint)
                 .collect(Collectors.toList());

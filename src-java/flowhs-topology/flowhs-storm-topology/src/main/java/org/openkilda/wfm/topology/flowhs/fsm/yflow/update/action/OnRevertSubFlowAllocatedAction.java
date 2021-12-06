@@ -29,22 +29,26 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.tx.TransactionManager;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.FlowUpdateService;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 @Slf4j
 public class OnRevertSubFlowAllocatedAction extends AnonymousAction<YFlowUpdateFsm, State, Event, YFlowUpdateContext> {
+    private final FlowUpdateService flowUpdateService;
     private final TransactionManager transactionManager;
     private final YFlowRepository yFlowRepository;
     protected final FlowRepository flowRepository;
 
-    public OnRevertSubFlowAllocatedAction(PersistenceManager persistenceManager) {
+    public OnRevertSubFlowAllocatedAction(FlowUpdateService flowUpdateService, PersistenceManager persistenceManager) {
+        this.flowUpdateService = flowUpdateService;
         this.transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.yFlowRepository = repositoryFactory.createYFlowRepository();
@@ -95,5 +99,18 @@ public class OnRevertSubFlowAllocatedAction extends AnonymousAction<YFlowUpdateF
             yFlow.updateSubFlow(subFlow);
             return yFlow;
         });
+
+        if (subFlowId.equals(stateMachine.getMainAffinityFlowId())) {
+            stateMachine.getRequestedFlows().forEach(originalFlow -> {
+                String requestedFlowId = originalFlow.getFlowId();
+                if (!requestedFlowId.equals(subFlowId)) {
+                    CommandContext flowContext = stateMachine.getCommandContext().fork(requestedFlowId);
+                    stateMachine.addUpdatingSubFlow(requestedFlowId);
+                    stateMachine.notifyEventListeners(listener ->
+                            listener.onSubFlowProcessingStart(yFlowId, requestedFlowId));
+                    flowUpdateService.startFlowUpdating(flowContext, originalFlow, yFlowId);
+                }
+            });
+        }
     }
 }

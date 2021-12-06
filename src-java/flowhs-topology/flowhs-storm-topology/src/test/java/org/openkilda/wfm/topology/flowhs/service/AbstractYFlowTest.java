@@ -19,6 +19,7 @@ import static java.util.Arrays.asList;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -78,6 +79,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -253,6 +255,21 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
         flow.getSubFlows().forEach(subFlow -> {
             assertEquals(expectedStatus, subFlow.getFlow().getStatus());
         });
+    }
+
+    protected void verifyAffinity(String yFlowId) {
+        YFlow flow = getYFlow(yFlowId);
+        Set<String> affinityGroups = flow.getSubFlows().stream()
+                .map(YSubFlow::getFlow)
+                .map(Flow::getAffinityGroupId)
+                .collect(Collectors.toSet());
+        assertEquals(1, affinityGroups.size());
+
+        String affinityGroupId = affinityGroups.iterator().next();
+        Set<String> subFlowIds = flow.getSubFlows().stream()
+                .map(YSubFlow::getSubFlowId)
+                .collect(Collectors.toSet());
+        assertTrue(subFlowIds.contains(affinityGroupId));
     }
 
     protected void verifyYFlowIsAbsent(String yFlowId) {

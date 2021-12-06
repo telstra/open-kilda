@@ -38,6 +38,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.YFlowMapper;
+import org.openkilda.wfm.topology.flowhs.service.FlowCreateService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -45,10 +46,12 @@ import java.util.Optional;
 
 @Slf4j
 public class OnSubFlowAllocatedAction extends NbTrackableAction<YFlowCreateFsm, State, Event, YFlowCreateContext> {
+    private final FlowCreateService flowCreateService;
     private final YFlowRepository yFlowRepository;
 
-    public OnSubFlowAllocatedAction(PersistenceManager persistenceManager) {
+    public OnSubFlowAllocatedAction(FlowCreateService flowCreateService, PersistenceManager persistenceManager) {
         super(persistenceManager);
+        this.flowCreateService = flowCreateService;
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.yFlowRepository = repositoryFactory.createYFlowRepository();
     }
@@ -98,6 +101,21 @@ public class OnSubFlowAllocatedAction extends NbTrackableAction<YFlowCreateFsm, 
             yFlow.addSubFlow(subFlow);
             return yFlow;
         });
+
+        if (subFlowId.equals(stateMachine.getMainAffinityFlowId())) {
+            stateMachine.getRequestedFlows().forEach(requestedFlow -> {
+                String requestedFlowId = requestedFlow.getFlowId();
+                if (!requestedFlowId.equals(subFlowId)) {
+                    stateMachine.addSubFlow(requestedFlowId);
+                    stateMachine.addCreatingSubFlow(requestedFlowId);
+                    stateMachine.notifyEventListeners(listener ->
+                            listener.onSubFlowProcessingStart(yFlowId, requestedFlowId));
+                    CommandContext flowContext = stateMachine.getCommandContext().fork(requestedFlowId);
+                    requestedFlow.setAffinityFlowId(stateMachine.getMainAffinityFlowId());
+                    flowCreateService.startFlowCreation(flowContext, requestedFlow, false, yFlowId);
+                }
+            });
+        }
 
         if (stateMachine.getAllocatedSubFlows().size() == stateMachine.getSubFlows().size()) {
             return Optional.of(buildResponseMessage(result, stateMachine.getCommandContext()));

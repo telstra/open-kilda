@@ -57,6 +57,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.UpdateSubFlowsA
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.UpdateYFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.ValidateNewYPointMeterAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.ValidateYFlowAction;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
 import org.openkilda.wfm.topology.flowhs.service.FlowUpdateService;
 import org.openkilda.wfm.topology.flowhs.service.YFlowEventListener;
@@ -91,6 +92,9 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
     private final Set<String> updatingSubFlows = new HashSet<>();
     private final Set<String> failedSubFlows = new HashSet<>();
     private final Set<String> allocatedSubFlows = new HashSet<>();
+
+    private String mainAffinityFlowId;
+    private Collection<RequestedFlow> requestedFlows;
 
     private String errorReason;
 
@@ -224,7 +228,7 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
             builder.internalTransition()
                     .within(State.UPDATING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_ALLOCATED)
-                    .perform(new OnSubFlowAllocatedAction(persistenceManager));
+                    .perform(new OnSubFlowAllocatedAction(flowUpdateService, persistenceManager));
             builder.internalTransition()
                     .within(State.UPDATING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_UPDATED)
@@ -443,7 +447,7 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
             builder.internalTransition()
                     .within(State.REVERTING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_ALLOCATED)
-                    .perform(new OnRevertSubFlowAllocatedAction(persistenceManager));
+                    .perform(new OnRevertSubFlowAllocatedAction(flowUpdateService, persistenceManager));
             builder.internalTransition()
                     .within(State.REVERTING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_UPDATED)
@@ -566,7 +570,6 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
             });
             return fsm;
         }
-
     }
 
     public enum State {

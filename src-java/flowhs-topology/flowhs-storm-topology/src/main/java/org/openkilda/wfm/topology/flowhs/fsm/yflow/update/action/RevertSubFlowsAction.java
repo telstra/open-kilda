@@ -46,15 +46,19 @@ public class RevertSubFlowsAction extends HistoryRecordingAction<YFlowUpdateFsm,
         String yFlowId = stateMachine.getYFlowId();
         Collection<RequestedFlow> originalFlows =
                 YFlowRequestMapper.INSTANCE.toRequestedFlows(stateMachine.getOriginalFlow());
+        stateMachine.setRequestedFlows(originalFlows);
 
         log.debug("Start reverting {} sub-flows for y-flow {}", originalFlows.size(), stateMachine.getYFlowId());
 
-        originalFlows.forEach(originalFlow -> {
-            String subFlowId = originalFlow.getFlowId();
-            CommandContext flowContext = stateMachine.getCommandContext().fork(subFlowId);
-            stateMachine.addUpdatingSubFlow(subFlowId);
-            stateMachine.notifyEventListeners(listener -> listener.onSubFlowProcessingStart(yFlowId, subFlowId));
-            flowUpdateService.startFlowUpdating(flowContext, originalFlow, yFlowId);
-        });
+        originalFlows.stream()
+                .filter(originalFlow -> originalFlow.getFlowId().equals(stateMachine.getMainAffinityFlowId()))
+                .forEach(originalFlow -> {
+                    String subFlowId = originalFlow.getFlowId();
+                    CommandContext flowContext = stateMachine.getCommandContext().fork(subFlowId);
+                    stateMachine.addUpdatingSubFlow(subFlowId);
+                    stateMachine.notifyEventListeners(listener ->
+                            listener.onSubFlowProcessingStart(yFlowId, subFlowId));
+                    flowUpdateService.startFlowUpdating(flowContext, originalFlow, yFlowId);
+                });
     }
 }
