@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,26 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.flows;
+package org.openkilda.testing.service.traffexam.model;
 
-import org.openkilda.model.SwitchId;
-
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.google.common.collect.ImmutableList;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
-@Builder
-@JsonNaming(value = SnakeCaseStrategy.class)
-public class FlowPatchEndpoint {
-    private SwitchId switchId;
-    private Integer portNumber;
-    private Integer vlanId;
-    private Integer innerVlanId;
-    private DetectConnectedDevicesV2 detectConnectedDevices;
+public class YFlowBidirectionalExam {
+
+    private Exam forward1;
+    private Exam reverse1;
+    private Exam forward2;
+    private Exam reverse2;
+
+    public List<Exam> getAllExams() {
+        return ImmutableList.of(forward1, reverse1, forward2, reverse2);
+    }
 }

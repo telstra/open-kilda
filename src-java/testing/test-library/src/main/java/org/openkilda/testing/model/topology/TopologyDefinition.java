@@ -184,6 +184,10 @@ public class TopologyDefinition {
         if (sw.prop != null) {
             allPorts.remove(sw.prop.server42Port);
         }
+        List<Integer> tgPorts = traffGens.stream()
+                .filter(it -> it.switchConnected.dpId.equals(sw.dpId))
+                .map(it -> it.switchPort).collect(toList());
+        allPorts.addAll(tgPorts);
         return allPorts;
     }
 
@@ -197,6 +201,11 @@ public class TopologyDefinition {
     @JsonIgnore
     public List<Integer> getBusyPortsForSwitch(Switch sw) {
         return getRelatedIsls(sw).stream().map(Isl::getSrcPort).collect(toList());
+    }
+
+    @JsonIgnore
+    public List<Integer> getBusyPortsForSwitch(SwitchId swId) {
+        return getBusyPortsForSwitch(find(swId));
     }
 
     /**
@@ -232,7 +241,7 @@ public class TopologyDefinition {
     @NonFinal
     @JsonNaming(SnakeCaseStrategy.class)
     @JsonIdentityInfo(property = "name", generator = ObjectIdGenerators.PropertyGenerator.class)
-    public static class Switch {
+    public static class Switch implements Comparable<Switch> {
 
         private static int DEFAULT_MAX_PORT = 100;
 
@@ -298,6 +307,11 @@ public class TopologyDefinition {
 
         public void setDpId(SwitchId switchId) {
             this.dpId = switchId;
+        }
+
+        @Override
+        public int compareTo(Switch other) {
+            return this.dpId.compareTo(other.dpId);
         }
     }
 

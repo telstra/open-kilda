@@ -184,6 +184,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         cleanup: "Delete the flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)
+        sleep(7000) //subsequent test fails due to traffexam. Was not able to track down the reason
 
         where:
         [data, swPair] << ([

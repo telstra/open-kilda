@@ -20,6 +20,10 @@ import static java.lang.String.format;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.yflows.SubFlow;
+import org.openkilda.northbound.dto.v2.yflows.YFlow;
+import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpoint;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen;
@@ -31,6 +35,9 @@ import org.openkilda.testing.service.traffexam.model.FlowBidirectionalExam;
 import org.openkilda.testing.service.traffexam.model.Host;
 import org.openkilda.testing.service.traffexam.model.TimeLimit;
 import org.openkilda.testing.service.traffexam.model.Vlan;
+import org.openkilda.testing.service.traffexam.model.YFlowBidirectionalExam;
+
+import com.google.common.collect.ImmutableList;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -59,14 +66,14 @@ public class FlowTrafficExamBuilder {
     /**
      * Builds bidirectional exam.
      */
-    public FlowBidirectionalExam buildBidirectionalExam(FlowPayload flow, int bandwidth, Long duration)
+    public FlowBidirectionalExam buildBidirectionalExam(FlowPayload flow, long bandwidth, Long duration)
             throws FlowNotApplicableException {
         Optional<TraffGen> source = Optional.ofNullable(
                 endpointToTraffGen.get(makeComparableEndpoint(flow.getSource())));
         Optional<TraffGen> dest = Optional.ofNullable(
                 endpointToTraffGen.get(makeComparableEndpoint(flow.getDestination())));
 
-        checkIsFlowApplicable(flow, source.isPresent(), dest.isPresent());
+        checkIsFlowApplicable(flow.getId(), source.isPresent(), dest.isPresent());
 
         List<Vlan> srcVlanIds = new ArrayList<Vlan>();
         srcVlanIds.add(new Vlan(flow.getSource().getVlanId()));
@@ -135,7 +142,7 @@ public class FlowTrafficExamBuilder {
                 .orElseThrow(() -> new IllegalStateException(
                         format("Switch %s not found", flow.getDestination().getDatapath())));
 
-        checkIsFlowApplicable(flow, source.isPresent() && !"OF_12".equals(srcOfVersion),
+        checkIsFlowApplicable(flow.getId(), source.isPresent() && !"OF_12".equals(srcOfVersion),
                 dest.isPresent() && !"OF_12".equals(dstOfVersion));
 
         List<Vlan> srcVlanIds = new ArrayList<Vlan>();
@@ -174,7 +181,82 @@ public class FlowTrafficExamBuilder {
         return buildExam(flow, 100, null);
     }
 
-    private void checkIsFlowApplicable(FlowPayload flow, boolean sourceApplicable, boolean destApplicable)
+    /**
+     * Build traff exam object for both 'y-flow' subflows in both directions.
+     */
+    public YFlowBidirectionalExam buildYFlowExam(YFlow flow, long bandwidth, Long duration)
+            throws FlowNotApplicableException {
+        SubFlow subFlow1 = flow.getSubFlows().get(0);
+        SubFlow subFlow2 = flow.getSubFlows().get(1);
+        Optional<TraffGen> source = Optional.ofNullable(
+                endpointToTraffGen.get(makeComparableEndpoint(flow.getSharedEndpoint())));
+        Optional<TraffGen> dest1 = Optional.ofNullable(
+                endpointToTraffGen.get(makeComparableEndpoint(subFlow1.getEndpoint())));
+        Optional<TraffGen> dest2 = Optional.ofNullable(
+                endpointToTraffGen.get(makeComparableEndpoint(subFlow2.getEndpoint())));
+
+        checkIsFlowApplicable(flow.getYFlowId(), source.isPresent(), dest1.isPresent() && dest2.isPresent());
+
+        List<Vlan> srcVlanIds1 = ImmutableList.of(new Vlan(subFlow1.getSharedEndpoint().getVlanId()),
+                new Vlan(subFlow1.getSharedEndpoint().getInnerVlanId()));
+        List<Vlan> srcVlanIds2 = ImmutableList.of(new Vlan(subFlow2.getSharedEndpoint().getVlanId()),
+                new Vlan(subFlow2.getSharedEndpoint().getInnerVlanId()));
+        List<Vlan> dstVlanIds1 = ImmutableList.of(new Vlan(subFlow1.getEndpoint().getVlanId()),
+                new Vlan(subFlow1.getEndpoint().getInnerVlanId()));
+        List<Vlan> dstVlanIds2 = ImmutableList.of(new Vlan(subFlow2.getEndpoint().getVlanId()),
+                new Vlan(subFlow2.getEndpoint().getInnerVlanId()));
+
+        //noinspection ConstantConditions
+        Host sourceHost = traffExam.hostByName(source.get().getName());
+        //noinspection ConstantConditions
+        Host destHost1 = traffExam.hostByName(dest1.get().getName());
+        Host destHost2 = traffExam.hostByName(dest2.get().getName());
+
+        Exam forward1 = Exam.builder()
+                .flow(null)
+                .source(sourceHost)
+                .sourceVlans(srcVlanIds1)
+                .dest(destHost1)
+                .destVlans(dstVlanIds1)
+                .bandwidthLimit(new Bandwidth(bandwidth))
+                .burstPkt(200)
+                .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
+                .build();
+        Exam forward2 = Exam.builder()
+                .flow(null)
+                .source(sourceHost)
+                .sourceVlans(srcVlanIds2)
+                .dest(destHost2)
+                .destVlans(dstVlanIds2)
+                .bandwidthLimit(new Bandwidth(bandwidth))
+                .burstPkt(200)
+                .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
+                .build();
+        Exam reverse1 = Exam.builder()
+                .flow(null)
+                .source(destHost1)
+                .sourceVlans(dstVlanIds1)
+                .dest(sourceHost)
+                .destVlans(srcVlanIds1)
+                .bandwidthLimit(new Bandwidth(bandwidth))
+                .burstPkt(200)
+                .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
+                .build();
+        Exam reverse2 = Exam.builder()
+                .flow(null)
+                .source(destHost2)
+                .sourceVlans(dstVlanIds2)
+                .dest(sourceHost)
+                .destVlans(srcVlanIds2)
+                .bandwidthLimit(new Bandwidth(bandwidth))
+                .burstPkt(200)
+                .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
+                .build();
+
+        return new YFlowBidirectionalExam(forward1, reverse1, forward2, reverse2);
+    }
+
+    private void checkIsFlowApplicable(String flowId, boolean sourceApplicable, boolean destApplicable)
             throws FlowNotApplicableException {
         String message;
 
@@ -190,11 +272,19 @@ public class FlowTrafficExamBuilder {
 
         if (message != null) {
             throw new FlowNotApplicableException(format(
-                    "Flow's %s %s not applicable for traffic examination.", flow.getId(), message));
+                    "Flow's %s %s not applicable for traffic examination.", flowId, message));
         }
     }
 
     private NetworkEndpoint makeComparableEndpoint(FlowEndpointPayload flowEndpoint) {
         return new NetworkEndpoint(flowEndpoint);
+    }
+
+    private NetworkEndpoint makeComparableEndpoint(FlowEndpointV2 flowEndpoint) {
+        return new NetworkEndpoint(flowEndpoint.getSwitchId(), flowEndpoint.getPortNumber());
+    }
+
+    private NetworkEndpoint makeComparableEndpoint(YFlowSharedEndpoint flowEndpoint) {
+        return new NetworkEndpoint(flowEndpoint.getSwitchId(), flowEndpoint.getPortNumber());
     }
 }
