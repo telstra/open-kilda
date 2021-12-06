@@ -13,26 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.rulemanager;
+package org.openkilda.floodlight.command.rulemanager;
 
-import org.openkilda.model.GroupId;
-import org.openkilda.rulemanager.group.Bucket;
-import org.openkilda.rulemanager.group.GroupType;
+import lombok.Builder;
+import lombok.Data;
+import org.projectfloodlight.openflow.protocol.OFMessage;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
-import lombok.experimental.SuperBuilder;
-
-import java.util.List;
-
-@EqualsAndHashCode(callSuper = true)
-@Value
-@JsonSerialize
-@SuperBuilder
-public class GroupSpeakerCommandData extends SpeakerCommandData {
-
-    GroupId groupId;
-    GroupType type;
-    List<Bucket> buckets;
+@Data
+@Builder
+public class BatchData {
+    private boolean meter;
+    private boolean group;
+    private boolean flow;
+    private OFMessage message;
 }

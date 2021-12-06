@@ -16,6 +16,6 @@
 package org.openkilda.rulemanager.group;
 
 public enum WatchGroup {
-
-    ANY
+    ANY,
+    ALL
 }

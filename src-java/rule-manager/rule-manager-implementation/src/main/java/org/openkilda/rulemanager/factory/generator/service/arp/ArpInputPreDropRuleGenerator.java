@@ -25,7 +25,7 @@ import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
@@ -42,7 +42,7 @@ public class ArpInputPreDropRuleGenerator extends ArpRuleGenerator {
     }
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
+    public List<SpeakerData> generateCommands(Switch sw) {
         Set<FieldMatch> match = Sets.newHashSet(
                 FieldMatch.builder().field(Field.ETH_TYPE).value(EthType.ARP).build()
         );

@@ -31,9 +31,9 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.MeterSpeakerCommandData;
+import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
@@ -41,7 +41,7 @@ import org.openkilda.rulemanager.ProtoConstants.IpProto;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.PopVxlanAction;
@@ -64,20 +64,20 @@ public class UnicastVerificationVxlanRuleGenerator extends MeteredServiceRuleGen
     }
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
+    public List<SpeakerData> generateCommands(Switch sw) {
         // should be replaced with fair feature detection based on ActionId's during handshake
         if (!sw.getFeatures().contains(NOVIFLOW_PUSH_POP_VXLAN)) {
             return Collections.emptyList();
         }
 
         Cookie cookie = new Cookie(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE);
-        FlowSpeakerCommandData flowCommand = buildUnicastVerificationRuleVxlan(sw, cookie);
-        List<SpeakerCommandData> result = new ArrayList<>();
+        FlowSpeakerData flowCommand = buildUnicastVerificationRuleVxlan(sw, cookie);
+        List<SpeakerData> result = new ArrayList<>();
         result.add(flowCommand);
 
         MeterId meterId = createMeterIdForDefaultRule(cookie.getValue());
         long meterRate = config.getUnicastRateLimit();
-        MeterSpeakerCommandData meterCommand = generateMeterCommandForServiceRule(sw, meterId, meterRate,
+        MeterSpeakerData meterCommand = generateMeterCommandForServiceRule(sw, meterId, meterRate,
                 config.getSystemMeterBurstSizeInPackets(), config.getDiscoPacketSize());
         if (meterCommand != null) {
             addMeterToInstructions(meterId, sw, flowCommand.getInstructions());
@@ -88,7 +88,7 @@ public class UnicastVerificationVxlanRuleGenerator extends MeteredServiceRuleGen
         return result;
     }
 
-    private FlowSpeakerCommandData buildUnicastVerificationRuleVxlan(Switch sw, Cookie cookie) {
+    private FlowSpeakerData buildUnicastVerificationRuleVxlan(Switch sw, Cookie cookie) {
         long ethSrc = new SwitchId(config.getFlowPingMagicSrcMacAddress()).toLong();
         Set<FieldMatch> match = Sets.newHashSet(
                 FieldMatch.builder().field(ETH_SRC).value(ethSrc).mask(NO_MASK).build(),
@@ -106,7 +106,7 @@ public class UnicastVerificationVxlanRuleGenerator extends MeteredServiceRuleGen
                 .applyActions(actions)
                 .build();
 
-        return FlowSpeakerCommandData.builder()
+        return FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(cookie)

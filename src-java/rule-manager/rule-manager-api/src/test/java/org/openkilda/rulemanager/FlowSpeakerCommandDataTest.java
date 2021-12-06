@@ -25,7 +25,7 @@ import org.junit.Test;
 public class FlowSpeakerCommandDataTest {
     @Test
     public void flowCommandWithDifferentMatchValues() {
-        FlowSpeakerCommandData command = FlowSpeakerCommandData.builder()
+        FlowSpeakerData command = FlowSpeakerData.builder()
                 .match(newHashSet(
                         FieldMatch.builder().field(Field.VLAN_VID).value(1).build(),
                         FieldMatch.builder().field(Field.VLAN_VID).value(2).build()))
@@ -35,7 +35,7 @@ public class FlowSpeakerCommandDataTest {
 
     @Test
     public void flowCommandWithEqualMatchValues() {
-        FlowSpeakerCommandData command = FlowSpeakerCommandData.builder()
+        FlowSpeakerData command = FlowSpeakerData.builder()
                 .match(newHashSet(
                         FieldMatch.builder().field(Field.VLAN_VID).value(1).build(),
                         FieldMatch.builder().field(Field.VLAN_VID).value(1).build()))
@@ -45,7 +45,7 @@ public class FlowSpeakerCommandDataTest {
 
     @Test
     public void flowCommandWithDifferentMatchFields() {
-        FlowSpeakerCommandData command = FlowSpeakerCommandData.builder()
+        FlowSpeakerData command = FlowSpeakerData.builder()
                 .match(newHashSet(
                         FieldMatch.builder().field(Field.VLAN_VID).value(1).build(),
                         FieldMatch.builder().field(Field.IN_PORT).value(1).build()))

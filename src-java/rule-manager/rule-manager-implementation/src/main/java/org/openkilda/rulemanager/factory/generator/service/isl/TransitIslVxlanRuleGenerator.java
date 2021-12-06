@@ -26,13 +26,13 @@ import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.PortColourCookie;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.factory.RuleGenerator;
 import org.openkilda.rulemanager.match.FieldMatch;
 
@@ -49,7 +49,7 @@ public class TransitIslVxlanRuleGenerator implements RuleGenerator {
     private int islPort;
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
+    public List<SpeakerData> generateCommands(Switch sw) {
         Set<SwitchFeature> features = sw.getFeatures();
         if (!(features.contains(NOVIFLOW_PUSH_POP_VXLAN) || features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN))) {
             return Collections.emptyList();
@@ -59,7 +59,7 @@ public class TransitIslVxlanRuleGenerator implements RuleGenerator {
         Instructions instructions = Instructions.builder()
                 .goToTable(OfTable.TRANSIT)
                 .build();
-        return Collections.singletonList(FlowSpeakerCommandData.builder()
+        return Collections.singletonList(FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES, islPort))

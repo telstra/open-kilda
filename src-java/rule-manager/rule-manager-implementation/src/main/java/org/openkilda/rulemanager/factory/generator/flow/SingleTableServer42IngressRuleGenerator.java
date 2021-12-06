@@ -32,8 +32,8 @@ import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.FlowSpeakerCommandData.FlowSpeakerCommandDataBuilder;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
@@ -41,7 +41,7 @@ import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.action.SetFieldAction;
@@ -60,7 +60,7 @@ import java.util.Set;
 public class SingleTableServer42IngressRuleGenerator extends Server42IngressRuleGenerator {
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
+    public List<SpeakerData> generateCommands(Switch sw) {
         if (switchProperties == null || switchProperties.isMultiTable() || !switchProperties.isServer42FlowRtt()
                 || flowPath.isOneSwitchFlow()) {
             return new ArrayList<>();
@@ -70,14 +70,14 @@ public class SingleTableServer42IngressRuleGenerator extends Server42IngressRule
         return Lists.newArrayList(buildServer42IngressCommand(sw, ingressEndpoint));
     }
 
-    private FlowSpeakerCommandData buildServer42IngressCommand(Switch sw, FlowEndpoint ingressEndpoint) {
+    private FlowSpeakerData buildServer42IngressCommand(Switch sw, FlowEndpoint ingressEndpoint) {
         int priority = isVlanIdSet(ingressEndpoint.getOuterVlanId()) ? SERVER_42_INGRESS_SINGLE_VLAN_FLOW_PRIORITY
                 : SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY;
 
         FlowSegmentCookie cookie = new FlowSegmentCookie(flowPath.getCookie().getValue()).toBuilder()
                 .type(CookieType.SERVER_42_FLOW_RTT_INGRESS)
                 .build();
-        FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(ingressEndpoint.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(cookie)

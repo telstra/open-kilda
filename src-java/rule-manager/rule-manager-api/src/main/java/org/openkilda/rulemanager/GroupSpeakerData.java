@@ -15,28 +15,26 @@
 
 package org.openkilda.rulemanager;
 
-import org.openkilda.model.SwitchId;
+import org.openkilda.model.GroupId;
+import org.openkilda.rulemanager.group.Bucket;
+import org.openkilda.rulemanager.group.GroupType;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.Builder;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
+import lombok.Value;
 import lombok.experimental.SuperBuilder;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.UUID;
+import java.util.List;
 
+@EqualsAndHashCode(callSuper = true)
+@Value
 @JsonSerialize
-@Getter
 @SuperBuilder
-@EqualsAndHashCode(of = {"switchId", "ofVersion"})
-public abstract class SpeakerCommandData {
+public class GroupSpeakerData extends SpeakerData {
 
-    @Builder.Default
-    protected String uuid = UUID.randomUUID().toString();
-    protected SwitchId switchId;
-    @Builder.Default
-    protected Collection<String> dependsOn = new ArrayList<>();
-    protected OfVersion ofVersion;
+    GroupId groupId;
+    GroupType type;
+    List<Bucket> buckets;
+
+
 }

@@ -20,13 +20,13 @@ import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.cookie.Cookie;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.MeterSpeakerCommandData;
+import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.factory.generator.service.MeteredServiceRuleGenerator;
 import org.openkilda.rulemanager.match.FieldMatch;
 
@@ -41,15 +41,15 @@ public abstract class LldpRuleGenerator extends MeteredServiceRuleGenerator {
         super(config);
     }
 
-    protected MeterSpeakerCommandData generateMeter(Switch sw, Cookie cookie) {
+    protected MeterSpeakerData generateMeter(Switch sw, Cookie cookie) {
         MeterId meterId = createMeterIdForDefaultRule(cookie.getValue());
         return generateMeterCommandForServiceRule(sw, meterId, config.getLldpRateLimit(),
                 config.getLldpMeterBurstSizeInPackets(), config.getLldpPacketSize());
     }
 
-    protected List<SpeakerCommandData> buildCommands(Switch sw, Cookie cookie, OfTable table, int priority,
-                                                     Set<FieldMatch> match, Instructions instructions) {
-        FlowSpeakerCommandData flowCommand = FlowSpeakerCommandData.builder()
+    protected List<SpeakerData> buildCommands(Switch sw, Cookie cookie, OfTable table, int priority,
+                                              Set<FieldMatch> match, Instructions instructions) {
+        FlowSpeakerData flowCommand = FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(cookie)
@@ -59,9 +59,9 @@ public abstract class LldpRuleGenerator extends MeteredServiceRuleGenerator {
                 .instructions(instructions)
                 .build();
 
-        List<SpeakerCommandData> result = Lists.newArrayList(flowCommand);
+        List<SpeakerData> result = Lists.newArrayList(flowCommand);
 
-        MeterSpeakerCommandData meterCommand = generateMeter(sw, cookie);
+        MeterSpeakerData meterCommand = generateMeter(sw, cookie);
         if (meterCommand != null) {
             result.add(meterCommand);
             addMeterToInstructions(meterCommand.getMeterId(), sw, instructions);
