@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,11 +16,14 @@
 package org.openkilda.wfm.topology.reroute.service;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
 
 public interface IRerouteQueueCarrier {
 
     void sendRerouteRequest(String correlationId, FlowRerouteRequest request);
+
+    void sendRerouteRequest(String correlationId, YFlowRerouteRequest request);
 
     void emitFlowRerouteError(ErrorData errorData);
 
