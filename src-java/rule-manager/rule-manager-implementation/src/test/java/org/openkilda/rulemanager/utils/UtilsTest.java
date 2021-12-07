@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.rulemanager.factory.utils;
+package org.openkilda.rulemanager.utils;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
@@ -39,7 +39,6 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.rulemanager.Constants;
 import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.PushVxlanAction;
-import org.openkilda.rulemanager.utils.Utils;
 
 import com.google.common.collect.Sets;
 import org.junit.Test;
