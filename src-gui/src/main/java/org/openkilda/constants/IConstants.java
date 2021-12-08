@@ -306,7 +306,7 @@ public abstract class IConstants {
         public static final String SW_SWITCH_LOCATION_UPDATE = "sw_switch_location_update";
         
         public static final String TOPOLOGY_WORLD_MAP_VIEW = "topology_world_map_view";
-	    
+        
         public static final String ISL_UPDATE_BFD_PROPERTIES = "isl_update_bfd_properties";
         
         public static final String ISL_DELETE_BFD = "isl_delete_bfd";
