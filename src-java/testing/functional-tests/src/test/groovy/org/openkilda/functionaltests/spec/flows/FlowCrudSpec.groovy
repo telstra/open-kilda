@@ -6,7 +6,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
@@ -1239,11 +1238,14 @@ class FlowCrudSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([VIRTUAL, LOW_PRIORITY]) //VIRTUAL -> TOPOLOGY_DEPENDENT, https://github.com/telstra/open-kilda/issues/3413
+    @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])
     def "System allows to update single switch flow to multi switch flow"() {
-        given: "A single switch flow"
+        given: "A single switch flow with enabled lldp/arp on the dst side"
         def swPair = topologyHelper.getNeighboringSwitchPair()
         def flow = flowHelperV2.singleSwitchFlow(swPair.src)
+        //https://github.com/telstra/open-kilda/issues/4607
+//        flow.destination.detectConnectedDevices.lldp = true
+//        flow.destination.detectConnectedDevices.arp = true
         flowHelperV2.addFlow(flow)
 
         when: "Update the dst endpoint to make this flow as multi switch flow"
