@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests
 
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 
 import org.openkilda.functionaltests.helpers.FlowHelper

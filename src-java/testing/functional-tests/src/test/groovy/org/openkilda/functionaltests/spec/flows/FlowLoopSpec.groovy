@@ -96,7 +96,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "The src switch is valid"
         northbound.validateSwitch(switchPair.src.dpId)
-                .verifyRuleSectionsAreEmpty(switchPair.src.dpId, ["missing", "excess", "misconfigured"])
+                .verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
 
         when: "Send traffic via flow in the forward direction"
         def traffExam = traffExamProvider.get()
@@ -174,8 +174,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "The src switch is valid"
         northbound.validateSwitch(switchPair.src.dpId)
-                .verifyRuleSectionsAreEmpty(switchPair.src.dpId, ["missing", "excess", "misconfigured"])
-        def switchIsValid = true
+                .verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
 
         and: "Flow allows traffic"
         withPool {
@@ -188,9 +187,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         cleanup: "Delete the flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        !switchIsValid && [switchPair.src.dpId, switchPair.dst.dpId].each {
-            northbound.synchronizeSwitch(it, true)
-        }
 
         where:
         data << [[
@@ -281,7 +277,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "The dst switch is valid"
         northbound.validateSwitch(switchPair.src.dpId)
-                .verifyRuleSectionsAreEmpty(switchPair.src.dpId, ["missing", "excess", "misconfigured"])
+                .verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
         def testIsCompleted = true
 
         cleanup: "Delete the flow"
@@ -334,7 +330,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "The src switch is valid"
         northbound.validateSwitch(switchPair.src.dpId)
-                .verifyRuleSectionsAreEmpty(switchPair.src.dpId, ["missing", "excess", "misconfigured"])
+                .verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
 
         and: "Flow doesn't allow traffic, because it is grubbed by flowLoop rules"
         def traffExam = traffExamProvider.get()
@@ -499,7 +495,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
             assert flowLoopRules.size() == 2
             assert flowLoopRules*.packetCount.every { it == 0 }
             northbound.validateSwitch(switchPair.src.dpId)
-                    .verifyRuleSectionsAreEmpty(switchPair.src.dpId, ["missing", "excess", "misconfigured"])
+                    .verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
 
         when: "Send traffic via flow"
@@ -561,7 +557,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         and: "The switch is valid"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert getFlowLoopRules(sw.dpId).size() == 2
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
 
 
@@ -581,7 +577,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         and: "The switch is valid"
-        northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+        northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
         def testIsCompleted = true
 
         cleanup:
@@ -615,7 +611,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         and: "The switch is valid"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert getFlowLoopRules(sw.dpId).size() == 2
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
 
         when: "Delete the flow with created flowLoop"
@@ -626,7 +622,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(sw.dpId).empty
 
         and: "The switch is valid"
-        northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+        northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
         def testIsCompleted = true
 
         cleanup: "Delete the flow"
@@ -656,7 +652,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "The src/dst switches are valid"
         [switchPair.src, switchPair.dst].each {
-            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(it.dpId, ["missing", "excess", "misconfigured"])
+            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
 
         when: "Delete the flow with created flowLoop"
@@ -796,7 +792,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(sw.dpId).empty
 
         and: "The switch is valid"
-        northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+        northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
         def switchIsValid = true
 
         cleanup:
