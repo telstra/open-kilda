@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.109.0 (08/12/2021)
+
+### Features:
+-  [#4549](https://github.com/telstra/open-kilda/pull/4549) Add affinity groups to y-flow feature (Issue: [#4526](https://github.com/telstra/open-kilda/issues/4526))
+-  [#4526](https://github.com/telstra/open-kilda/pull/4526) Implement YFlow update feature (Issue: [#4542](https://github.com/telstra/open-kilda/issues/4542))
+-  [#4591](https://github.com/telstra/open-kilda/pull/4591) Implement YFlow reroute feature (Issue: [#4566](https://github.com/telstra/open-kilda/issues/4566))
+-  [#4528](https://github.com/telstra/open-kilda/pull/4528) Implement YFlow get, dump, sub-flow & paths features
+-  [#4560](https://github.com/telstra/open-kilda/pull/4560) Feature/rule manager persistence adapter
+-  [#4566](https://github.com/telstra/open-kilda/pull/4566) Add y-flow reroute events to Reroute topology. (Issue: [#4549](https://github.com/telstra/open-kilda/issues/4549)) [**storm-topologies**]
+-  [#4534](https://github.com/telstra/open-kilda/pull/4534) Implement YFlow delete feature
+-  [#4603](https://github.com/telstra/open-kilda/pull/4603) Rule Manager: Flow mirror
+-  [#4542](https://github.com/telstra/open-kilda/pull/4542) Adapt existing Flow API to support YFlow sub-flows (Issue: [#4534](https://github.com/telstra/open-kilda/issues/4534))
+
+
+### Improvements:
+-  [#4610](https://github.com/telstra/open-kilda/pull/4610) Introduce joint rule generator for y flows
+-  [#4483](https://github.com/telstra/open-kilda/pull/4483) Add rule manager design details [**docs**]
+-  [#4350](https://github.com/telstra/open-kilda/pull/4350) Remove unused OFExxxState classes (Issue: [#238](https://github.com/telstra/open-kilda/issues/238))
+-  [#4571](https://github.com/telstra/open-kilda/pull/4571) PoC for shared bandwidth group solution
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.108.0...v1.109.0).
+
+### Affected Components:
+reroute, flow-hs
+
+----
+
 ## v1.108.0 (29/11/2021)
 
 ### Features:
