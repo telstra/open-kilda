@@ -71,6 +71,8 @@ public class TransitYRuleGeneratorTest {
     public static final int VLAN = 5;
     public static final int VXLAN = 10;
     public static final MeterId SHARED_METER_ID = new MeterId(34);
+    public static final String SHARED_METER_UUID = "uuid";
+
     public static final FlowTransitEncapsulation VLAN_ENCAPSULATION = new FlowTransitEncapsulation(
             VLAN, FlowEncapsulationType.TRANSIT_VLAN);
     public static final FlowTransitEncapsulation VXLAN_ENCAPSULATION = new FlowTransitEncapsulation(
@@ -103,6 +105,8 @@ public class TransitYRuleGeneratorTest {
                 .multiTable(true)
                 .encapsulation(VLAN_ENCAPSULATION)
                 .sharedMeterId(SHARED_METER_ID)
+                .generateMeterCommand(true)
+                .externalMeterCommandUuid(SHARED_METER_UUID)
                 .config(config)
                 .build();
 
@@ -119,6 +123,8 @@ public class TransitYRuleGeneratorTest {
                 .multiTable(false)
                 .encapsulation(VLAN_ENCAPSULATION)
                 .sharedMeterId(SHARED_METER_ID)
+                .generateMeterCommand(true)
+                .externalMeterCommandUuid(SHARED_METER_UUID)
                 .config(config)
                 .build();
 
@@ -135,6 +141,8 @@ public class TransitYRuleGeneratorTest {
                 .multiTable(true)
                 .encapsulation(VXLAN_ENCAPSULATION)
                 .sharedMeterId(SHARED_METER_ID)
+                .generateMeterCommand(true)
+                .externalMeterCommandUuid(SHARED_METER_UUID)
                 .config(config)
                 .build();
 
@@ -151,11 +159,60 @@ public class TransitYRuleGeneratorTest {
                 .multiTable(false)
                 .encapsulation(VXLAN_ENCAPSULATION)
                 .sharedMeterId(SHARED_METER_ID)
+                .generateMeterCommand(true)
+                .externalMeterCommandUuid(SHARED_METER_UUID)
                 .config(config)
                 .build();
 
         List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
         assertTransitCommands(commands, OfTable.INPUT, VXLAN_ENCAPSULATION);
+    }
+
+    @Test
+    public void buildCommandsWithoutMeter() {
+        TransitYRuleGenerator generator = TransitYRuleGenerator.builder()
+                .flowPath(PATH)
+                .inPort(PORT_NUMBER_1)
+                .outPort(PORT_NUMBER_2)
+                .multiTable(false)
+                .encapsulation(VXLAN_ENCAPSULATION)
+                .sharedMeterId(SHARED_METER_ID)
+                .generateMeterCommand(false)
+                .externalMeterCommandUuid(SHARED_METER_UUID)
+                .config(config)
+                .build();
+
+        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        assertTransitCommand(commands, OfTable.INPUT, VXLAN_ENCAPSULATION);
+    }
+
+    private void assertTransitCommand(List<SpeakerCommandData> commands, OfTable table,
+                                       FlowTransitEncapsulation encapsulation) {
+        assertEquals(1, commands.size());
+        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
+        assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
+        assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
+        assertTrue(flowCommandData.getDependsOn().contains(SHARED_METER_UUID));
+
+        assertEquals(COOKIE, flowCommandData.getCookie());
+        assertEquals(table, flowCommandData.getTable());
+        assertEquals(Priority.Y_FLOW_PRIORITY, flowCommandData.getPriority());
+
+
+        Set<FieldMatch> expectedMatch;
+        if (encapsulation.getType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
+            expectedMatch = buildExpectedVlanMatch(PORT_NUMBER_1, encapsulation.getId());
+        } else {
+            expectedMatch = buildExpectedVxlanMatch(PORT_NUMBER_1, encapsulation.getId());
+        }
+        assertEqualsMatch(expectedMatch, flowCommandData.getMatch());
+
+        Instructions expectedInstructions = Instructions.builder()
+                .applyActions(Lists.newArrayList(new PortOutAction(new PortNumber(PORT_NUMBER_2))))
+                .goToMeter(SHARED_METER_ID)
+                .build();
+        assertEquals(expectedInstructions, flowCommandData.getInstructions());
+        assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), flowCommandData.getFlags());
     }
 
     private void assertTransitCommands(List<SpeakerCommandData> commands, OfTable table,

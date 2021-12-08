@@ -42,8 +42,6 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
-import org.openkilda.model.cookie.FlowSharedSegmentCookie;
-import org.openkilda.model.cookie.FlowSharedSegmentCookie.SharedSegmentType;
 import org.openkilda.rulemanager.Constants;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
@@ -132,6 +130,7 @@ public class MultiTableIngressYRuleGeneratorTest {
     RuleManagerConfig config;
 
     public static final MeterId SHARED_METER_ID = new MeterId(34);
+    public static final String SHARED_METER_UUID = "uuid";
 
 
     @Before
@@ -310,7 +309,7 @@ public class MultiTableIngressYRuleGeneratorTest {
     public void buildMatchVlanEncapsulationDoubleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         MultiTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), SWITCH_1);
+        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), FEATURES);
         RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
                 .build(SWITCH_1.getFeatures());
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
@@ -325,7 +324,7 @@ public class MultiTableIngressYRuleGeneratorTest {
     public void buildMatchVlanEncapsulationSingleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
         MultiTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), SWITCH_1);
+        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), FEATURES);
         RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
                 .build(SWITCH_1.getFeatures());
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
@@ -339,7 +338,7 @@ public class MultiTableIngressYRuleGeneratorTest {
     public void buildMatchVlanEncapsulationFullPortTest() {
         Flow flow = buildFlow(PATH, 0, 0);
         MultiTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), SWITCH_1);
+        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), FEATURES);
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()
         );
@@ -438,19 +437,40 @@ public class MultiTableIngressYRuleGeneratorTest {
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_2))
         );
-        Set<FieldMatch> expectedPreIngressMatch = Sets.newHashSet(
-                FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
-                FieldMatch.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_1).build()
-        );
-        FlowSharedSegmentCookie preIngressCookie = FlowSharedSegmentCookie.builder(SharedSegmentType.QINQ_OUTER_VLAN)
-                .portNumber(PORT_NUMBER_1)
-                .vlanId(OUTER_VLAN_ID_1).build();
-        RoutingMetadata preIngressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
-                .build(SWITCH_1.getFeatures());
 
         assertIngressCommand(ingressCommand, Priority.Y_FLOW_DOUBLE_VLAN_PRIORITY, expectedIngressMatch,
                 expectedIngressActions, SHARED_METER_ID, null);
         assertMeterCommand(meterCommand);
+    }
+
+    @Test
+    public void buildCommandsWithoutMeter() {
+        Flow oneSwitchFlow = buildFlow(ONE_SWITCH_PATH, OUTER_VLAN_ID_2, 0);
+        Set<FlowSideAdapter> overlapping = Sets.newHashSet(
+                FlowSideAdapter.makeIngressAdapter(oneSwitchFlow, ONE_SWITCH_PATH));
+        Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+        MultiTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION, overlapping, false);
+        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        assertEquals(1, commands.size());
+
+        FlowSpeakerCommandData ingressCommand = (FlowSpeakerCommandData) commands.get(0);
+        assertEquals(newArrayList(SHARED_METER_UUID), new ArrayList<>(ingressCommand.getDependsOn()));
+
+        RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
+                .build(SWITCH_1.getFeatures());
+        Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
+                FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
+                FieldMatch.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID_1).build(),
+                FieldMatch.builder().field(Field.METADATA)
+                        .value(ingressMetadata.getValue()).mask(ingressMetadata.getMask()).build()
+        );
+        List<Action> expectedIngressActions = newArrayList(
+                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build(),
+                new PortOutAction(new PortNumber(PORT_NUMBER_2))
+        );
+
+        assertIngressCommand(ingressCommand, Priority.Y_FLOW_DOUBLE_VLAN_PRIORITY, expectedIngressMatch,
+                expectedIngressActions, SHARED_METER_ID, null);
     }
 
     private void assertIngressCommand(
@@ -494,6 +514,12 @@ public class MultiTableIngressYRuleGeneratorTest {
     private MultiTableIngressYRuleGenerator buildGenerator(
             FlowPath path, Flow flow, FlowTransitEncapsulation encapsulation,
             Set<FlowSideAdapter> overlappingAdapters) {
+        return buildGenerator(path, flow, encapsulation, overlappingAdapters, true);
+    }
+
+    private MultiTableIngressYRuleGenerator buildGenerator(
+            FlowPath path, Flow flow, FlowTransitEncapsulation encapsulation,
+            Set<FlowSideAdapter> overlappingAdapters, boolean generateMeterCommand) {
         return MultiTableIngressYRuleGenerator.builder()
                 .config(config)
                 .flowPath(path)
@@ -501,6 +527,8 @@ public class MultiTableIngressYRuleGeneratorTest {
                 .encapsulation(encapsulation)
                 .overlappingIngressAdapters(overlappingAdapters)
                 .sharedMeterId(SHARED_METER_ID)
+                .generateMeterCommand(generateMeterCommand)
+                .externalMeterCommandUuid(SHARED_METER_UUID)
                 .build();
     }
 

@@ -28,7 +28,6 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Constants;
-import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.FlowSpeakerCommandData;
 import org.openkilda.rulemanager.FlowSpeakerCommandData.FlowSpeakerCommandDataBuilder;
 import org.openkilda.rulemanager.Instructions;
@@ -91,7 +90,7 @@ public class SingleTableIngressRuleGenerator extends IngressRuleGenerator {
                 .table(OfTable.INPUT)
                 .priority(isFullPortEndpoint(ingressEndpoint) ? Constants.Priority.DEFAULT_FLOW_PRIORITY
                         : Constants.Priority.FLOW_PRIORITY)
-                .match(buildMatch(ingressEndpoint))
+                .match(buildMatch(ingressEndpoint, sw.getFeatures()))
                 .instructions(instructions);
 
         if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
@@ -101,13 +100,8 @@ public class SingleTableIngressRuleGenerator extends IngressRuleGenerator {
     }
 
     @VisibleForTesting
-    Set<FieldMatch> buildMatch(FlowEndpoint ingressEndpoint) {
-        Set<FieldMatch> match = Sets.newHashSet(
-                FieldMatch.builder().field(Field.IN_PORT).value(ingressEndpoint.getPortNumber()).build());
-        if (!isFullPortEndpoint(ingressEndpoint)) {
-            match.add(FieldMatch.builder().field(Field.VLAN_VID).value(ingressEndpoint.getOuterVlanId()).build());
-        }
-        return match;
+    Set<FieldMatch> buildMatch(FlowEndpoint ingressEndpoint, Set<SwitchFeature> switchFeatures) {
+        return Utils.makeIngressMatch(ingressEndpoint, false, switchFeatures);
     }
 
     @VisibleForTesting

@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -37,13 +37,17 @@ public class RerouteResultInfoData extends InfoData {
     private boolean success;
     @JsonProperty("reroute_error")
     private RerouteError rerouteError;
+    @JsonProperty("is_y_flow")
+    private boolean yFlow;
 
     @JsonCreator
     public RerouteResultInfoData(@JsonProperty("flow_id") String flowId,
                                  @JsonProperty("success") boolean success,
-                                 @JsonProperty("reroute_error") RerouteError rerouteError) {
+                                 @JsonProperty("reroute_error") RerouteError rerouteError,
+                                 @JsonProperty("is_y_flow") boolean yFlow) {
         this.flowId = flowId;
         this.success = success;
         this.rerouteError = rerouteError;
+        this.yFlow = yFlow;
     }
 }

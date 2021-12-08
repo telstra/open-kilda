@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -24,66 +24,77 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Config;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
-import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @Slf4j
-public class FlowRerouteService {
-    @VisibleForTesting
-    final Map<String, FlowRerouteFsm> fsms = new HashMap<>();
-
+public class FlowRerouteService extends FlowProcessingWithEventSupportService<FlowRerouteFsm, Event, FlowRerouteContext,
+        FlowRerouteHubCarrier, FlowRerouteEventListener> {
     private final FlowRerouteFsm.Factory fsmFactory;
-    private final FsmExecutor<FlowRerouteFsm, State, Event, FlowRerouteContext> fsmExecutor
-            = new FsmExecutor<>(Event.NEXT);
-
-    private final FlowRerouteHubCarrier carrier;
-
-    private boolean active;
 
     public FlowRerouteService(FlowRerouteHubCarrier carrier, PersistenceManager persistenceManager,
                               PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
                               int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                               int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
-        this.carrier = carrier;
-        fsmFactory = new FlowRerouteFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
-                pathAllocationRetriesLimit, pathAllocationRetryDelay, resourceAllocationRetriesLimit,
-                speakerCommandRetriesLimit);
+        super(new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
+
+        Config fsmConfig = Config.builder()
+                .pathAllocationRetriesLimit(pathAllocationRetriesLimit)
+                .pathAllocationRetryDelay(pathAllocationRetryDelay)
+                .resourceAllocationRetriesLimit(resourceAllocationRetriesLimit)
+                .speakerCommandRetriesLimit(speakerCommandRetriesLimit)
+                .build();
+        fsmFactory = new FlowRerouteFsm.Factory(carrier, fsmConfig, persistenceManager, pathComputer,
+                flowResourcesManager);
     }
 
     /**
      * Handles request for flow reroute.
      */
     public void handleRequest(String key, FlowRerouteRequest reroute, final CommandContext commandContext) {
-        log.debug("Handling flow reroute request with key {} and flow ID: {}", key, reroute.getFlowId());
-
-        try {
-            checkRequestsCollision(key, reroute.getFlowId());
-        } catch (Exception e) {
-            log.error(e.getMessage());
-            FlowRerouteFsm fsm = fsms.get(key);
-            if (fsm != null) {
-                removeIfFinished(fsm, key);
-            }
+        if (yFlowRepository.isSubFlow(reroute.getFlowId())) {
+            sendForbiddenSubFlowOperationToNorthbound(reroute.getFlowId(), commandContext);
             return;
         }
 
-        final String flowId = reroute.getFlowId();
-        if (isRerouteAlreadyInProgress(flowId)) {
+        startFlowRerouting(key, reroute, commandContext, true, reroute.getFlowId());
+    }
+
+    /**
+     * Handles request for flow reroute.
+     */
+    public void startFlowRerouting(FlowRerouteRequest reroute, CommandContext commandContext,
+                                   String sharedBandwidthGroupId) {
+        startFlowRerouting(reroute.getFlowId(), reroute, commandContext, false, sharedBandwidthGroupId);
+    }
+
+    private void startFlowRerouting(String key, FlowRerouteRequest reroute, CommandContext commandContext,
+                                   boolean allowNorthboundResponse, String sharedBandwidthGroupId) {
+        String flowId = reroute.getFlowId();
+        log.debug("Handling flow reroute request with key {} and flow ID: {}", key, flowId);
+
+        try {
+            checkRequestsCollision(key, flowId);
+        } catch (Exception e) {
+            log.error(e.getMessage());
+            getFsmByKey(key).ifPresent(fsm -> removeIfFinished(fsm, key));
+            return;
+        }
+
+        if (hasRegisteredFsmWithFlowId(flowId)) {
             carrier.sendRerouteResultStatus(flowId, new RerouteInProgressError(),
                     commandContext.getCorrelationId());
             return;
         }
 
-        FlowRerouteFsm fsm = fsmFactory.newInstance(commandContext, flowId);
-        fsms.put(key, fsm);
+        FlowRerouteFsm fsm = fsmFactory.newInstance(flowId, commandContext, allowNorthboundResponse, eventListeners);
+        fsm.setSharedBandwidthGroupId(sharedBandwidthGroupId);
+        registerFsm(key, fsm);
 
         FlowRerouteContext context = FlowRerouteContext.builder()
                 .flowId(flowId)
@@ -98,23 +109,16 @@ public class FlowRerouteService {
         removeIfFinished(fsm, key);
     }
 
-    private boolean isRerouteAlreadyInProgress(String flowId) {
-        return fsms.values().stream()
-                .map(FlowRerouteFsm::getFlowId)
-                .anyMatch(id -> id.equals(flowId));
-    }
-
     /**
      * Handles async response from worker.
      *
      * @param key command identifier.
      */
-    public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) {
+    public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) throws UnknownKeyException {
         log.debug("Received flow command response {}", flowResponse);
-        FlowRerouteFsm fsm = fsms.get(key);
+        FlowRerouteFsm fsm = getFsmByKey(key).orElse(null);
         if (fsm == null) {
-            log.warn("Failed to find a FSM: received response with key {} for non pending FSM", key);
-            return;
+            throw new UnknownKeyException(key);
         }
 
         FlowRerouteContext context = FlowRerouteContext.builder()
@@ -131,25 +135,45 @@ public class FlowRerouteService {
     }
 
     /**
+     * Handles async response from worker.
+     * Used if the command identifier is unknown, so FSM is identified by the flow Id.
+     */
+    public void handleAsyncResponseByFlowId(String flowId, SpeakerFlowSegmentResponse flowResponse)
+            throws UnknownKeyException {
+        String commandKey = getKeyByFlowId(flowId)
+                .orElseThrow(() -> new UnknownKeyException(flowId));
+        handleAsyncResponse(commandKey, flowResponse);
+    }
+
+    /**
      * Handles timeout case.
      *
      * @param key command identifier.
      */
-    public void handleTimeout(String key) {
+    public void handleTimeout(String key) throws UnknownKeyException {
         log.debug("Handling timeout for {}", key);
-        FlowRerouteFsm fsm = fsms.get(key);
+        FlowRerouteFsm fsm = getFsmByKey(key).orElse(null);
         if (fsm == null) {
-            log.warn("Failed to find a FSM: timeout event for non pending FSM with key {}", key);
-            return;
+            throw new UnknownKeyException(key);
         }
 
-        fsmExecutor.fire(fsm, Event.TIMEOUT, null);
+        fsmExecutor.fire(fsm, Event.TIMEOUT);
 
         removeIfFinished(fsm, key);
     }
 
+    /**
+     * Handles timeout case.
+     * Used if the command identifier is unknown, so FSM is identified by the flow Id.
+     */
+    public void handleTimeoutByFlowId(String flowId) throws UnknownKeyException {
+        String commandKey = getKeyByFlowId(flowId)
+                .orElseThrow(() -> new UnknownKeyException(flowId));
+        handleTimeout(commandKey);
+    }
+
     private void checkRequestsCollision(String key, String flowId) {
-        if (fsms.containsKey(key)) {
+        if (hasRegisteredFsmWithKey(key)) {
             throw new IllegalStateException(String.format(
                     "Attempt to create a FSM with key %s, while there's another active FSM with the same key "
                             + "(flowId=\"%s\")", key, flowId));
@@ -159,34 +183,13 @@ public class FlowRerouteService {
     private void removeIfFinished(FlowRerouteFsm fsm, String key) {
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
-            performHousekeeping(key);
+            unregisterFsm(key);
 
-            if (!active && fsms.isEmpty()) {
+            carrier.cancelTimeoutCallback(key);
+
+            if (!isActive() && !hasAnyRegisteredFsm()) {
                 carrier.sendInactive();
             }
         }
-    }
-
-    private void performHousekeeping(String key) {
-        fsms.remove(key);
-        carrier.cancelTimeoutCallback(key);
-    }
-
-    /**
-     * Handles deactivate command.
-     */
-    public boolean deactivate() {
-        active = false;
-        if (fsms.isEmpty()) {
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Handles activate command.
-     */
-    public void activate() {
-        active = true;
     }
 }

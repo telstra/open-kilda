@@ -91,6 +91,8 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "statusInfo", ignore = true)
     @Mapping(target = "targetPathComputationStrategy", ignore = true)
     @Mapping(target = "status", ignore = true)
+    @Mapping(target = "yFlowId", ignore = true)
+    @Mapping(target = "yFlow", ignore = true)
     public abstract Flow toFlow(FlowRequest request);
 
     public SwitchId map(String value) {

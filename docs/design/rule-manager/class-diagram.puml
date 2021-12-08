@@ -1,0 +1,179 @@
+@startuml
+
+title RuleManager Classes diagram
+
+interface RuleManager {
+    --
+    buildRulesForFlowPath(flowPath : FlowPath, adapter : DataAdapter) : List<Command>
+    buildRulesForSwitch(switchId : SwitchId, adapter : DataAdapter) : List<Command>
+}
+
+interface DataAdapter {
+    --
+    getFlowPaths() : Map<PathId, FlowPath>
+    getFlow(PathId) : Flow
+    getSwitch(SwitchId) : Switch
+    getSwitchProperties(SwitchId) : SwitchProperties
+}
+RuleManager -left- DataAdapter : consume
+
+class InMemoryDataAdapter {
+    flowPaths : Map<PathId, FlowPath>
+    flows : Map<PathId, Flow>
+    switches : Map<SwitchId, Switch>
+    switchProperties : Map<SwitchId, SwitchProperties>
+    --
+}
+DataAdapter <|-- InMemoryDataAdapter
+
+class OrientDbDataAdapter {
+    pathIds : Collection<PathId>
+    flowPathRepository : FlowPathRepository
+    flowRepository : FlowRepository
+    switchRepository : SwitchRepository
+    switchPropertiesRepository : SwitchPropertiesRepository
+    --
+}
+DataAdapter <|-- OrientDbDataAdapter
+
+class JsonDataAdapter {
+    file : Path
+    --
+}
+DataAdapter <|-- JsonDataAdapter
+
+abstract class Command {
+    uuid : String
+    switchId : SwitchId
+    type : CommandType
+    dependsOn : Collection<String>
+    --
+}
+RuleManager --down-- Command : return
+
+enum CommandType {
+    Flow
+    Meter
+    Group
+}
+Command o--> CommandType
+
+class FlowCommand {
+    cookie : long
+    tableNumber : int
+    match : Collection<Match>
+    instructions : Instructions
+    --
+}
+Command <|-- FlowCommand
+
+interface Match {
+    --
+    getMatchType() : MatchType
+    getMatchValue() : long
+    getMatchMask() : long
+}
+FlowCommand o--> Match
+
+enum MatchType {
+    IN_PORT
+    METADATA
+    ...
+}
+Match o--> MatchType
+
+class InPortMatch {
+    matchType = IN_PORT
+    value : long
+    mask = Long.MAX_VALUE
+    --
+}
+Match <|-- InPortMatch
+
+class MetadataMatch {
+    matchType = METADATA
+    value : long
+    mask : long
+    --
+}
+Match <|-- MetadataMatch
+
+class Instructions {
+    applyActions : List<Action>
+    goToMeter : int
+    goToTable : int
+    --
+}
+FlowCommand o--> Instructions
+
+interface Action {
+    --
+    getActionType() : ActionType    
+}
+Instructions o--> Action
+
+enum ActionType {
+    POP_VLAN
+    PUSH_VLAN
+    GROUP
+    PORT_OUT
+    ...
+}
+ActionType o--> Action
+
+class PopVlanAction {
+    actionType = POP_VLAN
+    --
+}
+Action <|-- PopVlanAction
+
+class PushVlanAction {
+    actionType = PUSH_VLAN
+    vlanId : int
+    --
+}
+Action <|-- PushVlanAction
+
+class GroupAction {
+    actionType = GROUP
+    groupId : int
+    --
+}
+Action <|-- GroupAction
+
+class PortOutAction {
+    actionType = PORT_OUT
+    port : int
+    --
+}
+Action <|-- PortOutAction
+
+
+class MeterCommand {
+    id : int
+    rate : int
+    burst : int
+    flags : Set<Flag>
+    --
+}
+Command <|-- MeterCommand
+
+class GroupCommand {
+    id : int
+    groupType : GroupType
+    buckets : List<Bucket>
+    --
+}
+Command <|-- GroupCommand
+
+class Bucket {
+    watchGroup : WatchGroup
+    watchPort : WatchPort
+    actions : List<Action>
+    --
+}
+GroupCommand o--> Bucket
+Bucket o--> Action
+
+
+@enduml

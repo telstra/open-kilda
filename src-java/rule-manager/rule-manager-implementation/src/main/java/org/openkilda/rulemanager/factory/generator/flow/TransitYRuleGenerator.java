@@ -15,6 +15,8 @@
 
 package org.openkilda.rulemanager.factory.generator.flow;
 
+import static org.openkilda.model.SwitchFeature.METERS;
+
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
@@ -42,6 +44,8 @@ import java.util.List;
 public class TransitYRuleGenerator extends TransitRuleGenerator implements MeteredRuleGenerator {
     protected final MeterId sharedMeterId;
     protected RuleManagerConfig config;
+    protected String externalMeterCommandUuid;
+    protected boolean generateMeterCommand;
 
 
     @Override
@@ -54,13 +58,15 @@ public class TransitYRuleGenerator extends TransitRuleGenerator implements Meter
         SpeakerCommandData command = buildTransitCommand(sw, inPort, outPort);
         result.add(command);
 
-        // TODO(tdurakov): since it's shared meter, this build might be moved outside.
-        SpeakerCommandData meterCommand = buildMeter(flowPath, config, sharedMeterId, sw);
-        if (meterCommand != null) {
-            result.add(meterCommand);
-            command.getDependsOn().add(meterCommand.getUuid());
+        if (generateMeterCommand) {
+            SpeakerCommandData meterCommand = buildMeter(externalMeterCommandUuid, flowPath, config, sharedMeterId, sw);
+            if (meterCommand != null) {
+                result.add(meterCommand);
+                command.getDependsOn().add(externalMeterCommandUuid);
+            }
+        } else if (sw.getFeatures().contains(METERS) && sharedMeterId != null) {
+            command.getDependsOn().add(externalMeterCommandUuid);
         }
-
         return result;
     }
 

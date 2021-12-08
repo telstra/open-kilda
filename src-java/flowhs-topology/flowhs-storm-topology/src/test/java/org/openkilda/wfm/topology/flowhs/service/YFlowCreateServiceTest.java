@@ -84,7 +84,8 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
         processRequestAndSpeakerCommands(request);
         // then
         verifyNorthboundSuccessResponse(yFlowCreateHubCarrier, YFlowResponse.class);
-        verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
+        verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.UP);
+        verifyAffinity(request.getYFlowId());
     }
 
     @Test
@@ -103,7 +104,8 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
         processRequestAndSpeakerCommands(request);
         // then
         verifyNorthboundSuccessResponse(yFlowCreateHubCarrier, YFlowResponse.class);
-        verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
+        verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.UP);
+        verifyAffinity(request.getYFlowId());
     }
 
     @Test
@@ -129,7 +131,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
     }
 
     @Test
-    public void shouldFailIfNoPathAvailable()
+    public void shouldFailIfNoPathAvailableForFirstSubFlow()
             throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
         // given
         YFlowRequest request = buildYFlowRequest("test_successful_yflow", "test_flow_1", "test_flow_2")
@@ -137,6 +139,26 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
         when(pathComputer.getPath(buildFlowIdArgumentMatch("test_flow_1")))
                 .thenThrow(new UnroutableFlowException(injectedErrorMessage));
         preparePathComputation("test_flow_2", buildSecondSubFlowPathPair());
+        prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_TRANSIT);
+
+        // when
+        processRequest(request);
+
+        // then
+        verifyNorthboundErrorResponse(yFlowCreateHubCarrier, ErrorType.NOT_FOUND);
+        verifyNoSpeakerInteraction(yFlowCreateHubCarrier);
+        verifyYFlowIsAbsent(request.getYFlowId());
+    }
+
+    @Test
+    public void shouldFailIfNoPathAvailableForSecondSubFlow()
+            throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
+        // given
+        YFlowRequest request = buildYFlowRequest("test_successful_yflow", "test_flow_1", "test_flow_2")
+                .build();
+        preparePathComputation("test_flow_1", buildFirstSubFlowPathPair());
+        when(pathComputer.getPath(buildFlowIdArgumentMatch("test_flow_2")))
+                .thenThrow(new UnroutableFlowException(injectedErrorMessage));
         prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_TRANSIT);
 
         // when
@@ -183,7 +205,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
 
         // when
         service.handleRequest(request.getYFlowId(), new CommandContext(), request);
-        verifyYFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
+        verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
         // and
         handleSpeakerCommandsAndFailInstall(service, request.getYFlowId(), "test_successful_yflow");
 
@@ -209,7 +231,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
 
         // when
         service.handleRequest(request.getYFlowId(), new CommandContext(), request);
-        verifyYFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
+        verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
         // and
         handleSpeakerCommandsAndTimeoutInstall(service, request.getYFlowId(), "test_successful_yflow");
 
@@ -235,7 +257,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
 
         // when
         service.handleRequest(request.getYFlowId(), new CommandContext(), request);
-        verifyYFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
+        verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
         // and
         handleSpeakerCommandsAndFailVerify(service, request.getYFlowId(), "test_successful_yflow");
 
@@ -261,7 +283,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
 
         // when
         service.handleRequest(request.getYFlowId(), new CommandContext(), request);
-        verifyYFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
+        verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
         // and
         handleSpeakerCommandsAndTimeoutVerify(service, request.getYFlowId(), "test_successful_yflow");
 
@@ -276,7 +298,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
         YFlowCreateService service = makeYFlowCreateService(0);
         service.handleRequest(yFlowRequest.getYFlowId(), new CommandContext(), yFlowRequest);
 
-        verifyYFlowStatus(yFlowRequest.getYFlowId(), FlowStatus.IN_PROGRESS);
+        verifyYFlowAndSubFlowStatus(yFlowRequest.getYFlowId(), FlowStatus.IN_PROGRESS);
 
         handleSpeakerCommands(speakerRequest -> {
             SpeakerFlowSegmentResponse commandResponse = buildSuccessfulSpeakerResponse(speakerRequest);

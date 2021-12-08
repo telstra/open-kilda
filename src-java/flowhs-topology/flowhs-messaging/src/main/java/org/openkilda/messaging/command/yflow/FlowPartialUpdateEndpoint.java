@@ -15,41 +15,23 @@
 
 package org.openkilda.messaging.command.yflow;
 
-import org.openkilda.messaging.command.CommandData;
-import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowEndpoint;
-import org.openkilda.model.PathComputationStrategy;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
-import java.util.List;
+import java.io.Serializable;
 
-/**
- * Represents a patch request for y-flow.
- */
 @Data
 @Builder
-@EqualsAndHashCode(callSuper = false)
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class YFlowPatchRequest extends CommandData {
+public class FlowPartialUpdateEndpoint implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    String yFlowId;
-    FlowEndpoint sharedEndpoint;
-    Long maximumBandwidth;
-    PathComputationStrategy pathComputationStrategy;
-    FlowEncapsulationType encapsulationType;
-    Long maxLatency;
-    Long maxLatencyTier2;
-    Boolean ignoreBandwidth;
-    Boolean periodicPings;
-    Boolean pinned;
-    Integer priority;
-    Boolean strictBandwidth;
-    String description;
-    List<SubFlowDto> subFlows;
+    SwitchId switchId;
+    Integer portNumber;
+    Integer vlanId;
+    Integer innerVlanId;
 }

@@ -25,6 +25,8 @@ import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
@@ -206,6 +208,10 @@ public class FlowDto implements Serializable {
     @JsonProperty("latency_last_modified_time")
     private Instant latencyLastModifiedTime;
 
+    @JsonProperty("y_flow_id")
+    @JsonInclude(Include.NON_NULL)
+    private String yFlowId;
+
     public FlowDto() {
     }
 
@@ -247,6 +253,7 @@ public class FlowDto implements Serializable {
      * @param forwardLatency            forward path latency nanoseconds
      * @param reverseLatency            reverse path latency nanoseconds
      * @param latencyLastModifiedTime   latency fields last modified time
+     * @param yFlowId                   the y-flow ID in the case of sub-flow
      */
     @JsonCreator
     @Builder(toBuilder = true)
@@ -288,7 +295,8 @@ public class FlowDto implements Serializable {
                    @JsonProperty("mirror_point_statuses") List<MirrorPointStatusDto> mirrorPointStatuses,
                    @JsonProperty("forward_latency") Long forwardLatency,
                    @JsonProperty("reverse_latency") Long reverseLatency,
-                   @JsonProperty("latency_last_modified_time") Instant latencyLastModifiedTime) {
+                   @JsonProperty("latency_last_modified_time") Instant latencyLastModifiedTime,
+                   @JsonProperty("y_flow_id") @JsonInclude(Include.NON_NULL) String yFlowId) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
@@ -327,6 +335,7 @@ public class FlowDto implements Serializable {
         this.forwardLatency = forwardLatency;
         this.reverseLatency = reverseLatency;
         this.latencyLastModifiedTime = latencyLastModifiedTime;
+        this.yFlowId = yFlowId;
     }
 
     /**
@@ -368,7 +377,7 @@ public class FlowDto implements Serializable {
                 sourceVlan,
                 destinationVlan, 0, 0,
                 null, 0, null, null, null, null, null, null, pinned, null, detectConnectedDevices, null, null, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 
     public FlowDto(FlowPayload input) {
@@ -403,7 +412,7 @@ public class FlowDto implements Serializable {
                         input.getDestination().getDetectConnectedDevices().isArp()),
                 input.getPathComputationStrategy() != null ? PathComputationStrategy.valueOf(
                         input.getPathComputationStrategy().toUpperCase()) : null, null, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 
     @JsonIgnore

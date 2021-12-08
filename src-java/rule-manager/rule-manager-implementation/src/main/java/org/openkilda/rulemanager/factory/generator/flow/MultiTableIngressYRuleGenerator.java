@@ -16,6 +16,7 @@
 package org.openkilda.rulemanager.factory.generator.flow;
 
 import static org.openkilda.model.FlowEndpoint.isVlanIdSet;
+import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.rulemanager.utils.Utils.checkAndBuildIngressEndpoint;
 import static org.openkilda.rulemanager.utils.Utils.getOutPort;
 
@@ -46,6 +47,8 @@ import java.util.List;
 public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenerator {
 
     protected final MeterId sharedMeterId;
+    protected String externalMeterCommandUuid;
+    protected boolean generateMeterCommand;
 
     @Override
     public List<SpeakerCommandData> generateCommands(Switch sw) {
@@ -60,13 +63,15 @@ public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenera
         }
         result.add(command);
 
-        // TODO(tdurakov): since it's shared meter, this build might be moved outside.
-        SpeakerCommandData meterCommand = buildMeter(flowPath, config, sharedMeterId, sw);
-        if (meterCommand != null) {
-            result.add(meterCommand);
-            command.getDependsOn().add(meterCommand.getUuid());
+        if (generateMeterCommand) {
+            SpeakerCommandData meterCommand = buildMeter(externalMeterCommandUuid, flowPath, config, sharedMeterId, sw);
+            if (meterCommand != null) {
+                result.add(meterCommand);
+                command.getDependsOn().add(externalMeterCommandUuid);
+            }
+        } else if (sw.getFeatures().contains(METERS) && sharedMeterId != null) {
+            command.getDependsOn().add(externalMeterCommandUuid);
         }
-
         return result;
     }
 
@@ -81,7 +86,7 @@ public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenera
                 .cookie(flowPath.getCookie().toBuilder().yFlow(true).build())
                 .table(OfTable.INGRESS)
                 .priority(getPriority(ingressEndpoint))
-                .match(buildIngressMatch(ingressEndpoint, sw))
+                .match(buildIngressMatch(ingressEndpoint, sw.getFeatures()))
                 .instructions(buildInstructions(sw, actions));
 
         if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {

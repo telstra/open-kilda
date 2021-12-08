@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.YFlow;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.YFlowRepository;
@@ -40,6 +41,7 @@ public abstract class YFlowProcessingAction<T extends YFlowProcessingFsm<T, S, E
 
     protected final PersistenceManager persistenceManager;
     protected final TransactionManager transactionManager;
+    protected final FlowRepository flowRepository;
     protected final YFlowRepository yFlowRepository;
     protected final KildaFeatureTogglesRepository featureTogglesRepository;
 
@@ -48,6 +50,7 @@ public abstract class YFlowProcessingAction<T extends YFlowProcessingFsm<T, S, E
         this.transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.yFlowRepository = repositoryFactory.createYFlowRepository();
+        this.flowRepository = repositoryFactory.createFlowRepository();
         this.featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
     }
 

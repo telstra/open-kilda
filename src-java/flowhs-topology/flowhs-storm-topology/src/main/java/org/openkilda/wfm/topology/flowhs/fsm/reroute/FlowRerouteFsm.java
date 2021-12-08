@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -70,17 +70,23 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.ValidateNonIngressR
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.error.SetInstallRuleErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.error.SetValidateRuleErrorAction;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
+import org.openkilda.wfm.topology.flowhs.service.FlowRerouteEventListener;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -88,7 +94,7 @@ import java.util.concurrent.TimeUnit;
 @Setter
 @Slf4j
 public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, State, Event, FlowRerouteContext,
-        FlowRerouteHubCarrier> {
+        FlowRerouteHubCarrier, FlowRerouteEventListener> {
     private boolean recreateIfSamePath;
     private boolean reroutePrimary;
     private boolean rerouteProtected;
@@ -110,8 +116,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
     private RerouteError rerouteError;
 
-    public FlowRerouteFsm(CommandContext commandContext, @NonNull FlowRerouteHubCarrier carrier, String flowId) {
-        super(commandContext, carrier, flowId);
+    public FlowRerouteFsm(CommandContext commandContext, @NonNull FlowRerouteHubCarrier carrier, String flowId,
+                          boolean allowNorthboundResponse, Collection<FlowRerouteEventListener> eventListeners) {
+        super(commandContext, carrier, flowId, allowNorthboundResponse, eventListeners);
     }
 
     @Override
@@ -182,14 +189,13 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
         private final StateMachineBuilder<FlowRerouteFsm, State, Event, FlowRerouteContext> builder;
         private final FlowRerouteHubCarrier carrier;
 
-        public Factory(FlowRerouteHubCarrier carrier, PersistenceManager persistenceManager,
-                       PathComputer pathComputer, FlowResourcesManager resourcesManager,
-                       int pathAllocationRetriesLimit, int pathAllocationRetryDelay, int resourceAllocationRetriesLimit,
-                       int speakerCommandRetriesLimit) {
+        public Factory(FlowRerouteHubCarrier carrier, Config config, PersistenceManager persistenceManager,
+                       PathComputer pathComputer, FlowResourcesManager resourcesManager) {
             this.carrier = carrier;
 
             builder = StateMachineBuilderFactory.create(FlowRerouteFsm.class, State.class, Event.class,
-                    FlowRerouteContext.class, CommandContext.class, FlowRerouteHubCarrier.class, String.class);
+                    FlowRerouteContext.class, CommandContext.class, FlowRerouteHubCarrier.class, String.class,
+                    boolean.class, Collection.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
             final ReportErrorAction<FlowRerouteFsm, State, Event, FlowRerouteContext>
@@ -201,8 +207,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
             builder.transition().from(State.FLOW_VALIDATED).to(State.PRIMARY_RESOURCES_ALLOCATED).on(Event.NEXT)
                     .perform(new AllocatePrimaryResourcesAction(persistenceManager,
-                            pathAllocationRetriesLimit, pathAllocationRetryDelay, resourceAllocationRetriesLimit,
-                            pathComputer, resourcesManager, dashboardLogger));
+                            config.getPathAllocationRetriesLimit(), config.getPathAllocationRetryDelay(),
+                            config.getResourceAllocationRetriesLimit(), pathComputer, resourcesManager,
+                            dashboardLogger));
             builder.transitions().from(State.FLOW_VALIDATED)
                     .toAmong(State.REVERTING_FLOW_STATUS, State.REVERTING_FLOW_STATUS)
                     .onEach(Event.TIMEOUT, Event.ERROR);
@@ -210,8 +217,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
             builder.transition().from(State.PRIMARY_RESOURCES_ALLOCATED).to(State.PROTECTED_RESOURCES_ALLOCATED)
                     .on(Event.NEXT)
                     .perform(new AllocateProtectedResourcesAction(persistenceManager,
-                            pathAllocationRetriesLimit, pathAllocationRetryDelay, resourceAllocationRetriesLimit,
-                            pathComputer, resourcesManager, dashboardLogger));
+                            config.getPathAllocationRetriesLimit(), config.getPathAllocationRetryDelay(),
+                            config.getResourceAllocationRetriesLimit(), pathComputer, resourcesManager,
+                            dashboardLogger));
             builder.transition().from(State.PRIMARY_RESOURCES_ALLOCATED).to(State.REVERTING_ALLOCATED_RESOURCES)
                     .on(Event.NO_PATH_FOUND)
                     .perform(new OnNoPathFoundAction(persistenceManager, dashboardLogger, true));
@@ -243,9 +251,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.internalTransition().within(State.INSTALLING_NON_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedInstallResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.internalTransition().within(State.INSTALLING_NON_INGRESS_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedInstallResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.transition().from(State.INSTALLING_NON_INGRESS_RULES).to(State.NON_INGRESS_RULES_INSTALLED)
                     .on(Event.RULES_INSTALLED);
             builder.transitions().from(State.INSTALLING_NON_INGRESS_RULES)
@@ -262,9 +270,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .perform(new RevertMirrorPointsSettingAction(persistenceManager));
 
             builder.internalTransition().within(State.VALIDATING_NON_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new ValidateNonIngressRulesAction(speakerCommandRetriesLimit));
+                    .perform(new ValidateNonIngressRulesAction(config.getSpeakerCommandRetriesLimit()));
             builder.internalTransition().within(State.VALIDATING_NON_INGRESS_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new ValidateNonIngressRulesAction(speakerCommandRetriesLimit));
+                    .perform(new ValidateNonIngressRulesAction(config.getSpeakerCommandRetriesLimit()));
             builder.transition().from(State.VALIDATING_NON_INGRESS_RULES).to(State.NON_INGRESS_RULES_VALIDATED)
                     .on(Event.RULES_VALIDATED);
             builder.transitions().from(State.VALIDATING_NON_INGRESS_RULES)
@@ -294,9 +302,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .perform(new InstallIngressRulesAction(persistenceManager, resourcesManager));
 
             builder.internalTransition().within(State.INSTALLING_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedInstallResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.internalTransition().within(State.INSTALLING_INGRESS_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedInstallResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.transition().from(State.INSTALLING_INGRESS_RULES).to(State.INGRESS_RULES_INSTALLED)
                     .on(Event.RULES_INSTALLED);
             builder.transition().from(State.INSTALLING_INGRESS_RULES).to(State.INGRESS_RULES_VALIDATED)
@@ -313,9 +321,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.internalTransition().within(State.VALIDATING_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new ValidateIngressRulesAction(speakerCommandRetriesLimit));
+                    .perform(new ValidateIngressRulesAction(config.getSpeakerCommandRetriesLimit()));
             builder.internalTransition().within(State.VALIDATING_INGRESS_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new ValidateIngressRulesAction(speakerCommandRetriesLimit));
+                    .perform(new ValidateIngressRulesAction(config.getSpeakerCommandRetriesLimit()));
             builder.transition().from(State.VALIDATING_INGRESS_RULES).to(State.INGRESS_RULES_VALIDATED)
                     .on(Event.RULES_VALIDATED);
             builder.transitions().from(State.VALIDATING_INGRESS_RULES)
@@ -344,9 +352,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .perform(new RemoveOldRulesAction(persistenceManager, resourcesManager));
 
             builder.internalTransition().within(State.REMOVING_OLD_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedRemoveOrRevertResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.internalTransition().within(State.REMOVING_OLD_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedRemoveOrRevertResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.transition().from(State.REMOVING_OLD_RULES).to(State.OLD_RULES_REMOVED)
                     .on(Event.RULES_REMOVED);
             builder.transition().from(State.REMOVING_OLD_RULES).to(State.OLD_RULES_REMOVED)
@@ -393,9 +401,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .perform(new RevertNewRulesAction(persistenceManager, resourcesManager));
 
             builder.internalTransition().within(State.REVERTING_NEW_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedRemoveOrRevertResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.internalTransition().within(State.REVERTING_NEW_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedRemoveOrRevertResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.transition().from(State.REVERTING_NEW_RULES).to(State.NEW_RULES_REVERTED)
                     .on(Event.RULES_REMOVED);
             builder.transition().from(State.REVERTING_NEW_RULES).to(State.NEW_RULES_REVERTED)
@@ -442,8 +450,34 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger, carrier));
         }
 
-        public FlowRerouteFsm newInstance(CommandContext commandContext, String flowId) {
-            FlowRerouteFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
+        public FlowRerouteFsm newInstance(String flowId, CommandContext commandContext, boolean allowNorthboundResponse,
+                                          Collection<FlowRerouteEventListener> eventListeners) {
+            FlowRerouteFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
+                    allowNorthboundResponse, eventListeners);
+
+            fsm.addTransitionCompleteListener(event ->
+                    log.debug("FlowRerouteFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
+
+            if (fsm.getEventListeners() != null && !fsm.getEventListeners().isEmpty()) {
+                fsm.addTransitionCompleteListener(event -> {
+                    switch (event.getTargetState()) {
+                        case FINISHED:
+                            fsm.getEventListeners().forEach(listener -> listener.onCompleted(fsm.getFlowId()));
+                            break;
+                        case FINISHED_WITH_ERROR:
+                            ErrorType errorType = Optional.ofNullable(fsm.getOperationResultMessage())
+                                    .filter(message -> message instanceof ErrorMessage)
+                                    .map(message -> ((ErrorMessage) message).getData())
+                                    .map(ErrorData::getErrorType).orElse(ErrorType.INTERNAL_ERROR);
+                            fsm.getEventListeners().forEach(listener -> listener.onFailed(fsm.getFlowId(),
+                                    fsm.getErrorReason(), errorType));
+                            break;
+                        default:
+                            // ignore
+                    }
+                });
+            }
+
             MeterRegistryHolder.getRegistry().ifPresent(registry -> {
                 Sample sample = LongTaskTimer.builder("fsm.active_execution")
                         .register(registry)
@@ -535,5 +569,18 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
         TIMEOUT,
         ERROR
+    }
+
+    @Value
+    @Builder
+    public static class Config implements Serializable {
+        @Builder.Default
+        int speakerCommandRetriesLimit = 3;
+        @Builder.Default
+        int pathAllocationRetriesLimit = 10;
+        @Builder.Default
+        int pathAllocationRetryDelay = 50;
+        @Builder.Default
+        int resourceAllocationRetriesLimit = 10;
     }
 }

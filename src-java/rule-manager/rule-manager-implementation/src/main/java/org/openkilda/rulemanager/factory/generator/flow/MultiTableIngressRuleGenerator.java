@@ -71,7 +71,7 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
      * endpoint of target flowPath.
      */
     @Default
-    protected final Set<FlowSideAdapter> overlappingIngressAdapters = new HashSet<>();
+    private final Set<FlowSideAdapter> overlappingIngressAdapters = new HashSet<>();
 
     @Override
     public List<SpeakerCommandData> generateCommands(Switch sw) {
@@ -173,7 +173,7 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
                 .cookie(flowPath.getCookie())
                 .table(OfTable.INGRESS)
                 .priority(getPriority(ingressEndpoint))
-                .match(buildIngressMatch(ingressEndpoint, sw))
+                .match(buildIngressMatch(ingressEndpoint, sw.getFeatures()))
                 .instructions(buildInstructions(sw, actions));
 
         if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
@@ -214,25 +214,8 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
     }
 
     @VisibleForTesting
-    Set<FieldMatch> buildIngressMatch(FlowEndpoint endpoint, Switch sw) {
-        Set<FieldMatch> match = Sets.newHashSet(
-                FieldMatch.builder().field(Field.IN_PORT).value(endpoint.getPortNumber()).build());
-
-        if (isVlanIdSet(endpoint.getOuterVlanId())) {
-            RoutingMetadata metadata = RoutingMetadata.builder()
-                    .outerVlanId(endpoint.getOuterVlanId())
-                    .build(sw.getFeatures());
-            match.add(FieldMatch.builder()
-                    .field(Field.METADATA)
-                    .value(metadata.getValue())
-                    .mask(metadata.getMask())
-                    .build());
-        }
-
-        if (isVlanIdSet(endpoint.getInnerVlanId())) {
-            match.add(FieldMatch.builder().field(Field.VLAN_VID).value(endpoint.getInnerVlanId()).build());
-        }
-        return match;
+    Set<FieldMatch> buildIngressMatch(FlowEndpoint endpoint, Set<SwitchFeature> switchFeatures) {
+        return Utils.makeIngressMatch(endpoint, true, switchFeatures);
     }
 
     @VisibleForTesting
@@ -246,7 +229,6 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
         } else {
             targetStack = new ArrayList<>();
         }
-        // TODO do something with groups
 
         List<Action> transformActions = new ArrayList<>(Utils.makeVlanReplaceActions(currentStack, targetStack));
 

@@ -403,7 +403,17 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
     @Override
     public Optional<String> getOrCreateDiverseFlowGroupId(String flowId) {
         return getTransactionManager().doInTransaction(() -> findById(flowId)
-                .map(diverseFlow -> {
+                .map(flow -> {
+                    Flow diverseFlow = flow;
+                    if (diverseFlow.getAffinityGroupId() != null) {
+                        Optional<Flow> mainAffinityFlow = findById(diverseFlow.getAffinityGroupId());
+                        if (mainAffinityFlow.isPresent()) {
+                            diverseFlow = mainAffinityFlow.get();
+                        } else {
+                            return null;
+                        }
+                    }
+
                     if (diverseFlow.getDiverseGroupId() == null) {
                         String groupId = UUID.randomUUID().toString();
                         diverseFlow.setDiverseGroupId(groupId);
@@ -439,13 +449,20 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
 
     @Override
     public void updateDiverseFlowGroupId(@NonNull String flowId, String diverseGroupId) {
-        getTransactionManager().doInTransaction(() ->
-                framedGraph().traverse(g -> g.V()
-                                .hasLabel(FlowFrame.FRAME_LABEL)
-                                .has(FlowFrame.FLOW_ID_PROPERTY, flowId))
-                        .toListExplicit(FlowFrame.class)
-                        .forEach(flowFrame -> {
-                            flowFrame.setDiverseGroupId(diverseGroupId);
+        getTransactionManager().doInTransaction(() -> findById(flowId)
+                        .ifPresent(flow -> {
+                            String diverseFlowId;
+                            if (flow.getAffinityGroupId() != null) {
+                                diverseFlowId = flow.getAffinityGroupId();
+                            } else {
+                                diverseFlowId = flow.getFlowId();
+                            }
+
+                            framedGraph().traverse(g -> g.V()
+                                            .hasLabel(FlowFrame.FRAME_LABEL)
+                                            .has(FlowFrame.FLOW_ID_PROPERTY, diverseFlowId))
+                                    .toListExplicit(FlowFrame.class)
+                                    .forEach(flowFrame -> flowFrame.setDiverseGroupId(diverseGroupId));
                         }));
     }
 

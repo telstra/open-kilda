@@ -65,7 +65,6 @@ import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath;
-import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
@@ -381,7 +380,11 @@ public class FlowServiceImpl implements FlowService {
             List<CompletableFuture<?>> deletionRequests = new ArrayList<>();
             for (int i = 0; i < flows.size(); i++) {
                 String requestId = idFactory.produceChained(String.valueOf(i));
-                FlowPayload flow = flows.get(i);
+                FlowResponsePayload flow = flows.get(i);
+                if (flow.getYFlowId() != null) {
+                    // Skip y-sub-flows.
+                    continue;
+                }
                 deletionRequests.add(sendDeleteFlow(flow.getId(), requestId));
             }
             return deletionRequests;

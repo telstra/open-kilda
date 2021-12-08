@@ -19,7 +19,9 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public interface SwitchRepository extends Repository<Switch> {
     Collection<Switch> findAll();
@@ -29,6 +31,8 @@ public interface SwitchRepository extends Repository<Switch> {
     Collection<Switch> findActive();
 
     Optional<Switch> findById(SwitchId switchId);
+
+    Map<SwitchId, Switch> findByIds(Set<SwitchId> switchIds);
 
     Collection<Switch> findSwitchesInFlowPathByFlowId(String flowId);
 

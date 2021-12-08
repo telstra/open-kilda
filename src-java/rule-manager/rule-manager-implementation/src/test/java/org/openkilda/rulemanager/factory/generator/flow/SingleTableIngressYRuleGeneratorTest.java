@@ -125,6 +125,8 @@ public class SingleTableIngressYRuleGeneratorTest {
     RuleManagerConfig config;
 
     public static final MeterId SHARED_METER_ID = new MeterId(34);
+    public static final String SHARED_METER_UUID = "uuid";
+
 
 
     @Before
@@ -226,7 +228,7 @@ public class SingleTableIngressYRuleGeneratorTest {
     public void buildMatchVlanEncapsulationSingleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
         SingleTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        Set<FieldMatch> match = generator.buildMatch(new FlowSourceAdapter(flow).getEndpoint());
+        Set<FieldMatch> match = generator.buildMatch(new FlowSourceAdapter(flow).getEndpoint(), FEATURES);
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
                 FieldMatch.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_1).build()
@@ -238,7 +240,7 @@ public class SingleTableIngressYRuleGeneratorTest {
     public void buildMatchVlanEncapsulationFullPortTest() {
         Flow flow = buildFlow(PATH, 0, 0);
         SingleTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        Set<FieldMatch> match = generator.buildMatch(new FlowSourceAdapter(flow).getEndpoint());
+        Set<FieldMatch> match = generator.buildMatch(new FlowSourceAdapter(flow).getEndpoint(), FEATURES);
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()
         );
@@ -277,6 +279,29 @@ public class SingleTableIngressYRuleGeneratorTest {
         assertMeterCommand(meterCommand);
     }
 
+    @Test
+    public void buildCommandsWithoutMeter() {
+        Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
+        SingleTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION, false);
+        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        assertEquals(1, commands.size());
+
+        FlowSpeakerCommandData ingressCommand = (FlowSpeakerCommandData) commands.get(0);
+        assertEquals(newArrayList(SHARED_METER_UUID), new ArrayList<>(ingressCommand.getDependsOn()));
+
+        Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
+                FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
+                FieldMatch.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_1).build()
+        );
+        List<Action> expectedIngressActions = newArrayList(
+                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build(),
+                new PortOutAction(new PortNumber(PORT_NUMBER_2))
+        );
+        assertIngressCommand(ingressCommand, Priority.Y_FLOW_PRIORITY, expectedIngressMatch, expectedIngressActions,
+                SHARED_METER_ID);
+
+    }
+
     private void assertIngressCommand(
             FlowSpeakerCommandData command, int expectedPriority, Set<FieldMatch> expectedMatch,
             List<Action> expectedApplyActions, MeterId expectedMeter) {
@@ -308,14 +333,21 @@ public class SingleTableIngressYRuleGeneratorTest {
     }
 
     private SingleTableIngressYRuleGenerator buildGenerator(
-            FlowPath path, Flow flow, FlowTransitEncapsulation encapsulation) {
+            FlowPath path, Flow flow, FlowTransitEncapsulation encapsulation, boolean generateMeterCommand) {
         return SingleTableIngressYRuleGenerator.builder()
                 .config(config)
                 .flowPath(path)
                 .flow(flow)
                 .encapsulation(encapsulation)
                 .sharedMeterId(SHARED_METER_ID)
+                .generateMeterCommand(generateMeterCommand)
+                .externalMeterCommandUuid(SHARED_METER_UUID)
                 .build();
+    }
+
+    private SingleTableIngressYRuleGenerator buildGenerator(
+            FlowPath path, Flow flow, FlowTransitEncapsulation encapsulation) {
+        return buildGenerator(path, flow, encapsulation, true);
     }
 
     private Flow buildFlow(FlowPath path, int srcOuterVlan, int dstOuterVlan) {

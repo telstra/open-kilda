@@ -82,7 +82,7 @@ import java.util.function.Supplier;
  * A base for action classes that allocate resources for flow paths.
  */
 @Slf4j
-public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm<T, S, E, C, ?>, S, E, C> extends
+public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E, C> extends
         NbTrackableAction<T, S, E, C> {
     private final int pathAllocationRetriesLimit;
     private final int pathAllocationRetryDelay;
@@ -140,27 +140,33 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             stateMachine.saveActionToHistory(errorMessage);
             stateMachine.fireNoPathFound(errorMessage);
 
-            Message message = buildErrorMessage(stateMachine, ErrorType.NOT_FOUND,
-                    getGenericErrorMessage(), errorMessage);
+            ErrorType errorType = ErrorType.NOT_FOUND;
+            Message message = buildErrorMessage(stateMachine, errorType, getGenericErrorMessage(), errorMessage);
             stateMachine.setOperationResultMessage(message);
+
+            stateMachine.notifyEventListenersOnError(errorType, errorMessage);
             return Optional.of(message);
         } catch (RecoverableException ex) {
             String errorMessage = format("Failed to find a path. %s", ex.getMessage());
             stateMachine.saveActionToHistory(errorMessage);
             stateMachine.fireError(errorMessage);
 
-            Message message = buildErrorMessage(stateMachine, ErrorType.INTERNAL_ERROR,
-                    getGenericErrorMessage(), errorMessage);
+            ErrorType errorType = ErrorType.INTERNAL_ERROR;
+            Message message = buildErrorMessage(stateMachine, errorType, getGenericErrorMessage(), errorMessage);
             stateMachine.setOperationResultMessage(message);
+
+            stateMachine.notifyEventListenersOnError(errorType, errorMessage);
             return Optional.of(message);
         } catch (ResourceAllocationException ex) {
             String errorMessage = format("Failed to allocate flow resources. %s", ex.getMessage());
             stateMachine.saveErrorToHistory(errorMessage, ex);
             stateMachine.fireError(errorMessage);
 
-            Message message = buildErrorMessage(stateMachine, ErrorType.INTERNAL_ERROR,
-                    getGenericErrorMessage(), errorMessage);
+            ErrorType errorType = ErrorType.INTERNAL_ERROR;
+            Message message = buildErrorMessage(stateMachine, errorType, getGenericErrorMessage(), errorMessage);
             stateMachine.setOperationResultMessage(message);
+
+            stateMachine.notifyEventListenersOnError(errorType, errorMessage);
             return Optional.of(message);
         }
     }
@@ -213,6 +219,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
     protected GetPathsResult allocatePathPair(Flow flow, PathId newForwardPathId, PathId newReversePathId,
                                               boolean forceToIgnoreBandwidth, List<PathId> pathsToReuseBandwidth,
                                               FlowPathPair oldPaths, boolean allowOldPaths,
+                                              String sharedBandwidthGroupId,
                                               Predicate<GetPathsResult> whetherCreatePathSegments)
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         // Lazy initialisable map with reused bandwidth...
@@ -267,9 +274,11 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                     if (whetherCreatePathSegments.test(potentialPath)) {
                         boolean ignoreBandwidth = forceToIgnoreBandwidth || flow.isIgnoreBandwidth();
                         List<PathSegment> forwardSegments = flowPathBuilder.buildPathSegments(newForwardPathId,
-                                potentialPath.getForward(), flow.getBandwidth(), ignoreBandwidth);
+                                potentialPath.getForward(), flow.getBandwidth(), ignoreBandwidth,
+                                sharedBandwidthGroupId);
                         List<PathSegment> reverseSegments = flowPathBuilder.buildPathSegments(newReversePathId,
-                                potentialPath.getReverse(), flow.getBandwidth(), ignoreBandwidth);
+                                potentialPath.getReverse(), flow.getBandwidth(), ignoreBandwidth,
+                                sharedBandwidthGroupId);
 
                         transactionManager.doInTransaction(() -> {
                             createPathSegments(forwardSegments, reuseBandwidthPerIsl);
@@ -326,7 +335,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
     }
 
     protected FlowPathPair createFlowPathPair(String flowId, FlowResources flowResources, GetPathsResult pathPair,
-                                              boolean forceToIgnoreBandwidth) {
+                                              boolean forceToIgnoreBandwidth, String sharedBandwidthGroupId) {
         FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
                 .flowEffectiveId(flowResources.getUnmaskedCookie());
 
@@ -340,7 +349,8 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             FlowPath newForwardPath = flowPathBuilder.buildFlowPath(
                     flow, flowResources.getForward(), forward.getLatency(),
                     forward.getSrcSwitchId(), forward.getDestSwitchId(), forwardSegments,
-                    cookieBuilder.direction(FlowPathDirection.FORWARD).build(), forceToIgnoreBandwidth);
+                    cookieBuilder.direction(FlowPathDirection.FORWARD).build(), forceToIgnoreBandwidth,
+                    sharedBandwidthGroupId);
             newForwardPath.setStatus(FlowPathStatus.IN_PROGRESS);
 
             Path reverse = pathPair.getReverse();
@@ -349,7 +359,8 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             FlowPath newReversePath = flowPathBuilder.buildFlowPath(
                     flow, flowResources.getReverse(), reverse.getLatency(),
                     reverse.getSrcSwitchId(), reverse.getDestSwitchId(), reverseSegments,
-                    cookieBuilder.direction(FlowPathDirection.REVERSE).build(), forceToIgnoreBandwidth);
+                    cookieBuilder.direction(FlowPathDirection.REVERSE).build(), forceToIgnoreBandwidth,
+                    sharedBandwidthGroupId);
             newReversePath.setStatus(FlowPathStatus.IN_PROGRESS);
 
             log.debug("Persisting the paths {}/{}", newForwardPath, newReversePath);

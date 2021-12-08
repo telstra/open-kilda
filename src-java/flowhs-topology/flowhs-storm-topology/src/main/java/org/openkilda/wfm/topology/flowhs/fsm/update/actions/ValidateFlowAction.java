@@ -133,4 +133,13 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
     protected String getGenericErrorMessage() {
         return "Could not update flow";
     }
+
+    @Override
+    protected void handleError(FlowUpdateFsm stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        super.handleError(stateMachine, ex, errorType, logTraceback);
+
+        // Notify about failed validation.
+        stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
+
+    }
 }

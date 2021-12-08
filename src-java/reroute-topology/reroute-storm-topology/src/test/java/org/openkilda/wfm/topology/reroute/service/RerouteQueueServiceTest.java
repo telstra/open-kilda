@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
@@ -40,9 +41,12 @@ import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.YFlow;
+import org.openkilda.model.YFlow.SharedEndpoint;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData.FlowThrottlingDataBuilder;
 import org.openkilda.wfm.topology.reroute.model.RerouteQueue;
@@ -69,26 +73,36 @@ public class RerouteQueueServiceTest {
     private static final Switch SWITCH_B = Switch.builder().switchId(SWITCH_ID_B).build();
     private static final SwitchId SWITCH_ID_C = new SwitchId(3L);
     private static final Switch SWITCH_C = Switch.builder().switchId(SWITCH_ID_C).build();
-    private static String FLOW_ID = "flow id";
+    private static String FLOW_ID = "flow_id";
+    private static String YFLOW_ID = "yflow_id";
 
     private Flow flow;
+    private YFlow yFlow;
 
     @Mock
     private IRerouteQueueCarrier carrier;
     @Mock
     private FlowRepository flowRepository;
+    @Mock
+    private YFlowRepository yFlowRepository;
 
     private RerouteQueueService rerouteQueueService;
 
     @Before
-    public void setup() throws Throwable {
+    public void setup() {
         flow = Flow.builder().flowId(FLOW_ID).srcSwitch(SWITCH_A)
                 .destSwitch(SWITCH_B).priority(2)
                 .build();
         when(flowRepository.findById(FLOW_ID)).thenReturn(Optional.of(flow));
 
+
+        yFlow = YFlow.builder().yFlowId(YFLOW_ID).sharedEndpoint(new SharedEndpoint(SWITCH_A.getSwitchId(), 10))
+                .priority(2).build();
+        when(yFlowRepository.findById(YFLOW_ID)).thenReturn(Optional.of(yFlow));
+
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
+        when(repositoryFactory.createYFlowRepository()).thenReturn(yFlowRepository);
 
         PersistenceManager persistenceManager = mock(PersistenceManager.class);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
@@ -156,6 +170,25 @@ public class RerouteQueueServiceTest {
     }
 
     @Test
+    public void shouldSendManualRerouteRequestWithoutThrottlingForYFlow() {
+        FlowThrottlingData throttling = getFlowThrottlingData(yFlow, "another one").build();
+        RerouteQueue rerouteQueue = RerouteQueue.builder()
+                .throttling(throttling)
+                .build();
+        rerouteQueueService.getReroutes().put(YFLOW_ID, rerouteQueue);
+
+        FlowThrottlingData actual = getFlowThrottlingData(yFlow, CORRELATION_ID).build();
+        rerouteQueueService.processManualRequest(YFLOW_ID, actual);
+
+        assertEquals(1, rerouteQueueService.getReroutes().size());
+        assertEquals(actual, rerouteQueue.getInProgress());
+        assertNull(rerouteQueue.getPending());
+        assertEquals(throttling, rerouteQueue.getThrottling());
+        YFlowRerouteRequest expected = getYFlowRerouteRequest(YFLOW_ID, actual);
+        verify(carrier).sendRerouteRequest(eq(CORRELATION_ID), eq(expected));
+    }
+
+    @Test
     public void shouldSendCorrectErrorMessageForManualRerouteRequestWithNotExistentFlow() {
         String notExistentFlowId = "notExistentFlowId";
         when(flowRepository.findById(notExistentFlowId)).thenReturn(Optional.empty());
@@ -165,6 +198,18 @@ public class RerouteQueueServiceTest {
 
         assertEquals(0, rerouteQueueService.getReroutes().size());
         verify(carrier).emitFlowRerouteError(argThat(flowNotFoundErrorData(notExistentFlowId)));
+    }
+
+    @Test
+    public void shouldSendCorrectErrorMessageForManualRerouteRequestWithNotExistentYFlow() {
+        String notExistentFlowId = "notExistentFlowId";
+        when(yFlowRepository.findById(notExistentFlowId)).thenReturn(Optional.empty());
+
+        FlowThrottlingData actual = getFlowThrottlingData(yFlow, CORRELATION_ID).build();
+        rerouteQueueService.processManualRequest(notExistentFlowId, actual);
+
+        assertEquals(0, rerouteQueueService.getReroutes().size());
+        verify(carrier).emitFlowRerouteError(argThat(yflowNotFoundErrorData(notExistentFlowId)));
     }
 
     @Test
@@ -193,6 +238,20 @@ public class RerouteQueueServiceTest {
 
         assertEquals(0, rerouteQueueService.getReroutes().size());
         verify(carrier).emitFlowRerouteError(argThat(pinnedFlowErrorData(flowId)));
+    }
+
+    @Test
+    public void shouldSendCorrectErrorMessageForManualRerouteRequestForPinnedYFlow() {
+        String flowId = "test flow";
+        when(yFlowRepository.findById(flowId)).thenReturn(Optional.of(YFlow.builder().yFlowId(flowId)
+                .sharedEndpoint(new SharedEndpoint(SWITCH_A.getSwitchId(), 10)).priority(2).pinned(true)
+                .build()));
+
+        FlowThrottlingData actual = getFlowThrottlingData(yFlow, CORRELATION_ID).build();
+        rerouteQueueService.processManualRequest(flowId, actual);
+
+        assertEquals(0, rerouteQueueService.getReroutes().size());
+        verify(carrier).emitFlowRerouteError(argThat(pinnedYFlowErrorData(flowId)));
     }
 
     @Test
@@ -297,6 +356,45 @@ public class RerouteQueueServiceTest {
         assertNull(rerouteQueue.getPending());
         assertNull(rerouteQueue.getThrottling());
         FlowRerouteRequest expectedRequest = getFlowRerouteRequest(FLOW_ID, expected);
+        verify(carrier).sendRerouteRequest(eq(retryCorrelationId), eq(expectedRequest));
+    }
+
+    @Test
+    public void shouldMergeAndSendRetryWithPendingRequestWhenReceivedFailedRuleInstallResponseOnTransitSwitchYFlow() {
+        FlowThrottlingData inProgress = getFlowThrottlingData(yFlow, CORRELATION_ID).build();
+        FlowThrottlingData pending = FlowThrottlingData.builder()
+                .correlationId("pending")
+                .priority(7)
+                .timeCreate(yFlow.getTimeCreate())
+                .affectedIsl(Collections.singleton(new IslEndpoint(SWITCH_ID_A, 1)))
+                .force(false)
+                .effectivelyDown(true)
+                .reason("another reason")
+                .yFlow(true)
+                .build();
+        RerouteQueue rerouteQueue = RerouteQueue.builder()
+                .inProgress(inProgress)
+                .pending(pending)
+                .build();
+        rerouteQueueService.getReroutes().put(YFLOW_ID, rerouteQueue);
+
+        RerouteResultInfoData rerouteResultInfoData = RerouteResultInfoData.builder()
+                .flowId(YFLOW_ID)
+                .success(false)
+                .rerouteError(new SpeakerRequestError("Failed to install rules",
+                        Collections.singleton(SWITCH_C.getSwitchId())))
+                .yFlow(true)
+                .build();
+        rerouteQueueService.processRerouteResult(rerouteResultInfoData, CORRELATION_ID);
+
+        String retryCorrelationId = CORRELATION_ID + " : retry #1 ignore_bw false";
+        FlowThrottlingData expected = getFlowThrottlingData(yFlow, retryCorrelationId).build();
+        expected.setPriority(pending.getPriority());
+        expected.setReason(pending.getReason());
+        assertEquals(expected, rerouteQueue.getInProgress());
+        assertNull(rerouteQueue.getPending());
+        assertNull(rerouteQueue.getThrottling());
+        YFlowRerouteRequest expectedRequest = getYFlowRerouteRequest(YFLOW_ID, expected);
         verify(carrier).sendRerouteRequest(eq(retryCorrelationId), eq(expectedRequest));
     }
 
@@ -488,16 +586,39 @@ public class RerouteQueueServiceTest {
                 .reason("reason");
     }
 
+    private FlowThrottlingDataBuilder getFlowThrottlingData(YFlow flow, String correlationId) {
+        return FlowThrottlingData.builder()
+                .correlationId(correlationId)
+                .priority(flow.getPriority())
+                .timeCreate(flow.getTimeCreate())
+                .affectedIsl(Collections.emptySet())
+                .force(true)
+                .effectivelyDown(true)
+                .reason("reason")
+                .yFlow(true);
+    }
+
     private FlowRerouteRequest getFlowRerouteRequest(String flowId, FlowThrottlingData flowThrottlingData) {
         return new FlowRerouteRequest(flowId, flowThrottlingData.isForce(), flowThrottlingData.isEffectivelyDown(),
                 flowThrottlingData.isIgnoreBandwidth(),
                 flowThrottlingData.getAffectedIsl(), flowThrottlingData.getReason(), false);
     }
 
+    private YFlowRerouteRequest getYFlowRerouteRequest(String flowId, FlowThrottlingData flowThrottlingData) {
+        return new YFlowRerouteRequest(flowId, flowThrottlingData.getAffectedIsl(),
+                flowThrottlingData.isForce(), flowThrottlingData.getReason(), flowThrottlingData.isIgnoreBandwidth());
+    }
+
     private ArgumentMatcher<ErrorData> flowNotFoundErrorData(String flowId) {
         return (errorData) -> ErrorType.NOT_FOUND == errorData.getErrorType()
                 && errorData.getErrorMessage().equals("Could not reroute flow")
                 && errorData.getErrorDescription().equals(format("Flow %s not found", flowId));
+    }
+
+    private ArgumentMatcher<ErrorData> yflowNotFoundErrorData(String flowId) {
+        return (errorData) -> ErrorType.NOT_FOUND == errorData.getErrorType()
+                && errorData.getErrorMessage().equals("Could not reroute y-flow")
+                && errorData.getErrorDescription().equals(format("Y-flow %s not found", flowId));
     }
 
     private ArgumentMatcher<ErrorData> rerouteIsInProgressErrorData(String flowId) {
@@ -510,5 +631,11 @@ public class RerouteQueueServiceTest {
         return (errorData) -> ErrorType.UNPROCESSABLE_REQUEST == errorData.getErrorType()
                 && errorData.getErrorMessage().equals("Could not reroute flow")
                 && errorData.getErrorDescription().equals("Can't reroute pinned flow");
+    }
+
+    private ArgumentMatcher<ErrorData> pinnedYFlowErrorData(String flowId) {
+        return (errorData) -> ErrorType.UNPROCESSABLE_REQUEST == errorData.getErrorType()
+                && errorData.getErrorMessage().equals("Could not reroute y-flow")
+                && errorData.getErrorDescription().equals("Can't reroute pinned y-flow");
     }
 }

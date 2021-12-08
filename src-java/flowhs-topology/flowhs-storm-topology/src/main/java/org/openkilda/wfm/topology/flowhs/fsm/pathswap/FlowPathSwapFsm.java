@@ -42,6 +42,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.UpdateFlowPathsActi
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.UpdateFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.ValidateIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathSwapHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
@@ -58,7 +59,7 @@ import java.util.concurrent.TimeUnit;
 @Setter
 @Slf4j
 public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, State, Event, FlowPathSwapContext,
-        FlowPathSwapHubCarrier> {
+        FlowPathSwapHubCarrier, FlowProcessingEventListener> {
 
     public FlowPathSwapFsm(CommandContext commandContext, @NonNull FlowPathSwapHubCarrier carrier,
                            String flowId) {

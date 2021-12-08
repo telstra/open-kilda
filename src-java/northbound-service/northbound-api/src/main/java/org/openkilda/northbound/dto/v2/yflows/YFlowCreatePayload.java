@@ -27,8 +27,9 @@ import javax.validation.constraints.PositiveOrZero;
 @Data
 @Builder
 @AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class YFlowCreatePayload {
+    String yFlowId;
     YFlowSharedEndpoint sharedEndpoint;
 
     @PositiveOrZero(message = "maximumBandwidth can't be negative")

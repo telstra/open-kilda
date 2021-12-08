@@ -15,9 +15,12 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
+import static java.lang.String.format;
+
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.messaging.command.flow.FlowMirrorPointDeleteRequest;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -25,30 +28,17 @@ import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm.State;
 
-import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @Slf4j
-public class FlowMirrorPointDeleteService {
-    @VisibleForTesting
-    final Map<String, FlowMirrorPointDeleteFsm> fsms = new HashMap<>();
-
+public class FlowMirrorPointDeleteService extends FsmBasedFlowProcessingService<FlowMirrorPointDeleteFsm, Event,
+        FlowMirrorPointDeleteContext, FlowMirrorPointDeleteHubCarrier> {
     private final FlowMirrorPointDeleteFsm.Factory fsmFactory;
-    private final FsmExecutor<FlowMirrorPointDeleteFsm, State, Event, FlowMirrorPointDeleteContext> fsmExecutor
-            = new FsmExecutor<>(Event.NEXT);
-
-    private final FlowMirrorPointDeleteHubCarrier carrier;
-
-    private boolean active;
 
     public FlowMirrorPointDeleteService(FlowMirrorPointDeleteHubCarrier carrier, PersistenceManager persistenceManager,
                                         FlowResourcesManager flowResourcesManager, int speakerCommandRetriesLimit) {
-        this.carrier = carrier;
+        super(new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
         fsmFactory = new FlowMirrorPointDeleteFsm.Factory(carrier, persistenceManager, flowResourcesManager,
                 speakerCommandRetriesLimit);
     }
@@ -62,6 +52,11 @@ public class FlowMirrorPointDeleteService {
 
     public void handleDeleteMirrorPointRequest(String key, CommandContext commandContext,
                                                FlowMirrorPointDeleteRequest request) {
+        if (yFlowRepository.isSubFlow(request.getFlowId())) {
+            sendForbiddenSubFlowOperationToNorthbound(request.getFlowId(), commandContext);
+            return;
+        }
+
         handleRequest(key, commandContext, request);
     }
 
@@ -72,7 +67,7 @@ public class FlowMirrorPointDeleteService {
      */
     public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) {
         log.debug("Received flow command response {}", flowResponse);
-        FlowMirrorPointDeleteFsm fsm = fsms.get(key);
+        FlowMirrorPointDeleteFsm fsm = getFsmByKey(key).orElse(null);
         if (fsm == null) {
             log.warn("Failed to find a FSM: received response with key {} for non pending FSM", key);
             return;
@@ -98,7 +93,7 @@ public class FlowMirrorPointDeleteService {
      */
     public void handleTimeout(String key) {
         log.debug("Handling timeout for {}", key);
-        FlowMirrorPointDeleteFsm fsm = fsms.get(key);
+        FlowMirrorPointDeleteFsm fsm = getFsmByKey(key).orElse(null);
         if (fsm == null) {
             log.warn("Failed to find a FSM: timeout event for non pending FSM with key {}", key);
             return;
@@ -110,16 +105,24 @@ public class FlowMirrorPointDeleteService {
     }
 
     private void handleRequest(String key, CommandContext commandContext, FlowMirrorPointDeleteRequest request) {
+        String flowId = request.getFlowId();
         log.debug("Handling flow delete mirror point request with key {}, flow ID: {}, and flow mirror ID: {}",
-                key, request.getFlowId(), request.getMirrorPointId());
+                key, flowId, request.getMirrorPointId());
 
-        if (fsms.containsKey(key)) {
+        if (hasRegisteredFsmWithKey(key)) {
             log.error("Attempt to create a FSM with key {}, while there's another active FSM with the same key.", key);
             return;
         }
+        if (hasRegisteredFsmWithFlowId(flowId)) {
+            sendErrorResponseToNorthbound(ErrorType.REQUEST_INVALID, "Could not update flow",
+                    format("Flow %s is updating now", flowId), commandContext);
+            log.error("Attempt to create a FSM with key {}, while there's another active FSM for the same flowId {}.",
+                    key, flowId);
+            return;
+        }
 
-        FlowMirrorPointDeleteFsm fsm = fsmFactory.newInstance(commandContext, request.getFlowId());
-        fsms.put(key, fsm);
+        FlowMirrorPointDeleteFsm fsm = fsmFactory.newInstance(commandContext, flowId);
+        registerFsm(key, fsm);
 
         FlowMirrorPointDeleteContext context = FlowMirrorPointDeleteContext.builder()
                 .flowMirrorPointId(request.getMirrorPointId())
@@ -132,28 +135,13 @@ public class FlowMirrorPointDeleteService {
     private void removeIfFinished(FlowMirrorPointDeleteFsm fsm, String key) {
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
-            fsms.remove(key);
+            unregisterFsm(key);
 
             carrier.cancelTimeoutCallback(key);
 
-            if (!active && fsms.isEmpty()) {
+            if (!isActive() && !hasAnyRegisteredFsm()) {
                 carrier.sendInactive();
             }
         }
-    }
-
-    /**
-     * Handles deactivate command.
-     */
-    public boolean deactivate() {
-        active = false;
-        return fsms.isEmpty();
-    }
-
-    /**
-     * Handles activate command.
-     */
-    public void activate() {
-        active = true;
     }
 }

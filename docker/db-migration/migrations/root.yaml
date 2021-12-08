@@ -66,3 +66,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 018-add-support-of-yflow-meters.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 019-add-shared-bandwidth-group-properties.yaml

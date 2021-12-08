@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import static java.util.stream.Collectors.toSet;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
+import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.reroute.SwitchStateChanged;
 import org.openkilda.model.Flow;
@@ -33,12 +34,14 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.model.YFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.EntityNotFoundException;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.TimedExecution;
@@ -67,12 +70,14 @@ import java.util.stream.Collectors;
 public class RerouteService {
     private final FlowOperationsDashboardLogger flowDashboardLogger = new FlowOperationsDashboardLogger(log);
     private FlowRepository flowRepository;
+    private YFlowRepository yFlowRepository;
     private FlowPathRepository flowPathRepository;
     private PathSegmentRepository pathSegmentRepository;
     private TransactionManager transactionManager;
 
     public RerouteService(PersistenceManager persistenceManager) {
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        this.yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         this.pathSegmentRepository = persistenceManager.getRepositoryFactory().createPathSegmentRepository();
         this.transactionManager = persistenceManager.getTransactionManager();
@@ -105,7 +110,7 @@ public class RerouteService {
 
             for (FlowWithAffectedPaths entry : groupPathsForRerouting(affectedFlowPaths)) {
                 Flow flow = entry.getFlow();
-                boolean flowPathFound = updateFlowPathsStateForFlow(switchId, port, entry.getAffectedPaths());
+                boolean rerouteRequired = updateFlowPathsStateForFlow(switchId, port, entry.getAffectedPaths());
                 FlowStatus flowStatus = flow.computeFlowStatus();
                 String flowStatusInfo = null;
                 if (!FlowStatus.UP.equals(flowStatus)) {
@@ -113,8 +118,12 @@ public class RerouteService {
                 }
                 flowRepository.updateStatusSafe(flow, flowStatus, flowStatusInfo);
 
-                if (flowPathFound) {
-                    result.flowsForReroute.add(flow);
+                if (rerouteRequired) {
+                    if (flow.getYFlow() != null) {
+                        result.yFlowsForReroute.add(flow.getYFlow());
+                    } else {
+                        result.flowsForReroute.add(flow);
+                    }
                 }
             }
 
@@ -142,6 +151,16 @@ public class RerouteService {
                     .reason(command.getReason())
                     .build();
             sender.emitRerouteCommand(flow.getFlowId(), flowThrottlingData);
+        }
+        for (YFlow yFlow : rerouteResult.yFlowsForReroute) {
+            FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(yFlow)
+                    .correlationId(correlationId)
+                    .affectedIsl(Collections.singleton(affectedIsl))
+                    .force(false)
+                    .effectivelyDown(true)
+                    .reason(command.getReason())
+                    .build();
+            sender.emitRerouteCommand(yFlow.getYFlowId(), flowThrottlingData);
         }
     }
 
@@ -188,6 +207,19 @@ public class RerouteService {
         for (Flow flow : flowsForRerouting) {
             if (flow.isPinned()) {
                 log.info("Skipping reroute command for pinned flow {}", flow.getFlowId());
+            } else if (flow.getYFlow() != null) {
+                YFlow yFlow = flow.getYFlow();
+                log.info("Produce reroute (attempt to restore inactive flow) request for {} (switch online {})",
+                        yFlow.getYFlowId(), switchId);
+                // Emit reroute command with empty affectedIsls to force flow to reroute despite it's current paths
+                FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(yFlow)
+                        .correlationId(correlationId)
+                        .affectedIsl(Collections.emptySet())
+                        .force(false)
+                        .effectivelyDown(true)
+                        .reason(format("Switch '%s' online", switchId))
+                        .build();
+                sender.emitRerouteCommand(yFlow.getYFlowId(), flowThrottlingData);
             } else {
                 log.info("Produce reroute (attempt to restore inactive flow) request for {} (switch online {})",
                         flow.getFlowId(), switchId);
@@ -269,6 +301,19 @@ public class RerouteService {
 
                 if (flow.isPinned()) {
                     log.info("Skipping reroute command for pinned flow {}", flow.getFlowId());
+                } else if (flow.getYFlow() != null) {
+                    YFlow yFlow = flow.getYFlow();
+                    log.info("Create reroute command (attempt to restore inactive flows) request for {} "
+                                    + "(affected ISL endpoints: {})",
+                            yFlow.getYFlowId(), allAffectedIslEndpoints);
+                    FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(yFlow)
+                            .correlationId(correlationId)
+                            .affectedIsl(allAffectedIslEndpoints)
+                            .force(false)
+                            .effectivelyDown(true)
+                            .reason(command.getReason())
+                            .build();
+                    sender.emitRerouteCommand(yFlow.getYFlowId(), flowThrottlingData);
                 } else {
                     log.info("Create reroute command (attempt to restore inactive flows) request for {} (affected ISL "
                                     + "endpoints: {})",
@@ -408,6 +453,20 @@ public class RerouteService {
     }
 
     /**
+     * Process manual y-flow reroute request.
+     */
+    public void processRerouteRequest(MessageSender sender, String correlationId, YFlowRerouteRequest request) {
+        Optional<YFlow> flow = yFlowRepository.findById(request.getYFlowId());
+        FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(flow.orElse(null))
+                .correlationId(correlationId)
+                .affectedIsl(request.getAffectedIsl())
+                .force(request.isForce())
+                .reason(request.getReason())
+                .build();
+        sender.emitManualRerouteCommand(request.getYFlowId(), flowThrottlingData);
+    }
+
+    /**
      * Handles request to update single switch flow status.
      */
     public void processSingleSwitchFlowStatusUpdate(SwitchStateChanged request) {
@@ -440,6 +499,17 @@ public class RerouteService {
                         .strictBandwidth(flow.isStrictBandwidth());
     }
 
+    private FlowThrottlingDataBuilder getFlowThrottlingDataBuilder(YFlow flow) {
+        return flow == null ? FlowThrottlingData.builder() :
+                FlowThrottlingData.builder()
+                        .priority(flow.getPriority())
+                        .timeCreate(flow.getTimeCreate())
+                        .pathComputationStrategy(flow.getPathComputationStrategy())
+                        .bandwidth(flow.getMaximumBandwidth())
+                        .strictBandwidth(flow.isStrictBandwidth())
+                        .yFlow(true);
+    }
+
     @Value
     private static class FlowWithAffectedPaths {
         private Flow flow;
@@ -451,5 +521,6 @@ public class RerouteService {
     private static class RerouteResult {
         Set<String> flowIdsForSwapPaths = new HashSet<>();
         Set<Flow> flowsForReroute = new HashSet<>();
+        Set<YFlow> yFlowsForReroute = new HashSet<>();
     }
 }

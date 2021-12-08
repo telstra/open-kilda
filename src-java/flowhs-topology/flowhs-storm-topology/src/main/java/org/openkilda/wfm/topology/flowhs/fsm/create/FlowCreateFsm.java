@@ -88,6 +88,7 @@ public final class FlowCreateFsm extends FlowProcessingWithEventSupportFsm<FlowC
     private final String flowId;
 
     private RequestedFlow targetFlow;
+    private String sharedBandwidthGroupId;
     private List<FlowResources> flowResources = new ArrayList<>();
     private PathId forwardPathId;
     private PathId reversePathId;

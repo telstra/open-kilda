@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
@@ -91,7 +92,7 @@ public class AllocateProtectedResourcesAction extends
         log.debug("Finding a new protected path for flow {}", flowId);
         GetPathsResult allocatedPaths = allocatePathPair(tmpFlowCopy, newForwardPathId, newReversePathId,
                 stateMachine.isIgnoreBandwidth(), pathsToReuse, oldPaths, stateMachine.isRecreateIfSamePath(),
-                testNonOverlappingPath);
+                stateMachine.getSharedBandwidthGroupId(), testNonOverlappingPath);
         if (allocatedPaths != null) {
             stateMachine.setBackUpProtectedPathComputationWayUsed(allocatedPaths.isBackUpPathComputationWayUsed());
 
@@ -110,7 +111,7 @@ public class AllocateProtectedResourcesAction extends
                 stateMachine.setNewProtectedResources(flowResources);
 
                 FlowPathPair createdPaths = createFlowPathPair(flowId, flowResources, allocatedPaths,
-                        stateMachine.isIgnoreBandwidth());
+                        stateMachine.isIgnoreBandwidth(), stateMachine.getSharedBandwidthGroupId());
                 log.debug("New protected paths have been created: {}", createdPaths);
 
                 saveAllocationActionWithDumpsToHistory(stateMachine, tmpFlowCopy, "protected", createdPaths);
@@ -130,5 +131,13 @@ public class AllocateProtectedResourcesAction extends
     @Override
     protected String getGenericErrorMessage() {
         return "Could not reroute flow";
+    }
+
+    @Override
+    protected void handleError(FlowRerouteFsm stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        super.handleError(stateMachine, ex, errorType, logTraceback);
+
+        // Notify about failed allocation.
+        stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
     }
 }

@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
@@ -86,7 +87,8 @@ public class AllocateProtectedResourcesAction extends
 
         log.debug("Finding a new protected path for flow {}", flowId);
         GetPathsResult allocatedPaths = allocatePathPair(tmpFlow, newForwardPathId, newReversePathId,
-                false, pathIdsToReuse, oldPaths, true, testNonOverlappingPath);
+                false, pathIdsToReuse, oldPaths, true,
+                stateMachine.getSharedBandwidthGroupId(), testNonOverlappingPath);
         if (allocatedPaths == null) {
             throw new ResourceAllocationException("Unable to allocate a path");
         }
@@ -103,7 +105,8 @@ public class AllocateProtectedResourcesAction extends
             FlowResources flowResources = allocateFlowResources(tmpFlow, newForwardPathId, newReversePathId);
             stateMachine.setNewProtectedResources(flowResources);
 
-            FlowPathPair createdPaths = createFlowPathPair(flowId, flowResources, allocatedPaths, false);
+            FlowPathPair createdPaths = createFlowPathPair(flowId, flowResources, allocatedPaths, false,
+                    stateMachine.getSharedBandwidthGroupId());
             log.debug("New protected path has been created: {}", createdPaths);
 
             saveAllocationActionWithDumpsToHistory(stateMachine, tmpFlow, "protected", createdPaths);
@@ -120,5 +123,13 @@ public class AllocateProtectedResourcesAction extends
     @Override
     protected String getGenericErrorMessage() {
         return "Could not update flow";
+    }
+
+    @Override
+    protected void handleError(FlowUpdateFsm stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        super.handleError(stateMachine, ex, errorType, logTraceback);
+
+        // Notify about failed allocation.
+        stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
     }
 }

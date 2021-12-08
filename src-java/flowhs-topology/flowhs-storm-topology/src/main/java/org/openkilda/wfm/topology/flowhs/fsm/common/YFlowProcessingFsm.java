@@ -16,13 +16,16 @@
 package org.openkilda.wfm.topology.flowhs.fsm.common;
 
 import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.Setter;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -41,6 +44,11 @@ public abstract class YFlowProcessingFsm<T extends NbTrackableFsm<T, S, E, C, R>
     private final Map<UUID, Integer> retriedCommands = new HashMap<>();
     private final Map<UUID, SpeakerResponse> failedCommands = new HashMap<>();
     private final Map<UUID, SpeakerResponse> failedValidationResponses = new HashMap<>();
+
+    @Setter
+    private FlowStatus originalYFlowStatus;
+    @Setter
+    private YFlowResources newResources;
 
     public YFlowProcessingFsm(CommandContext commandContext, @NonNull R carrier, @NonNull String yFlowId,
                               @NonNull Collection<L> eventListeners) {

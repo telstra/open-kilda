@@ -29,6 +29,8 @@ import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.SpeakerCommandData;
 import org.openkilda.rulemanager.action.MeterAction;
 
+import java.util.UUID;
+
 public interface MeteredRuleGenerator extends RuleGenerator {
 
     /**
@@ -50,13 +52,15 @@ public interface MeteredRuleGenerator extends RuleGenerator {
 
     /**
      * Build meter command data.
+     * @param uuid command data uuid.
      * @param flowPath target flow path
      * @param config config to be used
      * @param meterId target meter id. NB: it might be different from flow paths reference
      * @param sw target switch
      * @return command data
      */
-    default SpeakerCommandData buildMeter(FlowPath flowPath, RuleManagerConfig config, MeterId meterId, Switch sw) {
+    default SpeakerCommandData buildMeter(String uuid, FlowPath flowPath, RuleManagerConfig config, MeterId meterId,
+                                          Switch sw) {
         if (meterId == null || !sw.getFeatures().contains(METERS)) {
             return null;
         }
@@ -66,8 +70,8 @@ public interface MeteredRuleGenerator extends RuleGenerator {
                 config.getFlowMeterBurstCoefficient(),
                 flowPath.getSrcSwitch().getOfDescriptionManufacturer(),
                 flowPath.getSrcSwitch().getOfDescriptionSoftware());
-
         return MeterSpeakerCommandData.builder()
+                .uuid(uuid)
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .meterId(meterId)
                 .switchId(flowPath.getSrcSwitchId())
@@ -75,5 +79,17 @@ public interface MeteredRuleGenerator extends RuleGenerator {
                 .burst(burstSize)
                 .flags(FLOW_METER_STATS)
                 .build();
+    }
+
+    /**
+     * Build meter command data.
+     * @param flowPath target flow path
+     * @param config config to be used
+     * @param meterId target meter id. NB: it might be different from flow paths reference
+     * @param sw target switch
+     * @return command data
+     */
+    default SpeakerCommandData buildMeter(FlowPath flowPath, RuleManagerConfig config, MeterId meterId, Switch sw) {
+        return buildMeter(UUID.randomUUID().toString(), flowPath, config, meterId, sw);
     }
 }

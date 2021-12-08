@@ -27,7 +27,7 @@ import lombok.Data;
 @Data
 @Builder
 @AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class SubFlow {
     String flowId;
     @JsonIgnoreProperties("detect_connected_devices")

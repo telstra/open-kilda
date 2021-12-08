@@ -310,7 +310,7 @@ public class MultiTableIngressRuleGeneratorTest {
     public void buildMatchVlanEncapsulationDoubleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), SWITCH_1);
+        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), FEATURES);
         RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
                 .build(SWITCH_1.getFeatures());
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
@@ -325,7 +325,7 @@ public class MultiTableIngressRuleGeneratorTest {
     public void buildMatchVlanEncapsulationSingleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
         MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), SWITCH_1);
+        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), FEATURES);
         RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
                 .build(SWITCH_1.getFeatures());
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
@@ -339,7 +339,7 @@ public class MultiTableIngressRuleGeneratorTest {
     public void buildMatchVlanEncapsulationFullPortTest() {
         Flow flow = buildFlow(PATH, 0, 0);
         MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), SWITCH_1);
+        Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), FEATURES);
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()
         );

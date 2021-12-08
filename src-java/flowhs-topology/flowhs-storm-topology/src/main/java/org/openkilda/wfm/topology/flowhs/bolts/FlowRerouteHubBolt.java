@@ -53,6 +53,7 @@ import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
+import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -125,13 +126,21 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
         String operationKey = pullKey(input);
         currentKey = KeyProvider.getParentKey(operationKey);
         SpeakerFlowSegmentResponse flowResponse = pullValue(input, FIELD_ID_PAYLOAD, SpeakerFlowSegmentResponse.class);
-        service.handleAsyncResponse(currentKey, flowResponse);
+        try {
+            service.handleAsyncResponse(currentKey, flowResponse);
+        } catch (UnknownKeyException e) {
+            log.warn("Received a response with unknown key {}.", currentKey);
+        }
     }
 
     @Override
     public void onTimeout(String key, Tuple tuple) {
         currentKey = key;
-        service.handleTimeout(key);
+        try {
+            service.handleTimeout(key);
+        } catch (UnknownKeyException e) {
+            log.warn("Failed to handle a timeout event for unknown key {}.", currentKey);
+        }
     }
 
     @Override

@@ -69,6 +69,7 @@ public abstract class FlowPathFrame extends KildaBaseVertexFrame implements Flow
     public static final String BANDWIDTH_PROPERTY = "bandwidth";
     public static final String SRC_MULTI_TABLE_PROPERTY = "src_with_multi_table";
     public static final String DST_MULTI_TABLE_PROPERTY = "dst_with_multi_table";
+    public static final String SHARED_BANDWIDTH_GROUP_ID_PROPERTY = "shared_bw_group_id";
 
     private Switch srcSwitch;
     private Switch destSwitch;
@@ -181,6 +182,13 @@ public abstract class FlowPathFrame extends KildaBaseVertexFrame implements Flow
     @Property(DST_MULTI_TABLE_PROPERTY)
     public abstract void setDestWithMultiTable(boolean destWithMultiTable);
 
+    @Override
+    @Property(SHARED_BANDWIDTH_GROUP_ID_PROPERTY)
+    public abstract String getSharedBandwidthGroupId();
+
+    @Override
+    @Property(SHARED_BANDWIDTH_GROUP_ID_PROPERTY)
+    public abstract void setSharedBandwidthGroupId(String sharedBandwidthGroupId);
 
     @Override
     public Set<FlowApplication> getApplications() {

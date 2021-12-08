@@ -26,7 +26,7 @@ import java.io.Serializable;
 
 @Data
 @AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class SubFlowPathDto implements Serializable {
     private static final long serialVersionUID = 1L;
 

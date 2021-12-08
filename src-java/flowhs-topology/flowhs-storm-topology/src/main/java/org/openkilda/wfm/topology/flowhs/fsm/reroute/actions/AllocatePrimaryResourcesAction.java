@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.reroute.error.NoPathFoundError;
 import org.openkilda.model.Flow;
 import org.openkilda.model.PathId;
@@ -80,7 +81,7 @@ public class AllocatePrimaryResourcesAction extends
         log.debug("Finding a new primary path for flow {}", flowId);
         GetPathsResult allocatedPaths = allocatePathPair(tmpFlowCopy, newForwardPathId, newReversePathId,
                 stateMachine.isIgnoreBandwidth(), pathsToReuse, oldPaths, stateMachine.isRecreateIfSamePath(),
-                path -> true);
+                stateMachine.getSharedBandwidthGroupId(), path -> true);
         if (allocatedPaths != null) {
             log.debug("New primary paths have been allocated: {}", allocatedPaths);
             stateMachine.setBackUpPrimaryPathComputationWayUsed(allocatedPaths.isBackUpPathComputationWayUsed());
@@ -92,7 +93,7 @@ public class AllocatePrimaryResourcesAction extends
             stateMachine.setNewPrimaryResources(flowResources);
 
             FlowPathPair createdPaths = createFlowPathPair(flowId, flowResources, allocatedPaths,
-                    stateMachine.isIgnoreBandwidth());
+                    stateMachine.isIgnoreBandwidth(), stateMachine.getSharedBandwidthGroupId());
             log.debug("New primary paths have been created: {}", createdPaths);
 
             setMirrorPointsToNewPath(oldPaths.getForwardPathId(), newForwardPathId);
@@ -117,5 +118,13 @@ public class AllocatePrimaryResourcesAction extends
     @Override
     protected String getGenericErrorMessage() {
         return "Could not reroute flow";
+    }
+
+    @Override
+    protected void handleError(FlowRerouteFsm stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        super.handleError(stateMachine, ex, errorType, logTraceback);
+
+        // Notify about failed allocation.
+        stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
     }
 }

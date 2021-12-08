@@ -15,6 +15,7 @@
 
 package org.openkilda.rulemanager.factory.generator.flow;
 
+import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.rulemanager.utils.Utils.getOutPort;
 import static org.openkilda.rulemanager.utils.Utils.isFullPortEndpoint;
 
@@ -46,6 +47,8 @@ import java.util.List;
 public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGenerator {
 
     protected final MeterId sharedMeterId;
+    protected String externalMeterCommandUuid;
+    protected boolean generateMeterCommand;
 
     @Override
     public List<SpeakerCommandData> generateCommands(Switch sw) {
@@ -60,14 +63,15 @@ public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGene
         }
         result.add(command);
 
-        // TODO(tdurakov): since it's shared meter, this build might be moved outside.
-        SpeakerCommandData meterCommand = buildMeter(flowPath, config, sharedMeterId, sw);
-        if (meterCommand != null) {
-            addMeterToInstructions(sharedMeterId, sw, command.getInstructions());
-            result.add(meterCommand);
-            command.getDependsOn().add(meterCommand.getUuid());
+        if (generateMeterCommand) {
+            SpeakerCommandData meterCommand = buildMeter(externalMeterCommandUuid, flowPath, config, sharedMeterId, sw);
+            if (meterCommand != null) {
+                result.add(meterCommand);
+                command.getDependsOn().add(externalMeterCommandUuid);
+            }
+        } else if (sw.getFeatures().contains(METERS) && sharedMeterId != null) {
+            command.getDependsOn().add(externalMeterCommandUuid);
         }
-
         return result;
     }
 
@@ -78,6 +82,7 @@ public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGene
                 .build();
         actions.addAll(buildTransformActions(ingressEndpoint.getOuterVlanId(), sw.getFeatures()));
         actions.add(new PortOutAction(new PortNumber(getOutPort(flowPath, flow))));
+        addMeterToInstructions(sharedMeterId, sw, instructions);
 
         FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
                 .switchId(ingressEndpoint.getSwitchId())
@@ -86,7 +91,7 @@ public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGene
                 .table(OfTable.INPUT)
                 .priority(isFullPortEndpoint(ingressEndpoint) ? Constants.Priority.Y_DEFAULT_FLOW_PRIORITY
                         : Constants.Priority.Y_FLOW_PRIORITY)
-                .match(buildMatch(ingressEndpoint))
+                .match(buildMatch(ingressEndpoint, sw.getFeatures()))
                 .instructions(instructions);
 
         if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {

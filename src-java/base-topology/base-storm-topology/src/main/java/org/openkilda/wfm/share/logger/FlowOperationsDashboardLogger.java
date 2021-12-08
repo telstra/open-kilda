@@ -52,6 +52,12 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
 
     private static final String YFLOW_CREATE_EVENT = "y_flow_create";
     private static final String YFLOW_CREATE_RESULT_EVENT = "y_flow_create_result";
+    private static final String YFLOW_UPDATE_EVENT = "y_flow_update";
+    private static final String YFLOW_UPDATE_RESULT_EVENT = "y_flow_update_result";
+    private static final String YFLOW_REROUTE_EVENT = "y_flow_reroute";
+    private static final String YFLOW_REROUTE_RESULT_EVENT = "y_flow_reroute_result";
+    private static final String YFLOW_DELETE_EVENT = "y_flow_delete";
+    private static final String YFLOW_DELETE_RESULT_EVENT = "y_flow_delete_result";
 
     private static final String TAG = "FLOW_OPERATIONS_DASHBOARD";
     private static final String DASHBOARD = "dashboard";
@@ -487,6 +493,84 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     }
 
     /**
+     * Log a y-flow-update event.
+     */
+    public void onYFlowUpdate(String yFlowId, FlowEndpoint sharedEndpoint,
+                              List<FlowEndpoint> subFlowEndpoints, long maximumBandwidth) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-update");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_UPDATE_EVENT);
+        invokeLogger(Level.INFO, String.format("Update the y-flow: %s, shared endpoint %s, endpoints (%s), "
+                + "bandwidth %d", yFlowId, sharedEndpoint, subFlowEndpoints, maximumBandwidth), data);
+    }
+
+    /**
+     * Log a y-flow-update-successful event.
+     */
+    public void onSuccessfulYFlowUpdate(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-update-successful");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_UPDATE_RESULT_EVENT);
+        data.put("update-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful update of the y-flow %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-update-failed event.
+     */
+    public void onFailedYFlowUpdate(String yFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-update-failed");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_UPDATE_RESULT_EVENT);
+        data.put("update-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed update of the y-flow %s, reason: %s", yFlowId, failureReason),
+                data);
+    }
+
+    /**
+     * Log a y-flow-reroute event.
+     */
+    public void onYFlowReroute(String yFlowId, Collection<IslEndpoint> affectedIsl, boolean forceToReroute) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-reroute");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_REROUTE_EVENT);
+        data.put("forced_reroute", Boolean.toString(forceToReroute));
+        invokeLogger(Level.INFO, String.format("Reroute y-flow due to failure on %s ISLs flow %s",
+                affectedIsl, yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-reroute-successful event.
+     */
+    public void onSuccessfulYFlowReroute(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-reroute-successful");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_REROUTE_RESULT_EVENT);
+        data.put("reroute-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful reroute of the y-flow %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-reroute-failed event.
+     */
+    public void onFailedYFlowReroute(String yFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-reroute-failed");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_REROUTE_RESULT_EVENT);
+        data.put("reroute-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed reroute of the y-flow %s, reason: %s", yFlowId, failureReason),
+                data);
+    }
+
+    /**
      * Log a y-flow-status-update event.
      */
     public void onYFlowStatusUpdate(String yFlowId, FlowStatus status) {
@@ -496,5 +580,42 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(EVENT_TYPE, STATUS_UPDATE_EVENT);
         data.put("status", status.toString());
         invokeLogger(Level.INFO, String.format("Update the status of the y-flow %s to %s", yFlowId, status), data);
+    }
+
+    /**
+     * Log a y-flow-delete event.
+     */
+    public void onYFlowDelete(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-delete");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_DELETE_EVENT);
+        invokeLogger(Level.INFO, String.format("Delete the y-flow: %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-delete-successful event.
+     */
+    public void onSuccessfulYFlowDelete(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-delete-successful");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_DELETE_RESULT_EVENT);
+        data.put("delete-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful delete of the y-flow %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-delete-failed event.
+     */
+    public void onFailedYFlowDelete(String yFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-delete-failed");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_DELETE_RESULT_EVENT);
+        data.put("delete-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed delete of the y-flow %s, reason: %s", yFlowId, failureReason),
+                data);
     }
 }
