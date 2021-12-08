@@ -22,6 +22,9 @@ public final class Constants {
     public static final int VXLAN_UDP_DST = 4789;
     public static final int SERVER_42_FLOW_RTT_FORWARD_UDP_PORT = 4700;
     public static final int SERVER_42_FLOW_RTT_REVERSE_UDP_PORT = 4701;
+    public static final int SERVER_42_FLOW_RTT_REVERSE_UDP_VXLAN_PORT = 4702;
+    public static final int SERVER_42_ISL_RTT_FORWARD_UDP_PORT = 4710;
+    public static final int SERVER_42_ISL_RTT_REVERSE_UDP_PORT = 4711;
     public static final IPv4Address VXLAN_SRC_IPV4_ADDRESS = new IPv4Address("127.0.0.1");
     public static final IPv4Address VXLAN_DST_IPV4_ADDRESS = new IPv4Address("127.0.0.2");
     public static final int NOVIFLOW_TIMESTAMP_SIZE_IN_BITS = 64;
@@ -33,6 +36,7 @@ public final class Constants {
 
     public static final int BDF_DEFAULT_PORT = 3784;
 
+    public static final int MAC_ADDRESS_SIZE_IN_BITS = 48;
     public static final int ETHERNET_HEADER_SIZE = 112; // 48 dst mac, 48 src mac, 16 ether type
     public static final int IP_V4_HEADER_SIZE = 160; /*
      * 4 version, 4 IHL, 8 Type of service, 16 length, 16 ID,
@@ -92,6 +96,7 @@ public final class Constants {
 
         public static final int SERVER_42_FLOW_RTT_INPUT_PRIORITY = INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE;
         public static final int SERVER_42_FLOW_RTT_TURNING_PRIORITY = DISCOVERY_RULE_PRIORITY;
+        public static final int SERVER_42_FLOW_RTT_VXLAN_TURNING_PRIORITY = VERIFICATION_RULE_VXLAN_PRIORITY + 1;
         public static final int SERVER_42_FLOW_RTT_OUTPUT_VLAN_PRIORITY = DISCOVERY_RULE_PRIORITY;
         public static final int SERVER_42_FLOW_RTT_OUTPUT_VXLAN_PRIORITY = DISCOVERY_RULE_PRIORITY;
 

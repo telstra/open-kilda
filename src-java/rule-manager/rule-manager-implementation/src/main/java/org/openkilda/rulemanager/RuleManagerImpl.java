@@ -30,6 +30,8 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.KildaFeatureToggles;
+import org.openkilda.model.MacAddress;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -121,23 +123,21 @@ public class RuleManagerImpl implements RuleManager {
     @Override
     public List<SpeakerCommandData> buildRulesForSwitch(SwitchId switchId, DataAdapter adapter) {
         Switch sw = adapter.getSwitch(switchId);
-        SwitchProperties switchProperties = adapter.getSwitchProperties(switchId);
-
-        List<SpeakerCommandData> result = buildServiceRules(sw, switchProperties);
+        List<SpeakerCommandData> result = buildServiceRules(sw, adapter);
 
         result.addAll(buildFlowRulesForSwitch(switchId, adapter));
 
         return postProcessCommands(result);
     }
 
-    private List<SpeakerCommandData> buildServiceRules(Switch sw, SwitchProperties switchProperties) {
-        return getServiceRuleGenerators(switchProperties).stream()
+    private List<SpeakerCommandData> buildServiceRules(Switch sw, DataAdapter adapter) {
+        return getServiceRuleGenerators(sw.getSwitchId(), adapter).stream()
                 .flatMap(g -> g.generateCommands(sw).stream())
                 .collect(toList());
     }
 
     @VisibleForTesting
-    List<RuleGenerator> getServiceRuleGenerators(SwitchProperties switchProperties) {
+    List<RuleGenerator> getServiceRuleGenerators(SwitchId switchId, DataAdapter adapter) {
         List<RuleGenerator> generators = new ArrayList<>();
         generators.add(serviceRulesFactory.getTableDefaultRuleGenerator(new Cookie(DROP_RULE_COOKIE), OfTable.INPUT));
         generators.add(serviceRulesFactory.getUniCastDiscoveryRuleGenerator());
@@ -147,8 +147,7 @@ public class RuleManagerImpl implements RuleManager {
         generators.add(serviceRulesFactory.getRoundTripLatencyRuleGenerator());
         generators.add(serviceRulesFactory.getUnicastVerificationVxlanRuleGenerator());
 
-        // TODO: add other rules
-
+        SwitchProperties switchProperties = adapter.getSwitchProperties(switchId);
         if (switchProperties.isMultiTable()) {
             generators.add(serviceRulesFactory.getTableDefaultRuleGenerator(
                     new Cookie(MULTITABLE_INGRESS_DROP_COOKIE), OfTable.INGRESS));
@@ -176,6 +175,34 @@ public class RuleManagerImpl implements RuleManager {
                 generators.add(serviceRulesFactory.getArpTransitRuleGenerator());
                 generators.add(serviceRulesFactory.getArpInputPreDropRuleGenerator());
                 generators.add(serviceRulesFactory.getArpIngressRuleGenerator());
+            }
+        }
+
+        Integer server42Port = switchProperties.getServer42Port();
+        Integer server42Vlan = switchProperties.getServer42Vlan();
+        MacAddress server42MacAddress = switchProperties.getServer42MacAddress();
+
+        KildaFeatureToggles featureToggles = adapter.getFeatureToggles();
+
+        if (featureToggles.getServer42FlowRtt()) {
+            generators.add(serviceRulesFactory.getServer42FlowRttTurningRuleGenerator());
+            generators.add(serviceRulesFactory.getServer42FlowRttVxlanTurningRuleGenerator());
+
+            if (switchProperties.isServer42FlowRtt()) {
+                generators.add(serviceRulesFactory.getServer42FlowRttOutputVlanRuleGenerator(
+                        server42Port, server42Vlan, server42MacAddress));
+                generators.add(serviceRulesFactory.getServer42FlowRttOutputVxlanRuleGenerator(
+                        server42Port, server42Vlan, server42MacAddress));
+            }
+        }
+
+        if (featureToggles.getServer42IslRtt() && switchProperties.hasServer42IslRttEnabled()) {
+            generators.add(serviceRulesFactory.getServer42IslRttTurningRuleGenerator());
+            generators.add(serviceRulesFactory.getServer42IslRttOutputRuleGenerator(
+                    server42Port, server42Vlan, server42MacAddress));
+
+            for (Integer islPort : adapter.getSwitchIslPorts(switchId)) {
+                generators.add(serviceRulesFactory.getServer42IslRttInputRuleGenerator(server42Port, islPort));
             }
         }
 
