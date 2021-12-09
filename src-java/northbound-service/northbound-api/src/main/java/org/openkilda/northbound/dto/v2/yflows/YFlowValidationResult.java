@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,33 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.nbtopology.response;
+package org.openkilda.northbound.dto.v2.yflows;
 
-import org.openkilda.messaging.info.InfoData;
+import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
+import lombok.Data;
 
 import java.util.List;
 
-@Value
+@Data
 @Builder
-@EqualsAndHashCode(callSuper = false)
-@JsonNaming(value = SnakeCaseStrategy.class)
-public class FlowValidationResponse extends InfoData {
-
-    String flowId;
+@AllArgsConstructor
+@JsonNaming(SnakeCaseStrategy.class)
+public class YFlowValidationResult {
     Boolean asExpected;
-    List<Long> pktCounts;
-    List<Long> byteCounts;
-    List<PathDiscrepancyEntity> discrepancies;
-    Integer flowRulesTotal;
-    Integer switchRulesTotal;
-    Integer flowMetersTotal;
-    Integer switchMetersTotal;
-    Boolean ingressMirrorFlowIsPresent;
-    Boolean egressMirrorFlowIsPresent;
+    YFlowDiscrepancy yFlowValidationResult;
+    List<FlowValidationDto> subFlowValidationResults;
 }

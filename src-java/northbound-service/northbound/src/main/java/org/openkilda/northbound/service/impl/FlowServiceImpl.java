@@ -39,6 +39,7 @@ import org.openkilda.messaging.info.flow.FlowMirrorPointResponse;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
+import org.openkilda.messaging.info.flow.FlowValidationResponse;
 import org.openkilda.messaging.info.flow.SwapFlowResponse;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.model.FlowDto;
@@ -58,7 +59,6 @@ import org.openkilda.messaging.nbtopology.request.GetFlowStatusTimestampsRequest
 import org.openkilda.messaging.nbtopology.request.MeterModifyRequest;
 import org.openkilda.messaging.nbtopology.response.FlowLoopsResponse;
 import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse;
-import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.payload.flow.DiverseGroupPayload;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
