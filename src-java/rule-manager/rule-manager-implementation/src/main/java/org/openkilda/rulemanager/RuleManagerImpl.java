@@ -23,6 +23,7 @@ import static org.openkilda.model.cookie.Cookie.MULTITABLE_INGRESS_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE;
+import static org.openkilda.rulemanager.utils.RuleManagerHelper.postProcessCommands;
 
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.Flow;
@@ -92,7 +93,7 @@ public class RuleManagerImpl implements RuleManager {
             result.addAll(buildTransitLoopCommands(loopedSwitch, flowPath, flow, encapsulation));
         }
 
-        return result;
+        return postProcessCommands(result);
     }
 
     private Set<FlowSideAdapter> getOverlappingMultiTableIngressAdapters(FlowPath path, DataAdapter adapter) {
@@ -126,7 +127,7 @@ public class RuleManagerImpl implements RuleManager {
 
         result.addAll(buildFlowRulesForSwitch(switchId, adapter));
 
-        return result;
+        return postProcessCommands(result);
     }
 
     private List<SpeakerCommandData> buildServiceRules(Switch sw, SwitchProperties switchProperties) {
