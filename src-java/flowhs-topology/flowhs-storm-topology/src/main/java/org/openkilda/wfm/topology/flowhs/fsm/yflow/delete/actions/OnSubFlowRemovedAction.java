@@ -65,7 +65,7 @@ public class OnSubFlowRemovedAction extends YFlowProcessingAction<YFlowDeleteFsm
                     stateMachine.notifyEventListeners(listener ->
                             listener.onSubFlowProcessingStart(yFlowId, nextSubFlowId));
                     CommandContext flowContext = stateMachine.getCommandContext().fork(nextSubFlowId);
-                    flowDeleteService.startFlowDeletion(flowContext, nextSubFlowId, false);
+                    flowDeleteService.startFlowDeletion(flowContext, nextSubFlowId);
                 });
 
         if (stateMachine.getDeletingSubFlows().isEmpty()) {

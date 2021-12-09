@@ -67,8 +67,10 @@ import org.openkilda.wfm.topology.flowhs.service.YFlowUpdateHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.YFlowUpdateService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.experimental.Delegate;
 import lombok.experimental.SuperBuilder;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -109,7 +111,9 @@ public class YFlowUpdateHubBolt extends HubBolt implements YFlowUpdateHubCarrier
         PathComputer pathComputer =
                 new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
 
-        basicFlowUpdateService = new FlowUpdateService(this, persistenceManager, pathComputer, resourcesManager,
+        basicFlowUpdateService = new FlowUpdateService(
+                new FlowUpdateHubCarrierIsolatingResponsesAndLifecycleEvents(this),
+                persistenceManager, pathComputer, resourcesManager,
                 flowUpdateConfig.getPathAllocationRetriesLimit(), flowUpdateConfig.getPathAllocationRetryDelay(),
                 flowUpdateConfig.getResourceAllocationRetriesLimit(), flowUpdateConfig.getSpeakerCommandRetriesLimit());
 
@@ -284,5 +288,27 @@ public class YFlowUpdateHubBolt extends HubBolt implements YFlowUpdateHubCarrier
             this.resourceAllocationRetriesLimit = resourceAllocationRetriesLimit;
             this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
         }
+    }
+
+    @AllArgsConstructor
+    private static class FlowUpdateHubCarrierIsolatingResponsesAndLifecycleEvents implements FlowUpdateHubCarrier {
+        @Delegate(excludes = CarrierMethodsToIsolateResponsesAndLifecycleEvents.class)
+        FlowUpdateHubCarrier delegate;
+
+        @Override
+        public void sendNorthboundResponse(Message message) {
+            // Isolating, so nothing to do.
+        }
+
+        @Override
+        public void sendInactive() {
+            // Isolating, so nothing to do.
+        }
+    }
+
+    private interface CarrierMethodsToIsolateResponsesAndLifecycleEvents {
+        void sendNorthboundResponse(Message message);
+
+        void sendInactive();
     }
 }

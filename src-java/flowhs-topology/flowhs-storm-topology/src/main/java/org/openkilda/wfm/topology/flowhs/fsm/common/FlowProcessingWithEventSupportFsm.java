@@ -37,8 +37,8 @@ public abstract class FlowProcessingWithEventSupportFsm<T extends NbTrackableFsm
     private final Collection<L> eventListeners;
 
     public FlowProcessingWithEventSupportFsm(CommandContext commandContext, @NonNull R carrier,
-                                             boolean allowNorthboundResponse, @NonNull Collection<L> eventListeners) {
-        super(commandContext, carrier, allowNorthboundResponse);
+                                             @NonNull Collection<L> eventListeners) {
+        super(commandContext, carrier);
         this.eventListeners = eventListeners;
     }
 

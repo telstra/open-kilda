@@ -113,9 +113,8 @@ public final class FlowCreateFsm extends FlowProcessingWithEventSupportFsm<FlowC
     private String errorReason;
 
     private FlowCreateFsm(CommandContext commandContext, @NonNull FlowCreateHubCarrier carrier, String flowId,
-                          boolean allowNorthboundResponse,
                           @NonNull Collection<FlowCreateEventListener> eventListeners, @NonNull Config config) {
-        super(commandContext, carrier, allowNorthboundResponse, eventListeners);
+        super(commandContext, carrier, eventListeners);
         this.flowId = flowId;
         this.remainRetries = config.getFlowCreationRetriesLimit();
     }
@@ -221,7 +220,7 @@ public final class FlowCreateFsm extends FlowProcessingWithEventSupportFsm<FlowC
 
             this.builder = StateMachineBuilderFactory.create(FlowCreateFsm.class, State.class, Event.class,
                     FlowCreateContext.class, CommandContext.class, FlowCreateHubCarrier.class, String.class,
-                    boolean.class, Collection.class, Config.class);
+                    Collection.class, Config.class);
 
             SpeakerCommandFsm.Builder commandExecutorFsmBuilder =
                     SpeakerCommandFsm.getBuilder(carrier, config.getSpeakerCommandRetriesLimit());
@@ -438,10 +437,10 @@ public final class FlowCreateFsm extends FlowProcessingWithEventSupportFsm<FlowC
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public FlowCreateFsm newInstance(CommandContext commandContext, String flowId, boolean allowNorthboundResponse,
+        public FlowCreateFsm newInstance(CommandContext commandContext, String flowId,
                                          @NonNull Collection<FlowCreateEventListener> eventListeners) {
             FlowCreateFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
-                    allowNorthboundResponse, eventListeners, config);
+                    eventListeners, config);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("FlowCreateFsm, transition to {} on {}", event.getTargetState(), event.getCause()));

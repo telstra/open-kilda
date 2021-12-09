@@ -52,7 +52,7 @@ public abstract class YFlowProcessingFsm<T extends NbTrackableFsm<T, S, E, C, R>
 
     public YFlowProcessingFsm(CommandContext commandContext, @NonNull R carrier, @NonNull String yFlowId,
                               @NonNull Collection<L> eventListeners) {
-        super(commandContext, carrier, true, eventListeners);
+        super(commandContext, carrier, eventListeners);
 
         this.yFlowId = yFlowId;
     }

@@ -53,7 +53,7 @@ public class CreateSubFlowsAction extends HistoryRecordingAction<YFlowCreateFsm,
             stateMachine.addCreatingSubFlow(subFlowId);
             stateMachine.notifyEventListeners(listener -> listener.onSubFlowProcessingStart(yFlowId, subFlowId));
             CommandContext flowContext = stateMachine.getCommandContext().fork(subFlowId);
-            flowCreateService.startFlowCreation(flowContext, requestedFlow, false, yFlowId);
+            flowCreateService.startFlowCreation(flowContext, requestedFlow, yFlowId);
         });
     }
 }

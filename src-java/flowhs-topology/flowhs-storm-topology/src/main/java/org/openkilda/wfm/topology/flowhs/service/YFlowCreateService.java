@@ -33,15 +33,12 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.Event;
 
-import com.fasterxml.uuid.Generators;
-import com.fasterxml.uuid.NoArgGenerator;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class YFlowCreateService extends YFlowProcessingService<YFlowCreateFsm, Event, YFlowCreateContext,
         YFlowCreateHubCarrier> {
     private final YFlowCreateFsm.Factory fsmFactory;
-    private final NoArgGenerator flowIdGenerator = Generators.timeBasedGenerator();
     private final String prefixForGeneratedYFlowId;
     private final String prefixForGeneratedSubFlowId;
     private final FlowCreateService flowCreateService;

@@ -89,7 +89,7 @@ public class FlowUpdateService extends FlowProcessingWithEventSupportService<Flo
 
         RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
         startFlowUpdating(key, commandContext, requestedFlow,
-                request.isDoNotRevert(), request.getBulkUpdateFlowIds(), true, requestedFlow.getFlowId());
+                request.isDoNotRevert(), request.getBulkUpdateFlowIds(), requestedFlow.getFlowId());
     }
 
     /**
@@ -97,7 +97,7 @@ public class FlowUpdateService extends FlowProcessingWithEventSupportService<Flo
      */
     public void startFlowUpdating(CommandContext commandContext, RequestedFlow request, String sharedBandwidthGroupId) {
         try {
-            startFlowUpdating(request.getFlowId(), commandContext, request, true, Collections.emptySet(), false,
+            startFlowUpdating(request.getFlowId(), commandContext, request, true, Collections.emptySet(),
                     sharedBandwidthGroupId);
         } catch (DuplicateKeyException e) {
             throw new FlowProcessingException(ErrorType.INTERNAL_ERROR,
@@ -107,8 +107,7 @@ public class FlowUpdateService extends FlowProcessingWithEventSupportService<Flo
     }
 
     private void startFlowUpdating(String key, CommandContext commandContext, RequestedFlow request,
-                                   boolean doNotRevert, Set<String> bulkUpdateFlowIds, boolean allowNorthboundResponse,
-                                   String sharedBandwidthGroupId)
+                                   boolean doNotRevert, Set<String> bulkUpdateFlowIds, String sharedBandwidthGroupId)
             throws DuplicateKeyException {
         String flowId = request.getFlowId();
         log.debug("Handling flow update request with key {} and flow ID: {}", key, request.getFlowId());
@@ -125,8 +124,7 @@ public class FlowUpdateService extends FlowProcessingWithEventSupportService<Flo
             return;
         }
 
-        FlowUpdateFsm fsm = fsmFactory.newInstance(request.getFlowId(), commandContext, allowNorthboundResponse,
-                eventListeners);
+        FlowUpdateFsm fsm = fsmFactory.newInstance(request.getFlowId(), commandContext, eventListeners);
         fsm.setSharedBandwidthGroupId(sharedBandwidthGroupId);
         registerFsm(key, fsm);
 

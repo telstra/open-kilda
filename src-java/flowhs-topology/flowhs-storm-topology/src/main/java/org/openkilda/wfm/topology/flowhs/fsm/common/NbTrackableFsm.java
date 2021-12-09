@@ -28,21 +28,15 @@ public abstract class NbTrackableFsm<T extends StateMachine<T, S, E, C>, S, E, C
         extends FlowProcessingFsm<T, S, E, C, R> {
 
     private final R carrier;
-    private final boolean allowNorthboundResponse;
 
     @Getter
     @Setter
     private Message operationResultMessage;
 
     public NbTrackableFsm(CommandContext commandContext, @NonNull R carrier) {
-        this(commandContext, carrier, true);
-    }
-
-    public NbTrackableFsm(CommandContext commandContext, @NonNull R carrier, boolean allowNorthboundResponse) {
         super(commandContext);
 
         this.carrier = carrier;
-        this.allowNorthboundResponse = allowNorthboundResponse;
     }
 
     @Override
@@ -51,8 +45,6 @@ public abstract class NbTrackableFsm<T extends StateMachine<T, S, E, C>, S, E, C
     }
 
     public void sendNorthboundResponse(Message message) {
-        if (allowNorthboundResponse) {
-            carrier.sendNorthboundResponse(message);
-        }
+        carrier.sendNorthboundResponse(message);
     }
 }

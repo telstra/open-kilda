@@ -316,10 +316,6 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest {
             SpeakerFlowSegmentResponse commandResponse = buildSuccessfulSpeakerResponse(speakerRequest);
             handleAsyncResponse(service, yFlowRequest.getYFlowId(), commandResponse);
         });
-
-        // FlowCreate & FlowDelete service / FSM mustn't emit anything to NB
-        verifyNoNorthboundResponse(flowCreateHubCarrier);
-        verifyNoNorthboundResponse(flowDeleteHubCarrier);
     }
 
     private void processRerouteRequest(YFlowRerouteRequest yFlowRerouteRequest) throws DuplicateKeyException {
@@ -339,8 +335,6 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest {
             SpeakerFlowSegmentResponse commandResponse = buildSuccessfulSpeakerResponse(speakerRequest);
             handleAsyncResponse(service, request.getYFlowId(), commandResponse);
         });
-
-        verifyNoNorthboundResponse(flowRerouteHubCarrier);
     }
 
     private void processRerouteRequestAndSpeakerCommands(YFlowRerouteRequest request,
@@ -356,8 +350,6 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest {
                 expectedFirstSubFlowStatus, expectedSecondSubFlowStatus);
 
         handleSpeakerCommandsAndTimeoutInstall(service, request.getYFlowId());
-
-        verifyNoNorthboundResponse(flowRerouteHubCarrier);
     }
 
     private void handleAsyncResponse(YFlowCreateService yFlowCreateService,

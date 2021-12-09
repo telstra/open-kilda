@@ -85,12 +85,12 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C, R
     protected boolean periodicPingsEnabled;
 
     public FlowPathSwappingFsm(CommandContext commandContext, @NonNull R carrier, String flowId) {
-        this(commandContext, carrier, flowId, true, emptyList());
+        this(commandContext, carrier, flowId, emptyList());
     }
 
     public FlowPathSwappingFsm(CommandContext commandContext, @NonNull R carrier, String flowId,
-                               boolean allowNorthboundResponse, Collection<L> eventListeners) {
-        super(commandContext, carrier, allowNorthboundResponse, eventListeners);
+                               Collection<L> eventListeners) {
+        super(commandContext, carrier, eventListeners);
         this.flowId = flowId;
     }
 
