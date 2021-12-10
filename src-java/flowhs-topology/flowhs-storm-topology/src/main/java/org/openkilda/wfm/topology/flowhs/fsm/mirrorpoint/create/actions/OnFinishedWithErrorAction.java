@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions;
 
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm.Event;
@@ -27,8 +27,8 @@ import org.openkilda.wfm.topology.flowhs.model.RequestedFlowMirrorPoint;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class OnFinishedWithErrorAction
-        extends FlowProcessingAction<FlowMirrorPointCreateFsm, State, Event, FlowMirrorPointCreateContext> {
+public class OnFinishedWithErrorAction extends
+        FlowProcessingWithHistorySupportAction<FlowMirrorPointCreateFsm, State, Event, FlowMirrorPointCreateContext> {
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public OnFinishedWithErrorAction(PersistenceManager persistenceManager,

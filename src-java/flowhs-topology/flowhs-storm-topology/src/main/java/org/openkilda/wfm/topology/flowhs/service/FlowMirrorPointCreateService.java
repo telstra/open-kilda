@@ -30,19 +30,22 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointC
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMirrorPointMapper;
+import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingFsmRegister;
+import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingService;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class FlowMirrorPointCreateService extends FsmBasedFlowProcessingService<FlowMirrorPointCreateFsm, Event,
-        FlowMirrorPointCreateContext, FlowMirrorPointCreateHubCarrier> {
+public class FlowMirrorPointCreateService extends FlowProcessingService<FlowMirrorPointCreateFsm, Event,
+        FlowMirrorPointCreateContext, FlowGenericCarrier,
+        FlowProcessingFsmRegister<FlowMirrorPointCreateFsm>, FlowProcessingEventListener> {
     private final FlowMirrorPointCreateFsm.Factory fsmFactory;
 
-    public FlowMirrorPointCreateService(FlowMirrorPointCreateHubCarrier carrier, PersistenceManager persistenceManager,
+    public FlowMirrorPointCreateService(FlowGenericCarrier carrier, PersistenceManager persistenceManager,
                                         PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
                                         int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                                         int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
-        super(new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
+        super(new FlowProcessingFsmRegister<>(), new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
         fsmFactory = new FlowMirrorPointCreateFsm.Factory(carrier, persistenceManager, pathComputer,
                 flowResourcesManager, pathAllocationRetriesLimit, pathAllocationRetryDelay,
                 resourceAllocationRetriesLimit, speakerCommandRetriesLimit);
@@ -72,7 +75,7 @@ public class FlowMirrorPointCreateService extends FsmBasedFlowProcessingService<
      */
     public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) {
         log.debug("Received flow command response {}", flowResponse);
-        FlowMirrorPointCreateFsm fsm = getFsmByKey(key).orElse(null);
+        FlowMirrorPointCreateFsm fsm = fsmRegister.getFsmByKey(key).orElse(null);
         if (fsm == null) {
             log.warn("Failed to find a FSM: received response with key {} for non pending FSM", key);
             return;
@@ -98,7 +101,7 @@ public class FlowMirrorPointCreateService extends FsmBasedFlowProcessingService<
      */
     public void handleTimeout(String key) {
         log.debug("Handling timeout for {}", key);
-        FlowMirrorPointCreateFsm fsm = getFsmByKey(key).orElse(null);
+        FlowMirrorPointCreateFsm fsm = fsmRegister.getFsmByKey(key).orElse(null);
         if (fsm == null) {
             log.warn("Failed to find a FSM: timeout event for non pending FSM with key {}", key);
             return;
@@ -114,11 +117,11 @@ public class FlowMirrorPointCreateService extends FsmBasedFlowProcessingService<
         log.debug("Handling flow create mirror point request with key {}, flow ID: {}, and flow mirror ID: {}",
                 key, flowId, request.getMirrorPointId());
 
-        if (hasRegisteredFsmWithKey(key)) {
+        if (fsmRegister.hasRegisteredFsmWithKey(key)) {
             log.error("Attempt to create a FSM with key {}, while there's another active FSM with the same key.", key);
             return;
         }
-        if (hasRegisteredFsmWithFlowId(flowId)) {
+        if (fsmRegister.hasRegisteredFsmWithFlowId(flowId)) {
             sendErrorResponseToNorthbound(ErrorType.REQUEST_INVALID, "Could not update flow",
                     format("Flow %s is updating now", flowId), commandContext);
             log.error("Attempt to create a FSM with key {}, while there's another active FSM for the same flowId {}.",
@@ -127,7 +130,7 @@ public class FlowMirrorPointCreateService extends FsmBasedFlowProcessingService<
         }
 
         FlowMirrorPointCreateFsm fsm = fsmFactory.newInstance(commandContext, flowId);
-        registerFsm(key, fsm);
+        fsmRegister.registerFsm(key, fsm);
 
         FlowMirrorPointCreateContext context = FlowMirrorPointCreateContext.builder()
                 .mirrorPoint(RequestedFlowMirrorPointMapper.INSTANCE.map(request))
@@ -140,11 +143,11 @@ public class FlowMirrorPointCreateService extends FsmBasedFlowProcessingService<
     private void removeIfFinished(FlowMirrorPointCreateFsm fsm, String key) {
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
-            unregisterFsm(key);
+            fsmRegister.unregisterFsm(key);
 
             carrier.cancelTimeoutCallback(key);
 
-            if (!isActive() && !hasAnyRegisteredFsm()) {
+            if (!isActive() && !fsmRegister.hasAnyRegisteredFsm()) {
                 carrier.sendInactive();
             }
         }

@@ -28,7 +28,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class OnFinishedWithErrorAction extends
         HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-
     private final FlowOperationsDashboardLogger dashboardLogger;
     private final FlowRerouteHubCarrier carrier;
 

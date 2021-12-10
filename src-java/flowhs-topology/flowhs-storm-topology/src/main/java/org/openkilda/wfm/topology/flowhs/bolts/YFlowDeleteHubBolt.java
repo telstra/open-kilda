@@ -50,14 +50,14 @@ import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
 import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
-import org.openkilda.wfm.topology.flowhs.service.FlowDeleteHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowDeleteService;
-import org.openkilda.wfm.topology.flowhs.service.YFlowDeleteHubCarrier;
-import org.openkilda.wfm.topology.flowhs.service.YFlowDeleteService;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.service.yflow.YFlowDeleteService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.experimental.Delegate;
 import lombok.experimental.SuperBuilder;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -65,9 +65,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class YFlowDeleteHubBolt extends HubBolt
-        implements YFlowDeleteHubCarrier, FlowDeleteHubCarrier {
-
+public class YFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
     private final YFlowDeleteConfig yFlowDeleteConfig;
     private final FlowResourcesConfig flowResourcesConfig;
 
@@ -77,8 +75,9 @@ public class YFlowDeleteHubBolt extends HubBolt
 
     private LifecycleEvent deferredShutdownEvent;
 
-    public YFlowDeleteHubBolt(YFlowDeleteConfig yFlowDeleteConfig,
-                              PersistenceManager persistenceManager, FlowResourcesConfig flowResourcesConfig) {
+    public YFlowDeleteHubBolt(@NonNull YFlowDeleteConfig yFlowDeleteConfig,
+                              @NonNull PersistenceManager persistenceManager,
+                              @NonNull FlowResourcesConfig flowResourcesConfig) {
         super(persistenceManager, yFlowDeleteConfig);
 
         this.yFlowDeleteConfig = yFlowDeleteConfig;
@@ -149,7 +148,7 @@ public class YFlowDeleteHubBolt extends HubBolt
     }
 
     @Override
-    public void sendSpeakerRequest(FlowSegmentRequest command) {
+    public void sendSpeakerRequest(@NonNull FlowSegmentRequest command) {
         String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
 
         Values values = new Values(commandKey, command);
@@ -157,12 +156,12 @@ public class YFlowDeleteHubBolt extends HubBolt
     }
 
     @Override
-    public void sendNorthboundResponse(Message message) {
+    public void sendNorthboundResponse(@NonNull Message message) {
         emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
     }
 
     @Override
-    public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
+    public void sendHistoryUpdate(@NonNull FlowHistoryHolder historyHolder) {
         emit(Stream.HUB_TO_HISTORY_BOLT.name(), getCurrentTuple(), HistoryBolt.newInputTuple(
                 historyHolder, getCommandContext()));
     }
@@ -198,7 +197,7 @@ public class YFlowDeleteHubBolt extends HubBolt
     }
 
     @Override
-    public void sendNotifyFlowMonitor(CommandData flowCommand) {
+    public void sendNotifyFlowMonitor(@NonNull CommandData flowCommand) {
         String correlationId = getCommandContext().getCorrelationId();
         Message message = new CommandMessage(flowCommand, System.currentTimeMillis(), correlationId);
 
@@ -207,7 +206,7 @@ public class YFlowDeleteHubBolt extends HubBolt
     }
 
     @Override
-    public void sendNotifyFlowStats(RemoveFlowPathInfo flowPathInfo) {
+    public void sendNotifyFlowStats(@NonNull RemoveFlowPathInfo flowPathInfo) {
         Message message = new InfoMessage(flowPathInfo, System.currentTimeMillis(),
                 getCommandContext().getCorrelationId());
 
@@ -243,9 +242,9 @@ public class YFlowDeleteHubBolt extends HubBolt
     }
 
     @AllArgsConstructor
-    private static class FlowDeleteHubCarrierIsolatingResponsesAndLifecycleEvents implements FlowDeleteHubCarrier {
+    private static class FlowDeleteHubCarrierIsolatingResponsesAndLifecycleEvents implements FlowGenericCarrier {
         @Delegate(excludes = CarrierMethodsToIsolateResponsesAndLifecycleEvents.class)
-        FlowDeleteHubCarrier delegate;
+        FlowGenericCarrier delegate;
 
         @Override
         public void sendNorthboundResponse(Message message) {

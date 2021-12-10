@@ -20,18 +20,21 @@ import static java.util.Collections.emptyList;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
+import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
+import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
 
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.squirrelframework.foundation.fsm.StateMachine;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -43,10 +46,9 @@ import java.util.UUID;
 @Getter
 @Setter
 @Slf4j
-public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C, R>, S, E, C,
-        R extends FlowGenericCarrier, L extends FlowProcessingEventListener>
-        extends FlowProcessingWithEventSupportFsm<T, S, E, C, R, L> {
-
+public abstract class FlowPathSwappingFsm<T extends StateMachine<T, S, E, C>, S, E, C,
+        R extends NorthboundResponseCarrier & HistoryUpdateCarrier, L extends FlowProcessingEventListener>
+        extends FlowProcessingWithHistorySupportFsm<T, S, E, C, R, L> {
     protected final String flowId;
     protected String sharedBandwidthGroupId;
 
@@ -81,16 +83,17 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C, R
     protected final Map<UUID, FlowSegmentRequestFactory> nonIngressCommands = new HashMap<>();
     protected final Map<UUID, FlowSegmentRequestFactory> removeCommands = new HashMap<>();
 
-    protected String errorReason;
     protected boolean periodicPingsEnabled;
 
-    public FlowPathSwappingFsm(CommandContext commandContext, @NonNull R carrier, String flowId) {
-        this(commandContext, carrier, flowId, emptyList());
+    protected FlowPathSwappingFsm(@NonNull E nextEvent, @NonNull E errorEvent,
+                                  @NonNull CommandContext commandContext, @NonNull R carrier, @NonNull String flowId) {
+        this(nextEvent, errorEvent, commandContext, carrier, flowId, emptyList());
     }
 
-    public FlowPathSwappingFsm(CommandContext commandContext, @NonNull R carrier, String flowId,
-                               Collection<L> eventListeners) {
-        super(commandContext, carrier, eventListeners);
+    protected FlowPathSwappingFsm(@NonNull E nextEvent, @NonNull E errorEvent,
+                                  @NonNull CommandContext commandContext, @NonNull R carrier, @NonNull String flowId,
+                                  @NonNull Collection<L> eventListeners) {
+        super(nextEvent, errorEvent, commandContext, carrier, eventListeners);
         this.flowId = flowId;
     }
 
@@ -142,5 +145,10 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C, R
         clearPendingCommands();
         clearRetriedCommands();
         clearFailedCommands();
+    }
+
+    public void notifyEventListenersOnError(ErrorType errorType, String errorMessage) {
+        notifyEventListeners(listener ->
+                listener.onFailed(getFlowId(), errorMessage, errorType));
     }
 }

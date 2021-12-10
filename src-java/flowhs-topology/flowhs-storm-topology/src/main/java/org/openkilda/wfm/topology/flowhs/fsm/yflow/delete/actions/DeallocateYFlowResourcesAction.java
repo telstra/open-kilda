@@ -21,7 +21,7 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm.Event;
@@ -35,7 +35,7 @@ import java.util.Optional;
 
 @Slf4j
 public class DeallocateYFlowResourcesAction extends
-        YFlowProcessingAction<YFlowDeleteFsm, State, Event, YFlowDeleteContext> {
+        YFlowProcessingWithHistorySupportAction<YFlowDeleteFsm, State, Event, YFlowDeleteContext> {
     private final FlowResourcesManager resourcesManager;
 
     public DeallocateYFlowResourcesAction(PersistenceManager persistenceManager,

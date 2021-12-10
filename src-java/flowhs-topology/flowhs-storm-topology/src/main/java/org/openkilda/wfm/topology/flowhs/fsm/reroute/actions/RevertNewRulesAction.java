@@ -39,7 +39,6 @@ import java.util.Collection;
 
 @Slf4j
 public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-
     public RevertNewRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager, resourcesManager);
     }

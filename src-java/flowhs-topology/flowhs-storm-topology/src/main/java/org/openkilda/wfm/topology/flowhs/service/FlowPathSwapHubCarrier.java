@@ -17,13 +17,6 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 public interface FlowPathSwapHubCarrier extends FlowGenericCarrier {
     /**
-     * Cancels timeout callback.
-     *
-     * @param key operation identifier.
-     */
-    void cancelTimeoutCallback(String key);
-
-    /**
      * Sends path swap result status to reroute topology.
      *
      * @param flowId flow id.

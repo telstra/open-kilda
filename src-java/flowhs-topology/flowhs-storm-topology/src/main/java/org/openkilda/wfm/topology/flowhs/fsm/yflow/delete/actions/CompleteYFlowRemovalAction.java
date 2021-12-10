@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions;
 
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm.Event;
@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class CompleteYFlowRemovalAction extends
-        YFlowProcessingAction<YFlowDeleteFsm, State, Event, YFlowDeleteContext> {
+        YFlowProcessingWithHistorySupportAction<YFlowDeleteFsm, State, Event, YFlowDeleteContext> {
     public CompleteYFlowRemovalAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }

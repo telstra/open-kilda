@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions;
 
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm.Event;
@@ -26,8 +26,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointD
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class OnFinishedAction
-        extends FlowProcessingAction<FlowMirrorPointDeleteFsm, State, Event, FlowMirrorPointDeleteContext> {
+public class OnFinishedAction extends
+        FlowProcessingWithHistorySupportAction<FlowMirrorPointDeleteFsm, State, Event, FlowMirrorPointDeleteContext> {
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public OnFinishedAction(PersistenceManager persistenceManager, FlowOperationsDashboardLogger dashboardLogger) {

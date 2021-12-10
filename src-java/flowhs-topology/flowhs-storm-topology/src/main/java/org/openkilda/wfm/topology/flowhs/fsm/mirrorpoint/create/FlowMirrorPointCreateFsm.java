@@ -42,7 +42,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.Resource
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.RevertFlowMirrorPathAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.ValidateRequestAction;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlowMirrorPoint;
-import org.openkilda.wfm.topology.flowhs.service.FlowMirrorPointCreateHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 
 import lombok.Getter;
@@ -60,7 +60,7 @@ import java.util.UUID;
 @Setter
 @Slf4j
 public final class FlowMirrorPointCreateFsm extends FlowPathSwappingFsm<FlowMirrorPointCreateFsm, State, Event,
-        FlowMirrorPointCreateContext, FlowMirrorPointCreateHubCarrier, FlowProcessingEventListener> {
+        FlowMirrorPointCreateContext, FlowGenericCarrier, FlowProcessingEventListener> {
 
     private RequestedFlowMirrorPoint requestedFlowMirrorPoint;
 
@@ -75,45 +75,14 @@ public final class FlowMirrorPointCreateFsm extends FlowPathSwappingFsm<FlowMirr
 
     private final Map<UUID, FlowSegmentRequestFactory> commands = new HashMap<>();
 
-    public FlowMirrorPointCreateFsm(CommandContext commandContext, @NonNull FlowMirrorPointCreateHubCarrier carrier,
-                                    String flowId) {
-        super(commandContext, carrier, flowId);
-    }
-
-    @Override
-    public void fireNext(FlowMirrorPointCreateContext context) {
-        fire(Event.NEXT, context);
-    }
-
-    @Override
-    public void fireError(String errorReason) {
-        fireError(Event.ERROR, errorReason);
-    }
-
-    private void fireError(Event errorEvent, String errorReason) {
-        setErrorReason(errorReason);
-        fire(errorEvent);
-    }
-
-    @Override
-    public void setErrorReason(String errorReason) {
-        if (this.errorReason != null) {
-            log.error("Subsequent error fired: " + errorReason);
-        } else {
-            this.errorReason = errorReason;
-        }
+    public FlowMirrorPointCreateFsm(@NonNull CommandContext commandContext,
+                                    @NonNull FlowGenericCarrier carrier, @NonNull String flowId) {
+        super(Event.NEXT, Event.ERROR, commandContext, carrier, flowId);
     }
 
     @Override
     public void fireNoPathFound(String errorReason) {
         fireError(Event.NO_PATH_FOUND, errorReason);
-    }
-
-    @Override
-    public void reportError(Event event) {
-        if (Event.TIMEOUT == event) {
-            reportGlobalTimeout();
-        }
     }
 
     @Override
@@ -123,16 +92,16 @@ public final class FlowMirrorPointCreateFsm extends FlowPathSwappingFsm<FlowMirr
 
     public static class Factory {
         private final StateMachineBuilder<FlowMirrorPointCreateFsm, State, Event, FlowMirrorPointCreateContext> builder;
-        private final FlowMirrorPointCreateHubCarrier carrier;
+        private final FlowGenericCarrier carrier;
 
-        public Factory(FlowMirrorPointCreateHubCarrier carrier, PersistenceManager persistenceManager,
-                       PathComputer pathComputer, FlowResourcesManager resourcesManager,
+        public Factory(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
+                       @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager resourcesManager,
                        int pathAllocationRetriesLimit, int pathAllocationRetryDelay, int resourceAllocationRetriesLimit,
                        int speakerCommandRetriesLimit) {
             this.carrier = carrier;
 
             builder = StateMachineBuilderFactory.create(FlowMirrorPointCreateFsm.class, State.class, Event.class,
-                    FlowMirrorPointCreateContext.class, CommandContext.class, FlowMirrorPointCreateHubCarrier.class,
+                    FlowMirrorPointCreateContext.class, CommandContext.class, FlowGenericCarrier.class,
                     String.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
@@ -236,7 +205,7 @@ public final class FlowMirrorPointCreateFsm extends FlowPathSwappingFsm<FlowMirr
                     .addEntryAction(new OnFinishedWithErrorAction(persistenceManager, dashboardLogger));
         }
 
-        public FlowMirrorPointCreateFsm newInstance(CommandContext commandContext, String flowId) {
+        public FlowMirrorPointCreateFsm newInstance(@NonNull CommandContext commandContext, @NonNull String flowId) {
             return builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
         }
     }

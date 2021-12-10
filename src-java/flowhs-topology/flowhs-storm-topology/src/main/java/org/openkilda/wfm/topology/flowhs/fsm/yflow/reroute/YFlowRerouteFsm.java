@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.yflow.SubFlowPathDto;
-import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.pce.PathComputer;
@@ -31,30 +30,30 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.actions.AllocateYFlowResourc
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.RevertYFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.CompleteYFlowReroutingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.DeallocateOldYFlowResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.HandleNotCompletedCommandsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.HandleNotDeallocatedResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.HandleNotReroutedSubFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.InstallNewYPointMetersAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.OnFinishedAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.OnFinishedWithErrorAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.OnReceivedInstallResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.OnReceivedRemoveResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.OnReceivedResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.OnReceivedValidateResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.OnSubFlowAllocatedAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.OnSubFlowReroutedAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.OnTimeoutOperationAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.RemoveOldYPointMetersAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.RerouteSubFlowsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.StartReroutingYFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.ValidateNewYPointMeterAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.ValidateYFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.CompleteYFlowReroutingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.DeallocateOldYFlowResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.HandleNotCompletedCommandsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.HandleNotDeallocatedResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.HandleNotReroutedSubFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.InstallNewYPointMetersAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnFinishedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnFinishedWithErrorAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnReceivedInstallResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnReceivedRemoveResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnReceivedResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnReceivedValidateResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnSubFlowAllocatedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnSubFlowReroutedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnTimeoutOperationAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.RemoveOldYPointMetersAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.RerouteSubFlowsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.StartReroutingYFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.ValidateNewYPointMeterAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.ValidateYFlowAction;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteService;
-import org.openkilda.wfm.topology.flowhs.service.YFlowEventListener;
-import org.openkilda.wfm.topology.flowhs.service.YFlowRerouteHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.yflow.YFlowEventListener;
+import org.openkilda.wfm.topology.flowhs.service.yflow.YFlowRerouteHubCarrier;
 
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
@@ -99,26 +98,9 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
     private List<SubFlowPathDto> oldSubFlowPathDtos;
     private List<Long> oldYFlowPathCookies;
 
-    private String errorReason;
-
     private YFlowRerouteFsm(@NonNull CommandContext commandContext, @NonNull YFlowRerouteHubCarrier carrier,
                             @NonNull String yFlowId, @NonNull Collection<YFlowEventListener> eventListeners) {
-        super(commandContext, carrier, yFlowId, eventListeners);
-    }
-
-    @Override
-    public void fireNext(YFlowRerouteContext context) {
-        fire(Event.NEXT, context);
-    }
-
-    @Override
-    public void fireError(String errorReason) {
-        fireError(Event.ERROR, errorReason);
-    }
-
-    private void fireError(Event errorEvent, String errorReason) {
-        setErrorReason(errorReason);
-        fire(errorEvent);
+        super(Event.NEXT, Event.ERROR, commandContext, carrier, yFlowId, eventListeners);
     }
 
     public void addSubFlow(String flowId) {
@@ -149,21 +131,6 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
         allocatedSubFlows.add(flowId);
     }
 
-    public void setErrorReason(String errorReason) {
-        if (this.errorReason != null) {
-            log.error("Subsequent error fired: " + errorReason);
-        } else {
-            this.errorReason = errorReason;
-        }
-    }
-
-    @Override
-    public void reportError(Event event) {
-        if (Event.TIMEOUT == event) {
-            reportGlobalTimeout();
-        }
-    }
-
     @Override
     protected String getCrudActionName() {
         return "create";
@@ -178,7 +145,6 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
                        @NonNull FlowRerouteService flowRerouteService,
                        int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
             this.carrier = carrier;
-
 
             builder = StateMachineBuilderFactory.create(YFlowRerouteFsm.class, State.class, Event.class,
                     YFlowRerouteContext.class, CommandContext.class, YFlowRerouteHubCarrier.class, String.class,
@@ -382,21 +348,6 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("YFlowRerouteFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
-
-            if (!eventListeners.isEmpty()) {
-                fsm.addTransitionCompleteListener(event -> {
-                    switch (event.getTargetState()) {
-                        case FINISHED:
-                            fsm.notifyEventListenersOnComplete();
-                            break;
-                        case FINISHED_WITH_ERROR:
-                            fsm.notifyEventListenersOnError(ErrorType.INTERNAL_ERROR, fsm.getErrorReason());
-                            break;
-                        default:
-                            // ignore
-                    }
-                });
-            }
 
             MeterRegistryHolder.getRegistry().ifPresent(registry -> {
                 Sample sample = LongTaskTimer.builder("fsm.active_execution")

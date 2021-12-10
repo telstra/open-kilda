@@ -19,13 +19,6 @@ import org.openkilda.messaging.info.reroute.error.RerouteError;
 
 public interface FlowRerouteHubCarrier extends FlowGenericCarrier {
     /**
-     * Cancels timeout callback.
-     *
-     * @param key operation identifier.
-     */
-    void cancelTimeoutCallback(String key);
-
-    /**
      * Sends reroute result status to reroute topology.
      *
      * @param flowId flow id.

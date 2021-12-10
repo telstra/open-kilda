@@ -63,13 +63,13 @@ import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowUpdateHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowUpdateService;
-import org.openkilda.wfm.topology.flowhs.service.YFlowUpdateHubCarrier;
-import org.openkilda.wfm.topology.flowhs.service.YFlowUpdateService;
+import org.openkilda.wfm.topology.flowhs.service.yflow.YFlowUpdateService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.experimental.Delegate;
 import lombok.experimental.SuperBuilder;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -77,8 +77,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class YFlowUpdateHubBolt extends HubBolt implements YFlowUpdateHubCarrier, FlowUpdateHubCarrier {
-
+public class YFlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     private final YFlowUpdateConfig yflowUpdateConfig;
     private final FlowUpdateConfig flowUpdateConfig;
     private final PathComputerConfig pathComputerConfig;
@@ -90,9 +89,10 @@ public class YFlowUpdateHubBolt extends HubBolt implements YFlowUpdateHubCarrier
 
     private LifecycleEvent deferredShutdownEvent;
 
-    public YFlowUpdateHubBolt(YFlowUpdateConfig yflowUpdateConfig, FlowUpdateConfig flowUpdateConfig,
-                              PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig,
-                              FlowResourcesConfig flowResourcesConfig) {
+    public YFlowUpdateHubBolt(@NonNull YFlowUpdateConfig yflowUpdateConfig, @NonNull FlowUpdateConfig flowUpdateConfig,
+                              @NonNull PersistenceManager persistenceManager,
+                              @NonNull PathComputerConfig pathComputerConfig,
+                              @NonNull FlowResourcesConfig flowResourcesConfig) {
         super(persistenceManager, yflowUpdateConfig);
 
         this.yflowUpdateConfig = yflowUpdateConfig;
@@ -185,7 +185,7 @@ public class YFlowUpdateHubBolt extends HubBolt implements YFlowUpdateHubCarrier
     }
 
     @Override
-    public void sendSpeakerRequest(FlowSegmentRequest command) {
+    public void sendSpeakerRequest(@NonNull FlowSegmentRequest command) {
         String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
 
         Values values = new Values(commandKey, command);
@@ -193,18 +193,18 @@ public class YFlowUpdateHubBolt extends HubBolt implements YFlowUpdateHubCarrier
     }
 
     @Override
-    public void sendNorthboundResponse(Message message) {
+    public void sendNorthboundResponse(@NonNull Message message) {
         emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
     }
 
     @Override
-    public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
+    public void sendHistoryUpdate(@NonNull FlowHistoryHolder historyHolder) {
         emit(Stream.HUB_TO_HISTORY_BOLT.name(), getCurrentTuple(), HistoryBolt.newInputTuple(
                 historyHolder, getCommandContext()));
     }
 
     @Override
-    public void sendHubSwapEndpointsResponse(Message message) {
+    public void sendHubSwapEndpointsResponse(@NonNull Message message) {
         // do not need to send response to swap endpoints hub
     }
 
@@ -228,7 +228,7 @@ public class YFlowUpdateHubBolt extends HubBolt implements YFlowUpdateHubCarrier
     }
 
     @Override
-    public void sendActivateFlowMonitoring(RequestedFlow flow) {
+    public void sendActivateFlowMonitoring(@NonNull RequestedFlow flow) {
         ActivateFlowMonitoringInfoData payload = RequestedFlowMapper.INSTANCE.toActivateFlowMonitoringInfoData(flow);
 
         Message message = new InfoMessage(payload, getCommandContext().getCreateTime(),
@@ -238,7 +238,7 @@ public class YFlowUpdateHubBolt extends HubBolt implements YFlowUpdateHubCarrier
     }
 
     @Override
-    public void sendNotifyFlowMonitor(CommandData flowCommand) {
+    public void sendNotifyFlowMonitor(@NonNull CommandData flowCommand) {
         String correlationId = getCommandContext().getCorrelationId();
         Message message = new CommandMessage(flowCommand, System.currentTimeMillis(), correlationId);
 
@@ -247,7 +247,7 @@ public class YFlowUpdateHubBolt extends HubBolt implements YFlowUpdateHubCarrier
     }
 
     @Override
-    public void sendNotifyFlowStats(UpdateFlowPathInfo flowPathInfo) {
+    public void sendNotifyFlowStats(@NonNull UpdateFlowPathInfo flowPathInfo) {
         Message message = new InfoMessage(flowPathInfo, System.currentTimeMillis(),
                 getCommandContext().getCorrelationId());
 

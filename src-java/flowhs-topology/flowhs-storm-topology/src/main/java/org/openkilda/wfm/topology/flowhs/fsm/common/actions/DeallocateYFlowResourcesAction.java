@@ -32,12 +32,11 @@ import java.util.Optional;
 
 @Slf4j
 public abstract class DeallocateYFlowResourcesAction<T extends YFlowProcessingFsm<T, S, E, C, ?, ?>, S, E, C>
-        extends YFlowProcessingAction<T, S, E, C> {
-
+        extends YFlowProcessingWithHistorySupportAction<T, S, E, C> {
     private final FlowResourcesManager resourcesManager;
 
-    public DeallocateYFlowResourcesAction(PersistenceManager persistenceManager,
-                                          FlowResourcesManager resourcesManager) {
+    protected DeallocateYFlowResourcesAction(PersistenceManager persistenceManager,
+                                             FlowResourcesManager resourcesManager) {
         super(persistenceManager);
         this.resourcesManager = resourcesManager;
     }

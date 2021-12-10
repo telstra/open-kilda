@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.create;
 
 import org.openkilda.messaging.command.yflow.YFlowRequest;
-import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
@@ -27,33 +26,33 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.YFlowProcessingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.AllocateYFlowResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.CompleteYFlowInstallationAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.CreateDraftYFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.CreateSubFlowsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.DeallocateYFlowResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.HandleNotCompletedCommandsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.HandleNotCreatedSubFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.HandleNotDeallocatedResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.HandleNotRemovedSubFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.InstallYFlowResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.OnFinishedAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.OnFinishedWithErrorAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.OnReceivedInstallResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.OnReceivedRemoveResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.OnReceivedValidateResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.OnSubFlowAllocatedAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.OnSubFlowCreatedAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.OnSubFlowRemovedAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.RemoveSubFlowsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.RemoveYFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.RemoveYFlowResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.ValidateYFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.action.ValidateYFlowResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.CompleteYFlowInstallationAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.CreateDraftYFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.CreateSubFlowsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.DeallocateYFlowResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.HandleNotCompletedCommandsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.HandleNotCreatedSubFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.HandleNotDeallocatedResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.HandleNotRemovedSubFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.InstallYFlowResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnFinishedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnFinishedWithErrorAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnReceivedInstallResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnReceivedRemoveResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnReceivedValidateResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnSubFlowAllocatedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnSubFlowCreatedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnSubFlowRemovedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.RemoveSubFlowsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.RemoveYFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.RemoveYFlowResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.ValidateYFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.ValidateYFlowResourcesAction;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowCreateService;
 import org.openkilda.wfm.topology.flowhs.service.FlowDeleteService;
-import org.openkilda.wfm.topology.flowhs.service.YFlowCreateHubCarrier;
-import org.openkilda.wfm.topology.flowhs.service.YFlowEventListener;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.service.yflow.YFlowEventListener;
 
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
@@ -73,7 +72,7 @@ import java.util.concurrent.TimeUnit;
 @Setter
 @Slf4j
 public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, State, Event, YFlowCreateContext,
-        YFlowCreateHubCarrier, YFlowEventListener> {
+        FlowGenericCarrier, YFlowEventListener> {
     private YFlowRequest targetFlow;
 
     private final Set<String> subFlows = new HashSet<>();
@@ -85,26 +84,9 @@ public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, Sta
     private String mainAffinityFlowId;
     private Collection<RequestedFlow> requestedFlows;
 
-    private String errorReason;
-
-    private YFlowCreateFsm(@NonNull CommandContext commandContext, @NonNull YFlowCreateHubCarrier carrier,
+    private YFlowCreateFsm(@NonNull CommandContext commandContext, @NonNull FlowGenericCarrier carrier,
                            @NonNull String yFlowId, @NonNull Collection<YFlowEventListener> eventListeners) {
-        super(commandContext, carrier, yFlowId, eventListeners);
-    }
-
-    @Override
-    public void fireNext(YFlowCreateContext context) {
-        fire(Event.NEXT, context);
-    }
-
-    @Override
-    public void fireError(String errorReason) {
-        fireError(Event.ERROR, errorReason);
-    }
-
-    private void fireError(Event errorEvent, String errorReason) {
-        setErrorReason(errorReason);
-        fire(errorEvent);
+        super(Event.NEXT, Event.ERROR, commandContext, carrier, yFlowId, eventListeners);
     }
 
     public void addSubFlow(String flowId) {
@@ -155,21 +137,6 @@ public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, Sta
         allocatedSubFlows.add(flowId);
     }
 
-    public void setErrorReason(String errorReason) {
-        if (this.errorReason != null) {
-            log.error("Subsequent error fired: " + errorReason);
-        } else {
-            this.errorReason = errorReason;
-        }
-    }
-
-    @Override
-    public void reportError(Event event) {
-        if (Event.TIMEOUT == event) {
-            reportGlobalTimeout();
-        }
-    }
-
     @Override
     protected String getCrudActionName() {
         return "create";
@@ -177,17 +144,16 @@ public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, Sta
 
     public static class Factory {
         private final StateMachineBuilder<YFlowCreateFsm, State, Event, YFlowCreateContext> builder;
-        private final YFlowCreateHubCarrier carrier;
+        private final FlowGenericCarrier carrier;
 
-        public Factory(@NonNull YFlowCreateHubCarrier carrier, @NonNull PersistenceManager persistenceManager,
+        public Factory(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
                        @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager resourcesManager,
                        @NonNull FlowCreateService flowCreateService, @NonNull FlowDeleteService flowDeleteService,
                        int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
             this.carrier = carrier;
 
-
             builder = StateMachineBuilderFactory.create(YFlowCreateFsm.class, State.class, Event.class,
-                    YFlowCreateContext.class, CommandContext.class, YFlowCreateHubCarrier.class, String.class,
+                    YFlowCreateContext.class, CommandContext.class, FlowGenericCarrier.class, String.class,
                     Collection.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
@@ -404,28 +370,13 @@ public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, Sta
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public YFlowCreateFsm newInstance(CommandContext commandContext, @NonNull String yFlowId,
+        public YFlowCreateFsm newInstance(@NonNull CommandContext commandContext, @NonNull String yFlowId,
                                           @NonNull Collection<YFlowEventListener> eventListeners) {
             YFlowCreateFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, yFlowId,
                     eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("YFlowCreateFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
-
-            if (!eventListeners.isEmpty()) {
-                fsm.addTransitionCompleteListener(event -> {
-                    switch (event.getTargetState()) {
-                        case FINISHED:
-                            fsm.notifyEventListenersOnComplete();
-                            break;
-                        case FINISHED_WITH_ERROR:
-                            fsm.notifyEventListenersOnError(ErrorType.INTERNAL_ERROR, fsm.getErrorReason());
-                            break;
-                        default:
-                            // ignore
-                    }
-                });
-            }
 
             MeterRegistryHolder.getRegistry().ifPresent(registry -> {
                 Sample sample = LongTaskTimer.builder("fsm.active_execution")

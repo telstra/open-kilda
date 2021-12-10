@@ -21,6 +21,7 @@ import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.wfm.error.PipelineException;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
@@ -29,10 +30,9 @@ import java.util.Map;
 @Slf4j
 public class SpeakerWorkerService {
     private final SpeakerCommandCarrier carrier;
-
     private final Map<String, FlowSegmentRequest> keyToRequest = new HashMap<>();
 
-    public SpeakerWorkerService(SpeakerCommandCarrier carrier) {
+    public SpeakerWorkerService(@NonNull SpeakerCommandCarrier carrier) {
         this.carrier = carrier;
     }
 
@@ -41,7 +41,7 @@ public class SpeakerWorkerService {
      * @param key unique operation's key.
      * @param command command to be executed.
      */
-    public void sendCommand(String key, FlowSegmentRequest command) throws PipelineException {
+    public void sendCommand(@NonNull String key, @NonNull FlowSegmentRequest command) throws PipelineException {
         log.debug("Got a request from hub bolt {}", command);
         keyToRequest.put(key, command);
         carrier.sendCommand(key, command);
@@ -52,7 +52,7 @@ public class SpeakerWorkerService {
      * @param key operation's key.
      * @param response response payload.
      */
-    public void handleResponse(String key, SpeakerFlowSegmentResponse response)
+    public void handleResponse(@NonNull String key, @NonNull SpeakerFlowSegmentResponse response)
             throws PipelineException {
         log.debug("Got a response from speaker {}", response);
         FlowSegmentRequest pendingRequest = keyToRequest.remove(key);
@@ -69,7 +69,7 @@ public class SpeakerWorkerService {
      * Handles operation timeout.
      * @param key operation identifier.
      */
-    public void handleTimeout(String key) throws PipelineException {
+    public void handleTimeout(@NonNull String key) throws PipelineException {
         FlowSegmentRequest failedRequest = keyToRequest.remove(key);
 
         SpeakerFlowSegmentResponse response = FlowErrorResponse.errorBuilder()

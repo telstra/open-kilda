@@ -28,17 +28,20 @@ import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm.Event;
+import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingFsmRegister;
+import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingService;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class FlowMirrorPointDeleteService extends FsmBasedFlowProcessingService<FlowMirrorPointDeleteFsm, Event,
-        FlowMirrorPointDeleteContext, FlowMirrorPointDeleteHubCarrier> {
+public class FlowMirrorPointDeleteService extends FlowProcessingService<FlowMirrorPointDeleteFsm, Event,
+        FlowMirrorPointDeleteContext, FlowGenericCarrier,
+        FlowProcessingFsmRegister<FlowMirrorPointDeleteFsm>, FlowProcessingEventListener> {
     private final FlowMirrorPointDeleteFsm.Factory fsmFactory;
 
-    public FlowMirrorPointDeleteService(FlowMirrorPointDeleteHubCarrier carrier, PersistenceManager persistenceManager,
+    public FlowMirrorPointDeleteService(FlowGenericCarrier carrier, PersistenceManager persistenceManager,
                                         FlowResourcesManager flowResourcesManager, int speakerCommandRetriesLimit) {
-        super(new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
+        super(new FlowProcessingFsmRegister<>(), new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
         fsmFactory = new FlowMirrorPointDeleteFsm.Factory(carrier, persistenceManager, flowResourcesManager,
                 speakerCommandRetriesLimit);
     }
@@ -67,7 +70,7 @@ public class FlowMirrorPointDeleteService extends FsmBasedFlowProcessingService<
      */
     public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) {
         log.debug("Received flow command response {}", flowResponse);
-        FlowMirrorPointDeleteFsm fsm = getFsmByKey(key).orElse(null);
+        FlowMirrorPointDeleteFsm fsm = fsmRegister.getFsmByKey(key).orElse(null);
         if (fsm == null) {
             log.warn("Failed to find a FSM: received response with key {} for non pending FSM", key);
             return;
@@ -93,7 +96,7 @@ public class FlowMirrorPointDeleteService extends FsmBasedFlowProcessingService<
      */
     public void handleTimeout(String key) {
         log.debug("Handling timeout for {}", key);
-        FlowMirrorPointDeleteFsm fsm = getFsmByKey(key).orElse(null);
+        FlowMirrorPointDeleteFsm fsm = fsmRegister.getFsmByKey(key).orElse(null);
         if (fsm == null) {
             log.warn("Failed to find a FSM: timeout event for non pending FSM with key {}", key);
             return;
@@ -109,11 +112,11 @@ public class FlowMirrorPointDeleteService extends FsmBasedFlowProcessingService<
         log.debug("Handling flow delete mirror point request with key {}, flow ID: {}, and flow mirror ID: {}",
                 key, flowId, request.getMirrorPointId());
 
-        if (hasRegisteredFsmWithKey(key)) {
+        if (fsmRegister.hasRegisteredFsmWithKey(key)) {
             log.error("Attempt to create a FSM with key {}, while there's another active FSM with the same key.", key);
             return;
         }
-        if (hasRegisteredFsmWithFlowId(flowId)) {
+        if (fsmRegister.hasRegisteredFsmWithFlowId(flowId)) {
             sendErrorResponseToNorthbound(ErrorType.REQUEST_INVALID, "Could not update flow",
                     format("Flow %s is updating now", flowId), commandContext);
             log.error("Attempt to create a FSM with key {}, while there's another active FSM for the same flowId {}.",
@@ -122,7 +125,7 @@ public class FlowMirrorPointDeleteService extends FsmBasedFlowProcessingService<
         }
 
         FlowMirrorPointDeleteFsm fsm = fsmFactory.newInstance(commandContext, flowId);
-        registerFsm(key, fsm);
+        fsmRegister.registerFsm(key, fsm);
 
         FlowMirrorPointDeleteContext context = FlowMirrorPointDeleteContext.builder()
                 .flowMirrorPointId(request.getMirrorPointId())
@@ -135,11 +138,11 @@ public class FlowMirrorPointDeleteService extends FsmBasedFlowProcessingService<
     private void removeIfFinished(FlowMirrorPointDeleteFsm fsm, String key) {
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
-            unregisterFsm(key);
+            fsmRegister.unregisterFsm(key);
 
             carrier.cancelTimeoutCallback(key);
 
-            if (!isActive() && !hasAnyRegisteredFsm()) {
+            if (!isActive() && !fsmRegister.hasAnyRegisteredFsm()) {
                 carrier.sendInactive();
             }
         }
