@@ -27,5 +27,7 @@ public enum ActionType {
     PUSH_VXLAN_OVS,
     SET_FIELD,
     METER,
-    NOVI_COPY_FIELD
+    NOVI_COPY_FIELD,
+    NOVI_SWAP_FIELD,
+    KILDA_SWAP_FIELD
 }

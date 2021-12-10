@@ -105,5 +105,16 @@ public interface RuleManagerConfig extends Serializable {
     @Key("server42-flow-rtt-udp-port-offset")
     @Default("5000")
     int getServer42FlowRttUdpPortOffset();
+
+    /**
+     * This offset is used for encoding ISL in_port number into udp_src port of Server 42 ISL RTT packets.
+     */
+    @Key("server42-isl-rtt-udp-port-offset")
+    @Default("10000")
+    int getServer42IslRttUdpPortOffset();
+
+    @Key("server42-isl-rtt-magic-mac-address")
+    @Default("00:26:E1:FF:FF:FD")
+    String getServer42IslRttMagicMacAddress();
 }
 

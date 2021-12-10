@@ -15,6 +15,7 @@
 
 package org.openkilda.rulemanager.factory;
 
+import org.openkilda.model.MacAddress;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.RuleManagerConfig;
@@ -38,6 +39,13 @@ import org.openkilda.rulemanager.factory.generator.service.lldp.LldpPostIngressR
 import org.openkilda.rulemanager.factory.generator.service.lldp.LldpPostIngressVxlanRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.lldp.LldpTransitRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.noviflow.RoundTripLatencyRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.server42.Server42FlowRttOutputVlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.server42.Server42FlowRttOutputVxlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.server42.Server42FlowRttTurningRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.server42.Server42FlowRttVxlanTurningRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.server42.Server42IslRttInputRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.server42.Server42IslRttOutputRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.server42.Server42IslRttTurningRuleGenerator;
 
 public class ServiceRulesGeneratorFactory {
 
@@ -226,6 +234,77 @@ public class ServiceRulesGeneratorFactory {
     public ArpTransitRuleGenerator getArpTransitRuleGenerator() {
         return ArpTransitRuleGenerator.builder()
                 .config(config)
+                .build();
+    }
+
+    /**
+     * Get Server 42 Flow RTT turning rule generator.
+     */
+    public Server42FlowRttTurningRuleGenerator getServer42FlowRttTurningRuleGenerator() {
+        return new Server42FlowRttTurningRuleGenerator();
+    }
+
+    /**
+     * Get Server 42 Flow RTT Vxlan turning rule generator.
+     */
+    public Server42FlowRttVxlanTurningRuleGenerator getServer42FlowRttVxlanTurningRuleGenerator() {
+        return new Server42FlowRttVxlanTurningRuleGenerator();
+    }
+
+    /**
+     * Get Server 42 Flow RTT output vlan rule generator.
+     */
+    public Server42FlowRttOutputVlanRuleGenerator getServer42FlowRttOutputVlanRuleGenerator(
+            int server42Port, int server42Vlan, MacAddress server42MacAddress) {
+        return Server42FlowRttOutputVlanRuleGenerator.builder()
+                .server42Port(server42Port)
+                .server42Vlan(server42Vlan)
+                .server42MacAddress(server42MacAddress)
+                .build();
+    }
+
+    /**
+     * Get Server 42 Flow RTT output VXLAN rule generator.
+     */
+    public Server42FlowRttOutputVxlanRuleGenerator getServer42FlowRttOutputVxlanRuleGenerator(
+            int server42Port, int server42Vlan, MacAddress server42MacAddress) {
+        return Server42FlowRttOutputVxlanRuleGenerator.builder()
+                .server42Port(server42Port)
+                .server42Vlan(server42Vlan)
+                .server42MacAddress(server42MacAddress)
+                .build();
+    }
+
+    /**
+     * Get Server 42 ISL RTT input rule generator.
+     */
+    public Server42IslRttInputRuleGenerator getServer42IslRttInputRuleGenerator(int server42Port, int islPort) {
+        return Server42IslRttInputRuleGenerator.builder()
+                .config(config)
+                .server42Port(server42Port)
+                .islPort(islPort)
+                .build();
+    }
+
+    /**
+     * Get Server 42 ISL RTT turning rule generator.
+     */
+    public Server42IslRttTurningRuleGenerator getServer42IslRttTurningRuleGenerator() {
+        return Server42IslRttTurningRuleGenerator.builder()
+                .config(config)
+                .build();
+    }
+
+    /**
+     * Get Server 42 ISL RTT output rule generator.
+     */
+    public Server42IslRttOutputRuleGenerator getServer42IslRttOutputRuleGenerator(
+            int server42Port, int server42Vlan, MacAddress server42MacAddress) {
+        return Server42IslRttOutputRuleGenerator.builder()
+                .config(config)
+                .server42Port(server42Port)
+                .server42Vlan(server42Vlan)
+                .server42MacAddress(server42MacAddress)
                 .build();
     }
 }
