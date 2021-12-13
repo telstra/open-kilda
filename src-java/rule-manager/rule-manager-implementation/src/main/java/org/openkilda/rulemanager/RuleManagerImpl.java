@@ -176,6 +176,14 @@ public class RuleManagerImpl implements RuleManager {
                 generators.add(serviceRulesFactory.getArpInputPreDropRuleGenerator());
                 generators.add(serviceRulesFactory.getArpIngressRuleGenerator());
             }
+
+            Set<Integer> islPorts = adapter.getSwitchIslPorts(switchId);
+
+            islPorts.forEach(islPort -> {
+                generators.add(serviceRulesFactory.getEgressIslVxlanRuleGenerator(islPort));
+                generators.add(serviceRulesFactory.getEgressIslVlanRuleGenerator(islPort));
+                generators.add(serviceRulesFactory.getTransitIslVxlanRuleGenerator(islPort));
+            });
         }
 
         Integer server42Port = switchProperties.getServer42Port();
@@ -253,7 +261,8 @@ public class RuleManagerImpl implements RuleManager {
     }
 
     private List<SpeakerCommandData> buildIngressCommands(Switch sw, FlowPath flowPath, Flow flow,
-            FlowTransitEncapsulation encapsulation, Set<FlowSideAdapter> overlappingIngressAdapters) {
+                                                          FlowTransitEncapsulation encapsulation,
+                                                          Set<FlowSideAdapter> overlappingIngressAdapters) {
         List<SpeakerCommandData> ingressCommands = flowRulesFactory.getIngressRuleGenerator(
                 flowPath, flow, encapsulation, overlappingIngressAdapters).generateCommands(sw);
         String ingressMeterCommandUuid = Utils.getCommand(MeterSpeakerCommandData.class, ingressCommands)
@@ -276,7 +285,7 @@ public class RuleManagerImpl implements RuleManager {
     }
 
     private List<SpeakerCommandData> buildEgressCommands(Switch sw, FlowPath flowPath, Flow flow,
-            FlowTransitEncapsulation encapsulation) {
+                                                         FlowTransitEncapsulation encapsulation) {
         List<RuleGenerator> generators = new ArrayList<>();
 
         generators.add(flowRulesFactory.getEgressRuleGenerator(flowPath, flow, encapsulation));

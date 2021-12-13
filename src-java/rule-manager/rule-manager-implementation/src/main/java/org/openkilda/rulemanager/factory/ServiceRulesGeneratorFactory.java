@@ -32,6 +32,9 @@ import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressOne
 import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressVxlanRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.arp.ArpTransitRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.isl.EgressIslVlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.isl.EgressIslVxlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.isl.TransitIslVxlanRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.lldp.LldpIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.lldp.LldpInputPreDropRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.lldp.LldpPostIngressOneSwitchRuleGenerator;
@@ -305,6 +308,33 @@ public class ServiceRulesGeneratorFactory {
                 .server42Port(server42Port)
                 .server42Vlan(server42Vlan)
                 .server42MacAddress(server42MacAddress)
+                .build();
+    }
+
+    /**
+     * Get egress ISL VXLAN rule generator.
+     */
+    public EgressIslVxlanRuleGenerator getEgressIslVxlanRuleGenerator(int islPort) {
+        return EgressIslVxlanRuleGenerator.builder()
+                .islPort(islPort)
+                .build();
+    }
+
+    /**
+     * Get egress ISL VLAN rule generator.
+     */
+    public EgressIslVlanRuleGenerator getEgressIslVlanRuleGenerator(int islPort) {
+        return EgressIslVlanRuleGenerator.builder()
+                .islPort(islPort)
+                .build();
+    }
+
+    /**
+     * Get transit ISL VLAN rule generator.
+     */
+    public TransitIslVxlanRuleGenerator getTransitIslVxlanRuleGenerator(int islPort) {
+        return TransitIslVxlanRuleGenerator.builder()
+                .islPort(islPort)
                 .build();
     }
 }

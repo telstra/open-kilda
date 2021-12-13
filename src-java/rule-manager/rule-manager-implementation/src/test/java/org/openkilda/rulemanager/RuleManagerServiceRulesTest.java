@@ -173,7 +173,7 @@ public class RuleManagerServiceRulesTest {
         List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(
                 switchId, buildAdapter(switchId, switchProperties, Sets.newHashSet(ISL_PORT), true));
 
-        assertEquals(31, generators.size());
+        assertEquals(34, generators.size());
         assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
 
