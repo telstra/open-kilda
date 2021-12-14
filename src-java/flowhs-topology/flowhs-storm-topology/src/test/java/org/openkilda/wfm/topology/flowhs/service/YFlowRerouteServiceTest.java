@@ -29,6 +29,7 @@ import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
+import org.openkilda.messaging.command.yflow.YFlowRerouteResponse;
 import org.openkilda.messaging.command.yflow.YFlowResponse;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
@@ -94,12 +95,12 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest {
 
         preparePathComputationForReroute("test_flow_1", buildFirstSubFlowPathPairWithNewTransit());
         preparePathComputationForReroute("test_flow_2", buildSecondSubFlowPathPairWithNewTransit());
-        prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_TRANSIT);
+        prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_NEW_TRANSIT);
 
         // when
         processRerouteRequestAndSpeakerCommands(request);
 
-        verifyNorthboundSuccessResponse(yFlowRerouteHubCarrier, YFlowResponse.class);
+        verifyNorthboundSuccessResponse(yFlowRerouteHubCarrier, YFlowRerouteResponse.class);
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
         verifyAffinity(request.getYFlowId());
         verify(yFlowRerouteHubCarrier)
@@ -125,7 +126,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest {
         // when
         processRerouteRequestAndSpeakerCommands(request);
 
-        verifyNorthboundSuccessResponse(yFlowRerouteHubCarrier, YFlowResponse.class);
+        verifyNorthboundSuccessResponse(yFlowRerouteHubCarrier, YFlowRerouteResponse.class);
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
         verifyAffinity(request.getYFlowId());
         verify(yFlowRerouteHubCarrier)
@@ -214,12 +215,12 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest {
 
         preparePathComputationForReroute("test_flow_1", buildFirstSubFlowPathPairWithNewTransit());
         preparePathComputationForReroute("test_flow_2", buildSecondSubFlowPathPairWithNewTransit());
-        prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_TRANSIT);
+        prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_NEW_TRANSIT);
 
         // when
         processRerouteRequestAndSpeakerCommands(request);
 
-        verifyNorthboundSuccessResponse(yFlowRerouteHubCarrier, YFlowResponse.class);
+        verifyNorthboundSuccessResponse(yFlowRerouteHubCarrier, YFlowRerouteResponse.class);
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
         verifyAffinity(request.getYFlowId());
         verify(yFlowRerouteHubCarrier)
@@ -236,12 +237,12 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest {
 
         preparePathComputationForReroute("test_flow_1", buildFirstSubFlowPathPairWithNewTransit());
         preparePathComputationForReroute("test_flow_2", buildSecondSubFlowPathPairWithNewTransit());
-        prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_TRANSIT);
+        prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_NEW_TRANSIT);
 
         // when
         processRerouteRequestAndSpeakerCommands(request);
 
-        verifyNorthboundSuccessResponse(yFlowRerouteHubCarrier, YFlowResponse.class);
+        verifyNorthboundSuccessResponse(yFlowRerouteHubCarrier, YFlowRerouteResponse.class);
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
         verifyAffinity(request.getYFlowId());
         verify(yFlowRerouteHubCarrier)
@@ -257,12 +258,12 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest {
         request.setAffectedIsl(Collections.singleton(new IslEndpoint(SWITCH_TRANSIT, 27)));
 
         preparePathComputationForReroute("test_flow_2", buildSecondSubFlowPathPairWithNewTransit());
-        prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_TRANSIT);
+        prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_SHARED);
 
         // when
         processRerouteRequestAndSpeakerCommands(request, FlowStatus.IN_PROGRESS, FlowStatus.UP, FlowStatus.IN_PROGRESS);
 
-        verifyNorthboundSuccessResponse(yFlowRerouteHubCarrier, YFlowResponse.class);
+        verifyNorthboundSuccessResponse(yFlowRerouteHubCarrier, YFlowRerouteResponse.class);
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
         verifyAffinity(request.getYFlowId());
         verify(yFlowRerouteHubCarrier)

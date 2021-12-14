@@ -16,7 +16,9 @@
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.yflow.SubFlowPathDto;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
@@ -46,6 +48,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.OnSubFlowRerou
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.OnTimeoutOperationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.RemoveOldYPointMetersAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.RerouteSubFlowsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.StartReroutingYFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.ValidateNewYPointMeterAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.action.ValidateYFlowAction;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
@@ -64,6 +67,7 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -90,6 +94,10 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
 
     private String mainAffinityFlowId;
     private Collection<FlowRerouteRequest> rerouteRequests;
+
+    private PathInfoData oldSharedPath;
+    private List<SubFlowPathDto> oldSubFlowPathDtos;
+    private List<Long> oldYFlowPathCookies;
 
     private String errorReason;
 
@@ -129,16 +137,8 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
         reroutingSubFlows.remove(flowId);
     }
 
-    public void clearReroutingSubFlows() {
-        reroutingSubFlows.clear();
-    }
-
     public void addFailedSubFlow(String flowId) {
         failedSubFlows.add(flowId);
-    }
-
-    public void clearFailedSubFlows() {
-        failedSubFlows.clear();
     }
 
     public boolean isFailedSubFlow(String flowId) {
@@ -147,10 +147,6 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
 
     public void addAllocatedSubFlow(String flowId) {
         allocatedSubFlows.add(flowId);
-    }
-
-    public void clearAllocatedSubFlows() {
-        allocatedSubFlows.clear();
     }
 
     public void setErrorReason(String errorReason) {
@@ -200,8 +196,18 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
                     .to(State.FINISHED_WITH_ERROR)
                     .on(Event.TIMEOUT);
 
+            builder.transition()
+                    .from(State.YFLOW_VALIDATED)
+                    .to(State.YFLOW_REROUTE_STARTED)
+                    .on(Event.NEXT)
+                    .perform(new StartReroutingYFlowAction(persistenceManager));
             builder.transitions()
                     .from(State.YFLOW_VALIDATED)
+                    .toAmong(State.REVERTING_YFLOW_STATUS, State.REVERTING_YFLOW_STATUS)
+                    .onEach(Event.TIMEOUT, Event.ERROR);
+
+            builder.transitions()
+                    .from(State.YFLOW_REROUTE_STARTED)
                     .toAmong(State.REROUTING_SUB_FLOWS, State.REVERTING_YFLOW_STATUS, State.REVERTING_YFLOW_STATUS)
                     .onEach(Event.NEXT, Event.TIMEOUT, Event.ERROR);
 
@@ -375,7 +381,7 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
                     eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
-                    log.error("YFlowRerouteFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
+                    log.debug("YFlowRerouteFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
 
             if (!eventListeners.isEmpty()) {
                 fsm.addTransitionCompleteListener(event -> {
@@ -414,6 +420,7 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
     public enum State {
         INITIALIZED,
         YFLOW_VALIDATED,
+        YFLOW_REROUTE_STARTED,
 
         REROUTING_SUB_FLOWS,
         SUB_FLOW_REROUTING_STARTED,

@@ -130,10 +130,9 @@ public class YFlowUpdateHubBolt extends HubBolt implements YFlowUpdateHubCarrier
 
     @Override
     protected void activate() {
-        basicFlowUpdateService.deactivate();
-        yflowUpdateService.deactivate();
+        basicFlowUpdateService.activate();
+        yflowUpdateService.activate();
     }
-
 
     @Override
     protected void onRequest(Tuple input) throws PipelineException {

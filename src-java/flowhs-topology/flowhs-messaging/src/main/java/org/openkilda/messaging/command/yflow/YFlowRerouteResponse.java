@@ -20,6 +20,7 @@ import org.openkilda.messaging.info.event.PathInfoData;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -29,6 +30,7 @@ import java.util.List;
  * Represents a reroute response for y-flow.
  */
 @Data
+@AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
 @JsonNaming(SnakeCaseStrategy.class)
 public class YFlowRerouteResponse extends InfoData {

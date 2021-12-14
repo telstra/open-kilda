@@ -127,11 +127,10 @@ public class YFlowRerouteHubBolt extends HubBolt implements YFlowRerouteHubCarri
 
     @Override
     protected void activate() {
-        flowRerouteService.deactivate();
-        yFlowRerouteService.deactivate();
+        flowRerouteService.activate();
+        yFlowRerouteService.activate();
     }
-
-
+    
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
         currentKey = pullKey(input);
