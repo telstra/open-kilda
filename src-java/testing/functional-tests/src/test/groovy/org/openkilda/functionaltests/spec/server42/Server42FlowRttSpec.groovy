@@ -361,7 +361,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
-    def "Flow rtt stats are available if both endpoints are conected to the same server42, same pop"() {
+    def "Flow rtt stats are available if both endpoints are connected to the same server42, same pop"() {
         given: "Two active switches connected to the same server42 instance"
         def switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
             it.src.prop?.server42MacAddress != null && it.src.prop?.server42MacAddress == it.dst.prop?.server42MacAddress
