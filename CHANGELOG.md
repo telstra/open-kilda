@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.109.1 (14/12/2021)
+
+### Features:
+-  [#4611](https://github.com/telstra/open-kilda/pull/4611) Rule Manager: Rules post processing
+-  [#4612](https://github.com/telstra/open-kilda/pull/4612) Add server42 service rules rule manager implementation
+
+
+### Improvements:
+-  [#4608](https://github.com/telstra/open-kilda/pull/4608) [test] fix timeUnstable field in featureToggleV2Spec [**tests**]
+-  [#4609](https://github.com/telstra/open-kilda/pull/4609) adjust test for #4607 (Issue: [#4607](https://github.com/telstra/open-kilda/issues/4607)) [**tests**]
+-  [#4618](https://github.com/telstra/open-kilda/pull/4618) Use spock 2.1 release instead of snapshot [**tests**]
+-  [#4573](https://github.com/telstra/open-kilda/pull/4573) Make all tests do automatic switch sync in cleanup on validation failures [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.109.0...v1.109.1).
+
+---
+
 ## v1.109.0 (08/12/2021)
 
 ### Features:
