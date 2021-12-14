@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public interface IslRepository extends Repository<Isl> {
     Collection<Isl> findAll();
@@ -114,6 +115,14 @@ public interface IslRepository extends Repository<Isl> {
      * @return the endpoints of updated ISLs with the result available bandwidth.
      */
     Map<IslEndpoints, Long> updateAvailableBandwidthOnIslsOccupiedByPath(PathId pathId);
+
+
+    /**
+     * Returns ISL ports of switches, grouped by SwitchIds.
+     *
+     * @return map with ISL ports grouped by switchIds.
+     */
+    Map<SwitchId, Set<Integer>> findIslPortsBySwitchIds(Set<SwitchId> switchIds);
 
     @Value
     class IslEndpoints {

@@ -56,10 +56,10 @@ import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
-import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
+import org.openkilda.testing.service.northbound.payloads.SwitchValidationExtendedResult;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -141,7 +141,7 @@ public interface NorthboundService {
 
     SwitchMeterEntries getAllMeters(SwitchId switchId);
 
-    SwitchValidationResult validateSwitch(SwitchId switchId);
+    SwitchValidationExtendedResult validateSwitch(SwitchId switchId);
 
     DeleteSwitchResult deleteSwitch(SwitchId switchId, boolean force);
 

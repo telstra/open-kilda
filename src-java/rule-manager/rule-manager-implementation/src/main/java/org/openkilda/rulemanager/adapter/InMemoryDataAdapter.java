@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -30,6 +31,7 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.util.Map;
+import java.util.Set;
 
 @Value
 @Builder
@@ -40,6 +42,8 @@ public class InMemoryDataAdapter implements DataAdapter {
     Map<PathId, FlowTransitEncapsulation> transitEncapsulations;
     Map<SwitchId, Switch> switches;
     Map<SwitchId, SwitchProperties> switchProperties;
+    Map<SwitchId, Set<Integer>> switchIslPorts;
+    KildaFeatureToggles featureToggles;
 
     @Override
     public Flow getFlow(PathId pathId) {
@@ -73,6 +77,15 @@ public class InMemoryDataAdapter implements DataAdapter {
         FlowTransitEncapsulation result = transitEncapsulations.get(pathId);
         if (result == null) {
             throw new IllegalArgumentException(format("Transit encapsulation for path id '%s' not found.", pathId));
+        }
+        return result;
+    }
+
+    @Override
+    public Set<Integer> getSwitchIslPorts(SwitchId switchId) {
+        Set<Integer> result = switchIslPorts.get(switchId);
+        if (result == null) {
+            throw new IllegalStateException(format("Switch isl ports for '%s' not found.", switchId));
         }
         return result;
     }

@@ -599,10 +599,9 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def involvedSwitches = [fl1SwPair.src, fl1SwPair.dst, fl2SwPair.src, fl2SwPair.dst]*.dpId.unique()
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             involvedSwitches.each { swId ->
-                northbound.validateSwitch(swId).verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                northbound.validateSwitch(swId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
             }
         }
-        def switchesAreValid = true
 
         and: "server42 stats are available for the flow2 in the forward direction"
         //TODO(andriidovhan) it should be reworked,
@@ -631,15 +630,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         flow2 && flowHelperV2.deleteFlow(flow2.flowId)
         flowRttFeatureStartState && changeFlowRttToggle(flowRttFeatureStartState)
         fl1SwPair && changeFlowRttSwitch(fl1SwPair.src, true)
-        if (!switchesAreValid) {
-            involvedSwitches.each { northbound.synchronizeSwitch(it, true) }
-            Wrappers.wait(RULES_INSTALLATION_TIME) {
-                involvedSwitches.each { swId ->
-                    assert northbound.validateSwitch(swId).verifyRuleSectionsAreEmpty(
-                            swId, ["missing", "excess", "misconfigured"])
-                }
-            }
-        }
     }
 
     @Tidy
@@ -763,15 +753,13 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         and: "The src switch is valid"
         [switchPair.src, switchPair.dst].each {
             with(northbound.validateSwitch(it.dpId)) {
-                it.verifyRuleSectionsAreEmpty(switchPair.src.dpId, ["missing", "misconfigured", "excess"])
-                it.verifyMeterSectionsAreEmpty(switchPair.src.dpId, ["missing", "misconfigured", "excess"])
+                it.verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
+                it.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
             }
         }
-        def switchesAreValid = true
 
         cleanup: "Revert system to original state"
         revertToOrigin([flow], flowRttFeatureStartState, initialSwitchRtt)
-        !switchesAreValid && [switchPair.src, switchPair.dst].each { northbound.synchronizeSwitch(it.dpId, true) }
 
         where:
         data << [
@@ -833,8 +821,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "The src switch is valid"
         with(northbound.validateSwitch(switchPair.src.dpId)) {
-            it.verifyRuleSectionsAreEmpty(switchPair.src.dpId)
-            it.verifyMeterSectionsAreEmpty(switchPair.src.dpId)
+            it.verifyRuleSectionsAreEmpty()
+            it.verifyMeterSectionsAreEmpty()
         }
 
         when: "Create a flow on the given switch pair"
@@ -875,10 +863,9 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "The src switch is valid"
         with(northbound.validateSwitch(switchPair.src.dpId)) {
-            it.verifyRuleSectionsAreEmpty(switchPair.src.dpId, ["missing", "misconfigured", "excess"])
-            it.verifyMeterSectionsAreEmpty(switchPair.src.dpId, ["missing", "misconfigured", "excess"])
+            it.verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
+            it.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
         }
-        def swIsValid = true
 
         and: "Flow rtt stats are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
@@ -895,7 +882,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         flowRttFeatureStartState && changeFlowRttToggle(flowRttFeatureStartState)
         switchPair && changeFlowRttSwitch(switchPair.src, initialFlowRttSw)
         swPropIsWrong && northbound.updateSwitchProperties(switchPair.src.dpId, originalSrcSwPros)
-        !swIsValid && northbound.synchronizeSwitch(switchPair.src.dpId, true)
     }
 
 
