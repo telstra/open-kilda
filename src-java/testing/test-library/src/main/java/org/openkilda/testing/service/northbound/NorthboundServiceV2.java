@@ -44,7 +44,9 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPaths;
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult;
+import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 
 import java.util.Date;
@@ -152,4 +154,8 @@ public interface NorthboundServiceV2 {
     YFlowRerouteResult rerouteYFlow(String yFlowId);
 
     YFlowPaths getYFlowPaths(String yFlowId);
+
+    YFlowValidationResult validateYFlow(String yFlowId);
+
+    YFlowSyncResult synchronizeYFlow(String yFlowId);
 }
