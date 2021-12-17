@@ -183,7 +183,7 @@ public class YFlowUpdateService
             YFlow yFlow = yFlowRepository.findById(request.getYFlowId()).orElse(null);
             target = YFlowRequestMapper.INSTANCE.toYFlowRequest(yFlow);
         } else {
-            throw new FlowProcessingException(ErrorType.DATA_INVALID, "Need to specify the y-flow id");
+            throw new FlowProcessingException(ErrorType.REQUEST_INVALID, "Need to specify the y-flow id");
         }
 
         if (target == null) {
@@ -278,31 +278,11 @@ public class YFlowUpdateService
 
                     Optional.ofNullable(subFlowPartialUpdate.getDescription())
                             .ifPresent(subFlow::setDescription);
+                    subFlows.add(subFlow);
                 } else {
-                    SubFlowDto.SubFlowDtoBuilder subFlowBuilder = SubFlowDto.builder();
-                    if (subFlowPartialUpdate.getEndpoint() != null) {
-                        int portNumber = Optional.ofNullable(subFlowPartialUpdate.getEndpoint().getPortNumber())
-                                .orElse(0);
-                        int vlanId = Optional.ofNullable(subFlowPartialUpdate.getEndpoint().getVlanId()).orElse(0);
-                        int innerVlanId = Optional.ofNullable(subFlowPartialUpdate.getEndpoint().getInnerVlanId())
-                                .orElse(0);
-                        subFlowBuilder.endpoint(new FlowEndpoint(subFlowPartialUpdate.getEndpoint().getSwitchId(),
-                                portNumber, vlanId, innerVlanId));
-                    }
-
-                    if (subFlowPartialUpdate.getSharedEndpoint() != null) {
-                        int vlanId = Optional.ofNullable(subFlowPartialUpdate.getSharedEndpoint().getVlanId())
-                                .orElse(0);
-                        int innerVlanId = Optional.ofNullable(subFlowPartialUpdate.getSharedEndpoint().getInnerVlanId())
-                                .orElse(0);
-                        subFlowBuilder.sharedEndpoint(new SubFlowSharedEndpointEncapsulation(vlanId, innerVlanId));
-                    }
-
-                    subFlowBuilder.description(subFlowPartialUpdate.getDescription());
-
-                    subFlow = subFlowBuilder.build();
+                    throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+                            format("There is no sub-flows with sub-flow id: %s", subFlowPartialUpdate.getFlowId()));
                 }
-                subFlows.add(subFlow);
             }
             target.setSubFlows(subFlows);
         }

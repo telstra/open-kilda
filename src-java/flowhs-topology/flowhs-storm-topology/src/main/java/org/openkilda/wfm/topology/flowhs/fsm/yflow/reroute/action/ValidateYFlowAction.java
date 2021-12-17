@@ -40,8 +40,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
-import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources.EndpointResources;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -119,21 +117,6 @@ public class ValidateYFlowAction extends NbTrackableAction<YFlowRerouteFsm, Stat
                 .map(Flow::getFlowId)
                 .collect(Collectors.toSet());
         stateMachine.setTargetSubFlowIds(affectedFlowIds);
-
-        YFlowResources oldYFlowResources = new YFlowResources();
-        oldYFlowResources.setMainPathYPointResources(EndpointResources.builder()
-                .endpoint(yFlow.getYPoint())
-                .meterId(yFlow.getMeterId())
-                .build());
-        oldYFlowResources.setProtectedPathYPointResources(EndpointResources.builder()
-                .endpoint(yFlow.getProtectedPathYPoint())
-                .meterId(yFlow.getProtectedPathMeterId())
-                .build());
-        oldYFlowResources.setSharedEndpointResources(EndpointResources.builder()
-                .endpoint(yFlow.getSharedEndpoint().getSwitchId())
-                .meterId(yFlow.getSharedEndpointMeterId())
-                .build());
-        stateMachine.setOldResources(oldYFlowResources);
 
         stateMachine.saveNewEventToHistory("Y-flow was validated successfully", FlowEventData.Event.REROUTE);
 
