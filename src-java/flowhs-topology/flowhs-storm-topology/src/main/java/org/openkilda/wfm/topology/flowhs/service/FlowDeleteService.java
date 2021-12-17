@@ -57,15 +57,15 @@ public class FlowDeleteService extends FlowProcessingWithEventSupportService<Flo
             sendForbiddenSubFlowOperationToNorthbound(flowId, commandContext);
             return;
         }
-        startFlowDeletion(key, commandContext, flowId, true);
+        startFlowDeletion(key, commandContext, flowId);
     }
 
     /**
      * Start flow deletion of the flow.
      */
-    public void startFlowDeletion(CommandContext commandContext, String flowId, boolean allowNorthboundResponse) {
+    public void startFlowDeletion(CommandContext commandContext, String flowId) {
         try {
-            startFlowDeletion(flowId, commandContext, flowId, allowNorthboundResponse);
+            startFlowDeletion(flowId, commandContext, flowId);
         } catch (DuplicateKeyException e) {
             throw new FlowProcessingException(ErrorType.INTERNAL_ERROR,
                     format("Failed to initiate flow deletion for %s / %s: %s", flowId, e.getKey(),
@@ -73,23 +73,20 @@ public class FlowDeleteService extends FlowProcessingWithEventSupportService<Flo
         }
     }
 
-    private void startFlowDeletion(String key, CommandContext commandContext, String flowId,
-                                   boolean allowNorthboundResponse) throws DuplicateKeyException {
+    private void startFlowDeletion(String key, CommandContext commandContext, String flowId)
+            throws DuplicateKeyException {
         log.debug("Handling flow deletion request with key {} and flow ID: {}", key, flowId);
 
         if (hasRegisteredFsmWithKey(key)) {
             throw new DuplicateKeyException(key, "There's another active FSM with the same key");
         }
         if (hasRegisteredFsmWithFlowId(flowId)) {
-            if (allowNorthboundResponse) {
-                sendErrorResponseToNorthbound(ErrorType.REQUEST_INVALID, "Could not delete flow",
-                        format("Flow %s is already deleting now", flowId), commandContext);
-            }
+            sendErrorResponseToNorthbound(ErrorType.REQUEST_INVALID, "Could not delete flow",
+                    format("Flow %s is already deleting now", flowId), commandContext);
             throw new DuplicateKeyException(key, "There's another active FSM for the same flowId " + flowId);
         }
 
-        FlowDeleteFsm fsm = fsmFactory.newInstance(commandContext, flowId, allowNorthboundResponse,
-                eventListeners);
+        FlowDeleteFsm fsm = fsmFactory.newInstance(commandContext, flowId, eventListeners);
         registerFsm(key, fsm);
 
         fsm.start();

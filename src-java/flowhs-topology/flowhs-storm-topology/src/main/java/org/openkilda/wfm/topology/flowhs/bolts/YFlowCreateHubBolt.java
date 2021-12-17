@@ -64,8 +64,10 @@ import org.openkilda.wfm.topology.flowhs.service.YFlowCreateHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.YFlowCreateService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.experimental.Delegate;
 import lombok.experimental.SuperBuilder;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -108,11 +110,15 @@ public class YFlowCreateHubBolt extends HubBolt
         PathComputer pathComputer =
                 new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
 
-        flowCreateService = new FlowCreateService(this, persistenceManager, pathComputer, resourcesManager,
+        flowCreateService = new FlowCreateService(
+                new FlowCreateHubCarrierIsolatingResponsesAndLifecycleEvents(this),
+                persistenceManager, pathComputer, resourcesManager,
                 flowCreateConfig.getFlowCreationRetriesLimit(), flowCreateConfig.getPathAllocationRetriesLimit(),
                 flowCreateConfig.getPathAllocationRetryDelay(), flowCreateConfig.getSpeakerCommandRetriesLimit());
 
-        flowDeleteService = new FlowDeleteService(this, persistenceManager, resourcesManager,
+        flowDeleteService = new FlowDeleteService(
+                new FlowDeleteHubCarrierIsolatingResponsesAndLifecycleEvents(this),
+                persistenceManager, resourcesManager,
                 yFlowCreateConfig.getSpeakerCommandRetriesLimit());
 
         yFlowCreateService = new YFlowCreateService(this, persistenceManager, pathComputer, resourcesManager,
@@ -268,5 +274,43 @@ public class YFlowCreateHubBolt extends HubBolt
             this.resourceAllocationRetriesLimit = resourceAllocationRetriesLimit;
             this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
         }
+    }
+
+    @AllArgsConstructor
+    private static class FlowCreateHubCarrierIsolatingResponsesAndLifecycleEvents implements FlowCreateHubCarrier {
+        @Delegate(excludes = CarrierMethodsToIsolateResponsesAndLifecycleEvents.class)
+        FlowCreateHubCarrier delegate;
+
+        @Override
+        public void sendNorthboundResponse(Message message) {
+            // Isolating, so nothing to do.
+        }
+
+        @Override
+        public void sendInactive() {
+            // Isolating, so nothing to do.
+        }
+    }
+
+    @AllArgsConstructor
+    private static class FlowDeleteHubCarrierIsolatingResponsesAndLifecycleEvents implements FlowDeleteHubCarrier {
+        @Delegate(excludes = CarrierMethodsToIsolateResponsesAndLifecycleEvents.class)
+        FlowDeleteHubCarrier delegate;
+
+        @Override
+        public void sendNorthboundResponse(Message message) {
+            // Isolating, so nothing to do.
+        }
+
+        @Override
+        public void sendInactive() {
+            // Isolating, so nothing to do.
+        }
+    }
+
+    private interface CarrierMethodsToIsolateResponsesAndLifecycleEvents {
+        void sendNorthboundResponse(Message message);
+
+        void sendInactive();
     }
 }

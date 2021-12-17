@@ -111,8 +111,8 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
     private FlowLoopOperation flowLoopOperation = FlowLoopOperation.NONE;
 
     public FlowUpdateFsm(CommandContext commandContext, @NonNull FlowUpdateHubCarrier carrier, String flowId,
-                         boolean allowNorthboundResponse, Collection<FlowUpdateEventListener> eventListeners) {
-        super(commandContext, carrier, flowId, allowNorthboundResponse, eventListeners);
+                         Collection<FlowUpdateEventListener> eventListeners) {
+        super(commandContext, carrier, flowId, eventListeners);
     }
 
     @Override
@@ -170,7 +170,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
 
             builder = StateMachineBuilderFactory.create(FlowUpdateFsm.class, State.class, Event.class,
                     FlowUpdateContext.class, CommandContext.class, FlowUpdateHubCarrier.class, String.class,
-                    boolean.class, Collection.class);
+                    Collection.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
             final ReportErrorAction<FlowUpdateFsm, State, Event, FlowUpdateContext>
@@ -437,10 +437,10 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public FlowUpdateFsm newInstance(String flowId, CommandContext commandContext, boolean allowNorthboundResponse,
+        public FlowUpdateFsm newInstance(String flowId, CommandContext commandContext,
                                          Collection<FlowUpdateEventListener> eventListeners) {
             FlowUpdateFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
-                    allowNorthboundResponse, eventListeners);
+                    eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("FlowUpdateFsm, transition to {} on {}", event.getTargetState(), event.getCause()));

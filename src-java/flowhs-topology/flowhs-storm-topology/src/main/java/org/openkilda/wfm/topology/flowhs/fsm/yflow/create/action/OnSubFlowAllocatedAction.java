@@ -112,7 +112,7 @@ public class OnSubFlowAllocatedAction extends NbTrackableAction<YFlowCreateFsm, 
                             listener.onSubFlowProcessingStart(yFlowId, requestedFlowId));
                     CommandContext flowContext = stateMachine.getCommandContext().fork(requestedFlowId);
                     requestedFlow.setAffinityFlowId(stateMachine.getMainAffinityFlowId());
-                    flowCreateService.startFlowCreation(flowContext, requestedFlow, false, yFlowId);
+                    flowCreateService.startFlowCreation(flowContext, requestedFlow, yFlowId);
                 }
             });
         }

@@ -62,7 +62,7 @@ public class FlowRerouteService extends FlowProcessingWithEventSupportService<Fl
             return;
         }
 
-        startFlowRerouting(key, reroute, commandContext, true, reroute.getFlowId());
+        startFlowRerouting(key, reroute, commandContext, reroute.getFlowId());
     }
 
     /**
@@ -70,11 +70,11 @@ public class FlowRerouteService extends FlowProcessingWithEventSupportService<Fl
      */
     public void startFlowRerouting(FlowRerouteRequest reroute, CommandContext commandContext,
                                    String sharedBandwidthGroupId) {
-        startFlowRerouting(reroute.getFlowId(), reroute, commandContext, false, sharedBandwidthGroupId);
+        startFlowRerouting(reroute.getFlowId(), reroute, commandContext, sharedBandwidthGroupId);
     }
 
     private void startFlowRerouting(String key, FlowRerouteRequest reroute, CommandContext commandContext,
-                                   boolean allowNorthboundResponse, String sharedBandwidthGroupId) {
+                                   String sharedBandwidthGroupId) {
         String flowId = reroute.getFlowId();
         log.debug("Handling flow reroute request with key {} and flow ID: {}", key, flowId);
 
@@ -92,7 +92,7 @@ public class FlowRerouteService extends FlowProcessingWithEventSupportService<Fl
             return;
         }
 
-        FlowRerouteFsm fsm = fsmFactory.newInstance(flowId, commandContext, allowNorthboundResponse, eventListeners);
+        FlowRerouteFsm fsm = fsmFactory.newInstance(flowId, commandContext, eventListeners);
         fsm.setSharedBandwidthGroupId(sharedBandwidthGroupId);
         registerFsm(key, fsm);
 

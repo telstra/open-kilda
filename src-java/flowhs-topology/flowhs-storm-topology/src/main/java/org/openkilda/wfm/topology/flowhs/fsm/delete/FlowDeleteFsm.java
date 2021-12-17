@@ -91,9 +91,8 @@ public final class FlowDeleteFsm extends FlowProcessingWithEventSupportFsm<FlowD
     private String errorReason;
 
     public FlowDeleteFsm(CommandContext commandContext, @NonNull FlowDeleteHubCarrier carrier, String flowId,
-                         boolean allowNorthboundResponse,
                          @NonNull Collection<FlowDeleteEventListener> eventListeners) {
-        super(commandContext, carrier, allowNorthboundResponse, eventListeners);
+        super(commandContext, carrier, eventListeners);
         this.flowId = flowId;
     }
 
@@ -167,7 +166,7 @@ public final class FlowDeleteFsm extends FlowProcessingWithEventSupportFsm<FlowD
 
             builder = StateMachineBuilderFactory.create(FlowDeleteFsm.class, State.class, Event.class,
                     FlowDeleteContext.class, CommandContext.class, FlowDeleteHubCarrier.class, String.class,
-                    boolean.class, Collection.class);
+                    Collection.class);
 
             final FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
             final ReportErrorAction<FlowDeleteFsm, State, Event, FlowDeleteContext>
@@ -249,10 +248,10 @@ public final class FlowDeleteFsm extends FlowProcessingWithEventSupportFsm<FlowD
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public FlowDeleteFsm newInstance(CommandContext commandContext, String flowId, boolean allowNorthboundResponse,
+        public FlowDeleteFsm newInstance(CommandContext commandContext, String flowId,
                                          @NonNull Collection<FlowDeleteEventListener> eventListeners) {
             FlowDeleteFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
-                    allowNorthboundResponse, eventListeners);
+                    eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("FlowDeleteFsm, transition to {} on {}", event.getTargetState(), event.getCause()));

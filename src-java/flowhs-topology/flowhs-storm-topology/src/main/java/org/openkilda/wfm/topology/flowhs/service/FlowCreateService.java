@@ -72,17 +72,16 @@ public class FlowCreateService extends FlowProcessingWithEventSupportService<Flo
     public void handleRequest(String key, CommandContext commandContext, FlowRequest request)
             throws DuplicateKeyException {
         RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
-        startFlowCreation(key, commandContext, requestedFlow, true, requestedFlow.getFlowId());
+        startFlowCreation(key, commandContext, requestedFlow, requestedFlow.getFlowId());
     }
 
     /**
      * Start flow creation for the provided information.
      */
     public void startFlowCreation(CommandContext commandContext, RequestedFlow requestedFlow,
-                                  boolean allowNorthboundResponse, String sharedBandwidthGroupId) {
+                                  String sharedBandwidthGroupId) {
         try {
-            startFlowCreation(requestedFlow.getFlowId(), commandContext, requestedFlow,
-                    allowNorthboundResponse, sharedBandwidthGroupId);
+            startFlowCreation(requestedFlow.getFlowId(), commandContext, requestedFlow, sharedBandwidthGroupId);
         } catch (DuplicateKeyException e) {
             throw new FlowProcessingException(ErrorType.INTERNAL_ERROR,
                     format("Failed to initiate flow creation for %s / %s: %s", requestedFlow.getFlowId(), e.getKey(),
@@ -91,7 +90,7 @@ public class FlowCreateService extends FlowProcessingWithEventSupportService<Flo
     }
 
     private void startFlowCreation(String key, CommandContext commandContext, RequestedFlow requestedFlow,
-                                   boolean allowNorthboundResponse, String sharedBandwidthGroupId)
+                                   String sharedBandwidthGroupId)
             throws DuplicateKeyException {
         String flowId = requestedFlow.getFlowId();
         log.debug("Handling flow create request with key {} and flow ID: {}", key, flowId);
@@ -100,15 +99,12 @@ public class FlowCreateService extends FlowProcessingWithEventSupportService<Flo
             throw new DuplicateKeyException(key, "There's another active FSM with the same key");
         }
         if (hasRegisteredFsmWithFlowId(flowId)) {
-            if (allowNorthboundResponse) {
-                sendErrorResponseToNorthbound(ErrorType.ALREADY_EXISTS, "Could not create flow",
-                        format("Flow %s is already creating now", flowId), commandContext);
-            }
+            sendErrorResponseToNorthbound(ErrorType.ALREADY_EXISTS, "Could not create flow",
+                    format("Flow %s is already creating now", flowId), commandContext);
             throw new DuplicateKeyException(key, "There's another active FSM for the same flowId " + flowId);
         }
 
-        FlowCreateFsm fsm = fsmFactory.newInstance(commandContext, flowId, allowNorthboundResponse,
-                eventListeners);
+        FlowCreateFsm fsm = fsmFactory.newInstance(commandContext, flowId, eventListeners);
         fsm.setSharedBandwidthGroupId(sharedBandwidthGroupId);
         registerFsm(key, fsm);
 

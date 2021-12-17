@@ -141,9 +141,6 @@ public class YFlowDeleteServiceTest extends AbstractYFlowTest {
             SpeakerFlowSegmentResponse commandResponse = buildSuccessfulSpeakerResponse(speakerRequest);
             handleAsyncResponse(service, yFlowRequest.getYFlowId(), commandResponse);
         });
-
-        // FlowDelete service / FSM mustn't emit anything to NB
-        verifyNoNorthboundResponse(flowDeleteHubCarrier);
     }
 
     private void handleAsyncResponse(YFlowDeleteService service,

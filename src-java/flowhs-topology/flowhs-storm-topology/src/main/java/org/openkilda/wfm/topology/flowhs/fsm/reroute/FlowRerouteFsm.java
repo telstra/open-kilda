@@ -117,8 +117,8 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
     private RerouteError rerouteError;
 
     public FlowRerouteFsm(CommandContext commandContext, @NonNull FlowRerouteHubCarrier carrier, String flowId,
-                          boolean allowNorthboundResponse, Collection<FlowRerouteEventListener> eventListeners) {
-        super(commandContext, carrier, flowId, allowNorthboundResponse, eventListeners);
+                          Collection<FlowRerouteEventListener> eventListeners) {
+        super(commandContext, carrier, flowId, eventListeners);
     }
 
     @Override
@@ -195,7 +195,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
             builder = StateMachineBuilderFactory.create(FlowRerouteFsm.class, State.class, Event.class,
                     FlowRerouteContext.class, CommandContext.class, FlowRerouteHubCarrier.class, String.class,
-                    boolean.class, Collection.class);
+                    Collection.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
             final ReportErrorAction<FlowRerouteFsm, State, Event, FlowRerouteContext>
@@ -450,10 +450,10 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger, carrier));
         }
 
-        public FlowRerouteFsm newInstance(String flowId, CommandContext commandContext, boolean allowNorthboundResponse,
+        public FlowRerouteFsm newInstance(String flowId, CommandContext commandContext,
                                           Collection<FlowRerouteEventListener> eventListeners) {
             FlowRerouteFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
-                    allowNorthboundResponse, eventListeners);
+                    eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("FlowRerouteFsm, transition to {} on {}", event.getTargetState(), event.getCause()));

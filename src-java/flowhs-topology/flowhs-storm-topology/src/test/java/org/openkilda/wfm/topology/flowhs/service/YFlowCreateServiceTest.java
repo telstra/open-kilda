@@ -210,8 +210,6 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
         handleSpeakerCommandsAndFailInstall(service, request.getYFlowId(), "test_successful_yflow");
 
         // then
-        verifyNoNorthboundResponse(flowCreateHubCarrier);
-        verifyNoNorthboundResponse(flowDeleteHubCarrier);
         verifyNoSpeakerInteraction(yFlowCreateHubCarrier);
         verifyYFlowIsAbsent(request.getYFlowId());
     }
@@ -236,8 +234,6 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
         handleSpeakerCommandsAndTimeoutInstall(service, request.getYFlowId(), "test_successful_yflow");
 
         // then
-        verifyNoNorthboundResponse(flowCreateHubCarrier);
-        verifyNoNorthboundResponse(flowDeleteHubCarrier);
         verifyNoSpeakerInteraction(yFlowCreateHubCarrier);
         verifyYFlowIsAbsent(request.getYFlowId());
     }
@@ -262,8 +258,6 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
         handleSpeakerCommandsAndFailVerify(service, request.getYFlowId(), "test_successful_yflow");
 
         // then
-        verifyNoNorthboundResponse(flowCreateHubCarrier);
-        verifyNoNorthboundResponse(flowDeleteHubCarrier);
         verifyNoSpeakerInteraction(yFlowCreateHubCarrier);
         verifyYFlowIsAbsent(request.getYFlowId());
     }
@@ -288,8 +282,6 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
         handleSpeakerCommandsAndTimeoutVerify(service, request.getYFlowId(), "test_successful_yflow");
 
         // then
-        verifyNoNorthboundResponse(flowCreateHubCarrier);
-        verifyNoNorthboundResponse(flowDeleteHubCarrier);
         verifyNoSpeakerInteraction(yFlowCreateHubCarrier);
         verifyYFlowIsAbsent(request.getYFlowId());
     }
@@ -304,10 +296,6 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
             SpeakerFlowSegmentResponse commandResponse = buildSuccessfulSpeakerResponse(speakerRequest);
             handleAsyncResponse(service, yFlowRequest.getYFlowId(), commandResponse);
         });
-
-        // FlowCreate & FlowDelete service / FSM mustn't emit anything to NB
-        verifyNoNorthboundResponse(flowCreateHubCarrier);
-        verifyNoNorthboundResponse(flowDeleteHubCarrier);
     }
 
     private void handleAsyncResponse(YFlowCreateService yFlowCreateService,

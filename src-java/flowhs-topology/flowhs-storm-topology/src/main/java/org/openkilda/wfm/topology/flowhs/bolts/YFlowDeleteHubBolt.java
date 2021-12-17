@@ -56,7 +56,9 @@ import org.openkilda.wfm.topology.flowhs.service.YFlowDeleteHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.YFlowDeleteService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.experimental.Delegate;
 import lombok.experimental.SuperBuilder;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -89,7 +91,9 @@ public class YFlowDeleteHubBolt extends HubBolt
     protected void init() {
         FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
 
-        flowDeleteService = new FlowDeleteService(this, persistenceManager, resourcesManager,
+        flowDeleteService = new FlowDeleteService(
+                new FlowDeleteHubCarrierIsolatingResponsesAndLifecycleEvents(this),
+                persistenceManager, resourcesManager,
                 yFlowDeleteConfig.getSpeakerCommandRetriesLimit());
 
         yFlowDeleteService = new YFlowDeleteService(this, persistenceManager, resourcesManager,
@@ -236,5 +240,27 @@ public class YFlowDeleteHubBolt extends HubBolt
             super(requestSenderComponent, workerComponent, lifeCycleEventComponent, timeoutMs, autoAck);
             this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
         }
+    }
+
+    @AllArgsConstructor
+    private static class FlowDeleteHubCarrierIsolatingResponsesAndLifecycleEvents implements FlowDeleteHubCarrier {
+        @Delegate(excludes = CarrierMethodsToIsolateResponsesAndLifecycleEvents.class)
+        FlowDeleteHubCarrier delegate;
+
+        @Override
+        public void sendNorthboundResponse(Message message) {
+            // Isolating, so nothing to do.
+        }
+
+        @Override
+        public void sendInactive() {
+            // Isolating, so nothing to do.
+        }
+    }
+
+    private interface CarrierMethodsToIsolateResponsesAndLifecycleEvents {
+        void sendNorthboundResponse(Message message);
+
+        void sendInactive();
     }
 }

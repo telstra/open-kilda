@@ -265,7 +265,6 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest {
 
         handleSpeakerCommandsAndTimeoutInstall(service, request.getYFlowId(), "test_successful_yflow");
 
-        verifyNoNorthboundResponse(flowUpdateHubCarrier);
         verifyNoSpeakerInteraction(yFlowUpdateHubCarrier);
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
 
@@ -367,10 +366,6 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest {
             SpeakerFlowSegmentResponse commandResponse = buildSuccessfulSpeakerResponse(speakerRequest);
             handleAsyncResponse(service, yFlowRequest.getYFlowId(), commandResponse);
         });
-
-        // FlowCreate & FlowDelete service / FSM mustn't emit anything to NB
-        verifyNoNorthboundResponse(flowCreateHubCarrier);
-        verifyNoNorthboundResponse(flowDeleteHubCarrier);
     }
 
     private void processUpdateRequest(YFlowRequest yFlowRequest) throws DuplicateKeyException {
@@ -388,8 +383,6 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest {
             SpeakerFlowSegmentResponse commandResponse = buildSuccessfulSpeakerResponse(speakerRequest);
             handleAsyncResponse(service, yFlowRequest.getYFlowId(), commandResponse);
         });
-
-        verifyNoNorthboundResponse(flowUpdateHubCarrier);
     }
 
     private void processUpdateRequestAndSpeakerCommands(YFlowPartialUpdateRequest request)
@@ -404,8 +397,6 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest {
             SpeakerFlowSegmentResponse commandResponse = buildSuccessfulSpeakerResponse(speakerRequest);
             handleAsyncResponse(service, request.getYFlowId(), commandResponse);
         });
-
-        verifyNoNorthboundResponse(flowUpdateHubCarrier);
     }
 
     private void processUpdateRequestAndSpeakerCommands(YFlowRequest request, FlowStatus expectedStatus,
@@ -420,8 +411,6 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest {
                 expectedFirstSubFlowStatus, expectedSecondSubFlowStatus);
 
         handleSpeakerCommandsAndTimeoutInstall(service, request.getYFlowId(), "test_successful_yflow");
-
-        verifyNoNorthboundResponse(flowUpdateHubCarrier);
     }
 
     private void handleAsyncResponse(YFlowCreateService yFlowCreateService,
