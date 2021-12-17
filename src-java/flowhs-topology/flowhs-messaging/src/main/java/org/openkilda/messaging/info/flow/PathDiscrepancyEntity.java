@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.nbtopology.response;
+package org.openkilda.messaging.info.flow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;

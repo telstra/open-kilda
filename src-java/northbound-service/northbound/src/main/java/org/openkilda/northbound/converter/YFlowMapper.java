@@ -25,6 +25,7 @@ import org.openkilda.messaging.command.yflow.YFlowPartialUpdateRequest;
 import org.openkilda.messaging.command.yflow.YFlowPathsResponse;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.messaging.command.yflow.YFlowRerouteResponse;
+import org.openkilda.messaging.command.yflow.YFlowValidationResponse;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
@@ -44,7 +45,9 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowPaths;
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpoint;
 import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpointEncapsulation;
+import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -130,4 +133,9 @@ public abstract class YFlowMapper {
     public abstract SubFlowsDump toSubFlowsDump(SubFlowsResponse source);
 
     public abstract YFlowRerouteResult toRerouteResult(YFlowRerouteResponse source);
+
+    @Mapping(target = "yFlowValidationResult", source = "YFlowValidationResult")
+    public abstract YFlowValidationResult toValidationResult(YFlowValidationResponse source);
+
+    public abstract YFlowSyncResult toSyncResult(YFlowRerouteResponse source);
 }

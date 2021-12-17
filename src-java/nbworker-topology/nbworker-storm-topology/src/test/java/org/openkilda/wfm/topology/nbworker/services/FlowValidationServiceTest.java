@@ -19,10 +19,10 @@ import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.openkilda.messaging.info.flow.FlowValidationResponse;
+import org.openkilda.messaging.info.flow.PathDiscrepancyEntity;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
-import org.openkilda.messaging.nbtopology.response.PathDiscrepancyEntity;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;

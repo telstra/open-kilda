@@ -15,11 +15,11 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import org.openkilda.messaging.info.flow.FlowValidationResponse;
+import org.openkilda.messaging.info.flow.PathDiscrepancyEntity;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchGroupEntries;
-import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
-import org.openkilda.messaging.nbtopology.response.PathDiscrepancyEntity;
 import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;

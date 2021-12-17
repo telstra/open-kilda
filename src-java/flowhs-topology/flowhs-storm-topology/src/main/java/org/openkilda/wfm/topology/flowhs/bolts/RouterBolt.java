@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.bolts;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptySet;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_CREATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_CREATE_MIRROR_POINT_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_DELETE_HUB;
@@ -50,6 +51,8 @@ import org.openkilda.messaging.command.yflow.YFlowPathsReadRequest;
 import org.openkilda.messaging.command.yflow.YFlowReadRequest;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
+import org.openkilda.messaging.command.yflow.YFlowSyncRequest;
+import org.openkilda.messaging.command.yflow.YFlowValidationRequest;
 import org.openkilda.messaging.command.yflow.YFlowsDumpRequest;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.share.zk.ZkStreams;
@@ -184,6 +187,17 @@ public class RouterBolt extends AbstractBolt {
             } else if (data instanceof SubFlowsReadRequest) {
                 log.debug("Received a y-flow sub-flows request {} with key {}", data, key);
                 emitWithContext(ROUTER_TO_YFLOW_READ.name(), input, new Values(key, data));
+            } else if (data instanceof YFlowValidationRequest) {
+                YFlowValidationRequest request = (YFlowValidationRequest) data;
+                log.debug("Received a y-flow validation request {} with key {}", request, key);
+                //TODO: implement
+            } else if (data instanceof YFlowSyncRequest) {
+                YFlowSyncRequest request = (YFlowSyncRequest) data;
+                log.debug("Received a y-flow synchronization request {} with key {}", request, key);
+                YFlowRerouteRequest rerouteRequest = new YFlowRerouteRequest(request.getYFlowId(), emptySet(),
+                        true, "initiated via synchronization request", false);
+                emitWithContext(ROUTER_TO_YFLOW_REROUTE_HUB.name(), input,
+                        new Values(key, rerouteRequest.getYFlowId(), rerouteRequest));
             } else {
                 unhandledInput(input);
             }
