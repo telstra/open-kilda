@@ -21,16 +21,16 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 @Slf4j
-public class OnFinishedWithErrorAction extends AnonymousAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+public class OnFinishedWithErrorAction extends HistoryRecordingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public OnFinishedWithErrorAction(FlowOperationsDashboardLogger dashboardLogger) {
@@ -38,7 +38,7 @@ public class OnFinishedWithErrorAction extends AnonymousAction<FlowUpdateFsm, St
     }
 
     @Override
-    public void execute(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
+    protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         dashboardLogger.onFailedFlowUpdate(stateMachine.getFlowId(), stateMachine.getErrorReason());
         stateMachine.saveActionToHistory("Failed to update the flow", stateMachine.getErrorReason());
 

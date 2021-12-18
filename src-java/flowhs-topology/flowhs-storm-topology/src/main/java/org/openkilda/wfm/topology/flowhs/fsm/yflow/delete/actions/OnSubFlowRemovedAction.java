@@ -20,7 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.model.YFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm.Event;
@@ -30,7 +30,8 @@ import org.openkilda.wfm.topology.flowhs.service.FlowDeleteService;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class OnSubFlowRemovedAction extends YFlowProcessingAction<YFlowDeleteFsm, State, Event, YFlowDeleteContext> {
+public class OnSubFlowRemovedAction extends
+        YFlowProcessingWithHistorySupportAction<YFlowDeleteFsm, State, Event, YFlowDeleteContext> {
     private final FlowDeleteService flowDeleteService;
 
     public OnSubFlowRemovedAction(PersistenceManager persistenceManager, FlowDeleteService flowDeleteService) {

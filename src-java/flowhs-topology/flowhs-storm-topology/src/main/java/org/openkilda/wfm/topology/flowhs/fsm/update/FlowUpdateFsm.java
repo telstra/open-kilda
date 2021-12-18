@@ -110,45 +110,15 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
     private EndpointUpdate endpointUpdate = EndpointUpdate.NONE;
     private FlowLoopOperation flowLoopOperation = FlowLoopOperation.NONE;
 
-    public FlowUpdateFsm(CommandContext commandContext, @NonNull FlowUpdateHubCarrier carrier, String flowId,
-                         Collection<FlowUpdateEventListener> eventListeners) {
-        super(commandContext, carrier, flowId, eventListeners);
-    }
-
-    @Override
-    public void fireNext(FlowUpdateContext context) {
-        fire(Event.NEXT, context);
-    }
-
-    @Override
-    public void fireError(String errorReason) {
-        fireError(Event.ERROR, errorReason);
-    }
-
-    private void fireError(Event errorEvent, String errorReason) {
-        setErrorReason(errorReason);
-        fire(errorEvent);
-    }
-
-    @Override
-    public void setErrorReason(String errorReason) {
-        if (this.errorReason != null) {
-            log.error("Subsequent error fired: " + errorReason);
-        } else {
-            this.errorReason = errorReason;
-        }
+    public FlowUpdateFsm(@NonNull CommandContext commandContext, @NonNull FlowUpdateHubCarrier carrier,
+                         @NonNull String flowId,
+                         @NonNull Collection<FlowUpdateEventListener> eventListeners) {
+        super(Event.NEXT, Event.ERROR, commandContext, carrier, flowId, eventListeners);
     }
 
     @Override
     public void fireNoPathFound(String errorReason) {
         fireError(Event.NO_PATH_FOUND, errorReason);
-    }
-
-    @Override
-    public void reportError(Event event) {
-        if (Event.TIMEOUT == event) {
-            reportGlobalTimeout();
-        }
     }
 
     @Override
@@ -164,8 +134,9 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
         private final StateMachineBuilder<FlowUpdateFsm, State, Event, FlowUpdateContext> builder;
         private final FlowUpdateHubCarrier carrier;
 
-        public Factory(FlowUpdateHubCarrier carrier, Config config, PersistenceManager persistenceManager,
-                       PathComputer pathComputer, FlowResourcesManager resourcesManager) {
+        public Factory(@NonNull FlowUpdateHubCarrier carrier, @NonNull Config config,
+                       @NonNull PersistenceManager persistenceManager,
+                       @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager resourcesManager) {
             this.carrier = carrier;
 
             builder = StateMachineBuilderFactory.create(FlowUpdateFsm.class, State.class, Event.class,
@@ -174,7 +145,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
             final ReportErrorAction<FlowUpdateFsm, State, Event, FlowUpdateContext>
-                    reportErrorAction = new ReportErrorAction<>();
+                    reportErrorAction = new ReportErrorAction<>(Event.TIMEOUT);
 
             builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
                     .perform(new ValidateFlowAction(persistenceManager, dashboardLogger));
@@ -437,8 +408,8 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public FlowUpdateFsm newInstance(String flowId, CommandContext commandContext,
-                                         Collection<FlowUpdateEventListener> eventListeners) {
+        public FlowUpdateFsm newInstance(@NonNull String flowId, @NonNull CommandContext commandContext,
+                                         @NonNull Collection<FlowUpdateEventListener> eventListeners) {
             FlowUpdateFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
                     eventListeners);
 

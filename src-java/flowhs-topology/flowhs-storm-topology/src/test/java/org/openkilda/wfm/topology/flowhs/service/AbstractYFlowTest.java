@@ -159,7 +159,7 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
     protected final String injectedErrorMessage = "Unit-test injected failure";
 
     @Mock
-    PathComputer pathComputer;
+    protected PathComputer pathComputer;
 
     final Queue<FlowSegmentRequest> requests = new ArrayDeque<>();
     final Map<SwitchId, Map<Cookie, FlowSegmentRequest>> installedSegments = new HashMap<>();

@@ -83,7 +83,7 @@ import java.util.function.Supplier;
  */
 @Slf4j
 public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E, C> extends
-        NbTrackableAction<T, S, E, C> {
+        NbTrackableWithHistorySupportAction<T, S, E, C> {
     private final int pathAllocationRetriesLimit;
     private final int pathAllocationRetryDelay;
     private final int resourceAllocationRetriesLimit;
@@ -95,11 +95,11 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
     protected final FlowPathBuilder flowPathBuilder;
     protected final FlowOperationsDashboardLogger dashboardLogger;
 
-    public BaseResourceAllocationAction(PersistenceManager persistenceManager,
-                                        int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
-                                        int resourceAllocationRetriesLimit,
-                                        PathComputer pathComputer, FlowResourcesManager resourcesManager,
-                                        FlowOperationsDashboardLogger dashboardLogger) {
+    protected BaseResourceAllocationAction(PersistenceManager persistenceManager,
+                                           int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
+                                           int resourceAllocationRetriesLimit,
+                                           PathComputer pathComputer, FlowResourcesManager resourcesManager,
+                                           FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager);
         this.pathAllocationRetriesLimit = pathAllocationRetriesLimit;
         this.pathAllocationRetryDelay = pathAllocationRetryDelay;
@@ -141,7 +141,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             stateMachine.fireNoPathFound(errorMessage);
 
             ErrorType errorType = ErrorType.NOT_FOUND;
-            Message message = buildErrorMessage(stateMachine, errorType, getGenericErrorMessage(), errorMessage);
+            Message message = stateMachine.buildErrorMessage(errorType, getGenericErrorMessage(), errorMessage);
             stateMachine.setOperationResultMessage(message);
 
             stateMachine.notifyEventListenersOnError(errorType, errorMessage);
@@ -152,7 +152,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             stateMachine.fireError(errorMessage);
 
             ErrorType errorType = ErrorType.INTERNAL_ERROR;
-            Message message = buildErrorMessage(stateMachine, errorType, getGenericErrorMessage(), errorMessage);
+            Message message = stateMachine.buildErrorMessage(errorType, getGenericErrorMessage(), errorMessage);
             stateMachine.setOperationResultMessage(message);
 
             stateMachine.notifyEventListenersOnError(errorType, errorMessage);
@@ -163,7 +163,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             stateMachine.fireError(errorMessage);
 
             ErrorType errorType = ErrorType.INTERNAL_ERROR;
-            Message message = buildErrorMessage(stateMachine, errorType, getGenericErrorMessage(), errorMessage);
+            Message message = stateMachine.buildErrorMessage(errorType, getGenericErrorMessage(), errorMessage);
             stateMachine.setOperationResultMessage(message);
 
             stateMachine.notifyEventListenersOnError(errorType, errorMessage);

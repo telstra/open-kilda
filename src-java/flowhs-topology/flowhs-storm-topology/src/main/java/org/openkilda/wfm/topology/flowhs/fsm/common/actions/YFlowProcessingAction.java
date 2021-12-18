@@ -20,52 +20,26 @@ import static java.lang.String.format;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.YFlow;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.common.YFlowProcessingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingFsm;
 
-import com.fasterxml.uuid.Generators;
-import com.fasterxml.uuid.NoArgGenerator;
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 @Slf4j
-public abstract class YFlowProcessingAction<T extends YFlowProcessingFsm<T, S, E, C, ?, ?>, S, E, C>
-        extends AnonymousAction<T, S, E, C> {
+public abstract class YFlowProcessingAction<T extends FlowProcessingFsm<T, S, E, C, ?>, S, E, C>
+        extends FlowProcessingAction<T, S, E, C> {
 
-    protected final NoArgGenerator commandIdGenerator = Generators.timeBasedGenerator();
-
-    protected final PersistenceManager persistenceManager;
     protected final TransactionManager transactionManager;
-    protected final FlowRepository flowRepository;
     protected final YFlowRepository yFlowRepository;
-    protected final KildaFeatureTogglesRepository featureTogglesRepository;
 
-    public YFlowProcessingAction(PersistenceManager persistenceManager) {
-        this.persistenceManager = persistenceManager;
+    protected YFlowProcessingAction(PersistenceManager persistenceManager) {
         this.transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.yFlowRepository = repositoryFactory.createYFlowRepository();
-        this.flowRepository = repositoryFactory.createFlowRepository();
-        this.featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
     }
-
-    @Override
-    public final void execute(S from, S to, E event, C context, T stateMachine) {
-        try {
-            perform(from, to, event, context, stateMachine);
-        } catch (Exception ex) {
-            String errorMessage = format("%s failed: %s", getClass().getSimpleName(), ex.getMessage());
-            stateMachine.saveErrorToHistory(errorMessage, ex);
-            stateMachine.fireError(errorMessage);
-        }
-    }
-
-    protected abstract void perform(S from, S to, E event, C context, T stateMachine);
 
     protected YFlow getYFlow(String yFlowId) {
         return yFlowRepository.findById(yFlowId)

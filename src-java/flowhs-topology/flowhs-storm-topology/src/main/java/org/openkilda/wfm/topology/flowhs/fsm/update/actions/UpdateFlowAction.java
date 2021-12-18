@@ -29,7 +29,7 @@ import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.EndpointUpdate;
@@ -45,7 +45,8 @@ import org.apache.storm.shade.com.google.common.base.Objects;
 import java.util.Optional;
 
 @Slf4j
-public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+public class UpdateFlowAction extends
+        NbTrackableWithHistorySupportAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final SwitchRepository switchRepository;
 
     public UpdateFlowAction(PersistenceManager persistenceManager) {

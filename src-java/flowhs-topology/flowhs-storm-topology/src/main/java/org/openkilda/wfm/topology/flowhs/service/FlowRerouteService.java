@@ -29,19 +29,22 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Config;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
+import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingFsmRegister;
+import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingService;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class FlowRerouteService extends FlowProcessingWithEventSupportService<FlowRerouteFsm, Event, FlowRerouteContext,
-        FlowRerouteHubCarrier, FlowRerouteEventListener> {
+public class FlowRerouteService extends FlowProcessingService<FlowRerouteFsm, Event, FlowRerouteContext,
+        FlowRerouteHubCarrier, FlowProcessingFsmRegister<FlowRerouteFsm>, FlowRerouteEventListener> {
     private final FlowRerouteFsm.Factory fsmFactory;
 
-    public FlowRerouteService(FlowRerouteHubCarrier carrier, PersistenceManager persistenceManager,
-                              PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
+    public FlowRerouteService(@NonNull FlowRerouteHubCarrier carrier, @NonNull PersistenceManager persistenceManager,
+                              @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager flowResourcesManager,
                               int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                               int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
-        super(new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
+        super(new FlowProcessingFsmRegister<>(), new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
 
         Config fsmConfig = Config.builder()
                 .pathAllocationRetriesLimit(pathAllocationRetriesLimit)
@@ -56,7 +59,8 @@ public class FlowRerouteService extends FlowProcessingWithEventSupportService<Fl
     /**
      * Handles request for flow reroute.
      */
-    public void handleRequest(String key, FlowRerouteRequest reroute, final CommandContext commandContext) {
+    public void handleRequest(@NonNull String key, @NonNull FlowRerouteRequest reroute,
+                              @NonNull CommandContext commandContext) {
         if (yFlowRepository.isSubFlow(reroute.getFlowId())) {
             sendForbiddenSubFlowOperationToNorthbound(reroute.getFlowId(), commandContext);
             return;
@@ -68,8 +72,8 @@ public class FlowRerouteService extends FlowProcessingWithEventSupportService<Fl
     /**
      * Handles request for flow reroute.
      */
-    public void startFlowRerouting(FlowRerouteRequest reroute, CommandContext commandContext,
-                                   String sharedBandwidthGroupId) {
+    public void startFlowRerouting(@NonNull FlowRerouteRequest reroute, @NonNull CommandContext commandContext,
+                                   @NonNull String sharedBandwidthGroupId) {
         startFlowRerouting(reroute.getFlowId(), reroute, commandContext, sharedBandwidthGroupId);
     }
 
@@ -82,11 +86,11 @@ public class FlowRerouteService extends FlowProcessingWithEventSupportService<Fl
             checkRequestsCollision(key, flowId);
         } catch (Exception e) {
             log.error(e.getMessage());
-            getFsmByKey(key).ifPresent(fsm -> removeIfFinished(fsm, key));
+            fsmRegister.getFsmByKey(key).ifPresent(fsm -> removeIfFinished(fsm, key));
             return;
         }
 
-        if (hasRegisteredFsmWithFlowId(flowId)) {
+        if (fsmRegister.hasRegisteredFsmWithFlowId(flowId)) {
             carrier.sendRerouteResultStatus(flowId, new RerouteInProgressError(),
                     commandContext.getCorrelationId());
             return;
@@ -94,7 +98,7 @@ public class FlowRerouteService extends FlowProcessingWithEventSupportService<Fl
 
         FlowRerouteFsm fsm = fsmFactory.newInstance(flowId, commandContext, eventListeners);
         fsm.setSharedBandwidthGroupId(sharedBandwidthGroupId);
-        registerFsm(key, fsm);
+        fsmRegister.registerFsm(key, fsm);
 
         FlowRerouteContext context = FlowRerouteContext.builder()
                 .flowId(flowId)
@@ -114,12 +118,11 @@ public class FlowRerouteService extends FlowProcessingWithEventSupportService<Fl
      *
      * @param key command identifier.
      */
-    public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) throws UnknownKeyException {
+    public void handleAsyncResponse(@NonNull String key, @NonNull SpeakerFlowSegmentResponse flowResponse)
+            throws UnknownKeyException {
         log.debug("Received flow command response {}", flowResponse);
-        FlowRerouteFsm fsm = getFsmByKey(key).orElse(null);
-        if (fsm == null) {
-            throw new UnknownKeyException(key);
-        }
+        FlowRerouteFsm fsm = fsmRegister.getFsmByKey(key)
+                .orElseThrow(() -> new UnknownKeyException(key));
 
         FlowRerouteContext context = FlowRerouteContext.builder()
                 .speakerFlowResponse(flowResponse)
@@ -138,9 +141,9 @@ public class FlowRerouteService extends FlowProcessingWithEventSupportService<Fl
      * Handles async response from worker.
      * Used if the command identifier is unknown, so FSM is identified by the flow Id.
      */
-    public void handleAsyncResponseByFlowId(String flowId, SpeakerFlowSegmentResponse flowResponse)
+    public void handleAsyncResponseByFlowId(@NonNull String flowId, @NonNull SpeakerFlowSegmentResponse flowResponse)
             throws UnknownKeyException {
-        String commandKey = getKeyByFlowId(flowId)
+        String commandKey = fsmRegister.getKeyByFlowId(flowId)
                 .orElseThrow(() -> new UnknownKeyException(flowId));
         handleAsyncResponse(commandKey, flowResponse);
     }
@@ -150,12 +153,10 @@ public class FlowRerouteService extends FlowProcessingWithEventSupportService<Fl
      *
      * @param key command identifier.
      */
-    public void handleTimeout(String key) throws UnknownKeyException {
+    public void handleTimeout(@NonNull String key) throws UnknownKeyException {
         log.debug("Handling timeout for {}", key);
-        FlowRerouteFsm fsm = getFsmByKey(key).orElse(null);
-        if (fsm == null) {
-            throw new UnknownKeyException(key);
-        }
+        FlowRerouteFsm fsm = fsmRegister.getFsmByKey(key)
+                .orElseThrow(() -> new UnknownKeyException(key));
 
         fsmExecutor.fire(fsm, Event.TIMEOUT);
 
@@ -166,14 +167,14 @@ public class FlowRerouteService extends FlowProcessingWithEventSupportService<Fl
      * Handles timeout case.
      * Used if the command identifier is unknown, so FSM is identified by the flow Id.
      */
-    public void handleTimeoutByFlowId(String flowId) throws UnknownKeyException {
-        String commandKey = getKeyByFlowId(flowId)
+    public void handleTimeoutByFlowId(@NonNull String flowId) throws UnknownKeyException {
+        String commandKey = fsmRegister.getKeyByFlowId(flowId)
                 .orElseThrow(() -> new UnknownKeyException(flowId));
         handleTimeout(commandKey);
     }
 
     private void checkRequestsCollision(String key, String flowId) {
-        if (hasRegisteredFsmWithKey(key)) {
+        if (fsmRegister.hasRegisteredFsmWithKey(key)) {
             throw new IllegalStateException(String.format(
                     "Attempt to create a FSM with key %s, while there's another active FSM with the same key "
                             + "(flowId=\"%s\")", key, flowId));
@@ -183,11 +184,11 @@ public class FlowRerouteService extends FlowProcessingWithEventSupportService<Fl
     private void removeIfFinished(FlowRerouteFsm fsm, String key) {
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
-            unregisterFsm(key);
+            fsmRegister.unregisterFsm(key);
 
             carrier.cancelTimeoutCallback(key);
 
-            if (!isActive() && !hasAnyRegisteredFsm()) {
+            if (!isActive() && !fsmRegister.hasAnyRegisteredFsm()) {
                 carrier.sendInactive();
             }
         }

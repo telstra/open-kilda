@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.delete;
 
-import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
@@ -40,8 +39,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.RemoveYFlowRes
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.ValidateYFlowAction;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
 import org.openkilda.wfm.topology.flowhs.service.FlowDeleteService;
-import org.openkilda.wfm.topology.flowhs.service.YFlowDeleteHubCarrier;
-import org.openkilda.wfm.topology.flowhs.service.YFlowEventListener;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.service.yflow.YFlowEventListener;
 
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
@@ -61,7 +60,7 @@ import java.util.concurrent.TimeUnit;
 @Setter
 @Slf4j
 public final class YFlowDeleteFsm extends YFlowProcessingFsm<YFlowDeleteFsm, State, Event, YFlowDeleteContext,
-        YFlowDeleteHubCarrier, YFlowEventListener> {
+        FlowGenericCarrier, YFlowEventListener> {
     private FlowStatus originalYFlowStatus;
     private YFlowResources oldResources;
 
@@ -69,26 +68,9 @@ public final class YFlowDeleteFsm extends YFlowProcessingFsm<YFlowDeleteFsm, Sta
     private final Set<String> deletingSubFlows = new HashSet<>();
     private final Set<String> failedSubFlows = new HashSet<>();
 
-    private String errorReason;
-
-    private YFlowDeleteFsm(@NonNull CommandContext commandContext, @NonNull YFlowDeleteHubCarrier carrier,
+    private YFlowDeleteFsm(@NonNull CommandContext commandContext, @NonNull FlowGenericCarrier carrier,
                            @NonNull String yFlowId, @NonNull Collection<YFlowEventListener> eventListeners) {
-        super(commandContext, carrier, yFlowId, eventListeners);
-    }
-
-    @Override
-    public void fireNext(YFlowDeleteContext context) {
-        fire(Event.NEXT, context);
-    }
-
-    @Override
-    public void fireError(String errorReason) {
-        fireError(Event.ERROR, errorReason);
-    }
-
-    private void fireError(Event errorEvent, String errorReason) {
-        setErrorReason(errorReason);
-        fire(errorEvent);
+        super(Event.NEXT, Event.ERROR, commandContext, carrier, yFlowId, eventListeners);
     }
 
     public void addSubFlow(String flowId) {
@@ -119,21 +101,6 @@ public final class YFlowDeleteFsm extends YFlowProcessingFsm<YFlowDeleteFsm, Sta
         return failedSubFlows.contains(flowId);
     }
 
-    public void setErrorReason(String errorReason) {
-        if (this.errorReason != null) {
-            log.error("Subsequent error fired: " + errorReason);
-        } else {
-            this.errorReason = errorReason;
-        }
-    }
-
-    @Override
-    public void reportError(Event event) {
-        if (Event.TIMEOUT == event) {
-            reportGlobalTimeout();
-        }
-    }
-
     @Override
     protected String getCrudActionName() {
         return "delete";
@@ -141,16 +108,15 @@ public final class YFlowDeleteFsm extends YFlowProcessingFsm<YFlowDeleteFsm, Sta
 
     public static class Factory {
         private final StateMachineBuilder<YFlowDeleteFsm, State, Event, YFlowDeleteContext> builder;
-        private final YFlowDeleteHubCarrier carrier;
+        private final FlowGenericCarrier carrier;
 
-        public Factory(@NonNull YFlowDeleteHubCarrier carrier, @NonNull PersistenceManager persistenceManager,
+        public Factory(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
                        @NonNull FlowResourcesManager resourcesManager,
                        @NonNull FlowDeleteService flowDeleteService, int speakerCommandRetriesLimit) {
             this.carrier = carrier;
 
-
             builder = StateMachineBuilderFactory.create(YFlowDeleteFsm.class, State.class, Event.class,
-                    YFlowDeleteContext.class, CommandContext.class, YFlowDeleteHubCarrier.class, String.class,
+                    YFlowDeleteContext.class, CommandContext.class, FlowGenericCarrier.class, String.class,
                     Collection.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
@@ -249,28 +215,13 @@ public final class YFlowDeleteFsm extends YFlowProcessingFsm<YFlowDeleteFsm, Sta
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public YFlowDeleteFsm newInstance(CommandContext commandContext, @NonNull String yFlowId,
+        public YFlowDeleteFsm newInstance(@NonNull CommandContext commandContext, @NonNull String yFlowId,
                                           @NonNull Collection<YFlowEventListener> eventListeners) {
             YFlowDeleteFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, yFlowId,
                     eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("YFlowDeleteFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
-
-            if (!eventListeners.isEmpty()) {
-                fsm.addTransitionCompleteListener(event -> {
-                    switch (event.getTargetState()) {
-                        case FINISHED:
-                            fsm.notifyEventListenersOnComplete();
-                            break;
-                        case FINISHED_WITH_ERROR:
-                            fsm.notifyEventListenersOnError(ErrorType.INTERNAL_ERROR, fsm.getErrorReason());
-                            break;
-                        default:
-                            // ignore
-                    }
-                });
-            }
 
             MeterRegistryHolder.getRegistry().ifPresent(registry -> {
                 Sample sample = LongTaskTimer.builder("fsm.active_execution")

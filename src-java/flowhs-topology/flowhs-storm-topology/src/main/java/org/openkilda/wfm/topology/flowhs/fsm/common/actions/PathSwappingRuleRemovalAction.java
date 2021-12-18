@@ -25,8 +25,8 @@ import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 public abstract class PathSwappingRuleRemovalAction<T extends FlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E, C> extends
         BaseFlowRuleRemovalAction<T, S, E, C> {
-
-    public PathSwappingRuleRemovalAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
+    protected PathSwappingRuleRemovalAction(PersistenceManager persistenceManager,
+                                            FlowResourcesManager resourcesManager) {
         super(persistenceManager, resourcesManager);
     }
 

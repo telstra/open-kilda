@@ -26,6 +26,7 @@ import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandCarrier;
 import org.openkilda.wfm.topology.flowhs.service.SpeakerWorkerService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
+import lombok.NonNull;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
@@ -35,7 +36,7 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     public static final String ID = "speaker.worker.bolt";
     private transient SpeakerWorkerService service;
 
-    public SpeakerWorkerBolt(Config config) {
+    public SpeakerWorkerBolt(@NonNull Config config) {
         super(config);
     }
 
@@ -70,12 +71,12 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     }
 
     @Override
-    public void sendCommand(String key, FlowSegmentRequest command) {
+    public void sendCommand(@NonNull String key, @NonNull FlowSegmentRequest command) {
         emitWithContext(SPEAKER_WORKER_REQUEST_SENDER.name(), getCurrentTuple(), new Values(key, command));
     }
 
     @Override
-    public void sendResponse(String key, SpeakerFlowSegmentResponse response) {
+    public void sendResponse(@NonNull String key, @NonNull SpeakerFlowSegmentResponse response) {
         Values values = new Values(key, response, getCommandContext());
         emitResponseToHub(getCurrentTuple(), values);
     }

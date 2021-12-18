@@ -28,7 +28,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -40,7 +40,7 @@ import java.util.Optional;
 
 @Slf4j
 public class PostResourceAllocationAction extends
-        NbTrackableAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+        NbTrackableWithHistorySupportAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public PostResourceAllocationAction(PersistenceManager persistenceManager,

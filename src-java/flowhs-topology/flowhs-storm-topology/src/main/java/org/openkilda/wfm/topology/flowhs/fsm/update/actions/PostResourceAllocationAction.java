@@ -19,7 +19,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
@@ -31,7 +31,7 @@ import java.util.Optional;
 
 @Slf4j
 public class PostResourceAllocationAction extends
-        NbTrackableAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+        NbTrackableWithHistorySupportAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     public PostResourceAllocationAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }

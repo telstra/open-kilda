@@ -18,45 +18,31 @@ package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableFlowProcessingFsm;
 
 import lombok.extern.slf4j.Slf4j;
+import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 import java.util.Optional;
 
 @Slf4j
-public abstract class NbTrackableAction<T extends NbTrackableFsm<T, S, E, C, ?>, S, E, C>
-        extends FlowProcessingAction<T, S, E, C> {
-
-    public NbTrackableAction(PersistenceManager persistenceManager) {
-        super(persistenceManager);
-    }
-
+public abstract class NbTrackableAction<T extends NbTrackableFlowProcessingFsm<T, S, E, C, ?, ?>, S, E, C>
+        extends AnonymousAction<T, S, E, C> {
     @Override
-    protected final void perform(S from, S to, E event, C context, T stateMachine) {
+    public final void execute(S from, S to, E event, C context, T stateMachine) {
         try {
             performWithResponse(from, to, event, context, stateMachine).ifPresent(stateMachine::sendNorthboundResponse);
         } catch (FlowProcessingException ex) {
-            handleError(stateMachine, ex, ex.getErrorType(), false);
+            handleError(stateMachine, ex, ex.getErrorType());
         } catch (Exception ex) {
-            handleError(stateMachine, ex, ErrorType.INTERNAL_ERROR, true);
+            handleError(stateMachine, ex, ErrorType.INTERNAL_ERROR);
         }
     }
 
-    protected abstract Optional<Message> performWithResponse(S from, S to, E event, C context, T stateMachine);
-
-    protected Message buildErrorMessage(T stateMachine, ErrorType errorType,
-                                        String errorMessage, String errorDescription) {
-        CommandContext commandContext = stateMachine.getCommandContext();
-        ErrorData error = new ErrorData(errorType, errorMessage, errorDescription);
-        return new ErrorMessage(error, commandContext.getCreateTime(), commandContext.getCorrelationId());
-    }
+    protected abstract Optional<Message> performWithResponse(S from, S to, E event, C context, T stateMachine)
+            throws Exception;
 
     /**
      * Returns a message for generic error that may happen during action execution.
@@ -64,16 +50,9 @@ public abstract class NbTrackableAction<T extends NbTrackableFsm<T, S, E, C, ?>,
      */
     protected abstract String getGenericErrorMessage();
 
-    protected void handleError(T stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+    protected void handleError(T stateMachine, Exception ex, ErrorType errorType) {
         String errorMessage = format("%s failed: %s", getClass().getSimpleName(), ex.getMessage());
-        if (logTraceback) {
-            stateMachine.saveErrorToHistory(errorMessage, ex);
-        } else {
-            stateMachine.saveErrorToHistory(errorMessage);
-        }
         stateMachine.fireError(errorMessage);
-        Message message = buildErrorMessage(stateMachine, errorType, getGenericErrorMessage(), ex.getMessage());
-        stateMachine.setOperationResultMessage(message);
-        stateMachine.sendNorthboundResponse(message);
+        stateMachine.sendNorthboundError(errorType, getGenericErrorMessage(), ex.getMessage());
     }
 }

@@ -38,7 +38,7 @@ import net.jodah.failsafe.RetryPolicy;
 
 @Slf4j
 public class AllocateYFlowResourcesAction<T extends YFlowProcessingFsm<T, S, E, C, ?, ?>, S, E, C>
-        extends YFlowProcessingAction<T, S, E, C> {
+        extends YFlowProcessingWithHistorySupportAction<T, S, E, C> {
     private final PathComputer pathComputer;
     private final FlowResourcesManager resourcesManager;
     private final RetryPolicy<MeterId> resourceAllocationRetryPolicy;

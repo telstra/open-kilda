@@ -30,18 +30,21 @@ import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
+import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingFsmRegister;
+import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingService;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class FlowDeleteService extends FlowProcessingWithEventSupportService<FlowDeleteFsm, Event, FlowDeleteContext,
-        FlowDeleteHubCarrier, FlowDeleteEventListener> {
+public class FlowDeleteService extends FlowProcessingService<FlowDeleteFsm, Event, FlowDeleteContext,
+        FlowGenericCarrier, FlowProcessingFsmRegister<FlowDeleteFsm>, FlowProcessingEventListener> {
     private final FlowDeleteFsm.Factory fsmFactory;
 
-    public FlowDeleteService(FlowDeleteHubCarrier carrier, PersistenceManager persistenceManager,
-                             FlowResourcesManager flowResourcesManager,
+    public FlowDeleteService(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
+                             @NonNull FlowResourcesManager flowResourcesManager,
                              int speakerCommandRetriesLimit) {
-        super(new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
+        super(new FlowProcessingFsmRegister<>(), new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
         fsmFactory = new FlowDeleteFsm.Factory(carrier, persistenceManager, flowResourcesManager,
                 speakerCommandRetriesLimit);
     }
@@ -52,7 +55,8 @@ public class FlowDeleteService extends FlowProcessingWithEventSupportService<Flo
      * @param key command identifier.
      * @param flowId the flow to delete.
      */
-    public void handleRequest(String key, CommandContext commandContext, String flowId) throws DuplicateKeyException {
+    public void handleRequest(@NonNull String key, @NonNull CommandContext commandContext, @NonNull String flowId)
+            throws DuplicateKeyException {
         if (yFlowRepository.isSubFlow(flowId)) {
             sendForbiddenSubFlowOperationToNorthbound(flowId, commandContext);
             return;
@@ -63,7 +67,7 @@ public class FlowDeleteService extends FlowProcessingWithEventSupportService<Flo
     /**
      * Start flow deletion of the flow.
      */
-    public void startFlowDeletion(CommandContext commandContext, String flowId) {
+    public void startFlowDeletion(@NonNull CommandContext commandContext, @NonNull String flowId) {
         try {
             startFlowDeletion(flowId, commandContext, flowId);
         } catch (DuplicateKeyException e) {
@@ -77,17 +81,17 @@ public class FlowDeleteService extends FlowProcessingWithEventSupportService<Flo
             throws DuplicateKeyException {
         log.debug("Handling flow deletion request with key {} and flow ID: {}", key, flowId);
 
-        if (hasRegisteredFsmWithKey(key)) {
+        if (fsmRegister.hasRegisteredFsmWithKey(key)) {
             throw new DuplicateKeyException(key, "There's another active FSM with the same key");
         }
-        if (hasRegisteredFsmWithFlowId(flowId)) {
+        if (fsmRegister.hasRegisteredFsmWithFlowId(flowId)) {
             sendErrorResponseToNorthbound(ErrorType.REQUEST_INVALID, "Could not delete flow",
                     format("Flow %s is already deleting now", flowId), commandContext);
             throw new DuplicateKeyException(key, "There's another active FSM for the same flowId " + flowId);
         }
 
         FlowDeleteFsm fsm = fsmFactory.newInstance(commandContext, flowId, eventListeners);
-        registerFsm(key, fsm);
+        fsmRegister.registerFsm(key, fsm);
 
         fsm.start();
         fsmExecutor.fire(fsm, Event.NEXT, FlowDeleteContext.builder().build());
@@ -100,9 +104,10 @@ public class FlowDeleteService extends FlowProcessingWithEventSupportService<Flo
      *
      * @param key command identifier.
      */
-    public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) throws UnknownKeyException {
+    public void handleAsyncResponse(@NonNull String key, @NonNull SpeakerFlowSegmentResponse flowResponse)
+            throws UnknownKeyException {
         log.debug("Received flow command response {}", flowResponse);
-        FlowDeleteFsm fsm = getFsmByKey(key)
+        FlowDeleteFsm fsm = fsmRegister.getFsmByKey(key)
                 .orElseThrow(() -> new UnknownKeyException(key));
 
         FlowDeleteContext context = FlowDeleteContext.builder()
@@ -121,9 +126,9 @@ public class FlowDeleteService extends FlowProcessingWithEventSupportService<Flo
      * Handles async response from worker.
      * Used if the command identifier is unknown, so FSM is identified by the flow Id.
      */
-    public void handleAsyncResponseByFlowId(String flowId, SpeakerFlowSegmentResponse flowResponse)
+    public void handleAsyncResponseByFlowId(@NonNull String flowId, @NonNull SpeakerFlowSegmentResponse flowResponse)
             throws UnknownKeyException {
-        String commandKey = getKeyByFlowId(flowId)
+        String commandKey = fsmRegister.getKeyByFlowId(flowId)
                 .orElseThrow(() -> new UnknownKeyException(flowId));
         handleAsyncResponse(commandKey, flowResponse);
     }
@@ -133,9 +138,9 @@ public class FlowDeleteService extends FlowProcessingWithEventSupportService<Flo
      *
      * @param key command identifier.
      */
-    public void handleTimeout(String key) throws UnknownKeyException {
+    public void handleTimeout(@NonNull String key) throws UnknownKeyException {
         log.debug("Handling timeout for {}", key);
-        FlowDeleteFsm fsm = getFsmByKey(key)
+        FlowDeleteFsm fsm = fsmRegister.getFsmByKey(key)
                 .orElseThrow(() -> new UnknownKeyException(key));
 
         fsmExecutor.fire(fsm, Event.TIMEOUT);
@@ -147,8 +152,8 @@ public class FlowDeleteService extends FlowProcessingWithEventSupportService<Flo
      * Handles timeout case.
      * Used if the command identifier is unknown, so FSM is identified by the flow Id.
      */
-    public void handleTimeoutByFlowId(String flowId) throws UnknownKeyException {
-        String commandKey = getKeyByFlowId(flowId)
+    public void handleTimeoutByFlowId(@NonNull String flowId) throws UnknownKeyException {
+        String commandKey = fsmRegister.getKeyByFlowId(flowId)
                 .orElseThrow(() -> new UnknownKeyException(flowId));
         handleTimeout(commandKey);
     }
@@ -156,10 +161,10 @@ public class FlowDeleteService extends FlowProcessingWithEventSupportService<Flo
     private void removeIfFinished(FlowDeleteFsm fsm, String key) {
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
-            unregisterFsm(key);
+            fsmRegister.unregisterFsm(key);
 
             carrier.cancelTimeoutCallback(key);
-            if (!isActive() && !hasAnyRegisteredFsm()) {
+            if (!isActive() && !fsmRegister.hasAnyRegisteredFsm()) {
                 carrier.sendInactive();
             }
         }

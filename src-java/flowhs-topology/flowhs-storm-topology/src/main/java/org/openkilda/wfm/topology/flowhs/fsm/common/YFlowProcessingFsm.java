@@ -20,12 +20,14 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
-import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
+import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
+import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
+import org.openkilda.wfm.topology.flowhs.service.common.ProcessingEventListener;
 
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
+import org.squirrelframework.foundation.fsm.StateMachine;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -34,10 +36,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Getter
-public abstract class YFlowProcessingFsm<T extends NbTrackableFsm<T, S, E, C, R>, S, E, C,
-        R extends FlowGenericCarrier, L extends FlowProcessingEventListener>
-        extends FlowProcessingWithEventSupportFsm<T, S, E, C, R, L> {
-
+public abstract class YFlowProcessingFsm<T extends StateMachine<T, S, E, C>, S, E, C,
+        R extends NorthboundResponseCarrier & HistoryUpdateCarrier, L extends ProcessingEventListener>
+        extends FlowProcessingWithHistorySupportFsm<T, S, E, C, R, L> {
     private final String yFlowId;
 
     private final Map<UUID, SwitchId> pendingCommands = new HashMap<>();
@@ -50,10 +51,10 @@ public abstract class YFlowProcessingFsm<T extends NbTrackableFsm<T, S, E, C, R>
     @Setter
     private YFlowResources newResources;
 
-    public YFlowProcessingFsm(CommandContext commandContext, @NonNull R carrier, @NonNull String yFlowId,
-                              @NonNull Collection<L> eventListeners) {
-        super(commandContext, carrier, eventListeners);
-
+    protected YFlowProcessingFsm(E nextEvent, E errorEvent,
+                                 @NonNull CommandContext commandContext, @NonNull R carrier, @NonNull String yFlowId,
+                                 @NonNull Collection<L> eventListeners) {
+        super(nextEvent, errorEvent, commandContext, carrier, eventListeners);
         this.yFlowId = yFlowId;
     }
 
