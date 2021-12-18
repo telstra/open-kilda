@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,20 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.nbtopology.request;
+package org.openkilda.wfm.topology.flowhs.service;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
+import org.openkilda.messaging.info.flow.FlowValidationResponse;
+import org.openkilda.wfm.topology.flowhs.service.common.ProcessingEventListener;
 
-@Value
-@EqualsAndHashCode(callSuper = false)
-public class FlowValidationRequest extends BaseRequest {
+import java.util.List;
 
-    @JsonProperty("flow_id")
-    private String flowId;
+/**
+ * Defines a listener for FlowValidation events.
+ */
+public interface FlowValidationEventListener extends ProcessingEventListener {
+    void onValidationResult(String flowId, List<FlowValidationResponse> validationResult);
 
-    public FlowValidationRequest(@JsonProperty("flow_id") String flowId) {
-        this.flowId = flowId;
-    }
+    void onFailedValidation(String flowId);
 }

@@ -54,8 +54,13 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
 
     @Override
     protected void onAsyncResponse(Tuple request, Tuple response) throws PipelineException {
-        SpeakerFlowSegmentResponse message = pullValue(response, FIELD_ID_PAYLOAD, SpeakerFlowSegmentResponse.class);
-        service.handleResponse(pullKey(response), message);
+        Object payload = response.getValueByField(FIELD_ID_PAYLOAD);
+        if (payload instanceof SpeakerFlowSegmentResponse) {
+            SpeakerFlowSegmentResponse message = (SpeakerFlowSegmentResponse) payload;
+            service.handleResponse(pullKey(response), message);
+        } else {
+            log.debug("Unknown response received: {}", payload);
+        }
     }
 
     @Override

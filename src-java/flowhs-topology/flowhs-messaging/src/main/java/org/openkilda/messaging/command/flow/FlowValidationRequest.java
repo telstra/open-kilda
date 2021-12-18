@@ -13,11 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker.bolts;
+package org.openkilda.messaging.command.flow;
 
-public interface FlowValidationHubCarrier extends FlowHubCarrier {
+import org.openkilda.messaging.nbtopology.request.BaseRequest;
 
-    long getFlowMeterMinBurstSizeInKbits();
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
 
-    double getFlowMeterBurstCoefficient();
+@Value
+@EqualsAndHashCode(callSuper = false)
+public class FlowValidationRequest extends BaseRequest {
+
+    @JsonProperty("flow_id")
+    private String flowId;
+
+    public FlowValidationRequest(@JsonProperty("flow_id") String flowId) {
+        this.flowId = flowId;
+    }
 }

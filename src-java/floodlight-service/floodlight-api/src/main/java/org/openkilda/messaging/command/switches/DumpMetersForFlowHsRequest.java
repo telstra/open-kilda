@@ -18,18 +18,21 @@ package org.openkilda.messaging.command.switches;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
 @EqualsAndHashCode(callSuper = false)
-public class DumpMetersForNbworkerRequest extends CommandData {
+@JsonNaming(SnakeCaseStrategy.class)
+public class DumpMetersForFlowHsRequest extends CommandData {
+    SwitchId switchId;
 
-    @JsonProperty("switch_id")
-    private SwitchId switchId;
-
-    public DumpMetersForNbworkerRequest(@JsonProperty("switch_id") SwitchId switchId) {
+    @JsonCreator
+    public DumpMetersForFlowHsRequest(@JsonProperty("switch_id") SwitchId switchId) {
         this.switchId = switchId;
     }
 }

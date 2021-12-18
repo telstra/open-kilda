@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,27 +13,30 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.switches;
+package org.openkilda.floodlight.api.response;
 
-import org.openkilda.messaging.command.CommandData;
-import org.openkilda.model.SwitchId;
+import org.openkilda.messaging.AbstractMessage;
+import org.openkilda.messaging.MessageContext;
+import org.openkilda.messaging.MessageData;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
 import lombok.EqualsAndHashCode;
-import lombok.Value;
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.ToString;
 
-@Value
-@Builder
+@Getter
+@ToString
 @EqualsAndHashCode(callSuper = false)
-public class DumpRulesForNbworkerRequest extends CommandData {
-
-    @JsonProperty("switch_id")
-    private SwitchId switchId;
+public class SpeakerDataResponse extends AbstractMessage {
+    MessageData data;
 
     @JsonCreator
-    public DumpRulesForNbworkerRequest(@JsonProperty("switch_id") SwitchId switchId) {
-        this.switchId = switchId;
+    public SpeakerDataResponse(@JsonProperty("message_context") @NonNull MessageContext messageContext,
+                               @JsonProperty("data") @NonNull MessageData data) {
+        super(messageContext);
+
+        this.data = data;
     }
 }

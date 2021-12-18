@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker.services;
+package org.openkilda.wfm.topology.flowhs.fsm.validation;
 
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;

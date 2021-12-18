@@ -32,6 +32,7 @@ import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRequest.Type;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.flow.FlowValidationRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
@@ -50,7 +51,6 @@ import org.openkilda.messaging.nbtopology.request.FlowConnectedDeviceRequest;
 import org.openkilda.messaging.nbtopology.request.FlowMirrorPointsDumpRequest;
 import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
 import org.openkilda.messaging.nbtopology.request.FlowReadRequest;
-import org.openkilda.messaging.nbtopology.request.FlowValidationRequest;
 import org.openkilda.messaging.nbtopology.request.FlowsDumpRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowLoopsRequest;
@@ -590,7 +590,7 @@ public class FlowServiceImpl implements FlowService {
         CommandMessage message = new CommandMessage(new FlowValidationRequest(flowId),
                 System.currentTimeMillis(), RequestCorrelationId.getId());
 
-        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
+        return messagingChannel.sendAndGetChunked(flowHsTopic, message)
                 .thenApply(response -> response.stream()
                         .map(FlowValidationResponse.class::cast)
                         .map(flowMapper::toFlowValidationDto)

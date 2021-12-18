@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker.services;
+package org.openkilda.wfm.topology.flowhs.fsm.validation;
 
 import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;

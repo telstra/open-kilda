@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -27,12 +27,12 @@ import lombok.Value;
 
 @Value
 @EqualsAndHashCode(callSuper = false)
-@JsonNaming(value = SnakeCaseStrategy.class)
-public class DumpGroupsForNbWorkerRequest extends CommandData {
+@JsonNaming(SnakeCaseStrategy.class)
+public class DumpRulesForFlowHsRequest extends CommandData {
     SwitchId switchId;
 
     @JsonCreator
-    public DumpGroupsForNbWorkerRequest(@JsonProperty("switch_id") SwitchId switchId) {
+    public DumpRulesForFlowHsRequest(@JsonProperty("switch_id") SwitchId switchId) {
         this.switchId = switchId;
     }
 }
