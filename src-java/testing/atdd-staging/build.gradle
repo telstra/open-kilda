@@ -34,8 +34,6 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
 }
 
-build.dependsOn collectDependencyJars
-
 buildAndCopyArtifacts {
     from("${project.file("kilda.properties")}") { into "${project.name}/resources" }
 }

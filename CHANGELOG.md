@@ -43,6 +43,18 @@ For the complete list of changes, check out [the commit log](https://github.com/
 
 ---
 
+## v1.109.0.1 (21/12/2021)
+### Improvements:
+-  [#4626](https://github.com/telstra/open-kilda/pull/4626) Upgrade log4j dependency version to mitigate log4shell 
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.109.0...v1.109.0.1).
+
+### Affected Components:
+all
+
+----
+
 ## v1.109.0 (08/12/2021)
 
 ### Features:
