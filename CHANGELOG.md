@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.110.0 (21/12/2021)
+
+### Features:
+-  [#4614](https://github.com/telstra/open-kilda/pull/4614) Introduce YFlow validation and sync in NB API
+-  [#4619](https://github.com/telstra/open-kilda/pull/4619) Add isl service rules rule manager implementation
+
+### Bug Fixes:
+-  [#4613](https://github.com/telstra/open-kilda/pull/4613) Fix improper handling of LifecycleEvents in YFlow services
+-  [#4622](https://github.com/telstra/open-kilda/pull/4622) Fix y-flow update and reroute issues
+-  [#4625](https://github.com/telstra/open-kilda/pull/4625) Server42 Up dpdk to 19.11.10 (Issue: [#4577](https://github.com/telstra/open-kilda/issues/4577))
+
+### Improvements:
+-  [#4615](https://github.com/telstra/open-kilda/pull/4615) Refactor Flow validation, move it to FlowHS topology (Issue: [#4617](https://github.com/telstra/open-kilda/issues/4617))
+-  [#4617](https://github.com/telstra/open-kilda/pull/4617) Cleanup FlowHS topology - reorganize base FSMs & services, enforce nonnull types in argument validation. (Issue: [#4614](https://github.com/telstra/open-kilda/issues/4614))
+
+### Other changes:
+-  [#4623](https://github.com/telstra/open-kilda/pull/4623) Update restlet repository reference to the actual one with valid certificate
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.109.1...v1.110.0).
+
+### Affected Components:
+flow-hs, server42
+
+---
+
 ## v1.109.1 (14/12/2021)
 
 ### Features:
