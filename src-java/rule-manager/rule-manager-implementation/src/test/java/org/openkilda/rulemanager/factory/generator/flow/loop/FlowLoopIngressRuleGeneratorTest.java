@@ -43,6 +43,7 @@ import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.action.PushVlanAction;
+import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.rulemanager.utils.RoutingMetadata;
 
@@ -85,7 +86,8 @@ public class FlowLoopIngressRuleGeneratorTest {
                         FieldMatch.builder().field(Field.VLAN_VID).value(INNER_VLAN_1).build(),
                         buildMetadataMatch(OUTER_VLAN_1)),
                 newArrayList(
-                        PushVlanAction.builder().vlanId((short) OUTER_VLAN_1).build(),
+                        new PushVlanAction(),
+                        SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_1).build(),
                         new PortOutAction(new PortNumber(SpecialPortType.IN_PORT))));
     }
 
@@ -98,7 +100,8 @@ public class FlowLoopIngressRuleGeneratorTest {
                         FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
                         buildMetadataMatch(OUTER_VLAN_1)),
                 newArrayList(
-                        PushVlanAction.builder().vlanId((short) OUTER_VLAN_1).build(),
+                        new PushVlanAction(),
+                        SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_1).build(),
                         new PortOutAction(new PortNumber(SpecialPortType.IN_PORT))));
     }
 

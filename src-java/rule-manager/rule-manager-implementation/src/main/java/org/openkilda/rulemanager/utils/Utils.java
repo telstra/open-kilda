@@ -97,7 +97,8 @@ public final class Utils {
         }
 
         while (targetIter.hasNext()) {
-            actions.add(PushVlanAction.builder().vlanId(targetIter.next().shortValue()).build());
+            actions.add(new PushVlanAction());
+            actions.add(SetFieldAction.builder().field(Field.VLAN_VID).value(targetIter.next()).build());
         }
         return actions;
     }

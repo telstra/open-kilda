@@ -93,7 +93,8 @@ public class EgressRuleGeneratorTest {
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID).build(),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
         assertEgressCommands(commands, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions);
@@ -135,7 +136,8 @@ public class EgressRuleGeneratorTest {
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
         assertEgressCommands(commands, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions);
@@ -205,8 +207,10 @@ public class EgressRuleGeneratorTest {
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
-                PushVlanAction.builder().vlanId((short) INNER_VLAN_ID).build(),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
         assertEgressCommands(commands, OfTable.EGRESS, VXLAN_ENCAPSULATION, expectedApplyActions);
@@ -221,7 +225,8 @@ public class EgressRuleGeneratorTest {
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
         assertEgressCommands(commands, OfTable.EGRESS, VXLAN_ENCAPSULATION, expectedApplyActions);
@@ -250,7 +255,8 @@ public class EgressRuleGeneratorTest {
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
         assertEgressCommands(commands, OfTable.INPUT, VXLAN_ENCAPSULATION, expectedApplyActions);

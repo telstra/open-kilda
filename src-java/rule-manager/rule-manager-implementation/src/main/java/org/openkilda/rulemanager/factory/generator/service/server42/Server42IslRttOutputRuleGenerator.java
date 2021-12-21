@@ -70,7 +70,8 @@ public class Server42IslRttOutputRuleGenerator implements RuleGenerator {
 
         List<Action> actions = new ArrayList<>();
         if (server42Vlan > 0) {
-            actions.add(PushVlanAction.builder().vlanId((short) server42Vlan).build());
+            actions.add(new PushVlanAction());
+            actions.add(SetFieldAction.builder().field(Field.VLAN_VID).value(server42Vlan).build());
         }
 
         actions.add(SetFieldAction.builder().field(ETH_SRC).value(sw.getSwitchId().toMacAddressAsLong()).build());

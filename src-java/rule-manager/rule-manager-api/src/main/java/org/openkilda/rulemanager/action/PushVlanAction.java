@@ -15,32 +15,17 @@
 
 package org.openkilda.rulemanager.action;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.Builder;
 import lombok.Value;
 
-/**
- * Represents push vlan OpenFlow action if vlanId param is 0.
- * Represents two OpenFlow actions: push vlan and set vlan id if vlanId param isn't 0.
- */
 @Value
 @JsonSerialize
-@Builder
 @JsonNaming(SnakeCaseStrategy.class)
 @JsonIgnoreProperties(value = { "type" })
 public class PushVlanAction implements Action {
-
-    short vlanId;
-
-    @JsonCreator
-    public PushVlanAction(@JsonProperty("vlan_id") short vlanId) {
-        this.vlanId = vlanId;
-    }
 
     @Override
     public ActionType getType() {

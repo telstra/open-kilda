@@ -146,7 +146,8 @@ public class SingleTableIngressRuleGeneratorTest {
         SingleTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(
-                PushVlanAction.builder().vlanId((short) TRANSIT_VLAN_ID).build()
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build()
         );
         assertEquals(expectedActions, transformActions);
     }
@@ -203,7 +204,8 @@ public class SingleTableIngressRuleGeneratorTest {
         SingleTableIngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID_2).build()
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build()
         );
         assertEquals(expectedActions, transformActions);
     }
@@ -252,7 +254,8 @@ public class SingleTableIngressRuleGeneratorTest {
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build());
         List<Action> expectedIngressActions = newArrayList(
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID_2).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_2)));
         assertIngressCommand(ingressCommand, Priority.DEFAULT_FLOW_PRIORITY, expectedIngressMatch,
                 expectedIngressActions, null);

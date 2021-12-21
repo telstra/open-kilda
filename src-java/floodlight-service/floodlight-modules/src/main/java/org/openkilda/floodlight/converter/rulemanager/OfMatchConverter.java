@@ -48,7 +48,6 @@ import java.util.Set;
 public class OfMatchConverter {
     public static final OfMatchConverter INSTANCE = Mappers.getMapper(OfMatchConverter.class);
 
-
     /**
      * Convert match.
      */

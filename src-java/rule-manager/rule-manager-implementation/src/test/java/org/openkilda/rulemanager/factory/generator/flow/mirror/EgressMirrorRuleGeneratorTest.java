@@ -115,7 +115,8 @@ public class EgressMirrorRuleGeneratorTest {
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID).build(),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new GroupAction(GROUP_ID));
         assertEgressCommand(egressCommand, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions,
                 groupCommand.getUuid());
@@ -171,7 +172,8 @@ public class EgressMirrorRuleGeneratorTest {
         GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new GroupAction(GROUP_ID));
         assertEgressCommand(egressCommand, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions,
                 groupCommand.getUuid());
@@ -266,8 +268,10 @@ public class EgressMirrorRuleGeneratorTest {
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
-                PushVlanAction.builder().vlanId((short) INNER_VLAN_ID).build(),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new GroupAction(GROUP_ID));
         assertEgressCommand(egressCommand, OfTable.EGRESS, VXLAN_ENCAPSULATION, expectedApplyActions,
                 groupCommand.getUuid());
@@ -287,7 +291,8 @@ public class EgressMirrorRuleGeneratorTest {
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new GroupAction(GROUP_ID));
         assertEgressCommand(egressCommand, OfTable.EGRESS, VXLAN_ENCAPSULATION, expectedApplyActions,
                 groupCommand.getUuid());
@@ -326,7 +331,8 @@ public class EgressMirrorRuleGeneratorTest {
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new GroupAction(GROUP_ID)
         );
         assertEgressCommand(egressCommand, OfTable.INPUT, VXLAN_ENCAPSULATION, expectedApplyActions,
@@ -434,7 +440,8 @@ public class EgressMirrorRuleGeneratorTest {
 
         Bucket mirrorBucket = command.getBuckets().get(1);
         assertBucketCommon(mirrorBucket);
-        assertEquals(newHashSet(PushVlanAction.builder().vlanId(MIRROR_VLAN).build(),
+        assertEquals(newHashSet(new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(MIRROR_VLAN).build(),
                 new PortOutAction(new PortNumber(MIRROR_PORT))), mirrorBucket.getWriteActions());
     }
 

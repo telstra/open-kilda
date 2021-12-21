@@ -174,7 +174,8 @@ public class MultiTableServer42IngressRuleGeneratorTest {
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build(),
                 SetFieldAction.builder().field(Field.ETH_DST).value(SWITCH_ID_2.toMacAddressAsLong()).build(),
-                PushVlanAction.builder().vlanId((short) TRANSIT_VLAN_ID).build());
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build());
         assertEquals(expectedActions, transformActions);
     }
 
@@ -186,7 +187,8 @@ public class MultiTableServer42IngressRuleGeneratorTest {
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build(),
                 SetFieldAction.builder().field(Field.ETH_DST).value(SWITCH_ID_2.toMacAddressAsLong()).build(),
-                PushVlanAction.builder().vlanId((short) TRANSIT_VLAN_ID).build());
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build());
         assertEquals(expectedActions, transformActions);
     }
 
@@ -342,7 +344,8 @@ public class MultiTableServer42IngressRuleGeneratorTest {
         List<Action> expectedIngressActions = newArrayList(
                 SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build(),
                 SetFieldAction.builder().field(Field.ETH_DST).value(SWITCH_ID_2.toMacAddressAsLong()).build(),
-                PushVlanAction.builder().vlanId((short) TRANSIT_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_2)));
         assertIngressCommand(ingressCommand, Priority.SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY,
                 expectedIngressMatch, expectedIngressActions);
